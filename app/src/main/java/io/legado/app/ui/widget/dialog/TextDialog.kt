@@ -264,6 +264,13 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
             return
         }
         
+        // 检查当前选中的文档是否存在,不存在则隐藏选择器
+        val docIndex = HelpDocManager.getDocIndex(currentHelpDoc ?: "")
+        if (docIndex < 0) {
+            binding.helpSelectorLayout.visibility = View.GONE
+            return
+        }
+        
         binding.helpSelectorLayout.visibility = View.VISIBLE
         
         // 创建帮助文档列表适配器
