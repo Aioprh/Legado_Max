@@ -7,6 +7,7 @@ object HelpDocManager {
     val allHelpDocs = listOf(
         HelpDoc("ruleHelp", "书源制作教程"),
         HelpDoc("jsHelp", "js变量和函数"),
+        HelpDoc("rssRuleHelp", "订阅源规则帮助"),
         HelpDoc("xpathHelp", "xpath语法教程"),
         HelpDoc("regexHelp", "正则表达式教程"),
         HelpDoc("txtTocRuleHelp", "txt目录正则说明"),
@@ -18,7 +19,6 @@ object HelpDocManager {
     
     // 隐藏的帮助文档（可以加载查看，但不会出现在切换列表中）
     private val hiddenHelpDocs = listOf(
-        HelpDoc("rssRuleHelp", "订阅源规则帮助"),
         HelpDoc("SourceMBookHelp", "书源管理界面帮助"),
         HelpDoc("SourceMRssHelp", "订阅源管理界面帮助"),
         HelpDoc("replaceRuleHelp", "替换规则说明"),
