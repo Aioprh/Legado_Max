@@ -170,7 +170,7 @@ class HandleFileActivity :
                         showInputImgSrcDialog()
                     }
 
-                    114 -> getFileData()?.let { fileData ->
+                    114 -> getFileData()?.let { fileData -> //导出JSON到剪贴板(书单/书源/订阅)
                         val file = fileData.second
                         if (file is java.io.File && file.exists()) {
                             val json = file.readText()
