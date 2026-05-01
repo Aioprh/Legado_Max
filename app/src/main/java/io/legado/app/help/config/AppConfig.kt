@@ -532,12 +532,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.openBookInfoByClickTitle, value)
         }
 
-    var showBookshelfFastScroller: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.showBookshelfFastScroller, false)
-        set(value) {
-            appCtx.putPrefBoolean(PreferKey.showBookshelfFastScroller, value)
-        }
-
     var contentSelectSpeakMod: Int
         get() = appCtx.getPrefInt(PreferKey.contentSelectSpeakMod)
         set(value) {
