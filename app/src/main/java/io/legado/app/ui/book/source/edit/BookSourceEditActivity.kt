@@ -65,6 +65,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import splitties.views.bottomPadding
 
+/**
+ * 书源编辑Activity
+ * 提供书源的增删改查功能，支持通过Tab页签切换不同规则模块进行编辑
+ * 包含基本设置、搜索规则、发现规则、详情规则、目录规则、正文规则等
+ */
 class BookSourceEditActivity :
     VMBaseActivity<ActivityBookSourceEditBinding, BookSourceEditViewModel>(),
     KeyboardToolPop.CallBack,
@@ -73,21 +78,27 @@ class BookSourceEditActivity :
     override val binding by viewBinding(ActivityBookSourceEditBinding::inflate)
     override val viewModel by viewModels<BookSourceEditViewModel>()
 
+    // RecyclerView适配器
     private val adapter by lazy { BookSourceEditAdapter() }
-    private val sourceEntities: ArrayList<EditEntity> = ArrayList()
-    private val searchEntities: ArrayList<EditEntity> = ArrayList()
-    private val exploreEntities: ArrayList<EditEntity> = ArrayList()
-    private val infoEntities: ArrayList<EditEntity> = ArrayList()
-    private val tocEntities: ArrayList<EditEntity> = ArrayList()
-    private val contentEntities: ArrayList<EditEntity> = ArrayList()
+    // 各Tab页签对应的编辑实体列表
+    private val sourceEntities: ArrayList<EditEntity> = ArrayList()    // 基本信息
+    private val searchEntities: ArrayList<EditEntity> = ArrayList()    // 搜索规则
+    private val exploreEntities: ArrayList<EditEntity> = ArrayList()   // 发现规则
+    private val infoEntities: ArrayList<EditEntity> = ArrayList()      // 详情页规则
+    private val tocEntities: ArrayList<EditEntity> = ArrayList()       // 目录页规则
+    private val contentEntities: ArrayList<EditEntity> = ArrayList()   // 正文页规则
 
-    //    private val reviewEntities: ArrayList<EditEntity> = ArrayList()
+    // 段评规则（已废弃）
+    // private val reviewEntities: ArrayList<EditEntity> = ArrayList()
+    
+    // 二维码扫描结果回调：用于从二维码导入书源
     private val qrCodeResult = registerForActivityResult(QrCodeResult()) {
         it ?: return@registerForActivityResult
         viewModel.importSource(it) { source ->
             upSourceView(source)
         }
     }
+    // 文件选择回调：用于选择本地书源文件
     private val selectDoc = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             if (uri.isContentScheme()) {
@@ -98,10 +109,15 @@ class BookSourceEditActivity :
         }
     }
 
+    // 软键盘辅助工具栏
     private val softKeyboardTool by lazy {
         KeyboardToolPop(this, lifecycleScope, binding.root, this)
     }
 
+    /**
+     * Activity创建时调用
+     * 初始化视图、加载数据、绑定书源
+     */
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         softKeyboardTool.attachToWindow(window)
         initView()
@@ -110,6 +126,10 @@ class BookSourceEditActivity :
         }
     }
 
+    /**
+     * 页面创建完成后调用
+     * 如果规则帮助不是最新版本，则显示帮助页面
+     */
     override fun onPostCreate(savedInstanceState: Bundle?) {
         super.onPostCreate(savedInstanceState)
         if (!LocalConfig.ruleHelpVersionIsLast) {
@@ -117,17 +137,27 @@ class BookSourceEditActivity :
         }
     }
 
+    /**
+     * 创建选项菜单
+     */
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.source_edit, menu)
         return super.onCompatCreateOptionsMenu(menu)
     }
 
+    /**
+     * 菜单打开前动态调整菜单项可见性
+     */
     override fun onMenuOpened(featureId: Int, menu: Menu): Boolean {
         menu.findItem(R.id.menu_login)?.isVisible = !getSource().loginUrl.isNullOrBlank()
         menu.findItem(R.id.menu_auto_complete)?.isChecked = viewModel.autoComplete
         return super.onMenuOpened(featureId, menu)
     }
 
+    /**
+     * 全屏文本编辑器回调
+     * 用于接收从 CodeEditActivity 返回的编辑后文本和光标位置
+     */
     private val textEditLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             val view = window.decorView.findFocus()
@@ -144,6 +174,10 @@ class BookSourceEditActivity :
         }
     }
 
+    /**
+     * 处理全屏编辑按钮点击
+     * 将当前焦点的文本框内容打开到 CodeEditActivity 进行全屏编辑
+     */
     private fun onFullEditClicked() {
         val view = window.decorView.findFocus()
         if (view is EditText) {
@@ -161,6 +195,9 @@ class BookSourceEditActivity :
         }
     }
 
+    /**
+     * 处理选项菜单项点击事件
+     */
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_fullscreen_edit -> onFullEditClicked()
@@ -210,6 +247,10 @@ class BookSourceEditActivity :
         return super.onCompatOptionsItemSelected(item)
     }
 
+    /**
+     * 初始化界面视图
+     * 创建Tab页签、配置RecyclerView、设置窗口边距适配等
+     */
     private fun initView() {
         binding.tabLayout.addTab(binding.tabLayout.newTab().apply {
             setText(R.string.source_tab_base)
@@ -264,6 +305,10 @@ class BookSourceEditActivity :
         }
     }
 
+    /**
+     * 返回键退出逻辑
+     * 如果有未保存的修改，弹出确认对话框
+     */
     override fun finish() {
         val source = getSource()
         if (!source.equal(viewModel.bookSource ?: BookSource())) {
@@ -279,12 +324,19 @@ class BookSourceEditActivity :
         }
     }
 
+    /**
+     * Activity销毁时释放资源
+     */
     override fun onDestroy() {
         super.onDestroy()
         softKeyboardTool.dismiss()
         binding.scrollBar.detachRecyclerView()
     }
 
+    /**
+     * 根据Tab页签位置切换对应的编辑实体列表
+     * @param tabPosition Tab索引：0=基本信息, 1=搜索, 2=发现, 3=详情, 4=目录, 5=正文
+     */
     private fun setEditEntities(tabPosition: Int?) {
         adapter.editEntities = when (tabPosition) {
             1 -> searchEntities
@@ -299,6 +351,10 @@ class BookSourceEditActivity :
         window.decorView.rootView.clearFocus()
     }
 
+    /**
+     * 将书源数据绑定到界面各Tab页签的编辑列表中
+     * @param bookSource 要显示的书源对象
+     */
     private fun upSourceView(bookSource: BookSource?) {
         val bs = bookSource ?: BookSource()
         bs.let {
@@ -431,6 +487,10 @@ class BookSourceEditActivity :
         setEditEntities(0)
     }
 
+    /**
+     * 从界面各Tab页签中收集书源数据并构建BookSource对象
+     * @return 构建好的书源对象
+     */
     private fun getSource(): BookSource {
         val source = viewModel.bookSource?.copy() ?: BookSource()
         source.enabled = binding.cbIsEnable.isChecked
@@ -639,7 +699,9 @@ class BookSourceEditActivity :
         return source
     }
 
-    //
+    /**
+     * 弹出分组选择对话框
+     */
     private fun alertGroups() {
         lifecycleScope.launch {
             val groups = withContext(IO) {
@@ -651,6 +713,10 @@ class BookSourceEditActivity :
         }
     }
 
+    /**
+     * 根据当前焦点的文本框类型动态生成帮助操作列表
+     * 例如：分组字段显示"插入分组"，其他字段显示"选择文件"
+     */
     override fun helpActions(): List<SelectItem<String>> {
         val helpActions = arrayListOf(
             SelectItem("插入URL参数", "urlOption"),
@@ -677,6 +743,10 @@ class BookSourceEditActivity :
         return helpActions
     }
 
+    /**
+     * 处理帮助操作的选择事件
+     * @param action 操作标识符
+     */
     override fun onHelpActionSelect(action: String) {
         when (action) {
             "addGroup" -> alertGroups()
