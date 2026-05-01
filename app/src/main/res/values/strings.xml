@@ -1379,6 +1379,7 @@
     <string name="press_speed">长按倍速</string>
     <string name="press_speed_summary">长按倍速 %.1f</string>
     <string name="full_bottom_progress">全屏时显示底部进度条</string>
+    <string name="mute_play">静音播放</string>
     <string name="json_format">json格式</string>
     <string name="open_other_video_player">其它播放器打开</string>
     <string name="show_source_comment">显示源注释</string>

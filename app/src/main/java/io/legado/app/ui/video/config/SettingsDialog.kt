@@ -27,6 +27,8 @@ class SettingsDialog(private val context: Context, private val callBack: CallBac
             cbAutoPlay.isChecked = VideoPlay.autoPlay
             cbStartFull.isChecked = VideoPlay.startFull
             cbFullBottomProgress.isChecked = VideoPlay.fullBottomProgressBar
+            // 初始化静音播放状态
+            cbMutePlay.isChecked = VideoPlay.mutePlay
         }
     }
 
@@ -42,6 +44,10 @@ class SettingsDialog(private val context: Context, private val callBack: CallBac
             }
             cbFullBottomProgress.setOnCheckedChangeListener { _, isChecked ->
                 VideoPlay.fullBottomProgressBar = isChecked
+            }
+            // 静音播放状态变化监听，实时保存用户设置
+            cbMutePlay.setOnCheckedChangeListener { _, isChecked ->
+                VideoPlay.mutePlay = isChecked
             }
             tvPressSpeed.setOnClickListener { _ ->
                 NumberPickerDialog(requireContext(), true)

@@ -86,6 +86,12 @@ object VideoPlay : CoroutineScope by MainScope(){
         set(value) {
             videoPrefs.edit { putBoolean("fullBottomProgressBar", value) }
         }
+    /**  静音播放  **/
+    var mutePlay
+        get() = videoPrefs.getBoolean("mutePlay", false)
+        set(value) {
+            videoPrefs.edit { putBoolean("mutePlay", value) }
+        }
     /**  弹幕滚动速度  **/
     var danmakuSpeed = 1.2f
     /**  锁屏  **/
