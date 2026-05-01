@@ -384,6 +384,7 @@ object Restore {
 
         // 修正主题背景图片路径
         fixThemeBackgroundPaths()
+        fixThemeConfigBackgroundPaths()
 
         // 恢复视频播放配置
         appCtx.getSharedPreferences(path, "videoConfig")?.all?.let { map ->
@@ -496,16 +497,23 @@ object Restore {
 
     private fun restoreThemeBackgrounds(backupPath: String) {
         // 从 config.xml 中读取主题背景图片路径
-        val configSp = appCtx.getSharedPreferences(backupPath, "config") ?: return
+        val configSp = appCtx.getSharedPreferences(backupPath, "config")
         
         // 恢复白天主题背景
-        configSp.getString(PreferKey.bgImage, null)?.let { bgPath ->
+        configSp?.getString(PreferKey.bgImage, null)?.let { bgPath ->
             restoreThemeBgFile(backupPath, bgPath, PreferKey.bgImage)
         }
         
         // 恢复夜间主题背景
-        configSp.getString(PreferKey.bgImageN, null)?.let { bgPath ->
+        configSp?.getString(PreferKey.bgImageN, null)?.let { bgPath ->
             restoreThemeBgFile(backupPath, bgPath, PreferKey.bgImageN)
+        }
+        File(backupPath, ThemeConfig.configFileName).takeIf { it.exists() }?.runCatching {
+            GSON.fromJsonArray<ThemeConfig.Config>(readText()).getOrThrow()
+        }?.getOrNull()?.forEach { config ->
+            val bgPath = config.backgroundImgPath ?: return@forEach
+            val prefKey = if (config.isNightTheme) PreferKey.bgImageN else PreferKey.bgImage
+            restoreThemeBgFile(backupPath, bgPath, prefKey)
         }
     }
     
@@ -526,7 +534,11 @@ object Restore {
         }
         
         // 从备份目录复制文件
-        val bgName = File(bgPath).name
+        val bgName = if (bgPath.startsWith("http")) {
+            ThemeConfig.getUrlToFile(bgPath)
+        } else {
+            File(bgPath).name
+        }
         val backupFile = File(backupPath, "$prefKey${File.separator}$bgName")
             .takeIf { it.exists() && it.isFile }
             ?: File(backupPath, bgName).takeIf { it.exists() && it.isFile }
@@ -557,6 +569,23 @@ object Restore {
                 appCtx.putPrefString(PreferKey.bgImageN, fixedPath)
                 LogUtils.d(TAG, "修正夜间主题背景路径: $bgPath -> $fixedPath")
             }
+        }
+    }
+
+    private fun fixThemeConfigBackgroundPaths() {
+        var updated = false
+        ThemeConfig.configList.forEachIndexed { index, config ->
+            val bgPath = config.backgroundImgPath ?: return@forEachIndexed
+            val prefKey = if (config.isNightTheme) PreferKey.bgImageN else PreferKey.bgImage
+            val fixedPath = fixThemeBgPath(bgPath, prefKey)
+            if (fixedPath != bgPath) {
+                ThemeConfig.configList[index] = config.copy(backgroundImgPath = fixedPath)
+                updated = true
+                LogUtils.d(TAG, "淇涓婚閰嶇疆鑳屾櫙璺緞: $bgPath -> $fixedPath")
+            }
+        }
+        if (updated) {
+            ThemeConfig.save()
         }
     }
     
