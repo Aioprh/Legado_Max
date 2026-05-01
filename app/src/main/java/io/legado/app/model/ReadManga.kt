@@ -44,7 +44,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlin.math.min
-
+//漫画阅读模型
 @Suppress("MemberVisibilityCanBePrivate")
 object ReadManga : CoroutineScope by MainScope() {
     var inBookshelf = false
@@ -72,7 +72,7 @@ object ReadManga : CoroutineScope by MainScope() {
     var rateLimiter = ConcurrentRateLimiter(null)
     val mangaContents get() = buildMangaContent()
     val hasNextChapter get() = durChapterIndex < simulatedChapterSize - 1
-
+    //重置阅读数据
     fun resetData(book: Book) {
         ReadManga.book = book
         readRecord.bookName = book.name
@@ -97,7 +97,7 @@ object ReadManga : CoroutineScope by MainScope() {
             downloadFailChapters.clear()
         }
     }
-
+    //更新阅读数据
     fun upData(book: Book) {
         ReadManga.book = book
         chapterSize = appDb.bookChapterDao.getChapterCount(book.bookUrl)
@@ -119,7 +119,7 @@ object ReadManga : CoroutineScope by MainScope() {
             downloadFailChapters.clear()
         }
     }
-
+    //更新网络书籍
     fun upWebBook(book: Book) {
         appDb.bookSourceDao.getBookSource(book.origin)?.let {
             bookSource = it
@@ -128,7 +128,7 @@ object ReadManga : CoroutineScope by MainScope() {
             bookSource = null
         }
     }
-
+    //清除当前章节内容
     fun clearMangaChapter() {
         prevMangaChapter = null
         curMangaChapter = null
@@ -182,14 +182,14 @@ object ReadManga : CoroutineScope by MainScope() {
     fun removeLoading(index: Int) {
         loadingChapters.remove(index)
     }
-
+    //加载当前章节前后2章
     fun loadContent() {
         clearMangaChapter()
         loadContent(durChapterIndex)
         loadContent(durChapterIndex + 1)
         loadContent(durChapterIndex - 1)
     }
-
+    //加载或更新章节内容
     fun loadOrUpContent() {
         if (curMangaChapter == null) {
             loadContent(durChapterIndex)
@@ -203,7 +203,7 @@ object ReadManga : CoroutineScope by MainScope() {
             loadContent(durChapterIndex - 1)
         }
     }
-
+    //加载章节内容
     private fun loadContent(index: Int) {
         Coroutine.async {
             val book = book!!
@@ -270,7 +270,7 @@ object ReadManga : CoroutineScope by MainScope() {
             }
         }
     }
-
+    //构建漫画内容
     private fun buildMangaContent(): MangaContent {
         val items = arrayListOf<BaseMangaPage>()
         var pos = 0
@@ -329,7 +329,7 @@ object ReadManga : CoroutineScope by MainScope() {
             return false
         }
     }
-
+    
     fun moveToPrevChapter(toFirst: Boolean = false): Boolean {
         if (durChapterIndex > 0) {
             if (toFirst) {
@@ -351,12 +351,12 @@ object ReadManga : CoroutineScope by MainScope() {
         }
         return false
     }
-
+    
     fun curPageChanged() {
         upReadTime()
         preDownload()
     }
-
+    //保存阅读进度
     fun saveRead(pageChanged: Boolean = false) {
         executor.execute {
             kotlin.runCatching {
@@ -381,7 +381,7 @@ object ReadManga : CoroutineScope by MainScope() {
             }
         }
     }
-
+    //下载网络内容
     private fun downloadNetworkContent(
         bookSource: BookSource,
         scope: CoroutineScope,
@@ -408,7 +408,7 @@ object ReadManga : CoroutineScope by MainScope() {
             cancel.invoke()
         }.start()
     }
-
+    //预下载当前章节前后2章，避免用户切换章节时，需要等待下载完成
     private fun preDownload() {
         if (book?.isLocal == true) return
         executor.execute {
@@ -418,7 +418,7 @@ object ReadManga : CoroutineScope by MainScope() {
             }
             preDownloadTask?.cancel()
             preDownloadTask = launch(IO) {
-                //预下载
+                //预下载当前章节前后2章，避免用户切换章节时，需要等待下载完成
                 launch {
                     val maxChapterIndex =
                         min(durChapterIndex + AppConfig.preDownloadNum, chapterSize)

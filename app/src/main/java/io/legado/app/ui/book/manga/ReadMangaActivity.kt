@@ -642,7 +642,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
             mScrollTimer.isEnabledPage = !menuIsVisible
         }
     }
-
+    //处理按键事件
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
         val action = event.action
@@ -660,7 +660,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
         }
         return super.dispatchKeyEvent(event)
     }
-
+    //设置RecyclerView的预加载器
     private fun setRecyclerViewPreloader(maxPreload: Int) {
         if (mRecyclerViewPreloader != null) {
             binding.recyclerView.removeOnScrollListener(mRecyclerViewPreloader!!)
@@ -670,7 +670,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
         )
         binding.recyclerView.addOnScrollListener(mRecyclerViewPreloader!!)
     }
-
+    //设置是否启用水平滚动
     private fun setHorizontalScroll(enable: Boolean) {
         mAdapter.isHorizontal = enable
         if (enable) {
@@ -687,7 +687,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
             mLayoutManager.orientation = LinearLayoutManager.VERTICAL
         }
     }
-
+    //更新菜单视图
     @SuppressLint("StringFormatMatches")
     private fun upMenu(menu: Menu) {
         this.mMenu = menu
