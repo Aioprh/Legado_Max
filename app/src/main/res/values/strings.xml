@@ -690,8 +690,10 @@
     <string name="enhanced_features">Enhanced Features</string>
     <string name="selectText">Long Tap to select text</string>
     <string name="header">Header</string>
+    <string name="header_font_size">Header Font Size</string>
     <string name="main_body">Content</string>
     <string name="footer">Footer</string>
+    <string name="footer_font_size">Footer Font Size</string>
     <string name="select_end">Select end</string>
     <string name="select_start">Select start</string>
     <string name="share_layout">Shared layout</string>
