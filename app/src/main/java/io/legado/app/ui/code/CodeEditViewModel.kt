@@ -45,6 +45,10 @@ class CodeEditViewModel(application: Application) : BaseViewModel(application) {
     private val themeRegistry: ThemeRegistry = ThemeRegistry.getInstance()
     var writable = true
     var title: String? = null
+    var sourceType: String? = null
+    var sourceJson: String? = null
+    var fieldKey: String? = null
+    var tabKey: String? = null
 
     /**
      * 初始化 Sora 编辑器
@@ -84,6 +88,9 @@ class CodeEditViewModel(application: Application) : BaseViewModel(application) {
             language = TextMateLanguage.create(languageName, AppConfig.editAutoComplete)
             cursorPosition = intent.getIntExtra("cursorPosition", 0)
             title = intent.getStringExtra("title")
+            sourceType = intent.getStringExtra("sourceType")
+            sourceJson = intent.getStringExtra("sourceJson")
+            fieldKey = intent.getStringExtra("fieldKey")
         }.onSuccess {
             success.invoke()
         }.onError {

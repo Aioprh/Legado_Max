@@ -160,17 +160,43 @@ class BookSourceEditActivity :
      */
     private val textEditLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
-            val view = window.decorView.findFocus()
-            if (view is EditText) {
-                result.data?.getStringExtra("text")?.let {
-                    view.setText(it)
+            val data = result.data
+            val text = data?.getStringExtra("text")
+            val fieldKey = data?.getStringExtra("fieldKey")
+            val tabKey = data?.getStringExtra("tabKey")
+            
+            if (!text.isNullOrEmpty() && !fieldKey.isNullOrEmpty() && !tabKey.isNullOrEmpty()) {
+                updateEditEntityValue(tabKey, fieldKey, text)
+            } else if (!text.isNullOrEmpty()) {
+                val view = window.decorView.findFocus()
+                if (view is EditText) {
+                    view.setText(text)
+                    data?.getIntExtra("cursorPosition", -1)?.takeIf { it in 0 ..< view.text.length }?.let {
+                        view.setSelection(it)
+                    }
+                } else {
+                    toastOnUi(R.string.focus_lost_on_textbox)
                 }
-                result.data?.getIntExtra("cursorPosition", -1)?.takeIf { it in 0 ..< view.text.length }?.let {
-                    view.setSelection(it)
-                }
-            } else {
-                toastOnUi(R.string.focus_lost_on_textbox)
             }
+        }
+    }
+
+    /**
+     * 根据tabKey和fieldKey更新对应的EditEntity值
+     */
+    private fun updateEditEntityValue(tabKey: String, fieldKey: String, value: String) {
+        val entities = when (tabKey) {
+            "base" -> sourceEntities
+            "search" -> searchEntities
+            "explore" -> exploreEntities
+            "info" -> infoEntities
+            "toc" -> tocEntities
+            "content" -> contentEntities
+            else -> null
+        }
+        entities?.find { it.key == fieldKey }?.let { entity ->
+            entity.value = value
+            adapter.notifyDataSetChanged()
         }
     }
 
@@ -183,10 +209,14 @@ class BookSourceEditActivity :
         if (view is EditText) {
             val hint = findParentTextInputLayout(view)?.hint?.toString()
             val currentText = view.text.toString()
+            val fieldKey = view.getTag(R.id.tag) as? String ?: ""
             val intent = Intent(this, CodeEditActivity::class.java).apply {
                 putExtra("text", currentText)
                 putExtra("title", hint)
                 putExtra("cursorPosition", view.selectionStart)
+                putExtra("sourceType", "bookSource")
+                putExtra("sourceJson", GSON.toJson(getSource()))
+                putExtra("fieldKey", fieldKey)
             }
             textEditLauncher.launch(intent)
         }

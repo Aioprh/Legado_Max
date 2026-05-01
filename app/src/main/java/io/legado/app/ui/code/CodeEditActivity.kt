@@ -29,6 +29,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.dialogs.selector
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.code.config.ChangeThemeDialog
 import io.legado.app.ui.code.config.SettingsDialog
@@ -122,6 +123,8 @@ class CodeEditActivity :
         if (!viewModel.writable) return super.finish()
         val text = editor.text.toString()
         val cursorPos = editor.cursor?.left ?: 0
+        val fieldKey = viewModel.fieldKey
+        val tabKey = viewModel.tabKey
         when {
             text == viewModel.initialText -> {
                 if (cursorPos > 0) {
@@ -151,6 +154,8 @@ class CodeEditActivity :
                 val result = Intent().apply {
                     putExtra("text", text)
                     putExtra("cursorPosition", cursorPos)
+                    putExtra("fieldKey", fieldKey)
+                    putExtra("tabKey", tabKey)
                 }
                 setResult(RESULT_OK, result)
                 super.finish()
@@ -360,6 +365,11 @@ class CodeEditActivity :
         }
     }
 
+    /**
+     * 处理菜单选项点击事件
+     * @param item 被点击的菜单项
+     * @return 是否消耗了事件
+     */
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_search -> search()
@@ -373,8 +383,263 @@ class CodeEditActivity :
                 putPrefBoolean(PreferKey.editAutoWrap, !AppConfig.editAutoWrap)
             }
             R.id.menu_log -> showDialogFragment<AppLogDialog>()
+            R.id.menu_switch_rule -> showSwitchRuleDialog()
         }
         return super.onCompatOptionsItemSelected(item)
+    }
+
+    /**
+     * 显示切换规则对话框
+     * 多级选择：源类型 -> 板块 -> 字段
+     */
+    private fun showSwitchRuleDialog() {
+        val sourceType = viewModel.sourceType
+        if (sourceType.isNullOrEmpty() || viewModel.sourceJson.isNullOrEmpty()) {
+            return
+        }
+        when (sourceType) {
+            "bookSource" -> showBookSourceRuleSelector()
+            "rssSource" -> showRssSourceRuleSelector()
+        }
+    }
+
+    /**
+     * 书源规则选择器
+     */
+    private fun showBookSourceRuleSelector() {
+        val tabs = listOf(
+            SelectItem("基本", "base"),
+            SelectItem("搜索", "search"),
+            SelectItem("发现", "explore"),
+            SelectItem("详情", "info"),
+            SelectItem("目录", "toc"),
+            SelectItem("正文", "content")
+        )
+        selector(tabs.map { it.title }) { _, position ->
+            showBookSourceFieldSelector(tabs[position].value)
+        }
+    }
+
+    /**
+     * 书源字段选择器
+     */
+    private fun showBookSourceFieldSelector(tabKey: String) {
+        val fields = when (tabKey) {
+            "base" -> listOf(
+                SelectItem("源地址", "bookSourceUrl"),
+                SelectItem("源名称", "bookSourceName"),
+                SelectItem("源分组", "bookSourceGroup"),
+                SelectItem("源注释", "bookSourceComment"),
+                SelectItem("登录地址", "loginUrl"),
+                SelectItem("登录界面", "loginUi"),
+                SelectItem("登录检查JS", "loginCheckJs"),
+                SelectItem("封面解密JS", "coverDecodeJs"),
+                SelectItem("书籍URL正则", "bookUrlPattern"),
+                SelectItem("请求头", "header"),
+                SelectItem("变量注释", "variableComment"),
+                SelectItem("并发率", "concurrentRate"),
+                SelectItem("jsLib", "jsLib")
+            )
+            "search" -> listOf(
+                SelectItem("搜索地址", "searchUrl"),
+                SelectItem("验证关键字", "checkKeyWord"),
+                SelectItem("书籍列表", "bookList"),
+                SelectItem("书名", "name"),
+                SelectItem("作者", "author"),
+                SelectItem("分类", "kind"),
+                SelectItem("字数", "wordCount"),
+                SelectItem("最新章节", "lastChapter"),
+                SelectItem("简介", "intro"),
+                SelectItem("封面", "coverUrl"),
+                SelectItem("书籍URL", "bookUrl")
+            )
+            "explore" -> listOf(
+                SelectItem("发现地址", "exploreUrl"),
+                SelectItem("书籍列表", "bookList"),
+                SelectItem("书名", "name"),
+                SelectItem("作者", "author"),
+                SelectItem("分类", "kind"),
+                SelectItem("字数", "wordCount"),
+                SelectItem("最新章节", "lastChapter"),
+                SelectItem("简介", "intro"),
+                SelectItem("封面", "coverUrl"),
+                SelectItem("书籍URL", "bookUrl")
+            )
+            "info" -> listOf(
+                SelectItem("初始化", "init"),
+                SelectItem("书名", "name"),
+                SelectItem("作者", "author"),
+                SelectItem("分类", "kind"),
+                SelectItem("字数", "wordCount"),
+                SelectItem("最新章节", "lastChapter"),
+                SelectItem("简介", "intro"),
+                SelectItem("封面", "coverUrl"),
+                SelectItem("目录URL", "tocUrl"),
+                SelectItem("可重命名", "canReName"),
+                SelectItem("下载地址", "downloadUrls")
+            )
+            "toc" -> listOf(
+                SelectItem("预处理JS", "preUpdateJs"),
+                SelectItem("章节列表", "chapterList"),
+                SelectItem("章节名称", "chapterName"),
+                SelectItem("章节URL", "chapterUrl"),
+                SelectItem("格式化JS", "formatJs"),
+                SelectItem("是否分卷", "isVolume"),
+                SelectItem("更新时间", "updateTime"),
+                SelectItem("是否VIP", "isVip"),
+                SelectItem("是否付费", "isPay"),
+                SelectItem("下页目录URL", "nextTocUrl")
+            )
+            "content" -> listOf(
+                SelectItem("正文内容", "content"),
+                SelectItem("下页内容URL", "nextContentUrl"),
+                SelectItem("子内容", "subContent"),
+                SelectItem("替换正则", "replaceRegex"),
+                SelectItem("标题", "title"),
+                SelectItem("资源正则", "sourceRegex"),
+                SelectItem("图片样式", "imageStyle"),
+                SelectItem("图片解码", "imageDecode"),
+                SelectItem("网页JS", "webJs"),
+                SelectItem("付费操作", "payAction"),
+                SelectItem("回调JS", "callBackJs")
+            )
+            else -> emptyList()
+        }
+        if (fields.isEmpty()) return
+        selector(fields.map { it.title }) { _, position ->
+            val fieldKey = fields[position].value
+            switchToField(tabKey, fieldKey)
+        }
+    }
+
+    /**
+     * 订阅源规则选择器
+     */
+    private fun showRssSourceRuleSelector() {
+        val tabs = listOf(
+            SelectItem("基本", "base"),
+            SelectItem("搜索", "search"),
+            SelectItem("发现", "explore"),
+            SelectItem("文章", "article")
+        )
+        selector(tabs.map { it.title }) { _, position ->
+            showRssSourceFieldSelector(tabs[position].value)
+        }
+    }
+
+    /**
+     * 订阅源字段选择器
+     */
+    private fun showRssSourceFieldSelector(tabKey: String) {
+        val fields = when (tabKey) {
+            "base" -> listOf(
+                SelectItem("源地址", "sourceUrl"),
+                SelectItem("源名称", "sourceName"),
+                SelectItem("源分组", "sourceGroup"),
+                SelectItem("源注释", "sourceComment"),
+                SelectItem("登录地址", "loginUrl"),
+                SelectItem("登录界面", "loginUi"),
+                SelectItem("请求头", "header"),
+                SelectItem("并发率", "concurrentRate")
+            )
+            "search" -> listOf(
+                SelectItem("搜索地址", "searchUrl"),
+                SelectItem("验证关键字", "checkKeyWord"),
+                SelectItem("文章列表", "ruleArticles"),
+                SelectItem("下一篇", "ruleNextPage"),
+                SelectItem("标题", "ruleTitle"),
+                SelectItem("描述", "ruleDescription"),
+                SelectItem("链接", "ruleLink"),
+                SelectItem("内容", "ruleContent"),
+                SelectItem("图片", "ruleImage"),
+                SelectItem("日期", "rulePubDate")
+            )
+            "explore" -> listOf(
+                SelectItem("发现地址", "exploreUrl"),
+                SelectItem("文章列表", "ruleArticles"),
+                SelectItem("下一篇", "ruleNextPage"),
+                SelectItem("标题", "ruleTitle"),
+                SelectItem("描述", "ruleDescription"),
+                SelectItem("链接", "ruleLink"),
+                SelectItem("内容", "ruleContent"),
+                SelectItem("图片", "ruleImage"),
+                SelectItem("日期", "rulePubDate")
+            )
+            "article" -> listOf(
+                SelectItem("正文内容", "ruleContent"),
+                SelectItem("下一篇", "ruleNextPage"),
+                SelectItem("标题", "ruleTitle"),
+                SelectItem("描述", "ruleDescription"),
+                SelectItem("链接", "ruleLink"),
+                SelectItem("图片", "ruleImage"),
+                SelectItem("日期", "rulePubDate"),
+                SelectItem("样式", "style")
+            )
+            else -> emptyList()
+        }
+        if (fields.isEmpty()) return
+        selector(fields.map { it.title }) { _, position ->
+            val fieldKey = fields[position].value
+            switchToField(tabKey, fieldKey)
+        }
+    }
+
+    /**
+     * 切换到指定字段
+     */
+    private fun switchToField(tabKey: String, fieldKey: String) {
+        val json = viewModel.sourceJson ?: return
+        try {
+            val jsonObj = com.google.gson.JsonParser.parseString(json).asJsonObject
+            val value = when (tabKey) {
+                "base" -> {
+                    if (jsonObj.has(fieldKey)) jsonObj.get(fieldKey).asString else ""
+                }
+                "search" -> {
+                    val rule = jsonObj.getAsJsonObject("ruleSearch")
+                    if (fieldKey == "searchUrl") {
+                        if (jsonObj.has("searchUrl")) jsonObj.get("searchUrl").asString else ""
+                    } else {
+                        if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
+                    }
+                }
+                "explore" -> {
+                    val rule = jsonObj.getAsJsonObject("ruleExplore")
+                    if (fieldKey == "exploreUrl") {
+                        if (jsonObj.has("exploreUrl")) jsonObj.get("exploreUrl").asString else ""
+                    } else {
+                        if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
+                    }
+                }
+                "info" -> {
+                    val rule = jsonObj.getAsJsonObject("ruleBookInfo")
+                    if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
+                }
+                "toc" -> {
+                    val rule = jsonObj.getAsJsonObject("ruleToc")
+                    if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
+                }
+                "content" -> {
+                    val rule = jsonObj.getAsJsonObject("ruleContent")
+                    if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
+                }
+                "article" -> {
+                    val rule = jsonObj.getAsJsonObject("ruleArticle")
+                    if (fieldKey == "ruleContent" || fieldKey == "ruleNextPage") {
+                        if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
+                    } else {
+                        if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
+                    }
+                }
+                else -> ""
+            }
+            editor.setText(value ?: "")
+            viewModel.fieldKey = fieldKey
+            viewModel.tabKey = tabKey
+            viewModel.initialText = value ?: ""
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     /**
@@ -385,6 +650,10 @@ class CodeEditActivity :
         save(true)
     }
 
+    /**
+     * 提供帮助操作列表
+     * @return 包含帮助操作的列表
+     */
     override fun helpActions(): List<SelectItem<String>> {
         return arrayListOf(
             SelectItem("书源教程", "ruleHelp"),
@@ -394,6 +663,10 @@ class CodeEditActivity :
         )
     }
 
+    /**
+     * 处理帮助操作的选择事件
+     * @param action 操作标识符
+     */
     override fun onHelpActionSelect(action: String) {
         when (action) {
             "ruleHelp" -> showHelp("ruleHelp")

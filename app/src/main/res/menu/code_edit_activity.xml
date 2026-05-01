@@ -27,6 +27,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_switch_rule"
+        android:title="切换规则"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_config_settings"
         android:title="@string/config_settings"
         app:showAsAction="never" />
