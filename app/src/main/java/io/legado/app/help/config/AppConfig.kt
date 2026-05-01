@@ -585,12 +585,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         set(value) {
             appCtx.putPrefBoolean(PreferKey.importShowComment, value)
         }
-
+    //点击图片方式
     val clickImgWay: String?
         get() = appCtx.getPrefString(PreferKey.clickImgWay)
-
+    //预下载章节数量
     var preDownloadNum
-        get() = appCtx.getPrefInt(PreferKey.preDownloadNum, 10)
+        get() = appCtx.getPrefInt(PreferKey.preDownloadNum, 0)
         set(value) {
             appCtx.putPrefInt(PreferKey.preDownloadNum, value)
         }
