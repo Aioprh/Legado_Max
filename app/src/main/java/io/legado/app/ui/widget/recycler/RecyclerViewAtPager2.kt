@@ -3,11 +3,9 @@ package io.legado.app.ui.widget.recycler
 import android.content.Context
 import android.util.AttributeSet
 import android.view.MotionEvent
-import io.legado.app.ui.widget.recycler.scroller.FastScrollRecyclerView
 import androidx.recyclerview.widget.RecyclerView
 import kotlin.math.abs
 
-class RecyclerViewAtPager2 : FastScrollRecyclerView {
 class RecyclerViewAtPager2 : RecyclerView {
 
     constructor(context: Context) : super(context)
