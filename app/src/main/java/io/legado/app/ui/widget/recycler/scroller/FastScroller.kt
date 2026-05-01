@@ -7,6 +7,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -149,7 +150,7 @@ class FastScroller : LinearLayout {
             }
             is FrameLayout -> {
                 val layoutParams = layoutParams as FrameLayout.LayoutParams
-                layoutParams.gravity = GravityCompat.END
+                layoutParams.gravity = GravityCompat.END or Gravity.TOP
                 layoutParams.setMargins(0, marginTop, 0, marginBottom)
                 setLayoutParams(layoutParams)
             }
