@@ -45,9 +45,13 @@ class CodeEditViewModel(application: Application) : BaseViewModel(application) {
     private val themeRegistry: ThemeRegistry = ThemeRegistry.getInstance()
     var writable = true
     var title: String? = null
+    // 源类型标识，如 "bookSource" 表示书源，"rssSource" 表示订阅源
     var sourceType: String? = null
+    // 源的完整JSON字符串，用于切换字段时获取其他字段的值
     var sourceJson: String? = null
+    // 当前编辑的字段标识，如 "author" 表示作者字段
     var fieldKey: String? = null
+    // 当前编辑的板块标识，如 "info" 表示详情板块
     var tabKey: String? = null
 
     /**

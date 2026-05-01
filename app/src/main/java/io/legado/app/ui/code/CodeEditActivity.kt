@@ -123,9 +123,11 @@ class CodeEditActivity :
         if (!viewModel.writable) return super.finish()
         val text = editor.text.toString()
         val cursorPos = editor.cursor?.left ?: 0
+        // 获取当前编辑的字段标识和板块标识，用于返回时告诉调用者更新哪个字段
         val fieldKey = viewModel.fieldKey
         val tabKey = viewModel.tabKey
         when {
+            // 内容没有变化，直接退出
             text == viewModel.initialText -> {
                 if (cursorPos > 0) {
                     val result = Intent().apply {
@@ -135,6 +137,7 @@ class CodeEditActivity :
                 }
                 super.finish()
             }
+            // 需要检查未保存更改，弹出确认对话框
             check -> {
                 alert(R.string.exit) {
                     setMessage(R.string.exit_no_save)
@@ -150,12 +153,13 @@ class CodeEditActivity :
                     }
                 }
             }
+            // 保存内容并返回
             else -> {
                 val result = Intent().apply {
-                    putExtra("text", text)
-                    putExtra("cursorPosition", cursorPos)
-                    putExtra("fieldKey", fieldKey)
-                    putExtra("tabKey", tabKey)
+                    putExtra("text", text)               // 编辑后的文本
+                    putExtra("cursorPosition", cursorPos) // 光标位置
+                    putExtra("fieldKey", fieldKey)       // 字段标识，用于定位要更新的字段
+                    putExtra("tabKey", tabKey)           // 板块标识，用于定位要更新的列表
                 }
                 setResult(RESULT_OK, result)
                 super.finish()
@@ -586,15 +590,29 @@ class CodeEditActivity :
 
     /**
      * 切换到指定字段
+     * 从源JSON中获取指定字段的值，并更新编辑器内容
+     * 
+     * @param tabKey 板块标识，用于确定从哪个规则对象获取数据
+     *               - "base": 从根对象获取（如 bookSourceUrl、bookSourceName）
+     *               - "search": 从 ruleSearch 对象获取（如 bookList、name）
+     *               - "explore": 从 ruleExplore 对象获取
+     *               - "info": 从 ruleBookInfo 对象获取
+     *               - "toc": 从 ruleToc 对象获取
+     *               - "content": 从 ruleContent 对象获取
+     * @param fieldKey 字段标识，如 "author" 表示作者，"name" 表示书名
      */
     private fun switchToField(tabKey: String, fieldKey: String) {
         val json = viewModel.sourceJson ?: return
         try {
+            // 解析源JSON字符串为JsonObject
             val jsonObj = com.google.gson.JsonParser.parseString(json).asJsonObject
+            // 根据板块标识从对应的规则对象中获取字段值
             val value = when (tabKey) {
+                // 基本信息直接从根对象获取
                 "base" -> {
                     if (jsonObj.has(fieldKey)) jsonObj.get(fieldKey).asString else ""
                 }
+                // 搜索规则：searchUrl 在根对象，其他在 ruleSearch 对象中
                 "search" -> {
                     val rule = jsonObj.getAsJsonObject("ruleSearch")
                     if (fieldKey == "searchUrl") {
@@ -603,6 +621,7 @@ class CodeEditActivity :
                         if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
                     }
                 }
+                // 发现规则：exploreUrl 在根对象，其他在 ruleExplore 对象中
                 "explore" -> {
                     val rule = jsonObj.getAsJsonObject("ruleExplore")
                     if (fieldKey == "exploreUrl") {
@@ -611,31 +630,35 @@ class CodeEditActivity :
                         if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
                     }
                 }
+                // 详情规则：从 ruleBookInfo 对象获取
                 "info" -> {
                     val rule = jsonObj.getAsJsonObject("ruleBookInfo")
                     if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
                 }
+                // 目录规则：从 ruleToc 对象获取
                 "toc" -> {
                     val rule = jsonObj.getAsJsonObject("ruleToc")
                     if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
                 }
+                // 正文规则：从 ruleContent 对象获取
                 "content" -> {
                     val rule = jsonObj.getAsJsonObject("ruleContent")
                     if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
                 }
+                // 文章规则（订阅源）：从 ruleArticle 对象获取
                 "article" -> {
                     val rule = jsonObj.getAsJsonObject("ruleArticle")
-                    if (fieldKey == "ruleContent" || fieldKey == "ruleNextPage") {
-                        if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
-                    } else {
-                        if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
-                    }
+                    if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
                 }
                 else -> ""
             }
+            // 更新编辑器内容
             editor.setText(value ?: "")
+            // 记录当前字段标识，保存时需要返回给调用者
             viewModel.fieldKey = fieldKey
+            // 记录当前板块标识，保存时需要返回给调用者
             viewModel.tabKey = tabKey
+            // 更新初始文本，用于判断内容是否被修改
             viewModel.initialText = value ?: ""
         } catch (e: Exception) {
             e.printStackTrace()
