@@ -11,6 +11,9 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:overScrollMode="never"
+        app:fadeScrollbar="false"
+        app:showBubble="false"
+        app:showTrack="true"
         app:layout_constraintBottom_toTopOf="@+id/ll_chapter_base_info"
         app:layout_constraintTop_toTopOf="parent" />
 

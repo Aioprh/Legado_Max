@@ -323,7 +323,7 @@ class BookSourceEditActivity :
         })
         binding.recyclerView.setEdgeEffectColor(primaryColor)
         if (adapter.editEntityMaxLine < 999) {
-            binding.recyclerView.layoutManager = NoChildScrollLinearLayoutManager(this) //启用后会阻止RecyclerView跟随光标滚动,行数少时,用的TextView跟随
+            binding.recyclerView.layoutManager = NoChildScrollLinearLayoutManager(this)
         }
         binding.recyclerView.adapter = adapter
         binding.recyclerView.viewTreeObserver.addOnGlobalFocusChangeListener { _, newFocus ->

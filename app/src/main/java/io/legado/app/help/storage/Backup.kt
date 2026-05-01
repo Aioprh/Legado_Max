@@ -194,8 +194,7 @@ object Backup {
         }.distinctBy { it.absolutePath }
     }
 
-    private fun resolveThemeBackgroundFile(prefKey: String): File? {
-        val path = appCtx.getPrefString(prefKey) ?: return null
+    private fun resolveThemeBackgroundFile(path: String, prefKey: String): File? {
         val file = when {
             path.startsWith("http") -> {
                 val name = ThemeConfig.getUrlToFile(path)
@@ -207,15 +206,29 @@ object Backup {
         return file.takeIf { it.exists() && it.isFile }
     }
 
+    private fun getThemeConfigBackgroundFiles(): List<Pair<String, File>> {
+        return ThemeConfig.configList.mapNotNull { config ->
+            val bgPath = config.backgroundImgPath ?: return@mapNotNull null
+            val prefKey = if (config.isNightTheme) PreferKey.bgImageN else PreferKey.bgImage
+            resolveThemeBackgroundFile(bgPath, prefKey)?.let { prefKey to it }
+        }.distinctBy { "${it.first}:${it.second.absolutePath}" }
+    }
+
     fun stageBackgroundImageFiles(rootPath: String) {
         getReadBackgroundImageFiles().forEach { bgFile ->
             bgFile.copyTo(File(rootPath, bgFile.name), overwrite = true)
         }
         listOf(PreferKey.bgImage, PreferKey.bgImageN).forEach { prefKey ->
-            resolveThemeBackgroundFile(prefKey)?.let { bgFile ->
+            appCtx.getPrefString(prefKey)?.let { path ->
+                resolveThemeBackgroundFile(path, prefKey)
+            }?.let { bgFile ->
                 val targetDir = File(rootPath, prefKey).createFolderIfNotExist()
                 bgFile.copyTo(File(targetDir, bgFile.name), overwrite = true)
             }
+        }
+        getThemeConfigBackgroundFiles().forEach { (prefKey, bgFile) ->
+            val targetDir = File(rootPath, prefKey).createFolderIfNotExist()
+            bgFile.copyTo(File(targetDir, bgFile.name), overwrite = true)
         }
     }
 
