@@ -120,6 +120,11 @@ abstract class PageDelegate(protected val readView: ReadView) {
 
     abstract fun prevPageByAnim(animationSpeed: Int)
 
+    /**
+     * 按键翻页(音量键、鼠标滚轮等)
+     * 使用AppConfig.keyPageAnimSpeed作为动画速度，默认100ms
+     * 比触摸翻页更快，适合快速阅读场景
+     */
     open fun keyTurnPage(direction: PageDirection) {
         if (isRunning) return
         val animSpeed = AppConfig.keyPageAnimSpeed

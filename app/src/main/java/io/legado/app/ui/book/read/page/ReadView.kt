@@ -66,6 +66,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
     val prevPage by lazy { PageView(context) }
     val curPage by lazy { PageView(context) }
     val nextPage by lazy { PageView(context) }
+    /** 触摸翻页动画速度(毫秒)，从AppConfig读取，用于点击屏幕翻页时的动画时长 */
     val defaultAnimationSpeed: Int get() = AppConfig.touchPageAnimSpeed
     private var pressDown = false
     private var isMove = false

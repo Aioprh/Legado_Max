@@ -241,6 +241,7 @@ class MoreConfigDialog : BasePrefDialogFragment() {
                         }
                 }
 
+                // 触摸翻页速度设置，范围50-1000ms，默认300ms
                 PreferKey.touchPageAnimSpeed -> {
                     NumberPickerDialog(requireContext())
                         .setTitle(getString(R.string.touch_page_anim_speed_dialog_title))
@@ -252,6 +253,7 @@ class MoreConfigDialog : BasePrefDialogFragment() {
                         }
                 }
 
+                // 按键翻页速度设置，范围30-500ms，默认100ms
                 PreferKey.keyPageAnimSpeed -> {
                     NumberPickerDialog(requireContext())
                         .setTitle(getString(R.string.key_page_anim_speed_dialog_title))
