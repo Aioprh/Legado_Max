@@ -8,6 +8,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import androidx.annotation.ColorInt
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -82,10 +83,6 @@ class FastScrollerView @JvmOverloads constructor(
         override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
             updateThumb()
         }
-    }
-
-    init {
-        visibility = GONE
     }
 
     fun attachToRecyclerView(recyclerView: RecyclerView) {
@@ -235,7 +232,6 @@ class FastScrollerView @JvmOverloads constructor(
 
         val viewHeight = height - paddingTop - paddingBottom
         if (viewHeight <= 0) {
-            visibility = GONE
             return
         }
 

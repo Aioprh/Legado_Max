@@ -9,7 +9,6 @@ import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.utils.ColorUtils
-import io.legado.app.utils.getCompatColor
 
 open class FastScrollRecyclerView @JvmOverloads constructor(
     context: Context,
@@ -34,11 +33,6 @@ open class FastScrollRecyclerView @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
-    override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
-        super.onLayout(changed, l, t, r, b)
-        updateFastScrollerLayout()
-    }
-
     private fun createFastScroller() {
         if (fastScroller != null) return
         
@@ -49,44 +43,23 @@ open class FastScrollRecyclerView @JvmOverloads constructor(
         
         val parent = parent as? ViewGroup ?: return
         if (parent.indexOfChild(fastScroller) == -1) {
-            parent.addView(fastScroller)
-        }
-        updateFastScrollerLayout()
-    }
-
-    private fun updateFastScrollerLayout() {
-        val scroller = fastScroller ?: return
-        val parent = parent as? ViewGroup ?: return
-        
-        val lp = scroller.layoutParams ?: when (parent) {
-            is FrameLayout -> FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
-            else -> ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-        }
-        
-        lp.width = ViewGroup.LayoutParams.WRAP_CONTENT
-        lp.height = height
-        
-        when (lp) {
-            is FrameLayout.LayoutParams -> {
-                lp.topMargin = top
-                lp.bottomMargin = parent.height - bottom
-                lp.marginEnd = resources.getDimensionPixelSize(R.dimen.fastscroll_scrollbar_padding_end)
+            val lp = when (parent) {
+                is FrameLayout -> FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                ).apply {
+                    gravity = android.view.Gravity.END
+                    marginEnd = resources.getDimensionPixelSize(R.dimen.fastscroll_scrollbar_padding_end)
+                }
+                else -> MarginLayoutParams(
+                    MarginLayoutParams.WRAP_CONTENT,
+                    MarginLayoutParams.MATCH_PARENT
+                ).apply {
+                    marginEnd = resources.getDimensionPixelSize(R.dimen.fastscroll_scrollbar_padding_end)
+                }
             }
-            is MarginLayoutParams -> {
-                lp.topMargin = top
-                lp.bottomMargin = parent.height - bottom
-                lp.marginEnd = resources.getDimensionPixelSize(R.dimen.fastscroll_scrollbar_padding_end)
-            }
+            parent.addView(fastScroller, lp)
         }
-        
-        scroller.layoutParams = lp
-        scroller.setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom)
     }
 
     fun setFastScrollEnabled(enabled: Boolean) {
