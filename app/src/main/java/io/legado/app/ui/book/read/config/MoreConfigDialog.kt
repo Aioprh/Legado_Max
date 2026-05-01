@@ -32,6 +32,19 @@ import io.legado.app.utils.postEvent
 import io.legado.app.utils.removePref
 import io.legado.app.utils.setEdgeEffectColor
 
+/**
+ * 阅读界面"更多设置"对话框
+ * 
+ * 显示在阅读界面底部的设置面板，包含阅读相关的各项配置：
+ * - 屏幕方向、屏幕超时
+ * - 状态栏/导航栏显示
+ * - 双页模式、进度条行为
+ * - 排版设置（两端对齐、底部对齐、中文排版）
+ * - 翻页设置（音量键翻页、鼠标滚轮翻页、触摸灵敏度）
+ * - 其他设置（文字选择、亮度显示、自定义按键等）
+ * 
+ * 使用 PreferenceFragment 加载 XML 配置，支持实时响应配置变更。
+ */
 class MoreConfigDialog : BasePrefDialogFragment() {
     private val readPreferTag = "readPreferenceFragment"
 
@@ -79,8 +92,13 @@ class MoreConfigDialog : BasePrefDialogFragment() {
     class ReadPreferenceFragment : PreferenceFragment(),
         SharedPreferences.OnSharedPreferenceChangeListener {
 
+        /** 系统默认触摸灵敏度阈值 */
         private val slopSquare by lazy { ViewConfiguration.get(requireContext()).scaledTouchSlop }
 
+        /**
+         * 加载偏好设置XML配置
+         * 配置项定义在 res/xml/pref_config_read.xml 中
+         */
         @SuppressLint("RestrictedApi")
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             addPreferencesFromResource(R.xml.pref_config_read)
@@ -110,6 +128,11 @@ class MoreConfigDialog : BasePrefDialogFragment() {
             super.onPause()
         }
 
+        /**
+         * 偏好设置变更监听
+         * 当配置项改变时，根据不同的key执行相应的更新操作
+         * 通过 EventBus 发送事件通知其他组件更新
+         */
         override fun onSharedPreferenceChanged(
             sharedPreferences: SharedPreferences?,
             key: String?
@@ -177,6 +200,16 @@ class MoreConfigDialog : BasePrefDialogFragment() {
             }
         }
 
+        /**
+         * 偏好设置点击事件处理
+         * 处理需要弹出对话框进行设置的配置项
+         * 
+         * 主要处理：
+         * - customPageKey: 自定义翻页按键
+         * - clickRegionalConfig: 点击区域配置
+         * - pageTouchSlop: 触摸灵敏度设置
+         * - pageTouchClick: 边缘点击阈值设置
+         */
         override fun onPreferenceTreeClick(preference: Preference): Boolean {
             when (preference.key) {
                 "customPageKey" -> PageKeyDialog(requireContext()).show()

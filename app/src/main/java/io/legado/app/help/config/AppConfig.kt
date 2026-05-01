@@ -25,6 +25,21 @@ import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
 import java.net.InetAddress
 
+/**
+ * 应用全局配置单例
+ * 
+ * 使用 SharedPreferences 存储和读取用户配置，支持配置变更监听。
+ * 所有配置项都通过 getter/setter 访问，自动持久化到本地存储。
+ * 
+ * 主要配置分类：
+ * - 主题与界面配置（themeMode, isNightTheme, isEInkMode 等）
+ * - 阅读相关配置（点击区域动作、翻页设置等）
+ * - 网络配置（userAgent, customHosts, webPort 等）
+ * - TTS朗读配置（ttsEngine, ttsSpeechRate 等）
+ * - 导出配置（exportCharset, exportType 等）
+ * - 漫画模式配置（showMangaUi, mangaPreDownloadNum 等）
+ * - 书架配置（bookshelfLayout, bookshelfSort 等）
+ */
 @Suppress("MemberVisibilityCanBePrivate", "ConstPropertyName")
 object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     val isCronet = appCtx.getPrefBoolean(PreferKey.cronet)
@@ -35,6 +50,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     var editThemeDark = appCtx.getPrefInt(PreferKey.editThemeDark, 0)
     var editTemeAuto = appCtx.getPrefBoolean(PreferKey.editTemeAuto)
     var isEInkMode = appCtx.getPrefString(PreferKey.themeMode) == "3"
+    
+    // ==================== 点击区域动作配置 ====================
+    // 九宫格点击区域: TL(左上) TC(中上) TR(右上)
+    //               ML(左中) MC(中中) MR(右中)
+    //               BL(左下) BC(中下) BR(右下)
+    // 动作值: 0-菜单, 1-下一页, 2-上一页, 3-下一章, 4-上一章 等
     var clickActionTL = appCtx.getPrefInt(PreferKey.clickActionTL, 2)
     var clickActionTC = appCtx.getPrefInt(PreferKey.clickActionTC, 2)
     var clickActionTR = appCtx.getPrefInt(PreferKey.clickActionTR, 1)
@@ -44,6 +65,8 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     var clickActionBL = appCtx.getPrefInt(PreferKey.clickActionBL, 2)
     var clickActionBC = appCtx.getPrefInt(PreferKey.clickActionBC, 1)
     var clickActionBR = appCtx.getPrefInt(PreferKey.clickActionBR, 1)
+    
+    // ==================== 主题与界面配置 ====================
     var themeMode = appCtx.getPrefString(PreferKey.themeMode, "0")
     var useDefaultCover = appCtx.getPrefBoolean(PreferKey.useDefaultCover, false)
     var optimizeRender = CanvasRecorderFactory.isSupport
@@ -615,6 +638,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     val progressBarBehavior: String?
         get() = appCtx.getPrefString(PreferKey.progressBarBehavior, "page")
 
+    // ==================== 翻页与按键配置 ====================
     val keyPageOnLongPress
         get() = appCtx.getPrefBoolean(PreferKey.keyPageOnLongPress, false)
 
@@ -642,12 +666,15 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefString("searchGroup", value)
         }
 
+    // ==================== 触摸灵敏度配置 ====================
+    /** 页面触摸滑动灵敏度，0表示使用系统默认值 */
     var pageTouchSlop: Int
         get() = appCtx.getPrefInt(PreferKey.pageTouchSlop, 0)
         set(value) {
             appCtx.putPrefInt(PreferKey.pageTouchSlop, value)
         }
 
+    /** 页面边缘点击阈值，用于扩大或缩小边缘点击区域 */
     var pageTouchClick: Int
         get() = appCtx.getPrefInt(PreferKey.pageTouchClick, 0)
         set(value) {
