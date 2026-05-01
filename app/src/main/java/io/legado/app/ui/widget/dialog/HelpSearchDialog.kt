@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.setFragmentResult
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -24,7 +25,6 @@ import io.legado.app.help.HelpDocManager
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.setLayout
-import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
@@ -50,6 +50,14 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
         private const val DEBOUNCE_DELAY = 300L
         private const val VIEW_TYPE_HEADER = 0
         private const val VIEW_TYPE_RESULT = 1
+        
+        // Fragment Result API 相关常量，用于向父 Fragment 返回搜索结果
+        const val REQUEST_KEY = "help_search_result"           // 请求键
+        const val RESULT_DOC_NAME = "docName"                  // 文档显示名称
+        const val RESULT_FILE_NAME = "fileName"                // 文档文件名
+        const val RESULT_CONTENT = "content"                   // 文档内容
+        const val RESULT_LINE_NUMBER = "lineNumber"            // 要滚动到的行号
+        const val RESULT_HIGHLIGHT_TERM = "highlightTerm"      // 要高亮的关键词
     }
 
     override fun onStart() {
@@ -363,14 +371,18 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
                 binding.matchedTextText.text = highlightText(searchItem.matchedText, searchItem.searchTerm)
 
                 binding.root.setOnClickListener {
-                    showDialogFragment(TextDialog(
-                        docResult.docName,
-                        allDocsContent[docResult.fileName],
-                        TextDialog.Mode.MD,
-                        docResult.fileName,
-                        scrollToLine = searchItem.lineNumber,
-                        highlightTerm = searchItem.searchTerm
-                    ))
+                    // 使用 Fragment Result API 返回搜索结果给父 Fragment (TextDialog)
+                    // 这样可以避免创建新的 TextDialog，防止 Dialog 无限叠加
+                    val result = Bundle().apply {
+                        putString(RESULT_DOC_NAME, docResult.docName)
+                        putString(RESULT_FILE_NAME, docResult.fileName)
+                        putString(RESULT_CONTENT, allDocsContent[docResult.fileName])
+                        putInt(RESULT_LINE_NUMBER, searchItem.lineNumber)
+                        putString(RESULT_HIGHLIGHT_TERM, searchItem.searchTerm)
+                    }
+                    setFragmentResult(REQUEST_KEY, result)
+                    // 关闭搜索对话框，返回到 TextDialog
+                    dismissAllowingStateLoss()
                 }
             }
         }
