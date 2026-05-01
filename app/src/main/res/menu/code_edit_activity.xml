@@ -32,6 +32,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_search_rule"
+        android:title="查询规则"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_config_settings"
         android:title="@string/config_settings"
         app:showAsAction="never" />

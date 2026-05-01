@@ -388,8 +388,24 @@ class CodeEditActivity :
             }
             R.id.menu_log -> showDialogFragment<AppLogDialog>()
             R.id.menu_switch_rule -> showSwitchRuleDialog()
+            R.id.menu_search_rule -> showRuleSearchDialog()
         }
         return super.onCompatOptionsItemSelected(item)
+    }
+
+    /**
+     * 显示规则搜索对话框
+     * 搜索当前源中所有规则字段的内容
+     */
+    private fun showRuleSearchDialog() {
+        val sourceJson = viewModel.sourceJson
+        val sourceType = viewModel.sourceType
+        if (sourceJson.isNullOrEmpty() || sourceType.isNullOrEmpty()) {
+            return
+        }
+        showDialogFragment(RuleSearchDialog(sourceJson, sourceType) { tabKey, fieldKey ->
+            switchToField(tabKey, fieldKey)
+        })
     }
 
     /**

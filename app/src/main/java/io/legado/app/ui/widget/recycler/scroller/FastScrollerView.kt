@@ -233,11 +233,16 @@ class FastScrollerView @JvmOverloads constructor(
             return
         }
 
+        val viewHeight = height - paddingTop - paddingBottom
+        if (viewHeight <= 0) {
+            visibility = GONE
+            return
+        }
+
         visibility = VISIBLE
 
-        val viewHeight = height - paddingTop - paddingBottom
         val minThumbHeight = dpToPx(24)
-        val maxThumbHeight = viewHeight / 3
+        val maxThumbHeight = max(minThumbHeight, viewHeight / 3)
         val calculatedHeight = (extent * viewHeight / range.toFloat()).toInt()
         thumbHeight = calculatedHeight.coerceIn(minThumbHeight, maxThumbHeight)
         
