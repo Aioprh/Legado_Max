@@ -136,6 +136,20 @@
         app:iconSpaceReserved="false"
         app:isBottomBackground="true" />
 
+    <io.legado.app.lib.prefs.Preference
+        android:key="touchPageAnimSpeed"
+        android:summary="@string/page_anim_speed_summary"
+        android:title="@string/touch_page_anim_speed_title"
+        app:iconSpaceReserved="false"
+        app:isBottomBackground="true" />
+
+    <io.legado.app.lib.prefs.Preference
+        android:key="keyPageAnimSpeed"
+        android:summary="@string/page_anim_speed_summary"
+        android:title="@string/key_page_anim_speed_title"
+        app:iconSpaceReserved="false"
+        app:isBottomBackground="true" />
+
     <io.legado.app.lib.prefs.SwitchPreference
         android:defaultValue="true"
         android:key="autoChangeSource"

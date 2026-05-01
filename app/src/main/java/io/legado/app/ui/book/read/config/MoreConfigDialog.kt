@@ -240,6 +240,28 @@ class MoreConfigDialog : BasePrefDialogFragment() {
                             postEvent(EventBus.UP_CONFIG, arrayListOf(12))
                         }
                 }
+
+                PreferKey.touchPageAnimSpeed -> {
+                    NumberPickerDialog(requireContext())
+                        .setTitle(getString(R.string.touch_page_anim_speed_dialog_title))
+                        .setMaxValue(1000)
+                        .setMinValue(50)
+                        .setValue(AppConfig.touchPageAnimSpeed)
+                        .show {
+                            AppConfig.touchPageAnimSpeed = it
+                        }
+                }
+
+                PreferKey.keyPageAnimSpeed -> {
+                    NumberPickerDialog(requireContext())
+                        .setTitle(getString(R.string.key_page_anim_speed_dialog_title))
+                        .setMaxValue(500)
+                        .setMinValue(30)
+                        .setValue(AppConfig.keyPageAnimSpeed)
+                        .show {
+                            AppConfig.keyPageAnimSpeed = it
+                        }
+                }
             }
             return super.onPreferenceTreeClick(preference)
         }

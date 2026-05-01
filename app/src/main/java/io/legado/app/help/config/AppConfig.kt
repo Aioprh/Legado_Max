@@ -681,6 +681,20 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefInt(PreferKey.pageTouchClick, value)
         }
 
+    /** 触摸翻页动画速度(毫秒)，数值越小动画越快 */
+    var touchPageAnimSpeed: Int
+        get() = appCtx.getPrefInt(PreferKey.touchPageAnimSpeed, 300)
+        set(value) {
+            appCtx.putPrefInt(PreferKey.touchPageAnimSpeed, value)
+        }
+
+    /** 按键翻页动画速度(毫秒)，数值越小动画越快 */
+    var keyPageAnimSpeed: Int
+        get() = appCtx.getPrefInt(PreferKey.keyPageAnimSpeed, 100)
+        set(value) {
+            appCtx.putPrefInt(PreferKey.keyPageAnimSpeed, value)
+        }
+
     var bookshelfSort: Int
         get() = appCtx.getPrefInt(PreferKey.bookshelfSort, 0)
         set(value) {

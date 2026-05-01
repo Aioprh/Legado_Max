@@ -8,6 +8,7 @@ import android.widget.Scroller
 import androidx.annotation.CallSuper
 import com.google.android.material.snackbar.Snackbar
 import io.legado.app.R
+import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.book.read.page.PageView
 import io.legado.app.ui.book.read.page.ReadView
 import io.legado.app.ui.book.read.page.entities.PageDirection
@@ -121,9 +122,10 @@ abstract class PageDelegate(protected val readView: ReadView) {
 
     open fun keyTurnPage(direction: PageDirection) {
         if (isRunning) return
+        val animSpeed = AppConfig.keyPageAnimSpeed
         when (direction) {
-            PageDirection.NEXT -> nextPageByAnim(100)
-            PageDirection.PREV -> prevPageByAnim(100)
+            PageDirection.NEXT -> nextPageByAnim(animSpeed)
+            PageDirection.PREV -> prevPageByAnim(animSpeed)
             else -> return
         }
     }
