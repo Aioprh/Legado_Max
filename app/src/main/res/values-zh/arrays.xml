@@ -92,6 +92,17 @@
         <item>细体</item>
     </string-array>
 
+    <string-array name="text_font_weight_fine">
+        <item>极细</item>
+        <item>超细</item>
+        <item>细体</item>
+        <item>正常</item>
+        <item>中等</item>
+        <item>半粗</item>
+        <item>粗体</item>
+        <item>超粗</item>
+    </string-array>
+
     <string-array name="language">
         <item>跟随系统</item>
         <item>简体中文</item>

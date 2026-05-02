@@ -157,6 +157,17 @@
 		<item>Light</item>
 	</string-array>
 
+	<string-array name="text_font_weight_fine">
+		<item>Thin</item>
+		<item>Extra Light</item>
+		<item>Light</item>
+		<item>Normal</item>
+		<item>Medium</item>
+		<item>Semi Bold</item>
+		<item>Bold</item>
+		<item>Extra Bold</item>
+	</string-array>
+
 	<string-array name="language">
 		<item>Auto</item>
 		<item>Simplified_Chinese</item>

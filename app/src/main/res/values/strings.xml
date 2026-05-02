@@ -747,6 +747,14 @@
     <string name="information">Information</string>
     <string name="switchLayout">Switch Layout</string>
     <string name="text_font_weight_converter">Text font weight switching</string>
+    <string name="text_bold_fine_mode">Fine Tune</string>
+    <string name="text_bold_coarse_mode">Coarse Tune</string>
+    <string name="text_bold_thin">Thin</string>
+    <string name="text_bold_bold">Bold</string>
+    <string name="text_bold_not_supported_title">Not Supported</string>
+    <string name="text_bold_not_supported_message">Fine font weight adjustment requires Android 9 (API 28) or above. Your device does not support this feature.</string>
+    <string name="text_bold_fine_tip_title">Tip</string>
+    <string name="text_bold_fine_tip_message">Fine tune mode supports font weight values from 100 to 900. Smaller values result in thinner fonts, larger values result in bolder fonts. This feature requires Android 9 (API 28) or above.</string>
     <string name="full_screen_gestures_support">Full screen gestures support</string>
     <string name="disable_return_key">Disable return key</string>
 
@@ -1004,6 +1012,7 @@
     <string name="menu_refresh_after">Refresh the chapter after</string>
     <string name="menu_refresh_all">Refresh all chapters</string>
     <string name="edit_content">Edit Content</string>
+    <string name="edit_json">Edit JSON</string>
     <string name="chapter_change_source">Single chapter source switching</string>
     <string name="book_change_source">Change the source of the whole book</string>
     <string name="sort_by_time">Sort by time</string>
@@ -1493,4 +1502,13 @@
     <string name="detected_as">Detected as: %1$s (%2$d items)</string>
     <string name="detecting">Detecting...</string>
     <string name="unknown_type">Unknown type</string>
+    
+    <!-- URL Record -->
+    <string name="url_record">URL访问记录</string>
+    <string name="record_url_switch">开启URL记录</string>
+    <string name="clear_records">清除记录</string>
+    <string name="clear_old_records">清除旧记录</string>
+    <string name="clear_old_7_days">清除7天前的记录</string>
+    <string name="clear_old_30_days">清除30天前的记录</string>
+    <string name="clear_all_records">清除所有记录</string>
 </resources>
