@@ -6,7 +6,6 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import io.legado.app.BuildConfig
 import io.legado.app.R
-import io.legado.app.constant.AppConst.androidId
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
@@ -20,6 +19,7 @@ import io.legado.app.data.entities.KeyboardAssist
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
+import io.legado.app.data.repository.ReadRecordRepository
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.RssStar
@@ -247,30 +247,15 @@ object Restore {
         }
 
         // 恢复阅读记录（智能合并）
-        fileToListT<ReadRecord>(path, "readRecord.json")?.let {
-            it.forEach { readRecord ->
-                if (readRecord.deviceId != androidId) {
-                    appDb.readRecordDao.insert(readRecord)
-                } else {
-                    val time = appDb.readRecordDao
-                        .getReadTime(readRecord.deviceId, readRecord.bookName, readRecord.bookAuthor)
-                    if (time == null || time < readRecord.readTime) {
-                        appDb.readRecordDao.insert(readRecord)
-                    }
-                }
-            }
-        }
-        
-        fileToListT<ReadRecordDetail>(path, "readRecordDetail.json")?.let {
-            it.forEach { detail ->
-                appDb.readRecordDao.insertDetail(detail)
-            }
-        }
-        
-        fileToListT<ReadRecordSession>(path, "readRecordSession.json")?.let {
-            it.forEach { session ->
-                appDb.readRecordDao.insertSession(session)
-            }
+        val readRecords = fileToListT<ReadRecord>(path, "readRecord.json").orEmpty()
+        val readRecordDetails = fileToListT<ReadRecordDetail>(path, "readRecordDetail.json").orEmpty()
+        val readRecordSessions = fileToListT<ReadRecordSession>(path, "readRecordSession.json").orEmpty()
+        if (readRecords.isNotEmpty() || readRecordDetails.isNotEmpty() || readRecordSessions.isNotEmpty()) {
+            ReadRecordRepository(appDb.readRecordDao).importRecords(
+                readRecords,
+                readRecordDetails,
+                readRecordSessions
+            )
         }
 
         // 恢复服务器配置（需要解密）

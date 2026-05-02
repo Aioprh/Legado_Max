@@ -504,9 +504,9 @@ class FastScroller : LinearLayout {
         mHandleView = findViewById(R.id.fastscroll_handle)
         mTrackView = findViewById(R.id.fastscroll_track)
         mScrollbar = findViewById(R.id.fastscroll_scrollbar)
-        @ColorInt var bubbleColor = ColorUtils.adjustAlpha(context.accentColor, 0.8f)
-        @ColorInt var handleColor = context.accentColor
-        @ColorInt var trackColor = context.getCompatColor(R.color.transparent30)
+        @ColorInt var bubbleColor = ColorUtils.adjustAlpha(context.accentColor, 0.82f)
+        @ColorInt var handleColor = ColorUtils.adjustAlpha(context.accentColor, 0.72f)
+        @ColorInt var trackColor = context.getCompatColor(R.color.transparent20)
         @ColorInt var textColor =
             if (ColorUtils.isColorLight(bubbleColor)) Color.BLACK else Color.WHITE
         var fadeScrollbar = true

@@ -190,6 +190,16 @@ object AudioPlay : CoroutineScope by MainScope() {
         }
     }
 
+    fun markReadStart() {
+        if (!AppConfig.enableReadRecord) {
+            return
+        }
+        val now = System.currentTimeMillis()
+        sessionStartTime = now
+        readStartTime = now
+        readRecord.lastRead = now
+    }
+
     /**
      * 添加加载中的章节
      * @param index 章节索引
