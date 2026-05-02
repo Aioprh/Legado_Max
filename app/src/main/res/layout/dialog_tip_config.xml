@@ -180,6 +180,15 @@
 
         </LinearLayout>
 
+        <io.legado.app.ui.widget.DetailSeekBar
+            android:id="@+id/dsb_header_font_size"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="3dp"
+            app:max="24"
+            app:min="8"
+            app:title="@string/header_font_size" />
+
         <io.legado.app.ui.widget.text.AccentTextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -289,6 +298,15 @@
                 tools:text="@string/title" />
 
         </LinearLayout>
+
+        <io.legado.app.ui.widget.DetailSeekBar
+            android:id="@+id/dsb_footer_font_size"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="3dp"
+            app:max="24"
+            app:min="8"
+            app:title="@string/footer_font_size" />
 
         <io.legado.app.ui.widget.text.AccentTextView
             android:layout_width="wrap_content"

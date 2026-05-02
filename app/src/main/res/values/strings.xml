@@ -669,7 +669,7 @@
     <string name="debug_mode">调试模式</string>
     <string name="debug_mode_summary">开启后显示调试工具入口</string>
     <string name="copy_crash_log_title">崩溃时复制日志</string>
-    <string name="copy_crash_log_summary">应用崩溃时自动将日志复制到剪贴板</string>
+    <string name="copy_crash_log_summary">应用崩溃后再次进入app将自动将日志复制到剪贴板</string>
     <string name="md_link_inner_browser">用内置浏览器打开</string>
     <string name="md_link_inner_browser_summary">md文件中的链接默认用内置浏览器打开</string>
     <string name="service_stop">Service stopped</string>
@@ -690,8 +690,10 @@
     <string name="enhanced_features">Enhanced Features</string>
     <string name="selectText">Long Tap to select text</string>
     <string name="header">Header</string>
+    <string name="header_font_size">Header Font Size</string>
     <string name="main_body">Content</string>
     <string name="footer">Footer</string>
+    <string name="footer_font_size">Footer Font Size</string>
     <string name="select_end">Select end</string>
     <string name="select_start">Select start</string>
     <string name="share_layout">Shared layout</string>
@@ -1084,6 +1086,11 @@
     <string name="page_touch_click_title">边缘点击阈值</string>
     <string name="page_touch_click_summary">左右边缘多少距离不会触发点击事件，默认为0px</string>
     <string name="page_touch_click_dialog_title">边缘点击阈值</string>
+    <string name="touch_page_anim_speed_title">触摸翻页速度</string>
+    <string name="key_page_anim_speed_title">按键翻页速度</string>
+    <string name="page_anim_speed_summary">数值越小翻页越快，默认触摸300ms/按键100ms</string>
+    <string name="touch_page_anim_speed_dialog_title">触摸翻页速度(ms)</string>
+    <string name="key_page_anim_speed_dialog_title">按键翻页速度(ms)</string>
     <string name="check_selected_interval">Select zones</string>
     <string name="show_add_to_shelf_alert_title">Prompt to add to bookshelf when return</string>
     <string name="show_add_to_shelf_alert_summary">Prompt to add to bookshelf when return from reading books that are not on the bookshelf</string>
@@ -1374,6 +1381,7 @@
     <string name="press_speed">长按倍速</string>
     <string name="press_speed_summary">长按倍速 %.1f</string>
     <string name="full_bottom_progress">全屏时显示底部进度条</string>
+    <string name="mute_play">静音播放</string>
     <string name="json_format">json格式</string>
     <string name="open_other_video_player">其它播放器打开</string>
     <string name="show_source_comment">显示源注释</string>

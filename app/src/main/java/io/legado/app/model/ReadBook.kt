@@ -1012,7 +1012,7 @@ object ReadBook : CoroutineScope by MainScope() {
             }
             preDownloadTask?.cancel()
             preDownloadTask = launch(IO) {
-                //预下载
+                //预下载当前章节前后2章，避免用户切换章节时，需要等待下载完成
                 launch {
                     val maxChapterIndex =
                         min(durChapterIndex + AppConfig.preDownloadNum, chapterSize)
@@ -1033,7 +1033,7 @@ object ReadBook : CoroutineScope by MainScope() {
             }
         }
     }
-
+    //取消预下载任务
     fun cancelPreDownloadTask() {
         if (contentLoadFinish) {
             preDownloadTask?.cancel()
@@ -1065,7 +1065,7 @@ object ReadBook : CoroutineScope by MainScope() {
             }
         }
     }
-
+    //清除过期的章节加载任务
     private fun clearExpiredChapterLoadingJob(clearAll: Boolean = false) {
         val iterator = chapterLoadingJobs.iterator()
         while (iterator.hasNext()) {
@@ -1094,7 +1094,7 @@ object ReadBook : CoroutineScope by MainScope() {
         }
         releaseAndCancel()
     }
-
+    //释放资源并取消所有任务
     private fun releaseAndCancel() {
         msg = null
         preDownloadTask?.cancel()
@@ -1106,7 +1106,7 @@ object ReadBook : CoroutineScope by MainScope() {
             CacheBook.close()
         }
     }
-
+    //回调接口
     interface CallBack : LayoutProgressListener {
         fun upMenuView()
 

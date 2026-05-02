@@ -186,70 +186,90 @@ class PageView(context: Context) : FrameLayout(context) {
             tvFooterRight.isGone = tipFooterRight == none
             tvFooterMiddle.isGone = tipFooterMiddle == none
         }
+        // 获取页眉页脚字体大小配置
+        val headerFontSize = ReadTipConfig.headerFontSize.toFloat()
+        val footerFontSize = ReadTipConfig.footerFontSize.toFloat()
         tvTitle = getTipView(ReadTipConfig.chapterTitle)?.apply {
             tag = ReadTipConfig.chapterTitle
             isBattery = false
             typeface = ChapterProvider.typeface
-            textSize = 12f
+            textSize = getTipFontSize(ReadTipConfig.chapterTitle, headerFontSize, footerFontSize)
         }
         tvTime = getTipView(ReadTipConfig.time)?.apply {
             tag = ReadTipConfig.time
             isBattery = false
             typeface = ChapterProvider.typeface
-            textSize = 12f
+            textSize = getTipFontSize(ReadTipConfig.time, headerFontSize, footerFontSize)
         }
         tvBattery = getTipView(ReadTipConfig.battery)?.apply {
             tag = ReadTipConfig.battery
             isBattery = true
-            textSize = 11f
+            textSize = getTipFontSize(ReadTipConfig.battery, headerFontSize, footerFontSize)
         }
         tvPage = getTipView(ReadTipConfig.page)?.apply {
             tag = ReadTipConfig.page
             isBattery = false
             typeface = ChapterProvider.typeface
-            textSize = 12f
+            textSize = getTipFontSize(ReadTipConfig.page, headerFontSize, footerFontSize)
         }
         tvTotalProgress = getTipView(ReadTipConfig.totalProgress)?.apply {
             tag = ReadTipConfig.totalProgress
             isBattery = false
             typeface = ChapterProvider.typeface
-            textSize = 12f
+            textSize = getTipFontSize(ReadTipConfig.totalProgress, headerFontSize, footerFontSize)
         }
         tvTotalProgress1 = getTipView(ReadTipConfig.totalProgress1)?.apply {
             tag = ReadTipConfig.totalProgress1
             isBattery = false
             typeface = ChapterProvider.typeface
-            textSize = 12f
+            textSize = getTipFontSize(ReadTipConfig.totalProgress1, headerFontSize, footerFontSize)
         }
         tvPageAndTotal = getTipView(ReadTipConfig.pageAndTotal)?.apply {
             tag = ReadTipConfig.pageAndTotal
             isBattery = false
             typeface = ChapterProvider.typeface
-            textSize = 12f
+            textSize = getTipFontSize(ReadTipConfig.pageAndTotal, headerFontSize, footerFontSize)
         }
         tvBookName = getTipView(ReadTipConfig.bookName)?.apply {
             tag = ReadTipConfig.bookName
             isBattery = false
             typeface = ChapterProvider.typeface
-            textSize = 12f
+            textSize = getTipFontSize(ReadTipConfig.bookName, headerFontSize, footerFontSize)
         }
         tvTimeBattery = getTipView(ReadTipConfig.timeBattery)?.apply {
             tag = ReadTipConfig.timeBattery
             isBattery = true
             typeface = ChapterProvider.typeface
-            textSize = 11f
+            textSize = getTipFontSize(ReadTipConfig.timeBattery, headerFontSize, footerFontSize)
         }
         tvBatteryP = getTipView(ReadTipConfig.batteryPercentage)?.apply {
             tag = ReadTipConfig.batteryPercentage
             isBattery = false
             typeface = ChapterProvider.typeface
-            textSize = 12f
+            textSize = getTipFontSize(ReadTipConfig.batteryPercentage, headerFontSize, footerFontSize)
         }
         tvTimeBatteryP = getTipView(ReadTipConfig.timeBatteryPercentage)?.apply {
             tag = ReadTipConfig.timeBatteryPercentage
             isBattery = false
             typeface = ChapterProvider.typeface
-            textSize = 12f
+            textSize = getTipFontSize(ReadTipConfig.timeBatteryPercentage, headerFontSize, footerFontSize)
+        }
+    }
+
+    /**
+     * 根据 tip 所在位置获取对应的字体大小
+     * @param tip 信息类型标识
+     * @param headerFontSize 页眉字体大小
+     * @param footerFontSize 页脚字体大小
+     * @return 对应位置的字体大小
+     */
+    private fun getTipFontSize(tip: Int, headerFontSize: Float, footerFontSize: Float): Float {
+        return if (tip == ReadTipConfig.tipHeaderLeft ||
+            tip == ReadTipConfig.tipHeaderMiddle ||
+            tip == ReadTipConfig.tipHeaderRight) {
+            headerFontSize
+        } else {
+            footerFontSize
         }
     }
 

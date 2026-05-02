@@ -90,6 +90,20 @@ object ReadTipConfig {
             ReadBookConfig.config.tipDividerColor = value
         }
 
+    /** 页眉字体大小(sp) */
+    var headerFontSize: Int
+        get() = ReadBookConfig.config.headerFontSize
+        set(value) {
+            ReadBookConfig.config.headerFontSize = value
+        }
+
+    /** 页脚字体大小(sp) */
+    var footerFontSize: Int
+        get() = ReadBookConfig.config.footerFontSize
+        set(value) {
+            ReadBookConfig.config.footerFontSize = value
+        }
+
     fun getHeaderModes(context: Context): LinkedHashMap<Int, String> {
         return linkedMapOf(
             Pair(0, context.getString(R.string.hide_when_status_bar_show)),

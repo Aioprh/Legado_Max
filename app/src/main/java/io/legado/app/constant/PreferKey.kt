@@ -147,6 +147,10 @@ object PreferKey {
     const val welcomeShowIconDark = "welcomeShowIconDark"
     const val pageTouchSlop = "pageTouchSlop"
     const val pageTouchClick = "pageTouchClick"
+    /** 触摸翻页动画速度(毫秒) */
+    const val touchPageAnimSpeed = "touchPageAnimSpeed"
+    /** 按键翻页动画速度(毫秒) */
+    const val keyPageAnimSpeed = "keyPageAnimSpeed"
     const val showAddToShelfAlert = "showAddToShelfAlert"
     const val ignoreAudioFocus = "ignoreAudioFocus"
     const val parallelExportBook = "parallelExportBook"

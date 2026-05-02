@@ -8,6 +8,7 @@ import android.view.textclassifier.TextClassifier
 import android.util.Log
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import io.legado.app.R
@@ -217,27 +218,107 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
         
         // 初始化帮助文档选择器
         setupHelpSelector()
+        
+        // 监听帮助文档搜索结果
+        setupHelpSearchResultListener()
+    }
+    
+    /**
+     * 监听帮助文档搜索结果
+     * 
+     * 使用 Fragment Result API 接收 HelpSearchDialog 返回的结果，
+     * 而不是创建新的 TextDialog，这样可以：
+     * 1. 避免 Dialog 无限叠加（原来的问题：TextDialog → HelpSearchDialog → TextDialog → ...）
+     * 2. 复用当前的 TextDialog，更新内容即可
+     * 3. 保持返回栈清晰，用户按返回键时不会需要多次点击
+     */
+    private fun setupHelpSearchResultListener() {
+        setFragmentResultListener(HelpSearchDialog.REQUEST_KEY) { _, bundle ->
+            // 从 Bundle 中解析搜索结果
+            val docName = bundle.getString(HelpSearchDialog.RESULT_DOC_NAME) ?: return@setFragmentResultListener
+            val fileName = bundle.getString(HelpSearchDialog.RESULT_FILE_NAME) ?: return@setFragmentResultListener
+            val content = bundle.getString(HelpSearchDialog.RESULT_CONTENT) ?: return@setFragmentResultListener
+            val lineNumber = bundle.getInt(HelpSearchDialog.RESULT_LINE_NUMBER, 0)
+            val highlightTerm = bundle.getString(HelpSearchDialog.RESULT_HIGHLIGHT_TERM)
+            
+            // 更新当前文档信息
+            currentHelpDoc = fileName
+            currentContent = content
+            binding.toolBar.title = docName
+            
+            // 同步更新文档选择器的选中项（下拉列表）
+            val docIndex = HelpDocManager.getDocIndex(fileName)
+            if (docIndex >= 0) {
+                binding.helpSpinner.setSelection(docIndex, false)
+            }
+            
+            // 更新内容显示并滚动到搜索结果所在行
+            updateContentWithScroll(content, lineNumber, highlightTerm)
+        }
+    }
+    
+    /**
+     * 更新内容并滚动到指定行
+     * 
+     * 用于在用户从搜索结果中选择一项后，更新 TextDialog 显示的内容，
+     * 并自动滚动到匹配的行号位置。
+     * 
+     * @param content 要显示的文档内容
+     * @param scrollToLine 要滚动到的行号（1-based）
+     * @param highlightTerm 要高亮的关键词（目前仅用于滚动定位，TextView 不支持文本高亮选区）
+     */
+    private fun updateContentWithScroll(content: String, scrollToLine: Int, highlightTerm: String?) {
+        currentContent = content
+        markwon?.let { mw ->
+            viewLifecycleOwner.lifecycleScope.launch {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    binding.textView.setTextClassifier(TextClassifier.NO_OP)
+                }
+                val markdown = withContext(IO) {
+                    mw.toMarkdown(content)
+                }
+                binding.textView.setMarkdown(
+                    mw,
+                    markdown,
+                    imgOnLongClickListener = { source ->
+                        showDialogFragment(PhotoDialog(source))
+                    }
+                )
+                if (scrollToLine > 0) {
+                    binding.textView.post {
+                        scrollToLineInText(binding.textView, scrollToLine, highlightTerm)
+                    }
+                }
+            }
+        }
     }
     
     /**
      * 滚动到指定行并高亮关键词
+     * 
+     * 通过累加字符位置（charIndex）来定位目标行，而不是使用 indexOf 查找行内容。
+     * 这样可以正确处理文档中存在重复行的情况（如多个相同的 "## 标题"）。
+     * 
+     * 修复前的 bug：使用 text.indexOf(line) 会返回第一次出现的位置，
+     * 导致当文档中有重复行时，点击后面的搜索结果会跳转到错误的位置。
      */
     private fun scrollToLineInText(textView: android.widget.TextView, lineNumber: Int, highlightTerm: String?) {
         val text = textView.text.toString()
         val lines = text.split("\n")
         
         var currentLine = 1
+        var charIndex = 0  // 累加字符位置，用于精确定位目标行
         var targetIndex = 0
         var found = false
         
-        for (line in lines) {
+        for ((index, line) in lines.withIndex()) {
             if (currentLine == lineNumber) {
-                targetIndex = text.indexOf(line)
+                targetIndex = charIndex  // 使用累加的位置，而不是 indexOf(line)
                 found = true
                 break
             }
             currentLine++
-            targetIndex += line.length + 1
+            charIndex += line.length + 1  // +1 是换行符
         }
         
         if (found && targetIndex >= 0) {

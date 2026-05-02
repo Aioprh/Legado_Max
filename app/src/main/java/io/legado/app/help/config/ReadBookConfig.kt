@@ -619,7 +619,11 @@ object ReadBookConfig {
         var tipColor: Int = 0,
         var tipDividerColor: Int = -1,
         var headerMode: Int = 0,
-        var footerMode: Int = 0
+        var footerMode: Int = 0,
+        /** 页眉字体大小(sp) */
+        var headerFontSize: Int = 12,
+        /** 页脚字体大小(sp) */
+        var footerFontSize: Int = 12
     ) {
 
         @Transient
@@ -908,7 +912,9 @@ object ReadBookConfig {
             "tipColor" to tipColor,
             "tipDividerColor" to tipDividerColor,
             "headerMode" to headerMode,
-            "footerMode" to footerMode
+            "footerMode" to footerMode,
+            "headerFontSize" to headerFontSize,
+            "footerFontSize" to footerFontSize
         )
 
     }

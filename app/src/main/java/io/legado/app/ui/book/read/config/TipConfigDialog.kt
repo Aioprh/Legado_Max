@@ -73,6 +73,9 @@ class TipConfigDialog : BaseDialogFragment(R.layout.dialog_tip_config) {
                 binding.tvFooterRight.text =
                     tipNames.getOrElse(tipValues.indexOf(tipFooterRight)) { tipNames[none] }
             }
+            // 初始化页眉页脚字体大小 SeekBar
+            binding.dsbHeaderFontSize.progress = headerFontSize
+            binding.dsbFooterFontSize.progress = footerFontSize
         }
         upTvTipColor()
         upTvTipDividerColor()
@@ -183,6 +186,16 @@ class TipConfigDialog : BaseDialogFragment(R.layout.dialog_tip_config) {
                 tvFooterRight.text = ReadTipConfig.tipNames[i]
                 postEvent(EventBus.UP_CONFIG, arrayListOf(2, 6))
             }
+        }
+        // 页眉字体大小调节
+        dsbHeaderFontSize.onChanged = {
+            ReadTipConfig.headerFontSize = it
+            postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+        }
+        // 页脚字体大小调节
+        dsbFooterFontSize.onChanged = {
+            ReadTipConfig.footerFontSize = it
+            postEvent(EventBus.UP_CONFIG, arrayListOf(2))
         }
         llTipColor.setOnClickListener {
             context?.selector(items = ReadTipConfig.tipColorNames) { _, i ->
