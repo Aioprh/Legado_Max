@@ -18,8 +18,6 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import io.legado.app.lib.theme.primaryColor
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 class UrlRecordActivity : VMBaseActivity<ActivityUrlRecordBinding, UrlRecordViewModel>() {
 
@@ -111,22 +109,38 @@ class UrlRecordActivity : VMBaseActivity<ActivityUrlRecordBinding, UrlRecordView
     }
 
     private fun showClearConfirm(days: Int) {
-        alert(titleResource = R.string.clear_old_records) {
-            setMessage("确定清除${days}天前的记录吗？")
-            yesButton {
-                viewModel.deleteOldRecords(days)
-                toastOnUi("已清除旧记录")
+        lifecycleScope.launch {
+            val oldCount = viewModel.getOldRecordsCount(days)
+            if (oldCount == 0) {
+                toastOnUi("没有${days}天前的记录")
+                return@launch
             }
-            noButton()
+            alert(titleResource = R.string.clear_old_records) {
+                setMessage("确定清除${days}天前的记录吗？\n共 ${oldCount} 条记录")
+                yesButton {
+                    lifecycleScope.launch {
+                        val deletedCount = viewModel.deleteOldRecords(days)
+                        toastOnUi("已清除 ${deletedCount} 条记录")
+                    }
+                }
+                noButton()
+            }
         }
     }
 
     private fun showClearAllConfirm() {
+        val totalCount = viewModel.recordCount.value
+        if (totalCount == 0) {
+            toastOnUi("没有记录可清除")
+            return
+        }
         alert(titleResource = R.string.clear_all_records) {
-            setMessage(R.string.sure_del)
+            setMessage("确定清除所有记录吗？\n共 ${totalCount} 条记录")
             yesButton {
-                viewModel.clearAll()
-                toastOnUi("已清除所有记录")
+                lifecycleScope.launch {
+                    val deletedCount = viewModel.clearAll()
+                    toastOnUi("已清除 ${deletedCount} 条记录")
+                }
             }
             noButton()
         }

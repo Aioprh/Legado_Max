@@ -41,13 +41,16 @@ interface UrlRecordDao {
     fun delete(id: Long)
 
     @Query("DELETE FROM url_records")
-    fun deleteAll()
+    fun deleteAll(): Int
 
     @Query("DELETE FROM url_records WHERE timestamp < :timestamp")
-    fun deleteOldRecords(timestamp: Long)
+    fun deleteOldRecords(timestamp: Long): Int
 
     @Query("SELECT COUNT(*) FROM url_records")
     fun getCount(): Int
+
+    @Query("SELECT COUNT(*) FROM url_records WHERE timestamp < :timestamp")
+    fun getOldRecordsCount(timestamp: Long): Int
 
     @Query("SELECT COUNT(*) FROM url_records WHERE timestamp > :timestamp")
     fun getCountSince(timestamp: Long): Int
