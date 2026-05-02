@@ -902,12 +902,23 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     val autoUpdateVariant get() = appCtx.getPrefBoolean("autoUpdateVariant", true)
 
+    // ==================== 字重精细调整配置 ====================
+    
+    /**
+     * 是否已显示过精细调整首次提示
+     * 用于控制只在第一次切换到精细模式时显示提示对话框
+     */
     var textBoldFineTipShown: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.textBoldFineTipShown, false)
         set(value) {
             appCtx.putPrefBoolean(PreferKey.textBoldFineTipShown, value)
         }
 
+    /**
+     * 字重调整模式
+     * - 0: 粗略模式，三个固定选项（正常/粗体/细体）
+     * - 1: 精细模式，SeekBar 进度条（100~900）
+     */
     var textBoldMode: Int
         get() = appCtx.getPrefInt(PreferKey.textBoldMode, 0)
         set(value) {

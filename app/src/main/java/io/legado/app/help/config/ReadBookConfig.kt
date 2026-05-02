@@ -280,6 +280,18 @@ object ReadBookConfig {
             config.textBold = value
         }
 
+    /**
+     * 获取实际字重值
+     * 
+     * 根据当前模式返回对应的字重值：
+     * - 精细模式：直接返回 textBold 值（100~900）
+     * - 粗略模式：将 textBold 值转换为标准字重
+     *   - 0 (正常) -> 400
+     *   - 1 (粗体) -> 700
+     *   - 2 (细体) -> 300
+     * 
+     * @return 实际字重值，范围 100~900
+     */
     fun getTextBoldWeight(): Int {
         val boldValue = textBold
         return if (AppConfig.textBoldMode == 1) {
