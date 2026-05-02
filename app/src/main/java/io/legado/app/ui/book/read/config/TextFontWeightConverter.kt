@@ -119,7 +119,7 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
         val currentValue = ReadBookConfig.textBold.coerceIn(100, 900)
         var tempValue = currentValue
         
-        context.alert {
+        context.alert(titleResource = null) {
             // 使用自定义标题栏，包含标题和右上角的切换按钮
             customTitle {
                 createTitleBar(
