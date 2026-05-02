@@ -50,6 +50,7 @@ import io.legado.app.utils.getFile
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getPrefString
+import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.putPrefString
 import io.legado.app.utils.getSharedPreferences
 import io.legado.app.utils.isContentScheme
@@ -251,10 +252,19 @@ object Restore {
         val readRecordDetails = fileToListT<ReadRecordDetail>(path, "readRecordDetail.json").orEmpty()
         val readRecordSessions = fileToListT<ReadRecordSession>(path, "readRecordSession.json").orEmpty()
         if (readRecords.isNotEmpty() || readRecordDetails.isNotEmpty() || readRecordSessions.isNotEmpty()) {
-            ReadRecordRepository(appDb.readRecordDao).importRecords(
-                readRecords,
-                readRecordDetails,
-                readRecordSessions
+            ReadRecordRepository(appDb.readRecordDao).apply {
+                importRecords(
+                    readRecords,
+                    readRecordDetails,
+                    readRecordSessions
+                )
+                repairRecords { bookName ->
+                    appDb.bookDao.getBookByName(bookName)?.author?.trim()?.ifBlank { null }
+                }
+            }
+            appCtx.putPrefInt(
+                PreferKey.readRecordRepairVersion,
+                ReadRecordRepository.CURRENT_REPAIR_VERSION
             )
         }
 

@@ -2,12 +2,15 @@ package io.legado.app.ui.book.readRecord
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
 import io.legado.app.data.repository.BookRepository
 import io.legado.app.data.repository.ReadRecordRepository
+import io.legado.app.utils.getPrefInt
+import io.legado.app.utils.putPrefInt
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,6 +26,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
+import splitties.init.appCtx
 
 private typealias RecordIdentity = Triple<String, String, String>
 
@@ -61,10 +65,15 @@ class ReadRecordViewModel : ViewModel() {
 
     init {
         viewModelScope.launch {
-            repository.fixEmptyAuthors { bookName ->
-                bookRepository.getAuthorByBookName(bookName)
+            if (appCtx.getPrefInt(PreferKey.readRecordRepairVersion) < ReadRecordRepository.CURRENT_REPAIR_VERSION) {
+                repository.repairRecords { bookName ->
+                    bookRepository.getAuthorByBookName(bookName)
+                }
+                appCtx.putPrefInt(
+                    PreferKey.readRecordRepairVersion,
+                    ReadRecordRepository.CURRENT_REPAIR_VERSION
+                )
             }
-            repository.normalizeDuplicateDeviceRecords()
         }
     }
 

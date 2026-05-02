@@ -15,9 +15,39 @@ import kotlin.math.max
 import kotlin.math.min
 
 class ReadRecordRepository(
-    private val dao: ReadRecordDao
+    private val dao: ReadRecordDao,
+    private val currentDeviceIdProvider: () -> String = { AppConst.androidId }
 ) {
-    private fun getCurrentDeviceId(): String = AppConst.androidId
+    companion object {
+        const val CURRENT_REPAIR_VERSION = 1
+    }
+
+    private fun getCurrentDeviceId(): String = currentDeviceIdProvider()
+
+    private fun normalizeBookName(bookName: String): String = bookName.trim()
+
+    private fun normalizeBookAuthor(bookAuthor: String): String = bookAuthor.trim()
+
+    private fun normalizeRecord(record: ReadRecord): ReadRecord {
+        return record.copy(
+            bookName = normalizeBookName(record.bookName),
+            bookAuthor = normalizeBookAuthor(record.bookAuthor)
+        )
+    }
+
+    private fun normalizeDetail(detail: ReadRecordDetail): ReadRecordDetail {
+        return detail.copy(
+            bookName = normalizeBookName(detail.bookName),
+            bookAuthor = normalizeBookAuthor(detail.bookAuthor)
+        )
+    }
+
+    private fun normalizeSession(session: ReadRecordSession): ReadRecordSession {
+        return session.copy(
+            bookName = normalizeBookName(session.bookName),
+            bookAuthor = normalizeBookAuthor(session.bookAuthor)
+        )
+    }
 
     fun getTotalReadTime(): Flow<Long> {
         return dao.getTotalReadTime().map { it ?: 0L }
@@ -74,12 +104,14 @@ class ReadRecordRepository(
     }
 
     suspend fun saveReadSession(newSession: ReadRecordSession) {
-        val segmentDuration = newSession.endTime - newSession.startTime
-        dao.insertSession(newSession)
+        val session = normalizeSession(newSession)
+        val segmentDuration = session.endTime - session.startTime
+        if (segmentDuration <= 0L && session.words <= 0L) return
+        dao.insertSession(session)
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val dateString = dateFormat.format(Date(newSession.startTime))
-        updateReadRecordDetail(newSession, segmentDuration, newSession.words, dateString)
-        updateReadRecord(newSession, segmentDuration)
+        val dateString = dateFormat.format(Date(session.startTime))
+        updateReadRecordDetail(session, segmentDuration, session.words, dateString)
+        updateReadRecord(session, segmentDuration)
     }
 
     private suspend fun updateReadRecord(session: ReadRecordSession, durationDelta: Long) {
@@ -207,15 +239,15 @@ class ReadRecordRepository(
 
         if (allRemainingSessions.isEmpty() && allRemainingDetails.isEmpty()) {
             dao.getReadRecord(deviceId, bookName, bookAuthor)?.let { existing ->
-                if (existing.readTime <= minimumReadTime && existing.lastRead <= minimumLastRead) {
-                    dao.deleteReadRecord(existing)
-                } else {
+                if (minimumReadTime > 0L || minimumLastRead > 0L) {
                     dao.update(
                         existing.copy(
                             readTime = max(existing.readTime, minimumReadTime),
                             lastRead = max(existing.lastRead, minimumLastRead)
                         )
                     )
+                } else {
+                    dao.deleteReadRecord(existing)
                 }
             }
         } else {
@@ -226,10 +258,25 @@ class ReadRecordRepository(
             val detailLastRead = allRemainingDetails.maxOfOrNull { it.lastReadTime } ?: 0L
             val lastRead = max(max(sessionLastRead, detailLastRead), minimumLastRead)
 
-            dao.getReadRecord(deviceId, bookName, bookAuthor)?.copy(
-                readTime = totalTime,
-                lastRead = lastRead
-            )?.let { dao.update(it) }
+            val existingRecord = dao.getReadRecord(deviceId, bookName, bookAuthor)
+            if (existingRecord != null) {
+                dao.update(
+                    existingRecord.copy(
+                        readTime = totalTime,
+                        lastRead = lastRead
+                    )
+                )
+            } else {
+                dao.insert(
+                    ReadRecord(
+                        deviceId = deviceId,
+                        bookName = bookName,
+                        bookAuthor = bookAuthor,
+                        readTime = totalTime,
+                        lastRead = lastRead
+                    )
+                )
+            }
         }
     }
 
@@ -346,6 +393,11 @@ class ReadRecordRepository(
         }
     }
 
+    suspend fun repairRecords(getAuthorByBookName: suspend (String) -> String?) {
+        fixEmptyAuthors(getAuthorByBookName)
+        normalizeDuplicateDeviceRecords()
+    }
+
     suspend fun normalizeDuplicateDeviceRecords() {
         val currentDeviceId = getCurrentDeviceId()
         val groupedRecords = dao.all.groupBy { it.bookName to it.bookAuthor }
@@ -454,7 +506,7 @@ class ReadRecordRepository(
     }
 
     private suspend fun importSingleRecord(record: ReadRecord) {
-        val normalized = record.copy(deviceId = getCurrentDeviceId())
+        val normalized = normalizeRecord(record).copy(deviceId = getCurrentDeviceId())
         val existing = dao.getReadRecord(
             normalized.deviceId,
             normalized.bookName,
@@ -489,7 +541,7 @@ class ReadRecordRepository(
     }
 
     private suspend fun importSingleDetail(detail: ReadRecordDetail) {
-        val normalized = detail.copy(deviceId = getCurrentDeviceId())
+        val normalized = normalizeDetail(detail).copy(deviceId = getCurrentDeviceId())
         val existing = dao.getDetail(
             normalized.deviceId,
             normalized.bookName,
@@ -517,7 +569,7 @@ class ReadRecordRepository(
     }
 
     private suspend fun importSingleSession(session: ReadRecordSession) {
-        val normalized = session.copy(id = 0, deviceId = getCurrentDeviceId())
+        val normalized = normalizeSession(session).copy(id = 0, deviceId = getCurrentDeviceId())
         val existing = dao.getSessionExact(
             normalized.deviceId,
             normalized.bookName,
