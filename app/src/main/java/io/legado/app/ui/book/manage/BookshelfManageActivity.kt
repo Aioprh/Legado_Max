@@ -83,6 +83,9 @@ class BookshelfManageActivity :
     }
     private var books: List<Book>? = null
     private val waitDialog by lazy { WaitDialog(this) }
+    private val dragSelectTouchHelper: DragSelectTouchHelper by lazy {
+        DragSelectTouchHelper(adapter.dragSelectCallback).setSlideArea(16, 50)
+    }
     private val exportDir = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             alert(R.string.export_success) {
@@ -185,8 +188,6 @@ class BookshelfManageActivity :
         binding.recyclerView.setFastScrollEnabled(showFastScroller)
         binding.recyclerView.isVerticalScrollBarEnabled = !showFastScroller
         itemTouchCallback.isCanDrag = AppConfig.bookshelfSort == 3
-        val dragSelectTouchHelper: DragSelectTouchHelper =
-            DragSelectTouchHelper(adapter.dragSelectCallback).setSlideArea(16, 50)
         dragSelectTouchHelper.attachToRecyclerView(binding.recyclerView)
         // When this page is opened, it is in selection mode
         dragSelectTouchHelper.activeSlideSelect()
@@ -426,6 +427,11 @@ class BookshelfManageActivity :
     override fun sourceOnClick(source: BookSource) {
         viewModel.changeSource(adapter.selection, source)
         viewModel.batchChangeSourceState.value = true
+    }
+
+    override fun onLongPress(position: Int, book: Book) {
+        // 长按时激活拖拽选择模式
+        dragSelectTouchHelper.activeDragSelect(position)
     }
 
 }
