@@ -166,27 +166,29 @@ class BookSourceEditActivity :
     private val textEditLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             val data = result.data
-            // 编辑后的文本内容
             val text = data?.getStringExtra("text")
-            // 字段标识，如 "author" 表示作者字段
             val fieldKey = data?.getStringExtra("fieldKey")
-            // 板块标识，如 "info" 表示详情板块
             val tabKey = data?.getStringExtra("tabKey")
             val cursorPosition = data?.getIntExtra("cursorPosition", -1) ?: -1
             
-            // 如果有 fieldKey 和 tabKey，说明用户在编辑器中切换了字段
-            // 需要根据这两个标识找到正确的位置更新数据
             if (!text.isNullOrEmpty() && !fieldKey.isNullOrEmpty() && !tabKey.isNullOrEmpty()) {
-                updateEditEntityValue(tabKey, fieldKey, text)
+                updateEditEntityValue(tabKey, fieldKey, text, cursorPosition)
             } else if (!text.isNullOrEmpty()) {
                 lastFocusedEditText?.let { editText ->
                     editText.setText(text)
                     if (cursorPosition in 0 ..< editText.text.length) {
                         editText.setSelection(cursorPosition)
                     }
+                    editText.requestFocus()
+                }
+            } else if (cursorPosition >= 0) {
+                lastFocusedEditText?.let { editText ->
+                    if (cursorPosition in 0 ..< editText.text.length) {
+                        editText.setSelection(cursorPosition)
+                    }
+                    editText.requestFocus()
                 }
             }
-            lastFocusedEditText?.requestFocus()
         }
     }
 
@@ -202,25 +204,30 @@ class BookSourceEditActivity :
      *               - "content": 正文规则
      * @param fieldKey 字段标识，如 "author" 表示作者，"name" 表示书名
      * @param value 要更新的值
+     * @param cursorPosition 光标位置，用于返回后恢复光标
      */
-    private fun updateEditEntityValue(tabKey: String, fieldKey: String, value: String) {
-        // 根据 tabKey 找到对应的实体列表
-        // 每个板块的数据存储在对应的 ArrayList 中
+    private fun updateEditEntityValue(tabKey: String, fieldKey: String, value: String, cursorPosition: Int = -1) {
         val entities = when (tabKey) {
-            "base" -> sourceEntities      // 基本信息列表，包含 bookSourceUrl、bookSourceName 等
-            "search" -> searchEntities    // 搜索规则列表
-            "explore" -> exploreEntities  // 发现规则列表
-            "info" -> infoEntities        // 详情规则列表
-            "toc" -> tocEntities          // 目录规则列表
-            "content" -> contentEntities  // 正文规则列表
+            "base" -> sourceEntities
+            "search" -> searchEntities
+            "explore" -> exploreEntities
+            "info" -> infoEntities
+            "toc" -> tocEntities
+            "content" -> contentEntities
             else -> null
         }
-        // 在列表中查找 key 匹配的实体，更新其 value
-        // EditEntity 包含 key（字段标识）、value（字段值）、hint（提示文本）
         entities?.find { it.key == fieldKey }?.let { entity ->
             entity.value = value
-            // 刷新适配器，让界面显示更新后的值
             adapter.notifyDataSetChanged()
+            if (cursorPosition >= 0 && lastFocusedEditText != null) {
+                lastFocusedEditText?.post {
+                    lastFocusedEditText?.setText(value)
+                    if (cursorPosition in 0 ..< value.length) {
+                        lastFocusedEditText?.setSelection(cursorPosition)
+                    }
+                    lastFocusedEditText?.requestFocus()
+                }
+            }
         }
     }
 
