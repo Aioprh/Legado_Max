@@ -64,6 +64,7 @@ class ReadRecordViewModel : ViewModel() {
             repository.fixEmptyAuthors { bookName ->
                 bookRepository.getAuthorByBookName(bookName)
             }
+            repository.normalizeDuplicateDeviceRecords()
         }
     }
 

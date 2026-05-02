@@ -105,6 +105,20 @@ interface ReadRecordDao {
     @Query("SELECT * FROM readRecordSession WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor AND date(startTime / 1000, 'unixepoch', 'localtime') = :date")
     suspend fun getSessionsByBookAndDate(deviceId: String, bookName: String, bookAuthor: String, date: String): List<ReadRecordSession>
 
+    @Query(
+        "SELECT * FROM readRecordSession " +
+            "WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor " +
+            "AND startTime = :startTime AND endTime = :endTime AND words = :words LIMIT 1"
+    )
+    suspend fun getSessionExact(
+        deviceId: String,
+        bookName: String,
+        bookAuthor: String,
+        startTime: Long,
+        endTime: Long,
+        words: Long
+    ): ReadRecordSession?
+
     @Query("DELETE FROM readRecordSession WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor")
     suspend fun deleteSessionsByBook(deviceId: String, bookName: String, bookAuthor: String)
 

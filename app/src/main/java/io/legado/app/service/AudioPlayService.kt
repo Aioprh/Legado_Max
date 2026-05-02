@@ -157,6 +157,7 @@ class AudioPlayService : BaseService(),
                     exoPlayer.stop()
                     upPlayProgressJob?.cancel()
                     pause = false
+                    AudioPlay.markReadStart()
                     position = when (action) {
                         IntentAction.playNew -> 0
                         else -> AudioPlay.book?.durChapterPos ?: 0
@@ -170,6 +171,7 @@ class AudioPlayService : BaseService(),
                 }
 
                 IntentAction.stopPlay -> {
+                    AudioPlay.upReadTime()
                     exoPlayer.stop()
                     upPlayProgressJob?.cancel()
                     AudioPlay.status = Status.STOP
@@ -190,13 +192,20 @@ class AudioPlayService : BaseService(),
                     adjustProgress(intent.getIntExtra("position", position))
                 }
 
-                IntentAction.stop -> stopSelf()
+                IntentAction.stop -> {
+                    AudioPlay.upReadTime()
+                    pause = true
+                    stopSelf()
+                }
             }
         }
         return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onDestroy() {
+        if (!pause) {
+            AudioPlay.upReadTime()
+        }
         super.onDestroy()
         if (useWakeLock) {
             wakeLock.release()
@@ -275,6 +284,7 @@ class AudioPlayService : BaseService(),
             wifiLock?.release()
         }
         try {
+            AudioPlay.upReadTime()
             pause = true
             if (abandonFocus) {
                 abandonFocus()
@@ -301,6 +311,7 @@ class AudioPlayService : BaseService(),
             wifiLock?.acquire()
         }
         try {
+            AudioPlay.markReadStart()
             pause = false
             if (url.isEmpty()) {
                 AudioPlay.loadOrUpPlayUrl()
