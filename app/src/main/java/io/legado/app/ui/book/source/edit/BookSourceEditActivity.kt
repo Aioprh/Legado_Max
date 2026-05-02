@@ -166,8 +166,11 @@ class BookSourceEditActivity :
     private val textEditLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             val data = result.data
+            // 编辑后的文本内容
             val text = data?.getStringExtra("text")
+            // 字段标识，如 "author" 表示作者字段
             val fieldKey = data?.getStringExtra("fieldKey")
+            // 板块标识，如 "info" 表示详情板块
             val tabKey = data?.getStringExtra("tabKey")
             val cursorPosition = data?.getIntExtra("cursorPosition", -1) ?: -1
             
@@ -250,7 +253,7 @@ class BookSourceEditActivity :
                 putExtra("title", hint)
                 putExtra("cursorPosition", view.selectionStart)
                 putExtra("sourceType", "bookSource")
-                putExtra("sourceJson", GSON.toJson(getSource()))
+                putExtra("sourceKey", getSource().bookSourceUrl)
                 putExtra("fieldKey", fieldKey)
                 putExtra("tabKey", tabKey)
             }
