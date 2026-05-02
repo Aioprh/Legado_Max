@@ -225,4 +225,5 @@ object PreferKey {
     const val editAutoWrap = "editAutoWrap"
     const val editAutoComplete = "editAutoComplete"
     const val showBoardLine = "showBoardLine"
+    const val recordUrl = "recordUrl"
 }

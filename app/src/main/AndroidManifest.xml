@@ -332,6 +332,11 @@
             android:name=".ui.debug.DebugToolsActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
+        <!-- URL访问记录 -->
+        <activity
+            android:name=".ui.urlRecord.UrlRecordActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
         <activity
             android:name=".ui.debug.EncodeToolsActivity"
             android:configChanges="orientation|screenSize"
