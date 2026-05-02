@@ -233,26 +233,32 @@ object ChapterProvider {
         } ?: Typeface.DEFAULT
     }
 
+    /**
+     * 创建标题和正文的画笔
+     * 
+     * 根据系统版本和字重配置创建对应的字体画笔：
+     * - Android 9+ ：支持精细字重（100~900），标题比正文粗 100
+     * - Android 9 以下：只支持粗体/正常/细体三种模式
+     * 
+     * @param typeface 基础字体
+     * @return Pair<标题画笔, 正文画笔>
+     */
     private fun getPaints(typeface: Typeface?): Pair<TextPaint, TextPaint> {
-        // 字体统一处理
         val bold = Typeface.create(typeface, Typeface.BOLD)
         val normal = Typeface.create(typeface, Typeface.NORMAL)
-        val (titleFont, textFont) = when (ReadBookConfig.textBold) {
-            1 -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                    Pair(Typeface.create(typeface, 900, false), bold)
-                else
-                    Pair(bold, bold)
+        
+        // Android 9+ 支持精细字重
+        val (titleFont, textFont) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val fontWeight = ReadBookConfig.getTextBoldWeight()
+            // 标题比正文粗 100，最大不超过 900
+            Pair(Typeface.create(typeface, (fontWeight + 100).coerceAtMost(900), false), Typeface.create(typeface, fontWeight, false))
+        } else {
+            // 老版本只支持三种模式
+            when (ReadBookConfig.textBold) {
+                1 -> Pair(bold, bold)
+                2 -> Pair(normal, normal)
+                else -> Pair(bold, normal)
             }
-
-            2 -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                    Pair(normal, Typeface.create(typeface, 300, false))
-                else
-                    Pair(normal, normal)
-            }
-
-            else -> Pair(bold, normal)
         }
 
         //标题
