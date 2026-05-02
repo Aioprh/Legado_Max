@@ -226,4 +226,6 @@ object PreferKey {
     const val editAutoComplete = "editAutoComplete"
     const val showBoardLine = "showBoardLine"
     const val recordUrl = "recordUrl"
+    const val textBoldFineTipShown = "textBoldFineTipShown"
+    const val textBoldMode = "textBoldMode"
 }

@@ -901,5 +901,17 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         }
 
     val autoUpdateVariant get() = appCtx.getPrefBoolean("autoUpdateVariant", true)
+
+    var textBoldFineTipShown: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.textBoldFineTipShown, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.textBoldFineTipShown, value)
+        }
+
+    var textBoldMode: Int
+        get() = appCtx.getPrefInt(PreferKey.textBoldMode, 0)
+        set(value) {
+            appCtx.putPrefInt(PreferKey.textBoldMode, value)
+        }
 }
 

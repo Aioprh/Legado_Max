@@ -747,6 +747,14 @@
     <string name="information">Information</string>
     <string name="switchLayout">Switch Layout</string>
     <string name="text_font_weight_converter">Text font weight switching</string>
+    <string name="text_bold_fine_mode">Fine Tune</string>
+    <string name="text_bold_coarse_mode">Coarse Tune</string>
+    <string name="text_bold_thin">Thin</string>
+    <string name="text_bold_bold">Bold</string>
+    <string name="text_bold_not_supported_title">Not Supported</string>
+    <string name="text_bold_not_supported_message">Fine font weight adjustment requires Android 9 (API 28) or above. Your device does not support this feature.</string>
+    <string name="text_bold_fine_tip_title">Tip</string>
+    <string name="text_bold_fine_tip_message">Fine tune mode supports font weight values from 100 to 900. Smaller values result in thinner fonts, larger values result in bolder fonts. This feature requires Android 9 (API 28) or above.</string>
     <string name="full_screen_gestures_support">Full screen gestures support</string>
     <string name="disable_return_key">Disable return key</string>
 

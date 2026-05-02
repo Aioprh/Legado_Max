@@ -280,6 +280,19 @@ object ReadBookConfig {
             config.textBold = value
         }
 
+    fun getTextBoldWeight(): Int {
+        val boldValue = textBold
+        return if (AppConfig.textBoldMode == 1) {
+            boldValue.coerceIn(100, 900)
+        } else {
+            when (boldValue) {
+                1 -> 700
+                2 -> 300
+                else -> 400
+            }
+        }
+    }
+
     var textSize: Int
         get() = config.textSize
         set(value) {
@@ -585,7 +598,7 @@ object ReadBookConfig {
         private var pageAnim: Int = 0,//翻页动画
         private var pageAnimEInk: Int = 4,
         var textFont: String = "",//字体
-        var textBold: Int = 0,//是否粗体字 0:正常, 1:粗体, 2:细体
+        var textBold: Int = 0,//字重 粗略模式: 0=正常, 1=粗体, 2=细体; 精细模式: 100~900
         var textSize: Int = 20,//文字大小
         var letterSpacing: Float = 0.1f,//字间距
         var lineSpacingExtra: Int = 12,//行间距

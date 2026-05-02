@@ -234,25 +234,18 @@ object ChapterProvider {
     }
 
     private fun getPaints(typeface: Typeface?): Pair<TextPaint, TextPaint> {
-        // 字体统一处理
         val bold = Typeface.create(typeface, Typeface.BOLD)
         val normal = Typeface.create(typeface, Typeface.NORMAL)
-        val (titleFont, textFont) = when (ReadBookConfig.textBold) {
-            1 -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                    Pair(Typeface.create(typeface, 900, false), bold)
-                else
-                    Pair(bold, bold)
+        
+        val (titleFont, textFont) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val fontWeight = ReadBookConfig.getTextBoldWeight()
+            Pair(Typeface.create(typeface, (fontWeight + 100).coerceAtMost(900), false), Typeface.create(typeface, fontWeight, false))
+        } else {
+            when (ReadBookConfig.textBold) {
+                1 -> Pair(bold, bold)
+                2 -> Pair(normal, normal)
+                else -> Pair(bold, normal)
             }
-
-            2 -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                    Pair(normal, Typeface.create(typeface, 300, false))
-                else
-                    Pair(normal, normal)
-            }
-
-            else -> Pair(bold, normal)
         }
 
         //标题

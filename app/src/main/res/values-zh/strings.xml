@@ -737,6 +737,14 @@
     <string name="information">信息</string>
     <string name="switchLayout">切换布局</string>
     <string name="text_font_weight_converter">文章字重切换</string>
+    <string name="text_bold_fine_mode">精细调整</string>
+    <string name="text_bold_coarse_mode">粗略调整</string>
+    <string name="text_bold_thin">细</string>
+    <string name="text_bold_bold">粗</string>
+    <string name="text_bold_not_supported_title">不支持精细调整</string>
+    <string name="text_bold_not_supported_message">精细字重调整需要 Android 9 (API 28) 以上版本才支持，您的设备不支持此功能。</string>
+    <string name="text_bold_fine_tip_title">提示</string>
+    <string name="text_bold_fine_tip_message">精细调整模式支持 100~900 的字重值，数值越小字体越细，越大越粗。此功能需要 Android 9 (API 28) 以上版本。</string>
     <string name="full_screen_gestures_support">全面屏手势优化</string>
     <string name="disable_return_key">禁用返回键</string>
 
