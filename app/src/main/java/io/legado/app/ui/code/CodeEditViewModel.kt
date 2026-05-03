@@ -11,10 +11,12 @@ import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolve
 import io.github.rosemoe.sora.widget.CodeEditor
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.AppLog
+import io.legado.app.data.appDb
 import io.legado.app.help.CacheManager
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.BackstageWebView
 import io.legado.app.help.webView.WebJsExtensions.Companion.nameCache
+import io.legado.app.utils.GSON
 import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.toastOnUi
 import org.eclipse.tm4e.core.registry.IThemeSource
@@ -93,8 +95,20 @@ class CodeEditViewModel(application: Application) : BaseViewModel(application) {
             cursorPosition = intent.getIntExtra("cursorPosition", 0)
             title = intent.getStringExtra("title")
             sourceType = intent.getStringExtra("sourceType")
-            sourceJson = intent.getStringExtra("sourceJson")
             fieldKey = intent.getStringExtra("fieldKey")
+            val sourceKey = intent.getStringExtra("sourceKey")
+            if (!sourceKey.isNullOrBlank()) {
+                when (sourceType) {
+                    "bookSource" -> appDb.bookSourceDao.getBookSource(sourceKey)?.let {
+                        sourceJson = GSON.toJson(it)
+                    }
+                    "rssSource" -> appDb.rssSourceDao.getByKey(sourceKey)?.let {
+                        sourceJson = GSON.toJson(it)
+                    }
+                }
+            } else {
+                sourceJson = intent.getStringExtra("sourceJson")
+            }
         }.onSuccess {
             success.invoke()
         }.onError {

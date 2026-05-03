@@ -7,6 +7,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.constant.PreferKey
 import io.legado.app.utils.putPrefBoolean
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,13 +23,22 @@ class UrlRecordViewModel(application: Application) : BaseViewModel(application) 
 
     val recordCount = MutableStateFlow(0)
 
+    private var observeJob: Job? = null
+
     init {
         observeRecords()
     }
 
-    private fun observeRecords() {
-        execute {
-            appDb.urlRecordDao.flowAll()
+    fun observeRecords(searchKey: String? = null) {
+        observeJob?.cancel()
+        observeJob = execute {
+            val flow = if (searchKey.isNullOrEmpty()) {
+                appDb.urlRecordDao.flowAll()
+            } else {
+                appDb.urlRecordDao.flowSearch(searchKey)
+            }
+            
+            flow
                 .onStart {
                     _uiState.value = UrlRecordUIState.Loading
                 }

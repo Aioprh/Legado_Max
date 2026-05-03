@@ -5,30 +5,38 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import androidx.activity.viewModels
+import androidx.appcompat.widget.SearchView
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
-import io.legado.app.data.entities.UrlRecord
 import io.legado.app.databinding.ActivityUrlRecordBinding
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.ui.widget.recycler.VerticalDivider
+import io.legado.app.utils.applyTint
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.primaryTextColor
 
-class UrlRecordActivity : VMBaseActivity<ActivityUrlRecordBinding, UrlRecordViewModel>() {
+class UrlRecordActivity : VMBaseActivity<ActivityUrlRecordBinding, UrlRecordViewModel>(),
+    SearchView.OnQueryTextListener {
 
     override val binding by viewBinding(ActivityUrlRecordBinding::inflate)
     override val viewModel by viewModels<UrlRecordViewModel>()
     
     private val adapter by lazy { UrlRecordAdapter() }
     private var isLoading = false
+    
+    private val searchView: SearchView by lazy {
+        binding.titleBar.findViewById(R.id.search_view)
+    }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         initRecyclerView()
+        initSearchView()
         observeUIState()
         updateRecordSwitch()
     }
@@ -62,6 +70,12 @@ class UrlRecordActivity : VMBaseActivity<ActivityUrlRecordBinding, UrlRecordView
         binding.recyclerView.setEdgeEffectColor(primaryColor)
         binding.recyclerView.addItemDecoration(VerticalDivider(this))
         binding.recyclerView.adapter = adapter
+    }
+
+    private fun initSearchView() {
+        searchView.applyTint(primaryTextColor)
+        searchView.queryHint = getString(R.string.search_url_record_hint)
+        searchView.setOnQueryTextListener(this)
     }
 
     private fun observeUIState() {
@@ -108,6 +122,15 @@ class UrlRecordActivity : VMBaseActivity<ActivityUrlRecordBinding, UrlRecordView
         invalidateOptionsMenu()
     }
 
+    override fun onQueryTextChange(newText: String?): Boolean {
+        viewModel.observeRecords(newText)
+        return false
+    }
+
+    override fun onQueryTextSubmit(query: String?): Boolean {
+        return false
+    }
+
     private fun showClearConfirm(days: Int) {
         lifecycleScope.launch {
             val oldCount = viewModel.getOldRecordsCount(days)
@@ -143,6 +166,14 @@ class UrlRecordActivity : VMBaseActivity<ActivityUrlRecordBinding, UrlRecordView
                 }
             }
             noButton()
+        }
+    }
+
+    override fun finish() {
+        if (!searchView.query.isNullOrEmpty()) {
+            searchView.setQuery("", true)
+        } else {
+            super.finish()
         }
     }
 
