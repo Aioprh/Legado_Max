@@ -3,6 +3,7 @@ package io.legado.app.help.storage
 import android.content.Context
 import android.database.sqlite.SQLiteConstraintException
 import android.net.Uri
+import androidx.core.content.edit
 import androidx.documentfile.provider.DocumentFile
 import io.legado.app.BuildConfig
 import io.legado.app.R
@@ -94,6 +95,24 @@ object Restore {
     private val mutex = Mutex()
 
     private const val TAG = "Restore"
+    private val themeRestorePrefKeys = arrayOf(
+        PreferKey.dThemeName,
+        PreferKey.dNThemeName,
+        PreferKey.cPrimary,
+        PreferKey.cAccent,
+        PreferKey.cBackground,
+        PreferKey.cBBackground,
+        PreferKey.bgImage,
+        PreferKey.bgImageBlurring,
+        PreferKey.tNavBar,
+        PreferKey.cNPrimary,
+        PreferKey.cNAccent,
+        PreferKey.cNBackground,
+        PreferKey.cNBBackground,
+        PreferKey.bgImageN,
+        PreferKey.bgImageNBlurring,
+        PreferKey.tNavBarN
+    )
 
     /**
      * 从URI恢复备份
@@ -297,9 +316,10 @@ object Restore {
         File(path, ThemeConfig.configFileName).takeIf {
             it.exists()
         }?.runCatching {
+            val configs = GSON.fromJsonArray<ThemeConfig.Config>(readText()).getOrNull()
             FileUtils.delete(ThemeConfig.configFilePath)
             copyTo(File(ThemeConfig.configFilePath))
-            ThemeConfig.upConfig()
+            ThemeConfig.replaceConfigs(configs)
         }?.onFailure {
             AppLog.put("恢复主题出错\n${it.localizedMessage}", it)
         }
@@ -343,6 +363,7 @@ object Restore {
 
         // 恢复SharedPreferences配置（应用主配置）
         appCtx.getSharedPreferences(path, "config")?.all?.let { map ->
+            clearThemeRestorePrefs()
             val edit = appCtx.defaultSharedPreferences.edit()
 
             map.forEach { (key, value) ->
@@ -544,6 +565,12 @@ object Restore {
             }
             backupFile.copyTo(File(targetDir, bgName), overwrite = true)
             LogUtils.d(TAG, "恢复主题背景: $bgName -> ${bgFile.absolutePath}")
+        }
+    }
+
+    private fun clearThemeRestorePrefs() {
+        appCtx.defaultSharedPreferences.edit {
+            themeRestorePrefKeys.forEach(::remove)
         }
     }
 

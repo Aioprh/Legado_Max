@@ -150,6 +150,13 @@ object ThemeConfig {
         addConfigs(getConfigs())
     }
 
+    fun replaceConfigs(newConfigs: List<Config>?) {
+        val validConfigs = newConfigs?.filter { validateConfig(it) } ?: emptyList()
+        configList.clear()
+        configList.addAll(validConfigs)
+        save()
+    }
+
     fun save() {
         val json = GSON.toJson(configList)
         FileUtils.delete(configFilePath)

@@ -14,7 +14,9 @@ class BookRepository {
     suspend fun getBookCoverByNameAndAuthor(bookName: String, bookAuthor: String): String? {
         val book = appDb.bookDao.getBook(bookName, bookAuthor) ?: return null
         book.getDisplayCover()?.let { return it }
-        val coverUrl = BookCover.searchCover(book) ?: return null
+        val coverUrl = runCatching {
+            BookCover.searchCover(book)
+        }.getOrNull() ?: return null
         book.customCoverUrl = coverUrl
         book.save()
         return book.getDisplayCover()
