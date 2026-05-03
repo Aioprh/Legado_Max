@@ -1,3 +1,20 @@
+/**
+ * 编码转换工具界面 - Jetpack Compose实现
+ * 
+ * 功能说明：
+ * 提供多种编码/解码功能：
+ * - Base64 编码/解码
+ * - MD5 编码（32位/16位）
+ * - URL 编码/解码
+ * - Hex 编码/解码
+ * - Unicode 编码/解码
+ * 
+ * 界面结构：
+ * - 编码类型选择器（下拉菜单）
+ * - 输入文本框
+ * - 操作按钮（转换、交换、清空、复制）
+ * - 结果显示区域
+ */
 package io.legado.app.ui.debug
 
 import androidx.compose.foundation.background
@@ -26,6 +43,10 @@ import io.legado.app.utils.encodeURI
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.toastOnUi
 
+/**
+ * 编码类型列表
+ * 索引对应转换逻辑中的when分支
+ */
 private val encodeTypes = listOf(
     "Base64 编码",
     "Base64 解码",
@@ -39,6 +60,11 @@ private val encodeTypes = listOf(
     "Unicode 解码"
 )
 
+/**
+ * 编码转换工具界面
+ * 
+ * @param onBackClick 返回按钮点击回调
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EncodeToolsScreen(
@@ -48,14 +74,20 @@ fun EncodeToolsScreen(
     val containerColor = debugToolsCardContainerColor()
     val topBarColor = debugToolsTopBarContainerColor()
     
+    // 当前选中的编码类型索引
     var currentType by remember { mutableStateOf(0) }
+    // 输入文本
     var input by remember { mutableStateOf("") }
+    // 转换结果
     var result by remember { mutableStateOf("") }
+    // 下拉菜单是否展开
     var expanded by remember { mutableStateOf(false) }
 
+    // 页面骨架
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
+            // 标题栏
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = topBarColor,
@@ -79,6 +111,7 @@ fun EncodeToolsScreen(
             )
         }
     ) { paddingValues ->
+        // 主内容区域：可滚动列布局
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -87,6 +120,7 @@ fun EncodeToolsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // 编码类型选择卡片
             Surface(
                 color = containerColor,
                 shape = RoundedCornerShape(12.dp)
@@ -101,10 +135,12 @@ fun EncodeToolsScreen(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
+                    // 下拉选择框：ExposedDropdownMenuBox
                     ExposedDropdownMenuBox(
                         expanded = expanded,
                         onExpandedChange = { expanded = !expanded }
                     ) {
+                        // 显示当前选中的编码类型
                         OutlinedTextField(
                             value = encodeTypes[currentType],
                             onValueChange = {},
@@ -121,6 +157,7 @@ fun EncodeToolsScreen(
                             )
                         )
                         
+                        // 下拉菜单
                         ExposedDropdownMenu(
                             expanded = expanded,
                             onDismissRequest = { expanded = false }
@@ -140,6 +177,7 @@ fun EncodeToolsScreen(
                 }
             }
 
+            // 输入区域卡片
             Surface(
                 color = containerColor,
                 shape = RoundedCornerShape(12.dp)
@@ -154,6 +192,7 @@ fun EncodeToolsScreen(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
+                    // 输入文本框
                     OutlinedTextField(
                         value = input,
                         onValueChange = { input = it },
@@ -169,10 +208,12 @@ fun EncodeToolsScreen(
                 }
             }
 
+            // 操作按钮行1：转换 + 交换
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // 转换按钮：执行编码/解码操作
                 Button(
                     onClick = {
                         if (input.isEmpty()) {
@@ -202,6 +243,7 @@ fun EncodeToolsScreen(
                     Text(stringResource(R.string.debug_convert))
                 }
                 
+                // 交换按钮：交换输入和结果
                 OutlinedButton(
                     onClick = {
                         val temp = input
@@ -218,10 +260,12 @@ fun EncodeToolsScreen(
                 }
             }
 
+            // 操作按钮行2：清空 + 复制
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // 清空按钮
                 OutlinedButton(
                     onClick = {
                         input = ""
@@ -234,6 +278,7 @@ fun EncodeToolsScreen(
                     Text("清空")
                 }
                 
+                // 复制按钮：复制结果到剪贴板
                 OutlinedButton(
                     onClick = {
                         if (result.isNotEmpty()) {
@@ -248,6 +293,7 @@ fun EncodeToolsScreen(
                 }
             }
 
+            // 结果显示卡片
             Surface(
                 color = containerColor,
                 shape = RoundedCornerShape(12.dp)
@@ -279,10 +325,22 @@ fun EncodeToolsScreen(
     }
 }
 
+/**
+ * 字节数组转十六进制字符串
+ * 
+ * @param bytes 字节数组
+ * @return 十六进制字符串（小写）
+ */
 private fun bytesToHex(bytes: ByteArray): String {
     return bytes.joinToString("") { "%02x".format(it) }
 }
 
+/**
+ * 十六进制字符串转字节数组
+ * 
+ * @param hex 十六进制字符串（可包含空格和换行）
+ * @return 字节数组
+ */
 private fun hexToBytes(hex: String): ByteArray {
     val cleanHex = hex.replace(" ", "").replace("\n", "")
     return ByteArray(cleanHex.length / 2) {
@@ -290,6 +348,15 @@ private fun hexToBytes(hex: String): ByteArray {
     }
 }
 
+/**
+ * 字符串转Unicode编码
+ * 
+ * 将非ASCII字符转换为\uXXXX格式
+ * 例如："你好" -> "\u4f60\u597d"
+ * 
+ * @param str 输入字符串
+ * @return Unicode编码字符串
+ */
 private fun stringToUnicode(str: String): String {
     return str.map { char ->
         if (char.code > 127) {
@@ -300,6 +367,15 @@ private fun stringToUnicode(str: String): String {
     }.joinToString("")
 }
 
+/**
+ * Unicode编码转字符串
+ * 
+ * 将\uXXXX格式转换回原始字符
+ * 例如："\u4f60\u597d" -> "你好"
+ * 
+ * @param unicode Unicode编码字符串
+ * @return 解码后的字符串
+ */
 private fun unicodeToString(unicode: String): String {
     val regex = Regex("\\\\u([0-9a-fA-F]{4})")
     return regex.replace(unicode) { match ->

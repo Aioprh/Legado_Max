@@ -1,3 +1,20 @@
+/**
+ * 时间戳转换工具界面 - Jetpack Compose实现
+ * 
+ * 功能说明：
+ * 时间戳与日期字符串互相转换，支持：
+ * - 时间戳转日期（支持10位秒级和13位毫秒级）
+ * - 日期转时间戳
+ * - 8种日期格式选择
+ * - 获取当前时间戳
+ * 
+ * 界面结构：
+ * - 时间戳输入区（含复制按钮）
+ * - 日期格式选择器
+ * - 日期输入区（含复制按钮）
+ * - 当前时间按钮
+ * - 结果显示区
+ */
 package io.legado.app.ui.debug
 
 import androidx.compose.foundation.background
@@ -25,6 +42,10 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
+/**
+ * 支持的日期格式列表
+ * 用于日期转时间戳时解析日期字符串
+ */
 private val formats = listOf(
     "yyyy-MM-dd HH:mm:ss",
     "yyyy-MM-dd",
@@ -36,6 +57,11 @@ private val formats = listOf(
     "yyyyMMdd"
 )
 
+/**
+ * 时间戳转换界面
+ * 
+ * @param onBackClick 返回按钮点击回调
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimestampConvertScreen(
@@ -45,18 +71,25 @@ fun TimestampConvertScreen(
     val containerColor = debugToolsCardContainerColor()
     val topBarColor = debugToolsTopBarContainerColor()
     
+    // 时间戳输入
     var timestamp by remember { mutableStateOf("") }
+    // 日期字符串输入
     var dateStr by remember { mutableStateOf("") }
+    // 转换结果
     var result by remember { mutableStateOf("") }
+    // 当前选中的日期格式索引
     var currentFormatIndex by remember { mutableStateOf(0) }
+    // 格式下拉菜单是否展开
     var formatExpanded by remember { mutableStateOf(false) }
 
+    // 初始化：显示当前时间戳
     LaunchedEffect(Unit) {
         val now = System.currentTimeMillis()
         timestamp = now.toString()
         result = formatTimestamp(now)
     }
 
+    // 页面骨架
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -83,6 +116,7 @@ fun TimestampConvertScreen(
             )
         }
     ) { paddingValues ->
+        // 主内容区域
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -91,6 +125,7 @@ fun TimestampConvertScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // 时间戳输入卡片
             Surface(
                 color = containerColor,
                 shape = RoundedCornerShape(12.dp)
@@ -106,6 +141,7 @@ fun TimestampConvertScreen(
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
+                        // 复制按钮
                         IconButton(
                             onClick = { context.sendToClip(timestamp) }
                         ) {
@@ -115,6 +151,7 @@ fun TimestampConvertScreen(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
+                    // 时间戳输入框
                     OutlinedTextField(
                         value = timestamp,
                         onValueChange = { timestamp = it },
@@ -125,6 +162,7 @@ fun TimestampConvertScreen(
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
+                    // 时间戳转日期按钮
                     Button(
                         onClick = {
                             if (timestamp.isEmpty()) {
@@ -134,6 +172,7 @@ fun TimestampConvertScreen(
                             
                             try {
                                 var ts = timestamp.trim().toLong()
+                                // 10位时间戳是秒级，需要转换为毫秒
                                 if (timestamp.trim().length == 10) {
                                     ts *= 1000
                                 }
@@ -149,6 +188,7 @@ fun TimestampConvertScreen(
                 }
             }
 
+            // 日期格式选择卡片
             Surface(
                 color = containerColor,
                 shape = RoundedCornerShape(12.dp)
@@ -163,6 +203,7 @@ fun TimestampConvertScreen(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
+                    // 日期格式下拉选择框
                     ExposedDropdownMenuBox(
                         expanded = formatExpanded,
                         onExpandedChange = { formatExpanded = !formatExpanded }
@@ -197,6 +238,7 @@ fun TimestampConvertScreen(
                 }
             }
 
+            // 日期输入卡片
             Surface(
                 color = containerColor,
                 shape = RoundedCornerShape(12.dp)
@@ -212,6 +254,7 @@ fun TimestampConvertScreen(
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
+                        // 复制按钮
                         IconButton(
                             onClick = { context.sendToClip(dateStr) }
                         ) {
@@ -221,6 +264,7 @@ fun TimestampConvertScreen(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
+                    // 日期输入框
                     OutlinedTextField(
                         value = dateStr,
                         onValueChange = { dateStr = it },
@@ -231,6 +275,7 @@ fun TimestampConvertScreen(
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
+                    // 日期转时间戳按钮
                     Button(
                         onClick = {
                             if (dateStr.isEmpty()) {
@@ -239,6 +284,7 @@ fun TimestampConvertScreen(
                             }
                             
                             try {
+                                // 使用选中的格式解析日期
                                 val format = SimpleDateFormat(formats[currentFormatIndex], Locale.getDefault())
                                 format.timeZone = TimeZone.getDefault()
                                 val date = format.parse(dateStr.trim())
@@ -258,6 +304,7 @@ fun TimestampConvertScreen(
                 }
             }
 
+            // 获取当前时间按钮
             OutlinedButton(
                 onClick = {
                     val now = System.currentTimeMillis()
@@ -271,6 +318,7 @@ fun TimestampConvertScreen(
                 Text(stringResource(R.string.debug_now))
             }
 
+            // 结果显示卡片
             Surface(
                 color = containerColor,
                 shape = RoundedCornerShape(12.dp)
@@ -286,6 +334,7 @@ fun TimestampConvertScreen(
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         )
+                        // 复制按钮
                         IconButton(
                             onClick = { context.sendToClip(result) }
                         ) {
@@ -309,6 +358,12 @@ fun TimestampConvertScreen(
     }
 }
 
+/**
+ * 格式化时间戳为日期字符串
+ * 
+ * @param timestamp 毫秒级时间戳
+ * @return 格式化后的日期字符串 (yyyy-MM-dd HH:mm:ss)
+ */
 private fun formatTimestamp(timestamp: Long): String {
     val date = Date(timestamp)
     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
