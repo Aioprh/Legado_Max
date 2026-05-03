@@ -91,13 +91,17 @@ class HttpServer(port: Int) : NanoHTTPD(port) {
                         session.parseBody(files)
                         postData = files["postData"]
                     } else {
-                        // 手动处理POST请求体，使用UTF-8编码
                         val contentLength = session.headers["content-length"]?.toIntOrNull() ?: 0
                         if (contentLength > 0) {
                             val inputStream = session.inputStream
                             val buffer = ByteArray(contentLength)
-                            inputStream.read(buffer)
-                            postData = String(buffer, Charsets.UTF_8)
+                            var offset = 0
+                            while (offset < contentLength) {
+                                val read = inputStream.read(buffer, offset, contentLength - offset)
+                                if (read == -1) break
+                                offset += read
+                            }
+                            postData = String(buffer, 0, offset, Charsets.UTF_8)
                         }
                     }
 

@@ -193,6 +193,7 @@ object PreferKey {
     const val disableMangaPageAnim = "disableMangaPageAnim"
     const val paddingDisplayCutouts = "paddingDisplayCutouts"
     const val autoCheckNewBackup = "autoCheckNewBackup"
+    const val readRecordRepairVersion = "readRecordRepairVersion"
 
     const val rssSourceSort = "rssSourceSort"
     const val rssSourceSortAscending = "rssSourceSortAscending"

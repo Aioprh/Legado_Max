@@ -343,7 +343,9 @@ class ReadBookActivity : BaseReadBookActivity(),
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onResume() {
         super.onResume()
-        ReadBook.readStartTime = System.currentTimeMillis()
+        if (!BaseReadAloudService.isPlay()) {
+            ReadBook.markReadStart()
+        }
         if (bookChanged) {
             bookChanged = false
             ReadBook.callBack = this
@@ -374,6 +376,9 @@ class ReadBookActivity : BaseReadBookActivity(),
         super.onPause()
         autoPageStop()
         backupJob?.cancel()
+        if (!BaseReadAloudService.isPlay()) {
+            ReadBook.upReadTime()
+        }
         ReadBook.saveRead()
         ReadBook.cancelPreDownloadTask()
         unregisterReceiver(timeBatteryReceiver)

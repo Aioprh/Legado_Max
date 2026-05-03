@@ -86,6 +86,12 @@ class BookAdapter(context: Context, val callBack: CallBack) :
                     callBack.upSelectCount()
                 }
             }
+            root.setOnLongClickListener {
+                getItem(holder.layoutPosition)?.let {
+                    callBack.onLongPress(holder.layoutPosition, it)
+                }
+                true
+            }
             if (AppConfig.openBookInfoByClickTitle) {
                 tvName.setOnClickListener {
                     getItem(holder.layoutPosition)?.let {
@@ -235,5 +241,7 @@ class BookAdapter(context: Context, val callBack: CallBack) :
         fun selectGroup(requestCode: Int, groupId: Long)
 
         fun openBook(book: Book)
+
+        fun onLongPress(position: Int, book: Book)
     }
 }
