@@ -138,7 +138,7 @@ object ReadManga : CoroutineScope by MainScope() {
     //每次切换章节更新阅读记录
     fun upReadTime() {
         executor.execute {
-            if (!AppConfig.enableReadRecord) {
+            if (!AppConfig.enableReadRecord || book == null) {
                 return@execute
             }
             val now = System.currentTimeMillis()
@@ -169,6 +169,16 @@ object ReadManga : CoroutineScope by MainScope() {
             
             sessionStartTime = now
         }
+    }
+
+    fun markReadStart() {
+        if (!AppConfig.enableReadRecord || book == null) {
+            return
+        }
+        val now = System.currentTimeMillis()
+        sessionStartTime = now
+        readStartTime = now
+        readRecord.lastRead = now
     }
 
     @Synchronized

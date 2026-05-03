@@ -113,11 +113,9 @@ class ReadRecordViewModel : ViewModel() {
             .mapKeys { LocalDate.parse(it.key, DateTimeFormatter.ISO_LOCAL_DATE) }
             .mapValues { it.value.size }
 
-        val dailyTimes = mergedDailySessions
-            .mapKeys { LocalDate.parse(it.key, DateTimeFormatter.ISO_LOCAL_DATE) }
-            .mapValues { (_, sessions) ->
-                sessions.sumOf { (it.endTime - it.startTime).coerceAtLeast(0L) }
-            }
+        val dailyTimes = data.details
+            .groupBy { LocalDate.parse(it.date, DateTimeFormatter.ISO_LOCAL_DATE) }
+            .mapValues { (_, details) -> details.sumOf { it.readTime } }
 
         val todayReadTime = dailyTimes[today] ?: 0L
         val todayBookCount = data.details
@@ -143,17 +141,15 @@ class ReadRecordViewModel : ViewModel() {
             }
             .toSortedMap(compareByDescending { it })
 
-        val detailReadTimes = data.details
-            .groupBy { recordIdentity(it.deviceId, it.bookName, it.bookAuthor) }
-            .mapValues { (_, details) -> details.sumOf { it.readTime } }
+        val normalizedLatestRecords = repository.applyDetailReadTimes(data.latestRecords, data.details)
 
         val latestRecords = if (dateStr == null) {
-            data.latestRecords
+            normalizedLatestRecords
         } else {
             val filteredDetailsByRecord = filteredDetails.groupBy {
                 recordIdentity(it.deviceId, it.bookName, it.bookAuthor)
             }
-            val latestRecordIndex = data.latestRecords.associateBy {
+            val latestRecordIndex = normalizedLatestRecords.associateBy {
                 recordIdentity(it.deviceId, it.bookName, it.bookAuthor)
             }
 
@@ -179,16 +175,7 @@ class ReadRecordViewModel : ViewModel() {
         }
 
         val readTimeRecords = if (dateStr == null) {
-            data.latestRecords.map { record ->
-                val detailTime = detailReadTimes[
-                    recordIdentity(record.deviceId, record.bookName, record.bookAuthor)
-                ] ?: 0L
-                if (record.readTime == 0L && detailTime > 0) {
-                    record.copy(readTime = detailTime)
-                } else {
-                    record
-                }
-            }.sortedByDescending { it.readTime }
+            latestRecords.sortedByDescending { it.readTime }
         } else {
             val filteredDetailReadTimes = filteredDetails
                 .groupBy { recordIdentity(it.deviceId, it.bookName, it.bookAuthor) }
@@ -244,7 +231,14 @@ class ReadRecordViewModel : ViewModel() {
     }
 
     fun deleteReadRecord(record: ReadRecord) {
-        viewModelScope.launch { repository.deleteReadRecord(record) }
+        viewModelScope.launch {
+            val selectedDate = _selectedDate.value?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+            if (selectedDate == null) {
+                repository.deleteReadRecord(record)
+            } else {
+                repository.deleteReadRecordByDate(record, selectedDate)
+            }
+        }
     }
 
     private fun mergeContinuousSessions(sessions: List<ReadRecordSession>): List<ReadRecordSession> {

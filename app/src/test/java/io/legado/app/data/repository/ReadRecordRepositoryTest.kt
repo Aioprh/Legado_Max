@@ -6,11 +6,14 @@ import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 class ReadRecordRepositoryTest {
 
@@ -105,6 +108,150 @@ class ReadRecordRepositoryTest {
         assertEquals(180_000L, record?.readTime)
         assertEquals(200L, record?.lastRead)
         assertEquals(1, dao.all.size)
+    }
+
+    @Test
+    fun saveReadSessionSplitsCrossDaySessionIntoDailyRecords() = runBlocking {
+        val dao = FakeReadRecordDao()
+        val repository = ReadRecordRepository(dao) { CURRENT_DEVICE_ID }
+        val zoneId = ZoneId.systemDefault()
+        val start = LocalDateTime.of(2026, 5, 2, 23, 50)
+            .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+        val end = LocalDateTime.of(2026, 5, 3, 0, 10)
+            .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+
+        repository.saveReadSession(
+            ReadRecordSession(
+                deviceId = CURRENT_DEVICE_ID,
+                bookName = "Night Book",
+                bookAuthor = "Author",
+                startTime = start,
+                endTime = end,
+                words = 0L
+            )
+        )
+
+        val record = dao.getReadRecord(CURRENT_DEVICE_ID, "Night Book", "Author")
+        assertNotNull(record)
+        assertEquals(1_200_000L, record?.readTime)
+        assertEquals(end, record?.lastRead)
+
+        val details = dao.getDetailsByBook(CURRENT_DEVICE_ID, "Night Book", "Author")
+            .sortedBy { it.date }
+        assertEquals(2, details.size)
+        assertEquals("2026-05-02", details[0].date)
+        assertEquals(600_000L, details[0].readTime)
+        assertEquals("2026-05-03", details[1].date)
+        assertEquals(600_000L, details[1].readTime)
+
+        val sessions = dao.getSessionsByBook(CURRENT_DEVICE_ID, "Night Book", "Author")
+            .sortedBy { it.startTime }
+        assertEquals(2, sessions.size)
+        assertEquals(start, sessions[0].startTime)
+        assertEquals(600_000L, sessions[0].endTime - sessions[0].startTime)
+        assertEquals(600_000L, sessions[1].endTime - sessions[1].startTime)
+        assertEquals(end, sessions[1].endTime)
+    }
+
+    @Test
+    fun deleteReadRecordByDateRemovesOnlySelectedDayHistory() = runBlocking {
+        val dao = FakeReadRecordDao()
+        val repository = ReadRecordRepository(dao) { CURRENT_DEVICE_ID }
+        val zoneId = ZoneId.systemDefault()
+        val dayOneStart = LocalDateTime.of(2026, 5, 2, 10, 0)
+            .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+        val dayOneEnd = LocalDateTime.of(2026, 5, 2, 10, 1)
+            .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+        val dayTwoStart = LocalDateTime.of(2026, 5, 3, 10, 0)
+            .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+        val dayTwoEnd = LocalDateTime.of(2026, 5, 3, 10, 2)
+            .atZone(zoneId)
+            .toInstant()
+            .toEpochMilli()
+        val record = ReadRecord(CURRENT_DEVICE_ID, "Delete Book", "Author", 180_000L, dayTwoEnd)
+        dao.insert(record)
+        dao.insertDetail(
+            ReadRecordDetail(CURRENT_DEVICE_ID, "Delete Book", "Author", "2026-05-02", 60_000L, 0L, dayOneStart, dayOneEnd)
+        )
+        dao.insertDetail(
+            ReadRecordDetail(CURRENT_DEVICE_ID, "Delete Book", "Author", "2026-05-03", 120_000L, 0L, dayTwoStart, dayTwoEnd)
+        )
+        dao.insertSession(ReadRecordSession(deviceId = CURRENT_DEVICE_ID, bookName = "Delete Book", bookAuthor = "Author", startTime = dayOneStart, endTime = dayOneEnd, words = 0L))
+        dao.insertSession(ReadRecordSession(deviceId = CURRENT_DEVICE_ID, bookName = "Delete Book", bookAuthor = "Author", startTime = dayTwoStart, endTime = dayTwoEnd, words = 0L))
+
+        repository.deleteReadRecordByDate(record, "2026-05-02")
+
+        val remainingRecord = dao.getReadRecord(CURRENT_DEVICE_ID, "Delete Book", "Author")
+        assertNotNull(remainingRecord)
+        assertEquals(120_000L, remainingRecord?.readTime)
+        assertEquals(dayTwoEnd, remainingRecord?.lastRead)
+        assertEquals(listOf("2026-05-03"), dao.getDetailsByBook(CURRENT_DEVICE_ID, "Delete Book", "Author").map { it.date })
+        assertEquals(1, dao.getSessionsByBook(CURRENT_DEVICE_ID, "Delete Book", "Author").size)
+    }
+
+    @Test
+    fun getTotalReadTimePrefersDetailForBooksWithHistory() = runBlocking {
+        val dao = FakeReadRecordDao()
+        val repository = ReadRecordRepository(dao) { CURRENT_DEVICE_ID }
+        dao.insert(
+            ReadRecord(CURRENT_DEVICE_ID, "Dirty Book", "Author", 3_600_000L, 200L),
+            ReadRecord(CURRENT_DEVICE_ID, "Legacy Book", "Author", 300_000L, 150L)
+        )
+        dao.insertDetail(
+            ReadRecordDetail(CURRENT_DEVICE_ID, "Dirty Book", "Author", "2026-05-03", 120_000L, 0L, 100L, 200L)
+        )
+
+        val totalReadTime = repository.getTotalReadTime().first()
+
+        assertEquals(3_900_000L, totalReadTime)
+    }
+
+    @Test
+    fun repairRecordsPreservesExistingAggregateWhenHistoryIsPartial() = runBlocking {
+        val dao = FakeReadRecordDao()
+        val repository = ReadRecordRepository(dao) { CURRENT_DEVICE_ID }
+        dao.insert(ReadRecord(CURRENT_DEVICE_ID, "Rebuild Book", "Author", 3_600_000L, 500L))
+        dao.insertDetail(
+            ReadRecordDetail(CURRENT_DEVICE_ID, "Rebuild Book", "Author", "2026-05-03", 120_000L, 0L, 100L, 200L)
+        )
+        dao.insertSession(
+            ReadRecordSession(deviceId = CURRENT_DEVICE_ID, bookName = "Rebuild Book", bookAuthor = "Author", startTime = 100L, endTime = 200L, words = 0L)
+        )
+
+        repository.repairRecords { "Author" }
+
+        val record = dao.getReadRecord(CURRENT_DEVICE_ID, "Rebuild Book", "Author")
+        assertNotNull(record)
+        assertEquals(3_600_000L, record?.readTime)
+        assertEquals(500L, record?.lastRead)
+    }
+
+    @Test
+    fun applyDetailReadTimesKeepsLargerAggregateAndFillsMissingDetailTime() {
+        val repository = ReadRecordRepository(FakeReadRecordDao()) { CURRENT_DEVICE_ID }
+        val records = listOf(
+            ReadRecord(CURRENT_DEVICE_ID, "Book A", "Author", 3_600_000L, 500L),
+            ReadRecord(CURRENT_DEVICE_ID, "Book B", "Author", 0L, 200L)
+        )
+        val details = listOf(
+            ReadRecordDetail(CURRENT_DEVICE_ID, "Book A", "Author", "2026-05-03", 120_000L, 0L, 100L, 200L),
+            ReadRecordDetail(CURRENT_DEVICE_ID, "Book B", "Author", "2026-05-03", 180_000L, 0L, 100L, 200L)
+        )
+
+        val normalized = repository.applyDetailReadTimes(records, details)
+
+        assertEquals(3_600_000L, normalized.first { it.bookName == "Book A" }.readTime)
+        assertEquals(180_000L, normalized.first { it.bookName == "Book B" }.readTime)
     }
 
     private class FakeReadRecordDao : ReadRecordDao {

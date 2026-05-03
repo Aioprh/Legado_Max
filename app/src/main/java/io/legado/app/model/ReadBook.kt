@@ -327,13 +327,11 @@ object ReadBook : CoroutineScope by MainScope() {
     }
 
     fun upReadTime() {
-        if (!AppConfig.enableReadRecord) {
+        if (!AppConfig.enableReadRecord || book == null) {
             return
         }
         executor.execute {
             val now = System.currentTimeMillis()
-            val sessionDuration = now - sessionStartTime
-            
             readRecord.readTime = readRecord.readTime + now - readStartTime
             readStartTime = now
             readRecord.lastRead = now
@@ -360,6 +358,16 @@ object ReadBook : CoroutineScope by MainScope() {
             
             sessionStartTime = now
         }
+    }
+
+    fun markReadStart() {
+        if (!AppConfig.enableReadRecord || book == null) {
+            return
+        }
+        val now = System.currentTimeMillis()
+        sessionStartTime = now
+        readStartTime = now
+        readRecord.lastRead = now
     }
 
     fun upMsg(msg: String?) {

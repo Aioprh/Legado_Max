@@ -417,7 +417,12 @@ private fun LazyListScope.RecordListContent(
         DisplayMode.TIMELINE -> {
             state.timelineRecords.forEach { (date, sessions) ->
                 item(key = "timeline_header_$date") {
-                    TimelineDateHeader(date = date, totalDuration = sessions.sumOf { (it.endTime - it.startTime).coerceAtLeast(0L) })
+                    TimelineDateHeader(
+                        date = date,
+                        totalDuration = state.dailyReadTimes[
+                            LocalDate.parse(date, DateTimeFormatter.ISO_LOCAL_DATE)
+                        ] ?: 0L
+                    )
                 }
                 sessions.forEachIndexed { index, session ->
                     item(key = "timeline_item_${date}|${session.id}") {
