@@ -1,5 +1,6 @@
 package io.legado.app.ui.debug
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,7 +29,7 @@ data class DebugTool(
     val titleRes: Int,
     val descRes: Int,
     val icon: ImageVector,
-    val onClick: () -> Unit
+    val activityClass: Class<*>
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,6 +37,7 @@ data class DebugTool(
 fun DebugToolsScreen(
     onBackClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val containerColor = debugToolsCardContainerColor()
     val topBarColor = debugToolsTopBarContainerColor()
 
@@ -42,27 +45,27 @@ fun DebugToolsScreen(
         DebugTool(
             titleRes = R.string.debug_encode_tools,
             descRes = R.string.debug_encode_tools_desc,
-            icon = Icons.Default.Code
-        ) {
-        },
+            icon = Icons.Default.Code,
+            activityClass = EncodeToolsActivity::class.java
+        ),
         DebugTool(
             titleRes = R.string.debug_http_request,
             descRes = R.string.debug_http_request_desc,
-            icon = Icons.Default.Http
-        ) {
-        },
+            icon = Icons.Default.Http,
+            activityClass = HttpDebugActivity::class.java
+        ),
         DebugTool(
             titleRes = R.string.debug_regex_test,
             descRes = R.string.debug_regex_test_desc,
-            icon = Icons.Default.TextFields
-        ) {
-        },
+            icon = Icons.Default.TextFields,
+            activityClass = RegexTestActivity::class.java
+        ),
         DebugTool(
             titleRes = R.string.debug_timestamp,
             descRes = R.string.debug_timestamp_desc,
-            icon = Icons.Default.Schedule
-        ) {
-        }
+            icon = Icons.Default.Schedule,
+            activityClass = TimestampConvertActivity::class.java
+        )
     )
 
     Scaffold(
@@ -107,7 +110,10 @@ fun DebugToolsScreen(
             items(tools) { tool ->
                 DebugToolItem(
                     tool = tool,
-                    containerColor = containerColor
+                    containerColor = containerColor,
+                    onClick = {
+                        context.startActivity(Intent(context, tool.activityClass))
+                    }
                 )
             }
         }
@@ -117,13 +123,14 @@ fun DebugToolsScreen(
 @Composable
 private fun DebugToolItem(
     tool: DebugTool,
-    containerColor: Color
+    containerColor: Color,
+    onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clickable(onClick = tool.onClick),
+            .clickable(onClick = onClick),
         color = containerColor,
         shape = RoundedCornerShape(12.dp)
     ) {
