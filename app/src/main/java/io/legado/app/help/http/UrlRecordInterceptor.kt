@@ -12,10 +12,29 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
 
+/**
+ * URL访问记录拦截器
+ * 
+ * OkHttp拦截器，用于记录所有网络请求的详细信息。
+ * 通过 [AppConfig.recordUrl] 控制是否启用记录功能。
+ * 
+ * 功能：
+ * - 记录请求URL、域名、HTTP方法
+ * - 记录响应状态码、请求耗时
+ * - 记录POST请求体（限1000字符内）
+ * - 记录请求来源（通过X-Source-Name请求头）
+ * - 异步写入数据库，不阻塞请求
+ */
 object UrlRecordInterceptor : Interceptor {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * 拦截网络请求并记录信息
+     * @param chain 拦截器链
+     * @return 响应对象
+     * @throws IOException 网络请求异常
+     */
     @Throws(IOException::class)
     override fun intercept(chain: Interceptor.Chain): Response {
         if (!AppConfig.recordUrl) {
@@ -79,6 +98,10 @@ object UrlRecordInterceptor : Interceptor {
         }
     }
 
+    /**
+     * 取消所有正在进行的数据库写入操作
+     * 在不再需要记录时调用，释放资源
+     */
     fun cancelAll() {
         scope.cancel()
     }
