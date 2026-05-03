@@ -13,6 +13,9 @@ interface UrlRecordDao {
     @Query("SELECT * FROM url_records ORDER BY timestamp DESC")
     fun flowAll(): Flow<List<UrlRecord>>
 
+    @Query("SELECT * FROM url_records WHERE url LIKE '%' || :keyword || '%' OR domain LIKE '%' || :keyword || '%' OR sourceName LIKE '%' || :keyword || '%' ORDER BY timestamp DESC")
+    fun flowSearch(keyword: String): Flow<List<UrlRecord>>
+
     @Query("SELECT * FROM url_records ORDER BY timestamp DESC")
     fun getAll(): List<UrlRecord>
 
