@@ -37,7 +37,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import io.legado.app.BuildConfig
@@ -173,27 +177,91 @@ fun HttpDebugScreen(
         sb.append("\n=== 响应体 ===\n")
         sb.append(response.body)
         
+        val responseSrcText = sb.toString()
+        var searchQuery by remember { mutableStateOf("") }
+        var showSearch by remember { mutableStateOf(false) }
+        val scrollState = rememberScrollState()
+        
         Dialog(onDismissRequest = { showResponseSrcDialog = false }) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = containerColor
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = stringResource(R.string.debug_response_src),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.debug_response_src),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        IconButton(onClick = { showSearch = !showSearch }) {
+                            Icon(Icons.Default.Search, contentDescription = "搜索")
+                        }
+                    }
+                    
+                    if (showSearch) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("搜索...") },
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(Icons.Default.Search, contentDescription = null)
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Default.Close, contentDescription = "清除")
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = sb.toString(),
-                        style = MaterialTheme.typography.bodySmall,
+                    
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState())
-                    )
+                    ) {
+                        val annotatedText = if (searchQuery.isNotEmpty() && searchQuery.length >= 2) {
+                            buildAnnotatedString {
+                                var lastIndex = 0
+                                val regex = Regex(Regex.escape(searchQuery), RegexOption.IGNORE_CASE)
+                                regex.findAll(responseSrcText).forEach { match ->
+                                    if (match.range.first > lastIndex) {
+                                        append(responseSrcText.substring(lastIndex, match.range.first))
+                                    }
+                                    withStyle(style = SpanStyle(background = Color(0x40FFEB3B))) {
+                                        append(match.value)
+                                    }
+                                    lastIndex = match.range.last + 1
+                                }
+                                if (lastIndex < responseSrcText.length) {
+                                    append(responseSrcText.substring(lastIndex))
+                                }
+                            }
+                        } else {
+                            AnnotatedString(responseSrcText)
+                        }
+                        
+                        Text(
+                            text = annotatedText,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState)
+                        )
+                    }
+                    
                     Spacer(modifier = Modifier.height(16.dp))
                     TextButton(
                         onClick = { showResponseSrcDialog = false },
