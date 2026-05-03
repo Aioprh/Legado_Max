@@ -1,337 +1,237 @@
 package io.legado.app.ui.debug
 
+import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
-import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import androidx.lifecycle.lifecycleScope
-import io.legado.app.BuildConfig
-import io.legado.app.R
-import io.legado.app.base.BaseActivity
-import io.legado.app.databinding.ActivityHttpDebugBinding
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.graphics.drawable.toBitmap
+import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.config.AppConfig
-import io.legado.app.help.http.StrResponse
-import io.legado.app.help.http.newCallStrResponse
-import io.legado.app.ui.widget.dialog.TextDialog
-import io.legado.app.utils.sendToClip
-import io.legado.app.utils.showDialogFragment
-import io.legado.app.utils.toastOnUi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.RequestBody.Companion.toRequestBody
+import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.setLightStatusBar
+import io.legado.app.utils.fullScreen
+import io.legado.app.utils.setNavigationBarColorAuto
+import io.legado.app.utils.setStatusBarColorAuto
+import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.ThemeStore
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 
-class HttpDebugActivity : BaseActivity<ActivityHttpDebugBinding>() {
+class HttpDebugActivity : AppCompatActivity() {
 
-    override val binding by lazy { ActivityHttpDebugBinding.inflate(layoutInflater) }
+    private var bgDrawable: Drawable? = null
 
-    private val methods = listOf("GET", "POST")
-    private val client = OkHttpClient.Builder().build()
-    private var lastResponse: StrResponse? = null
-    private var lastRequestSrc: String? = null
-
-    /**
-     * UA选择器显示名称列表
-     * 对应uaValues中的UA字符串
-     */
-    private val uaNames by lazy {
-        listOf(
-            getString(R.string.debug_ua_default),
-            getString(R.string.debug_ua_chrome_pc),
-            getString(R.string.debug_ua_chrome_mobile),
-            getString(R.string.debug_ua_safari_ios),
-            getString(R.string.debug_ua_firefox),
-            getString(R.string.debug_ua_custom)
-        )
-    }
-
-    /**
-     * 预设UA值列表
-     * 索引0为空字符串，表示使用AppConfig.userAgent全局配置
-     * 索引5为空字符串，表示使用自定义UA
-     */
-    private val uaValues by lazy {
-        listOf(
-            "",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${BuildConfig.Cronet_Main_Version} Safari/537.36",
-            "Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${BuildConfig.Cronet_Main_Version} Mobile Safari/537.36",
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-            ""
-        )
-    }
-
-    /**
-     * 用户自定义的UA字符串
-     * 当选择"自定义"选项时，通过对话框输入
-     */
-    private var customUa: String = ""
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        initSpinner()
-        initUaSpinner()
-        initClick()
-    }
-
-    override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.http_debug, menu)
-        return super.onCompatCreateOptionsMenu(menu)
-    }
-
-    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        menu.findItem(R.id.menu_response_src).isEnabled = lastResponse != null
-        menu.findItem(R.id.menu_request_src).isEnabled = lastRequestSrc != null
-        return super.onPrepareOptionsMenu(menu)
-    }
-
-    override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.menu_response_src -> showResponseSrc()
-            R.id.menu_request_src -> showRequestSrc()
-            R.id.menu_clear -> clearAll()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        initTheme()
+        super.onCreate(savedInstanceState)
+        setupSystemBar()
+        loadBackgroundImage()
+        enableEdgeToEdge()
+        
+        setContent {
+            HttpDebugContent(
+                bgDrawable = bgDrawable,
+                onBackClick = { finish() }
+            )
         }
-        return super.onCompatOptionsItemSelected(item)
     }
 
-    /**
-     * 显示响应体源码对话框
-     * 使用 TextDialog 组件展示完整的响应信息（响应行、响应头、响应体）
-     */
-    private fun showResponseSrc() {
-        val response = lastResponse ?: return
-        val sb = StringBuilder()
-        sb.append("=== 响应行 ===\n")
-        sb.append("HTTP/1.1 ${response.code()} ${response.message()}\n\n")
-        sb.append("=== 响应头 ===\n")
-        response.raw.headers.forEach { (name, value) ->
-            sb.append("$name: $value\n")
+    private fun loadBackgroundImage() {
+        try {
+            bgDrawable = ThemeConfig.getBgImage(this, windowManager.defaultDisplay.run {
+                android.util.DisplayMetrics().apply { getMetrics(this) }
+            })
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        sb.append("\n=== 响应体 ===\n")
-        sb.append(response.body)
-        showDialogFragment(TextDialog(getString(R.string.debug_response_src), sb.toString()))
     }
 
-    /**
-     * 显示请求体源码对话框
-     * 使用 TextDialog 组件展示完整的请求信息（请求行、请求头、请求体）
-     */
-    private fun showRequestSrc() {
-        val requestSrc = lastRequestSrc ?: return
-        showDialogFragment(TextDialog(getString(R.string.debug_request_src), requestSrc))
-    }
-
-    private fun clearAll() {
-        binding.etUrl.setText("")
-        binding.etHeaders.setText("")
-        binding.etBody.setText("")
-        binding.tvResponse.text = ""
-        binding.tvHeaders.text = ""
-        lastResponse = null
-        lastRequestSrc = null
-        invalidateOptionsMenu()
-    }
-
-    private fun initSpinner() {
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, methods)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerMethod.adapter = adapter
-        binding.spinnerMethod.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                binding.tilBody.visibility = if (position == 1) View.VISIBLE else View.GONE
+    private fun initTheme() {
+        val theme = ThemeConfig.getTheme()
+        when (theme) {
+            io.legado.app.constant.Theme.Dark -> {
+                setTheme(io.legado.app.R.style.AppTheme_Dark)
             }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-    }
-
-    /**
-     * 初始化UA选择器
-     * 提供预设UA选项和自定义UA入口
-     */
-    private fun initUaSpinner() {
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, uaNames)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerUa.adapter = adapter
-        binding.spinnerUa.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (position == uaNames.size - 1) {
-                    showCustomUaDialog()
-                }
+            io.legado.app.constant.Theme.Light -> {
+                setTheme(io.legado.app.R.style.AppTheme_Light)
             }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-    }
-
-    /**
-     * 显示自定义UA输入对话框
-     * 用户可以输入任意UA字符串
-     * 取消时恢复选择为默认UA
-     */
-    private fun showCustomUaDialog() {
-        val dialogBinding = io.legado.app.databinding.DialogEditTextBinding.inflate(layoutInflater)
-        dialogBinding.editView.hint = getString(R.string.debug_user_agent)
-        dialogBinding.editView.setText(customUa.ifEmpty { AppConfig.userAgent })
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle(R.string.debug_ua_custom)
-            .setView(dialogBinding.root)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                customUa = dialogBinding.editView.text?.toString()?.trim() ?: ""
-            }
-            .setNegativeButton(android.R.string.cancel) { _, _ ->
-                binding.spinnerUa.setSelection(0)
-            }
-            .setOnCancelListener {
-                binding.spinnerUa.setSelection(0)
-            }
-            .show()
-    }
-
-    /**
-     * 获取当前选中的UA字符串
-     * @return 选中的UA值，默认选项返回AppConfig.userAgent，自定义选项返回用户输入的值
-     */
-    private fun getSelectedUa(): String {
-        val position = binding.spinnerUa.selectedItemPosition
-        return when {
-            position == 0 -> AppConfig.userAgent
-            position == uaValues.size - 1 -> customUa.ifEmpty { AppConfig.userAgent }
-            else -> uaValues[position]
-        }
-    }
-
-    private fun initClick() {
-        binding.btnSend.setOnClickListener {
-            sendRequest()
-        }
-        binding.btnCopyResponse.setOnClickListener {
-            val result = binding.tvResponse.text.toString()
-            if (result.isNotEmpty()) {
-                sendToClip(result)
-            }
-        }
-        binding.btnCopyHeaders.setOnClickListener {
-            val headers = binding.tvHeaders.text.toString()
-            if (headers.isNotEmpty()) {
-                sendToClip(headers)
-            }
-        }
-        binding.btnClear.setOnClickListener {
-            clearAll()
-        }
-    }
-
-    private fun sendRequest() {
-        val url = binding.etUrl.text.toString().trim()
-        if (url.isEmpty()) {
-            toastOnUi(R.string.debug_url_empty)
-            return
-        }
-
-        binding.btnSend.isEnabled = false
-        binding.tvResponse.text = getString(R.string.debug_loading)
-        binding.tvHeaders.text = ""
-
-        lifecycleScope.launch {
-            try {
-                val response = withContext(Dispatchers.IO) {
-                    doRequest(url)
-                }
-                showResponse(response)
-            } catch (e: Exception) {
-                binding.tvResponse.text = "错误: ${e.message}"
-            } finally {
-                binding.btnSend.isEnabled = true
-            }
-        }
-    }
-
-    private suspend fun doRequest(url: String): StrResponse {
-        val methodIndex = binding.spinnerMethod.selectedItemPosition
-        val headersText = binding.etHeaders.text.toString()
-        val bodyText = binding.etBody.text.toString()
-        val userAgent = getSelectedUa()
-
-        return client.newCallStrResponse {
-            url(url)
-            when (methodIndex) {
-                0 -> get()
-                1 -> {
-                    if (bodyText.isNotEmpty()) {
-                        val requestBody = bodyText.toRequestBody("application/json; charset=UTF-8".toMediaType())
-                        post(requestBody)
-                    }
-                }
-            }
-            addHeader("User-Agent", userAgent)
-            if (headersText.isNotEmpty()) {
-                parseHeaders(headersText).forEach { (key, value) ->
-                    if (key.equals("User-Agent", ignoreCase = true)) {
-                        return@forEach
-                    }
-                    addHeader(key, value)
-                }
-            }
-        }.also { response ->
-            lastResponse = response
-            lastRequestSrc = buildRequestSrc(url, methodIndex, headersText, bodyText, userAgent)
-            invalidateOptionsMenu()
-        }
-    }
-
-    /**
-     * 构建请求源码字符串，用于显示请求详情
-     * @param url 请求URL
-     * @param methodIndex 请求方法索引（0=GET, 1=POST）
-     * @param headersText 用户输入的请求头文本
-     * @param bodyText 请求体内容
-     * @param userAgent 当前使用的UA字符串
-     * @return 格式化的请求源码字符串
-     */
-    private fun buildRequestSrc(url: String, methodIndex: Int, headersText: String, bodyText: String, userAgent: String): String {
-        val sb = StringBuilder()
-        sb.append("=== 请求行 ===\n")
-        sb.append("${if (methodIndex == 0) "GET" else "POST"} $url\n\n")
-        sb.append("=== 请求头 ===\n")
-        sb.append("User-Agent: $userAgent\n")
-        if (headersText.isNotEmpty()) {
-            headersText.lines().forEach { line ->
-                if (line.split(":").firstOrNull()?.trim()?.equals("User-Agent", ignoreCase = true) != true) {
-                    sb.append("$line\n")
+            else -> {
+                if (ColorUtils.isColorLight(primaryColor)) {
+                    setTheme(io.legado.app.R.style.AppTheme_Light)
+                } else {
+                    setTheme(io.legado.app.R.style.AppTheme_Dark)
                 }
             }
         }
-        if (methodIndex == 1 && bodyText.isNotEmpty()) {
-            sb.append("Content-Type: application/json; charset=UTF-8\n")
-            sb.append("\n=== 请求体 ===\n")
-            sb.append(bodyText)
-        }
-        return sb.toString()
     }
 
-    private fun parseHeaders(headersText: String): Map<String, String> {
-        val headers = mutableMapOf<String, String>()
-        headersText.lines().forEach { line ->
-            val parts = line.split(":", limit = 2)
-            if (parts.size == 2) {
-                headers[parts[0].trim()] = parts[1].trim()
-            }
+    private fun setupSystemBar() {
+        fullScreen()
+        val isTransparentStatusBar = AppConfig.isTransparentStatusBar
+        val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
+        setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, true)
+        setLightStatusBar(ColorUtils.isColorLight(backgroundColor))
+        if (AppConfig.immNavigationBar) {
+            setNavigationBarColorAuto(ThemeStore.navigationBarColor(this))
+        } else {
+            val nbColor = ColorUtils.darkenColor(ThemeStore.navigationBarColor(this))
+            setNavigationBarColorAuto(nbColor)
         }
-        return headers
+    }
+}
+
+@Composable
+fun HttpDebugContent(
+    bgDrawable: Drawable?,
+    onBackClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    val primaryColorValue = remember { ThemeStore.primaryColor(context) }
+    val accentColor = remember { ThemeStore.accentColor(context) }
+    val bgColor = remember { ThemeStore.backgroundColor(context) }
+    val textPrimaryColor = remember { ThemeStore.textColorPrimary(context) }
+    val textSecondaryColor = remember { ThemeStore.textColorSecondary(context) }
+
+    val isLight = ColorUtils.isColorLight(bgColor)
+    val background = remember(bgColor) { Color(bgColor) }
+    val primary = remember(primaryColorValue) { Color(primaryColorValue) }
+    val secondary = remember(accentColor) { Color(accentColor) }
+    val onBackground = remember(textPrimaryColor) { Color(textPrimaryColor) }
+    val onBackgroundVariant = remember(textSecondaryColor) { Color(textSecondaryColor) }
+    
+    val surface = remember(background, isLight) {
+        lerp(background, Color.White, if (isLight) 0.04f else 0.10f)
+    }
+    
+    val surfaceVariant = remember(background, onBackground, isLight) {
+        lerp(background, onBackground, if (isLight) 0.05f else 0.14f)
+    }
+    
+    val outline = remember(background, onBackground, isLight) {
+        lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
+    }
+    
+    val pagePrimary = remember(primary, isLight) {
+        if (isLight) primary else lerp(primary, Color.White, 0.20f)
+    }
+    
+    val pageOnBackgroundVariant = remember(onBackgroundVariant, onBackground, isLight) {
+        if (isLight) onBackgroundVariant else lerp(onBackgroundVariant, onBackground, 0.32f)
+    }
+    
+    val pageSurfaceVariant = remember(surfaceVariant, onBackground, isLight) {
+        if (isLight) surfaceVariant else lerp(surfaceVariant, onBackground, 0.08f)
     }
 
-    private fun showResponse(response: StrResponse) {
-        val sb = StringBuilder()
-        sb.append("状态码: ${response.code()}\n")
-        sb.append("消息: ${response.message()}\n")
-        sb.append("耗时: ${response.raw.receivedResponseAtMillis - response.raw.sentRequestAtMillis}ms\n")
-        binding.tvHeaders.text = sb.toString()
+    val colorScheme = remember(
+        isLight,
+        pagePrimary,
+        secondary,
+        background,
+        onBackground,
+        pageOnBackgroundVariant,
+        surface,
+        pageSurfaceVariant,
+        outline
+    ) {
+        if (isLight) {
+            lightColorScheme(
+                primary = pagePrimary,
+                secondary = secondary,
+                tertiary = secondary,
+                background = background,
+                surface = surface,
+                surfaceVariant = pageSurfaceVariant,
+                secondaryContainer = pageSurfaceVariant,
+                tertiaryContainer = pageSurfaceVariant,
+                outline = outline,
+                outlineVariant = outline.copy(alpha = 0.75f),
+                onPrimary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onBackground = onBackground,
+                onSurface = onBackground,
+                onSurfaceVariant = pageOnBackgroundVariant,
+                error = Color(0xFFE53935),
+                onError = Color.White
+            )
+        } else {
+            darkColorScheme(
+                primary = pagePrimary,
+                secondary = secondary,
+                tertiary = secondary,
+                background = background,
+                surface = surface,
+                surfaceVariant = pageSurfaceVariant,
+                secondaryContainer = pageSurfaceVariant,
+                tertiaryContainer = pageSurfaceVariant,
+                outline = outline,
+                outlineVariant = outline.copy(alpha = 0.8f),
+                onPrimary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onBackground = onBackground,
+                onSurface = onBackground,
+                onSurfaceVariant = pageOnBackgroundVariant,
+                error = Color(0xFFFF5252),
+                onError = Color.Black
+            )
+        }
+    }
 
-        val body = response.body
-        binding.tvResponse.text = body
+    MaterialTheme(colorScheme = colorScheme) {
+        HttpDebugBoxWithBackground(
+            bgDrawable = bgDrawable,
+            bgColor = background
+        ) {
+            HttpDebugScreen(onBackClick = onBackClick)
+        }
+    }
+}
+
+@Composable
+fun HttpDebugBoxWithBackground(
+    bgDrawable: Drawable?,
+    bgColor: Color,
+    content: @Composable () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (bgDrawable != null) {
+            val overlayAlpha = if (bgColor.luminance() > 0.5f) 0.22f else 0.40f
+            
+            Image(
+                bitmap = bgDrawable.toBitmap().asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(bgColor.copy(alpha = overlayAlpha))
+            )
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize().background(bgColor)
+            )
+        }
+
+        content()
     }
 }

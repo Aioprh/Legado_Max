@@ -1,128 +1,237 @@
 package io.legado.app.ui.debug
 
+import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import io.legado.app.R
-import io.legado.app.base.BaseActivity
-import io.legado.app.databinding.ActivityTimestampConvertBinding
-import io.legado.app.utils.sendToClip
-import io.legado.app.utils.toastOnUi
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.graphics.drawable.toBitmap
+import io.legado.app.help.config.ThemeConfig
+import io.legado.app.help.config.AppConfig
+import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.setLightStatusBar
+import io.legado.app.utils.fullScreen
+import io.legado.app.utils.setNavigationBarColorAuto
+import io.legado.app.utils.setStatusBarColorAuto
+import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.ThemeStore
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 
-class TimestampConvertActivity : BaseActivity<ActivityTimestampConvertBinding>() {
+class TimestampConvertActivity : AppCompatActivity() {
 
-    override val binding by lazy { ActivityTimestampConvertBinding.inflate(layoutInflater) }
+    private var bgDrawable: Drawable? = null
 
-    private val formats = listOf(
-        "yyyy-MM-dd HH:mm:ss",
-        "yyyy-MM-dd",
-        "yyyy/MM/dd HH:mm:ss",
-        "yyyy/MM/dd",
-        "MM-dd HH:mm:ss",
-        "HH:mm:ss",
-        "yyyyMMddHHmmss",
-        "yyyyMMdd"
-    )
-
-    private var currentFormatIndex = 0
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        initSpinner()
-        initClick()
-        updateCurrentTime()
-    }
-
-    private fun initSpinner() {
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, formats)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerFormat.adapter = adapter
-        binding.spinnerFormat.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                currentFormatIndex = position
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+    override fun onCreate(savedInstanceState: Bundle?) {
+        initTheme()
+        super.onCreate(savedInstanceState)
+        setupSystemBar()
+        loadBackgroundImage()
+        enableEdgeToEdge()
+        
+        setContent {
+            TimestampConvertContent(
+                bgDrawable = bgDrawable,
+                onBackClick = { finish() }
+            )
         }
     }
 
-    private fun initClick() {
-        binding.btnTimestampToDate.setOnClickListener {
-            timestampToDate()
-        }
-        binding.btnDateToTimestamp.setOnClickListener {
-            dateToTimestamp()
-        }
-        binding.btnNow.setOnClickListener {
-            updateCurrentTime()
-        }
-        binding.btnCopyTimestamp.setOnClickListener {
-            val timestamp = binding.etTimestamp.text.toString()
-            if (timestamp.isNotEmpty()) {
-                sendToClip(timestamp)
-            }
-        }
-        binding.btnCopyDate.setOnClickListener {
-            val date = binding.tvDateResult.text.toString()
-            if (date.isNotEmpty()) {
-                sendToClip(date)
-            }
-        }
-    }
-
-    private fun updateCurrentTime() {
-        val now = System.currentTimeMillis()
-        binding.etTimestamp.setText(now.toString())
-        binding.tvDateResult.text = formatTimestamp(now)
-    }
-
-    private fun timestampToDate() {
-        val timestampStr = binding.etTimestamp.text.toString().trim()
-        if (timestampStr.isEmpty()) {
-            toastOnUi(R.string.input_is_empty)
-            return
-        }
-
+    private fun loadBackgroundImage() {
         try {
-            var timestamp = timestampStr.toLong()
-            if (timestampStr.length == 10) {
-                timestamp *= 1000
-            }
-            binding.tvDateResult.text = formatTimestamp(timestamp)
+            bgDrawable = ThemeConfig.getBgImage(this, windowManager.defaultDisplay.run {
+                android.util.DisplayMetrics().apply { getMetrics(this) }
+            })
         } catch (e: Exception) {
-            binding.tvDateResult.text = "错误: ${e.message}"
+            e.printStackTrace()
         }
     }
 
-    private fun dateToTimestamp() {
-        val dateStr = binding.etDate.text.toString().trim()
-        if (dateStr.isEmpty()) {
-            toastOnUi(R.string.input_is_empty)
-            return
-        }
-
-        try {
-            val format = SimpleDateFormat(formats[currentFormatIndex], Locale.getDefault())
-            format.timeZone = TimeZone.getDefault()
-            val date = format.parse(dateStr)
-            date?.let {
-                val timestamp = it.time
-                binding.etTimestamp.setText(timestamp.toString())
-                binding.tvDateResult.text = formatTimestamp(timestamp)
+    private fun initTheme() {
+        val theme = ThemeConfig.getTheme()
+        when (theme) {
+            io.legado.app.constant.Theme.Dark -> {
+                setTheme(io.legado.app.R.style.AppTheme_Dark)
             }
-        } catch (e: Exception) {
-            binding.tvDateResult.text = "错误: ${e.message}"
+            io.legado.app.constant.Theme.Light -> {
+                setTheme(io.legado.app.R.style.AppTheme_Light)
+            }
+            else -> {
+                if (ColorUtils.isColorLight(primaryColor)) {
+                    setTheme(io.legado.app.R.style.AppTheme_Light)
+                } else {
+                    setTheme(io.legado.app.R.style.AppTheme_Dark)
+                }
+            }
         }
     }
 
-    private fun formatTimestamp(timestamp: Long): String {
-        val date = Date(timestamp)
-        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        sdf.timeZone = TimeZone.getDefault()
-        return sdf.format(date)
+    private fun setupSystemBar() {
+        fullScreen()
+        val isTransparentStatusBar = AppConfig.isTransparentStatusBar
+        val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
+        setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, true)
+        setLightStatusBar(ColorUtils.isColorLight(backgroundColor))
+        if (AppConfig.immNavigationBar) {
+            setNavigationBarColorAuto(ThemeStore.navigationBarColor(this))
+        } else {
+            val nbColor = ColorUtils.darkenColor(ThemeStore.navigationBarColor(this))
+            setNavigationBarColorAuto(nbColor)
+        }
+    }
+}
+
+@Composable
+fun TimestampConvertContent(
+    bgDrawable: Drawable?,
+    onBackClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    val primaryColorValue = remember { ThemeStore.primaryColor(context) }
+    val accentColor = remember { ThemeStore.accentColor(context) }
+    val bgColor = remember { ThemeStore.backgroundColor(context) }
+    val textPrimaryColor = remember { ThemeStore.textColorPrimary(context) }
+    val textSecondaryColor = remember { ThemeStore.textColorSecondary(context) }
+
+    val isLight = ColorUtils.isColorLight(bgColor)
+    val background = remember(bgColor) { Color(bgColor) }
+    val primary = remember(primaryColorValue) { Color(primaryColorValue) }
+    val secondary = remember(accentColor) { Color(accentColor) }
+    val onBackground = remember(textPrimaryColor) { Color(textPrimaryColor) }
+    val onBackgroundVariant = remember(textSecondaryColor) { Color(textSecondaryColor) }
+    
+    val surface = remember(background, isLight) {
+        lerp(background, Color.White, if (isLight) 0.04f else 0.10f)
+    }
+    
+    val surfaceVariant = remember(background, onBackground, isLight) {
+        lerp(background, onBackground, if (isLight) 0.05f else 0.14f)
+    }
+    
+    val outline = remember(background, onBackground, isLight) {
+        lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
+    }
+    
+    val pagePrimary = remember(primary, isLight) {
+        if (isLight) primary else lerp(primary, Color.White, 0.20f)
+    }
+    
+    val pageOnBackgroundVariant = remember(onBackgroundVariant, onBackground, isLight) {
+        if (isLight) onBackgroundVariant else lerp(onBackgroundVariant, onBackground, 0.32f)
+    }
+    
+    val pageSurfaceVariant = remember(surfaceVariant, onBackground, isLight) {
+        if (isLight) surfaceVariant else lerp(surfaceVariant, onBackground, 0.08f)
+    }
+
+    val colorScheme = remember(
+        isLight,
+        pagePrimary,
+        secondary,
+        background,
+        onBackground,
+        pageOnBackgroundVariant,
+        surface,
+        pageSurfaceVariant,
+        outline
+    ) {
+        if (isLight) {
+            lightColorScheme(
+                primary = pagePrimary,
+                secondary = secondary,
+                tertiary = secondary,
+                background = background,
+                surface = surface,
+                surfaceVariant = pageSurfaceVariant,
+                secondaryContainer = pageSurfaceVariant,
+                tertiaryContainer = pageSurfaceVariant,
+                outline = outline,
+                outlineVariant = outline.copy(alpha = 0.75f),
+                onPrimary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onBackground = onBackground,
+                onSurface = onBackground,
+                onSurfaceVariant = pageOnBackgroundVariant,
+                error = Color(0xFFE53935),
+                onError = Color.White
+            )
+        } else {
+            darkColorScheme(
+                primary = pagePrimary,
+                secondary = secondary,
+                tertiary = secondary,
+                background = background,
+                surface = surface,
+                surfaceVariant = pageSurfaceVariant,
+                secondaryContainer = pageSurfaceVariant,
+                tertiaryContainer = pageSurfaceVariant,
+                outline = outline,
+                outlineVariant = outline.copy(alpha = 0.8f),
+                onPrimary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onBackground = onBackground,
+                onSurface = onBackground,
+                onSurfaceVariant = pageOnBackgroundVariant,
+                error = Color(0xFFFF5252),
+                onError = Color.Black
+            )
+        }
+    }
+
+    MaterialTheme(colorScheme = colorScheme) {
+        TimestampConvertBoxWithBackground(
+            bgDrawable = bgDrawable,
+            bgColor = background
+        ) {
+            TimestampConvertScreen(onBackClick = onBackClick)
+        }
+    }
+}
+
+@Composable
+fun TimestampConvertBoxWithBackground(
+    bgDrawable: Drawable?,
+    bgColor: Color,
+    content: @Composable () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (bgDrawable != null) {
+            val overlayAlpha = if (bgColor.luminance() > 0.5f) 0.22f else 0.40f
+            
+            Image(
+                bitmap = bgDrawable.toBitmap().asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(bgColor.copy(alpha = overlayAlpha))
+            )
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize().background(bgColor)
+            )
+        }
+
+        content()
     }
 }

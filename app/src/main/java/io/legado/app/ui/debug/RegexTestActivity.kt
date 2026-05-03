@@ -1,105 +1,237 @@
 package io.legado.app.ui.debug
 
-import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.BackgroundColorSpan
-import android.text.style.ForegroundColorSpan
-import io.legado.app.R
-import io.legado.app.base.BaseActivity
-import io.legado.app.databinding.ActivityRegexTestBinding
-import io.legado.app.utils.sendToClip
-import io.legado.app.utils.toastOnUi
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.graphics.drawable.toBitmap
+import io.legado.app.help.config.ThemeConfig
+import io.legado.app.help.config.AppConfig
+import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.setLightStatusBar
+import io.legado.app.utils.fullScreen
+import io.legado.app.utils.setNavigationBarColorAuto
+import io.legado.app.utils.setStatusBarColorAuto
+import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.ThemeStore
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 
-class RegexTestActivity : BaseActivity<ActivityRegexTestBinding>() {
+class RegexTestActivity : AppCompatActivity() {
 
-    override val binding by lazy { ActivityRegexTestBinding.inflate(layoutInflater) }
+    private var bgDrawable: Drawable? = null
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        initClick()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        initTheme()
+        super.onCreate(savedInstanceState)
+        setupSystemBar()
+        loadBackgroundImage()
+        enableEdgeToEdge()
+        
+        setContent {
+            RegexTestContent(
+                bgDrawable = bgDrawable,
+                onBackClick = { finish() }
+            )
+        }
     }
 
-    private fun initClick() {
-        binding.btnTest.setOnClickListener {
-            testRegex()
-        }
-        binding.btnCopy.setOnClickListener {
-            val result = binding.tvResult.text.toString()
-            if (result.isNotEmpty()) {
-                sendToClip(result)
-            }
-        }
-        binding.btnClear.setOnClickListener {
-            binding.etPattern.setText("")
-            binding.etInput.setText("")
-            binding.tvResult.text = ""
-            binding.tvMatches.text = ""
-        }
-    }
-
-    private fun testRegex() {
-        val patternStr = binding.etPattern.text.toString()
-        val input = binding.etInput.text.toString()
-
-        if (patternStr.isEmpty()) {
-            toastOnUi(R.string.debug_pattern_empty)
-            return
-        }
-        if (input.isEmpty()) {
-            toastOnUi(R.string.input_is_empty)
-            return
-        }
-
+    private fun loadBackgroundImage() {
         try {
-            val regexOptions = mutableSetOf<RegexOption>()
-            if (binding.cbIgnoreCase.isChecked) {
-                regexOptions.add(RegexOption.IGNORE_CASE)
-            }
-            if (binding.cbMultiline.isChecked) {
-                regexOptions.add(RegexOption.MULTILINE)
-            }
-            if (binding.cbDotAll.isChecked) {
-                regexOptions.add(RegexOption.DOT_MATCHES_ALL)
-            }
-
-            val regex = Regex(patternStr, regexOptions)
-            val matches = regex.findAll(input).toList()
-
-            if (matches.isEmpty()) {
-                binding.tvResult.text = getString(R.string.debug_no_match)
-                binding.tvMatches.text = ""
-                return
-            }
-
-            val sb = StringBuilder()
-            matches.forEachIndexed { index, match ->
-                sb.append("匹配 ${index + 1}:\n")
-                sb.append("  完整匹配: ${match.value}\n")
-                match.groupValues.forEachIndexed { groupIndex, groupValue ->
-                    if (groupIndex > 0) {
-                        sb.append("  分组 $groupIndex: $groupValue\n")
-                    }
-                }
-                sb.append("\n")
-            }
-            binding.tvResult.text = sb.toString()
-
-            val spannableString = SpannableString(input)
-            val highlightColor = Color.parseColor("#40FFEB3B")
-            matches.forEach { match ->
-                spannableString.setSpan(
-                    BackgroundColorSpan(highlightColor),
-                    match.range.first,
-                    match.range.last + 1,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-            }
-            binding.tvMatches.text = spannableString
-
+            bgDrawable = ThemeConfig.getBgImage(this, windowManager.defaultDisplay.run {
+                android.util.DisplayMetrics().apply { getMetrics(this) }
+            })
         } catch (e: Exception) {
-            binding.tvResult.text = "错误: ${e.message}"
-            binding.tvMatches.text = input
+            e.printStackTrace()
         }
+    }
+
+    private fun initTheme() {
+        val theme = ThemeConfig.getTheme()
+        when (theme) {
+            io.legado.app.constant.Theme.Dark -> {
+                setTheme(io.legado.app.R.style.AppTheme_Dark)
+            }
+            io.legado.app.constant.Theme.Light -> {
+                setTheme(io.legado.app.R.style.AppTheme_Light)
+            }
+            else -> {
+                if (ColorUtils.isColorLight(primaryColor)) {
+                    setTheme(io.legado.app.R.style.AppTheme_Light)
+                } else {
+                    setTheme(io.legado.app.R.style.AppTheme_Dark)
+                }
+            }
+        }
+    }
+
+    private fun setupSystemBar() {
+        fullScreen()
+        val isTransparentStatusBar = AppConfig.isTransparentStatusBar
+        val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
+        setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, true)
+        setLightStatusBar(ColorUtils.isColorLight(backgroundColor))
+        if (AppConfig.immNavigationBar) {
+            setNavigationBarColorAuto(ThemeStore.navigationBarColor(this))
+        } else {
+            val nbColor = ColorUtils.darkenColor(ThemeStore.navigationBarColor(this))
+            setNavigationBarColorAuto(nbColor)
+        }
+    }
+}
+
+@Composable
+fun RegexTestContent(
+    bgDrawable: Drawable?,
+    onBackClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    val primaryColorValue = remember { ThemeStore.primaryColor(context) }
+    val accentColor = remember { ThemeStore.accentColor(context) }
+    val bgColor = remember { ThemeStore.backgroundColor(context) }
+    val textPrimaryColor = remember { ThemeStore.textColorPrimary(context) }
+    val textSecondaryColor = remember { ThemeStore.textColorSecondary(context) }
+
+    val isLight = ColorUtils.isColorLight(bgColor)
+    val background = remember(bgColor) { Color(bgColor) }
+    val primary = remember(primaryColorValue) { Color(primaryColorValue) }
+    val secondary = remember(accentColor) { Color(accentColor) }
+    val onBackground = remember(textPrimaryColor) { Color(textPrimaryColor) }
+    val onBackgroundVariant = remember(textSecondaryColor) { Color(textSecondaryColor) }
+    
+    val surface = remember(background, isLight) {
+        lerp(background, Color.White, if (isLight) 0.04f else 0.10f)
+    }
+    
+    val surfaceVariant = remember(background, onBackground, isLight) {
+        lerp(background, onBackground, if (isLight) 0.05f else 0.14f)
+    }
+    
+    val outline = remember(background, onBackground, isLight) {
+        lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
+    }
+    
+    val pagePrimary = remember(primary, isLight) {
+        if (isLight) primary else lerp(primary, Color.White, 0.20f)
+    }
+    
+    val pageOnBackgroundVariant = remember(onBackgroundVariant, onBackground, isLight) {
+        if (isLight) onBackgroundVariant else lerp(onBackgroundVariant, onBackground, 0.32f)
+    }
+    
+    val pageSurfaceVariant = remember(surfaceVariant, onBackground, isLight) {
+        if (isLight) surfaceVariant else lerp(surfaceVariant, onBackground, 0.08f)
+    }
+
+    val colorScheme = remember(
+        isLight,
+        pagePrimary,
+        secondary,
+        background,
+        onBackground,
+        pageOnBackgroundVariant,
+        surface,
+        pageSurfaceVariant,
+        outline
+    ) {
+        if (isLight) {
+            lightColorScheme(
+                primary = pagePrimary,
+                secondary = secondary,
+                tertiary = secondary,
+                background = background,
+                surface = surface,
+                surfaceVariant = pageSurfaceVariant,
+                secondaryContainer = pageSurfaceVariant,
+                tertiaryContainer = pageSurfaceVariant,
+                outline = outline,
+                outlineVariant = outline.copy(alpha = 0.75f),
+                onPrimary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onBackground = onBackground,
+                onSurface = onBackground,
+                onSurfaceVariant = pageOnBackgroundVariant,
+                error = Color(0xFFE53935),
+                onError = Color.White
+            )
+        } else {
+            darkColorScheme(
+                primary = pagePrimary,
+                secondary = secondary,
+                tertiary = secondary,
+                background = background,
+                surface = surface,
+                surfaceVariant = pageSurfaceVariant,
+                secondaryContainer = pageSurfaceVariant,
+                tertiaryContainer = pageSurfaceVariant,
+                outline = outline,
+                outlineVariant = outline.copy(alpha = 0.8f),
+                onPrimary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onBackground = onBackground,
+                onSurface = onBackground,
+                onSurfaceVariant = pageOnBackgroundVariant,
+                error = Color(0xFFFF5252),
+                onError = Color.Black
+            )
+        }
+    }
+
+    MaterialTheme(colorScheme = colorScheme) {
+        RegexTestBoxWithBackground(
+            bgDrawable = bgDrawable,
+            bgColor = background
+        ) {
+            RegexTestScreen(onBackClick = onBackClick)
+        }
+    }
+}
+
+@Composable
+fun RegexTestBoxWithBackground(
+    bgDrawable: Drawable?,
+    bgColor: Color,
+    content: @Composable () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (bgDrawable != null) {
+            val overlayAlpha = if (bgColor.luminance() > 0.5f) 0.22f else 0.40f
+            
+            Image(
+                bitmap = bgDrawable.toBitmap().asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(bgColor.copy(alpha = overlayAlpha))
+            )
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize().background(bgColor)
+            )
+        }
+
+        content()
     }
 }
