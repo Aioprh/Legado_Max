@@ -34,7 +34,7 @@ fun UrlRecordScreen(
     val uiState by viewModel.uiState.collectAsState()
     val domains by viewModel.domains.collectAsState()
     val recordCount by viewModel.recordCount.collectAsState()
-    val isRecordEnabled = viewModel.isRecordUrlEnabled()
+    val isRecordEnabled by viewModel.isRecordEnabled.collectAsState()
     
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }

@@ -35,6 +35,9 @@ class UrlRecordViewModel(application: Application) : BaseViewModel(application) 
     private val _domains = MutableStateFlow<List<String>>(emptyList())
     val domains: StateFlow<List<String>> = _domains.asStateFlow()
 
+    private val _isRecordEnabled = MutableStateFlow(AppConfig.recordUrl)
+    val isRecordEnabled: StateFlow<Boolean> = _isRecordEnabled.asStateFlow()
+
     private var observeCoroutine: Coroutine<Unit>? = null
     private var domainCoroutine: Coroutine<Unit>? = null
     
@@ -158,11 +161,6 @@ class UrlRecordViewModel(application: Application) : BaseViewModel(application) 
     fun setRecordUrl(enabled: Boolean) {
         AppConfig.recordUrl = enabled
         appCtx.putPrefBoolean(PreferKey.recordUrl, enabled)
+        _isRecordEnabled.value = enabled
     }
-
-    /**
-     * 获取URL记录开关状态
-     * @return 是否启用
-     */
-    fun isRecordUrlEnabled(): Boolean = AppConfig.recordUrl
 }
