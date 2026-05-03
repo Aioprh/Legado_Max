@@ -23,7 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -105,7 +105,7 @@ fun EncodeToolsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -147,7 +147,7 @@ fun EncodeToolsScreen(
                             readOnly = true,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(),
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                             trailingIcon = {
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                             },
@@ -223,7 +223,7 @@ fun EncodeToolsScreen(
                         try {
                             result = when (currentType) {
                                 0 -> EncoderUtils.base64Encode(input) ?: "编码失败"
-                                1 -> EncoderUtils.base64Decode(input) ?: "解码失败"
+                                1 -> EncoderUtils.base64Decode(input)
                                 2 -> MD5Utils.md5Encode(input)
                                 3 -> MD5Utils.md5Encode16(input)
                                 4 -> input.encodeURI()

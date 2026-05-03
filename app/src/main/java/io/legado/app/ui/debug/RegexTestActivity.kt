@@ -52,11 +52,19 @@ class RegexTestActivity : AppCompatActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun loadBackgroundImage() {
         try {
-            bgDrawable = ThemeConfig.getBgImage(this, windowManager.defaultDisplay.run {
-                android.util.DisplayMetrics().apply { getMetrics(this) }
-            })
+            val metrics = android.util.DisplayMetrics()
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                val windowMetrics = windowManager.currentWindowMetrics
+                val bounds = windowMetrics.bounds
+                metrics.widthPixels = bounds.width()
+                metrics.heightPixels = bounds.height()
+            } else {
+                windowManager.defaultDisplay.getMetrics(metrics)
+            }
+            bgDrawable = ThemeConfig.getBgImage(this, metrics)
         } catch (e: Exception) {
             e.printStackTrace()
         }

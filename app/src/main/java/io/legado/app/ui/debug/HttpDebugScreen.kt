@@ -28,6 +28,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import io.legado.app.BuildConfig
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
@@ -171,44 +173,72 @@ fun HttpDebugScreen(
         sb.append("\n=== 响应体 ===\n")
         sb.append(response.body)
         
-        AlertDialog(
-            onDismissRequest = { showResponseSrcDialog = false },
-            title = { Text(stringResource(R.string.debug_response_src)) },
-            text = {
-                Text(
-                    text = sb.toString(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showResponseSrcDialog = false }) {
-                    Text(stringResource(android.R.string.ok))
+        Dialog(onDismissRequest = { showResponseSrcDialog = false }) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = containerColor
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.debug_response_src),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = sb.toString(),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState())
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextButton(
+                        onClick = { showResponseSrcDialog = false },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text(stringResource(android.R.string.ok))
+                    }
                 }
             }
-        )
+        }
     }
 
     // 请求源码查看对话框
     if (showRequestSrcDialog && lastRequestSrc != null) {
-        AlertDialog(
-            onDismissRequest = { showRequestSrcDialog = false },
-            title = { Text(stringResource(R.string.debug_request_src)) },
-            text = {
-                Text(
-                    text = lastRequestSrc!!,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showRequestSrcDialog = false }) {
-                    Text(stringResource(android.R.string.ok))
+        Dialog(onDismissRequest = { showRequestSrcDialog = false }) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = containerColor
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = stringResource(R.string.debug_request_src),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = lastRequestSrc!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState())
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextButton(
+                        onClick = { showRequestSrcDialog = false },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text(stringResource(android.R.string.ok))
+                    }
                 }
             }
-        )
+        }
     }
 
     // 页面骨架
@@ -232,7 +262,7 @@ fun HttpDebugScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
                 // 右侧菜单
@@ -325,7 +355,7 @@ fun HttpDebugScreen(
                                 value = methods[methodIndex],
                                 onValueChange = {},
                                 readOnly = true,
-                                modifier = Modifier.menuAnchor(),
+                                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
                                 trailingIcon = {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = methodExpanded)
                                 }
@@ -386,7 +416,7 @@ fun HttpDebugScreen(
                             readOnly = true,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(),
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                             trailingIcon = {
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = uaExpanded)
                             }
