@@ -196,6 +196,15 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
         }
     }
 
+    fun importDefaultRules() {
+        execute {
+            repository.importDefaultRules()
+            _uiState.value = UiState.Success("导入默认规则成功")
+        }.onError {
+            _uiState.value = UiState.Error("导入默认规则失败: ${it.localizedMessage}")
+        }
+    }
+
     private suspend fun loadStats() {
         _stats.value = repository.getUploadStats()
     }

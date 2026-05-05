@@ -38,6 +38,9 @@ fun DirectLinkUploadScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingRule by remember { mutableStateOf<DirectLinkUploadRule?>(null) }
     var showClearDialog by remember { mutableStateOf(false) }
+    var showImportDialog by remember { mutableStateOf(false) }
+    var testingRule by remember { mutableStateOf<DirectLinkUploadRule?>(null) }
+    var testResult by remember { mutableStateOf<String?>(null) }
     
     val tabs = listOf("规则管理", "上传历史")
     
@@ -54,8 +57,24 @@ fun DirectLinkUploadScreen(
                     IconButton(onClick = { showAddDialog = true }) {
                         Icon(Icons.Default.Add, "添加规则")
                     }
-                    IconButton(onClick = { showClearDialog = true }) {
+                    var showMenu by remember { mutableStateOf(false) }
+                    IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, "更多")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("导入默认规则") },
+                            onClick = { showImportDialog = true; showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.CloudDownload, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("清除历史") },
+                            onClick = { showClearDialog = true; showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.DeleteSweep, null) }
+                        )
                     }
                 }
             )
@@ -77,7 +96,11 @@ fun DirectLinkUploadScreen(
                     rules = rules,
                     onEdit = { editingRule = it },
                     onDelete = { viewModel.deleteRule(it) },
-                    onSetDefault = { viewModel.setDefaultRule(it.id) }
+                    onSetDefault = { viewModel.setDefaultRule(it.id) },
+                    onTest = { rule ->
+                        testingRule = rule
+                        viewModel.testRule(rule)
+                    }
                 )
                 1 -> HistoryListTab(
                     histories = histories,
@@ -129,6 +152,93 @@ fun DirectLinkUploadScreen(
                 }
             )
         }
+        
+        if (showImportDialog) {
+            AlertDialog(
+                onDismissRequest = { showImportDialog = false },
+                title = { Text("导入默认规则") },
+                text = { Text("将导入3个预置的网盘规则（喵公子网盘①、喵公子网盘②、橘涂书源网盘）。\n\n注意：如果已有规则，将不会重复导入。") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.importDefaultRules()
+                            showImportDialog = false
+                        }
+                    ) {
+                        Text("导入")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showImportDialog = false }) {
+                        Text("取消")
+                    }
+                }
+            )
+        }
+        
+        uploadState.let { state ->
+            when (state) {
+                is UploadState.Testing -> {
+                    AlertDialog(
+                        onDismissRequest = { },
+                        title = { Text("测试中") },
+                        text = { 
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text("正在测试上传规则...")
+                            }
+                        },
+                        confirmButton = {}
+                    )
+                }
+                is UploadState.TestSuccess -> {
+                    AlertDialog(
+                        onDismissRequest = { testingRule = null },
+                        title = { Text("测试成功") },
+                        text = { 
+                            Column {
+                                Text("下载链接：")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = MaterialTheme.shapes.small
+                                ) {
+                                    Text(
+                                        text = state.downloadUrl,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(8.dp)
+                                    )
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { testingRule = null }) {
+                                Text("确定")
+                            }
+                        }
+                    )
+                }
+                is UploadState.TestError -> {
+                    AlertDialog(
+                        onDismissRequest = { testingRule = null },
+                        title = { Text("测试失败") },
+                        text = { Text(state.message) },
+                        confirmButton = {
+                            TextButton(onClick = { testingRule = null }) {
+                                Text("确定")
+                            }
+                        }
+                    )
+                }
+                else -> {}
+            }
+        }
     }
 }
 
@@ -137,7 +247,8 @@ fun RuleListTab(
     rules: List<DirectLinkUploadRule>,
     onEdit: (DirectLinkUploadRule) -> Unit,
     onDelete: (DirectLinkUploadRule) -> Unit,
-    onSetDefault: (DirectLinkUploadRule) -> Unit
+    onSetDefault: (DirectLinkUploadRule) -> Unit,
+    onTest: (DirectLinkUploadRule) -> Unit
 ) {
     if (rules.isEmpty()) {
         Box(
@@ -175,7 +286,8 @@ fun RuleListTab(
                     rule = rule,
                     onEdit = { onEdit(rule) },
                     onDelete = { onDelete(rule) },
-                    onSetDefault = { onSetDefault(rule) }
+                    onSetDefault = { onSetDefault(rule) },
+                    onTest = { onTest(rule) }
                 )
             }
         }
@@ -187,7 +299,8 @@ fun RuleCard(
     rule: DirectLinkUploadRule,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onSetDefault: () -> Unit
+    onSetDefault: () -> Unit,
+    onTest: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     
@@ -246,6 +359,11 @@ fun RuleCard(
                             text = { Text("编辑") },
                             onClick = { onEdit(); showMenu = false },
                             leadingIcon = { Icon(Icons.Default.Edit, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("测试") },
+                            onClick = { onTest(); showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.PlayArrow, null) }
                         )
                         Divider()
                         DropdownMenuItem(
