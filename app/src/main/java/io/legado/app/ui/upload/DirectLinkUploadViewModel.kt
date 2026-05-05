@@ -8,6 +8,7 @@ import io.legado.app.data.entities.UploadHistory
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.model.upload.DirectLinkUploadRepository
 import io.legado.app.model.upload.UploadStats
+import io.legado.app.utils.GSON
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -202,6 +203,44 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
             _uiState.value = UiState.Success("导入默认规则成功")
         }.onError {
             _uiState.value = UiState.Error("导入默认规则失败: ${it.localizedMessage}")
+        }
+    }
+
+    /**
+     * 拷贝规则到剪贴板
+     * 将规则转换为JSON格式并复制到系统剪贴板
+     * 
+     * @param rule 要拷贝的规则
+     * @return JSON字符串
+     */
+    fun copyRule(rule: DirectLinkUploadRule): String {
+        return GSON.toJson(rule)
+    }
+
+    /**
+     * 从剪贴板粘贴规则
+     * 解析JSON格式的规则并添加到数据库
+     * 
+     * @param json JSON格式的规则字符串
+     * @return 是否粘贴成功
+     */
+    fun pasteRule(json: String): Boolean {
+        return try {
+            val rule = GSON.fromJson(json, DirectLinkUploadRule::class.java)
+            // 重置ID和管理字段
+            val newRule = rule.copy(
+                id = 0,
+                isDefault = false,
+                uploadCount = 0,
+                lastUsedTime = 0,
+                createTime = System.currentTimeMillis(),
+                updateTime = System.currentTimeMillis()
+            )
+            addRule(newRule)
+            true
+        } catch (e: Exception) {
+            _uiState.value = UiState.Error("粘贴规则失败: ${e.localizedMessage}")
+            false
         }
     }
 

@@ -29,6 +29,22 @@ object DirectLinkUpload {
         contentType: String,
         rule: Rule = getRule()
     ): String {
+        val result = upLoadWithSize(fileName, file, contentType, rule)
+        return result.first
+    }
+
+    /**
+     * 上传文件并返回下载链接和文件大小
+     * 
+     * @return Pair<下载链接, 文件大小>
+     */
+    @Throws(NoStackTraceException::class)
+    suspend fun upLoadWithSize(
+        fileName: String,
+        file: Any,
+        contentType: String,
+        rule: Rule = getRule()
+    ): Pair<String, Long> {
         val url = rule.uploadUrl
         if (url.isBlank()) {
             throw NoStackTraceException("上传url未配置")
@@ -40,6 +56,16 @@ object DirectLinkUpload {
         var mFileName = fileName
         var mFile = file
         var mContentType = contentType
+        var fileSize = 0L
+        
+        // 计算文件大小（压缩前）
+        fileSize = when (file) {
+            is File -> file.length()
+            is ByteArray -> file.size.toLong()
+            is String -> file.toByteArray().size.toLong()
+            else -> GSON.toJson(file).toByteArray().size.toLong()
+        }
+        
         if (rule.compress && contentType != "application/zip") {
             mFileName = "$fileName.zip"
             mContentType = "application/zip"
@@ -55,6 +81,12 @@ object DirectLinkUpload {
                 is String -> ZipUtils.zipByteArray(file.toByteArray(), fileName)
                 else -> ZipUtils.zipByteArray(GSON.toJson(file).toByteArray(), fileName)
             }
+            // 更新文件大小为压缩后的大小
+            fileSize = when (mFile) {
+                is File -> mFile.length()
+                is ByteArray -> mFile.size.toLong()
+                else -> fileSize
+            }
         }
         val analyzeUrl = AnalyzeUrl(url)
         val res = analyzeUrl.upload(mFileName, mFile, mContentType)
@@ -67,7 +99,7 @@ object DirectLinkUpload {
         if (downloadUrl.isBlank()) {
             throw NoStackTraceException("上传失败,${res.body}")
         }
-        return downloadUrl
+        return Pair(downloadUrl, fileSize)
     }
 
     val defaultRules: List<Rule> by lazy {

@@ -32,7 +32,8 @@ class HandleFileViewModel(application: Application) : BaseViewModel(application)
             val startTime = System.currentTimeMillis()
             
             try {
-                val downloadUrl = DirectLinkUpload.upLoad(
+                // 使用新方法获取下载链接和文件大小
+                val (downloadUrl, fileSize) = DirectLinkUpload.upLoadWithSize(
                     fileName = fileName,
                     file = file,
                     contentType = contentType,
@@ -48,7 +49,7 @@ class HandleFileViewModel(application: Application) : BaseViewModel(application)
                 
                 val history = UploadHistory(
                     fileName = fileName,
-                    fileSize = getFileSize(file),
+                    fileSize = fileSize,  // 使用从上传方法返回的文件大小
                     contentType = contentType,
                     duration = duration,
                     downloadUrl = downloadUrl,
@@ -64,9 +65,12 @@ class HandleFileViewModel(application: Application) : BaseViewModel(application)
             } catch (e: Exception) {
                 val duration = System.currentTimeMillis() - startTime
                 
+                // 失败时也要计算文件大小
+                val fileSize = getFileSize(file)
+                
                 val history = UploadHistory(
                     fileName = fileName,
-                    fileSize = getFileSize(file),
+                    fileSize = fileSize,
                     contentType = contentType,
                     duration = duration,
                     downloadUrl = "",
@@ -89,12 +93,42 @@ class HandleFileViewModel(application: Application) : BaseViewModel(application)
         }
     }
     
+    /**
+     * 获取文件大小
+     * 支持多种文件类型：File、ByteArray、String、其他对象（转为JSON）
+     * 
+     * @param file 文件对象
+     * @return 文件大小（字节）
+     */
     private fun getFileSize(file: Any): Long {
         return when (file) {
-            is File -> file.length()
-            is ByteArray -> file.size.toLong()
-            is String -> file.toByteArray().size.toLong()
-            else -> 0L
+            is File -> {
+                val size = file.length()
+                android.util.Log.d("HandleFileViewModel", "File type: File, size: $size")
+                size
+            }
+            is ByteArray -> {
+                val size = file.size.toLong()
+                android.util.Log.d("HandleFileViewModel", "File type: ByteArray, size: $size")
+                size
+            }
+            is String -> {
+                val size = file.toByteArray().size.toLong()
+                android.util.Log.d("HandleFileViewModel", "File type: String, size: $size")
+                size
+            }
+            else -> {
+                // 其他类型转换为JSON后计算大小
+                try {
+                    val json = GSON.toJson(file)
+                    val size = json.toByteArray().size.toLong()
+                    android.util.Log.d("HandleFileViewModel", "File type: ${file::class.simpleName}, JSON size: $size")
+                    size
+                } catch (e: Exception) {
+                    android.util.Log.e("HandleFileViewModel", "Failed to calculate size for type: ${file::class.simpleName}", e)
+                    0L
+                }
+            }
         }
     }
 

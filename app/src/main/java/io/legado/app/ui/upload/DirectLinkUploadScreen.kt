@@ -1,5 +1,8 @@
 package io.legado.app.ui.upload
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,6 +33,11 @@ fun DirectLinkUploadScreen(
     viewModel: DirectLinkUploadViewModel = viewModel(),
     onBackClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val clipboardManager = remember {
+        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    }
+    
     val rules by viewModel.rules.collectAsState(initial = emptyList())
     val histories by viewModel.histories.collectAsState(initial = emptyList())
     val uiState by viewModel.uiState.collectAsState()
@@ -66,10 +75,25 @@ fun DirectLinkUploadScreen(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
+                            text = { Text("粘贴规则") },
+                            onClick = {
+                                showMenu = false
+                                val clip = clipboardManager.primaryClip
+                                if (clip != null && clip.itemCount > 0) {
+                                    val json = clip.getItemAt(0).text?.toString() ?: ""
+                                    if (json.isNotBlank() && viewModel.pasteRule(json)) {
+                                        // 粘贴成功
+                                    }
+                                }
+                            },
+                            leadingIcon = { Icon(Icons.Default.ContentPaste, null) }
+                        )
+                        DropdownMenuItem(
                             text = { Text("导入默认规则") },
                             onClick = { showImportDialog = true; showMenu = false },
                             leadingIcon = { Icon(Icons.Default.CloudDownload, null) }
                         )
+                        Divider()
                         DropdownMenuItem(
                             text = { Text("清除历史") },
                             onClick = { showClearDialog = true; showMenu = false },
@@ -100,6 +124,11 @@ fun DirectLinkUploadScreen(
                     onTest = { rule ->
                         testingRule = rule
                         viewModel.testRule(rule)
+                    },
+                    onCopy = { rule ->
+                        val json = viewModel.copyRule(rule)
+                        val clip = ClipData.newPlainText("上传规则", json)
+                        clipboardManager.setPrimaryClip(clip)
                     }
                 )
                 1 -> HistoryListTab(
@@ -157,7 +186,7 @@ fun DirectLinkUploadScreen(
             AlertDialog(
                 onDismissRequest = { showImportDialog = false },
                 title = { Text("导入默认规则") },
-                text = { Text("将导入3个预置的网盘规则（喵公子网盘①、喵公子网盘②、橘涂书源网盘）。\n\n注意：如果已有规则，将不会重复导入。") },
+                text = { Text("将导入2个预置的网盘规则（喵公子网盘①、喵公子网盘②）。\n\n注意：如果已有规则，将不会重复导入。") },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -264,7 +293,8 @@ fun RuleListTab(
     onEdit: (DirectLinkUploadRule) -> Unit,
     onDelete: (DirectLinkUploadRule) -> Unit,
     onSetDefault: (DirectLinkUploadRule) -> Unit,
-    onTest: (DirectLinkUploadRule) -> Unit
+    onTest: (DirectLinkUploadRule) -> Unit,
+    onCopy: (DirectLinkUploadRule) -> Unit
 ) {
     if (rules.isEmpty()) {
         Box(
@@ -303,7 +333,8 @@ fun RuleListTab(
                     onEdit = { onEdit(rule) },
                     onDelete = { onDelete(rule) },
                     onSetDefault = { onSetDefault(rule) },
-                    onTest = { onTest(rule) }
+                    onTest = { onTest(rule) },
+                    onCopy = { onCopy(rule) }
                 )
             }
         }
@@ -316,7 +347,8 @@ fun RuleCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onSetDefault: () -> Unit,
-    onTest: () -> Unit
+    onTest: () -> Unit,
+    onCopy: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     
@@ -380,6 +412,11 @@ fun RuleCard(
                             text = { Text("测试") },
                             onClick = { onTest(); showMenu = false },
                             leadingIcon = { Icon(Icons.Default.PlayArrow, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("拷贝规则") },
+                            onClick = { onCopy(); showMenu = false },
+                            leadingIcon = { Icon(Icons.Default.ContentCopy, null) }
                         )
                         Divider()
                         DropdownMenuItem(
