@@ -190,6 +190,8 @@ fun HttpDebugScreen(
         val responseSrcText = sb.toString()
         var searchQuery by remember { mutableStateOf("") }
         var showSearch by remember { mutableStateOf(false) }
+        var isEditing by remember { mutableStateOf(false) }
+        var editedContent by remember { mutableStateOf(responseSrcText) }
         val scrollState = rememberScrollState()
         
         Dialog(onDismissRequest = { showResponseSrcDialog = false }) {
@@ -209,12 +211,22 @@ fun HttpDebugScreen(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        IconButton(onClick = { showSearch = !showSearch }) {
-                            Icon(Icons.Default.Search, contentDescription = "搜索")
+                        Row {
+                            // 编辑按钮
+                            IconButton(onClick = { isEditing = !isEditing }) {
+                                Icon(
+                                    imageVector = if (isEditing) Icons.Default.Visibility else Icons.Default.Edit,
+                                    contentDescription = if (isEditing) "查看" else "编辑"
+                                )
+                            }
+                            // 搜索按钮
+                            IconButton(onClick = { showSearch = !showSearch }) {
+                                Icon(Icons.Default.Search, contentDescription = "搜索")
+                            }
                         }
                     }
                     
-                    if (showSearch) {
+                    if (showSearch && !isEditing) {
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = searchQuery,
@@ -237,16 +249,29 @@ fun HttpDebugScreen(
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                    ) {
-                        val annotatedText = if (searchQuery.isNotEmpty() && searchQuery.length >= 2) {
-                            buildAnnotatedString {
-                                var lastIndex = 0
-                                val regex = Regex(Regex.escape(searchQuery), RegexOption.IGNORE_CASE)
-                                regex.findAll(responseSrcText).forEach { match ->
+                    if (isEditing) {
+                        // 编辑模式
+                        OutlinedTextField(
+                            value = editedContent,
+                            onValueChange = { editedContent = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                                .heightIn(min = 200.dp),
+                            placeholder = { Text("编辑内容...") }
+                        )
+                    } else {
+                        // 查看模式
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f, fill = false)
+                        ) {
+                            val annotatedText = if (searchQuery.isNotEmpty() && searchQuery.length >= 2) {
+                                buildAnnotatedString {
+                                    var lastIndex = 0
+                                    val regex = Regex(Regex.escape(searchQuery), RegexOption.IGNORE_CASE)
+                                    regex.findAll(responseSrcText).forEach { match ->
                                     if (match.range.first > lastIndex) {
                                         append(responseSrcText.substring(lastIndex, match.range.first))
                                     }
@@ -279,13 +304,26 @@ fun HttpDebugScreen(
                                 .padding(horizontal = 2.dp)
                         )
                     }
+                    }
                     
                     Spacer(modifier = Modifier.height(16.dp))
-                    TextButton(
-                        onClick = { showResponseSrcDialog = false },
-                        modifier = Modifier.align(Alignment.End)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(stringResource(android.R.string.ok))
+                        if (isEditing) {
+                            Button(onClick = {
+                                // 保存编辑内容
+                                isEditing = false
+                            }) {
+                                Text("保存")
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.width(1.dp))
+                        }
+                        TextButton(onClick = { showResponseSrcDialog = false }) {
+                            Text(stringResource(android.R.string.ok))
+                        }
                     }
                 }
             }
