@@ -190,8 +190,6 @@ fun HttpDebugScreen(
         val responseSrcText = sb.toString()
         var searchQuery by remember { mutableStateOf("") }
         var showSearch by remember { mutableStateOf(false) }
-        var isEditing by remember { mutableStateOf(false) }
-        var editedContent by remember { mutableStateOf(responseSrcText) }
         val scrollState = rememberScrollState()
         
         Dialog(onDismissRequest = { showResponseSrcDialog = false }) {
@@ -212,12 +210,15 @@ fun HttpDebugScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         Row {
-                            // 编辑按钮
-                            IconButton(onClick = { isEditing = !isEditing }) {
-                                Icon(
-                                    imageVector = if (isEditing) Icons.Default.Visibility else Icons.Default.Edit,
-                                    contentDescription = if (isEditing) "查看" else "编辑"
-                                )
+                            // 编辑内容按钮 - 打开全屏编辑
+                            IconButton(onClick = {
+                                val intent = android.content.Intent(context, io.legado.app.ui.code.CodeEditActivity::class.java).apply {
+                                    putExtra("text", responseSrcText)
+                                    putExtra("title", context.getString(R.string.debug_response_src))
+                                }
+                                context.startActivity(intent)
+                            }) {
+                                Icon(Icons.Default.Code, contentDescription = "编辑内容")
                             }
                             // 搜索按钮
                             IconButton(onClick = { showSearch = !showSearch }) {
@@ -226,7 +227,7 @@ fun HttpDebugScreen(
                         }
                     }
                     
-                    if (showSearch && !isEditing) {
+                    if (showSearch) {
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
                             value = searchQuery,
@@ -249,29 +250,17 @@ fun HttpDebugScreen(
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    if (isEditing) {
-                        // 编辑模式
-                        OutlinedTextField(
-                            value = editedContent,
-                            onValueChange = { editedContent = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f, fill = false)
-                                .heightIn(min = 200.dp),
-                            placeholder = { Text("编辑内容...") }
-                        )
-                    } else {
-                        // 查看模式
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f, fill = false)
-                        ) {
-                            val annotatedText = if (searchQuery.isNotEmpty() && searchQuery.length >= 2) {
-                                buildAnnotatedString {
-                                    var lastIndex = 0
-                                    val regex = Regex(Regex.escape(searchQuery), RegexOption.IGNORE_CASE)
-                                    regex.findAll(responseSrcText).forEach { match ->
+                    // 查看模式
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                    ) {
+                        val annotatedText = if (searchQuery.isNotEmpty() && searchQuery.length >= 2) {
+                            buildAnnotatedString {
+                                var lastIndex = 0
+                                val regex = Regex(Regex.escape(searchQuery), RegexOption.IGNORE_CASE)
+                                regex.findAll(responseSrcText).forEach { match ->
                                     if (match.range.first > lastIndex) {
                                         append(responseSrcText.substring(lastIndex, match.range.first))
                                     }
@@ -304,26 +293,13 @@ fun HttpDebugScreen(
                                 .padding(horizontal = 2.dp)
                         )
                     }
-                    }
                     
                     Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    TextButton(
+                        onClick = { showResponseSrcDialog = false },
+                        modifier = Modifier.align(Alignment.End)
                     ) {
-                        if (isEditing) {
-                            Button(onClick = {
-                                // 保存编辑内容
-                                isEditing = false
-                            }) {
-                                Text("保存")
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.width(1.dp))
-                        }
-                        TextButton(onClick = { showResponseSrcDialog = false }) {
-                            Text(stringResource(android.R.string.ok))
-                        }
+                        Text(stringResource(android.R.string.ok))
                     }
                 }
             }
