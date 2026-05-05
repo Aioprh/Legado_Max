@@ -199,7 +199,10 @@ fun DirectLinkUploadScreen(
                 }
                 is UploadState.TestSuccess -> {
                     AlertDialog(
-                        onDismissRequest = { testingRule = null },
+                        onDismissRequest = { 
+                            testingRule = null
+                            viewModel.resetUploadState()
+                        },
                         title = { Text("测试成功") },
                         text = { 
                             Column {
@@ -218,7 +221,12 @@ fun DirectLinkUploadScreen(
                             }
                         },
                         confirmButton = {
-                            TextButton(onClick = { testingRule = null }) {
+                            TextButton(
+                                onClick = { 
+                                    testingRule = null
+                                    viewModel.resetUploadState()
+                                }
+                            ) {
                                 Text("确定")
                             }
                         }
@@ -226,11 +234,19 @@ fun DirectLinkUploadScreen(
                 }
                 is UploadState.TestError -> {
                     AlertDialog(
-                        onDismissRequest = { testingRule = null },
+                        onDismissRequest = { 
+                            testingRule = null
+                            viewModel.resetUploadState()
+                        },
                         title = { Text("测试失败") },
                         text = { Text(state.message) },
                         confirmButton = {
-                            TextButton(onClick = { testingRule = null }) {
+                            TextButton(
+                                onClick = { 
+                                    testingRule = null
+                                    viewModel.resetUploadState()
+                                }
+                            ) {
                                 Text("确定")
                             }
                         }

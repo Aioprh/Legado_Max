@@ -205,6 +205,10 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
         }
     }
 
+    fun resetUploadState() {
+        _uploadState.value = UploadState.Idle
+    }
+
     private suspend fun loadStats() {
         _stats.value = repository.getUploadStats()
     }

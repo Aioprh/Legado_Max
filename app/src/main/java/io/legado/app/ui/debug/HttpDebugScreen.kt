@@ -22,14 +22,7 @@
  */
 package io.legado.app.ui.debug
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -40,14 +33,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import io.legado.app.BuildConfig
@@ -131,7 +120,6 @@ fun HttpDebugScreen(
     // 对话框显示状态
     var showMenu by remember { mutableStateOf(false) }
     var showUaDialog by remember { mutableStateOf(false) }
-    var showResponseSrcDialog by remember { mutableStateOf(false) }
     var showRequestSrcDialog by remember { mutableStateOf(false) }
 
     // 自定义UA输入对话框
@@ -168,88 +156,6 @@ fun HttpDebugScreen(
                 }
             }
         )
-    }
-
-    // 响应源码查看对话框
-    if (showResponseSrcDialog && lastResponse != null) {
-        val response = lastResponse!!
-        val sb = StringBuilder()
-        sb.append("=== 响应行 ===\n")
-        sb.append("HTTP/1.1 ${response.code()} ${response.message()}\n\n")
-        sb.append("=== 响应头 ===\n")
-        response.raw.headers.forEach { (name, value) ->
-            sb.append("$name: $value\n")
-        }
-        sb.append("\n=== 响应体 ===\n")
-        sb.append(response.body)
-        
-        val responseSrcText = sb.toString()
-        val scrollState = rememberScrollState()
-        
-        Dialog(onDismissRequest = { showResponseSrcDialog = false }) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = containerColor
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(R.string.debug_response_src),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        // 编辑内容按钮 - 打开全屏编辑
-                        IconButton(onClick = {
-                            val intent = android.content.Intent(context, io.legado.app.ui.code.CodeEditActivity::class.java).apply {
-                                putExtra("text", responseSrcText)
-                                putExtra("title", context.getString(R.string.debug_response_src))
-                            }
-                            context.startActivity(intent)
-                        }) {
-                            Icon(Icons.Default.Code, contentDescription = "编辑内容")
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // 内容显示
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                    ) {
-                        Text(
-                            text = responseSrcText,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(scrollState)
-                        )
-                        
-                        // 可拖动的垂直滚动条
-                        VerticalDraggableScrollbar(
-                            scrollState = scrollState,
-                            modifier = Modifier
-                                .align(Alignment.CenterEnd)
-                                .padding(horizontal = 2.dp)
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    TextButton(
-                        onClick = { showResponseSrcDialog = false },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text(stringResource(android.R.string.ok))
-                    }
-                }
-            }
-        }
     }
 
     // 请求源码查看对话框
@@ -326,7 +232,24 @@ fun HttpDebugScreen(
                                 text = { Text(stringResource(R.string.debug_response_src)) },
                                 onClick = {
                                     showMenu = false
-                                    showResponseSrcDialog = true
+                                    // 直接跳转到代码编辑界面
+                                    lastResponse?.let { response ->
+                                        val sb = StringBuilder()
+                                        sb.append("=== 响应行 ===\n")
+                                        sb.append("HTTP/1.1 ${response.code()} ${response.message()}\n\n")
+                                        sb.append("=== 响应头 ===\n")
+                                        response.raw.headers.forEach { (name, value) ->
+                                            sb.append("$name: $value\n")
+                                        }
+                                        sb.append("\n=== 响应体 ===\n")
+                                        sb.append(response.body)
+                                        
+                                        val intent = android.content.Intent(context, io.legado.app.ui.code.CodeEditActivity::class.java).apply {
+                                            putExtra("text", sb.toString())
+                                            putExtra("title", context.getString(R.string.debug_response_src))
+                                        }
+                                        context.startActivity(intent)
+                                    }
                                 },
                                 enabled = lastResponse != null,
                                 leadingIcon = {
@@ -812,93 +735,4 @@ private fun buildRequestSrc(
         sb.append(bodyText)
     }
     return sb.toString()
-}
-
-/**
- * 可拖动的垂直滚动条组件
- * 
- * @param scrollState 滚动状态
- * @param modifier 修饰符
- * @param scrollbarWidth 滚动条宽度
- * @param minScrollbarHeight 滚动条最小高度
- * @param scrollbarColor 滚动条颜色
- */
-@Composable
-private fun VerticalDraggableScrollbar(
-    scrollState: ScrollState,
-    modifier: Modifier = Modifier,
-    scrollbarWidth: Dp = 6.dp,
-    minScrollbarHeight: Dp = 32.dp,
-    scrollbarColor: Color = Color.Gray.copy(alpha = 0.6f)
-) {
-    if (scrollState.maxValue == 0) return
-    
-    // 计算滚动条位置
-    val scrollProgress = scrollState.value.toFloat() / scrollState.maxValue.toFloat()
-    
-    Box(
-        modifier = modifier
-            .width(scrollbarWidth)
-            .fillMaxHeight()
-            .draggable(
-                orientation = Orientation.Vertical,
-                state = rememberDraggableState { delta ->
-                    // 将拖动转换为滚动
-                    val scrollAmount = (delta / scrollState.viewportSize) * scrollState.maxValue
-                    val newScrollValue = (scrollState.value + scrollAmount).toInt()
-                        .coerceIn(0, scrollState.maxValue)
-                    scrollState.dispatchRawDelta(newScrollValue - scrollState.value.toFloat())
-                }
-            )
-    ) {
-        Box(
-            modifier = Modifier
-                .width(scrollbarWidth)
-                .height(minScrollbarHeight)
-                .offset(y = (scrollProgress * (scrollState.viewportSize - minScrollbarHeight.value)).toInt().dp)
-                .background(scrollbarColor, RoundedCornerShape(3.dp))
-        )
-    }
-}
-
-/**
- * 绘制垂直滚动条的 Modifier（已弃用，使用 VerticalDraggableScrollbar 替代）
- * 
- * @param scrollState 滚动状态
- * @param scrollbarWidth 滚动条宽度
- * @param scrollbarColor 滚动条颜色
- * @param scrollbarCornerRadius 滚动条圆角半径
- */
-@Deprecated("Use VerticalDraggableScrollbar instead", ReplaceWith("VerticalDraggableScrollbar(scrollState)"))
-private fun Modifier.drawVerticalScrollbar(
-    scrollState: ScrollState,
-    scrollbarWidth: Dp = 4.dp,
-    scrollbarColor: Color = Color.Gray.copy(alpha = 0.5f),
-    scrollbarCornerRadius: Dp = 2.dp
-): Modifier = this then Modifier.drawWithContent {
-    drawContent()
-    
-    val viewportHeight = size.height
-    val totalContentHeight = scrollState.maxValue + viewportHeight
-    
-    if (totalContentHeight > viewportHeight) {
-        val scrollbarWidthPx = scrollbarWidth.toPx()
-        val scrollbarHeight = maxOf(scrollbarWidthPx, (viewportHeight / totalContentHeight) * viewportHeight)
-        val scrollProgress = if (scrollState.maxValue > 0) {
-            scrollState.value.toFloat() / scrollState.maxValue.toFloat()
-        } else {
-            0f
-        }
-        val scrollbarOffsetY = scrollProgress * (viewportHeight - scrollbarHeight)
-        
-        val scrollbarLeft = size.width - scrollbarWidthPx
-        val cornerRadiusPx = scrollbarCornerRadius.toPx()
-        
-        drawRoundRect(
-            color = scrollbarColor,
-            topLeft = Offset(scrollbarLeft, scrollbarOffsetY),
-            size = Size(scrollbarWidthPx, scrollbarHeight),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx, cornerRadiusPx)
-        )
-    }
 }
