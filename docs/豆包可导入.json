@@ -1,0 +1,35 @@
+{
+  "concurrentRate": "",
+  "contentType": "audio/aac",
+  "enabledCookieJar": false,
+  "header": "",
+  "id": 1778057624436,
+  "jsLib": "var doubaoApiBase = 'https://api.sway99.com/api/app/api/doubao_tts';\nvar doubaoApiKey = '8c97b4c7-4ecb-5dc2-3d9b-5987571224c2';\nvar speakerMap = {\n    '桃子女声': 'taozi',\n    '爽快女声': 'shuangkuai',\n    '甜美女声': 'tianmei',\n    '清澈女声': 'qingche',\n    '阳光男声': 'male',\n    '沉稳男声': 'chenwen',\n    '英文女声': 'en_female'\n};\nfunction doubaoTTS(text, speed) {\n    var info = this.source.getLoginInfoMap();\n    var speaker = info.get('音色') || '桃子女声';\n    var speakerId = speakerMap[speaker] || 'taozi';\n    var apiSpeed = Math.max(-100, Math.min(100, (speed - 5) * 20));\n    var pitch = info.get('音调') || '0';\n    var url = doubaoApiBase + '?action=synthesize' +\n        '&text=' + encodeURIComponent(text) +\n        '&speaker=' + speakerId +\n        '&speed=' + apiSpeed +\n        '&pitch=' + pitch +\n        '&api_key=' + doubaoApiKey;\n    var response = java.ajax(url);\n    var json = JSON.parse(response);\n    if (json.code === 0 && json.data && json.data.audio_url) {\n        return json.data.audio_url;\n    } else {\n        throw new Error(json.msg || 'TTS合成失败');\n    }\n}",
+  "lastUpdateTime": 1778059440161,
+  "loginCheckJs": "result",
+  "loginUi": [
+    {
+      "name": "音色",
+      "viewName": "'音色：'",
+      "type": "select",
+      "chars": ["桃子女声", "爽快女声", "甜美女声", "清澈女声", "阳光男声", "沉稳男声", "英文女声"],
+      "style": {
+        "layout_flexGrow": 1,
+        "layout_flexBasisPercent": 0.4
+      }
+    },
+    {
+      "name": "音调",
+      "viewName": "'音调(-100~100)：'",
+      "type": "text",
+      "style": {
+        "layout_flexGrow": 1,
+        "layout_flexBasisPercent": 0.4,
+        "layout_wrapBefore": true
+      }
+    }
+  ],
+  "loginUrl": "function login() {\n    var speaker = result['音色'];\n    var info = source.getLoginInfoMap();\n    info['音色'] = speaker || '桃子女声';\n    info['音调'] = result['音调'] || '0';\n    source.putLoginInfo(JSON.stringify(info));\n    java.clearTtsCache();\n    java.toast('已切换音色：' + info['音色']);\n}",
+  "name": "豆包TTS语音合成",
+  "url": "@js:doubaoTTS(speakText, speakSpeed);"
+}

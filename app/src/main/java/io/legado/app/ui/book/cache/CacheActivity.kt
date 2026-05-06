@@ -25,6 +25,7 @@ import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.ActivityCacheBookBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.DialogSelectSectionExportBinding
+import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.getExportFileName
 import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.tryParesExportFileName
@@ -55,6 +56,7 @@ import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.verificationField
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.conflate
@@ -334,6 +336,24 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
                 configExportSection(path, position)
             } else {
                 startExport(path, position)
+            }
+        }
+    }
+
+    override fun clearCache(position: Int) {
+        adapter.getItem(position)?.let { book ->
+            alert(R.string.clear_cache) {
+                setMessage(getString(R.string.sure_clear_cache, book.name))
+                noButton()
+                yesButton {
+                    lifecycleScope.launch(IO) {
+                        BookHelp.clearCache(book)
+                        viewModel.cacheChapters.remove(book.bookUrl)
+                        withContext(Main) {
+                            notifyItemChanged(book.bookUrl)
+                        }
+                    }
+                }
             }
         }
     }
