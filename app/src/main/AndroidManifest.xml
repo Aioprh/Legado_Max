@@ -367,6 +367,10 @@
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
         <activity
+            android:name=".ui.book.read.config.TtsDebugActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
+        <activity
             android:name=".ui.debug.TimestampConvertActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />

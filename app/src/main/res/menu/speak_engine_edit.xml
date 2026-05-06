@@ -16,6 +16,12 @@
         app:showAsAction="always" />
 
     <item
+        android:id="@+id/menu_debug"
+        android:icon="@drawable/ic_bug_report"
+        android:title="调试"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/menu_login"
         android:title="@string/login"
         app:showAsAction="never" />
