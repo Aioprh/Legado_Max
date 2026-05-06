@@ -10,6 +10,7 @@ import androidx.room.Update
 import io.legado.app.constant.AppPattern
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.BookSourcePart
+import io.legado.app.help.config.SourceConfig
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.splitNotBlank
 import kotlinx.coroutines.Dispatchers.IO
@@ -343,9 +344,19 @@ interface BookSourceDao {
                 groups.add(group)
             }
         }
-        return groups.sortedWith { o1, o2 ->
-            o1.cnCompare(o2)
+        val savedOrder = SourceConfig.getBookSourceGroupOrder()
+        if (savedOrder.isEmpty()) {
+            return groups.sortedWith { o1, o2 ->
+                o1.cnCompare(o2)
+            }
         }
+        val orderMap = savedOrder.withIndex().associate { it.value to it.index }
+        val orderedGroups = groups.sortedWith { o1, o2 ->
+            val order1 = orderMap[o1] ?: Int.MAX_VALUE
+            val order2 = orderMap[o2] ?: Int.MAX_VALUE
+            order1.compareTo(order2)
+        }
+        return orderedGroups
     }
 
     fun allGroups(): List<String> = dealGroups(allGroupsUnProcessed)
