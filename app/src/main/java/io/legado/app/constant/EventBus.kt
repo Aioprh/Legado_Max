@@ -71,4 +71,7 @@ object EventBus {
 
     // ── 搜索 ──
     const val SEARCH_RESULT = "searchResult"                // 搜索结果更新
+
+    // ── 封面模板 ──
+    const val COVER_HTML_TEMPLATE_CHANGED = "coverHtmlTemplateChanged"  // HTML封面模板变更
 }

@@ -62,8 +62,6 @@ import io.legado.app.utils.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.mozilla.javascript.Context
-import org.mozilla.javascript.Scriptable
 import splitties.init.appCtx
 import java.util.Date
 
@@ -1219,64 +1217,99 @@ suspend fun testTtsEngine(
     val debugLogs = mutableListOf<String>()
     
     return try {
-        onLog("INFO", "初始化Rhino脚本引擎")
-        val rhino = Context.enter()
-        val scope: Scriptable = rhino.initStandardObjects()
+        onLog("INFO", "准备测试参数")
         
         val result = mutableMapOf<String, Any>()
         result.putAll(loginInfo)
         result["音色"] = speaker
         result["音调"] = pitch
         
-        onLog("INFO", "设置脚本参数: result=${GSON.toJson(result)}")
-        onLog("INFO", "设置脚本参数: speakText=$text")
-        onLog("INFO", "设置脚本参数: speakSpeed=$speed")
+        onLog("INFO", "登录信息: ${GSON.toJson(result)}")
+        onLog("INFO", "测试文本: $text")
+        onLog("INFO", "语速: $speed")
         
-        scope.put("result", scope, result)
-        scope.put("speakText", scope, text)
-        scope.put("speakSpeed", scope, speed)
+        onLog("INFO", "保存登录信息到TTS配置")
+        tts.putLoginInfo(GSON.toJson(result))
         
-        tts.jsLib?.let { jsLib ->
-            onLog("INFO", "加载jsLib代码 (${jsLib.length}字符)")
-            rhino.evaluateString(scope, jsLib, "jsLib", 1, null)
-            onLog("INFO", "jsLib代码加载成功")
-        }
+        onLog("INFO", "创建AnalyzeUrl实例")
+        val analyzeUrl = io.legado.app.model.analyzeRule.AnalyzeUrl(
+            tts.url,
+            speakText = text,
+            speakSpeed = speed,
+            source = tts,
+            readTimeout = 30 * 1000L
+        )
         
-        onLog("INFO", "查找doubaoTTS函数")
-        val ttsFunction = scope.get("doubaoTTS", scope)
-        if (ttsFunction !is org.mozilla.javascript.Function) {
-            onLog("ERROR", "未找到doubaoTTS函数，当前类型: ${ttsFunction?.javaClass?.name}")
-            return TtsTestResult(
-                success = false,
-                errorMessage = "未找到doubaoTTS函数",
-                debugLogs = debugLogs,
-                jsLibCode = tts.jsLib,
-                resultData = result
-            )
-        }
+        onLog("INFO", "构建请求URL")
+        val url = analyzeUrl.url
+        onLog("INFO", "请求URL: $url")
         
-        onLog("INFO", "调用doubaoTTS函数")
-        val audioUrl = ttsFunction.call(rhino, scope, scope, arrayOf<Any?>(text, speed))
-        onLog("INFO", "函数返回值: $audioUrl (${audioUrl?.javaClass?.name})")
+        onLog("INFO", "发送HTTP请求")
+        val response = analyzeUrl.getResponseAwait()
+        onLog("INFO", "响应状态码: ${response.code}")
+        onLog("INFO", "响应Content-Type: ${response.headers["Content-Type"]}")
         
-        if (audioUrl is String && audioUrl.startsWith("http")) {
-            onLog("INFO", "获取到有效的音频URL")
-            TtsTestResult(
-                success = true,
-                audioUrl = audioUrl,
-                debugLogs = debugLogs,
-                jsLibCode = tts.jsLib,
-                resultData = result
-            )
-        } else {
-            onLog("ERROR", "未获取到有效的音频URL")
-            TtsTestResult(
-                success = false,
-                errorMessage = "未获取到有效的音频URL: $audioUrl",
-                debugLogs = debugLogs,
-                jsLibCode = tts.jsLib,
-                resultData = result
-            )
+        val contentType = response.headers["Content-Type"]?.substringBefore(";")
+        
+        when {
+            contentType?.startsWith("audio/") == true -> {
+                onLog("INFO", "直接返回音频流")
+                val audioUrl = url.toString()
+                response.body.close()
+                
+                TtsTestResult(
+                    success = true,
+                    audioUrl = audioUrl,
+                    debugLogs = debugLogs,
+                    jsLibCode = tts.jsLib,
+                    resultData = result
+                )
+            }
+            
+            contentType == "application/json" || contentType?.startsWith("text/") == true -> {
+                onLog("INFO", "返回JSON数据")
+                val responseBody = response.body.string()
+                onLog("INFO", "响应内容: $responseBody")
+                
+                val json = io.legado.app.utils.jsonPath.parse(responseBody)
+                val audioUrl = json.read<String>("$.data.audio_url") 
+                    ?: json.read<String>("$.audio_url")
+                    ?: json.read<String>("$.url")
+                
+                if (!audioUrl.isNullOrBlank()) {
+                    onLog("INFO", "从JSON中提取音频URL: $audioUrl")
+                    TtsTestResult(
+                        success = true,
+                        audioUrl = audioUrl,
+                        debugLogs = debugLogs,
+                        jsLibCode = tts.jsLib,
+                        resultData = result
+                    )
+                } else {
+                    onLog("ERROR", "JSON中未找到音频URL")
+                    TtsTestResult(
+                        success = false,
+                        errorMessage = "JSON中未找到音频URL\n响应: $responseBody",
+                        debugLogs = debugLogs,
+                        jsLibCode = tts.jsLib,
+                        resultData = result
+                    )
+                }
+            }
+            
+            else -> {
+                val responseBody = response.body.string()
+                onLog("ERROR", "未知的Content-Type: $contentType")
+                onLog("ERROR", "响应内容: $responseBody")
+                
+                TtsTestResult(
+                    success = false,
+                    errorMessage = "未知的Content-Type: $contentType\n响应: $responseBody",
+                    debugLogs = debugLogs,
+                    jsLibCode = tts.jsLib,
+                    resultData = result
+                )
+            }
         }
     } catch (e: Exception) {
         onLog("ERROR", "异常: ${e.message}")
@@ -1287,9 +1320,6 @@ suspend fun testTtsEngine(
             debugLogs = debugLogs,
             jsLibCode = tts.jsLib
         )
-    } finally {
-        Context.exit()
-        onLog("INFO", "Rhino引擎已释放")
     }
 }
 
