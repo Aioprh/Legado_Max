@@ -1,5 +1,15 @@
 # 书源网络请求（WebBook）详解
 
+主要内容 ：
+
+- 六大核心方法： searchBook 、 exploreBook 、 getBookInfo 、 getChapterList 、 getContent 、 preciseSearch
+- 异步回调 vs 挂起函数两种调用方式
+- 登录检测 JS 机制
+- 重定向检测
+- 分析层组件（BookList/BookInfo/BookChapterList/BookContent）
+- 协程上下文传递
+- 与 CacheBook 的协作
+
 ## 概述
 
 `WebBook` 是一个 **object（单例）**，是**书源网络请求的核心入口**。它封装了所有与书源相关的网络操作，提供：

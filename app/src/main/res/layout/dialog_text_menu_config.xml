@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:padding="16dp"
         android:text="@string/text_menu_config_desc"
-        android:textColor="@color/secondaryText"
+        android:textColor="?android:attr/textColorSecondary"
         android:textSize="14sp" />
 
     <androidx.recyclerview.widget.RecyclerView

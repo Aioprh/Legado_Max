@@ -1,9 +1,11 @@
 package io.legado.app.ui.book.read
 
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
@@ -25,6 +27,18 @@ class TextMenuConfigDialog : DialogFragment() {
     
     private lateinit var binding: DialogTextMenuConfigBinding
     private val adapter by lazy { MenuItemsAdapter() }
+    
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.run {
+            setGravity(Gravity.CENTER)
+            setBackgroundDrawableResource(R.color.background)
+            val attr = attributes
+            attr.width = WindowManager.LayoutParams.MATCH_PARENT
+            attr.height = WindowManager.LayoutParams.WRAP_CONTENT
+            attributes = attr
+        }
+    }
     
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -61,10 +75,6 @@ class TextMenuConfigDialog : DialogFragment() {
     private inner class MenuItemsAdapter : RecyclerAdapter<TextMenuConfig.MenuItemInfo, ItemTextMenuConfigBinding>(requireContext()) {
         
         private val hiddenIds: MutableSet<Int> = mutableSetOf()
-        
-        init {
-            updateItems()
-        }
         
         fun updateItems() {
             hiddenIds.clear()

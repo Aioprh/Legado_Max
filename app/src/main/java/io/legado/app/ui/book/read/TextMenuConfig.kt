@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.read
 
 import android.content.Context
+import android.util.Log
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.utils.getPrefString
@@ -19,6 +20,8 @@ import io.legado.app.utils.putPrefString
  * 4. 切换菜单项显示状态：TextMenuConfig.toggleMenuItem(context, itemId)
  */
 object TextMenuConfig {
+    
+    private const val TAG = "TextMenuConfig"
     
     /**
      * 菜单项信息
@@ -57,10 +60,13 @@ object TextMenuConfig {
      */
     fun getHiddenMenuItemIds(context: Context): Set<Int> {
         val hiddenStr = context.getPrefString(PreferKey.hiddenTextMenuItems, "")
+        Log.d(TAG, "getHiddenMenuItemIds: hiddenStr='$hiddenStr'")
         return if (hiddenStr.isNullOrEmpty()) {
             emptySet()
         } else {
-            hiddenStr.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
+            val ids = hiddenStr.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
+            Log.d(TAG, "getHiddenMenuItemIds: ids=$ids")
+            ids
         }
     }
     
@@ -69,6 +75,7 @@ object TextMenuConfig {
      */
     fun setHiddenMenuItemIds(context: Context, ids: Set<Int>) {
         val hiddenStr = ids.joinToString(",")
+        Log.d(TAG, "setHiddenMenuItemIds: ids=$ids, hiddenStr='$hiddenStr'")
         context.putPrefString(PreferKey.hiddenTextMenuItems, hiddenStr)
     }
     
@@ -80,6 +87,8 @@ object TextMenuConfig {
         val hiddenIds = getHiddenMenuItemIds(context).toMutableSet()
         val isCurrentlyHidden = itemId in hiddenIds
         
+        Log.d(TAG, "toggleMenuItem: itemId=$itemId, isCurrentlyHidden=$isCurrentlyHidden")
+        
         if (isCurrentlyHidden) {
             // 当前是隐藏状态，切换为显示
             hiddenIds.remove(itemId)
@@ -89,7 +98,9 @@ object TextMenuConfig {
         }
         
         setHiddenMenuItemIds(context, hiddenIds)
-        return !isCurrentlyHidden  // 返回切换后的状态
+        val newState = !isCurrentlyHidden
+        Log.d(TAG, "toggleMenuItem: newState=$newState")
+        return newState  // 返回切换后的状态
     }
     
     /**
@@ -103,6 +114,7 @@ object TextMenuConfig {
      * 重置为默认配置（所有菜单项都显示）
      */
     fun resetToDefault(context: Context) {
+        Log.d(TAG, "resetToDefault")
         context.putPrefString(PreferKey.hiddenTextMenuItems, "")
     }
 }

@@ -1,5 +1,17 @@
 # 导出书籍服务（ExportBookService）详解
 
+主要内容 ：
+
+- 导出流程（Txt/Epub/自定义分卷）
+- ExportConfig 导出配置结构
+- exportProgress / exportMsg 进度共享机制
+- Epub 文件结构详解
+- 模板系统（内置/自定义）
+- 通知栏更新
+- 与 CacheActivity 的交互
+- 错误处理与性能优化
+
+
 ## 概述
 
 `ExportBookService` 是一个**前台 Service**，负责将缓存的书籍导出为 `txt` 或 `epub` 格式。支持：

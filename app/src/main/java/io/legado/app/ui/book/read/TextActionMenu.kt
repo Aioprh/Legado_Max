@@ -61,7 +61,7 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
     }
     
     /** 所有菜单项列表（包括自定义和系统菜单项） */
-    private val menuItems: List<MenuItemImpl>
+    private var menuItems: List<MenuItemImpl> = emptyList()
     
     /** 可见菜单项列表（前5项） */
     private val visibleMenuItems = arrayListOf<MenuItemImpl>()
@@ -72,10 +72,9 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
     /** 是否展开文本菜单，从配置中读取 */
     private val expandTextMenu get() = context.getPrefBoolean(PreferKey.expandTextMenu)
     
-    /** 隐藏的菜单项ID集合，从配置中读取 */
-    private val hiddenMenuItemIds: Set<Int> by lazy {
-        TextMenuConfig.getHiddenMenuItemIds(context)
-    }
+    /** 隐藏的菜单项ID集合，每次都从配置中读取 */
+    private val hiddenMenuItemIds: Set<Int>
+        get() = TextMenuConfig.getHiddenMenuItemIds(context)
 
     init {
         @SuppressLint("InflateParams")
@@ -86,31 +85,6 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
         isOutsideTouchable = false  // 点击外部不关闭
         isFocusable = false     // 不获取焦点
 
-        // 构建菜单项
-        val myMenu = MenuBuilder(context)      // 自定义菜单
-        val otherMenu = MenuBuilder(context)    // 系统菜单（Android 6.0+）
-        SupportMenuInflater(context).inflate(R.menu.content_select_action, myMenu)
-        
-        // Android 6.0+ 支持系统文本处理菜单
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            onInitializeMenu(otherMenu)
-        }
-        
-        // 合并自定义菜单和系统菜单
-        val allMenuItems = myMenu.visibleItems + otherMenu.visibleItems
-        
-        // 过滤掉被隐藏的菜单项
-        menuItems = allMenuItems.filter { it.itemId !in hiddenMenuItemIds }
-        
-        // 将菜单项分为可见项（前5项）和更多项（第5项之后）
-        if (menuItems.size > 5) {
-            visibleMenuItems.addAll(menuItems.subList(0, 5))
-            moreMenuItems.addAll(menuItems.subList(5, menuItems.size))
-        } else {
-            // 如果菜单项少于5个，全部显示在主菜单
-            visibleMenuItems.addAll(menuItems)
-        }
-        
         // 设置适配器
         binding.recyclerView.adapter = adapter
         binding.recyclerViewMore.adapter = adapter
@@ -142,7 +116,44 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
                 binding.recyclerView.visible()
             }
         }
-        upMenu()
+        
+        // 加载菜单项
+        reloadMenuItems()
+    }
+    
+    /**
+     * 重新加载菜单项
+     * 从配置中读取隐藏的菜单项，重新构建菜单列表
+     */
+    private fun reloadMenuItems() {
+        // 构建菜单项
+        val myMenu = MenuBuilder(context)      // 自定义菜单
+        val otherMenu = MenuBuilder(context)    // 系统菜单（Android 6.0+）
+        SupportMenuInflater(context).inflate(R.menu.content_select_action, myMenu)
+        
+        // Android 6.0+ 支持系统文本处理菜单
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            onInitializeMenu(otherMenu)
+        }
+        
+        // 合并自定义菜单和系统菜单
+        val allMenuItems = myMenu.visibleItems + otherMenu.visibleItems
+        
+        // 过滤掉被隐藏的菜单项
+        menuItems = allMenuItems.filter { it.itemId !in hiddenMenuItemIds }
+        
+        // 清空旧数据
+        visibleMenuItems.clear()
+        moreMenuItems.clear()
+        
+        // 将菜单项分为可见项（前5项）和更多项（第5项之后）
+        if (menuItems.size > 5) {
+            visibleMenuItems.addAll(menuItems.subList(0, 5))
+            moreMenuItems.addAll(menuItems.subList(5, menuItems.size))
+        } else {
+            // 如果菜单项少于5个，全部显示在主菜单
+            visibleMenuItems.addAll(menuItems)
+        }
     }
 
     /**
@@ -150,6 +161,9 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
      * 根据配置决定是展开显示所有菜单项，还是折叠显示前5项
      */
     fun upMenu() {
+        // 重新加载菜单项，确保使用最新的配置
+        reloadMenuItems()
+        
         if (expandTextMenu) {
             // 展开模式：显示所有菜单项，隐藏更多按钮
             adapter.setItems(menuItems)

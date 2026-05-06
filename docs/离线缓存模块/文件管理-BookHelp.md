@@ -1,5 +1,17 @@
 # 文件管理（BookHelp）详解
 
+主要内容：
+
+缓存文件夹结构与布局
+章节内容读写（saveText/getContent）
+图片下载与管理（saveImage/getImage）
+ConcurrentHashMap + Mutex 防并发机制
+漫画缓存清理策略
+Epub 文件处理
+缓存扫描（getChapterFiles）
+去重标题管理
+@Synchronized 文件写入保护
+
 ## 概述
 
 `BookHelp` 是一个 **object（单例）**，负责管理书籍相关的本地文件操作，包括：
