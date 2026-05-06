@@ -71,6 +71,7 @@ class DirectLinkUploadActivity : AppCompatActivity() {
     }
 
     private fun initTheme() {
+        ThemeConfig.applyTheme(this)
         val theme = ThemeConfig.getTheme()
         when (theme) {
             io.legado.app.constant.Theme.Dark -> {
@@ -94,7 +95,10 @@ class DirectLinkUploadActivity : AppCompatActivity() {
         val isTransparentStatusBar = AppConfig.isTransparentStatusBar
         val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
         setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, true)
-        setLightStatusBar(ColorUtils.isColorLight(backgroundColor))
+        val bgColor = ThemeStore.backgroundColor(this)
+        val isNightTheme = AppConfig.isNightTheme
+        val isLight = !isNightTheme && ColorUtils.isColorLight(bgColor)
+        setLightStatusBar(isLight)
         if (AppConfig.immNavigationBar) {
             setNavigationBarColorAuto(ThemeStore.navigationBarColor(this))
         } else {
@@ -111,95 +115,65 @@ fun DirectLinkUploadContent(
 ) {
     val context = LocalContext.current
 
-    val primaryColorValue = remember { ThemeStore.primaryColor(context) }
-    val accentColor = remember { ThemeStore.accentColor(context) }
-    val bgColor = remember { ThemeStore.backgroundColor(context) }
-    val textPrimaryColor = remember { ThemeStore.textColorPrimary(context) }
-    val textSecondaryColor = remember { ThemeStore.textColorSecondary(context) }
+    val isNightTheme = AppConfig.isNightTheme
+    val primaryColorValue = ThemeStore.primaryColor(context)
+    val accentColor = ThemeStore.accentColor(context)
+    val bgColor = ThemeStore.backgroundColor(context)
+    val textPrimaryColor = ThemeStore.textColorPrimary(context)
+    val textSecondaryColor = ThemeStore.textColorSecondary(context)
 
-    val isLight = ColorUtils.isColorLight(bgColor)
-    val background = remember(bgColor) { Color(bgColor) }
-    val primary = remember(primaryColorValue) { Color(primaryColorValue) }
-    val secondary = remember(accentColor) { Color(accentColor) }
-    val onBackground = remember(textPrimaryColor) { Color(textPrimaryColor) }
-    val onBackgroundVariant = remember(textSecondaryColor) { Color(textSecondaryColor) }
+    val isLight = !isNightTheme && ColorUtils.isColorLight(bgColor)
+    val background = Color(bgColor)
+    val primary = Color(accentColor)  // 使用强调色作为主色调
+    val secondary = Color(primaryColorValue)  // 使用主色调作为次要颜色
+    val onBackground = Color(textPrimaryColor)
+    val onBackgroundVariant = Color(textSecondaryColor)
     
-    val surface = remember(background, isLight) {
-        lerp(background, Color.White, if (isLight) 0.04f else 0.10f)
-    }
-    
-    val surfaceVariant = remember(background, onBackground, isLight) {
-        lerp(background, onBackground, if (isLight) 0.05f else 0.14f)
-    }
-    
-    val outline = remember(background, onBackground, isLight) {
-        lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
-    }
-    
-    val pagePrimary = remember(primary, isLight) {
-        if (isLight) primary else lerp(primary, Color.White, 0.20f)
-    }
-    
-    val pageOnBackgroundVariant = remember(onBackgroundVariant, onBackground, isLight) {
-        if (isLight) onBackgroundVariant else lerp(onBackgroundVariant, onBackground, 0.32f)
-    }
-    
-    val pageSurfaceVariant = remember(surfaceVariant, onBackground, isLight) {
-        if (isLight) surfaceVariant else lerp(surfaceVariant, onBackground, 0.08f)
-    }
+    val surface = lerp(background, if (isLight) Color.White else Color.Black, if (isLight) 0.04f else 0.10f)
+    val surfaceVariant = lerp(background, onBackground, if (isLight) 0.05f else 0.14f)
+    val outline = lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
+    val onSurfaceVariant = lerp(onBackground, if (isLight) Color.Black else Color.White, if (isLight) 0.2f else 0.2f)
 
-    val colorScheme = remember(
-        isLight,
-        pagePrimary,
-        secondary,
-        background,
-        onBackground,
-        pageOnBackgroundVariant,
-        surface,
-        pageSurfaceVariant,
-        outline
-    ) {
-        if (isLight) {
-            lightColorScheme(
-                primary = pagePrimary,
-                secondary = secondary,
-                tertiary = secondary,
-                background = background,
-                surface = surface,
-                surfaceVariant = pageSurfaceVariant,
-                secondaryContainer = pageSurfaceVariant,
-                tertiaryContainer = pageSurfaceVariant,
-                outline = outline,
-                outlineVariant = outline.copy(alpha = 0.75f),
-                onPrimary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
-                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
-                onBackground = onBackground,
-                onSurface = onBackground,
-                onSurfaceVariant = pageOnBackgroundVariant,
-                error = Color(0xFFE53935),
-                onError = Color.White
-            )
-        } else {
-            darkColorScheme(
-                primary = pagePrimary,
-                secondary = secondary,
-                tertiary = secondary,
-                background = background,
-                surface = surface,
-                surfaceVariant = pageSurfaceVariant,
-                secondaryContainer = pageSurfaceVariant,
-                tertiaryContainer = pageSurfaceVariant,
-                outline = outline,
-                outlineVariant = outline.copy(alpha = 0.8f),
-                onPrimary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
-                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
-                onBackground = onBackground,
-                onSurface = onBackground,
-                onSurfaceVariant = pageOnBackgroundVariant,
-                error = Color(0xFFFF5252),
-                onError = Color.Black
-            )
-        }
+    val colorScheme = if (isLight) {
+        lightColorScheme(
+            primary = primary,
+            secondary = secondary,
+            tertiary = secondary,
+            background = background,
+            surface = surface,
+            surfaceVariant = surfaceVariant,
+            secondaryContainer = surfaceVariant,
+            tertiaryContainer = surfaceVariant,
+            outline = outline,
+            outlineVariant = outline.copy(alpha = 0.75f),
+            onPrimary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+            onSecondary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
+            onBackground = onBackground,
+            onSurface = onBackground,
+            onSurfaceVariant = onSurfaceVariant,
+            error = Color(0xFFE53935),
+            onError = Color.White
+        )
+    } else {
+        darkColorScheme(
+            primary = primary,
+            secondary = secondary,
+            tertiary = secondary,
+            background = background,
+            surface = surface,
+            surfaceVariant = surfaceVariant,
+            secondaryContainer = surfaceVariant,
+            tertiaryContainer = surfaceVariant,
+            outline = outline,
+            outlineVariant = outline.copy(alpha = 0.8f),
+            onPrimary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+            onSecondary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
+            onBackground = onBackground,
+            onSurface = onBackground,
+            onSurfaceVariant = onSurfaceVariant,
+            error = Color(0xFFFF5252),
+            onError = Color.Black
+        )
     }
 
     MaterialTheme(colorScheme = colorScheme) {
@@ -220,19 +194,16 @@ fun DirectLinkUploadBoxWithBackground(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         if (bgDrawable != null) {
-            val overlayAlpha = if (bgColor.luminance() > 0.5f) 0.22f else 0.40f
-            
             Image(
                 bitmap = bgDrawable.toBitmap().asImageBitmap(),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(bgColor.copy(alpha = overlayAlpha))
+                    .background(bgColor)
             )
         } else {
             Box(

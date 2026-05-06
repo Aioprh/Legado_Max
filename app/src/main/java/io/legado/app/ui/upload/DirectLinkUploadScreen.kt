@@ -57,6 +57,13 @@ fun DirectLinkUploadScreen(
         topBar = {
             TopAppBar(
                 title = { Text("直链上传配置") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.secondary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
+                    titleContentColor = MaterialTheme.colorScheme.onSecondary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSecondary
+                ),
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
@@ -72,7 +79,8 @@ fun DirectLinkUploadScreen(
                     }
                     DropdownMenu(
                         expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
+                        onDismissRequest = { showMenu = false },
+                        containerColor = MaterialTheme.colorScheme.surface
                     ) {
                         DropdownMenuItem(
                             text = { Text("粘贴规则") },
@@ -86,18 +94,24 @@ fun DirectLinkUploadScreen(
                                     }
                                 }
                             },
-                            leadingIcon = { Icon(Icons.Default.ContentPaste, null) }
+                            leadingIcon = { 
+                                Icon(Icons.Default.ContentPaste, null, tint = MaterialTheme.colorScheme.primary) 
+                            }
                         )
                         DropdownMenuItem(
                             text = { Text("导入默认规则") },
                             onClick = { showImportDialog = true; showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.CloudDownload, null) }
+                            leadingIcon = { 
+                                Icon(Icons.Default.CloudDownload, null, tint = MaterialTheme.colorScheme.primary) 
+                            }
                         )
-                        Divider()
+                        HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text("清除历史") },
                             onClick = { showClearDialog = true; showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.DeleteSweep, null) }
+                            leadingIcon = { 
+                                Icon(Icons.Default.DeleteSweep, null, tint = MaterialTheme.colorScheme.primary) 
+                            }
                         )
                     }
                 }
@@ -105,12 +119,22 @@ fun DirectLinkUploadScreen(
         }
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            TabRow(selectedTabIndex = selectedTab) {
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface
+            ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
-                        text = { Text(title) }
+                        text = { 
+                            Text(
+                                title,
+                                color = if (selectedTab == index) MaterialTheme.colorScheme.primary 
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                            ) 
+                        }
                     )
                 }
             }
@@ -162,6 +186,7 @@ fun DirectLinkUploadScreen(
         if (showClearDialog) {
             AlertDialog(
                 onDismissRequest = { showClearDialog = false },
+                containerColor = MaterialTheme.colorScheme.surface,
                 title = { Text("清除历史") },
                 text = { Text("确定要清除所有上传历史记录吗？") },
                 confirmButton = {
@@ -176,7 +201,7 @@ fun DirectLinkUploadScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showClearDialog = false }) {
-                        Text("取消")
+                        Text("取消", color = MaterialTheme.colorScheme.primary)
                     }
                 }
             )
@@ -185,6 +210,7 @@ fun DirectLinkUploadScreen(
         if (showImportDialog) {
             AlertDialog(
                 onDismissRequest = { showImportDialog = false },
+                containerColor = MaterialTheme.colorScheme.surface,
                 title = { Text("导入默认规则") },
                 text = { Text("将导入2个预置的网盘规则（喵公子网盘①、喵公子网盘②）。\n\n注意：如果已有规则，将不会重复导入。") },
                 confirmButton = {
@@ -194,12 +220,12 @@ fun DirectLinkUploadScreen(
                             showImportDialog = false
                         }
                     ) {
-                        Text("导入")
+                        Text("导入", color = MaterialTheme.colorScheme.primary)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showImportDialog = false }) {
-                        Text("取消")
+                        Text("取消", color = MaterialTheme.colorScheme.primary)
                     }
                 }
             )
@@ -210,6 +236,7 @@ fun DirectLinkUploadScreen(
                 is UploadState.Testing -> {
                     AlertDialog(
                         onDismissRequest = { },
+                        containerColor = MaterialTheme.colorScheme.surface,
                         title = { Text("测试中") },
                         text = { 
                             Row(
@@ -217,7 +244,8 @@ fun DirectLinkUploadScreen(
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
-                                    strokeWidth = 2.dp
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Text("正在测试上传规则...")
@@ -232,6 +260,7 @@ fun DirectLinkUploadScreen(
                             testingRule = null
                             viewModel.resetUploadState()
                         },
+                        containerColor = MaterialTheme.colorScheme.surface,
                         title = { Text("测试成功") },
                         text = { 
                             Column {
@@ -256,7 +285,7 @@ fun DirectLinkUploadScreen(
                                     viewModel.resetUploadState()
                                 }
                             ) {
-                                Text("确定")
+                                Text("确定", color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     )
@@ -267,6 +296,7 @@ fun DirectLinkUploadScreen(
                             testingRule = null
                             viewModel.resetUploadState()
                         },
+                        containerColor = MaterialTheme.colorScheme.surface,
                         title = { Text("测试失败") },
                         text = { Text(state.message) },
                         confirmButton = {
@@ -276,7 +306,7 @@ fun DirectLinkUploadScreen(
                                     viewModel.resetUploadState()
                                 }
                             ) {
-                                Text("确定")
+                                Text("确定", color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     )
@@ -356,7 +386,10 @@ fun RuleCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -396,29 +429,30 @@ fun RuleCard(
                     
                     DropdownMenu(
                         expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
+                        onDismissRequest = { showMenu = false },
+                        containerColor = MaterialTheme.colorScheme.surface
                     ) {
                         DropdownMenuItem(
                             text = { Text("设为默认") },
                             onClick = { onSetDefault(); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Star, null) }
+                            leadingIcon = { Icon(Icons.Default.Star, null, tint = MaterialTheme.colorScheme.primary) }
                         )
                         DropdownMenuItem(
                             text = { Text("编辑") },
                             onClick = { onEdit(); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Edit, null) }
+                            leadingIcon = { Icon(Icons.Default.Edit, null, tint = MaterialTheme.colorScheme.primary) }
                         )
                         DropdownMenuItem(
                             text = { Text("测试") },
                             onClick = { onTest(); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.PlayArrow, null) }
+                            leadingIcon = { Icon(Icons.Default.PlayArrow, null, tint = MaterialTheme.colorScheme.primary) }
                         )
                         DropdownMenuItem(
                             text = { Text("拷贝规则") },
                             onClick = { onCopy(); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.ContentCopy, null) }
+                            leadingIcon = { Icon(Icons.Default.ContentCopy, null, tint = MaterialTheme.colorScheme.primary) }
                         )
-                        Divider()
+                        HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text("删除", color = MaterialTheme.colorScheme.error) },
                             onClick = { onDelete(); showMenu = false },
@@ -502,7 +536,10 @@ fun HistoryCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -647,9 +684,9 @@ fun HistoryCard(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("删除")
+                    Text("删除", color = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -670,6 +707,7 @@ fun RuleEditDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
         title = { Text(if (rule == null) "添加上传规则" else "编辑上传规则") },
         text = {
             Column {
@@ -732,12 +770,12 @@ fun RuleEditDialog(
                           downloadUrlRule.isNotBlank() && 
                           summary.isNotBlank()
             ) {
-                Text("保存")
+                Text("保存", color = MaterialTheme.colorScheme.primary)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text("取消", color = MaterialTheme.colorScheme.primary)
             }
         }
     )
