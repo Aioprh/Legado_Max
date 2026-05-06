@@ -204,6 +204,7 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
             }
 
             R.id.menu_export_all -> exportAll()
+            R.id.menu_clear_all_cache -> clearAllCache()
             R.id.menu_enable_replace -> AppConfig.exportUseReplace = !item.isChecked
             // 更改菜单状态[enableCustomExport]
             R.id.menu_enable_custom_export -> AppConfig.enableCustomExport = !item.isChecked
@@ -348,10 +349,31 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
                 yesButton {
                     lifecycleScope.launch(IO) {
                         BookHelp.clearCache(book)
-                        viewModel.cacheChapters.remove(book.bookUrl)
+                        viewModel.cacheChapters[book.bookUrl] = hashSetOf()
                         withContext(Main) {
                             notifyItemChanged(book.bookUrl)
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun clearAllCache() {
+        alert(R.string.clear_cache) {
+            setMessage(R.string.sure_clear_all_cache)
+            noButton()
+            yesButton {
+                lifecycleScope.launch(IO) {
+                    BookHelp.clearCache()
+                    viewModel.cacheChapters.clear()
+                    adapter.getItems().forEach { book ->
+                        if (!book.isLocal) {
+                            viewModel.cacheChapters[book.bookUrl] = hashSetOf()
+                        }
+                    }
+                    withContext(Main) {
+                        adapter.notifyDataSetChanged()
                     }
                 }
             }

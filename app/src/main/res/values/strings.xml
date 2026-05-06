@@ -183,6 +183,7 @@
     <string name="aloud_stop">Speak Stopped</string>
     <string name="clear_cache">Clear cache</string>
     <string name="sure_clear_cache">Are you sure to clear cache of %s?</string>
+    <string name="sure_clear_all_cache">Are you sure to clear all cache?</string>
     <string name="clear_cache_success">Cache cleared</string>
     <string name="action_save">Save</string>
     <string name="edit_source">Edit source</string>
