@@ -379,24 +379,21 @@ class CoverHtmlCodeDialog : BaseDialogFragment(R.layout.dialog_cover_html_code) 
             return
         }
 
-        val savedTemplate = if (isNewTemplate) {
-            CoverHtmlTemplateConfig.Template(
+        if (isNewTemplate) {
+            val newTemplate = CoverHtmlTemplateConfig.Template(
                 id = CoverHtmlTemplateConfig.generateId(),
                 name = name.ifEmpty { "未命名模板" },
                 htmlCode = htmlCode,
-                isSelected = false
+                isSelected = true
             )
+            CoverHtmlTemplateConfig.addTemplate(newTemplate)
+            CoverHtmlTemplateConfig.setSelectedTemplate(newTemplate.id)
         } else {
-            template?.copy(
+            val existingTemplate = template?.copy(
                 name = name.ifEmpty { "未命名模板" },
                 htmlCode = htmlCode
             ) ?: return
-        }
-
-        if (isNewTemplate) {
-            CoverHtmlTemplateConfig.addTemplate(savedTemplate)
-        } else {
-            CoverHtmlTemplateConfig.updateTemplate(savedTemplate)
+            CoverHtmlTemplateConfig.updateTemplate(existingTemplate)
         }
         CoverImageView.clearHtmlCoverCache()
         postEvent(EventBus.BOOKSHELF_REFRESH, "")

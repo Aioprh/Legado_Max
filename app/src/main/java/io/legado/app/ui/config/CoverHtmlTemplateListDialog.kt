@@ -57,7 +57,12 @@ class CoverHtmlTemplateListDialog : BaseDialogFragment(R.layout.dialog_recycler_
             }
         }
         binding.recyclerView.adapter = adapter
-        adapter.setItems(CoverHtmlTemplateConfig.templateList)
+        refreshList()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshList()
     }
 
     /**
