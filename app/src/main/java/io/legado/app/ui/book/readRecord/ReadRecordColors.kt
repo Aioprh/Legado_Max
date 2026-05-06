@@ -8,9 +8,7 @@ import androidx.compose.ui.graphics.luminance
 
 @Composable
 fun readRecordTopBarContainerColor(): Color {
-    val background = MaterialTheme.colorScheme.background
-    val alpha = if (background.luminance() > 0.5f) 0.82f else 0.94f
-    return MaterialTheme.colorScheme.surface.copy(alpha = alpha)
+    return MaterialTheme.colorScheme.secondary
 }
 
 @Composable

@@ -76,7 +76,7 @@ fun SummaryCard(
                     Text(
                         text = "$bookCount",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                     Text(

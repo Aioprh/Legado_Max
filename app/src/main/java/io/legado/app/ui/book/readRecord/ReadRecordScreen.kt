@@ -260,7 +260,9 @@ fun ReadRecordScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             } else if (
                 (displayMode == DisplayMode.AGGREGATE && state.groupedRecords.isEmpty()) ||
@@ -491,7 +493,8 @@ private fun DateHeader(date: String, totalDuration: Long) {
             Text(
                 text = formatFriendlyDate(date),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = formatReadDuration(totalDuration),
@@ -520,7 +523,8 @@ private fun TimelineDateHeader(date: String, totalDuration: Long) {
             Text(
                 text = formatFriendlyDate(date),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = formatReadDuration(totalDuration),
