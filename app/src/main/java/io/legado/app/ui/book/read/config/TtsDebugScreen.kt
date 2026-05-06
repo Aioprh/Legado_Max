@@ -93,6 +93,7 @@ class TtsDebugActivity : AppCompatActivity() {
 
     private var bgDrawable: Drawable? = null
     private var ttsId: Long = 0
+    private var mediaPlayer: android.media.MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         initTheme()
@@ -107,9 +108,18 @@ class TtsDebugActivity : AppCompatActivity() {
             TtsDebugContent(
                 bgDrawable = bgDrawable,
                 ttsId = ttsId,
-                onBackClick = { finish() }
+                onBackClick = { finish() },
+                mediaPlayer = mediaPlayer,
+                onMediaPlayerCreated = { mediaPlayer = it }
             )
         }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 
     @Suppress("DEPRECATION")
@@ -168,7 +178,9 @@ class TtsDebugActivity : AppCompatActivity() {
 fun TtsDebugContent(
     bgDrawable: Drawable?,
     ttsId: Long,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    mediaPlayer: android.media.MediaPlayer?,
+    onMediaPlayerCreated: (android.media.MediaPlayer?) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -270,7 +282,9 @@ fun TtsDebugContent(
         ) {
             TtsDebugScreen(
                 ttsId = ttsId,
-                onBackClick = onBackClick
+                onBackClick = onBackClick,
+                mediaPlayer = mediaPlayer,
+                onMediaPlayerCreated = onMediaPlayerCreated
             )
         }
     }
@@ -312,7 +326,9 @@ fun TtsDebugBoxWithBackground(
 @Composable
 fun TtsDebugScreen(
     ttsId: Long,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    mediaPlayer: android.media.MediaPlayer?,
+    onMediaPlayerCreated: (android.media.MediaPlayer?) -> Unit
 ) {
     val context = LocalContext.current
     val containerColor = debugToolsCardContainerColor()
@@ -329,6 +345,9 @@ fun TtsDebugScreen(
     var testResult by remember { mutableStateOf<TtsTestResult?>(null) }
     var testHistory by remember { mutableStateOf<List<TestHistory>>(emptyList()) }
     var debugLogs by remember { mutableStateOf<List<DebugLog>>(emptyList()) }
+    
+    var isPlaying by remember { mutableStateOf(false) }
+    var currentMediaPlayer by remember { mutableStateOf(mediaPlayer) }
     
     val speakers = remember { mutableStateListOf<String>() }
     val loginInfo = remember { mutableStateMapOf<String, String>() }
@@ -1050,6 +1069,93 @@ fun TtsDebugScreen(
                 
                 testResult?.let { result ->
                     Spacer(modifier = Modifier.height(12.dp))
+                    
+                    if (result.success && result.audioUrl != null) {
+                        Surface(
+                            color = containerColor,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "试听",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                
+                                Spacer(modifier = Modifier.height(12.dp))
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            if (isPlaying) {
+                                                currentMediaPlayer?.stop()
+                                                currentMediaPlayer?.release()
+                                                currentMediaPlayer = null
+                                                onMediaPlayerCreated(null)
+                                                isPlaying = false
+                                            } else {
+                                                try {
+                                                    val mp = android.media.MediaPlayer()
+                                                    mp.setDataSource(result.audioUrl)
+                                                    mp.prepareAsync()
+                                                    mp.setOnPreparedListener {
+                                                        mp.start()
+                                                        isPlaying = true
+                                                    }
+                                                    mp.setOnCompletionListener {
+                                                        mp.release()
+                                                        currentMediaPlayer = null
+                                                        onMediaPlayerCreated(null)
+                                                        isPlaying = false
+                                                    }
+                                                    mp.setOnErrorListener { _, what, extra ->
+                                                        context.toastOnUi("播放失败: $what, $extra")
+                                                        mp.release()
+                                                        currentMediaPlayer = null
+                                                        onMediaPlayerCreated(null)
+                                                        isPlaying = false
+                                                        true
+                                                    }
+                                                    currentMediaPlayer = mp
+                                                    onMediaPlayerCreated(mp)
+                                                } catch (e: Exception) {
+                                                    context.toastOnUi("播放失败: ${e.message}")
+                                                    isPlaying = false
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                                            contentDescription = null
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(if (isPlaying) "停止" else "播放")
+                                    }
+                                    
+                                    OutlinedButton(
+                                        onClick = {
+                                            context.openUrl(result.audioUrl!!)
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Default.OpenInNew, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("浏览器打开")
+                                    }
+                                }
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                     
                     Surface(
                         color = containerColor,
