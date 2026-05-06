@@ -22,9 +22,6 @@ class WebSocketServer(port: Int) : NanoWSD(port) {
             "/bookSourceDebug" -> {
                 BookSourceDebugWebSocket(handshake)
             }
-            "/rssSourceDebug" -> {
-                RssSourceDebugWebSocket(handshake)
-            }
             "/searchBook" -> {
                 BookSearchWebSocket(handshake)
             }

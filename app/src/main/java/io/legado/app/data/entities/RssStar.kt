@@ -8,6 +8,7 @@ import io.legado.app.utils.fromJsonObject
 import kotlinx.parcelize.IgnoredOnParcel
 
 
+// 订阅收藏表
 @Entity(
     tableName = "rssStars",
     primaryKeys = ["origin", "link"]

@@ -2,6 +2,7 @@ package io.legado.app.ui.config
 
 import android.annotation.SuppressLint
 import android.content.ComponentName
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -34,6 +35,7 @@ import io.legado.app.model.ImageProvider
 import io.legado.app.receiver.SharedReceiverActivity
 import io.legado.app.service.WebService
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.ui.upload.DirectLinkUploadActivity
 import io.legado.app.ui.video.config.SettingsDialog
 import io.legado.app.ui.widget.code.addJsonPattern
 import io.legado.app.ui.widget.number.NumberPickerDialog
@@ -144,7 +146,7 @@ class OtherConfigFragment : PreferenceFragment(),
             PreferKey.webServiceToken -> showWebServiceTokenDialog()
 
             PreferKey.cleanCache -> clearCache()
-            PreferKey.uploadRule -> showDialogFragment<DirectLinkUploadConfig>()
+            PreferKey.uploadRule -> startActivity(Intent(context, DirectLinkUploadActivity::class.java))
             PreferKey.checkSource -> showDialogFragment<CheckSourceConfig>()
             PreferKey.bitmapCacheSize -> {
                 NumberPickerDialog(requireContext())

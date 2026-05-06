@@ -68,8 +68,8 @@ import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
  * - bookmark.json: 书签列表
  * - bookGroup.json: 书籍分组
  * - bookSource.json: 书源列表
- * - rssSources.json: RSS源列表
- * - rssStar.json: RSS收藏
+ * - rssSources.json: 订阅源列表
+ * - rssStar.json: 订阅收藏
  * - replaceRule.json: 替换规则
  * - readRecord.json: 阅读记录
  * - searchHistory.json: 搜索历史
@@ -112,7 +112,6 @@ object Backup {
             "readRecordDetail.json",
             "readRecordSession.json",
             "searchHistory.json",
-            "sourceSub.json",
             "txtTocRule.json",
             "httpTTS.json",
             "keyboardAssists.json",
@@ -128,6 +127,7 @@ object Backup {
         )
     }
 
+    /** 获取所有背景图片文件 */
     fun getBackgroundImageFiles(): List<File> {
         val files = mutableListOf<File>()
         
@@ -353,7 +353,6 @@ object Backup {
         writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", backupPath)
         writeListToJson(appDb.readRecordDao.getAllSessionsList(), "readRecordSession.json", backupPath)
         writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", backupPath)
-        writeListToJson(appDb.ruleSubDao.all, "sourceSub.json", backupPath)
         writeListToJson(appDb.txtTocRuleDao.all, "txtTocRule.json", backupPath)
         writeListToJson(appDb.httpTTSDao.all, "httpTTS.json", backupPath)
         writeListToJson(appDb.keyboardAssistsDao.all, "keyboardAssists.json", backupPath)

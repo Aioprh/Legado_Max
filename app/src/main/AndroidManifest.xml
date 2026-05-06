@@ -126,6 +126,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- 图标8 -->
+        <activity
+            android:name=".ui.welcome.Launcher8"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/launcher8">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <!-- 主界面 -->
         <activity
             android:name=".ui.main.MainActivity"
@@ -335,6 +347,11 @@
         <!-- URL访问记录 -->
         <activity
             android:name=".ui.urlRecord.UrlRecordActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
+        <!-- 直链上传配置 -->
+        <activity
+            android:name=".ui.upload.DirectLinkUploadActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
         <activity

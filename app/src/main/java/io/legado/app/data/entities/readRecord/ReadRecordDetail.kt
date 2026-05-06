@@ -2,7 +2,7 @@ package io.legado.app.data.entities.readRecord
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
-
+// 阅读记录详情
 @Entity(
     tableName = "readRecordDetail",
     primaryKeys = ["deviceId", "bookName", "bookAuthor", "date"]

@@ -1,65 +1,245 @@
 package io.legado.app.ui.debug
 
-import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.TextView
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import io.legado.app.R
-import io.legado.app.base.BaseActivity
-import io.legado.app.databinding.ActivityDebugToolsBinding
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.graphics.drawable.toBitmap
+import io.legado.app.help.config.ThemeConfig
+import io.legado.app.help.config.AppConfig
+import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.setLightStatusBar
+import io.legado.app.utils.fullScreen
+import io.legado.app.utils.setNavigationBarColorAuto
+import io.legado.app.utils.setStatusBarColorAuto
+import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
-import io.legado.app.utils.setEdgeEffectColor
+import io.legado.app.lib.theme.ThemeStore
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 
-class DebugToolsActivity : BaseActivity<ActivityDebugToolsBinding>() {
+class DebugToolsActivity : AppCompatActivity() {
 
-    override val binding by lazy { ActivityDebugToolsBinding.inflate(layoutInflater) }
+    private var bgDrawable: Drawable? = null
 
-    private val tools = listOf(
-        DebugTool(R.string.debug_encode_tools, R.string.debug_encode_tools_desc, EncodeToolsActivity::class.java),
-        DebugTool(R.string.debug_http_request, R.string.debug_http_request_desc, HttpDebugActivity::class.java),
-        DebugTool(R.string.debug_regex_test, R.string.debug_regex_test_desc, RegexTestActivity::class.java),
-        DebugTool(R.string.debug_timestamp, R.string.debug_timestamp_desc, TimestampConvertActivity::class.java)
-    )
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        binding.recyclerView.setEdgeEffectColor(primaryColor)
-        binding.recyclerView.layoutManager = LinearLayoutManager(this)
-        binding.recyclerView.adapter = ToolsAdapter()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        initTheme()
+        super.onCreate(savedInstanceState)
+        setupSystemBar()
+        loadBackgroundImage()
+        enableEdgeToEdge()
+        
+        setContent {
+            DebugToolsContent(
+                bgDrawable = bgDrawable,
+                onBackClick = { finish() }
+            )
+        }
     }
 
-    private data class DebugTool(
-        val titleRes: Int,
-        val descRes: Int,
-        val activityClass: Class<*>
-    )
-
-    private inner class ToolsAdapter : RecyclerView.Adapter<ToolsAdapter.ViewHolder>() {
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_debug_tool, parent, false)
-            return ViewHolder(view)
+    @Suppress("DEPRECATION")
+    private fun loadBackgroundImage() {
+        try {
+            val metrics = android.util.DisplayMetrics()
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                val windowMetrics = windowManager.currentWindowMetrics
+                val bounds = windowMetrics.bounds
+                metrics.widthPixels = bounds.width()
+                metrics.heightPixels = bounds.height()
+            } else {
+                windowManager.defaultDisplay.getMetrics(metrics)
+            }
+            bgDrawable = ThemeConfig.getBgImage(this, metrics)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
+    }
 
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val tool = tools[position]
-            holder.tvTitle.setText(tool.titleRes)
-            holder.tvDesc.setText(tool.descRes)
-            holder.itemView.setOnClickListener {
-                val intent = Intent(this@DebugToolsActivity, tool.activityClass)
-                startActivity(intent)
+    private fun initTheme() {
+        val theme = ThemeConfig.getTheme()
+        when (theme) {
+            io.legado.app.constant.Theme.Dark -> {
+                setTheme(io.legado.app.R.style.AppTheme_Dark)
+            }
+            io.legado.app.constant.Theme.Light -> {
+                setTheme(io.legado.app.R.style.AppTheme_Light)
+            }
+            else -> {
+                if (ColorUtils.isColorLight(primaryColor)) {
+                    setTheme(io.legado.app.R.style.AppTheme_Light)
+                } else {
+                    setTheme(io.legado.app.R.style.AppTheme_Dark)
+                }
             }
         }
+    }
 
-        override fun getItemCount(): Int = tools.size
-
-        inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val tvTitle: TextView = view.findViewById(R.id.tv_title)
-            val tvDesc: TextView = view.findViewById(R.id.tv_desc)
+    private fun setupSystemBar() {
+        fullScreen()
+        val isTransparentStatusBar = AppConfig.isTransparentStatusBar
+        val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
+        setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, true)
+        setLightStatusBar(ColorUtils.isColorLight(backgroundColor))
+        if (AppConfig.immNavigationBar) {
+            setNavigationBarColorAuto(ThemeStore.navigationBarColor(this))
+        } else {
+            val nbColor = ColorUtils.darkenColor(ThemeStore.navigationBarColor(this))
+            setNavigationBarColorAuto(nbColor)
         }
+    }
+}
+
+@Composable
+fun DebugToolsContent(
+    bgDrawable: Drawable?,
+    onBackClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    val primaryColor = remember { ThemeStore.primaryColor(context) }
+    val accentColor = remember { ThemeStore.accentColor(context) }
+    val bgColor = remember { ThemeStore.backgroundColor(context) }
+    val textPrimaryColor = remember { ThemeStore.textColorPrimary(context) }
+    val textSecondaryColor = remember { ThemeStore.textColorSecondary(context) }
+
+    val isLight = ColorUtils.isColorLight(bgColor)
+    val background = remember(bgColor) { Color(bgColor) }
+    val primary = remember(primaryColor) { Color(primaryColor) }
+    val secondary = remember(accentColor) { Color(accentColor) }
+    val onBackground = remember(textPrimaryColor) { Color(textPrimaryColor) }
+    val onBackgroundVariant = remember(textSecondaryColor) { Color(textSecondaryColor) }
+    
+    val surface = remember(background, isLight) {
+        lerp(background, Color.White, if (isLight) 0.04f else 0.10f)
+    }
+    
+    val surfaceVariant = remember(background, onBackground, isLight) {
+        lerp(background, onBackground, if (isLight) 0.05f else 0.14f)
+    }
+    
+    val outline = remember(background, onBackground, isLight) {
+        lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
+    }
+    
+    val pagePrimary = remember(primary, isLight) {
+        if (isLight) primary else lerp(primary, Color.White, 0.20f)
+    }
+    
+    val pageOnBackgroundVariant = remember(onBackgroundVariant, onBackground, isLight) {
+        if (isLight) onBackgroundVariant else lerp(onBackgroundVariant, onBackground, 0.32f)
+    }
+    
+    val pageSurfaceVariant = remember(surfaceVariant, onBackground, isLight) {
+        if (isLight) surfaceVariant else lerp(surfaceVariant, onBackground, 0.08f)
+    }
+
+    val colorScheme = remember(
+        isLight,
+        pagePrimary,
+        secondary,
+        background,
+        onBackground,
+        pageOnBackgroundVariant,
+        surface,
+        pageSurfaceVariant,
+        outline
+    ) {
+        if (isLight) {
+            lightColorScheme(
+                primary = pagePrimary,
+                secondary = secondary,
+                tertiary = secondary,
+                background = background,
+                surface = surface,
+                surfaceVariant = pageSurfaceVariant,
+                secondaryContainer = pageSurfaceVariant,
+                tertiaryContainer = pageSurfaceVariant,
+                outline = outline,
+                outlineVariant = outline.copy(alpha = 0.75f),
+                onPrimary = if (ColorUtils.isColorLight(primaryColor)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onBackground = onBackground,
+                onSurface = onBackground,
+                onSurfaceVariant = pageOnBackgroundVariant,
+                error = Color(0xFFE53935),
+                onError = Color.White
+            )
+        } else {
+            darkColorScheme(
+                primary = pagePrimary,
+                secondary = secondary,
+                tertiary = secondary,
+                background = background,
+                surface = surface,
+                surfaceVariant = pageSurfaceVariant,
+                secondaryContainer = pageSurfaceVariant,
+                tertiaryContainer = pageSurfaceVariant,
+                outline = outline,
+                outlineVariant = outline.copy(alpha = 0.8f),
+                onPrimary = if (ColorUtils.isColorLight(primaryColor)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onBackground = onBackground,
+                onSurface = onBackground,
+                onSurfaceVariant = pageOnBackgroundVariant,
+                error = Color(0xFFFF5252),
+                onError = Color.Black
+            )
+        }
+    }
+
+    MaterialTheme(colorScheme = colorScheme) {
+        DebugToolsBoxWithBackground(
+            bgDrawable = bgDrawable,
+            bgColor = background
+        ) {
+            DebugToolsScreen(onBackClick = onBackClick)
+        }
+    }
+}
+
+@Composable
+fun DebugToolsBoxWithBackground(
+    bgDrawable: Drawable?,
+    bgColor: Color,
+    content: @Composable () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (bgDrawable != null) {
+            val overlayAlpha = if (bgColor.luminance() > 0.5f) 0.22f else 0.40f
+            
+            Image(
+                bitmap = bgDrawable.toBitmap().asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(bgColor.copy(alpha = overlayAlpha))
+            )
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize().background(bgColor)
+            )
+        }
+
+        content()
     }
 }
