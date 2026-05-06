@@ -112,7 +112,6 @@ object Backup {
             "readRecordDetail.json",
             "readRecordSession.json",
             "searchHistory.json",
-            "sourceSub.json",
             "txtTocRule.json",
             "httpTTS.json",
             "keyboardAssists.json",
@@ -128,6 +127,7 @@ object Backup {
         )
     }
 
+    /** 获取所有背景图片文件 */
     fun getBackgroundImageFiles(): List<File> {
         val files = mutableListOf<File>()
         
@@ -353,7 +353,6 @@ object Backup {
         writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", backupPath)
         writeListToJson(appDb.readRecordDao.getAllSessionsList(), "readRecordSession.json", backupPath)
         writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", backupPath)
-        writeListToJson(appDb.ruleSubDao.all, "sourceSub.json", backupPath)
         writeListToJson(appDb.txtTocRuleDao.all, "txtTocRule.json", backupPath)
         writeListToJson(appDb.httpTTSDao.all, "httpTTS.json", backupPath)
         writeListToJson(appDb.keyboardAssistsDao.all, "keyboardAssists.json", backupPath)
