@@ -68,8 +68,8 @@ import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
  * - bookmark.json: 书签列表
  * - bookGroup.json: 书籍分组
  * - bookSource.json: 书源列表
- * - rssSources.json: RSS源列表
- * - rssStar.json: RSS收藏
+ * - rssSources.json: 订阅源列表
+ * - rssStar.json: 订阅收藏
  * - replaceRule.json: 替换规则
  * - readRecord.json: 阅读记录
  * - searchHistory.json: 搜索历史

@@ -180,7 +180,7 @@ object BackupController {
             writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", webBackupPath)
             writeListToJson(appDb.readRecordDao.all, "readRecord.json", webBackupPath)
             writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", webBackupPath)
-            writeListToJson(appDb.ruleSubDao.all, "sourceSub.json", webBackupPath)
+            // writeListToJson(appDb.ruleSubDao.all, "sourceSub.json", webBackupPath)
             writeListToJson(appDb.txtTocRuleDao.all, "txtTocRule.json", webBackupPath)
             writeListToJson(appDb.httpTTSDao.all, "httpTTS.json", webBackupPath)
             writeListToJson(appDb.keyboardAssistsDao.all, "keyboardAssists.json", webBackupPath)
