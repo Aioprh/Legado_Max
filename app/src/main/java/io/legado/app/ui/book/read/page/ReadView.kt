@@ -86,34 +86,48 @@ class ReadView(context: Context, attrs: AttributeSet) :
     //是否停止动画动作
     var isAbortAnim = false
 
-    //长按
-    private var longPressed = false
-    private val longPressTimeout = 600L
+    //长按相关变量
+    private var longPressed = false              // 是否已触发长按
+    private val longPressTimeout = 600L          // 长按超时时间（毫秒）
+    
+    /**
+     * 长按检测Runnable
+     * 在ACTION_DOWN时通过postDelayed延迟执行
+     * 如果在超时前移动或抬起，则取消该Runnable
+     */
     private val longPressRunnable = Runnable {
         longPressed = true
-        onLongPress()
+        onLongPress()  // 执行长按逻辑
     }
-    var isTextSelected = false
-    private var pressOnTextSelected = false
-    private val initialTextPos = TextPos(0, 0, 0)
+    
+    var isTextSelected = false                   // 是否有文本被选中
+    private var pressOnTextSelected = false      // 按下时是否已有文本被选中
+    private val initialTextPos = TextPos(0, 0, 0) // 初始选择位置
 
     private val slopSquare by lazy { ViewConfiguration.get(context).scaledTouchSlop }
-    private var pageSlopSquare: Int = slopSquare
-    var pageSlopSquare2: Int = pageSlopSquare * pageSlopSquare
-    private var pageTouchClick: Int = 0
-    private val tlRect = RectF()
-    private val tcRect = RectF()
-    private val trRect = RectF()
-    private val mlRect = RectF()
-    private val mcRect = RectF()
-    private val mrRect = RectF()
-    private val blRect = RectF()
-    private val bcRect = RectF()
-    private val brRect = RectF()
+    private var pageSlopSquare: Int = slopSquare          // 页面触摸滑动阈值
+    var pageSlopSquare2: Int = pageSlopSquare * pageSlopSquare  // 阈值的平方
+    private var pageTouchClick: Int = 0                   // 页面边缘点击阈值
+    
+    // 九宫格触摸区域矩形（用于判断点击位置）
+    private val tlRect = RectF()  // 左上
+    private val tcRect = RectF()  // 上中
+    private val trRect = RectF()  // 右上
+    private val mlRect = RectF()  // 左中
+    private val mcRect = RectF()  // 中中
+    private val mrRect = RectF()  // 右中
+    private val blRect = RectF()  // 左下
+    private val bcRect = RectF()  // 下中
+    private val brRect = RectF()  // 右下
+    
+    /** 文本边界迭代器，用于智能选择文本（按词边界） */
     private val boundary by lazy { BreakIterator.getWordInstance(Locale.getDefault()) }
+    
+    /** 节流更新的进度回调 */
     private val upProgressThrottle = throttle(200) { post { upProgress() } }
-    val autoPager = AutoPager(this)
-    val isAutoPage get() = autoPager.isRunning
+    
+    val autoPager = AutoPager(this)  // 自动翻页器
+    val isAutoPage get() = autoPager.isRunning  // 是否正在自动翻页
 
     init {
         if (!isInEditMode) {
@@ -131,6 +145,10 @@ class ReadView(context: Context, attrs: AttributeSet) :
         upPageTouchClick()
     }
 
+    /**
+     * 设置九宫格触摸区域
+     * 将屏幕分为9个区域，用于判断点击位置执行不同操作
+     */
     private fun setRect9x() {
         tlRect.set(0f + pageTouchClick, 0f, width * ReadConstants.TOUCH_AREA_THIRD, height * ReadConstants.TOUCH_AREA_THIRD)
         tcRect.set(width * ReadConstants.TOUCH_AREA_THIRD, 0f, width * ReadConstants.TOUCH_AREA_TWO_THIRDS, height * ReadConstants.TOUCH_AREA_THIRD)
@@ -170,10 +188,17 @@ class ReadView(context: Context, attrs: AttributeSet) :
     }
 
     /**
-     * 触摸事件
+     * 触摸事件处理
+     * 
+     * 处理流程：
+     * 1. ACTION_DOWN: 记录起始点，延迟执行长按检测
+     * 2. ACTION_MOVE: 如果移动距离超过阈值，取消长按检测；如果已选择文本，则更新选择范围
+     * 3. ACTION_UP: 如果未移动且未长按，执行单击操作；如果已选择文本，显示操作菜单
+     * 4. ACTION_CANCEL: 处理取消事件
      */
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        // Android 11+ 处理系统手势区域
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val insets = this.rootWindowInsets.getInsetsIgnoringVisibility(
                 WindowInsets.Type.mandatorySystemGestures()
@@ -196,6 +221,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 callBack.screenOffTimerStart()
+                // 如果已有文本被选中，取消选择
                 if (isTextSelected) {
                     curPage.cancelSelect()
                     isTextSelected = false
@@ -204,6 +230,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
                     pressOnTextSelected = false
                 }
                 longPressed = false
+                // 延迟执行长按检测（600ms后执行）
                 postDelayed(longPressRunnable, longPressTimeout)
                 pressDown = true
                 isMove = false
@@ -216,15 +243,19 @@ class ReadView(context: Context, attrs: AttributeSet) :
                 if (!pressDown) return true
                 val absX = abs(startX - event.x)
                 val absY = abs(startY - event.y)
+                // 判断是否移动（超过触摸阈值）
                 if (!isMove) {
                     isMove = absX > slopSquare || absY > slopSquare
                 }
                 if (isMove) {
+                    // 移动时取消长按检测
                     longPressed = false
                     removeCallbacks(longPressRunnable)
                     if (isTextSelected) {
+                        // 如果已选择文本，更新选择范围
                         selectText(event.x, event.y)
                     } else {
+                        // 否则执行翻页动画
                         pageDelegate?.onTouch(event)
                     }
                 }
@@ -235,6 +266,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
                 removeCallbacks(longPressRunnable)
                 if (!pressDown) return true
                 pressDown = false
+                // 如果没有移动且没有长按，执行单击操作
                 if (!pageDelegate!!.isMoved && !isMove) {
                     if (!longPressed && !pressOnTextSelected) {
                         if (!curPage.onClick(startX, startY)) {
@@ -243,6 +275,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
                         return true
                     }
                 }
+                // 如果已选择文本，显示操作菜单
                 if (isTextSelected) {
                     callBack.showTextActionMenu()
                 } else if (pageDelegate!!.isMoved) {
@@ -255,6 +288,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
                 removeCallbacks(longPressRunnable)
                 if (!pressDown) return true
                 pressDown = false
+                // 取消时如果已选择文本，显示操作菜单
                 if (isTextSelected) {
                     callBack.showTextActionMenu()
                 } else if (pageDelegate!!.isMoved) {
@@ -316,7 +350,17 @@ class ReadView(context: Context, attrs: AttributeSet) :
     }
 
     /**
-     * 长按选择
+     * 长按选择文本
+     * 
+     * 功能说明：
+     * 1. 调用PageView的longPress方法获取触摸位置的文本
+     * 2. 使用BreakIterator智能选择完整的词/句子（而不是单个字符）
+     * 3. 设置选择起始和结束位置
+     * 
+     * 实现细节：
+     * - 向上查找段落开始位置
+     * - 向下查找段落结束位置
+     * - 使用BreakIterator按词边界确定选择范围
      */
     private fun onLongPress() {
         kotlin.runCatching {
@@ -331,6 +375,8 @@ class ReadView(context: Context, attrs: AttributeSet) :
                 var cIndex = textPos.columnIndex
                 var lineStart = textPos.lineIndex
                 var lineEnd = textPos.lineIndex
+                
+                // 向上查找段落开始
                 for (index in textPos.lineIndex - 1 downTo 0) {
                     val textLine = page.getLine(index)
                     if (textLine.isParagraphEnd) {
@@ -341,6 +387,8 @@ class ReadView(context: Context, attrs: AttributeSet) :
                         cIndex += textLine.charSize
                     }
                 }
+                
+                // 向下查找段落结束
                 for (index in textPos.lineIndex until page.lineSize) {
                     val textLine = page.getLine(index)
                     stringBuilder.append(textLine.text)
@@ -349,6 +397,8 @@ class ReadView(context: Context, attrs: AttributeSet) :
                         break
                     }
                 }
+                
+                // 使用BreakIterator按词边界确定选择范围
                 var start: Int
                 var end: Int
                 boundary.setText(stringBuilder.toString())
@@ -361,6 +411,8 @@ class ReadView(context: Context, attrs: AttributeSet) :
                     start = end
                     end = boundary.next()
                 }
+                
+                // 根据词边界位置计算实际的行和列索引
                 kotlin.run {
                     var ci = 0
                     for (index in lineStart..lineEnd) {
@@ -383,6 +435,8 @@ class ReadView(context: Context, attrs: AttributeSet) :
                         }
                     }
                 }
+                
+                // 设置选择起始和结束位置
                 curPage.selectStartMoveIndex(startPos)
                 curPage.selectEndMoveIndex(endPos)
             }
@@ -471,12 +525,17 @@ class ReadView(context: Context, attrs: AttributeSet) :
 
     /**
      * 选择文本
+     * 根据触摸位置更新文本选择范围
+     * 
+     * @param x 触摸点X坐标
+     * @param y 触摸点Y坐标
      */
     private fun selectText(x: Float, y: Float) {
         curPage.selectText(x, y) { textPos ->
             val compare = initialTextPos.compare(textPos)
             when {
                 compare > 0 -> {
+                    // 新位置在初始位置之前，更新起始位置
                     curPage.selectStartMoveIndex(textPos)
                     curPage.selectEndMoveIndex(
                         initialTextPos.relativePagePos,
@@ -486,6 +545,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
                 }
 
                 else -> {
+                    // 新位置在初始位置之后，更新结束位置
                     curPage.selectStartMoveIndex(initialTextPos)
                     curPage.selectEndMoveIndex(textPos)
                 }
