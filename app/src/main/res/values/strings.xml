@@ -704,6 +704,9 @@
     <string name="regex">Regex</string>
     <string name="example">Example</string>
     <string name="more_menu">More menu</string>
+    <string name="text_menu_config">Text Menu Config</string>
+    <string name="text_menu_config_desc">Select the menu items you want to display</string>
+    <string name="reset_to_default">Reset to Default</string>
     <string name="reduce">Minus</string>
     <string name="plus">Plus</string>
     <string name="system_typeface">System typeface</string>
