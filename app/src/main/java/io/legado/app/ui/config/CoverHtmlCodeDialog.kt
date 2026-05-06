@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.appcompat.app.AlertDialog
 import androidx.core.os.bundleOf
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
@@ -17,6 +18,7 @@ import io.legado.app.help.config.CoverHtmlTemplateConfig
 import io.legado.app.constant.EventBus
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.widget.image.CoverImageView
+import io.legado.app.model.BookCover
 import io.legado.app.ui.widget.code.addHtmlPattern
 import io.legado.app.ui.widget.code.addJsPattern
 import io.legado.app.utils.GSON
@@ -47,6 +49,9 @@ class CoverHtmlCodeDialog : BaseDialogFragment(R.layout.dialog_cover_html_code) 
 
     private var template: CoverHtmlTemplateConfig.Template? = null
     private var isNewTemplate: Boolean = false
+    private var hasUnsavedChanges: Boolean = false
+    private var originalHtmlCode: String = ""
+    private var originalName: String = ""
 
     companion object {
         private const val KEY_TEMPLATE = "template"
@@ -55,7 +60,9 @@ class CoverHtmlCodeDialog : BaseDialogFragment(R.layout.dialog_cover_html_code) 
         /**
          * 创建对话框实例
          * 
-         * @param template 要编辑的模板，为null时表示新建模板
+         * @param template 要编辑的模板
+         *                 - 非null：编辑指定模板
+         *                 - null且从模板列表调用：新建模板
          */
         fun newInstance(template: CoverHtmlTemplateConfig.Template?): CoverHtmlCodeDialog {
             return CoverHtmlCodeDialog().apply {
@@ -64,6 +71,17 @@ class CoverHtmlCodeDialog : BaseDialogFragment(R.layout.dialog_cover_html_code) 
                 } else {
                     arguments = bundleOf(KEY_IS_NEW to true)
                 }
+            }
+        }
+
+        /**
+         * 创建编辑当前选中模板的对话框实例
+         * 
+         * 用于从封面配置页直接进入编辑当前选中模板
+         */
+        fun newEditInstance(): CoverHtmlCodeDialog {
+            return CoverHtmlCodeDialog().apply {
+                // 不设置任何参数，parseArguments() 会自动加载当前选中模板
             }
         }
     }
@@ -98,8 +116,8 @@ class CoverHtmlCodeDialog : BaseDialogFragment(R.layout.dialog_cover_html_code) 
      * 解析传入参数，确定当前编辑的模板
      * 
      * 若从模板列表传入模板则编辑该模板；
-     * 若无传入（从封面配置页直接进入）则加载当前选中模板进行编辑，
-     * 保存时直接更新该模板而非创建新模板
+     * 若无传入且 isNewTemplate=true 则为新建模板模式；
+     * 若无传入且 isNewTemplate=false 则加载当前选中模板进行编辑
      */
     private fun parseArguments() {
         isNewTemplate = arguments?.getBoolean(KEY_IS_NEW) == true
@@ -107,7 +125,8 @@ class CoverHtmlCodeDialog : BaseDialogFragment(R.layout.dialog_cover_html_code) 
         if (templateJson != null) {
             template = GSON.fromJson(templateJson, CoverHtmlTemplateConfig.Template::class.java)
         }
-        if (template == null) {
+        // 只有非新建模式且 template 为 null 时，才加载当前选中模板
+        if (!isNewTemplate && template == null) {
             template = CoverHtmlTemplateConfig.getSelectedTemplate()
         }
     }
@@ -180,11 +199,16 @@ class CoverHtmlCodeDialog : BaseDialogFragment(R.layout.dialog_cover_html_code) 
             if (isNewTemplate) {
                 binding.editTemplateName.setText("")
                 binding.codeView.setText(DefaultData.coverHtmlTemplate)
+                originalName = ""
+                originalHtmlCode = DefaultData.coverHtmlTemplate
             } else {
                 val currentTemplate = template ?: return@launch
                 binding.editTemplateName.setText(currentTemplate.name)
                 binding.codeView.setText(currentTemplate.htmlCode)
+                originalName = currentTemplate.name
+                originalHtmlCode = currentTemplate.htmlCode
             }
+            hasUnsavedChanges = false
             binding.editBookName.setText("示例书名")
             binding.editAuthor.setText("示例作者")
             binding.webViewPreview.post {
@@ -196,18 +220,104 @@ class CoverHtmlCodeDialog : BaseDialogFragment(R.layout.dialog_cover_html_code) 
     /**
      * 检测模板是否在模板列表中被切换
      * 
-     * 从模板列表对话框返回后，若当前选中模板与编辑中的模板ID不同，
-     * 则自动加载新选中模板的内容并刷新预览
+     * 从模板列表对话框返回后：
+     * - 编辑模式：若当前选中模板与编辑中的模板ID不同，提示切换
+     * - 新建模式：若用户在列表中选择了其他模板，提示是否保存当前编辑
      */
     private fun refreshIfTemplateChanged() {
         val selected = CoverHtmlTemplateConfig.getSelectedTemplate()
         val current = template
-        if (current != null && selected.id != current.id) {
-            template = selected
-            binding.editTemplateName.setText(selected.name)
-            binding.codeView.setText(selected.htmlCode)
-            previewCover()
+        
+        if (isNewTemplate) {
+            // 新建模式下，如果用户选择了其他模板（不是当前正在编辑的"虚拟"模板）
+            // 检查是否有未保存的内容
+            val currentName = binding.editTemplateName.text?.toString()?.trim() ?: ""
+            val currentHtmlCode = binding.codeView.text?.toString()?.trim() ?: ""
+            val nameChanged = currentName != originalName
+            val htmlChanged = currentHtmlCode != originalHtmlCode
+            
+            if (nameChanged || htmlChanged) {
+                // 有编辑内容，提示是否保存
+                showSaveConfirmDialogForNewTemplate(selected)
+            } else {
+                // 无编辑内容，直接切换
+                switchToTemplateFromNew(selected)
+            }
+        } else if (current != null && selected.id != current.id) {
+            // 编辑模式，切换到其他模板
+            checkUnsavedChangesAndSwitch(selected)
         }
+    }
+
+    private fun showSaveConfirmDialogForNewTemplate(selected: CoverHtmlTemplateConfig.Template) {
+        val context = context ?: return
+        AlertDialog.Builder(context)
+            .setTitle(R.string.cover_html_save_changes)
+            .setMessage(R.string.cover_html_unsaved_hint)
+            .setPositiveButton(R.string.action_save) { _, _ ->
+                saveTemplate()
+                switchToTemplateFromNew(selected)
+            }
+            .setNegativeButton(R.string.discard) { _, _ ->
+                switchToTemplateFromNew(selected)
+            }
+            .setNeutralButton(R.string.cancel, null)
+            .create()
+            .show()
+    }
+
+    private fun switchToTemplateFromNew(newTemplate: CoverHtmlTemplateConfig.Template) {
+        isNewTemplate = false
+        template = newTemplate
+        binding.editTemplateName.setText(newTemplate.name)
+        binding.codeView.setText(newTemplate.htmlCode)
+        originalName = newTemplate.name
+        originalHtmlCode = newTemplate.htmlCode
+        hasUnsavedChanges = false
+        previewCover()
+    }
+
+    private fun checkUnsavedChangesAndSwitch(newTemplate: CoverHtmlTemplateConfig.Template) {
+        val currentName = binding.editTemplateName.text?.toString()?.trim() ?: ""
+        val currentHtmlCode = binding.codeView.text?.toString()?.trim() ?: ""
+        
+        val nameChanged = currentName != originalName
+        val htmlChanged = currentHtmlCode != originalHtmlCode
+        hasUnsavedChanges = nameChanged || htmlChanged
+        
+        if (hasUnsavedChanges) {
+            showSaveConfirmDialog(newTemplate)
+        } else {
+            switchToTemplate(newTemplate)
+        }
+    }
+
+    private fun showSaveConfirmDialog(newTemplate: CoverHtmlTemplateConfig.Template) {
+        val context = context ?: return
+        AlertDialog.Builder(context)
+            .setTitle(R.string.cover_html_save_changes)
+            .setMessage(R.string.cover_html_unsaved_hint)
+            .setPositiveButton(R.string.action_save) { _, _ ->
+                saveTemplate()
+                switchToTemplate(newTemplate)
+            }
+            .setNegativeButton(R.string.discard) { _, _ ->
+                switchToTemplate(newTemplate)
+            }
+            .setNeutralButton(R.string.cancel, null)
+            .create()
+            .show()
+    }
+
+    private fun switchToTemplate(newTemplate: CoverHtmlTemplateConfig.Template) {
+        template = newTemplate
+        isNewTemplate = false
+        binding.editTemplateName.setText(newTemplate.name)
+        binding.codeView.setText(newTemplate.htmlCode)
+        originalName = newTemplate.name
+        originalHtmlCode = newTemplate.htmlCode
+        hasUnsavedChanges = false
+        previewCover()
     }
 
     /**
@@ -244,7 +354,7 @@ class CoverHtmlCodeDialog : BaseDialogFragment(R.layout.dialog_cover_html_code) 
         val bookName = binding.editBookName.text?.toString() ?: "书名"
         val author = binding.editAuthor.text?.toString() ?: "作者"
 
-        val renderedHtml = renderHtml(htmlTemplate, bookName, author)
+        val renderedHtml = BookCover.renderHtmlTemplate(htmlTemplate, bookName, author)
         binding.webViewPreview.loadDataWithBaseURL(
             "about:blank",
             renderedHtml,
@@ -252,22 +362,6 @@ class CoverHtmlCodeDialog : BaseDialogFragment(R.layout.dialog_cover_html_code) 
             "UTF-8",
             null
         )
-    }
-
-    /**
-     * 渲染HTML模板
-     * 
-     * 将模板中的变量替换为实际值
-     * 
-     * @param template HTML模板字符串
-     * @param bookName 书名
-     * @param author 作者
-     * @return 渲染后的HTML字符串
-     */
-    private fun renderHtml(template: String, bookName: String, author: String): String {
-        return template
-            .replace("{{bookName}}", bookName)
-            .replace("{{author}}", author)
     }
 
     /**

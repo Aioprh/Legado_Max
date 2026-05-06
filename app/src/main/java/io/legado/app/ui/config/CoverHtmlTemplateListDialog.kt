@@ -16,6 +16,7 @@ import io.legado.app.ui.widget.image.CoverImageView
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.setLayout
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import splitties.views.onClick
 
@@ -129,6 +130,7 @@ class CoverHtmlTemplateListDialog : BaseDialogFragment(R.layout.dialog_recycler_
             binding.ivDelete.onClick {
                 val position = holder.layoutPosition
                 if (CoverHtmlTemplateConfig.templateList.size <= 1) {
+                    context.toastOnUi(R.string.cover_html_keep_one_template)
                     return@onClick
                 }
                 val item = getItem(position) ?: return@onClick

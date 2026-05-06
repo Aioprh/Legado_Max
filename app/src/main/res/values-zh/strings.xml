@@ -1041,6 +1041,10 @@
     <string name="cover_html_template_name">模板名称</string>
     <string name="cover_html_empty">空模板</string>
     <string name="cover_html_code_empty">HTML代码不能为空</string>
+    <string name="cover_html_save_changes">是否保存当前编辑？</string>
+    <string name="cover_html_unsaved_hint">当前编辑的内容未保存，切换模板将丢失编辑内容</string>
+    <string name="cover_html_keep_one_template">至少保留一个模板</string>
+    <string name="discard">不保存</string>
     <string name="scroll_to_dur_source">定位到当前书源</string>
     <string name="sys_tts_config">系统 TTS 设置</string>
     <string name="sys_tts_config_summary">打开系统 TTS 设置界面</string>

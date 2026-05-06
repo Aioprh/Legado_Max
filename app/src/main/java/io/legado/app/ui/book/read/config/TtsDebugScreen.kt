@@ -1,8 +1,20 @@
 package io.legado.app.ui.book.read.config
 
+import android.annotation.SuppressLint
+import android.graphics.drawable.Drawable
+import android.os.Bundle
+import android.text.InputType
+import android.view.View
+import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatSpinner
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -14,28 +26,41 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.unit.size
+import androidx.compose.ui.unit.width
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.drawable.toBitmap
+import androidx.core.view.setPadding
+import androidx.core.widget.addTextChangedListener
+import com.google.android.flexbox.FlexboxLayout
+import com.script.rhino.runScriptWithContext
 import io.legado.app.R
+import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.HttpTTS
+import io.legado.app.data.entities.rule.RowUi
+import io.legado.app.databinding.ItemFilletTextBinding
+import io.legado.app.databinding.ItemSourceEditBinding
+import io.legado.app.databinding.ItemSelectorSingleBinding
+import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.theme.ThemeStore
-import io.legado.app.utils.ColorUtils
-import io.legado.app.utils.GSON
-import io.legado.app.utils.sendToClip
-import io.legado.app.utils.toastOnUi
+import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.primaryColor
+import io.legado.app.utils.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.mozilla.javascript.Context
 import org.mozilla.javascript.Scriptable
-import java.util.concurrent.TimeUnit
+import splitties.init.appCtx
 
 data class TestHistory(
     val timestamp: Long,
@@ -53,6 +78,225 @@ data class TtsTestResult(
     val requestUrl: String? = null,
     val responseJson: String? = null
 )
+
+class TtsDebugActivity : AppCompatActivity() {
+
+    private var bgDrawable: Drawable? = null
+    private var ttsId: Long = 0
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        initTheme()
+        super.onCreate(savedInstanceState)
+        setupSystemBar()
+        loadBackgroundImage()
+        enableEdgeToEdge()
+        
+        ttsId = intent.getLongExtra("ttsId", 0)
+        
+        setContent {
+            TtsDebugContent(
+                bgDrawable = bgDrawable,
+                ttsId = ttsId,
+                onBackClick = { finish() }
+            )
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun loadBackgroundImage() {
+        try {
+            val metrics = android.util.DisplayMetrics()
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                val windowMetrics = windowManager.currentWindowMetrics
+                val bounds = windowMetrics.bounds
+                metrics.widthPixels = bounds.width()
+                metrics.heightPixels = bounds.height()
+            } else {
+                windowManager.defaultDisplay.getMetrics(metrics)
+            }
+            bgDrawable = ThemeConfig.getBgImage(this, metrics)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun initTheme() {
+        val theme = ThemeConfig.getTheme()
+        when (theme) {
+            io.legado.app.constant.Theme.Dark -> {
+                setTheme(io.legado.app.R.style.AppTheme_Dark)
+            }
+            io.legado.app.constant.Theme.Light -> {
+                setTheme(io.legado.app.R.style.AppTheme_Light)
+            }
+            else -> {
+                if (ColorUtils.isColorLight(primaryColor)) {
+                    setTheme(io.legado.app.R.style.AppTheme_Light)
+                } else {
+                    setTheme(io.legado.app.R.style.AppTheme_Dark)
+                }
+            }
+        }
+    }
+
+    private fun setupSystemBar() {
+        fullScreen()
+        val isTransparentStatusBar = AppConfig.isTransparentStatusBar
+        val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
+        setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, true)
+        setLightStatusBar(ColorUtils.isColorLight(backgroundColor))
+        if (AppConfig.immNavigationBar) {
+            setNavigationBarColorAuto(ThemeStore.navigationBarColor(this))
+        } else {
+            val nbColor = ColorUtils.darkenColor(ThemeStore.navigationBarColor(this))
+            setNavigationBarColorAuto(nbColor)
+        }
+    }
+}
+
+@Composable
+fun TtsDebugContent(
+    bgDrawable: Drawable?,
+    ttsId: Long,
+    onBackClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    val primaryColorValue = remember { ThemeStore.primaryColor(context) }
+    val accentColor = remember { ThemeStore.accentColor(context) }
+    val bgColor = remember { ThemeStore.backgroundColor(context) }
+    val textPrimaryColor = remember { ThemeStore.textColorPrimary(context) }
+    val textSecondaryColor = remember { ThemeStore.textColorSecondary(context) }
+
+    val isLight = ColorUtils.isColorLight(bgColor)
+    val background = remember(bgColor) { Color(bgColor) }
+    val primary = remember(primaryColorValue) { Color(primaryColorValue) }
+    val secondary = remember(accentColor) { Color(accentColor) }
+    val onBackground = remember(textPrimaryColor) { Color(textPrimaryColor) }
+    val onBackgroundVariant = remember(textSecondaryColor) { Color(textSecondaryColor) }
+    
+    val surface = remember(background, isLight) {
+        lerp(background, Color.White, if (isLight) 0.04f else 0.10f)
+    }
+    
+    val surfaceVariant = remember(background, onBackground, isLight) {
+        lerp(background, onBackground, if (isLight) 0.05f else 0.14f)
+    }
+    
+    val outline = remember(background, onBackground, isLight) {
+        lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
+    }
+    
+    val pagePrimary = remember(primary, isLight) {
+        if (isLight) primary else lerp(primary, Color.White, 0.20f)
+    }
+    
+    val pageOnBackgroundVariant = remember(onBackgroundVariant, onBackground, isLight) {
+        if (isLight) onBackgroundVariant else lerp(onBackgroundVariant, onBackground, 0.32f)
+    }
+    
+    val pageSurfaceVariant = remember(surfaceVariant, onBackground, isLight) {
+        if (isLight) surfaceVariant else lerp(surfaceVariant, onBackground, 0.08f)
+    }
+
+    val colorScheme = remember(
+        isLight,
+        pagePrimary,
+        secondary,
+        background,
+        onBackground,
+        pageOnBackgroundVariant,
+        surface,
+        pageSurfaceVariant,
+        outline
+    ) {
+        if (isLight) {
+            lightColorScheme(
+                primary = pagePrimary,
+                secondary = secondary,
+                tertiary = secondary,
+                background = background,
+                surface = surface,
+                surfaceVariant = pageSurfaceVariant,
+                secondaryContainer = pageSurfaceVariant,
+                tertiaryContainer = pageSurfaceVariant,
+                outline = outline,
+                outlineVariant = outline.copy(alpha = 0.75f),
+                onPrimary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onBackground = onBackground,
+                onSurface = onBackground,
+                onSurfaceVariant = pageOnBackgroundVariant,
+                error = Color(0xFFE53935),
+                onError = Color.White
+            )
+        } else {
+            darkColorScheme(
+                primary = pagePrimary,
+                secondary = secondary,
+                tertiary = secondary,
+                background = background,
+                surface = surface,
+                surfaceVariant = pageSurfaceVariant,
+                secondaryContainer = pageSurfaceVariant,
+                tertiaryContainer = pageSurfaceVariant,
+                outline = outline,
+                outlineVariant = outline.copy(alpha = 0.8f),
+                onPrimary = if (ColorUtils.isColorLight(primaryColorValue)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onBackground = onBackground,
+                onSurface = onBackground,
+                onSurfaceVariant = pageOnBackgroundVariant,
+                error = Color(0xFFFF5252),
+                onError = Color.Black
+            )
+        }
+    }
+
+    MaterialTheme(colorScheme = colorScheme) {
+        TtsDebugBoxWithBackground(
+            bgDrawable = bgDrawable,
+            bgColor = background
+        ) {
+            TtsDebugScreen(
+                ttsId = ttsId,
+                onBackClick = onBackClick
+            )
+        }
+    }
+}
+
+@Composable
+fun TtsDebugBoxWithBackground(
+    bgDrawable: Drawable?,
+    bgColor: Color,
+    content: @Composable () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (bgDrawable != null) {
+            val overlayAlpha = if (bgColor.luminance() > 0.5f) 0.22f else 0.40f
+            
+            Image(
+                bitmap = bgDrawable.toBitmap().asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(bgColor.copy(alpha = overlayAlpha))
+            )
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize().background(bgColor)
+            )
+        }
+
+        content()
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,123 +319,55 @@ fun TtsDebugScreen(
     var testResult by remember { mutableStateOf<TtsTestResult?>(null) }
     var testHistory by remember { mutableStateOf<List<TestHistory>>(emptyList()) }
     
-    var showLogDialog by remember { mutableStateOf(false) }
-    var showHistoryDialog by remember { mutableStateOf(false) }
-    var showMenu by remember { mutableStateOf(false) }
-    
     val speakers = remember { mutableStateListOf<String>() }
+    val loginInfo = remember { mutableStateMapOf<String, String>() }
+    val rowUis = remember { mutableStateListOf<RowUi>() }
     
     LaunchedEffect(ttsId) {
         httpTTS = withContext(Dispatchers.IO) {
             appDb.httpTTSDao.get(ttsId)
         }
         
-        httpTTS?.jsLib?.let { jsLib ->
-            parseSpeakersFromJsLib(jsLib)?.let { speakerList ->
-                speakers.clear()
-                speakers.addAll(speakerList)
-                if (speakers.isNotEmpty() && selectedSpeaker.isEmpty()) {
-                    selectedSpeaker = speakers[0]
-                }
-            }
-        }
-    }
-    
-    if (showLogDialog && testResult != null) {
-        Dialog(onDismissRequest = { showLogDialog = false }) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.8f),
-                color = containerColor,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "调试日志",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        IconButton(onClick = { showLogDialog = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "关闭")
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        testResult?.requestUrl?.let { url ->
-                            LogSection(title = "请求URL", content = url)
-                        }
-                        
-                        testResult?.responseJson?.let { json ->
-                            LogSection(title = "响应数据", content = json)
-                        }
-                        
-                        testResult?.errorMessage?.let { error ->
-                            LogSection(title = "错误信息", content = error, isError = true)
-                        }
+        httpTTS?.let { tts ->
+            loginInfo.putAll(tts.getLoginInfoMap())
+            
+            tts.jsLib?.let { jsLib ->
+                parseSpeakersFromJsLib(jsLib)?.let { speakerList ->
+                    speakers.clear()
+                    speakers.addAll(speakerList)
+                    if (speakers.isNotEmpty() && selectedSpeaker.isEmpty()) {
+                        selectedSpeaker = speakers[0]
                     }
                 }
             }
-        }
-    }
-    
-    if (showHistoryDialog) {
-        Dialog(onDismissRequest = { showHistoryDialog = false }) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().fillMaxHeight(0.7f),
-                color = containerColor,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "测试历史",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        IconButton(onClick = { showHistoryDialog = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "关闭")
-                        }
+            
+            tts.loginUi?.let { loginUiStr ->
+                val codeStr = loginUiStr.let {
+                    when {
+                        it.startsWith("@js:") -> it.substring(4)
+                        it.startsWith("<js>") -> it.substring(4, it.lastIndexOf("<"))
+                        else -> null
                     }
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    if (testHistory.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "暂无测试记录",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(testHistory.reversed()) { history ->
-                                HistoryItem(history = history)
+                }
+                
+                if (codeStr != null) {
+                    withContext(Dispatchers.IO) {
+                        try {
+                            val loginUiJson = evalLoginUiJs(tts, codeStr, loginInfo.toMap())
+                            val rows = GSON.fromJsonArray<RowUi>(loginUiJson).getOrNull()
+                            rows?.let {
+                                rowUis.clear()
+                                rowUis.addAll(it)
                             }
+                        } catch (e: Exception) {
+                            AppLog.put("解析loginUi失败: ${e.message}", e)
                         }
+                    }
+                } else {
+                    val rows = GSON.fromJsonArray<RowUi>(loginUiStr).getOrNull()
+                    rows?.let {
+                        rowUis.clear()
+                        rowUis.addAll(it)
                     }
                 }
             }
@@ -220,54 +396,6 @@ fun TtsDebugScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                },
-                actions = {
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "更多")
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("查看日志") },
-                                onClick = {
-                                    showMenu = false
-                                    if (testResult != null) {
-                                        showLogDialog = true
-                                    } else {
-                                        context.toastOnUi("暂无测试结果")
-                                    }
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Description, contentDescription = null)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("测试历史") },
-                                onClick = {
-                                    showMenu = false
-                                    showHistoryDialog = true
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.History, contentDescription = null)
-                                }
-                            )
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = { Text("清空历史") },
-                                onClick = {
-                                    showMenu = false
-                                    testHistory = emptyList()
-                                    context.toastOnUi("已清空测试历史")
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Clear, contentDescription = null)
-                                }
-                            )
-                        }
-                    }
                 }
             )
         }
@@ -276,14 +404,13 @@ fun TtsDebugScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             httpTTS?.let { tts ->
                 Surface(
                     color = containerColor,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -305,9 +432,153 @@ fun TtsDebugScreen(
                     }
                 }
                 
+                if (rowUis.isNotEmpty()) {
+                    Surface(
+                        color = containerColor,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = "登录配置",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            AndroidView(
+                                factory = { ctx ->
+                                    FlexboxLayout(ctx).apply {
+                                        layoutParams = ViewGroup.LayoutParams(
+                                            ViewGroup.LayoutParams.MATCH_PARENT,
+                                            ViewGroup.LayoutParams.WRAP_CONTENT
+                                        )
+                                        
+                                        rowUis.forEachIndexed { index, rowUi ->
+                                            when (rowUi.type) {
+                                                RowUi.Type.text, RowUi.Type.password -> {
+                                                    val binding = ItemSourceEditBinding.inflate(
+                                                        android.view.LayoutInflater.from(context),
+                                                        this,
+                                                        false
+                                                    )
+                                                    binding.root.id = index + 1000
+                                                    binding.textInputLayout.hint = rowUi.viewName ?: rowUi.name
+                                                    binding.editText.setText(loginInfo[rowUi.name] ?: rowUi.default ?: "")
+                                                    
+                                                    if (rowUi.type == RowUi.Type.password) {
+                                                        binding.editText.inputType = InputType.TYPE_TEXT_VARIATION_PASSWORD or InputType.TYPE_CLASS_TEXT
+                                                    }
+                                                    
+                                                    binding.editText.addTextChangedListener {
+                                                        loginInfo[rowUi.name] = it?.toString() ?: ""
+                                                    }
+                                                    
+                                                    addView(binding.root)
+                                                }
+                                                
+                                                RowUi.Type.select -> {
+                                                    val binding = ItemSelectorSingleBinding.inflate(
+                                                        android.view.LayoutInflater.from(context),
+                                                        this,
+                                                        false
+                                                    )
+                                                    binding.root.id = index + 1000
+                                                    binding.spName.text = rowUi.viewName ?: rowUi.name
+                                                    
+                                                    val chars = rowUi.chars?.filterNotNull() ?: listOf()
+                                                    val adapter = ArrayAdapter(
+                                                        context,
+                                                        R.layout.item_text_common,
+                                                        chars
+                                                    )
+                                                    adapter.setDropDownViewResource(R.layout.item_spinner_dropdown)
+                                                    binding.spType.adapter = adapter
+                                                    
+                                                    val currentValue = loginInfo[rowUi.name] ?: rowUi.default
+                                                    val selectedIndex = chars.indexOf(currentValue)
+                                                    if (selectedIndex >= 0) {
+                                                        binding.spType.setSelection(selectedIndex)
+                                                    }
+                                                    
+                                                    binding.spType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                                                        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                                                            loginInfo[rowUi.name] = chars[position]
+                                                        }
+                                                        override fun onNothingSelected(parent: AdapterView<*>?) {}
+                                                    }
+                                                    
+                                                    addView(binding.root)
+                                                }
+                                                
+                                                RowUi.Type.button -> {
+                                                    val binding = ItemFilletTextBinding.inflate(
+                                                        android.view.LayoutInflater.from(context),
+                                                        this,
+                                                        false
+                                                    )
+                                                    binding.root.id = index + 1000
+                                                    binding.textView.text = rowUi.viewName ?: rowUi.name
+                                                    binding.textView.setPadding(16.dpToPx())
+                                                    
+                                                    binding.root.setOnClickListener {
+                                                        coroutineScope.launch {
+                                                            executeLoginAction(tts, rowUi.action, loginInfo.toMap())
+                                                        }
+                                                    }
+                                                    
+                                                    addView(binding.root)
+                                                }
+                                                
+                                                RowUi.Type.toggle -> {
+                                                    val binding = ItemFilletTextBinding.inflate(
+                                                        android.view.LayoutInflater.from(context),
+                                                        this,
+                                                        false
+                                                    )
+                                                    binding.root.id = index + 1000
+                                                    
+                                                    val chars = rowUi.chars?.filterNotNull() ?: listOf()
+                                                    var currentIndex = chars.indexOf(loginInfo[rowUi.name] ?: rowUi.default)
+                                                    if (currentIndex < 0) currentIndex = 0
+                                                    
+                                                    fun updateText() {
+                                                        val char = chars.getOrNull(currentIndex) ?: ""
+                                                        val name = rowUi.viewName ?: rowUi.name
+                                                        binding.textView.text = "$char $name"
+                                                    }
+                                                    
+                                                    updateText()
+                                                    binding.textView.setPadding(16.dpToPx())
+                                                    
+                                                    binding.root.setOnClickListener {
+                                                        currentIndex = (currentIndex + 1) % chars.size
+                                                        loginInfo[rowUi.name] = chars[currentIndex]
+                                                        updateText()
+                                                        
+                                                        coroutineScope.launch {
+                                                            executeLoginAction(tts, rowUi.action, loginInfo.toMap())
+                                                        }
+                                                    }
+                                                    
+                                                    addView(binding.root)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                
                 Surface(
                     color = containerColor,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -361,9 +632,12 @@ fun TtsDebugScreen(
                     }
                 }
                 
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 Surface(
                     color = containerColor,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -447,8 +721,10 @@ fun TtsDebugScreen(
                     }
                 }
                 
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
@@ -458,13 +734,16 @@ fun TtsDebugScreen(
                                 val startTime = System.currentTimeMillis()
                                 
                                 try {
+                                    tts.putLoginInfo(GSON.toJson(loginInfo))
+                                    
                                     val result = withContext(Dispatchers.IO) {
                                         testTtsEngine(
                                             tts = tts,
                                             text = testText,
                                             speed = speed,
                                             speaker = selectedSpeaker,
-                                            pitch = pitch
+                                            pitch = pitch,
+                                            loginInfo = loginInfo.toMap()
                                         )
                                     }
                                     
@@ -537,9 +816,12 @@ fun TtsDebugScreen(
                 }
                 
                 testResult?.let { result ->
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
                     Surface(
                         color = containerColor,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
@@ -554,19 +836,11 @@ fun TtsDebugScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                                 
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                result.audioUrl?.let { url ->
                                     IconButton(
-                                        onClick = {
-                                            result.audioUrl?.let { url ->
-                                                context.sendToClip(url)
-                                            }
-                                        },
-                                        enabled = result.audioUrl != null
+                                        onClick = { context.sendToClip(url) }
                                     ) {
                                         Icon(Icons.Default.ContentCopy, contentDescription = "复制URL")
-                                    }
-                                    IconButton(onClick = { showLogDialog = true }) {
-                                        Icon(Icons.Default.Description, contentDescription = "查看日志")
                                     }
                                 }
                             }
@@ -592,12 +866,10 @@ fun TtsDebugScreen(
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             
-                            result.duration.let { duration ->
-                                Text(
-                                    text = "耗时: ${duration}ms",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
+                            Text(
+                                text = "耗时: ${result.duration}ms",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                             
                             result.audioUrl?.let { url ->
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -609,8 +881,7 @@ fun TtsDebugScreen(
                                 Text(
                                     text = url,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.fillMaxWidth()
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                             
@@ -625,87 +896,38 @@ fun TtsDebugScreen(
                         }
                     }
                 }
-            } ?: run {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 }
 
-@Composable
-fun LogSection(
-    title: String,
-    content: String,
-    isError: Boolean = false
-) {
-    Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Text(
-                text = content,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(8.dp),
-                color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-            )
+suspend fun evalLoginUiJs(tts: HttpTTS, jsStr: String, loginInfo: Map<String, String>): String? {
+    return try {
+        runScriptWithContext {
+            tts.evalJS(jsStr) {
+                put("result", loginInfo.toMutableMap())
+            }.toString()
         }
+    } catch (e: Exception) {
+        AppLog.put("evalLoginUiJs error: ${e.message}", e)
+        null
     }
 }
 
-@Composable
-fun HistoryItem(history: TestHistory) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = history.text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
-                )
-                Text(
-                    text = formatTimestamp(history.timestamp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            Column(horizontalAlignment = Alignment.End) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = if (history.success) Icons.Default.CheckCircle else Icons.Default.Error,
-                        contentDescription = null,
-                        tint = if (history.success) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${history.duration}ms",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+suspend fun executeLoginAction(tts: HttpTTS, action: String?, loginInfo: Map<String, String>) {
+    if (action.isAbsUrl()) {
+        appCtx.openUrl(action!!)
+    } else if (action != null) {
+        try {
+            runScriptWithContext {
+                tts.evalJS(action) {
+                    put("result", loginInfo.toMutableMap())
                 }
             }
+        } catch (e: Exception) {
+            AppLog.put("executeLoginAction error: ${e.message}", e)
         }
     }
 }
@@ -728,13 +950,15 @@ suspend fun testTtsEngine(
     text: String,
     speed: Int,
     speaker: String,
-    pitch: Int
+    pitch: Int,
+    loginInfo: Map<String, String>
 ): TtsTestResult {
     return try {
         val rhino = Context.enter()
         val scope: Scriptable = rhino.initStandardObjects()
         
         val result = mutableMapOf<String, Any>()
+        result.putAll(loginInfo)
         result["音色"] = speaker
         result["音调"] = pitch
         
@@ -775,11 +999,6 @@ suspend fun testTtsEngine(
     } finally {
         Context.exit()
     }
-}
-
-fun formatTimestamp(timestamp: Long): String {
-    val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-    return sdf.format(java.util.Date(timestamp))
 }
 
 @Composable

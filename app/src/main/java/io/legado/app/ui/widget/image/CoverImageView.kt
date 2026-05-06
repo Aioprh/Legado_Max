@@ -421,18 +421,18 @@ class CoverImageView @JvmOverloads constructor(
                     return@launch
                 }
 
-                val cacheKey = "$bookName-$author"
-                val cachedBitmap = htmlCoverCache[cacheKey]
-                if (cachedBitmap != null) {
-                    setImageDrawable(cachedBitmap.toDrawable(resources))
-                    onLoadFinish?.invoke()
-                    return@launch
-                }
-
                 val htmlTemplate = CoverHtmlTemplateConfig.getSelectedTemplate()
                 val htmlCode = htmlTemplate.htmlCode
                 if (htmlCode.isBlank()) {
                     setImageDrawable(BookCover.defaultDrawable)
+                    onLoadFinish?.invoke()
+                    return@launch
+                }
+
+                val cacheKey = "${htmlTemplate.id}-$bookName-$author"
+                val cachedBitmap = htmlCoverCache[cacheKey]
+                if (cachedBitmap != null) {
+                    setImageDrawable(cachedBitmap.toDrawable(resources))
                     onLoadFinish?.invoke()
                     return@launch
                 }

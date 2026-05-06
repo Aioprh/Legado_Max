@@ -86,7 +86,7 @@ class CoverConfigFragment : PreferenceFragment(),
                 CoverImageView.clearHtmlCoverCache()
                 postEvent(EventBus.BOOKSHELF_REFRESH, "")
                 if (getPrefBoolean(PreferKey.coverHtmlEnable)) {
-                    showDialogFragment(CoverHtmlCodeDialog.newInstance(null))
+                    showDialogFragment(CoverHtmlCodeDialog.newEditInstance())
                 }
             }
 
@@ -113,7 +113,7 @@ class CoverConfigFragment : PreferenceFragment(),
     override fun onPreferenceTreeClick(preference: Preference): Boolean {
         when (preference.key) {
             "coverRule" -> showDialogFragment(CoverRuleConfigDialog())
-            "coverHtmlCode" -> showDialogFragment(CoverHtmlCodeDialog.newInstance(null))
+            "coverHtmlCode" -> showDialogFragment(CoverHtmlCodeDialog.newEditInstance())
             PreferKey.defaultCover ->
                 if (getPrefString(preference.key).isNullOrEmpty()) {
                     selectImage.launch {
