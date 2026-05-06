@@ -1031,7 +1031,7 @@ object ReadBook : CoroutineScope by MainScope() {
                     }
                 }
                 launch {
-                    val minChapterIndex = durChapterIndex - min(ReadConstants.BACKWARD_PRE_DOWNLOAD_RANGE, AppConfig.preDownloadNum)
+                    val minChapterIndex = durChapterIndex - min(AppConfig.backwardPreDownloadNum, AppConfig.preDownloadNum)
                     for (i in durChapterIndex.minus(2) downTo minChapterIndex) {
                         if (downloadedChapters.contains(i)) continue
                         if ((downloadFailChapters[i] ?: 0) >= ReadConstants.MAX_DOWNLOAD_FAIL_COUNT) continue

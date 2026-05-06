@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -23,7 +24,6 @@ import io.legado.app.R
 import io.legado.app.help.config.CoverHtmlTemplateConfig
 import io.legado.app.constant.EventBus
 import io.legado.app.ui.widget.image.CoverImageView
-import io.legado.app.utils.observeEvent
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
 
@@ -33,20 +33,17 @@ fun CoverHtmlTemplateListScreen(
     onBackClick: () -> Unit,
     onEditTemplate: (CoverHtmlTemplateConfig.Template?) -> Unit
 ) {
-    val templates = remember { CoverHtmlTemplateConfig.templateList }
-    var templateList by remember { mutableStateOf(templates.toList()) }
-    val context = androidx.compose.ui.platform.LocalContext.current
-    
-    LaunchedEffect(Unit) {
-        templateList = templates.toList()
-    }
-    
-    val refreshList: () -> Unit = {
-        templateList = templates.toList()
-    }
+    val context = LocalContext.current
+    var templateList by remember { mutableStateOf(CoverHtmlTemplateConfig.templateList.toList()) }
+    var selectedId by remember { mutableStateOf(CoverHtmlTemplateConfig.getSelectedTemplate().id) }
     
     val containerColor = coverHtmlCardContainerColor()
     val topBarColor = coverHtmlTopBarContainerColor()
+    
+    fun refreshList() {
+        templateList = CoverHtmlTemplateConfig.templateList.toList()
+        selectedId = CoverHtmlTemplateConfig.getSelectedTemplate().id
+    }
     
     Scaffold(
         containerColor = Color.Transparent,
@@ -111,11 +108,13 @@ fun CoverHtmlTemplateListScreen(
                 items(templateList, key = { it.id }) { template ->
                     TemplateItem(
                         template = template,
+                        isSelected = template.id == selectedId,
                         containerColor = containerColor,
                         onSelect = {
                             CoverHtmlTemplateConfig.setSelectedTemplate(template.id)
                             CoverImageView.clearHtmlCoverCache()
                             postEvent(EventBus.BOOKSHELF_REFRESH, "")
+                            selectedId = template.id
                             refreshList()
                         },
                         onEdit = { onEditTemplate(template) },
@@ -139,6 +138,7 @@ fun CoverHtmlTemplateListScreen(
 @Composable
 private fun TemplateItem(
     template: CoverHtmlTemplateConfig.Template,
+    isSelected: Boolean,
     containerColor: Color,
     onSelect: () -> Unit,
     onEdit: () -> Unit,
@@ -147,23 +147,23 @@ private fun TemplateItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .clickable(onClick = onSelect),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         color = containerColor,
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable(onClick = onSelect)
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             RadioButton(
-                selected = template.isSelected,
+                selected = isSelected,
                 onClick = onSelect
             )
             
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -189,37 +189,29 @@ private fun TemplateItem(
                 )
             }
             
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             
             IconButton(
                 onClick = onEdit,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                modifier = Modifier.size(40.dp)
             ) {
                 Icon(
                     Icons.Default.Edit,
                     contentDescription = "编辑",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
             
-            Spacer(modifier = Modifier.width(4.dp))
-            
             IconButton(
                 onClick = onDelete,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                modifier = Modifier.size(40.dp)
             ) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "删除",
                     tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }

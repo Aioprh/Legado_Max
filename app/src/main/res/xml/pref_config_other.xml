@@ -190,6 +190,11 @@
             android:summary="@string/pre_download_s"
             android:title="@string/pre_download" />
 
+        <io.legado.app.lib.prefs.Preference
+            android:key="backwardPreDownloadNum"
+            android:summary="@string/backward_pre_download_s"
+            android:title="@string/backward_pre_download" />
+
         <io.legado.app.lib.prefs.SwitchPreference
             android:defaultValue="true"
             android:key="replaceEnableDefault"

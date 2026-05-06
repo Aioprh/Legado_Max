@@ -598,6 +598,13 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefInt(PreferKey.preDownloadNum, value)
         }
 
+    //向前预下载章节数量
+    var backwardPreDownloadNum
+        get() = appCtx.getPrefInt(PreferKey.backwardPreDownloadNum, 0)
+        set(value) {
+            appCtx.putPrefInt(PreferKey.backwardPreDownloadNum, value)
+        }
+
     val syncBookProgress get() = appCtx.getPrefBoolean(PreferKey.syncBookProgress, true)
 
     val syncBookProgressPlus get() = appCtx.getPrefBoolean(PreferKey.syncBookProgressPlus, false)
