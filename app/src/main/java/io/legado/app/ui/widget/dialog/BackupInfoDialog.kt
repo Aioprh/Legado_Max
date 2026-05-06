@@ -11,11 +11,15 @@ import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.databinding.DialogRecyclerViewBinding
 import io.legado.app.databinding.ItemBackupCategoryBinding
+import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * 备份信息查看对话框
@@ -43,6 +47,12 @@ class BackupInfoDialog : BaseDialogFragment(R.layout.dialog_recycler_view) {
         toolBar.setBackgroundColor(primaryColor)
         toolBar.setTitleTextColor(primaryTextColor)
         toolBar.title = getString(R.string.view_backup_info)
+        
+        val lastBackup = LocalConfig.lastBackup
+        if (lastBackup > 0) {
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+            toolBar.subtitle = "上次备份: ${dateFormat.format(Date(lastBackup))}"
+        }
 
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
