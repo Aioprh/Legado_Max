@@ -58,8 +58,9 @@ fun CoverHtmlCodeScreen(
     var showSaveDialog by remember { mutableStateOf(false) }
     var pendingTemplateSwitch by remember { mutableStateOf<CoverHtmlTemplateConfig.Template?>(null) }
     
-    val webViewRef = remember { mutableStateOf<WebView?>(null) }
-    val codeViewRef = remember { mutableStateOf<CodeView?>(null) }
+    var webView by remember { mutableStateOf<WebView?>(null) }
+    var codeView by remember { mutableStateOf<CodeView?>(null) }
+    var webViewReady by remember { mutableStateOf(false) }
     
     LaunchedEffect(currentTemplate, currentIsNewTemplate) {
         if (currentIsNewTemplate) {
@@ -77,17 +78,15 @@ fun CoverHtmlCodeScreen(
         }
     }
     
-    val previewCover: () -> Unit = remember(htmlCode, bookName, author) {
-        {
-            val renderedHtml = BookCover.renderHtmlTemplate(htmlCode, bookName, author)
-            webViewRef.value?.loadDataWithBaseURL(
-                "about:blank",
-                renderedHtml,
-                "text/html",
-                "UTF-8",
-                null
-            )
-        }
+    fun previewCover() {
+        val renderedHtml = BookCover.renderHtmlTemplate(htmlCode, bookName, author)
+        webView?.loadDataWithBaseURL(
+            null,
+            renderedHtml,
+            "text/html",
+            "UTF-8",
+            null
+        )
     }
     
     fun doSaveTemplate() {
@@ -152,6 +151,12 @@ fun CoverHtmlCodeScreen(
                 }
             }
         )
+    }
+    
+    LaunchedEffect(htmlCode, bookName, author, webViewReady) {
+        if (webViewReady && htmlCode.isNotBlank()) {
+            previewCover()
+        }
     }
     
     Scaffold(
@@ -236,7 +241,7 @@ fun CoverHtmlCodeScreen(
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                TextButton(onClick = previewCover) {
+                TextButton(onClick = { previewCover() }) {
                     Text(stringResource(R.string.cover_html_preview))
                 }
                 
@@ -256,9 +261,16 @@ fun CoverHtmlCodeScreen(
                                 settings.javaScriptEnabled = true
                                 settings.useWideViewPort = true
                                 settings.loadWithOverviewMode = true
-                                setBackgroundColor(Color.TRANSPARENT)
-                                webViewClient = WebViewClient()
-                                webViewRef.value = this
+                                settings.setSupportZoom(false)
+                                settings.displayZoomControls = false
+                                setBackgroundColor(Color.WHITE)
+                                webViewClient = object : WebViewClient() {
+                                    override fun onPageFinished(view: WebView?, url: String?) {
+                                        super.onPageFinished(view, url)
+                                    }
+                                }
+                                webView = this
+                                webViewReady = true
                             }
                         },
                         modifier = Modifier.fillMaxSize()
@@ -288,7 +300,7 @@ fun CoverHtmlCodeScreen(
                                 addHtmlPattern()
                                 addJsPattern()
                                 setPadding(16, 16, 16, 16)
-                                codeViewRef.value = this
+                                codeView = this
                             }
                         },
                         update = { view ->
@@ -316,7 +328,7 @@ fun CoverHtmlCodeScreen(
                     TextButton(onClick = {
                         templateName = ""
                         htmlCode = DefaultData.coverHtmlTemplate
-                        codeViewRef.value?.setText(DefaultData.coverHtmlTemplate)
+                        codeView?.setText(DefaultData.coverHtmlTemplate)
                     }) {
                         Text(stringResource(R.string.btn_default_s))
                     }
@@ -342,9 +354,5 @@ fun CoverHtmlCodeScreen(
                 }
             }
         }
-    }
-    
-    LaunchedEffect(htmlCode, bookName, author) {
-        previewCover()
     }
 }

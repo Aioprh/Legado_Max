@@ -196,8 +196,12 @@ object ReadManga : CoroutineScope by MainScope() {
     fun loadContent() {
         clearMangaChapter()
         loadContent(durChapterIndex)
-        loadContent(durChapterIndex + 1)
-        loadContent(durChapterIndex - 1)
+        if (AppConfig.preDownloadNum > 0) {
+            loadContent(durChapterIndex + 1)
+        }
+        if (AppConfig.backwardPreDownloadNum > 0) {
+            loadContent(durChapterIndex - 1)
+        }
     }
     //加载或更新章节内容
     fun loadOrUpContent() {
@@ -206,10 +210,10 @@ object ReadManga : CoroutineScope by MainScope() {
         } else {
             mCallback?.upContent()
         }
-        if (nextMangaChapter == null) {
+        if (AppConfig.preDownloadNum > 0 && nextMangaChapter == null) {
             loadContent(durChapterIndex + 1)
         }
-        if (prevMangaChapter == null) {
+        if (AppConfig.backwardPreDownloadNum > 0 && prevMangaChapter == null) {
             loadContent(durChapterIndex - 1)
         }
     }
