@@ -28,6 +28,7 @@ import io.legado.app.databinding.DialogSelectSectionExportBinding
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.getExportFileName
 import io.legado.app.help.book.isAudio
+import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.tryParesExportFileName
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.SelectItem
