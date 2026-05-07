@@ -298,7 +298,8 @@ fun ReadRecordScreen(
                         SummaryCard(
                             totalReadTime = state.totalReadTime,
                             bookCount = state.latestRecords.size,
-                            latestRecords = state.latestRecords
+                            latestRecords = state.latestRecords,
+                            viewModel = viewModel
                         )
                     }
 
