@@ -296,8 +296,7 @@ class CheckSourceViewModel(application: Application) : BaseViewModel(application
         )
 
         val sourceUrls = sources.map { it.bookSourceUrl }
-        io.legado.app.help.IntentData.put("checkSourceSelectedIds", sourceUrls)
-        CheckSource.start(getApplication(), emptyList())
+        CheckSource.start(getApplication(), sourceUrls)
         AppLog.put("已启动CheckSourceService服务，共${sources.size}个书源")
 
         startProgressUpdateTask()

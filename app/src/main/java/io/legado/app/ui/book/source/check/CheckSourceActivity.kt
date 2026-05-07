@@ -41,7 +41,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
 import io.legado.app.constant.EventBus
+import io.legado.app.ui.config.CheckSourceConfig
 import io.legado.app.utils.observeEvent
+import io.legado.app.utils.showDialogFragment
 
 /**
  * 书源检测Activity
@@ -65,6 +67,7 @@ class CheckSourceActivity : AppCompatActivity() {
             CheckSourceContent(
                 backgroundDrawable = backgroundDrawable,
                 onBackClick = { finish() },
+                onOpenConfig = { showDialogFragment<CheckSourceConfig>() },
                 onViewModelCreated = { viewModel ->
                     currentViewModel = viewModel
                 }
@@ -133,6 +136,7 @@ class CheckSourceActivity : AppCompatActivity() {
 fun CheckSourceContent(
     backgroundDrawable: Drawable?,
     onBackClick: () -> Unit,
+    onOpenConfig: () -> Unit,
     onViewModelCreated: (CheckSourceViewModel) -> Unit
 ) {
     val context = LocalContext.current
@@ -239,7 +243,8 @@ fun CheckSourceContent(
             
             CheckSourceScreen(
                 viewModel = viewModel,
-                onBackClick = onBackClick
+                onBackClick = onBackClick,
+                onOpenConfig = onOpenConfig
             )
         }
     }

@@ -24,6 +24,7 @@ import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
 import io.legado.app.help.storage.BackupConfig
+import io.legado.app.help.storage.BackupSelectorConfig
 import io.legado.app.help.storage.ImportOldData
 import io.legado.app.help.storage.Restore
 import io.legado.app.lib.dialogs.alert
@@ -234,6 +235,7 @@ class BackupConfigFragment : PreferenceFragment(),
         when (preference.key) {
             PreferKey.backupPath -> selectBackupPath.launch()
             PreferKey.restoreIgnore -> backupIgnore()
+            "backup_selector" -> showBackupSelector()
             "web_dav_backup" -> backup()
             "web_dav_restore" -> restore()
             "import_old" -> restoreOld.launch()
@@ -255,6 +257,37 @@ class BackupConfigFragment : PreferenceFragment(),
             }
             onDismiss {
                 BackupConfig.saveIgnoreConfig()
+            }
+        }
+    }
+
+    /**
+     * 显示备份选择器
+     */
+    private fun showBackupSelector() {
+        val items = BackupSelectorConfig.allItems
+        val titles = items.map { "[${it.group}] ${it.title}" }.toTypedArray()
+        val checkedItems = BooleanArray(items.size) { index ->
+            BackupSelectorConfig.isSelected(items[index].key)
+        }
+        
+        alert(R.string.backup_selector) {
+            multiChoiceItems(titles, checkedItems) { _, which, isChecked ->
+                BackupSelectorConfig.setSelected(items[which].key, isChecked)
+            }
+            positiveButton(R.string.select_all) {
+                BackupSelectorConfig.selectAll()
+                showBackupSelector()
+            }
+            negativeButton(R.string.un_select_all) {
+                BackupSelectorConfig.deselectAll()
+                showBackupSelector()
+            }
+            neutralButton(R.string.ok) {
+                BackupSelectorConfig.save()
+            }
+            onDismiss {
+                BackupSelectorConfig.save()
             }
         }
     }

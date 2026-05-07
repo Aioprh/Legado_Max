@@ -1212,6 +1212,8 @@
     <string name="only_latest_backup_s">Local backup keeps only the latest backup file</string>
     <string name="full_backup_t">Full Backup</string>
     <string name="full_backup_s">Backup all user configuration data</string>
+    <string name="backup_selector">Backup Selector</string>
+    <string name="backup_selector_summary">Select items to backup</string>
     <string name="view_backup_info_t">View Backup Info</string>
     <string name="view_backup_info_s">View backup file contents and sizes</string>
     <string name="view_backup_info">Backup Info</string>
@@ -1519,6 +1521,8 @@
     <!-- URL Record -->
     <string name="url_record">URL访问记录</string>
     <string name="record_url_switch">开启URL记录</string>
+    <string name="record_url_enabled">已开启URL记录</string>
+    <string name="record_url_disabled">已关闭URL记录</string>
     <string name="clear_records">清除记录</string>
     <string name="clear_old_records">清除旧记录</string>
     <string name="clear_old_7_days">清除7天前的记录</string>
