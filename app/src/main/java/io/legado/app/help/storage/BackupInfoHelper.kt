@@ -48,7 +48,7 @@ object BackupInfoHelper {
         CategoryDef("配置相关", "⚙️", listOf("config", "videoConfig", "readConfig", "shareConfig", "coverConfig", "servers"))
     )
 
-    private val displayNameMap = mapOf(
+    val displayNameMap = mapOf(
         "bookshelf.json" to "书架书籍",
         "bookmark.json" to "书签",
         "bookGroup.json" to "书籍分组",

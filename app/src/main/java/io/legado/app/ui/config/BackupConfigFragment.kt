@@ -24,6 +24,7 @@ import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
 import io.legado.app.help.storage.BackupConfig
+import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.help.storage.BackupSelectorConfig
 import io.legado.app.help.storage.ImportOldData
 import io.legado.app.help.storage.Restore
@@ -38,7 +39,11 @@ import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.dialog.BackupInfoDialog
 import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.utils.FileDoc
+import io.legado.app.utils.FileUtils
+import io.legado.app.utils.GSON
+import io.legado.app.utils.LogUtils
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.compress.ZipUtils
 import io.legado.app.utils.checkWrite
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.isContentScheme
@@ -90,15 +95,19 @@ class BackupConfigFragment : PreferenceFragment(),
     }
     private val restoreDoc = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
-            waitDialog.setText("恢复中…")
-            waitDialog.show()
-            val task = Coroutine.async {
-                Restore.restore(appCtx, uri)
-            }.onFinally {
-                waitDialog.dismiss()
-            }
-            waitDialog.setOnCancelListener {
-                task.cancel()
+            if (AppConfig.restoreShowSelector) {
+                showRestoreFileSelector(uri)
+            } else {
+                waitDialog.setText("恢复中…")
+                waitDialog.show()
+                val task = Coroutine.async {
+                    Restore.restore(appCtx, uri)
+                }.onFinally {
+                    waitDialog.dismiss()
+                }
+                waitDialog.setOnCancelListener {
+                    task.cancel()
+                }
             }
         }
     }
@@ -431,6 +440,102 @@ class BackupConfigFragment : PreferenceFragment(),
             title = getString(R.string.select_restore_file)
             mode = HandleFileContract.FILE
             allowExtensions = arrayOf("zip")
+        }
+    }
+
+    /**
+     * 显示恢复文件选择对话框
+     * 解压ZIP并列出文件供用户选择
+     */
+    private fun showRestoreFileSelector(uri: android.net.Uri) {
+        waitDialog.setText("读取备份文件...")
+        waitDialog.show()
+        
+        lifecycleScope.launch {
+            try {
+                // 解压到临时目录
+                val tempPath = Backup.backupPath
+                FileUtils.delete(tempPath)
+                
+                withContext(IO) {
+                    val contentResolver = requireContext().contentResolver
+                    val inputStream = contentResolver.openInputStream(uri)
+                    inputStream?.use {
+                        ZipUtils.unZipToPath(it, tempPath)
+                    }
+                }
+                
+                // 获取文件列表
+                val files = withContext(IO) {
+                    java.io.File(tempPath).listFiles()
+                        ?.filter { it.isFile && (it.name.endsWith(".json") || it.name.endsWith(".xml")) }
+                        ?.map { file ->
+                            BackupInfoHelper.BackupFileInfo(
+                                fileName = file.name,
+                                displayName = BackupInfoHelper.displayNameMap[file.name] ?: file.name,
+                                size = file.length(),
+                                selected = true
+                            )
+                        } ?: emptyList()
+                }
+                
+                waitDialog.dismiss()
+                
+                if (files.isEmpty()) {
+                    appCtx.toastOnUi("备份文件中没有可恢复的内容")
+                    return@launch
+                }
+                
+                // 显示选择对话框
+                showFileSelectionDialog(files, tempPath)
+                
+            } catch (e: Exception) {
+                waitDialog.dismiss()
+                AppLog.put("读取备份文件出错\n${e.localizedMessage}", e)
+                appCtx.toastOnUi("读取备份文件出错\n${e.localizedMessage}")
+            }
+        }
+    }
+    
+    /**
+     * 显示文件选择对话框
+     */
+    private fun showFileSelectionDialog(
+        files: List<BackupInfoHelper.BackupFileInfo>,
+        backupPath: String
+    ) {
+        val displayNames = files.map { 
+            "${it.displayName} (${BackupInfoHelper.formatSize(it.size)})"
+        }.toTypedArray()
+        val checkedItems = BooleanArray(files.size) { true }
+        
+        alert(R.string.select_files_to_restore) {
+            multiChoiceItems(displayNames, checkedItems) { _, which, isChecked ->
+                checkedItems[which] = isChecked
+            }
+            okButton {
+                val selectedFiles = files.filterIndexed { index, _ -> 
+                    checkedItems[index] 
+                }.map { it.fileName }
+                
+                if (selectedFiles.isEmpty()) {
+                    appCtx.toastOnUi("请至少选择一个文件")
+                    return@okButton
+                }
+                
+                // 执行选择性恢复
+                waitDialog.setText("恢复中…")
+                waitDialog.show()
+                val task = Coroutine.async {
+                    Restore.restoreSelected(appCtx, backupPath, selectedFiles)
+                }.onFinally {
+                    waitDialog.dismiss()
+                }
+                waitDialog.setOnCancelListener {
+                    task.cancel()
+                }
+            }
+            cancelButton()
         }
     }
 

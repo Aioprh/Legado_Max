@@ -807,6 +807,9 @@
     <string name="default_cover">Default cover</string>
     <string name="restore_ignore">Bypass list</string>
     <string name="restore_ignore_summary">Ignore some contents while restoring</string>
+    <string name="restore_show_selector">Restore selection menu</string>
+    <string name="restore_show_selector_summary">Show file selection dialog before restoring</string>
+    <string name="select_files_to_restore">Select files to restore</string>
     <string name="read_config">Reading interface settings</string>
     <string name="group_name">Group name</string>
     <string name="note_content">Remarks section</string>

@@ -98,6 +98,13 @@
             android:title="@string/restore_ignore"
             app:iconSpaceReserved="false" />
 
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="true"
+            android:key="restoreShowSelector"
+            android:summary="@string/restore_show_selector_summary"
+            android:title="@string/restore_show_selector"
+            app:iconSpaceReserved="false" />
+
         <io.legado.app.lib.prefs.Preference
             android:key="import_old"
             android:summary="@string/import_old_summary"

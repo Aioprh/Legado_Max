@@ -59,6 +59,7 @@ object PreferKey {
     const val fontFolder = "fontFolder"
     const val backupPath = "backupUri"
     const val restoreIgnore = "restoreIgnore"
+    const val restoreShowSelector = "restoreShowSelector"
     const val threadCount = "threadCount"
     const val webPort = "webPort"
     const val keepLight = "keep_light"

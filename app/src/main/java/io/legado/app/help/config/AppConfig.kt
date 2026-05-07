@@ -303,6 +303,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             }
         }
 
+    // 恢复时显示选择菜单，默认关闭
+    val restoreShowSelector: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.restoreShowSelector, false)
+
     // 书籍保存位置
     var defaultBookTreeUri: String?
         get() = appCtx.getPrefString(PreferKey.defaultBookTreeUri)
