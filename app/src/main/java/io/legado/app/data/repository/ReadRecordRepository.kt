@@ -14,6 +14,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.max
 import kotlin.math.min
 
@@ -23,6 +24,10 @@ class ReadRecordRepository(
 ) {
     companion object {
         const val CURRENT_REPAIR_VERSION = 3
+    }
+
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+        timeZone = TimeZone.getDefault()
     }
 
     private data class RecordIdentity(
@@ -93,7 +98,6 @@ class ReadRecordRepository(
 
     fun getBookTimelineDays(bookName: String, bookAuthor: String): Flow<List<ReadRecordTimelineDay>> {
         return getBookSessions(bookName, bookAuthor).map { sessions ->
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             sessions.groupBy { dateFormat.format(Date(it.startTime)) }
                 .toSortedMap(compareByDescending { it })
                 .map { (date, daySessions) ->
@@ -150,7 +154,6 @@ class ReadRecordRepository(
 
     suspend fun saveReadSession(newSession: ReadRecordSession) {
         val session = normalizeSession(newSession)
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         splitSessionByDay(session).forEach { sessionSegment ->
             val segmentDuration = sessionSegment.endTime - sessionSegment.startTime
             if (segmentDuration <= 0L && sessionSegment.words <= 0L) return@forEach
@@ -274,7 +277,6 @@ class ReadRecordRepository(
     suspend fun deleteSession(session: ReadRecordSession) {
         dao.deleteSession(session)
 
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val dateString = dateFormat.format(Date(session.startTime))
         val remainingSessions =
             dao.getSessionsByBookAndDate(

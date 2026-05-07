@@ -1,10 +1,13 @@
 package io.legado.app.ui.book.readRecord.components
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -17,24 +20,37 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import io.legado.app.data.entities.readRecord.ReadRecord
+import io.legado.app.help.glide.ImageLoader
+import io.legado.app.ui.book.readRecord.ReadRecordViewModel
 import io.legado.app.ui.book.readRecord.readRecordBookStackSurfaceColor
 import io.legado.app.ui.book.readRecord.readRecordMutedIconTint
 import io.legado.app.ui.book.readRecord.readRecordSecondaryTextColor
 import io.legado.app.ui.book.readRecord.readRecordSummaryCardContainerColor
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SummaryCard(
     totalReadTime: Long,
     bookCount: Int,
-    latestRecords: List<ReadRecord>
+    latestRecords: List<ReadRecord>,
+    viewModel: ReadRecordViewModel
 ) {
     val hours = totalReadTime / (1000 * 60 * 60)
     val minutes = (totalReadTime / (1000 * 60)) % 60
@@ -76,7 +92,7 @@ fun SummaryCard(
                     Text(
                         text = "$bookCount",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
@@ -97,7 +113,8 @@ fun SummaryCard(
 
             if (latestRecords.isNotEmpty()) {
                 BookStackView(
-                    coverPaths = latestRecords.take(3).map { null }
+                    records = latestRecords.take(3),
+                    viewModel = viewModel
                 )
             }
         }
@@ -105,11 +122,38 @@ fun SummaryCard(
 }
 
 @Composable
-private fun BookStackView(coverPaths: List<String?>) {
+private fun BookStackView(
+    records: List<ReadRecord>,
+    viewModel: ReadRecordViewModel
+) {
+    val context = LocalContext.current
     val xOffsetStep = 12.dp
-    val stackWidth = 48.dp + (xOffsetStep * (coverPaths.size - 1).coerceAtLeast(0))
+    val stackWidth = 48.dp + (xOffsetStep * (records.size - 1).coerceAtLeast(0))
     val stackSurfaceColor = readRecordBookStackSurfaceColor()
     val iconTint = readRecordMutedIconTint()
+
+    val coverBitmaps = remember { mutableStateOf<Map<Int, Bitmap?>>(emptyMap()) }
+
+    LaunchedEffect(records) {
+        withContext(Dispatchers.IO) {
+            val bitmaps = mutableMapOf<Int, Bitmap?>()
+            records.forEachIndexed { index, record ->
+                val coverPath = viewModel.getBookCover(record.bookName, record.bookAuthor)
+                if (coverPath != null) {
+                    try {
+                        bitmaps[index] = ImageLoader.loadBitmap(context, coverPath)
+                            .submit()
+                            .get()
+                    } catch (e: Exception) {
+                        bitmaps[index] = null
+                    }
+                } else {
+                    bitmaps[index] = null
+                }
+            }
+            coverBitmaps.value = bitmaps
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -117,7 +161,7 @@ private fun BookStackView(coverPaths: List<String?>) {
             .height(72.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-        coverPaths.forEachIndexed { index, _ ->
+        records.forEachIndexed { index, _ ->
             Box(
                 modifier = Modifier
                     .padding(start = xOffsetStep * index)
@@ -135,12 +179,22 @@ private fun BookStackView(coverPaths: List<String?>) {
                             .height(72.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Book,
-                            contentDescription = null,
-                            tint = iconTint,
-                            modifier = Modifier.width(24.dp).height(24.dp)
-                        )
+                        val bitmap = coverBitmaps.value[index]
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Book,
+                                contentDescription = null,
+                                tint = iconTint,
+                                modifier = Modifier.width(24.dp).height(24.dp)
+                            )
+                        }
                     }
                 }
             }

@@ -52,6 +52,8 @@ import androidx.compose.ui.platform.LocalContext
 
 // 数据模型
 import io.legado.app.data.entities.UrlRecord
+import io.legado.app.ui.theme.pageCardContainerColor
+import io.legado.app.ui.theme.pageTopBarContainerColor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -93,11 +95,11 @@ fun UrlRecordScreen(
     var showMenu by remember { mutableStateOf(false) }          // 是否显示菜单
     
     // ==================== 其他配置 ====================
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()  // 滚动行为
-    val containerColor = urlRecordCardContainerColor()  // 卡片背景色
-    val topBarColor = urlRecordTopBarContainerColor()    // 标题栏背景色
-    val coroutineScope = rememberCoroutineScope()       // 协程作用域，用于调用suspend函数
-    val context = LocalContext.current                   // Context用于显示Toast
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val containerColor = pageCardContainerColor()
+    val topBarColor = pageTopBarContainerColor()
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // ==================== 副作用 ====================
     // LaunchedEffect 当key变化时执行副作用
@@ -146,16 +148,15 @@ fun UrlRecordScreen(
     // Scaffold 是Material3的基础页面模板
     // 它提供了topBar、bottomBar、floatingActionButton等预定义区域
     Scaffold(
-        containerColor = Color.Transparent,  // 背景透明（让Activity的背景显示）
         topBar = {
             // ==================== 标题栏 ====================
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = topBarColor,
                     scrolledContainerColor = topBarColor,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
+                    titleContentColor = MaterialTheme.colorScheme.onSecondary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSecondary
                 ),
                 title = {
                     // Column 是垂直布局，子元素从上到下排列
@@ -491,17 +492,16 @@ private fun DomainFilterItem(
  */
 @Composable
 private fun UrlRecordItem(record: UrlRecord) {
-    // remember 缓存计算结果，避免每次重组都创建新对象
     val dateFormat = remember { SimpleDateFormat("MM-dd HH:mm:ss", Locale.getDefault()) }
-    val containerColor = urlRecordCardContainerColor()
 
-    // Surface 是一个带背景和阴影的容器
-    Surface(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp),
-        color = containerColor,
-        shape = RoundedCornerShape(12.dp)  // 圆角
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Column(
             modifier = Modifier
@@ -623,34 +623,4 @@ private fun StatusBadge(responseCode: Int, errorMsg: String?) {
         fontWeight = FontWeight.Medium,
         color = color
     )
-}
-
-/**
- * 计算卡片背景色
- * 根据主题自动调整透明度
- */
-@Composable
-fun urlRecordCardContainerColor(): Color {
-    val background = MaterialTheme.colorScheme.background
-    val alpha = if (background.luminance() > 0.5f) 0.9f else 0.9f
-    return MaterialTheme.colorScheme.surface.copy(alpha = alpha)
-}
-
-/**
- * 计算标题栏背景色
- * 根据主题自动调整透明度
- */
-@Composable
-fun urlRecordTopBarContainerColor(): Color {
-    val background = MaterialTheme.colorScheme.background
-    val alpha = if (background.luminance() > 0.5f) 0.82f else 0.94f
-    return MaterialTheme.colorScheme.surface.copy(alpha = alpha)
-}
-
-/**
- * 计算颜色亮度
- * 用于判断是亮色主题还是暗色主题
- */
-private fun Color.luminance(): Float {
-    return (0.299f * red + 0.587f * green + 0.114f * blue)
 }

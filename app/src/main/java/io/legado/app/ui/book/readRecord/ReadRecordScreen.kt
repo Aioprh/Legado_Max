@@ -158,9 +158,9 @@ fun ReadRecordScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = topBarColor,
                     scrolledContainerColor = topBarColor,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
+                    titleContentColor = MaterialTheme.colorScheme.onSecondary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSecondary
                 ),
                 title = {
                     Column {
@@ -260,7 +260,9 @@ fun ReadRecordScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             } else if (
                 (displayMode == DisplayMode.AGGREGATE && state.groupedRecords.isEmpty()) ||
@@ -296,7 +298,8 @@ fun ReadRecordScreen(
                         SummaryCard(
                             totalReadTime = state.totalReadTime,
                             bookCount = state.latestRecords.size,
-                            latestRecords = state.latestRecords
+                            latestRecords = state.latestRecords,
+                            viewModel = viewModel
                         )
                     }
 
@@ -491,7 +494,8 @@ private fun DateHeader(date: String, totalDuration: Long) {
             Text(
                 text = formatFriendlyDate(date),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = formatReadDuration(totalDuration),
@@ -520,7 +524,8 @@ private fun TimelineDateHeader(date: String, totalDuration: Long) {
             Text(
                 text = formatFriendlyDate(date),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
             Text(
                 text = formatReadDuration(totalDuration),

@@ -33,26 +33,34 @@ suspend fun OkHttpClient.newCallResponse(
     val requestBuilder = Request.Builder()
     requestBuilder.apply(builder)
     var response: Response? = null
+    var currentRequest = requestBuilder.build()
+    
     for (i in 0..retry) {
-        response = newCall(requestBuilder.build()).await()
+        response = newCall(currentRequest).await()
+        
         if (response.isSuccessful) {
             return response
         }
-        // 处理307重定向
-        if (response.code == 307) {
-            response.header("Location")?.let {
-                val newRequestBuilder = Request.Builder()
-                    .url(it)
-                    .method(response.request.method, response.request.body)
-                    .headers(response.request.headers)
+        
+        if (response.code == 307 || response.code == 308) {
+            response.header("Location")?.let { location ->
+                val redirectRequest = currentRequest.newBuilder()
+                    .url(location)
+                    .method(currentRequest.method, currentRequest.body)
+                    .headers(currentRequest.headers)
+                    .build()
                 response.close()
-                response = newCall(newRequestBuilder.build()).await()
+                response = newCall(redirectRequest).await()
+                
                 if (response.isSuccessful) {
                     return response
                 }
+                
+                currentRequest = redirectRequest
             }
         }
     }
+    
     return response!!
 }
 

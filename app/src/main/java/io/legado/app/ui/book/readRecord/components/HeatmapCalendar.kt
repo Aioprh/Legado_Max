@@ -6,10 +6,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,12 +22,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.legado.app.utils.formatReadDuration
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalAdjusters
 import java.util.*
@@ -75,17 +82,8 @@ fun HeatmapCalendarSection(
     onDateSelected: (LocalDate?) -> Unit
 ) {
     val today = LocalDate.now()
-    val weeksToShow = 16
-    val startDate = today.minusWeeks(weeksToShow.toLong()).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    var currentYearMonth by remember { mutableStateOf(YearMonth.now()) }
     
-    val weeks = remember(startDate, weeksToShow) {
-        (0 until weeksToShow).map { weekIndex ->
-            (0 until 7).map { dayIndex ->
-                startDate.plusWeeks(weekIndex.toLong()).plusDays(dayIndex.toLong())
-            }
-        }
-    }
-
     val maxValue = remember(dailyReadCounts, dailyReadTimes, currentMode) {
         if (currentMode == HeatmapMode.COUNT) {
             (dailyReadCounts.values.maxOrNull() ?: 1).coerceAtLeast(1)
@@ -98,42 +96,171 @@ fun HeatmapCalendarSection(
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { currentYearMonth = currentYearMonth.minusMonths(1) }
+            ) {
+                Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "上个月")
+            }
+            
+            Text(
+                text = "${currentYearMonth.year}年${currentYearMonth.monthValue}月",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            
+            IconButton(
+                onClick = { currentYearMonth = currentYearMonth.plusMonths(1) }
+            ) {
+                Icon(Icons.Default.KeyboardArrowRight, contentDescription = "下个月")
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             listOf("一", "二", "三", "四", "五", "六", "日").forEach { day ->
                 Text(
                     text = day,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.width(20.dp),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            items(weeks, key = { week -> week.first().toString() }) { week ->
-                HeatmapWeekColumn(
-                    week = week,
-                    dailyReadCounts = dailyReadCounts,
-                    dailyReadTimes = dailyReadTimes,
-                    mode = currentMode,
-                    maxValue = maxValue,
-                    selectedDate = selectedDate,
-                    today = today,
-                    onDateSelected = onDateSelected
                 )
             }
         }
         
         Spacer(modifier = Modifier.height(8.dp))
         
+        MonthCalendarGrid(
+            yearMonth = currentYearMonth,
+            dailyReadCounts = dailyReadCounts,
+            dailyReadTimes = dailyReadTimes,
+            mode = currentMode,
+            maxValue = maxValue,
+            selectedDate = selectedDate,
+            today = today,
+            onDateSelected = onDateSelected
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
         HeatmapLegend()
+    }
+}
+
+@Composable
+fun MonthCalendarGrid(
+    yearMonth: YearMonth,
+    dailyReadCounts: Map<LocalDate, Int>,
+    dailyReadTimes: Map<LocalDate, Long>,
+    mode: HeatmapMode,
+    maxValue: Int,
+    selectedDate: LocalDate?,
+    today: LocalDate,
+    onDateSelected: (LocalDate?) -> Unit
+) {
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    
+    val firstDayOfMonth = yearMonth.atDay(1)
+    val lastDayOfMonth = yearMonth.atEndOfMonth()
+    val firstDayOfWeek = firstDayOfMonth.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    
+    val days = remember(firstDayOfWeek, lastDayOfMonth) {
+        generateSequence(firstDayOfWeek) { it.plusDays(1) }
+            .takeWhile { !it.isAfter(lastDayOfMonth) || it.dayOfWeek != DayOfWeek.SUNDAY }
+            .toList()
+    }
+    
+    val weeks = days.chunked(7)
+    
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        weeks.forEach { week ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                week.forEach { date ->
+                    val isCurrentMonth = date.month == yearMonth.month
+                    
+                    val value = if (mode == HeatmapMode.COUNT) {
+                        dailyReadCounts[date] ?: 0
+                    } else {
+                        ((dailyReadTimes[date] ?: 0L) / 60000).toInt()
+                    }
+                    
+                    val isSelected = date == selectedDate
+                    val isToday = date == today
+                    
+                    val backgroundColor = when {
+                        isSelected -> MaterialTheme.colorScheme.primary
+                        !isCurrentMonth -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        value == 0 -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        else -> {
+                            val intensity = (value.toFloat() / maxValue).coerceIn(0f, 1f)
+                            Color(
+                                red = onSurfaceColor.red * intensity + surfaceColor.red * (1 - intensity),
+                                green = onSurfaceColor.green * intensity + surfaceColor.green * (1 - intensity),
+                                blue = onSurfaceColor.blue * intensity + surfaceColor.blue * (1 - intensity)
+                            )
+                        }
+                    }
+                    
+                    val textColor = when {
+                        isSelected -> MaterialTheme.colorScheme.onPrimary
+                        !isCurrentMonth -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                        value == 0 -> MaterialTheme.colorScheme.onSurfaceVariant
+                        else -> {
+                            val intensity = (value.toFloat() / maxValue).coerceIn(0f, 1f)
+                            if (intensity > 0.5f) {
+                                Color.White
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        }
+                    }
+                    
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(backgroundColor)
+                            .then(
+                                if (isToday && !isSelected) {
+                                    Modifier.border(
+                                        width = 2.dp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = RoundedCornerShape(4.dp)
+                                    )
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .clickable(enabled = isCurrentMonth) {
+                                onDateSelected(if (isSelected) null else date)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = date.dayOfMonth.toString(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textColor,
+                            fontWeight = if (isToday || isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

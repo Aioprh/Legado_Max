@@ -26,6 +26,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import splitties.init.appCtx
 
 private typealias RecordIdentity = Triple<String, String, String>
@@ -57,6 +58,10 @@ class ReadRecordViewModel : ViewModel() {
 
     private val repository = ReadRecordRepository(appDb.readRecordDao)
     private val bookRepository = BookRepository()
+
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
+        timeZone = TimeZone.getDefault()
+    }
 
     private val _displayMode = MutableStateFlow(DisplayMode.AGGREGATE)
     val displayMode = _displayMode.asStateFlow()
@@ -95,7 +100,6 @@ class ReadRecordViewModel : ViewModel() {
         _selectedDate,
         _searchKey
     ) { data, selectedDate, searchKey ->
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val today = LocalDate.now()
         val dateStr = selectedDate?.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
@@ -109,8 +113,8 @@ class ReadRecordViewModel : ViewModel() {
             .groupBy { dateFormat.format(Date(it.startTime)) }
             .mapValues { (_, sessions) -> mergeContinuousSessions(sessions) }
 
-        val dailyCounts = mergedDailySessions
-            .mapKeys { LocalDate.parse(it.key, DateTimeFormatter.ISO_LOCAL_DATE) }
+        val dailyCounts = data.details
+            .groupBy { LocalDate.parse(it.date, DateTimeFormatter.ISO_LOCAL_DATE) }
             .mapValues { it.value.size }
 
         val dailyTimes = data.details

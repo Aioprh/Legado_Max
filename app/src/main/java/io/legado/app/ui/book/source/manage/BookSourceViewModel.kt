@@ -9,6 +9,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.toBookSource
+import io.legado.app.help.config.SourceConfig
 import io.legado.app.help.source.SourceHelp
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
@@ -293,6 +294,12 @@ class BookSourceViewModel(application: Application) : BaseViewModel(application)
                 }
                 appDb.bookSourceDao.update(*sources.toTypedArray())
             }
+        }
+    }
+
+    fun upGroupOrder(groups: List<String>) {
+        execute {
+            SourceConfig.setBookSourceGroupOrder(groups)
         }
     }
 

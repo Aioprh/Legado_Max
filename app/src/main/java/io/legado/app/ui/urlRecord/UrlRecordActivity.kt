@@ -209,8 +209,8 @@ fun UrlRecordContent(
     
     val isLight = ColorUtils.isColorLight(bgColor)
     val background = remember(bgColor) { Color(bgColor) }
-    val primary = remember(primaryColor) { Color(primaryColor) }
-    val secondary = remember(accentColor) { Color(accentColor) }
+    val primary = remember(accentColor) { Color(accentColor) }
+    val secondary = remember(primaryColor) { Color(primaryColor) }
     val onBackground = remember(textPrimaryColor) { Color(textPrimaryColor) }
     val onBackgroundVariant = remember(textSecondaryColor) { Color(textSecondaryColor) }
     
@@ -275,8 +275,8 @@ fun UrlRecordContent(
                 outlineVariant = outline.copy(alpha = 0.75f),
                 // onPrimary是主色上的文字颜色
                 // 如果主色是亮色，文字用黑色；否则用白色
-                onPrimary = if (ColorUtils.isColorLight(primaryColor)) Color.Black else Color.White,
-                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onPrimary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(primaryColor)) Color.Black else Color.White,
                 onBackground = onBackground,
                 onSurface = onBackground,
                 onSurfaceVariant = pageOnBackgroundVariant,
@@ -296,8 +296,8 @@ fun UrlRecordContent(
                 tertiaryContainer = pageSurfaceVariant,
                 outline = outline,
                 outlineVariant = outline.copy(alpha = 0.8f),
-                onPrimary = if (ColorUtils.isColorLight(primaryColor)) Color.Black else Color.White,
-                onSecondary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onPrimary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
+                onSecondary = if (ColorUtils.isColorLight(primaryColor)) Color.Black else Color.White,
                 onBackground = onBackground,
                 onSurface = onBackground,
                 onSurfaceVariant = pageOnBackgroundVariant,
