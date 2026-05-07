@@ -12,3 +12,6 @@
 .\gradlew.bat :app:assembleRelease
 ./gradlew assembleAppMaxRelease 打包MaxRelease版本
 
+查看所有可用编译任务：
+.\gradlew.bat tasks
+.\gradlew.bat :app:tasks --all | findstr compile.*Kotlin
