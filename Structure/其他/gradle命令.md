@@ -2,7 +2,7 @@
 .\gradlew.bat :app:compileAppMaxDebugKotlin -x :app:processAppMaxDebugResources
 只编译该渠道 Debug 版的 Kotlin 代码，不打包、不处理资源
 .\gradlew.bat :app:compileAppMaxDebugKotlin
-
+编译测试 : 运行 ./gradlew compileDebugKotlin 检查是否有语法错误
 
 打包Debug版本
 .\gradlew.bat :app:assembleDebug

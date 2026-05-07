@@ -41,7 +41,7 @@ class TextPageFactory(dataSource: DataSource) : PageFactory<TextPage>(dataSource
         return if (hasNext()) {
             val pageIndex = pageIndex
             if (currentChapter == null || currentChapter?.isLastIndex(pageIndex) == true) {
-                if ((currentChapter == null || isScroll) && nextChapter == null) {
+                if (currentChapter == null && nextChapter == null) {
                     return@with false
                 }
                 ReadBook.moveToNextChapter(upContent, false)

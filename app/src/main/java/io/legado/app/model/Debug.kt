@@ -5,9 +5,13 @@ import android.util.Log
 import io.legado.app.BuildConfig
 import io.legado.app.constant.AppPattern
 import io.legado.app.data.entities.*
+import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.help.book.isWebFile
 import io.legado.app.help.coroutine.CompositeCoroutine
 import io.legado.app.help.source.sortUrls
+import io.legado.app.model.debug.DebugCategory
+import io.legado.app.model.debug.DebugEvent
+import io.legado.app.model.debug.DebugLevel
 import io.legado.app.model.rss.Rss
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.HtmlFormatter
@@ -15,6 +19,9 @@ import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.stackTraceStr
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -64,6 +71,40 @@ object Debug {
             }
             it.printLog(state, printMsg)
         }
+
+        // 新增：上报到调试事件中心（保持兼容性）
+        GlobalScope.launch(Dispatchers.Default) {
+            var printMsg = msg
+            if (isHtml) {
+                printMsg = HtmlFormatter.format(msg)
+            }
+            if (showTime) {
+                val time = debugTimeFormat.format(Date(System.currentTimeMillis() - startTime))
+                printMsg = "$time $printMsg"
+            }
+
+            // 根据sourceUrl判断分类（简化逻辑，后续可优化）
+            val category = when {
+                sourceUrl?.contains("rss") == true -> DebugCategory.RSS
+                else -> DebugCategory.RULE  // 默认归为规则执行
+            }
+
+            DebugEventCenter.emit(
+                DebugEvent(
+                    level = when {
+                        state < 0 -> DebugLevel.ERROR
+                        state == 0 -> DebugLevel.WARN
+                        else -> DebugLevel.DEBUG
+                    },
+                    category = category,
+                    message = printMsg,
+                    detail = msg,
+                    sourceUrl = sourceUrl,
+                    tags = mapOf("state" to state.toString())
+                )
+            )
+        }
+
         if (isChecking && sourceUrl != null && (msg).length < 30) {
             var printMsg = msg
             if (isHtml) {
