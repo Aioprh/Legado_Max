@@ -12,22 +12,37 @@
 <br>
 <a href="https://loyc.xyz/c/legado.html" target="_blank">软件介绍页</a>
 <br>
-阅读Max继承自阅读Sigma，在其基础上新增更多功能。
+阅读Max继承自阅读Sigma，在其基础上新增更多实用和强大功能。
 </div>
 
+
 ## 版本说明
-- 本项目基于 [lyc版](https://gitee.com/lyc486/legado) 持续开发，在此基础上有更多功能优化
+- 本项目基于 [lyc版](https://gitee.com/lyc486/legado) 持续开发，在此基础上有更多实用和强大功能
 - **appLegacy版**：包名 `io.legado.app`，与原版相同，可覆盖更新
 - **appMax版**：包名 `io.legado.app.yuedu`，共存包名，不会覆盖原版
 - **appS版**：包名 `io.legado.app.yuedu.a`，另一个共存包名
 #### 下载地址 [Gitee Releases](https://gitee.com/lyc486/legado/releases)
 
-[![](https://img.shields.io/badge/-Contents:-696969.svg)](#contents) [![](https://img.shields.io/badge/-Function-F5F5F5.svg)](#Function-主要功能-) [![](https://img.shields.io/badge/-Community-F5F5F5.svg)](#Community-交流社区-) [![](https://img.shields.io/badge/-API-F5F5F5.svg)](#API-) [![](https://img.shields.io/badge/-Other-F5F5F5.svg)](#Other-其他-) [![](https://img.shields.io/badge/-Grateful-F5F5F5.svg)](#Grateful-感谢-) [![](https://img.shields.io/badge/-Interface-F5F5F5.svg)](#Interface-界面-)
+[![](https://img.shields.io/badge/-Contents:-696969.svg)](#contents) [![](https://img.shields.io/badge/-Max特色-F5F5F5.svg)](#Max版特色功能-) [![](https://img.shields.io/badge/-Function-F5F5F5.svg)](#Function-主要功能-) [![](https://img.shields.io/badge/-Community-F5F5F5.svg)](#Community-交流社区-) [![](https://img.shields.io/badge/-API-F5F5F5.svg)](#API-) [![](https://img.shields.io/badge/-Other-F5F5F5.svg)](#Other-其他-) [![](https://img.shields.io/badge/-Grateful-F5F5F5.svg)](#Grateful-感谢-) [![](https://img.shields.io/badge/-Interface-F5F5F5.svg)](#Interface-界面-)
 
 >新用户？
 >
 >软件不提供内容，需要您自己手动添加，例如导入书源等。
 >看看 [官方帮助文档](https://www.yuque.com/legado/wiki)，也许里面就有你要的答案。
+
+# Max版特色功能 [![](https://img.shields.io/badge/-Max特色-F5F5F5.svg)](#Max版特色功能-)
+
+阅读Max在继承原版所有功能的基础上，新增以下特色功能：
+
+📖 **阅读体验增强** — 翻页速度自由调节 · 页眉页脚字体独立调节 · 波浪线/虚线下划线 · 曲面屏防误触<br>
+🔧 **调试与开发工具** — 集成调试工具台 · 代码编辑器增强 · TTS源调试 · 字典/字重调试界面<br>
+📊 **数据与记录管理** — 阅读记录四种视图 · 热力图日历 · URL记录 · 完全备份支持<br>
+🎨 **UI/UX优化** — HTML封面模板引擎 · 主题批量操作 · 帮助文档选择器 · 发现页useWeb展示<br>
+🚀 **功能扩展增强** — @webjs规则类型 · 智能导入 · 自动更新 · JavaScript增强函数
+
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-返回顶部-orange.svg" alt="#" align="right">
+</a>
 
 # Function-主要功能 [![](https://img.shields.io/badge/-Function-F5F5F5.svg)](#Function-主要功能-)
 [English](English.md)
@@ -41,7 +56,8 @@
 6.支持本地TXT、EPUB阅读，手动浏览，智能扫描。<br>
 7.支持高度自定义阅读界面，切换字体、颜色、背景、行距、段距、加粗、简繁转换等。<br>
 8.支持多种翻页模式，覆盖、仿真、滑动、滚动等。<br>
-9.软件开源，持续优化，无广告。
+9.缺失的功能全部加上<br>
+10.软件开源，持续优化，无广告。
 </details>
 
 <a href="#readme">

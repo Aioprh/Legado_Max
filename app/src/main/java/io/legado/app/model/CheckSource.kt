@@ -33,6 +33,11 @@ object CheckSource {
         val selectedIds = sources.map {
             it.bookSourceUrl
         }
+        start(context, selectedIds)
+    }
+
+    fun start(context: Context, sourceUrls: Collection<String>) {
+        val selectedIds = sourceUrls.toList()
         IntentData.put("checkSourceSelectedIds", selectedIds)
         context.startService<CheckSourceService> {
             action = IntentAction.start

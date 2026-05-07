@@ -16,6 +16,7 @@ import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.model.BookCover
+import io.legado.app.help.storage.BackupSelectorConfig
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.LogUtils
@@ -110,7 +111,6 @@ object Backup {
             "replaceRule.json",
             "readRecord.json",
             "readRecordDetail.json",
-            "readRecordSession.json",
             "searchHistory.json",
             "txtTocRule.json",
             "httpTTS.json",
@@ -341,103 +341,148 @@ object Backup {
         val aes = BackupAES()
         FileUtils.delete(backupPath)
 
+        val selectedFiles = BackupSelectorConfig.getSelectedFileNames()
+
         // 导出数据库数据到JSON文件
-        writeListToJson(appDb.bookDao.all, "bookshelf.json", backupPath)
-        writeListToJson(appDb.bookmarkDao.all, "bookmark.json", backupPath)
-        writeListToJson(appDb.bookGroupDao.all, "bookGroup.json", backupPath)
-        writeListToJson(appDb.bookSourceDao.all, "bookSource.json", backupPath)
-        writeListToJson(appDb.rssSourceDao.all, "rssSources.json", backupPath)
-        writeListToJson(appDb.rssStarDao.all, "rssStar.json", backupPath)
-        writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", backupPath)
-        writeListToJson(appDb.readRecordDao.all, "readRecord.json", backupPath)
-        writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", backupPath)
-        writeListToJson(appDb.readRecordDao.getAllSessionsList(), "readRecordSession.json", backupPath)
-        writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", backupPath)
-        writeListToJson(appDb.txtTocRuleDao.all, "txtTocRule.json", backupPath)
-        writeListToJson(appDb.httpTTSDao.all, "httpTTS.json", backupPath)
-        writeListToJson(appDb.keyboardAssistsDao.all, "keyboardAssists.json", backupPath)
-        writeListToJson(appDb.dictRuleDao.all, "dictRule.json", backupPath)
+        if (selectedFiles.contains("bookshelf.json")) {
+            writeListToJson(appDb.bookDao.all, "bookshelf.json", backupPath)
+        }
+        if (selectedFiles.contains("bookmark.json")) {
+            writeListToJson(appDb.bookmarkDao.all, "bookmark.json", backupPath)
+        }
+        if (selectedFiles.contains("bookGroup.json")) {
+            writeListToJson(appDb.bookGroupDao.all, "bookGroup.json", backupPath)
+        }
+        if (selectedFiles.contains("bookSource.json")) {
+            writeListToJson(appDb.bookSourceDao.all, "bookSource.json", backupPath)
+        }
+        if (selectedFiles.contains("rssSources.json")) {
+            writeListToJson(appDb.rssSourceDao.all, "rssSources.json", backupPath)
+        }
+        if (selectedFiles.contains("rssStar.json")) {
+            writeListToJson(appDb.rssStarDao.all, "rssStar.json", backupPath)
+        }
+        if (selectedFiles.contains("replaceRule.json")) {
+            writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", backupPath)
+        }
+        if (selectedFiles.contains("readRecord.json")) {
+            writeListToJson(appDb.readRecordDao.all, "readRecord.json", backupPath)
+        }
+        if (selectedFiles.contains("readRecordDetail.json")) {
+            writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", backupPath)
+        }
+        if (selectedFiles.contains("searchHistory.json")) {
+            writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", backupPath)
+        }
+        if (selectedFiles.contains("txtTocRule.json")) {
+            writeListToJson(appDb.txtTocRuleDao.all, "txtTocRule.json", backupPath)
+        }
+        if (selectedFiles.contains("httpTTS.json")) {
+            writeListToJson(appDb.httpTTSDao.all, "httpTTS.json", backupPath)
+        }
+        if (selectedFiles.contains("keyboardAssists.json")) {
+            writeListToJson(appDb.keyboardAssistsDao.all, "keyboardAssists.json", backupPath)
+        }
+        if (selectedFiles.contains("dictRule.json")) {
+            writeListToJson(appDb.dictRuleDao.all, "dictRule.json", backupPath)
+        }
 
         // 服务器配置需要加密存储
-        GSON.toJson(appDb.serverDao.all).let { json ->
-            aes.runCatching {
-                encryptBase64(json)
-            }.getOrDefault(json).let {
-                FileUtils.createFileIfNotExist(backupPath + File.separator + "servers.json")
-                    .writeText(it)
+        if (selectedFiles.contains("servers.json")) {
+            GSON.toJson(appDb.serverDao.all).let { json ->
+                aes.runCatching {
+                    encryptBase64(json)
+                }.getOrDefault(json).let {
+                    FileUtils.createFileIfNotExist(backupPath + File.separator + "servers.json")
+                        .writeText(it)
+                }
             }
         }
 
         currentCoroutineContext().ensureActive()
 
         // 导出阅读配置
-        GSON.toJson(ReadBookConfig.getBackupConfigList()).let {
-            FileUtils.createFileIfNotExist(backupPath + File.separator + ReadBookConfig.configFileName)
-                .writeText(it)
+        if (selectedFiles.contains(ReadBookConfig.configFileName)) {
+            GSON.toJson(ReadBookConfig.getBackupConfigList()).let {
+                FileUtils.createFileIfNotExist(backupPath + File.separator + ReadBookConfig.configFileName)
+                    .writeText(it)
+            }
         }
-        GSON.toJson(ReadBookConfig.getBackupShareConfig()).let {
-            FileUtils.createFileIfNotExist(backupPath + File.separator + ReadBookConfig.shareConfigFileName)
-                .writeText(it)
+        if (selectedFiles.contains(ReadBookConfig.shareConfigFileName)) {
+            GSON.toJson(ReadBookConfig.getBackupShareConfig()).let {
+                FileUtils.createFileIfNotExist(backupPath + File.separator + ReadBookConfig.shareConfigFileName)
+                    .writeText(it)
+            }
         }
 
         // 导出主题配置
-        GSON.toJson(ThemeConfig.configList).let {
-            FileUtils.createFileIfNotExist(backupPath + File.separator + ThemeConfig.configFileName)
-                .writeText(it)
+        if (selectedFiles.contains(ThemeConfig.configFileName)) {
+            GSON.toJson(ThemeConfig.configList).let {
+                FileUtils.createFileIfNotExist(backupPath + File.separator + ThemeConfig.configFileName)
+                    .writeText(it)
+            }
         }
 
         // 导出直链上传配置
-        DirectLinkUpload.getConfig()?.let {
-            FileUtils.createFileIfNotExist(backupPath + File.separator + DirectLinkUpload.ruleFileName)
-                .writeText(GSON.toJson(it))
+        if (selectedFiles.contains(DirectLinkUpload.ruleFileName)) {
+            DirectLinkUpload.getConfig()?.let {
+                FileUtils.createFileIfNotExist(backupPath + File.separator + DirectLinkUpload.ruleFileName)
+                    .writeText(GSON.toJson(it))
+            }
         }
 
         // 导出封面规则配置
-        BookCover.getConfig()?.let {
-            FileUtils.createFileIfNotExist(backupPath + File.separator + BookCover.configFileName)
-                .writeText(GSON.toJson(it))
+        if (selectedFiles.contains(BookCover.configFileName)) {
+            BookCover.getConfig()?.let {
+                FileUtils.createFileIfNotExist(backupPath + File.separator + BookCover.configFileName)
+                    .writeText(GSON.toJson(it))
+            }
         }
 
         currentCoroutineContext().ensureActive()
 
         // 导出SharedPreferences配置（应用主配置）
-        appCtx.getSharedPreferences(backupPath, "config")?.let { sp ->
-            val edit = sp.edit()
-            appCtx.defaultSharedPreferences.all.forEach { (key, value) ->
-                if (BackupConfig.keyIsNotIgnore(key)) {
-                    when (key) {
-                        // WebDav密码需要加密存储
-                        PreferKey.webDavPassword -> {
-                            edit.putString(key, aes.runCatching {
-                                encryptBase64(value.toString())
-                            }.getOrDefault(value.toString()))
-                        }
+        if (selectedFiles.contains("config.xml")) {
+            appCtx.getSharedPreferences(backupPath, "config")?.let { sp ->
+                val edit = sp.edit()
+                appCtx.defaultSharedPreferences.all.forEach { (key, value) ->
+                    if (BackupConfig.keyIsNotIgnore(key)) {
+                        when (key) {
+                            // WebDav密码需要加密存储
+                            PreferKey.webDavPassword -> {
+                                edit.putString(key, aes.runCatching {
+                                    encryptBase64(value.toString())
+                                }.getOrDefault(value.toString()))
+                            }
 
-                        else -> when (value) {
-                            is Int -> edit.putInt(key, value)
-                            is Boolean -> edit.putBoolean(key, value)
-                            is Long -> edit.putLong(key, value)
-                            is Float -> edit.putFloat(key, value)
-                            is String -> edit.putString(key, value)
+                            else -> when (value) {
+                                is Int -> edit.putInt(key, value)
+                                is Boolean -> edit.putBoolean(key, value)
+                                is Long -> edit.putLong(key, value)
+                                is Float -> edit.putFloat(key, value)
+                                is String -> edit.putString(key, value)
+                            }
                         }
                     }
                 }
+                edit.commit()
             }
-            edit.commit()
         }
 
         currentCoroutineContext().ensureActive()
 
         // 导出视频播放配置
-        appCtx.getSharedPreferences(backupPath, "videoConfig")?.let { sp ->
-            sp.edit(commit = true) {
-                appCtx.getSharedPreferences(VIDEO_PREF_NAME, Context.MODE_PRIVATE).all.forEach { (key, value) ->
-                    when (value) {
-                        is Int -> putInt(key, value)
-                        is Boolean -> putBoolean(key, value)
-                        is Long -> putLong(key, value)
-                        is Float -> putFloat(key, value)
-                        is String -> putString(key, value)
+        if (selectedFiles.contains("videoConfig.xml")) {
+            appCtx.getSharedPreferences(backupPath, "videoConfig")?.let { sp ->
+                sp.edit(commit = true) {
+                    appCtx.getSharedPreferences(VIDEO_PREF_NAME, Context.MODE_PRIVATE).all.forEach { (key, value) ->
+                        when (value) {
+                            is Int -> putInt(key, value)
+                            is Boolean -> putBoolean(key, value)
+                            is Long -> putLong(key, value)
+                            is Float -> putFloat(key, value)
+                            is String -> putString(key, value)
+                        }
                     }
                 }
             }
@@ -446,7 +491,9 @@ object Backup {
         currentCoroutineContext().ensureActive()
 
         // 打包成ZIP文件
-        stageBackgroundImageFiles(backupPath)
+        if (selectedFiles.contains("bg")) {
+            stageBackgroundImageFiles(backupPath)
+        }
 
         currentCoroutineContext().ensureActive()
 

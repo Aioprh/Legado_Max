@@ -196,8 +196,12 @@ object ReadManga : CoroutineScope by MainScope() {
     fun loadContent() {
         clearMangaChapter()
         loadContent(durChapterIndex)
-        loadContent(durChapterIndex + 1)
-        loadContent(durChapterIndex - 1)
+        if (AppConfig.preDownloadNum > 0) {
+            loadContent(durChapterIndex + 1)
+        }
+        if (AppConfig.backwardPreDownloadNum > 0) {
+            loadContent(durChapterIndex - 1)
+        }
     }
     //加载或更新章节内容
     fun loadOrUpContent() {
@@ -206,10 +210,10 @@ object ReadManga : CoroutineScope by MainScope() {
         } else {
             mCallback?.upContent()
         }
-        if (nextMangaChapter == null) {
+        if (AppConfig.preDownloadNum > 0 && nextMangaChapter == null) {
             loadContent(durChapterIndex + 1)
         }
-        if (prevMangaChapter == null) {
+        if (AppConfig.backwardPreDownloadNum > 0 && prevMangaChapter == null) {
             loadContent(durChapterIndex - 1)
         }
     }
@@ -439,7 +443,7 @@ object ReadManga : CoroutineScope by MainScope() {
                     }
                 }
                 launch {
-                    val minChapterIndex = durChapterIndex - min(ReadConstants.BACKWARD_PRE_DOWNLOAD_RANGE, AppConfig.preDownloadNum)
+                    val minChapterIndex = durChapterIndex - min(AppConfig.backwardPreDownloadNum, AppConfig.preDownloadNum)
                     for (i in durChapterIndex.minus(2) downTo minChapterIndex) {
                         if (downloadedChapters.contains(i)) continue
                         if ((downloadFailChapters[i] ?: 0) >= ReadConstants.MAX_DOWNLOAD_FAIL_COUNT) continue

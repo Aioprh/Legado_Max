@@ -59,6 +59,7 @@ object PreferKey {
     const val fontFolder = "fontFolder"
     const val backupPath = "backupUri"
     const val restoreIgnore = "restoreIgnore"
+    const val restoreShowSelector = "restoreShowSelector"
     const val threadCount = "threadCount"
     const val webPort = "webPort"
     const val keepLight = "keep_light"
@@ -107,6 +108,7 @@ object PreferKey {
     const val bitmapCacheSize = "bitmapCacheSize"
     const val imageRetainNum = "imageRetainNum"
     const val preDownloadNum = "preDownloadNum"
+    const val backwardPreDownloadNum = "backwardPreDownloadNum"
     const val mangaPreDownloadNum = "mangaPreDownloadNum"
     const val mangaAutoPageSpeed = "mangaAutoPageSpeed"
     const val mangaFooterConfig = "mangaFooterConfig"
@@ -128,6 +130,7 @@ object PreferKey {
     const val brightness = "brightness"
     const val nightBrightness = "nightBrightness"
     const val expandTextMenu = "expandTextMenu"
+    const val hiddenTextMenuItems = "hiddenTextMenuItems"  // 隐藏的文本菜单项ID列表，用逗号分隔
     const val doublePageHorizontal = "doubleHorizontalPage"
     const val readUrlOpenInBrowser = "readUrlInBrowser"
     const val defaultBookTreeUri = "defaultBookTreeUri"

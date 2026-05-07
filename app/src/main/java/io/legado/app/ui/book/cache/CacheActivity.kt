@@ -25,8 +25,10 @@ import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.ActivityCacheBookBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.DialogSelectSectionExportBinding
+import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.getExportFileName
 import io.legado.app.help.book.isAudio
+import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.tryParesExportFileName
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.SelectItem
@@ -55,6 +57,7 @@ import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.verificationField
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.conflate
@@ -202,6 +205,7 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
             }
 
             R.id.menu_export_all -> exportAll()
+            R.id.menu_clear_all_cache -> clearAllCache()
             R.id.menu_enable_replace -> AppConfig.exportUseReplace = !item.isChecked
             // 更改菜单状态[enableCustomExport]
             R.id.menu_enable_custom_export -> AppConfig.enableCustomExport = !item.isChecked
@@ -334,6 +338,45 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
                 configExportSection(path, position)
             } else {
                 startExport(path, position)
+            }
+        }
+    }
+
+    override fun clearCache(position: Int) {
+        adapter.getItem(position)?.let { book ->
+            alert(R.string.clear_cache) {
+                setMessage(getString(R.string.sure_clear_cache, book.name))
+                noButton()
+                yesButton {
+                    lifecycleScope.launch(IO) {
+                        BookHelp.clearCache(book)
+                        viewModel.cacheChapters[book.bookUrl] = hashSetOf()
+                        withContext(Main) {
+                            notifyItemChanged(book.bookUrl)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun clearAllCache() {
+        alert(R.string.clear_cache) {
+            setMessage(R.string.sure_clear_all_cache)
+            noButton()
+            yesButton {
+                lifecycleScope.launch(IO) {
+                    BookHelp.clearCache()
+                    viewModel.cacheChapters.clear()
+                    adapter.getItems().forEach { book ->
+                        if (!book.isLocal) {
+                            viewModel.cacheChapters[book.bookUrl] = hashSetOf()
+                        }
+                    }
+                    withContext(Main) {
+                        adapter.notifyDataSetChanged()
+                    }
+                }
             }
         }
     }

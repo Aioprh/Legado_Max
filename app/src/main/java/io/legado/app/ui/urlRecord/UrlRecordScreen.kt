@@ -46,6 +46,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+// Android Context和Toast
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+
 // 数据模型
 import io.legado.app.data.entities.UrlRecord
 import kotlinx.coroutines.launch
@@ -93,6 +97,7 @@ fun UrlRecordScreen(
     val containerColor = urlRecordCardContainerColor()  // 卡片背景色
     val topBarColor = urlRecordTopBarContainerColor()    // 标题栏背景色
     val coroutineScope = rememberCoroutineScope()       // 协程作用域，用于调用suspend函数
+    val context = LocalContext.current                   // Context用于显示Toast
 
     // ==================== 副作用 ====================
     // LaunchedEffect 当key变化时执行副作用
@@ -221,7 +226,14 @@ fun UrlRecordScreen(
                                     }
                                 },
                                 onClick = {
-                                    viewModel.setRecordUrl(!isRecordEnabled)
+                                    val newEnabled = !isRecordEnabled
+                                    viewModel.setRecordUrl(newEnabled)
+                                    // 显示Toast提示
+                                    Toast.makeText(
+                                        context,
+                                        if (newEnabled) "已开启URL记录" else "已关闭URL记录",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                     showMenu = false
                                 },
                                 leadingIcon = {

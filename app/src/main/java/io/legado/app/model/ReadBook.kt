@@ -614,8 +614,12 @@ object ReadBook : CoroutineScope by MainScope() {
         loadContent(durChapterIndex, resetPageOffset = resetPageOffset) {
             success?.invoke()
         }
-        loadContent(durChapterIndex + 1, resetPageOffset = resetPageOffset)
-        loadContent(durChapterIndex - 1, resetPageOffset = resetPageOffset)
+        if (AppConfig.preDownloadNum > 0) {
+            loadContent(durChapterIndex + 1, resetPageOffset = resetPageOffset)
+        }
+        if (AppConfig.backwardPreDownloadNum > 0) {
+            loadContent(durChapterIndex - 1, resetPageOffset = resetPageOffset)
+        }
     }
 
     fun loadOrUpContent(success: (() -> Unit)? = null) {
@@ -626,10 +630,10 @@ object ReadBook : CoroutineScope by MainScope() {
         } else {
             callBack?.upContent()
         }
-        if (nextTextChapter == null) {
+        if (AppConfig.preDownloadNum > 0 && nextTextChapter == null) {
             loadContent(durChapterIndex + 1)
         }
-        if (prevTextChapter == null) {
+        if (AppConfig.backwardPreDownloadNum > 0 && prevTextChapter == null) {
             loadContent(durChapterIndex - 1)
         }
     }
@@ -1031,7 +1035,7 @@ object ReadBook : CoroutineScope by MainScope() {
                     }
                 }
                 launch {
-                    val minChapterIndex = durChapterIndex - min(ReadConstants.BACKWARD_PRE_DOWNLOAD_RANGE, AppConfig.preDownloadNum)
+                    val minChapterIndex = durChapterIndex - min(AppConfig.backwardPreDownloadNum, AppConfig.preDownloadNum)
                     for (i in durChapterIndex.minus(2) downTo minChapterIndex) {
                         if (downloadedChapters.contains(i)) continue
                         if ((downloadFailChapters[i] ?: 0) >= ReadConstants.MAX_DOWNLOAD_FAIL_COUNT) continue

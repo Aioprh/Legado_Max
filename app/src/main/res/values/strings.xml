@@ -182,6 +182,8 @@
     <string name="author_show">Author: %s</string>
     <string name="aloud_stop">Speak Stopped</string>
     <string name="clear_cache">Clear cache</string>
+    <string name="sure_clear_cache">Are you sure to clear cache of %s?</string>
+    <string name="sure_clear_all_cache">Are you sure to clear all cache?</string>
     <string name="clear_cache_success">Cache cleared</string>
     <string name="action_save">Save</string>
     <string name="edit_source">Edit source</string>
@@ -704,6 +706,9 @@
     <string name="regex">Regex</string>
     <string name="example">Example</string>
     <string name="more_menu">More menu</string>
+    <string name="text_menu_config">Text Menu Config</string>
+    <string name="text_menu_config_desc">Select the menu items you want to display</string>
+    <string name="reset_to_default">Reset to Default</string>
     <string name="reduce">Minus</string>
     <string name="plus">Plus</string>
     <string name="system_typeface">System typeface</string>
@@ -716,6 +721,7 @@
     <string name="title_left">Left</string>
     <string name="title_center">Center</string>
     <string name="title_hide">Hide</string>
+    <string name="title_right">Right</string>
     <string name="add_to_group">Add to Group</string>
     <string name="save_image">Save image</string>
     <string name="no_default_path">No default path</string>
@@ -801,6 +807,9 @@
     <string name="default_cover">Default cover</string>
     <string name="restore_ignore">Bypass list</string>
     <string name="restore_ignore_summary">Ignore some contents while restoring</string>
+    <string name="restore_show_selector">Restore selection menu</string>
+    <string name="restore_show_selector_summary">Show file selection dialog before restoring</string>
+    <string name="select_files_to_restore">Select files to restore</string>
     <string name="read_config">Reading interface settings</string>
     <string name="group_name">Group name</string>
     <string name="note_content">Remarks section</string>
@@ -878,6 +887,8 @@
     <string name="pre_download">Download in advance</string>
     <string name="pre_download_m">Pre-download %s pages</string>
     <string name="pre_download_s">Download %s chapters in advance</string>
+    <string name="backward_pre_download">Backward pre-download</string>
+    <string name="backward_pre_download_s">Pre-download %s chapters backward</string>
     <string name="is_enabled">Is enabled</string>
     <string name="background_image">Background image</string>
     <string name="background_image_blurring">Background image blurring</string>
@@ -1047,6 +1058,10 @@
     <string name="cover_html_template_name">Template Name</string>
     <string name="cover_html_empty">Empty template</string>
     <string name="cover_html_code_empty">HTML code cannot be empty</string>
+    <string name="cover_html_save_changes">Save current changes?</string>
+    <string name="cover_html_unsaved_hint">Current edits are unsaved. Switching templates will discard your changes.</string>
+    <string name="cover_html_keep_one_template">At least one template must be kept</string>
+    <string name="discard">Discard</string>
     <string name="scroll_to_dur_source">Navigate to the current book source</string>
     <string name="sys_tts_config">System tts Settings</string>
     <string name="sys_tts_config_summary">Open the system tts settings interface</string>
@@ -1101,6 +1116,7 @@
     <string name="touch_page_anim_speed_dialog_title">触摸翻页速度(ms)</string>
     <string name="key_page_anim_speed_dialog_title">按键翻页速度(ms)</string>
     <string name="check_selected_interval">Select zones</string>
+    <string name="check_source_compose">Check source (New UI)</string>
     <string name="show_add_to_shelf_alert_title">Prompt to add to bookshelf when return</string>
     <string name="show_add_to_shelf_alert_summary">Prompt to add to bookshelf when return from reading books that are not on the bookshelf</string>
     <string name="review">Review</string>
@@ -1199,6 +1215,8 @@
     <string name="only_latest_backup_s">Local backup keeps only the latest backup file</string>
     <string name="full_backup_t">Full Backup</string>
     <string name="full_backup_s">Backup all user configuration data</string>
+    <string name="backup_selector">Backup Selector</string>
+    <string name="backup_selector_summary">Select items to backup</string>
     <string name="view_backup_info_t">View Backup Info</string>
     <string name="view_backup_info_s">View backup file contents and sizes</string>
     <string name="view_backup_info">Backup Info</string>
@@ -1506,6 +1524,8 @@
     <!-- URL Record -->
     <string name="url_record">URL访问记录</string>
     <string name="record_url_switch">开启URL记录</string>
+    <string name="record_url_enabled">已开启URL记录</string>
+    <string name="record_url_disabled">已关闭URL记录</string>
     <string name="clear_records">清除记录</string>
     <string name="clear_old_records">清除旧记录</string>
     <string name="clear_old_7_days">清除7天前的记录</string>

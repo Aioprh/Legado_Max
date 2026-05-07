@@ -303,6 +303,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             }
         }
 
+    // 恢复时显示选择菜单，默认关闭
+    val restoreShowSelector: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.restoreShowSelector, false)
+
     // 书籍保存位置
     var defaultBookTreeUri: String?
         get() = appCtx.getPrefString(PreferKey.defaultBookTreeUri)
@@ -596,6 +600,13 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefInt(PreferKey.preDownloadNum, 0)
         set(value) {
             appCtx.putPrefInt(PreferKey.preDownloadNum, value)
+        }
+
+    //向前预下载章节数量
+    var backwardPreDownloadNum
+        get() = appCtx.getPrefInt(PreferKey.backwardPreDownloadNum, 0)
+        set(value) {
+            appCtx.putPrefInt(PreferKey.backwardPreDownloadNum, value)
         }
 
     val syncBookProgress get() = appCtx.getPrefBoolean(PreferKey.syncBookProgress, true)

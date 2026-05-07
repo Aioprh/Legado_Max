@@ -349,6 +349,16 @@
             android:name=".ui.urlRecord.UrlRecordActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
+        <!-- 书源检测 -->
+        <activity
+            android:name=".ui.book.source.check.CheckSourceActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
+        <!-- HTML封面模板配置 -->
+        <activity
+            android:name=".ui.config.CoverHtmlActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
         <!-- 直链上传配置 -->
         <activity
             android:name=".ui.upload.DirectLinkUploadActivity"
@@ -364,6 +374,10 @@
             android:hardwareAccelerated="true" />
         <activity
             android:name=".ui.debug.RegexTestActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
+        <activity
+            android:name=".ui.book.read.config.TtsDebugActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
         <activity

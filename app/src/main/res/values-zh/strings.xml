@@ -180,6 +180,8 @@
     <string name="author_show">作者：%s</string>
     <string name="aloud_stop">朗读停止</string>
     <string name="clear_cache">清理缓存</string>
+    <string name="sure_clear_cache">确定清理《%s》的缓存吗？</string>
+    <string name="sure_clear_all_cache">确定清理全部缓存吗？</string>
     <string name="clear_cache_success">成功清理缓存</string>
     <string name="action_save">保存</string>
     <string name="edit_source">编辑源</string>
@@ -308,6 +310,7 @@
     <string name="padding_right">右边距</string>
     <string name="check_book_source">校验书源</string>
     <string name="check_select_source">校验所选</string>
+    <string name="check_source_compose">校验书源(新界面)</string>
     <string name="progress_show">%1$s      进度 %2$d/%3$d</string>
     <string name="tts_fix">请安装并选择中文 TTS！</string>
     <string name="tts_init_failed">TTS 初始化失败！</string>
@@ -694,6 +697,9 @@
     <string name="name">名称</string>
     <string name="regex">正则</string>
     <string name="more_menu">更多菜单</string>
+    <string name="text_menu_config">文本菜单配置</string>
+    <string name="text_menu_config_desc">选择您想要显示的菜单项</string>
+    <string name="reset_to_default">恢复默认</string>
     <string name="reduce">减</string>
     <string name="plus">加</string>
     <string name="system_typeface">系统内置字体样式</string>
@@ -706,6 +712,7 @@
     <string name="title_left">靠左</string>
     <string name="title_center">居中</string>
     <string name="title_hide">隐藏</string>
+    <string name="title_right">靠右</string>
     <string name="add_to_group">加入分组</string>
     <string name="save_image">保存图片</string>
     <string name="no_default_path">没有默认路径</string>
@@ -791,6 +798,9 @@
     <string name="default_cover">默认封面</string>
     <string name="restore_ignore">恢复忽略列表</string>
     <string name="restore_ignore_summary">恢复时忽略一些内容不恢复，方便不同手机配置不同</string>
+    <string name="restore_show_selector">恢复显示选择菜单</string>
+    <string name="restore_show_selector_summary">恢复时显示文件选择对话框，可选择要恢复的内容</string>
+    <string name="select_files_to_restore">选择要恢复的文件</string>
     <string name="read_config">阅读界面设置</string>
     <string name="group_name">分组名称</string>
     <string name="note_content">备注内容</string>
@@ -869,6 +879,8 @@
     <string name="pre_download">预下载</string>
     <string name="pre_download_m">预下载%s页</string>
     <string name="pre_download_s">预先下载 %s 章正文</string>
+    <string name="backward_pre_download">向前预下载</string>
+    <string name="backward_pre_download_s">向前预下载 %s 章</string>
     <string name="is_enabled">是否启用</string>
     <string name="background_image">背景图片</string>
     <string name="background_image_blurring">背景图片虚化</string>
@@ -1035,6 +1047,10 @@
     <string name="cover_html_template_name">模板名称</string>
     <string name="cover_html_empty">空模板</string>
     <string name="cover_html_code_empty">HTML代码不能为空</string>
+    <string name="cover_html_save_changes">是否保存当前编辑？</string>
+    <string name="cover_html_unsaved_hint">当前编辑的内容未保存，切换模板将丢失编辑内容</string>
+    <string name="cover_html_keep_one_template">至少保留一个模板</string>
+    <string name="discard">不保存</string>
     <string name="scroll_to_dur_source">定位到当前书源</string>
     <string name="sys_tts_config">系统 TTS 设置</string>
     <string name="sys_tts_config_summary">打开系统 TTS 设置界面</string>
@@ -1178,6 +1194,8 @@
     <string name="only_latest_backup_s">本地备份仅保留最新备份文件</string>
     <string name="full_backup_t">完全备份</string>
     <string name="full_backup_s">用户配置数据全部备份</string>
+    <string name="backup_selector">备份选择器</string>
+    <string name="backup_selector_summary">选择需要备份的内容</string>
     <string name="view_backup_info_t">查看备份信息</string>
     <string name="view_backup_info_s">查看备份文件内容与大小</string>
     <string name="view_backup_info">备份信息</string>

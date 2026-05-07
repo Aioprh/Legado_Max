@@ -138,6 +138,18 @@ class HttpTtsEditDialog() : BaseDialogFragment(R.layout.dialog_http_tts_edit, tr
                 dismissAllowingStateLoss()
                 toastOnUi("保存成功")
             }
+            R.id.menu_debug -> {
+                val httpTts = dataFromView()
+                if (httpTts.url.isBlank()) {
+                    toastOnUi("URL不能为空")
+                } else {
+                    viewModel.save(httpTts) {
+                        startActivity<TtsDebugActivity> {
+                            putExtra("ttsId", httpTts.id)
+                        }
+                    }
+                }
+            }
             R.id.menu_login -> dataFromView().let { httpTts ->
                 if (httpTts.loginUrl.isNullOrBlank()) {
                     toastOnUi("登录url不能为空")

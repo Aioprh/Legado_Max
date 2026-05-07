@@ -17,12 +17,14 @@ object BackupInfoHelper {
     data class BackupFileInfo(
         val fileName: String,
         val displayName: String,
-        val size: Long
+        val size: Long,
+        val selected: Boolean = true
     )
 
     data class BackupOverview(
         val items: List<BackupFileInfo>,
-        val totalSize: Long
+        val totalSize: Long,
+        val selectedSize: Long
     )
 
     data class CategoryInfo(
@@ -46,7 +48,7 @@ object BackupInfoHelper {
         CategoryDef("配置相关", "⚙️", listOf("config", "videoConfig", "readConfig", "shareConfig", "coverConfig", "servers"))
     )
 
-    private val displayNameMap = mapOf(
+    val displayNameMap = mapOf(
         "bookshelf.json" to "书架书籍",
         "bookmark.json" to "书签",
         "bookGroup.json" to "书籍分组",
@@ -56,7 +58,6 @@ object BackupInfoHelper {
         "replaceRule.json" to "替换规则",
         "readRecord.json" to "阅读记录",
         "readRecordDetail.json" to "阅读详情",
-        "readRecordSession.json" to "阅读会话",
         "searchHistory.json" to "搜索历史",
         "txtTocRule.json" to "TXT 目录规则",
         "httpTTS.json" to "TTS 配置",
@@ -71,9 +72,16 @@ object BackupInfoHelper {
         "videoConfig.xml" to "视频配置"
     )
 
+    private fun isFileSelected(fileName: String): Boolean {
+        val key = BackupSelectorConfig.allItems.find { it.fileName == fileName }?.key
+            ?: return true
+        return BackupSelectorConfig.isSelected(key)
+    }
+
     fun getBackupOverview(): BackupOverview {
         val items = mutableListOf<BackupFileInfo>()
         var totalSize = 0L
+        var selectedSize = 0L
 
         val dbItems = listOf(
             Pair("bookshelf.json") { appDb.bookDao.all.size },
@@ -85,7 +93,6 @@ object BackupInfoHelper {
             Pair("replaceRule.json") { appDb.replaceRuleDao.all.size },
             Pair("readRecord.json") { appDb.readRecordDao.all.size },
             Pair("readRecordDetail.json") { appDb.readRecordDao.getDetailsCount() },
-            Pair("readRecordSession.json") { appDb.readRecordDao.getSessionsCount() },
             Pair("searchHistory.json") { appDb.searchKeywordDao.all.size },
             Pair("txtTocRule.json") { appDb.txtTocRuleDao.all.size },
             Pair("httpTTS.json") { appDb.httpTTSDao.all.size },
@@ -98,8 +105,10 @@ object BackupInfoHelper {
             val count = countProvider()
             val displayName = displayNameMap[fileName] ?: fileName
             val estimatedSize = count * 200L
+            val selected = isFileSelected(fileName)
             totalSize += estimatedSize
-            items.add(BackupFileInfo(fileName, displayName, estimatedSize))
+            if (selected) selectedSize += estimatedSize
+            items.add(BackupFileInfo(fileName, displayName, estimatedSize, selected))
         }
 
         val configFiles = listOf(
@@ -115,9 +124,11 @@ object BackupInfoHelper {
             val file = File(appCtx.filesDir, fileName)
             val size = if (file.exists()) file.length() else 0L
             if (size > 0) {
+                val selected = isFileSelected(fileName)
                 totalSize += size
+                if (selected) selectedSize += size
                 val displayName = displayNameMap[fileName] ?: fileName
-                items.add(BackupFileInfo(fileName, displayName, size))
+                items.add(BackupFileInfo(fileName, displayName, size, selected))
             }
         }
 
@@ -125,27 +136,32 @@ object BackupInfoHelper {
             val fileName = DirectLinkUpload.ruleFileName
             val json = io.legado.app.utils.GSON.toJson(it)
             val size = json.length.toLong()
+            val selected = isFileSelected(fileName)
             totalSize += size
-            items.add(BackupFileInfo(fileName, "直链上传配置", size))
+            if (selected) selectedSize += size
+            items.add(BackupFileInfo(fileName, "直链上传配置", size, selected))
         }
 
+        val bgSelected = BackupSelectorConfig.isSelected("backgroundImages")
         Backup.getBackgroundImageFiles().let { bgFiles ->
             val totalBgSize = bgFiles.sumOf { it.length() }
             if (totalBgSize > 0L) {
                 totalSize += totalBgSize
-                items.add(BackupFileInfo("backgroundImages", "阅读背景", totalBgSize))
+                if (bgSelected) selectedSize += totalBgSize
+                items.add(BackupFileInfo("backgroundImages", "阅读背景", totalBgSize, bgSelected))
             }
         }
 
-        return BackupOverview(items, totalSize)
+        return BackupOverview(items, totalSize, selectedSize)
     }
 
-    fun categorizeItems(items: List<BackupFileInfo>): List<CategoryInfo> {
+    fun categorizeItems(items: List<BackupFileInfo>, onlySelected: Boolean = false): List<CategoryInfo> {
+        val filteredItems = if (onlySelected) items.filter { it.selected } else items
         val result = mutableListOf<CategoryInfo>()
         val assigned = mutableSetOf<String>()
 
         for (cfg in categoryConfig) {
-            val matched = items.filter { item ->
+            val matched = filteredItems.filter { item ->
                 cfg.keywords.any { kw ->
                     item.fileName.lowercase().contains(kw.lowercase())
                 } && !assigned.contains(item.fileName)
@@ -163,7 +179,7 @@ object BackupInfoHelper {
             }
         }
 
-        val themeItems = items.filter {
+        val themeItems = filteredItems.filter {
             !assigned.contains(it.fileName) &&
                 (it.fileName == "backgroundImages" || it.fileName == ThemeConfig.configFileName)
         }
@@ -179,7 +195,7 @@ object BackupInfoHelper {
             themeItems.forEach { assigned.add(it.fileName) }
         }
 
-        val remaining = items.filter { !assigned.contains(it.fileName) }
+        val remaining = filteredItems.filter { !assigned.contains(it.fileName) }
         if (remaining.isNotEmpty()) {
             result.add(
                 CategoryInfo(

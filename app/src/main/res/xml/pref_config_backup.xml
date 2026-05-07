@@ -81,6 +81,12 @@
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.Preference
+            android:key="backup_selector"
+            android:summary="@string/backup_selector_summary"
+            android:title="@string/backup_selector"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.Preference
             android:key="web_dav_restore"
             android:summary="@string/restore_summary"
             android:title="@string/restore"
@@ -90,6 +96,13 @@
             android:key="restoreIgnore"
             android:summary="@string/restore_ignore_summary"
             android:title="@string/restore_ignore"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="true"
+            android:key="restoreShowSelector"
+            android:summary="@string/restore_show_selector_summary"
+            android:title="@string/restore_show_selector"
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.Preference
