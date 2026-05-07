@@ -349,6 +349,11 @@
             android:name=".ui.urlRecord.UrlRecordActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
+        <!-- 书源检测 -->
+        <activity
+            android:name=".ui.book.source.check.CheckSourceActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
         <!-- HTML封面模板配置 -->
         <activity
             android:name=".ui.config.CoverHtmlActivity"

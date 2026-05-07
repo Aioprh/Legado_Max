@@ -59,6 +59,12 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_check_source_compose"
+        android:icon="@drawable/ic_check_source"
+        android:title="@string/check_source_compose"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_check_selected_interval"
         android:title="@string/check_selected_interval"
         app:showAsAction="never" />
