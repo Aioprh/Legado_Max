@@ -18,6 +18,7 @@ package io.legado.app.ui.book.source.check
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +48,8 @@ import androidx.compose.ui.unit.sp
 import io.legado.app.R
 import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.legado.app.data.entities.BookSource
+import io.legado.app.utils.sendToClip
 
 /**
  * 书源检测主界面
@@ -61,9 +65,14 @@ fun CheckSourceScreen(
     viewModel: CheckSourceViewModel,
     onBackClick: () -> Unit,
     onSelectSources: () -> Unit = {},
-    onOpenConfig: () -> Unit = {}
+    onOpenConfig: () -> Unit = {},
+    onEditSource: (String) -> Unit = {},
+    onDebugSource: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    var detailResult by remember { mutableStateOf<CheckResult?>(null) }
+    var showSourcePicker by remember { mutableStateOf(false) }
     
     Scaffold(
         containerColor = Color.Transparent,
@@ -88,9 +97,16 @@ fun CheckSourceScreen(
                         statistics = state.statistics,
                         resultFilter = viewModel.resultFilter,
                         filteredResults = viewModel.filteredResults,
-                        onStartCheck = { viewModel.startCheckEnabledSources() },
-                        onSelectSources = onSelectSources,
-                        onFilterChange = { viewModel.applyResultFilter(it) }
+                        onStartCheck = { viewModel.startCheckSelectedSources() },
+                        onSelectSources = {
+                            onSelectSources()
+                            showSourcePicker = true
+                        },
+                        onFilterChange = { viewModel.applyResultFilter(it) },
+                        onResultClick = { detailResult = it },
+                        onReCheckSource = { viewModel.reCheck(it.sourceUrl) },
+                        onEditSource = { onEditSource(it.sourceUrl) },
+                        onDebugSource = { onDebugSource(it.sourceUrl) }
                     )
                 }
                 is CheckSourceUIState.Checking -> {
@@ -101,7 +117,11 @@ fun CheckSourceScreen(
                         resultFilter = viewModel.resultFilter,
                         filteredResults = viewModel.filteredResults,
                         onPauseCheck = { viewModel.pauseCheck() },
-                        onFilterChange = { viewModel.applyResultFilter(it) }
+                        onFilterChange = { viewModel.applyResultFilter(it) },
+                        onResultClick = { detailResult = it },
+                        onReCheckSource = { viewModel.reCheck(it.sourceUrl) },
+                        onEditSource = { onEditSource(it.sourceUrl) },
+                        onDebugSource = { onDebugSource(it.sourceUrl) }
                     )
                 }
                 is CheckSourceUIState.Paused -> {
@@ -111,7 +131,11 @@ fun CheckSourceScreen(
                         resultFilter = viewModel.resultFilter,
                         filteredResults = viewModel.filteredResults,
                         onResumeCheck = { viewModel.resumeCheck() },
-                        onFilterChange = { viewModel.applyResultFilter(it) }
+                        onFilterChange = { viewModel.applyResultFilter(it) },
+                        onResultClick = { detailResult = it },
+                        onReCheckSource = { viewModel.reCheck(it.sourceUrl) },
+                        onEditSource = { onEditSource(it.sourceUrl) },
+                        onDebugSource = { onDebugSource(it.sourceUrl) }
                     )
                 }
                 is CheckSourceUIState.Completed -> {
@@ -119,13 +143,52 @@ fun CheckSourceScreen(
                         statistics = state.statistics,
                         resultFilter = viewModel.resultFilter,
                         filteredResults = viewModel.filteredResults,
-                        onStartCheck = { viewModel.startCheckEnabledSources() },
+                        onStartCheck = { viewModel.startCheckSelectedSources() },
                         onReCheck = { viewModel.reCheck() },
-                        onFilterChange = { viewModel.applyResultFilter(it) }
+                        onFilterChange = { viewModel.applyResultFilter(it) },
+                        onResultClick = { detailResult = it },
+                        onReCheckSource = { viewModel.reCheck(it.sourceUrl) },
+                        onEditSource = { onEditSource(it.sourceUrl) },
+                        onDebugSource = { onDebugSource(it.sourceUrl) }
                     )
                 }
             }
         }
+    }
+
+    detailResult?.let { result ->
+        ResultDetailDialog(
+            result = result,
+            onDismiss = { detailResult = null },
+            onCopy = { context.sendToClip(result.toDetailText()) },
+            onReCheck = {
+                detailResult = null
+                viewModel.reCheck(result.sourceUrl)
+            },
+            onEdit = {
+                detailResult = null
+                onEditSource(result.sourceUrl)
+            },
+            onDebug = {
+                detailResult = null
+                onDebugSource(result.sourceUrl)
+            }
+        )
+    }
+
+    if (showSourcePicker) {
+        SourcePickerDialog(
+            sources = viewModel.availableSources,
+            selectedUrls = viewModel.selectedSourceUrls,
+            onDismiss = { showSourcePicker = false },
+            onToggleSource = { viewModel.toggleSourceSelection(it) },
+            onSelectAll = { viewModel.selectAllSources() },
+            onClear = { viewModel.clearSourceSelection() },
+            onStart = {
+                showSourcePicker = false
+                viewModel.startCheckSelectedSources()
+            }
+        )
     }
 }
 
@@ -136,7 +199,11 @@ private fun ColumnScope.IdleContent(
     filteredResults: List<CheckResult>,
     onStartCheck: () -> Unit,
     onSelectSources: () -> Unit,
-    onFilterChange: (ResultFilter) -> Unit
+    onFilterChange: (ResultFilter) -> Unit,
+    onResultClick: (CheckResult) -> Unit,
+    onReCheckSource: (CheckResult) -> Unit,
+    onEditSource: (CheckResult) -> Unit,
+    onDebugSource: (CheckResult) -> Unit
 ) {
     ProgressCard(
         checkState = CheckState.IDLE,
@@ -164,6 +231,10 @@ private fun ColumnScope.IdleContent(
     ResultList(
         results = filteredResults,
         checkState = CheckState.IDLE,
+        onResultClick = onResultClick,
+        onReCheckSource = onReCheckSource,
+        onEditSource = onEditSource,
+        onDebugSource = onDebugSource,
         modifier = Modifier.weight(1f)
     )
 }
@@ -176,7 +247,11 @@ private fun ColumnScope.CheckingContent(
     resultFilter: ResultFilter,
     filteredResults: List<CheckResult>,
     onPauseCheck: () -> Unit,
-    onFilterChange: (ResultFilter) -> Unit
+    onFilterChange: (ResultFilter) -> Unit,
+    onResultClick: (CheckResult) -> Unit,
+    onReCheckSource: (CheckResult) -> Unit,
+    onEditSource: (CheckResult) -> Unit,
+    onDebugSource: (CheckResult) -> Unit
 ) {
     ProgressCard(
         checkState = CheckState.CHECKING,
@@ -204,6 +279,10 @@ private fun ColumnScope.CheckingContent(
     ResultList(
         results = filteredResults,
         checkState = CheckState.CHECKING,
+        onResultClick = onResultClick,
+        onReCheckSource = onReCheckSource,
+        onEditSource = onEditSource,
+        onDebugSource = onDebugSource,
         modifier = Modifier.weight(1f)
     )
 }
@@ -215,7 +294,11 @@ private fun ColumnScope.PausedContent(
     resultFilter: ResultFilter,
     filteredResults: List<CheckResult>,
     onResumeCheck: () -> Unit,
-    onFilterChange: (ResultFilter) -> Unit
+    onFilterChange: (ResultFilter) -> Unit,
+    onResultClick: (CheckResult) -> Unit,
+    onReCheckSource: (CheckResult) -> Unit,
+    onEditSource: (CheckResult) -> Unit,
+    onDebugSource: (CheckResult) -> Unit
 ) {
     ProgressCard(
         checkState = CheckState.PAUSED,
@@ -243,6 +326,10 @@ private fun ColumnScope.PausedContent(
     ResultList(
         results = filteredResults,
         checkState = CheckState.PAUSED,
+        onResultClick = onResultClick,
+        onReCheckSource = onReCheckSource,
+        onEditSource = onEditSource,
+        onDebugSource = onDebugSource,
         modifier = Modifier.weight(1f)
     )
 }
@@ -254,7 +341,11 @@ private fun ColumnScope.CompletedContent(
     filteredResults: List<CheckResult>,
     onStartCheck: () -> Unit,
     onReCheck: () -> Unit,
-    onFilterChange: (ResultFilter) -> Unit
+    onFilterChange: (ResultFilter) -> Unit,
+    onResultClick: (CheckResult) -> Unit,
+    onReCheckSource: (CheckResult) -> Unit,
+    onEditSource: (CheckResult) -> Unit,
+    onDebugSource: (CheckResult) -> Unit
 ) {
     ProgressCard(
         checkState = CheckState.COMPLETED,
@@ -282,6 +373,10 @@ private fun ColumnScope.CompletedContent(
     ResultList(
         results = filteredResults,
         checkState = CheckState.COMPLETED,
+        onResultClick = onResultClick,
+        onReCheckSource = onReCheckSource,
+        onEditSource = onEditSource,
+        onDebugSource = onDebugSource,
         modifier = Modifier.weight(1f)
     )
 }
@@ -878,6 +973,10 @@ fun ResultFilterChips(
 fun ResultList(
     results: List<CheckResult>,
     checkState: CheckState,
+    onResultClick: (CheckResult) -> Unit,
+    onReCheckSource: (CheckResult) -> Unit,
+    onEditSource: (CheckResult) -> Unit,
+    onDebugSource: (CheckResult) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val containerColor = checkSourceCardContainerColor()
@@ -901,7 +1000,14 @@ fun ResultList(
                     enter = fadeIn() + slideInHorizontally(),
                     exit = fadeOut() + slideOutHorizontally()
                 ) {
-                    ResultItem(result = result, containerColor = containerColor)
+                    ResultItem(
+                        result = result,
+                        containerColor = containerColor,
+                        onClick = { onResultClick(result) },
+                        onReCheck = { onReCheckSource(result) },
+                        onEdit = { onEditSource(result) },
+                        onDebug = { onDebugSource(result) }
+                    )
                 }
             }
         }
@@ -973,13 +1079,19 @@ fun EmptyStateView() {
 @Composable
 fun ResultItem(
     result: CheckResult,
-    containerColor: Color
+    containerColor: Color,
+    onClick: () -> Unit,
+    onReCheck: () -> Unit,
+    onEdit: () -> Unit,
+    onDebug: () -> Unit
 ) {
     val successColor = Color(0xFF4CAF50)
     val errorColor = MaterialTheme.colorScheme.error
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         color = containerColor,
         shape = RoundedCornerShape(12.dp),
         shadowElevation = 1.dp
@@ -1038,16 +1150,31 @@ fun ResultItem(
             Column(
                 horizontalAlignment = Alignment.End
             ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = result.getRespondTimeText(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            text = result.getRespondTimeText(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onReCheck,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "重新检测",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
 
                 if (result.errorType != ErrorType.NONE) {
@@ -1058,7 +1185,202 @@ fun ResultItem(
                         color = errorColor.copy(alpha = 0.8f)
                     )
                 }
+
+                Row {
+                    IconButton(
+                        onClick = onDebug,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BugReport,
+                            contentDescription = "调试",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "编辑",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun ResultDetailDialog(
+    result: CheckResult,
+    onDismiss: () -> Unit,
+    onCopy: () -> Unit,
+    onReCheck: () -> Unit,
+    onEdit: () -> Unit,
+    onDebug: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = result.sourceName,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        text = {
+            Column {
+                DetailLine(label = "状态", value = result.getStatusText())
+                DetailLine(label = "响应", value = result.getRespondTimeText())
+                if (result.errorType != ErrorType.NONE) {
+                    DetailLine(label = "类型", value = getErrorTypeText(result.errorType))
+                }
+                DetailLine(label = "地址", value = result.sourceUrl)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onReCheck) {
+                Text("重检")
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onCopy) {
+                    Text("复制")
+                }
+                TextButton(onClick = onDebug) {
+                    Text("调试")
+                }
+                TextButton(onClick = onEdit) {
+                    Text("编辑")
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("关闭")
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun SourcePickerDialog(
+    sources: List<BookSource>,
+    selectedUrls: Set<String>,
+    onDismiss: () -> Unit,
+    onToggleSource: (String) -> Unit,
+    onSelectAll: () -> Unit,
+    onClear: () -> Unit,
+    onStart: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text("选择书源")
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 420.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "已选 ${selectedUrls.size} / ${sources.size}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row {
+                        TextButton(onClick = onSelectAll) {
+                            Text("全选")
+                        }
+                        TextButton(onClick = onClear) {
+                            Text("清空")
+                        }
+                    }
+                }
+
+                LazyColumn {
+                    items(
+                        items = sources,
+                        key = { it.bookSourceUrl }
+                    ) { source ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onToggleSource(source.bookSourceUrl) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = selectedUrls.contains(source.bookSourceUrl),
+                                onCheckedChange = { onToggleSource(source.bookSourceUrl) }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = source.bookSourceName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = source.bookSourceUrl,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onStart,
+                enabled = selectedUrls.isNotEmpty()
+            ) {
+                Text("检测")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
+
+@Composable
+private fun DetailLine(label: String, value: String) {
+    Spacer(modifier = Modifier.height(6.dp))
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Text(
+        text = value,
+        style = MaterialTheme.typography.bodyMedium
+    )
+}
+
+private fun CheckResult.toDetailText(): String {
+    return buildString {
+        appendLine(sourceName)
+        appendLine(sourceUrl)
+        appendLine(getStatusText())
+        appendLine(getRespondTimeText())
+        if (errorType != ErrorType.NONE) {
+            appendLine(errorType.name)
         }
     }
 }

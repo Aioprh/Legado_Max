@@ -26,6 +26,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.model.CheckSource
+import io.legado.app.model.CheckSourceResultEvent
 import io.legado.app.model.Debug
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -206,13 +207,35 @@ class CheckSourceViewModel(application: Application) : BaseViewModel(application
     var filteredResults by mutableStateOf<List<CheckResult>>(emptyList())
         private set
 
+    var availableSources by mutableStateOf<List<BookSource>>(emptyList())
+        private set
+
+    var selectedSourceUrls by mutableStateOf<Set<String>>(emptySet())
+        private set
+
     private var selectedSources: List<BookSource> = emptyList()
     private val checkResultMap = mutableMapOf<String, CheckResult>()
     private var lastCheckedUrls: List<String> = emptyList()
     private var progressUpdateJob: Coroutine<Unit>? = null
 
     init {
+        loadAvailableSources()
         loadResultsFromDatabase()
+    }
+
+    private fun loadAvailableSources() {
+        execute {
+            val sources = appDb.bookSourceDao.allEnabled
+            withContext(Dispatchers.Main) {
+                availableSources = sources
+                if (selectedSourceUrls.isEmpty()) {
+                    selectedSourceUrls = sources.map { it.bookSourceUrl }.toSet()
+                } else {
+                    val availableUrls = sources.map { it.bookSourceUrl }.toSet()
+                    selectedSourceUrls = selectedSourceUrls.intersect(availableUrls)
+                }
+            }
+        }
     }
 
     private fun loadResultsFromDatabase() {
@@ -270,6 +293,34 @@ class CheckSourceViewModel(application: Application) : BaseViewModel(application
                 }
             }
         }
+    }
+
+    fun startCheckSelectedSources() {
+        execute {
+            val selectedUrls = selectedSourceUrls
+            val sources = selectedUrls.mapNotNull { appDb.bookSourceDao.getBookSource(it) }
+            withContext(Dispatchers.Main) {
+                if (sources.isNotEmpty()) {
+                    startCheck(sources)
+                }
+            }
+        }
+    }
+
+    fun toggleSourceSelection(sourceUrl: String) {
+        selectedSourceUrls = if (selectedSourceUrls.contains(sourceUrl)) {
+            selectedSourceUrls - sourceUrl
+        } else {
+            selectedSourceUrls + sourceUrl
+        }
+    }
+
+    fun selectAllSources() {
+        selectedSourceUrls = availableSources.map { it.bookSourceUrl }.toSet()
+    }
+
+    fun clearSourceSelection() {
+        selectedSourceUrls = emptySet()
     }
 
     fun startCheck(sources: List<BookSource>) {
@@ -368,11 +419,56 @@ class CheckSourceViewModel(application: Application) : BaseViewModel(application
         }
     }
 
+    fun reCheck(sourceUrl: String) {
+        execute {
+            appDb.bookSourceDao.getBookSource(sourceUrl)?.let { source ->
+                withContext(Dispatchers.Main) {
+                    startCheck(listOf(source))
+                }
+            } ?: AppLog.put("无法找到要重新检测的书源: $sourceUrl")
+        }
+    }
+
     fun updateCheckMessage(message: String) {
         val currentState = _uiState.value
         if (currentState is CheckSourceUIState.Checking) {
             parseProgressMessage(message, currentState)
         }
+    }
+
+    fun onCheckResult(event: CheckSourceResultEvent) {
+        val result = event.toCheckResult()
+        checkResultMap[event.sourceUrl] = result
+
+        val results = checkResultMap.values.sortedByDescending { it.checkTime }
+        val statistics = calculateStatistics(results)
+
+        when (val state = _uiState.value) {
+            is CheckSourceUIState.Checking -> {
+                val progress = state.progress.copy(
+                    current = results.size.coerceAtMost(state.progress.total),
+                    currentSourceName = event.sourceName
+                )
+                _uiState.value = CheckSourceUIState.Checking(
+                    progress = progress,
+                    currentMessage = event.message ?: "校验成功",
+                    results = results,
+                    statistics = statistics
+                )
+            }
+            is CheckSourceUIState.Paused -> {
+                _uiState.value = CheckSourceUIState.Paused(
+                    progress = state.progress,
+                    results = results,
+                    statistics = statistics
+                )
+            }
+            else -> {
+                _uiState.value = CheckSourceUIState.Completed(results, statistics)
+            }
+        }
+
+        applyFilter(results)
     }
 
     fun onCheckComplete() {
@@ -381,11 +477,7 @@ class CheckSourceViewModel(application: Application) : BaseViewModel(application
         progressUpdateJob = null
 
         val currentState = _uiState.value
-        val results = when (currentState) {
-            is CheckSourceUIState.Checking -> currentState.results
-            is CheckSourceUIState.Paused -> currentState.results
-            else -> emptyList()
-        }
+        val results = checkResultMap.values.sortedByDescending { it.checkTime }
         val statistics = calculateStatistics(results)
 
         _uiState.value = CheckSourceUIState.Completed(results, statistics)
@@ -478,12 +570,39 @@ class CheckSourceViewModel(application: Application) : BaseViewModel(application
         }
     }
 
+    private fun parseEventErrorType(errorType: String): ErrorType {
+        return when (errorType) {
+            "TIMEOUT" -> ErrorType.TIMEOUT
+            "NETWORK_ERROR" -> ErrorType.NETWORK_ERROR
+            "PARSE_ERROR" -> ErrorType.PARSE_ERROR
+            "SCRIPT_ERROR" -> ErrorType.SCRIPT_ERROR
+            "DOMAIN_ERROR" -> ErrorType.DOMAIN_ERROR
+            "SEARCH_ERROR" -> ErrorType.SEARCH_ERROR
+            "DISCOVERY_ERROR" -> ErrorType.DISCOVERY_ERROR
+            "INFO_ERROR" -> ErrorType.INFO_ERROR
+            "TOC_ERROR" -> ErrorType.TOC_ERROR
+            "CONTENT_ERROR" -> ErrorType.CONTENT_ERROR
+            else -> ErrorType.NONE
+        }
+    }
+
+    private fun CheckSourceResultEvent.toCheckResult(): CheckResult {
+        return CheckResult(
+            sourceUrl = sourceUrl,
+            sourceName = sourceName,
+            isSuccess = isSuccess,
+            respondTime = respondTime,
+            errorMessage = if (isSuccess) null else message,
+            errorType = parseEventErrorType(errorType),
+            checkTime = checkTime
+        )
+    }
+
     private fun applyFilter(results: List<CheckResult>) {
         filteredResults = when (resultFilter) {
             ResultFilter.ALL -> results
             ResultFilter.SUCCESS -> results.filter { it.isSuccess }
             ResultFilter.FAILED -> results.filter { !it.isSuccess }
-            else -> results
         }
     }
 

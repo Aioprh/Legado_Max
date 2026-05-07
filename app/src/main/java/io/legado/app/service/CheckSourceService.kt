@@ -22,12 +22,14 @@ import io.legado.app.help.IntentData
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.source.exploreKinds
 import io.legado.app.model.CheckSource
+import io.legado.app.model.CheckSourceResultEvent
 import io.legado.app.model.Debug
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.utils.activityPendingIntent
 import io.legado.app.utils.onEachParallel
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.postEventOrderly
 import io.legado.app.utils.servicePendingIntent
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Job
@@ -96,7 +98,7 @@ class CheckSourceService : BaseService() {
         super.onDestroy()
         Debug.finishChecking()
         searchCoroutine.close()
-        postEvent(EventBus.CHECK_SOURCE_DONE, 0)
+        postEventOrderly(EventBus.CHECK_SOURCE_DONE, 0)
         notificationManager.cancel(NotificationId.CheckSourceService)
     }
 
@@ -118,7 +120,8 @@ class CheckSourceService : BaseService() {
                 notificationMsg = getString(R.string.progress_show, "", 0, originSize)
                 upNotification()
             }.onEachParallel(threadCount) {
-                checkSource(it)
+                val result = checkSource(it)
+                postEventOrderly(EventBus.CHECK_SOURCE_RESULT, result)
             }.onEach {
                 finishCount++
                 notificationMsg = getString(
@@ -135,26 +138,73 @@ class CheckSourceService : BaseService() {
         }
     }
 
-    private suspend fun checkSource(source: BookSource) {
+    private suspend fun checkSource(source: BookSource): CheckSourceResultEvent {
+        var isSuccess = false
+        var errorMessage: String? = null
+        var errorType = "NONE"
+
         kotlin.runCatching {
             withTimeout(CheckSource.timeout) {
                 doCheckSource(source)
             }
         }.onSuccess {
+            isSuccess = true
             Debug.updateFinalMessage(source.bookSourceUrl, "校验成功")
         }.onFailure {
             currentCoroutineContext().ensureActive()
             when (it) {
-                is TimeoutCancellationException -> source.addGroup("校验超时")
-                is ScriptException, is WrappedException -> source.addGroup("js失效")
-                !is NoStackTraceException -> source.addGroup("网站失效")
+                is TimeoutCancellationException -> {
+                    source.addGroup("校验超时")
+                    errorType = "TIMEOUT"
+                }
+                is ScriptException, is WrappedException -> {
+                    source.addGroup("js失效")
+                    errorType = "SCRIPT_ERROR"
+                }
+                is NoStackTraceException -> {
+                    errorType = parseCheckErrorType(it.localizedMessage)
+                }
+                else -> {
+                    source.addGroup("网站失效")
+                    errorType = "NETWORK_ERROR"
+                }
             }
+            errorMessage = it.localizedMessage ?: it.javaClass.simpleName
             if (CheckSource.wSourceComment) {
                 source.addErrorComment(it)
             }
-            Debug.updateFinalMessage(source.bookSourceUrl, "校验失败:${it.localizedMessage}")
+            Debug.updateFinalMessage(source.bookSourceUrl, "校验失败:${errorMessage}")
         }
         source.respondTime = Debug.getRespondTime(source.bookSourceUrl)
+
+        val finalMessage = Debug.debugMessageMap[source.bookSourceUrl]
+            ?: errorMessage
+            ?: if (isSuccess) "校验成功" else "校验失败"
+
+        return CheckSourceResultEvent(
+            sourceUrl = source.bookSourceUrl,
+            sourceName = source.bookSourceName,
+            isSuccess = isSuccess,
+            respondTime = source.respondTime,
+            message = if (isSuccess) null else finalMessage,
+            errorType = errorType
+        )
+    }
+
+    private fun parseCheckErrorType(message: String?): String {
+        if (message.isNullOrBlank()) return "NONE"
+        return when {
+            message.contains("超时") -> "TIMEOUT"
+            message.contains("js", ignoreCase = true) || message.contains("脚本") -> "SCRIPT_ERROR"
+            message.contains("域名") || message.contains("地址") -> "DOMAIN_ERROR"
+            message.contains("搜索") -> "SEARCH_ERROR"
+            message.contains("发现") -> "DISCOVERY_ERROR"
+            message.contains("详情") -> "INFO_ERROR"
+            message.contains("目录") -> "TOC_ERROR"
+            message.contains("正文") -> "CONTENT_ERROR"
+            message.contains("解析") -> "PARSE_ERROR"
+            else -> "NETWORK_ERROR"
+        }
     }
 
     private suspend fun isDomainReachable(domain: String): Boolean {

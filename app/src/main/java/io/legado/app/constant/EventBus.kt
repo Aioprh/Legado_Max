@@ -67,6 +67,7 @@ object EventBus {
 
     // ── 校源 ──
     const val CHECK_SOURCE = "checkSource"                  // 开始校源
+    const val CHECK_SOURCE_RESULT = "checkSourceResult"     // 单个书源校源结果
     const val CHECK_SOURCE_DONE = "checkSourceDone"         // 校源完成
 
     // ── 搜索 ──

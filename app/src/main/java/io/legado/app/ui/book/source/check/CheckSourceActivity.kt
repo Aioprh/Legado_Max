@@ -41,9 +41,13 @@ import androidx.compose.material3.lightColorScheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
 import io.legado.app.constant.EventBus
+import io.legado.app.model.CheckSourceResultEvent
+import io.legado.app.ui.book.source.debug.BookSourceDebugActivity
+import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.config.CheckSourceConfig
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.startActivity
 
 /**
  * 书源检测Activity
@@ -68,6 +72,16 @@ class CheckSourceActivity : AppCompatActivity() {
                 backgroundDrawable = backgroundDrawable,
                 onBackClick = { finish() },
                 onOpenConfig = { showDialogFragment<CheckSourceConfig>() },
+                onEditSource = { sourceUrl ->
+                    startActivity<BookSourceEditActivity> {
+                        putExtra("sourceUrl", sourceUrl)
+                    }
+                },
+                onDebugSource = { sourceUrl ->
+                    startActivity<BookSourceDebugActivity> {
+                        putExtra("key", sourceUrl)
+                    }
+                },
                 onViewModelCreated = { viewModel ->
                     currentViewModel = viewModel
                 }
@@ -78,6 +92,10 @@ class CheckSourceActivity : AppCompatActivity() {
     private fun observeEvents() {
         observeEvent<String>(EventBus.CHECK_SOURCE) { message ->
             currentViewModel?.updateCheckMessage(message)
+        }
+
+        observeEvent<CheckSourceResultEvent>(EventBus.CHECK_SOURCE_RESULT) { result ->
+            currentViewModel?.onCheckResult(result)
         }
         
         observeEvent<Int>(EventBus.CHECK_SOURCE_DONE) {
@@ -137,6 +155,8 @@ fun CheckSourceContent(
     backgroundDrawable: Drawable?,
     onBackClick: () -> Unit,
     onOpenConfig: () -> Unit,
+    onEditSource: (String) -> Unit,
+    onDebugSource: (String) -> Unit,
     onViewModelCreated: (CheckSourceViewModel) -> Unit
 ) {
     val context = LocalContext.current
@@ -244,7 +264,9 @@ fun CheckSourceContent(
             CheckSourceScreen(
                 viewModel = viewModel,
                 onBackClick = onBackClick,
-                onOpenConfig = onOpenConfig
+                onOpenConfig = onOpenConfig,
+                onEditSource = onEditSource,
+                onDebugSource = onDebugSource
             )
         }
     }
