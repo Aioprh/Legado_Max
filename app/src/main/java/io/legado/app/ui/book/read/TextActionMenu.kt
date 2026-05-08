@@ -117,8 +117,9 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
             }
         }
         
-        // 加载菜单项
+        // 加载菜单项并设置到适配器
         reloadMenuItems()
+        adapter.setItems(visibleMenuItems)
     }
     
     /**

@@ -1,8 +1,8 @@
 package io.legado.app.ui.debuglog.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -14,188 +14,298 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * 调试日志详情对话框
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DebugLogDetailDialog(
     log: DebugEvent,
     onDismiss: () -> Unit,
     onCopy: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        modifier = Modifier
-            .fillMaxWidth(0.95f)
-            .heightIn(max = 600.dp)
-    ) {
-        Column(
+    var showSearch by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
             modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .fillMaxWidth(0.95f)
+                .heightIn(max = 600.dp),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
         ) {
-            // 标题栏
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = when (log.level) {
-                            DebugLevel.ERROR -> Icons.Default.Error
-                            DebugLevel.WARN -> Icons.Default.Warning
-                            else -> Icons.Default.Info
-                        },
-                        tint = when (log.level) {
-                            DebugLevel.ERROR -> MaterialTheme.colorScheme.error
-                            DebugLevel.WARN -> MaterialTheme.colorScheme.tertiary
-                            else -> MaterialTheme.colorScheme.primary
-                        },
-                        contentDescription = null
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "日志详情",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                TextButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "关闭")
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // 基本信息
-            DetailSection(title = "基本信息") {
-                DetailRow("时间", formatFullTime(log.time), copyable = false)
-                DetailRow("级别", log.level.displayName, copyable = false)
-                DetailRow("分类", log.category.displayName, copyable = false)
-
-                if (!log.traceId.isNullOrBlank()) {
-                    DetailRow("Trace ID", log.traceId!!, copyable = true)
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            // 网络请求信息
-            if (log.category == io.legado.app.model.debug.DebugCategory.NETWORK && log.url != null) {
-                DetailSection(title = "请求信息") {
-                    DetailRow("URL", log.url!!, copyable = true)
-                    DetailRow("方法", log.method ?: "-", copyable = false)
-                    DetailRow("状态码", log.statusCode?.toString() ?: "-", copyable = false)
-                    DetailRow("耗时", "${log.duration ?: 0}ms", copyable = false)
-                }
-
-                if (log.sourceName != null || log.sourceUrl != null) {
-                    Spacer(Modifier.height(12.dp))
-                    DetailSection(title = "来源信息") {
-                        log.sourceName?.let { DetailRow("书源名", it, copyable = false) }
-                        log.sourceUrl?.let { DetailRow("书源URL", it, copyable = true) }
-                    }
-                }
-            }
-
-            // 异常堆栈
-            if (log.throwable != null) {
-                Spacer(Modifier.height(12.dp))
-                DetailSection(title = "异常信息") {
-                    Surface(
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = log.throwable!!.stackTraceToString(),
-                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(12.dp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = when (log.level) {
+                                    DebugLevel.ERROR -> Icons.Default.Error
+                                    DebugLevel.WARN -> Icons.Default.Warning
+                                    else -> Icons.Default.Info
+                                },
+                                tint = when (log.level) {
+                                    DebugLevel.ERROR -> MaterialTheme.colorScheme.error
+                                    DebugLevel.WARN -> MaterialTheme.colorScheme.tertiary
+                                    else -> MaterialTheme.colorScheme.primary
+                                },
+                                contentDescription = null
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "日志详情",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        Row {
+                            IconButton(onClick = { showSearch = !showSearch }) {
+                                Icon(Icons.Default.Search, contentDescription = "查找")
+                            }
+                            IconButton(onClick = onDismiss) {
+                                Icon(Icons.Default.Close, contentDescription = "关闭")
+                            }
+                        }
+                    }
+                }
+                
+                if (showSearch) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            placeholder = { Text("在日志中查找...") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Search, contentDescription = null)
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(Icons.Default.Close, contentDescription = "清除")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Search
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onSearch = {
+                                    // 搜索功能已通过 searchQuery 状态自动实现
+                                }
+                            )
                         )
                     }
                 }
-            }
 
-            // 详细消息
-            if (!log.detail.isNullOrBlank()) {
-                Spacer(Modifier.height(12.dp))
-                DetailSection(title = "详细内容") {
-                    Text(
-                        text = log.detail!!,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    DetailSection(title = "基本信息", searchQuery = searchQuery) {
+                        DetailRow("时间", formatFullTime(log.time), searchQuery)
+                        DetailRow("级别", log.level.displayName, searchQuery)
+                        DetailRow("分类", log.category.displayName, searchQuery)
+
+                        if (!log.traceId.isNullOrBlank()) {
+                            DetailRow("Trace ID", log.traceId, searchQuery)
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    when (log.category) {
+                        DebugCategory.NETWORK -> {
+                            if (log.url != null) {
+                                DetailSection(title = "请求信息", searchQuery = searchQuery) {
+                                    DetailRow("URL", log.url, searchQuery)
+                                    DetailRow("方法", log.method ?: "-", searchQuery)
+                                    DetailRow("状态码", log.statusCode?.toString() ?: "-", searchQuery)
+                                    DetailRow("耗时", "${log.duration ?: 0}ms", searchQuery)
+                                }
+
+                                if (log.sourceName != null || log.sourceUrl != null) {
+                                    Spacer(Modifier.height(12.dp))
+                                    DetailSection(title = "来源信息", searchQuery = searchQuery) {
+                                        log.sourceName?.let { DetailRow("书源名", it, searchQuery) }
+                                        log.sourceUrl?.let { DetailRow("书源URL", it, searchQuery) }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        DebugCategory.SOURCE, DebugCategory.RULE -> {
+                            if (log.sourceName != null || log.sourceUrl != null || log.url != null) {
+                                DetailSection(title = "书源信息", searchQuery = searchQuery) {
+                                    log.sourceName?.let { DetailRow("书源名", it, searchQuery) }
+                                    log.sourceUrl?.let { DetailRow("书源URL", it, searchQuery) }
+                                    log.url?.let { DetailRow("请求URL", it, searchQuery) }
+                                    log.method?.let { DetailRow("请求方法", it, searchQuery) }
+                                    log.statusCode?.let { DetailRow("状态码", it.toString(), searchQuery) }
+                                    log.duration?.let { DetailRow("耗时", "${it}ms", searchQuery) }
+                                }
+                            }
+                        }
+                        
+                        DebugCategory.RSS -> {
+                            if (log.sourceName != null || log.sourceUrl != null || log.url != null) {
+                                DetailSection(title = "订阅源信息", searchQuery = searchQuery) {
+                                    log.sourceName?.let { DetailRow("订阅源名", it, searchQuery) }
+                                    log.sourceUrl?.let { DetailRow("订阅源URL", it, searchQuery) }
+                                    log.url?.let { DetailRow("请求URL", it, searchQuery) }
+                                    log.method?.let { DetailRow("请求方法", it, searchQuery) }
+                                    log.statusCode?.let { DetailRow("状态码", it.toString(), searchQuery) }
+                                    log.duration?.let { DetailRow("耗时", "${it}ms", searchQuery) }
+                                }
+                            }
+                        }
+                        
+                        else -> {
+                            if (log.sourceName != null || log.sourceUrl != null) {
+                                DetailSection(title = "来源信息", searchQuery = searchQuery) {
+                                    log.sourceName?.let { DetailRow("来源名", it, searchQuery) }
+                                    log.sourceUrl?.let { DetailRow("来源URL", it, searchQuery) }
+                                }
+                            }
+                        }
+                    }
+
+                    if (log.throwable != null) {
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "异常信息", searchQuery = searchQuery) {
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                            ) {
+                                Text(
+                                    text = highlightText(
+                                        log.throwable?.stackTraceToString() ?: "",
+                                        searchQuery
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (!log.detail.isNullOrBlank()) {
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "详细内容", searchQuery = searchQuery) {
+                            Text(
+                                text = highlightText(log.detail ?: "", searchQuery),
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
-            }
 
-            // 底部操作按钮
-            Spacer(Modifier.height(20.dp))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    tonalElevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        OutlinedButton(onClick = onDismiss) {
+                            Text("关闭")
+                        }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                OutlinedButton(onClick = onDismiss) {
-                    Text("关闭")
-                }
+                        Spacer(Modifier.width(8.dp))
 
-                Spacer(Modifier.width(8.dp))
-
-                Button(onClick = onCopy) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("复制全部")
+                        Button(onClick = onCopy) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("复制全部")
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-/**
- * 详情分组标题 + 内容容器
- */
 @Composable
 private fun DetailSection(
     title: String,
+    searchQuery: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Text(
-        text = title,
+        text = highlightText(title, searchQuery),
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.primary,
         fontWeight = FontWeight.SemiBold,
@@ -214,14 +324,11 @@ private fun DetailSection(
     }
 }
 
-/**
- * 键值对行
- */
 @Composable
 private fun DetailRow(
     label: String,
     value: String,
-    copyable: Boolean = false
+    searchQuery: String
 ) {
     Row(
         modifier = Modifier
@@ -230,14 +337,14 @@ private fun DetailRow(
         verticalAlignment = Alignment.Top
     ) {
         Text(
-            text = label,
+            text = highlightText(label, searchQuery),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.outline,
             modifier = Modifier.width(80.dp)
         )
 
         Text(
-            text = value,
+            text = highlightText(value, searchQuery),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
             overflow = TextOverflow.Ellipsis,
@@ -246,9 +353,38 @@ private fun DetailRow(
     }
 }
 
-/**
- * 格式化完整时间戳
- */
+@Composable
+private fun highlightText(text: String, query: String): androidx.compose.ui.text.AnnotatedString {
+    if (query.isBlank() || !text.contains(query, ignoreCase = true)) {
+        return buildAnnotatedString { append(text) }
+    }
+    
+    return buildAnnotatedString {
+        var startIndex = 0
+        var foundIndex = text.indexOf(query, ignoreCase = true)
+        
+        while (foundIndex >= 0) {
+            append(text.substring(startIndex, foundIndex))
+            
+            withStyle(
+                SpanStyle(
+                    background = Color.Yellow.copy(alpha = 0.3f),
+                    fontWeight = FontWeight.Bold
+                )
+            ) {
+                append(text.substring(foundIndex, foundIndex + query.length))
+            }
+            
+            startIndex = foundIndex + query.length
+            foundIndex = text.indexOf(query, startIndex, ignoreCase = true)
+        }
+        
+        if (startIndex < text.length) {
+            append(text.substring(startIndex))
+        }
+    }
+}
+
 private fun formatFullTime(timestamp: Long): String {
     return SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date(timestamp))
 }
