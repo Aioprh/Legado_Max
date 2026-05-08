@@ -23,6 +23,9 @@ data class DebugEvent(
     val method: String? = null,
     val statusCode: Int? = null,
     val duration: Long? = null,
+    val requestHeaders: Map<String, String>? = null,
+    val userAgent: String? = null,
+    val cookies: String? = null,
     val throwable: Throwable? = null,
     val tags: Map<String, String> = emptyMap()
 ) {
