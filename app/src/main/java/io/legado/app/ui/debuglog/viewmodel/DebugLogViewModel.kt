@@ -44,8 +44,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         val selectedLog: DebugEvent? = null,
         val isLoading: Boolean = false,
         val isEmpty: Boolean = false,
-        val isPaused: Boolean = false,
-        val searchQuery: String? = null
+        val isPaused: Boolean = false
     )
 
     private val _uiState = MutableStateFlow(UiState())
@@ -130,8 +129,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             _uiState.value = UiState(
                 logs = emptyList(),
                 isEmpty = true,
-                isPaused = _isPaused.value,
-                searchQuery = _searchQuery.value
+                isPaused = _isPaused.value
             )
         }.onSuccess {
             showToast("已清空所有日志")
@@ -139,10 +137,6 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             e.printStackTrace()
             showToast("清空失败：${e.message}")
         }
-    }
-
-    fun search(query: String?) {
-        _searchQuery.value = query?.ifBlank { null }
     }
 
     fun clearSearch() {
@@ -224,8 +218,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
                 logs = _allLogs,
                 isEmpty = _allLogs.isEmpty(),
                 isLoading = false,
-                isPaused = _isPaused.value,
-                searchQuery = _searchQuery.value
+                isPaused = _isPaused.value
             )
         }.onError { e ->
             e.printStackTrace()
@@ -251,8 +244,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
                 _uiState.value.copy(
                     logs = _allLogs,
                     isEmpty = false,
-                    isPaused = _isPaused.value,
-                    searchQuery = _searchQuery.value
+                    isPaused = _isPaused.value
                 )
             }
             .catch { e ->

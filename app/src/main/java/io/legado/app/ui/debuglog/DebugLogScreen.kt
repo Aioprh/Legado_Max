@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.legado.app.model.debug.DebugCategory
@@ -44,6 +45,7 @@ import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
 import io.legado.app.ui.debuglog.components.DebugLogItem
 import io.legado.app.ui.debuglog.viewmodel.DebugLogViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.legado.app.utils.share
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +54,7 @@ fun DebugLogScreen(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val isPaused by viewModel.isPaused.collectAsState()
@@ -59,7 +62,6 @@ fun DebugLogScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     
     var showSearch by remember { mutableStateOf(false) }
-    var searchText by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -93,7 +95,10 @@ fun DebugLogScreen(
                                 contentDescription = "清空"
                             )
                         }
-                        IconButton(onClick = { /* TODO: 导出逻辑 */ }) {
+                        IconButton(onClick = { 
+                            val exportedText = viewModel.exportFilteredLogs()
+                            context.share(exportedText, "导出调试日志")
+                        }) {
                             Icon(
                                 imageVector = Icons.Default.Save,
                                 contentDescription = "导出"
@@ -108,11 +113,8 @@ fun DebugLogScreen(
                     exit = fadeOut()
                 ) {
                     OutlinedTextField(
-                        value = searchText,
-                        onValueChange = { 
-                            searchText = it
-                            viewModel.setSearchQuery(it)
-                        },
+                        value = searchQuery ?: "",
+                        onValueChange = { viewModel.setSearchQuery(it.ifBlank { null }) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -121,11 +123,8 @@ fun DebugLogScreen(
                             Icon(Icons.Default.Search, contentDescription = null)
                         },
                         trailingIcon = {
-                            if (searchText.isNotEmpty()) {
-                                IconButton(onClick = {
-                                    searchText = ""
-                                    viewModel.setSearchQuery("")
-                                }) {
+                            if (!searchQuery.isNullOrBlank()) {
+                                IconButton(onClick = { viewModel.setSearchQuery(null) }) {
                                     Icon(Icons.Default.Close, contentDescription = "清除")
                                 }
                             }
@@ -136,12 +135,8 @@ fun DebugLogScreen(
                         ),
                         keyboardActions = KeyboardActions(
                             onSearch = {
-                                viewModel.setSearchQuery(searchText)
+                                viewModel.setSearchQuery(searchQuery)
                             }
-                        ),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
                         )
                     )
                 }

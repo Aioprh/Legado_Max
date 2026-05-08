@@ -151,9 +151,10 @@ fun DebugLogDetailDialog(
                             keyboardOptions = KeyboardOptions(
                                 imeAction = ImeAction.Search
                             ),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                            keyboardActions = KeyboardActions(
+                                onSearch = {
+                                    // 搜索功能已通过 searchQuery 状态自动实现
+                                }
                             )
                         )
                     }
