@@ -99,6 +99,10 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         _selectedCategory.value = category
     }
 
+    fun setSearchQuery(query: String?) {
+        _searchQuery.value = query
+    }
+
     fun selectLog(log: DebugEvent) {
         _uiState.value = _uiState.value.copy(selectedLog = log)
     }
