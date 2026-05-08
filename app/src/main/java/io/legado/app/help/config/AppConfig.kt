@@ -328,6 +328,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     val debugMode: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.debugMode, false)
 
+    // 调试日志悬浮球，开启后在应用内任何页面显示调试日志悬浮球
+    val debugLogFloatingBall: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.debugLogFloatingBall, false)
+
     // 崩溃时复制日志到剪贴板，默认开启
     val copyCrashLog: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.copyCrashLog, true)

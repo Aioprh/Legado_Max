@@ -45,6 +45,7 @@ object PreferKey {
     const val enableReview = "enableReview"
     const val showRss = "showRss"
     const val debugMode = "debugMode" // 调试模式开关，控制"我的"页面调试工具入口显示
+    const val debugLogFloatingBall = "debugLogFloatingBall" // 调试日志悬浮球开关，控制应用内悬浮球显示
     const val copyCrashLog = "copyCrashLog" // 崩溃时复制日志到剪贴板
     const val mdLinkInnerBrowser = "mdLinkInnerBrowser" // MD链接用内置浏览器打开
     const val bookshelfLayout = "bookshelfLayout"

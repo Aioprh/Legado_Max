@@ -670,6 +670,8 @@
     <string name="show_rss">Show RSS feeds</string>
     <string name="debug_mode">调试模式</string>
     <string name="debug_mode_summary">开启后显示调试工具入口</string>
+    <string name="debug_log_floating_ball">调试日志悬浮球</string>
+    <string name="debug_log_floating_ball_summary">开启后在应用内任何页面显示调试日志悬浮球</string>
     <string name="copy_crash_log_title">崩溃时复制日志</string>
     <string name="copy_crash_log_summary">应用崩溃后再次进入app将自动将日志复制到剪贴板</string>
     <string name="md_link_inner_browser">用内置浏览器打开</string>

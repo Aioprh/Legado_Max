@@ -1,0 +1,136 @@
+package io.legado.app.ui.debuglog
+
+import android.app.Activity
+import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.core.view.postDelayed
+import io.legado.app.constant.AppLog
+
+object DebugLogPanelDialog {
+    
+    private var dialogView: View? = null
+    private var isShowing = false
+    private var currentActivity: Activity? = null
+    
+    fun show(activity: Activity) {
+        if (isShowing) {
+            AppLog.put("DebugLogPanelDialog: show() called but already showing")
+            return
+        }
+        
+        if (activity.isFinishing || activity.isDestroyed) {
+            AppLog.put("DebugLogPanelDialog: show() called but activity is finishing or destroyed")
+            return
+        }
+        
+        currentActivity = activity
+        val rootView = activity.window.decorView as? ViewGroup
+        if (rootView == null) {
+            AppLog.put("DebugLogPanelDialog: show() failed - rootView is null")
+            return
+        }
+        
+        try {
+            val composeView = createComposeView(activity)
+            composeView.id = View.generateViewId()
+            
+            val layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+            
+            rootView.addView(composeView, layoutParams)
+            dialogView = composeView
+            isShowing = true
+            AppLog.put("DebugLogPanelDialog: show() success")
+            
+        } catch (e: Exception) {
+            AppLog.put("DebugLogPanelDialog: show() exception - ${e.message}", e)
+            dialogView = null
+            isShowing = false
+            currentActivity = null
+        }
+    }
+    
+    fun dismiss() {
+        if (!isShowing) {
+            return
+        }
+        
+        val activity = currentActivity
+        dialogView?.let { view ->
+            view.postDelayed(50) {
+                try {
+                    val parent = view.parent as? ViewGroup
+                    parent?.removeView(view)
+                    AppLog.put("DebugLogPanelDialog: dismiss() success")
+                } catch (e: Exception) {
+                    AppLog.put("DebugLogPanelDialog: dismiss() exception - ${e.message}", e)
+                }
+            }
+        }
+        
+        dialogView = null
+        isShowing = false
+        currentActivity = null
+        
+        activity?.let {
+            if (!it.isFinishing && !it.isDestroyed) {
+                DebugFloatingBallManager.onPanelDismissed(it)
+            }
+        }
+    }
+    
+    fun onActivityDestroyed(activity: Activity) {
+        if (currentActivity == activity) {
+            dismiss()
+        }
+    }
+    
+    private fun createComposeView(activity: Activity): ComposeView {
+        return ComposeView(activity).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
+            setContent {
+                MaterialTheme {
+                    DebugLogPanelContent(
+                        onDismiss = { dismiss() }
+                    )
+                }
+            }
+        }
+    }
+    
+    @Composable
+    private fun DebugLogPanelContent(onDismiss: () -> Unit) {
+        val focusManager = LocalFocusManager.current
+        
+        DisposableEffect(Unit) {
+            focusManager.clearFocus()
+            onDispose {
+                focusManager.clearFocus()
+            }
+        }
+        
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            DebugLogScreen(
+                onDismiss = onDismiss,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}

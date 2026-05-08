@@ -5,12 +5,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -22,57 +30,49 @@ import io.legado.app.model.debug.DebugEvent
 import io.legado.app.ui.debuglog.components.DebugCategoryTabs
 import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
 import io.legado.app.ui.debuglog.components.DebugLogItem
-import io.legado.app.ui.debuglog.components.DebugTopBar
 import io.legado.app.ui.debuglog.viewmodel.DebugLogViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 /**
  * 调试日志主界面（Compose实现）
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DebugLogScreen(
     viewModel: DebugLogViewModel = viewModel(),
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val isPaused by viewModel.isPaused.collectAsState()
     val filteredLogs by viewModel.filteredLogs.collectAsState()
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        shape = MaterialTheme.shapes.large.copy(
-            topStart = androidx.compose.foundation.shape.CornerSize(16.dp),
-            topEnd = androidx.compose.foundation.shape.CornerSize(16.dp)
-        ),
-        containerColor = MaterialTheme.colorScheme.surface
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 16.dp)
-        ) {
-            // 1. 顶部工具栏
-            DebugTopBar(
+    Scaffold(
+        topBar = {
+            DebugLogTopBar(
                 isPaused = isPaused,
                 onPauseToggle = { viewModel.togglePause() },
                 onClear = { viewModel.clearLogs() },
                 onExport = { /* TODO: 导出逻辑 */ },
-                onFilterClick = { /* TODO: 显示搜索框 */ }
+                onDismiss = onDismiss
             )
-
-            HorizontalDivider()
-
-            // 2. 分类 Tab
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // 1. 分类 Tab
             DebugCategoryTabs(
                 selectedCategory = selectedCategory,
                 categories = DebugCategory.entries.filter { it != DebugCategory.CHECK && it != DebugCategory.CRASH },
                 onCategorySelected = viewModel::selectCategory
             )
 
-            // 3. 日志列表
+            HorizontalDivider()
+
+            // 2. 日志列表
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
                     uiState.isLoading -> {
@@ -90,7 +90,7 @@ fun DebugLogScreen(
                     }
                 }
 
-                // 4. 详情弹窗（按需渲染）
+                // 3. 详情弹窗（按需渲染）
                 if (uiState.selectedLog != null) {
                     DebugLogDetailDialog(
                         log = uiState.selectedLog!!,
@@ -101,6 +101,51 @@ fun DebugLogScreen(
             }
         }
     }
+}
+
+/**
+ * 顶部工具栏
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DebugLogTopBar(
+    isPaused: Boolean,
+    onPauseToggle: () -> Unit,
+    onClear: () -> Unit,
+    onExport: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    TopAppBar(
+        title = { Text("调试日志") },
+        navigationIcon = {
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "关闭"
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onPauseToggle) {
+                Icon(
+                    imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                    contentDescription = if (isPaused) "继续" else "暂停"
+                )
+            }
+            IconButton(onClick = onClear) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "清空"
+                )
+            }
+            IconButton(onClick = onExport) {
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = "导出"
+                )
+            }
+        }
+    )
 }
 
 /**

@@ -84,6 +84,14 @@
             android:title="@string/debug_mode"
             app:iconSpaceReserved="false" />
 
+        <!-- 调试日志悬浮球：开启后在应用内任何页面显示调试日志悬浮球 -->
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="false"
+            android:key="debugLogFloatingBall"
+            android:summary="@string/debug_log_floating_ball_summary"
+            android:title="@string/debug_log_floating_ball"
+            app:iconSpaceReserved="false" />
+
         <!-- 崩溃时复制日志：默认开启，崩溃后自动将日志复制到剪贴板 -->
         <io.legado.app.lib.prefs.SwitchPreference
             android:defaultValue="true"

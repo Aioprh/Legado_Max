@@ -25,6 +25,8 @@ import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.widget.TitleBar
+import io.legado.app.ui.debuglog.DebugFloatingBallManager
+import io.legado.app.ui.debuglog.DebugLogPanelDialog
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyBackgroundTint
 import io.legado.app.utils.applyOpenTint
@@ -92,6 +94,22 @@ abstract class BaseActivity<VB : ViewBinding>(
         }
         observeLiveBus()    // 模板方法：子类覆写 observeLiveBus() 注册事件订阅，自动在 onCreate 中调用
         onActivityCreated(savedInstanceState)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        DebugFloatingBallManager.onActivityResumed(this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        DebugFloatingBallManager.onActivityPaused(this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        DebugFloatingBallManager.onActivityDestroyed(this)
+        DebugLogPanelDialog.onActivityDestroyed(this)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)

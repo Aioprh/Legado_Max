@@ -39,6 +39,7 @@ import io.legado.app.ui.upload.DirectLinkUploadActivity
 import io.legado.app.ui.video.config.SettingsDialog
 import io.legado.app.ui.widget.code.addJsonPattern
 import io.legado.app.ui.widget.number.NumberPickerDialog
+import io.legado.app.ui.debuglog.DebugFloatingBallManager
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.getPrefBoolean
@@ -254,6 +255,11 @@ class OtherConfigFragment : PreferenceFragment(),
             PreferKey.showDiscovery, PreferKey.showRss -> postEvent(EventBus.NOTIFY_MAIN, true)
             // 调试模式变化时发送事件，通知"我的"页面更新调试工具入口显示
             PreferKey.debugMode -> postEvent(EventBus.DEBUG_MODE_CHANGED, true)
+            // 调试日志悬浮球开关变化，更新悬浮球显示状态
+            PreferKey.debugLogFloatingBall -> {
+                val enabled = sharedPreferences?.getBoolean(key, false) ?: false
+                DebugFloatingBallManager.updateFloatingBallState(enabled)
+            }
             PreferKey.language -> listView.postDelayed(1000) {
                 appCtx.restart()
             }
