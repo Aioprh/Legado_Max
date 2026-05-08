@@ -13,7 +13,10 @@ data class AppReleaseInfo(
     val downloadUrl: String,
     val assetUrl: String
 ) {
-    val versionName: String = name.split("_").getOrNull(2)?.dropLast(2) ?: ""
+    val versionName: String by lazy {
+        val withoutApk = name.removeSuffix(".apk")
+        withoutApk.split("_").getOrNull(2) ?: ""
+    }
 }
 
 enum class AppVariant {
@@ -24,7 +27,7 @@ enum class AppVariant {
     UNKNOWN;
 
     fun isBeta(): Boolean {
-        return this == BETA_RELEASE || this == BETA_RELEASEA
+        return this == BETA_RELEASE || this == BETA_RELEASEA || this == BETA_RELEASES
     }
 
 }
@@ -104,9 +107,9 @@ data class GiteeAsset(
     fun assetToAppReleaseInfo(preRelease: Boolean, note: String): AppReleaseInfo {
 
         val appVariant = when {
-            name.contains("releaseA") -> AppVariant.BETA_RELEASEA
-            name.contains("releaseS") -> AppVariant.BETA_RELEASES
-            name.contains("release") -> AppVariant.BETA_RELEASE //preRelease &&
+            name.contains("releaseS") || name.contains("yuedu.a") -> AppVariant.BETA_RELEASES
+            name.contains("releaseA") || (name.contains("yuedu") && !name.contains("yuedu.a")) -> AppVariant.BETA_RELEASEA
+            name.contains("release") || name.contains("legado_app_3") -> AppVariant.BETA_RELEASE
             else -> AppVariant.OFFICIAL
         }
 
