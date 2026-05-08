@@ -165,10 +165,10 @@ fun ReadRecordScreen(
                 title = {
                     Column {
                         Text(
-                            text = "阅读记录",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
+                text = "阅读记录",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
                         Text(
                             text = when (displayMode) {
                                 DisplayMode.AGGREGATE -> "汇总视图"

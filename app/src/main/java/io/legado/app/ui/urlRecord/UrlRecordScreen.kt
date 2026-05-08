@@ -148,6 +148,7 @@ fun UrlRecordScreen(
     // Scaffold 是Material3的基础页面模板
     // 它提供了topBar、bottomBar、floatingActionButton等预定义区域
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             // ==================== 标题栏 ====================
             TopAppBar(
@@ -162,10 +163,10 @@ fun UrlRecordScreen(
                     // Column 是垂直布局，子元素从上到下排列
                     Column {
                         Text(
-                            text = "URL访问记录",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
+                text = "URL访问记录",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
                         // 条件显示：只有recordCount > 0时才显示
                         if (recordCount > 0) {
                             Text(

@@ -54,9 +54,16 @@ fun DirectLinkUploadScreen(
     val tabs = listOf("规则管理", "上传历史")
     
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("直链上传配置") },
+                title = { 
+                    Text(
+                text = "直链上传配置",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Medium
+            )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.secondary,
                     scrolledContainerColor = MaterialTheme.colorScheme.secondary,
