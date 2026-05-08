@@ -150,7 +150,11 @@ fun DebugLogScreen(
         ) {
             DebugCategoryTabs(
                 selectedCategory = selectedCategory,
-                categories = DebugCategory.entries.filter { it != DebugCategory.CHECK && it != DebugCategory.CRASH },
+                categories = DebugCategory.entries.filter { 
+                    it != DebugCategory.CHECK && 
+                    it != DebugCategory.CRASH && 
+                    it != DebugCategory.RULE 
+                },
                 onCategorySelected = viewModel::selectCategory
             )
 
@@ -200,6 +204,9 @@ private fun LoadingIndicator() {
     }
 }
 
+/**
+ * 空状态提示
+ */
 @Composable
 private fun EmptyState(message: String) {
     Box(
@@ -216,6 +223,9 @@ private fun EmptyState(message: String) {
     }
 }
 
+/**
+ * 日志列表容器
+ */
 @Composable
 private fun DebugLogList(
     logs: List<DebugEvent>,
