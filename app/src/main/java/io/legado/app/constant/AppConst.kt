@@ -65,13 +65,13 @@ object AppConst {
         appCtx.packageManager.getPackageInfo(appCtx.packageName, PackageManager.GET_ACTIVITIES)
             ?.let {
                 appInfo.versionName = it.versionName!!
-                appInfo.appVariant = when {
-                    it.packageName.contains("releaseA") -> AppVariant.BETA_RELEASEA
-                    it.packageName.contains("releaseS") -> AppVariant.BETA_RELEASES
-                    isBeta -> AppVariant.BETA_RELEASE
-                    isOfficial -> AppVariant.OFFICIAL
-                    else -> AppVariant.UNKNOWN
-                }
+            appInfo.appVariant = when {
+                it.packageName == "io.legado.app.yuedu.a" -> AppVariant.BETA_COEXIST
+                it.packageName == "io.legado.app" -> AppVariant.BETA_LEGACY
+                it.packageName == "io.legado.app.yuedu" || isBeta -> AppVariant.BETA_RELEASE
+                isOfficial -> AppVariant.OFFICIAL
+                else -> AppVariant.UNKNOWN
+            }
 
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                     appInfo.versionCode = it.longVersionCode

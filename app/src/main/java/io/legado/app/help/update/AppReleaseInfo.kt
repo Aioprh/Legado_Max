@@ -13,18 +13,21 @@ data class AppReleaseInfo(
     val downloadUrl: String,
     val assetUrl: String
 ) {
-    val versionName: String = name.split("_").getOrNull(2)?.dropLast(2) ?: ""
+    val versionName: String by lazy {
+        val withoutApk = name.removeSuffix(".apk")
+        withoutApk.split("_").getOrNull(2) ?: ""
+    }
 }
 
 enum class AppVariant {
     OFFICIAL,
-    BETA_RELEASEA,
-    BETA_RELEASES,
-    BETA_RELEASE,
+    BETA_LEGACY,    // 兼容版 - io.legado.app - 可覆盖原版
+    BETA_COEXIST,   // 共存版 - io.legado.app.yuedu.a - 测试版的共存包
+    BETA_RELEASE,   // 测试版 - io.legado.app.yuedu - 原包名测试版
     UNKNOWN;
 
     fun isBeta(): Boolean {
-        return this == BETA_RELEASE || this == BETA_RELEASEA
+        return this == BETA_RELEASE || this == BETA_LEGACY || this == BETA_COEXIST
     }
 
 }
@@ -81,8 +84,8 @@ data class Asset(
         val timestamp: Long = instant.toEpochMilli()
 
         val appVariant = when {
-            preRelease && name.contains("releaseA") -> AppVariant.BETA_RELEASEA
-            preRelease && name.contains("releaseS") -> AppVariant.BETA_RELEASES
+            preRelease && name.contains("releaseS") -> AppVariant.BETA_COEXIST
+            preRelease && name.contains("legacy") -> AppVariant.BETA_LEGACY
             preRelease && name.contains("release") -> AppVariant.BETA_RELEASE
             else -> AppVariant.OFFICIAL
         }
@@ -102,16 +105,13 @@ data class GiteeAsset(
         get() = apkUrl.contains(".apk")
 
     fun assetToAppReleaseInfo(preRelease: Boolean, note: String): AppReleaseInfo {
-
         val appVariant = when {
-            name.contains("releaseA") -> AppVariant.BETA_RELEASEA
-            name.contains("releaseS") -> AppVariant.BETA_RELEASES
-            name.contains("release") -> AppVariant.BETA_RELEASE //preRelease &&
+            name.contains("正式版") || name.contains("releaseS") -> AppVariant.BETA_COEXIST
+            name.contains("兼容版") || name.contains("legacy") -> AppVariant.BETA_LEGACY
+            name.contains("测试版") || name.contains("release") -> AppVariant.BETA_RELEASE
             else -> AppVariant.OFFICIAL
         }
 
         return AppReleaseInfo(appVariant, 0, note, name, apkUrl, "")
     }
 }
-
-

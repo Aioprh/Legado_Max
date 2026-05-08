@@ -631,31 +631,8 @@ class ReadRecordRepository(
             normalized.bookName,
             normalized.bookAuthor
         )
-        if (record.deviceId == getCurrentDeviceId()) {
-            if (existing == null || existing.readTime < normalized.readTime) {
-                dao.insert(normalized)
-            }
-        } else {
-            if (existing == null) {
-                dao.insert(normalized)
-            } else {
-                dao.insert(
-                    existing.copy(
-                        readTime = existing.readTime + normalized.readTime,
-                        lastRead = max(existing.lastRead, normalized.lastRead),
-                        durChapterTitle = if (normalized.lastRead >= existing.lastRead) {
-                            normalized.durChapterTitle
-                        } else {
-                            existing.durChapterTitle
-                        },
-                        durChapterIndex = if (normalized.lastRead >= existing.lastRead) {
-                            normalized.durChapterIndex
-                        } else {
-                            existing.durChapterIndex
-                        }
-                    )
-                )
-            }
+        if (existing == null || existing.readTime < normalized.readTime) {
+            dao.insert(normalized)
         }
     }
 
@@ -667,23 +644,8 @@ class ReadRecordRepository(
             normalized.bookAuthor,
             normalized.date
         )
-        if (detail.deviceId == getCurrentDeviceId()) {
-            if (existing == null || existing.readTime < normalized.readTime) {
-                dao.insertDetail(normalized)
-            }
-        } else {
-            if (existing == null) {
-                dao.insertDetail(normalized)
-            } else {
-                dao.insertDetail(
-                    existing.copy(
-                        readTime = existing.readTime + normalized.readTime,
-                        readWords = existing.readWords + normalized.readWords,
-                        firstReadTime = min(existing.firstReadTime, normalized.firstReadTime),
-                        lastReadTime = max(existing.lastReadTime, normalized.lastReadTime)
-                    )
-                )
-            }
+        if (existing == null || existing.readTime < normalized.readTime) {
+            dao.insertDetail(normalized)
         }
     }
 

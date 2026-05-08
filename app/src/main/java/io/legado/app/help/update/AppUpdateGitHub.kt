@@ -20,8 +20,8 @@ object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
         get() = when (AppConfig.updateToVariant) {
             "official_version" -> AppVariant.OFFICIAL
             "beta_release_version" -> AppVariant.BETA_RELEASE
-            "beta_releaseA_version" -> AppVariant.BETA_RELEASEA
-            "beta_releaseS_version" -> AppVariant.BETA_RELEASES
+            "beta_legacy_version" -> AppVariant.BETA_LEGACY
+            "beta_coexist_version" -> AppVariant.BETA_COEXIST
             else -> AppConst.appInfo.appVariant
         }
 

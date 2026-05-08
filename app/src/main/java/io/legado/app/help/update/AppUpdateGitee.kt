@@ -21,8 +21,8 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
         get() = when (AppConfig.updateToVariant) {
             "official_version" -> AppVariant.OFFICIAL
             "beta_release_version" -> AppVariant.BETA_RELEASE
-            "beta_releaseA_version" -> AppVariant.BETA_RELEASEA
-            "beta_releaseS_version" -> AppVariant.BETA_RELEASES
+            "beta_legacy_version" -> AppVariant.BETA_LEGACY
+            "beta_coexist_version" -> AppVariant.BETA_COEXIST
             else -> AppConst.appInfo.appVariant
         }
 
@@ -47,8 +47,8 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
                 .getOrElse {
                     throw NoStackTraceException("获取新版本出错 " + it.localizedMessage)
                 }
-                .first { !it.prerelease }
-                .gitReleaseToAppReleaseInfo()
+                .filter { !it.prerelease }
+                .flatMap { it.gitReleaseToAppReleaseInfo() }
                 .sortedByDescending { it.createdAt }
         }
         return GSON.fromJsonObject<GiteeRelease>(body)
@@ -65,7 +65,7 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
         return Coroutine.async(scope) {
             getLatestRelease()
                 .filter {
-                    if (AppConst.appInfo.appVariant == AppVariant.BETA_RELEASE) { //不切版本
+                    if (AppConst.appInfo.appVariant.isBeta()) { //所有Beta版本都不切换
                         it.appVariant == AppConst.appInfo.appVariant
                     } else {
                         it.appVariant == checkVariant

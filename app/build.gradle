@@ -137,7 +137,7 @@ android {
         }
     }
     android.applicationVariants.configureEach { variant ->
-        variant.outputs.configureEach {
+        variant.outputs.configureEach { output ->
             outputFileName = "${name}_${defaultConfig.versionName}.apk"
         }
     }
