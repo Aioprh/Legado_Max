@@ -65,7 +65,14 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         var result = uiState.logs
 
         if (category != DebugCategory.ALL) {
-            result = result.filter { it.category == category }
+            result = result.filter { 
+                when (category) {
+                    DebugCategory.SOURCE -> {
+                        it.category == DebugCategory.SOURCE || it.category == DebugCategory.RULE
+                    }
+                    else -> it.category == category
+                }
+            }
         }
 
         query?.let { q ->

@@ -53,7 +53,8 @@ object Debug {
         print: Boolean = true,
         isHtml: Boolean = false,
         showTime: Boolean = true,
-        state: Int = 1
+        state: Int = 1,
+        category: DebugCategory? = null
     ) {
         if (BuildConfig.DEBUG) {
             Log.d("sourceDebug", msg)
@@ -83,9 +84,9 @@ object Debug {
                 printMsg = "$time $printMsg"
             }
 
-            // 根据sourceUrl判断分类（简化逻辑，后续可优化）
-            val category = when {
-                sourceUrl?.contains("rss") == true -> DebugCategory.RSS
+            // 根据category参数或sourceUrl判断分类
+            val eventCategory = category ?: when {
+                sourceUrl?.contains("rss", ignoreCase = true) == true -> DebugCategory.RSS
                 else -> DebugCategory.RULE  // 默认归为规则执行
             }
 
@@ -96,7 +97,7 @@ object Debug {
                         state == 0 -> DebugLevel.WARN
                         else -> DebugLevel.DEBUG
                     },
-                    category = category,
+                    category = eventCategory,
                     message = printMsg,
                     detail = msg,
                     sourceUrl = sourceUrl,
@@ -127,6 +128,26 @@ object Debug {
     @Synchronized
     fun log(msg: String?) {
         log(debugSource, msg ?: "", true)
+    }
+
+    /**
+     * 记录RSS源日志
+     * @param sourceUrl RSS源URL
+     * @param msg 日志消息
+     * @param print 是否打印
+     * @param isHtml 是否为HTML格式
+     * @param showTime 是否显示时间
+     * @param state 状态码
+     */
+    fun logRss(
+        sourceUrl: String?,
+        msg: String = "",
+        print: Boolean = true,
+        isHtml: Boolean = false,
+        showTime: Boolean = true,
+        state: Int = 1
+    ) {
+        log(sourceUrl, msg, print, isHtml, showTime, state, DebugCategory.RSS)
     }
 
     /**
@@ -191,31 +212,31 @@ object Debug {
     suspend fun startDebug(scope: CoroutineScope, rssSource: RssSource) {
         cancelDebug()
         debugSource = rssSource.sourceUrl
-        log(debugSource, "︾开始解析")
+        logRss(debugSource, "︾开始解析")
         val sort = rssSource.sortUrls().first()
         Rss.getArticles(scope, sort.first, sort.second, rssSource, 1)
             .onSuccess {
                 if (it.first.isEmpty()) {
-                    log(debugSource, "⇒列表页解析成功，为空")
-                    log(debugSource, "︽解析完成", state = 1000)
+                    logRss(debugSource, "⇒列表页解析成功，为空")
+                    logRss(debugSource, "︽解析完成", state = 1000)
                 } else {
                     val ruleContent = rssSource.ruleContent
                     if (!rssSource.ruleArticles.isNullOrBlank() && rssSource.ruleDescription.isNullOrBlank()) {
-                        log(debugSource, "︽列表页解析完成")
-                        log(debugSource, showTime = false)
+                        logRss(debugSource, "︽列表页解析完成")
+                        logRss(debugSource, showTime = false)
                         if (ruleContent.isNullOrEmpty()) {
-                            log(debugSource, "⇒内容规则为空，默认获取整个网页", state = 1000)
+                            logRss(debugSource, "⇒内容规则为空，默认获取整个网页", state = 1000)
                         } else {
                             rssContentDebug(scope, it.first[0], ruleContent, rssSource)
                         }
                     } else {
-                        log(debugSource, "⇒存在描述规则，不解析内容页")
-                        log(debugSource, "︽解析完成", state = 1000)
+                        logRss(debugSource, "⇒存在描述规则，不解析内容页")
+                        logRss(debugSource, "︽解析完成", state = 1000)
                     }
                 }
             }
             .onError {
-                log(debugSource, it.stackTraceStr, state = -1)
+                logRss(debugSource, it.stackTraceStr, state = -1)
             }
     }
 
@@ -233,8 +254,8 @@ object Debug {
             key.contains("::") -> {
                 val name = key.substringBefore("::")
                 val url = key.substringAfter("::")
-                log(debugSource, "⇒开始访问分类页:$url")
-                log(debugSource, "︾开始解析分类页")
+                logRss(debugSource, "⇒开始访问分类页:$url")
+                logRss(debugSource, "︾开始解析分类页")
                 sortDebug(scope, rssSource, name, url)
             }
 
@@ -242,28 +263,28 @@ object Debug {
                 val ruleContent = rssSource.ruleContent
                 if (!rssSource.ruleArticles.isNullOrBlank() && rssSource.ruleDescription.isNullOrBlank()) {
                     if (ruleContent.isNullOrEmpty()) {
-                        log(debugSource, "⇒内容规则为空，默认获取整个网页", state = 1000)
+                        logRss(debugSource, "⇒内容规则为空，默认获取整个网页", state = 1000)
                     } else {
                         val rssArticle = RssArticle()
                         rssArticle.origin = rssSource.sourceUrl
                         rssArticle.link = key
-                        log(debugSource, "⇒开始访问内容页:$key")
+                        logRss(debugSource, "⇒开始访问内容页:$key")
                         rssContentDebug(scope, rssArticle, ruleContent, rssSource)
                     }
                 } else {
-                    log(debugSource, "⇒存在描述规则，不解析内容页")
-                    log(debugSource, "︽解析完成", state = 1000)
+                    logRss(debugSource, "⇒存在描述规则，不解析内容页")
+                    logRss(debugSource, "︽解析完成", state = 1000)
                 }
             }
 
             else -> {
                 val searchUrl = rssSource.searchUrl
                 if (searchUrl.isNullOrEmpty()) {
-                    log(debugSource, "⇒搜索URL为空", state = -1)
+                    logRss(debugSource, "⇒搜索URL为空", state = -1)
                     return
                 }
-                log(debugSource, "⇒开始搜索关键字:$key")
-                log(debugSource, "︾开始解析搜索页")
+                logRss(debugSource, "⇒开始搜索关键字:$key")
+                logRss(debugSource, "︾开始解析搜索页")
                 sortDebug(scope, rssSource, "搜索", searchUrl, key)
             }
         }
@@ -281,26 +302,26 @@ object Debug {
         Rss.getArticles(scope, name, url, rssSource, 1, key)
             .onSuccess {
                 if (it.first.isEmpty()) {
-                    log(debugSource, "⇒列表页解析成功，为空")
-                    log(debugSource, "︽解析完成", state = 1000)
+                    logRss(debugSource, "⇒列表页解析成功，为空")
+                    logRss(debugSource, "︽解析完成", state = 1000)
                 } else {
                     val ruleContent = rssSource.ruleContent
                     if (!rssSource.ruleArticles.isNullOrBlank() && rssSource.ruleDescription.isNullOrBlank()) {
-                        log(debugSource, "︽列表页解析完成")
-                        log(debugSource, showTime = false)
+                        logRss(debugSource, "︽列表页解析完成")
+                        logRss(debugSource, showTime = false)
                         if (ruleContent.isNullOrEmpty()) {
-                            log(debugSource, "⇒内容规则为空，默认获取整个网页", state = 1000)
+                            logRss(debugSource, "⇒内容规则为空，默认获取整个网页", state = 1000)
                         } else {
                             rssContentDebug(scope, it.first[0], ruleContent, rssSource)
                         }
                     } else {
-                        log(debugSource, "⇒存在描述规则，不解析内容页")
-                        log(debugSource, "︽解析完成", state = 1000)
+                        logRss(debugSource, "⇒存在描述规则，不解析内容页")
+                        logRss(debugSource, "︽解析完成", state = 1000)
                     }
                 }
             }
             .onError {
-                log(debugSource, it.stackTraceStr, state = -1)
+                logRss(debugSource, it.stackTraceStr, state = -1)
             }
     }
 
@@ -317,14 +338,14 @@ object Debug {
         ruleContent: String,
         rssSource: RssSource
     ) {
-        log(debugSource, "︾开始解析内容页")
+        logRss(debugSource, "︾开始解析内容页")
         Rss.getContent(scope, rssArticle, ruleContent, rssSource)
             .onSuccess {
-                log(debugSource, it)
-                log(debugSource, "︽内容页解析完成", state = 1000)
+                logRss(debugSource, it)
+                logRss(debugSource, "︽内容页解析完成", state = 1000)
             }
             .onError {
-                log(debugSource, it.stackTraceStr, state = -1)
+                logRss(debugSource, it.stackTraceStr, state = -1)
             }
     }
 
