@@ -560,11 +560,16 @@ class CodeEditActivity :
                 SelectItem("登录地址", "loginUrl"),
                 SelectItem("登录界面", "loginUi"),
                 SelectItem("请求头", "header"),
-                SelectItem("并发率", "concurrentRate")
+                SelectItem("并发率", "concurrentRate"),
+                SelectItem("js库", "jsLib"),
+                SelectItem("搜索地址", "searchUrl"),
+                SelectItem("分类地址", "sortUrl"),
+                SelectItem("登录检查JS", "loginCheckJs"),
+                SelectItem("封面解密JS", "coverDecodeJs"),
+                SelectItem("变量注释", "variableComment")
             )
             "search" -> listOf(
                 SelectItem("搜索地址", "searchUrl"),
-                SelectItem("验证关键字", "checkKeyWord"),
                 SelectItem("文章列表", "ruleArticles"),
                 SelectItem("下一篇", "ruleNextPage"),
                 SelectItem("标题", "ruleTitle"),
@@ -575,7 +580,7 @@ class CodeEditActivity :
                 SelectItem("日期", "rulePubDate")
             )
             "explore" -> listOf(
-                SelectItem("发现地址", "exploreUrl"),
+                SelectItem("分类地址", "sortUrl"),
                 SelectItem("文章列表", "ruleArticles"),
                 SelectItem("下一篇", "ruleNextPage"),
                 SelectItem("标题", "ruleTitle"),
@@ -593,14 +598,18 @@ class CodeEditActivity :
                 SelectItem("链接", "ruleLink"),
                 SelectItem("图片", "ruleImage"),
                 SelectItem("日期", "rulePubDate"),
-                SelectItem("样式", "style")
+                SelectItem("样式", "style"),
+                SelectItem("注入JS", "injectJs"),
+                SelectItem("URL跳转拦截", "shouldOverrideUrlLoading"),
+                SelectItem("内容白名单", "contentWhitelist"),
+                SelectItem("内容黑名单", "contentBlacklist")
             )
             else -> emptyList()
         }
         if (fields.isEmpty()) return
         selector(fields.map { it.title }) { _, position ->
             val fieldKey = fields[position].value
-            switchToField(tabKey, fieldKey)
+            switchToField("base", fieldKey)
         }
     }
 

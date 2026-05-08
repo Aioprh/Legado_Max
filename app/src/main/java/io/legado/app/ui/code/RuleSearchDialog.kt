@@ -62,10 +62,7 @@ class RuleSearchDialog(
     private val tabNames: Map<String, String> by lazy {
         if (sourceType == "rssSource") {
             mapOf(
-                "base" to "基本",
-                "search" to "搜索",
-                "explore" to "发现",
-                "article" to "文章"
+                "base" to "订阅源字段"
             )
         } else {
             mapOf(
@@ -90,42 +87,34 @@ class RuleSearchDialog(
                     "sourceName" to "源名称",
                     "sourceGroup" to "源分组",
                     "sourceComment" to "源注释",
+                    "sourceIcon" to "源图标",
                     "loginUrl" to "登录地址",
                     "loginUi" to "登录界面",
-                    "header" to "请求头"
-                ),
-                "search" to listOf(
+                    "loginCheckJs" to "登录检查JS",
+                    "coverDecodeJs" to "封面解密JS",
+                    "header" to "请求头",
+                    "variableComment" to "变量注释",
+                    "concurrentRate" to "并发率",
+                    "jsLib" to "js库",
                     "searchUrl" to "搜索地址",
-                    "checkKeyWord" to "验证关键字",
+                    "sortUrl" to "分类地址",
+                    "startHtml" to "起始页HTML",
+                    "startStyle" to "起始页样式",
+                    "startJs" to "起始页JS",
+                    "preloadJs" to "预加载JS",
                     "ruleArticles" to "文章列表",
-                    "ruleNextPage" to "下一篇",
-                    "ruleTitle" to "标题",
-                    "ruleDescription" to "描述",
-                    "ruleLink" to "链接",
-                    "ruleContent" to "内容",
-                    "ruleImage" to "图片",
-                    "rulePubDate" to "日期"
-                ),
-                "explore" to listOf(
-                    "exploreUrl" to "发现地址",
-                    "ruleArticles" to "文章列表",
-                    "ruleNextPage" to "下一篇",
-                    "ruleTitle" to "标题",
-                    "ruleDescription" to "描述",
-                    "ruleLink" to "链接",
-                    "ruleContent" to "内容",
-                    "ruleImage" to "图片",
-                    "rulePubDate" to "日期"
-                ),
-                "article" to listOf(
-                    "ruleContent" to "正文内容",
                     "ruleNextPage" to "下一篇",
                     "ruleTitle" to "标题",
                     "ruleDescription" to "描述",
                     "ruleLink" to "链接",
                     "ruleImage" to "图片",
                     "rulePubDate" to "日期",
-                    "style" to "样式"
+                    "ruleContent" to "正文内容",
+                    "style" to "样式",
+                    "injectJs" to "注入JS",
+                    "shouldOverrideUrlLoading" to "URL跳转拦截",
+                    "contentWhitelist" to "内容白名单",
+                    "contentBlacklist" to "内容黑名单"
                 )
             )
         } else {
@@ -368,41 +357,105 @@ class RuleSearchDialog(
      * 获取字段值
      */
     private fun getFieldValue(jsonObj: JsonObject, tabKey: String, fieldKey: String): String? {
+        if (sourceType == "rssSource") {
+            if (!jsonObj.has(fieldKey)) return null
+            val element = jsonObj.get(fieldKey)
+            return when {
+                element.isJsonNull -> null
+                element.isJsonPrimitive -> element.asString
+                else -> element.toString()
+            }
+        }
+        
         return when (tabKey) {
             "base" -> {
-                if (jsonObj.has(fieldKey)) jsonObj.get(fieldKey).asString else null
+                if (!jsonObj.has(fieldKey)) return null
+                val element = jsonObj.get(fieldKey)
+                when {
+                    element.isJsonNull -> null
+                    element.isJsonPrimitive -> element.asString
+                    else -> element.toString()
+                }
             }
             "search" -> {
                 if (fieldKey == "searchUrl") {
-                    if (jsonObj.has("searchUrl")) jsonObj.get("searchUrl").asString else null
+                    if (!jsonObj.has("searchUrl")) return null
+                    val element = jsonObj.get("searchUrl")
+                    when {
+                        element.isJsonNull -> null
+                        element.isJsonPrimitive -> element.asString
+                        else -> element.toString()
+                    }
                 } else {
                     val rule = jsonObj.getAsJsonObject("ruleSearch")
-                    if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else null
+                    if (rule == null || !rule.has(fieldKey)) return null
+                    val element = rule.get(fieldKey)
+                    when {
+                        element.isJsonNull -> null
+                        element.isJsonPrimitive -> element.asString
+                        else -> element.toString()
+                    }
                 }
             }
             "explore" -> {
                 if (fieldKey == "exploreUrl") {
-                    if (jsonObj.has("exploreUrl")) jsonObj.get("exploreUrl").asString else null
+                    if (!jsonObj.has("exploreUrl")) return null
+                    val element = jsonObj.get("exploreUrl")
+                    when {
+                        element.isJsonNull -> null
+                        element.isJsonPrimitive -> element.asString
+                        else -> element.toString()
+                    }
                 } else {
                     val rule = jsonObj.getAsJsonObject("ruleExplore")
-                    if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else null
+                    if (rule == null || !rule.has(fieldKey)) return null
+                    val element = rule.get(fieldKey)
+                    when {
+                        element.isJsonNull -> null
+                        element.isJsonPrimitive -> element.asString
+                        else -> element.toString()
+                    }
                 }
             }
             "info" -> {
                 val rule = jsonObj.getAsJsonObject("ruleBookInfo")
-                if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else null
+                if (rule == null || !rule.has(fieldKey)) return null
+                val element = rule.get(fieldKey)
+                when {
+                    element.isJsonNull -> null
+                    element.isJsonPrimitive -> element.asString
+                    else -> element.toString()
+                }
             }
             "toc" -> {
                 val rule = jsonObj.getAsJsonObject("ruleToc")
-                if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else null
+                if (rule == null || !rule.has(fieldKey)) return null
+                val element = rule.get(fieldKey)
+                when {
+                    element.isJsonNull -> null
+                    element.isJsonPrimitive -> element.asString
+                    else -> element.toString()
+                }
             }
             "content" -> {
                 val rule = jsonObj.getAsJsonObject("ruleContent")
-                if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else null
+                if (rule == null || !rule.has(fieldKey)) return null
+                val element = rule.get(fieldKey)
+                when {
+                    element.isJsonNull -> null
+                    element.isJsonPrimitive -> element.asString
+                    else -> element.toString()
+                }
             }
             "article" -> {
                 val rule = jsonObj.getAsJsonObject("ruleArticle")
-                if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else null
+                if (rule == null || !rule.has(fieldKey)) return null
+                val element = rule.get(fieldKey)
+                when {
+                    element.isJsonNull -> null
+                    element.isJsonPrimitive -> element.asString
+                    else -> element.toString()
+                }
             }
             else -> null
         }
@@ -575,7 +628,8 @@ class RuleSearchDialog(
                 binding.matchedTextText.text = highlightText(fieldResult.matchedText, fieldResult.searchTerm)
 
                 binding.root.setOnClickListener {
-                    onFieldSelected(tabResult.tabKey, fieldResult.fieldKey)
+                    val tabKey = if (sourceType == "rssSource") "base" else tabResult.tabKey
+                    onFieldSelected(tabKey, fieldResult.fieldKey)
                     dismiss()
                 }
             }

@@ -140,16 +140,24 @@ class RssSourceEditActivity :
 
     private val textEditLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
-            val view = window.decorView.findFocus()
-            if (view is EditText) {
-                result.data?.getStringExtra("text")?.let {
-                    view.setText(it)
+            val data = result.data
+            val text = data?.getStringExtra("text")
+            val fieldKey = data?.getStringExtra("fieldKey")
+            val tabKey = data?.getStringExtra("tabKey")
+            val cursorPosition = data?.getIntExtra("cursorPosition", -1) ?: -1
+            
+            if (!text.isNullOrEmpty() && !fieldKey.isNullOrEmpty()) {
+                updateEditEntityValue(fieldKey, text, cursorPosition)
+            } else if (!text.isNullOrEmpty()) {
+                val view = window.decorView.findFocus()
+                if (view is EditText) {
+                    view.setText(text)
+                    if (cursorPosition in 0 ..< view.text.length) {
+                        view.setSelection(cursorPosition)
+                    }
+                } else {
+                    toastOnUi(R.string.focus_lost_on_textbox)
                 }
-                result.data?.getIntExtra("cursorPosition", -1)?.takeIf { it in 0 ..< view.text.length }?.let {
-                    view.setSelection(it)
-                }
-            } else {
-                toastOnUi(R.string.focus_lost_on_textbox)
             }
         }
     }
@@ -158,15 +166,74 @@ class RssSourceEditActivity :
         if (view is EditText) {
             val hint = findParentTextInputLayout(view)?.hint?.toString()
             val currentText = view.text.toString()
+            val fieldKey = view.getTag(R.id.tag) as? String ?: ""
             val intent = Intent(this, CodeEditActivity::class.java).apply {
                 putExtra("text", currentText)
                 putExtra("title", hint)
                 putExtra("cursorPosition", view.selectionStart)
+                putExtra("sourceType", "rssSource")
+                putExtra("sourceKey", getRssSource().sourceUrl)
+                putExtra("fieldKey", fieldKey)
+                putExtra("tabKey", "base")
             }
             textEditLauncher.launch(intent)
         }
         else {
             toastOnUi(R.string.please_focus_cursor_on_textbox)
+        }
+    }
+
+    /**
+     * 更新指定字段的值
+     * 根据字段标识找到对应的实体并更新其值
+     * 
+     * @param fieldKey 字段标识，如 "sourceName", "ruleContent"
+     * @param value 新的值
+     * @param cursorPosition 光标位置（可选）
+     */
+    private fun updateEditEntityValue(fieldKey: String, value: String, cursorPosition: Int = -1) {
+        val allEntities = listOf(
+            sourceEntities to 0,
+            startEntities to 1,
+            listEntities to 2,
+            webViewEntities to 3
+        )
+        
+        for ((entities, tabPosition) in allEntities) {
+            val entity = entities.find { it.key == fieldKey }
+            if (entity != null) {
+                entity.value = value
+                
+                if (binding.tabLayout.selectedTabPosition != tabPosition) {
+                    binding.tabLayout.selectTab(binding.tabLayout.getTabAt(tabPosition))
+                    binding.recyclerView.post {
+                        adapter.notifyDataSetChanged()
+                        scrollToFieldAndUpdate(entity, value, cursorPosition)
+                    }
+                } else {
+                    adapter.notifyDataSetChanged()
+                    scrollToFieldAndUpdate(entity, value, cursorPosition)
+                }
+                return
+            }
+        }
+    }
+    
+    private fun scrollToFieldAndUpdate(entity: EditEntity, value: String, cursorPosition: Int) {
+        val position = adapter.editEntities.indexOf(entity)
+        if (position >= 0) {
+            binding.recyclerView.scrollToPosition(position)
+            binding.recyclerView.postDelayed({
+                val viewHolder = binding.recyclerView.findViewHolderForAdapterPosition(position)
+                if (viewHolder is RssSourceEditAdapter.EditTextViewHolder) {
+                    val editText = viewHolder.binding.editText
+                    editText.setText(value)
+                    if (cursorPosition in 0 ..< value.length) {
+                        editText.setSelection(cursorPosition)
+                    }
+                    editText.requestFocus()
+                }
+            }, 100)
         }
     }
 
