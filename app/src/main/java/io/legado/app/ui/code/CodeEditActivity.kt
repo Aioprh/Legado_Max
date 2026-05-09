@@ -685,8 +685,126 @@ class CodeEditActivity :
             viewModel.tabKey = tabKey
             // 更新初始文本，用于判断内容是否被修改
             viewModel.initialText = value ?: ""
+            // 更新标题栏显示的字段名
+            updateTitle(fieldKey)
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+    
+    /**
+     * 更新标题栏显示的字段名
+     * @param fieldKey 字段标识
+     */
+    private fun updateTitle(fieldKey: String) {
+        val fieldName = getFieldName(fieldKey)
+        if (fieldName.isNotEmpty()) {
+            binding.titleBar.title = fieldName
+        }
+    }
+    
+    /**
+     * 根据字段标识获取字段的中文名称
+     * @param fieldKey 字段标识
+     * @return 字段的中文名称
+     */
+    private fun getFieldName(fieldKey: String): String {
+        val sourceType = viewModel.sourceType ?: return ""
+        
+        // 订阅源字段映射
+        val rssFieldNames = mapOf(
+            "sourceUrl" to "源地址",
+            "sourceName" to "源名称",
+            "sourceGroup" to "源分组",
+            "sourceComment" to "源注释",
+            "sourceIcon" to "源图标",
+            "loginUrl" to "登录地址",
+            "loginUi" to "登录界面",
+            "loginCheckJs" to "登录检查JS",
+            "coverDecodeJs" to "封面解密JS",
+            "header" to "请求头",
+            "variableComment" to "变量注释",
+            "concurrentRate" to "并发率",
+            "jsLib" to "js库",
+            "searchUrl" to "搜索地址",
+            "sortUrl" to "分类地址",
+            "startHtml" to "起始页HTML",
+            "startStyle" to "起始页样式",
+            "startJs" to "起始页JS",
+            "preloadJs" to "预加载JS",
+            "ruleArticles" to "文章列表",
+            "ruleNextPage" to "下一篇",
+            "ruleTitle" to "标题",
+            "ruleDescription" to "描述",
+            "ruleLink" to "链接",
+            "ruleImage" to "图片",
+            "rulePubDate" to "日期",
+            "ruleContent" to "正文内容",
+            "style" to "样式",
+            "injectJs" to "注入JS",
+            "shouldOverrideUrlLoading" to "URL跳转拦截",
+            "contentWhitelist" to "内容白名单",
+            "contentBlacklist" to "内容黑名单"
+        )
+        
+        // 书源字段映射
+        val bookFieldNames = mapOf(
+            "bookSourceUrl" to "源地址",
+            "bookSourceName" to "源名称",
+            "bookSourceGroup" to "源分组",
+            "bookSourceComment" to "源注释",
+            "loginUrl" to "登录地址",
+            "loginUi" to "登录界面",
+            "loginCheckJs" to "登录检查JS",
+            "coverDecodeJs" to "封面解密JS",
+            "bookUrlPattern" to "书籍URL正则",
+            "header" to "请求头",
+            "variableComment" to "变量注释",
+            "concurrentRate" to "并发率",
+            "jsLib" to "jsLib",
+            "searchUrl" to "搜索地址",
+            "checkKeyWord" to "验证关键字",
+            "bookList" to "书籍列表",
+            "name" to "书名",
+            "author" to "作者",
+            "kind" to "分类",
+            "wordCount" to "字数",
+            "lastChapter" to "最新章节",
+            "intro" to "简介",
+            "coverUrl" to "封面",
+            "bookUrl" to "书籍URL",
+            "exploreUrl" to "发现地址",
+            "init" to "初始化",
+            "tocUrl" to "目录URL",
+            "canReName" to "可重命名",
+            "downloadUrls" to "下载地址",
+            "preUpdateJs" to "预处理JS",
+            "chapterList" to "章节列表",
+            "chapterName" to "章节名称",
+            "chapterUrl" to "章节URL",
+            "formatJs" to "格式化JS",
+            "isVolume" to "是否分卷",
+            "updateTime" to "更新时间",
+            "isVip" to "是否VIP",
+            "isPay" to "是否付费",
+            "nextTocUrl" to "下页目录URL",
+            "content" to "正文内容",
+            "nextContentUrl" to "下页内容URL",
+            "subContent" to "子内容",
+            "replaceRegex" to "替换正则",
+            "title" to "标题",
+            "sourceRegex" to "资源正则",
+            "imageStyle" to "图片样式",
+            "imageDecode" to "图片解码",
+            "webJs" to "网页JS",
+            "payAction" to "付费操作",
+            "callBackJs" to "回调JS"
+        )
+        
+        return when (sourceType) {
+            "rssSource" -> rssFieldNames[fieldKey] ?: fieldKey
+            "bookSource" -> bookFieldNames[fieldKey] ?: fieldKey
+            else -> fieldKey
         }
     }
 
