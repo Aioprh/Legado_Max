@@ -155,7 +155,7 @@ android {
 
 
     room {
-        schemaDirectory "$projectDir/schemas"
+        schemaDirectory "$projectDir/schemas" 
     }
     // 设定Room的KSP参数
     ksp {

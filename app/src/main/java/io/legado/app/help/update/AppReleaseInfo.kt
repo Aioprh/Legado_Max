@@ -14,8 +14,11 @@ data class AppReleaseInfo(
     val assetUrl: String
 ) {
     val versionName: String by lazy {
-        val withoutApk = name.removeSuffix(".apk")
-        withoutApk.split("_").getOrNull(2) ?: ""
+        extractVersionName(name)
+    }
+
+    fun isNewerThan(currentVersionName: String): Boolean {
+        return compareVersionName(versionName, currentVersionName) > 0
     }
 }
 
@@ -40,6 +43,32 @@ fun appVariantFromAssetName(name: String, preRelease: Boolean = false): AppVaria
         preRelease -> AppVariant.BETA_RELEASE
         else -> AppVariant.OFFICIAL
     }
+}
+
+private fun extractVersionName(name: String): String {
+    return Regex("""\d+(?:\.\d+)+""").find(name)?.value.orEmpty()
+}
+
+private fun compareVersionName(remoteVersionName: String, currentVersionName: String): Int {
+    val remoteVersion = extractVersionName(remoteVersionName)
+    val currentVersion = extractVersionName(currentVersionName)
+    if (remoteVersion.isBlank() || currentVersion.isBlank()) {
+        return remoteVersion.compareTo(currentVersion)
+    }
+    if (remoteVersion == currentVersion || remoteVersion.startsWith(currentVersion)) {
+        return 0
+    }
+    val remoteParts = remoteVersion.split(".").map { it.toLongOrNull() ?: 0L }
+    val currentParts = currentVersion.split(".").map { it.toLongOrNull() ?: 0L }
+    val maxSize = maxOf(remoteParts.size, currentParts.size)
+    for (index in 0 until maxSize) {
+        val remotePart = remoteParts.getOrElse(index) { 0L }
+        val currentPart = currentParts.getOrElse(index) { 0L }
+        if (remotePart != currentPart) {
+            return remotePart.compareTo(currentPart)
+        }
+    }
+    return 0
 }
 
 @Keep

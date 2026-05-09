@@ -53,7 +53,7 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
         return Coroutine.async(scope) {
             getLatestRelease()
                 .filter { it.appVariant == checkVariant }
-                .firstOrNull { it.versionName > AppConst.appInfo.versionName }
+                .firstOrNull { it.isNewerThan(AppConst.appInfo.versionName) }
                 ?.let {
                     return@async AppUpdate.UpdateInfo(
                         it.versionName,
