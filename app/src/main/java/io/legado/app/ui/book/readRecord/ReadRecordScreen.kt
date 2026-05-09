@@ -59,7 +59,7 @@ fun ReadRecordScreen(
     val displayMode by viewModel.displayMode.collectAsState()
     var showSearch by remember { mutableStateOf(false) }
     var showCalendar by remember { mutableStateOf(false) }
-    var heatmapMode by remember { mutableStateOf(HeatmapMode.COUNT) }
+    var heatmapMode by remember { mutableStateOf(HeatmapMode.TIME) }
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val topBarColor = readRecordTopBarContainerColor()
