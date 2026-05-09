@@ -14,8 +14,11 @@ data class AppReleaseInfo(
     val assetUrl: String
 ) {
     val versionName: String by lazy {
-        val withoutApk = name.removeSuffix(".apk")
-        withoutApk.split("_").getOrNull(2) ?: ""
+        extractVersionName(name)
+    }
+
+    fun isNewerThan(currentVersionName: String): Boolean {
+        return compareVersionName(versionName, currentVersionName) > 0
     }
 }
 
@@ -30,6 +33,56 @@ enum class AppVariant {
         return this == BETA_RELEASE || this == BETA_LEGACY || this == BETA_COEXIST
     }
 
+}
+
+fun appVariantFromAssetName(name: String, preRelease: Boolean = false): AppVariant {
+    return when {
+        name.contains("releaseS", ignoreCase = true) || name.contains("正式版") -> AppVariant.BETA_COEXIST
+        name.contains("legacy", ignoreCase = true) || name.contains("兼容版") -> AppVariant.BETA_LEGACY
+        name.contains("release", ignoreCase = true) || name.contains("测试版") -> AppVariant.BETA_RELEASE
+        preRelease -> AppVariant.BETA_RELEASE
+        else -> AppVariant.OFFICIAL
+    }
+}
+
+private fun extractVersionName(name: String): String {
+    return Regex("""\d+(?:\.\d+)+""").find(name)?.value.orEmpty()
+}
+
+private fun compareVersionName(remoteVersionName: String, currentVersionName: String): Int {
+    val remoteVersion = extractVersionName(remoteVersionName)
+    val currentVersion = extractVersionName(currentVersionName)
+    if (remoteVersion.isBlank() || currentVersion.isBlank()) {
+        return remoteVersion.compareTo(currentVersion)
+    }
+    if (remoteVersion == currentVersion) {
+        return 0
+    }
+    val remoteParts = remoteVersion.split(".")
+    val currentParts = currentVersion.split(".")
+    val maxSize = maxOf(remoteParts.size, currentParts.size)
+    for (index in 0 until maxSize) {
+        val remotePart = remoteParts.getOrElse(index) { "0" }
+        val currentPart = currentParts.getOrElse(index) { "0" }
+        val compare = comparePart(remotePart, currentPart)
+        if (compare != 0) {
+            return compare
+        }
+    }
+    return 0
+}
+
+private fun comparePart(remote: String, current: String): Int {
+    val remoteNum = remote.toLongOrNull()
+    val currentNum = current.toLongOrNull()
+    if (remoteNum != null && currentNum != null) {
+        val maxLen = maxOf(remote.length, current.length)
+        val isDateTimePart = maxLen > 5
+        val remotePadded = if (isDateTimePart) remote.padEnd(maxLen, '0') else remote.padStart(maxLen, '0')
+        val currentPadded = if (isDateTimePart) current.padEnd(maxLen, '0') else current.padStart(maxLen, '0')
+        return remotePadded.compareTo(currentPadded)
+    }
+    return remote.compareTo(current)
 }
 
 @Keep
@@ -83,12 +136,7 @@ data class Asset(
         val instant = Instant.parse(createdAt)
         val timestamp: Long = instant.toEpochMilli()
 
-        val appVariant = when {
-            preRelease && name.contains("releaseS") -> AppVariant.BETA_COEXIST
-            preRelease && name.contains("legacy") -> AppVariant.BETA_LEGACY
-            preRelease && name.contains("release") -> AppVariant.BETA_RELEASE
-            else -> AppVariant.OFFICIAL
-        }
+        val appVariant = appVariantFromAssetName(name, preRelease)
 
         return AppReleaseInfo(appVariant, timestamp, note, name, apkUrl, url)
     }
@@ -105,12 +153,7 @@ data class GiteeAsset(
         get() = apkUrl.contains(".apk")
 
     fun assetToAppReleaseInfo(preRelease: Boolean, note: String): AppReleaseInfo {
-        val appVariant = when {
-            name.contains("正式版") || name.contains("releaseS") -> AppVariant.BETA_COEXIST
-            name.contains("兼容版") || name.contains("legacy") -> AppVariant.BETA_LEGACY
-            name.contains("测试版") || name.contains("release") -> AppVariant.BETA_RELEASE
-            else -> AppVariant.OFFICIAL
-        }
+        val appVariant = appVariantFromAssetName(name, preRelease)
 
         return AppReleaseInfo(appVariant, 0, note, name, apkUrl, "")
     }

@@ -138,13 +138,24 @@ android {
     }
     android.applicationVariants.configureEach { variant ->
         variant.outputs.configureEach { output ->
-            outputFileName = "${name}_${defaultConfig.versionName}.apk"
+            def flavorName = variant.flavorName
+            def flavorLabel = [
+                    appS     : "正式版",
+                    appMax   : "测试版",
+                    appLegacy: "兼容版"
+            ][flavorName] ?: flavorName
+            def flavorSuffix = [
+                    appS     : "releaseS",
+                    appMax   : "release",
+                    appLegacy: "legacy"
+            ][flavorName] ?: flavorName
+            outputFileName = "${name}_${flavorLabel}_${defaultConfig.versionName}_${flavorSuffix}.apk"
         }
     }
 
 
     room {
-        schemaDirectory "$projectDir/schemas"
+        schemaDirectory "$projectDir/schemas" 
     }
     // 设定Room的KSP参数
     ksp {

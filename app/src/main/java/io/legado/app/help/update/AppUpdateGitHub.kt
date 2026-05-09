@@ -22,6 +22,7 @@ object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
             "beta_release_version" -> AppVariant.BETA_RELEASE
             "beta_legacy_version" -> AppVariant.BETA_LEGACY
             "beta_coexist_version" -> AppVariant.BETA_COEXIST
+            "beta_releaseS_version" -> AppVariant.BETA_COEXIST
             else -> AppConst.appInfo.appVariant
         }
 
@@ -55,7 +56,7 @@ object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
         return Coroutine.async(scope) {
             getLatestRelease()
                 .filter { it.appVariant == checkVariant }
-                .firstOrNull { it.versionName > AppConst.appInfo.versionName }
+                .firstOrNull { it.isNewerThan(AppConst.appInfo.versionName) }
                 ?.let {
                     return@async AppUpdate.UpdateInfo(
                         it.versionName,
