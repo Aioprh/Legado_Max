@@ -7,6 +7,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
+import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.GlobalScope
@@ -56,7 +57,7 @@ object AppLog {
     }
 
     @Synchronized
-    fun putSource(message: String?, throwable: Throwable? = null) {
+    fun putSource(message: String?, throwable: Throwable? = null, subCategory: SourceSubCategory = SourceSubCategory.UPDATE) {
         message ?: return
         if (mSourceLogs.size > 200) {
             mSourceLogs.removeLastOrNull()
@@ -77,6 +78,7 @@ object AppLog {
                 DebugEvent(
                     level = if (throwable != null) DebugLevel.ERROR else DebugLevel.INFO,
                     category = DebugCategory.SOURCE,
+                    subCategory = subCategory,
                     message = message,
                     detail = throwable?.stackTraceToString(),
                     throwable = throwable

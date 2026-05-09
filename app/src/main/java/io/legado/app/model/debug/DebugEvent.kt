@@ -13,6 +13,7 @@ data class DebugEvent(
     val time: Long = System.currentTimeMillis(),
     val level: DebugLevel,
     val category: DebugCategory,
+    val subCategory: SourceSubCategory? = null,
     val message: String,
     val detail: String? = null,
     val sourceName: String? = null,

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
+import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.ui.debuglog.components.DebugCategoryTabs
 import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
 import io.legado.app.ui.debuglog.components.DebugLogItem
@@ -57,6 +58,7 @@ fun DebugLogScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val selectedSubCategory by viewModel.selectedSubCategory.collectAsState()
     val isPaused by viewModel.isPaused.collectAsState()
     val filteredLogs by viewModel.filteredLogs.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -158,6 +160,13 @@ fun DebugLogScreen(
                 onCategorySelected = viewModel::selectCategory
             )
 
+            if (selectedCategory == DebugCategory.SOURCE) {
+                SourceSubCategoryTabs(
+                    selectedSubCategory = selectedSubCategory,
+                    onSubCategorySelected = viewModel::selectSubCategory
+                )
+            }
+
             HorizontalDivider()
 
             Box(modifier = Modifier.fillMaxSize()) {
@@ -249,6 +258,41 @@ private fun DebugLogList(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp)
             )
+        }
+    }
+}
+
+/**
+ * 源日志子分类选择器
+ */
+@Composable
+private fun SourceSubCategoryTabs(
+    selectedSubCategory: SourceSubCategory?,
+    onSubCategorySelected: (SourceSubCategory?) -> Unit
+) {
+    androidx.compose.material3.Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 2.dp
+    ) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+        ) {
+            androidx.compose.material3.FilterChip(
+                selected = selectedSubCategory == null,
+                onClick = { onSubCategorySelected(null) },
+                label = { Text("全部") }
+            )
+            SourceSubCategory.entries.forEach { subCategory ->
+                androidx.compose.material3.FilterChip(
+                    selected = selectedSubCategory == subCategory,
+                    onClick = { onSubCategorySelected(subCategory) },
+                    label = { Text(subCategory.displayName) }
+                )
+            }
         }
     }
 }

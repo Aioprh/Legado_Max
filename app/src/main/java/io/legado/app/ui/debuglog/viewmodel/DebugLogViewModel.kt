@@ -10,6 +10,7 @@ import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
+import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,13 +56,16 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     private val _selectedCategory = MutableStateFlow(DebugCategory.ALL)
     val selectedCategory: StateFlow<DebugCategory> = _selectedCategory.asStateFlow()
 
+    private val _selectedSubCategory = MutableStateFlow<SourceSubCategory?>(null)
+    val selectedSubCategory: StateFlow<SourceSubCategory?> = _selectedSubCategory.asStateFlow()
+
     private val _isPaused = MutableStateFlow(false)
     val isPaused: StateFlow<Boolean> = _isPaused.asStateFlow()
 
     private val _searchQuery = MutableStateFlow<String?>(null)
     val searchQuery: StateFlow<String?> = _searchQuery.asStateFlow()
 
-    val filteredLogs = combine(_uiState, _selectedCategory, _searchQuery) { uiState, category, query ->
+    val filteredLogs = combine(_uiState, _selectedCategory, _selectedSubCategory, _searchQuery) { uiState, category, subCategory, query ->
         var result = uiState.logs
 
         if (category != DebugCategory.ALL) {
@@ -73,6 +77,10 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
                     else -> it.category == category
                 }
             }
+        }
+
+        if (subCategory != null && category == DebugCategory.SOURCE) {
+            result = result.filter { it.subCategory == subCategory }
         }
 
         query?.let { q ->
@@ -103,6 +111,13 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
 
     fun selectCategory(category: DebugCategory) {
         _selectedCategory.value = category
+        if (category != DebugCategory.SOURCE) {
+            _selectedSubCategory.value = null
+        }
+    }
+
+    fun selectSubCategory(subCategory: SourceSubCategory?) {
+        _selectedSubCategory.value = subCategory
     }
 
     fun setSearchQuery(query: String?) {

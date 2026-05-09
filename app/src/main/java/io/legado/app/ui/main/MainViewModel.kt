@@ -24,6 +24,7 @@ import io.legado.app.help.book.sync
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.CacheBook
 import io.legado.app.model.ReadBook
+import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.service.CacheBookService
 import io.legado.app.utils.onEachParallel
@@ -74,9 +75,9 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     private fun logUpdate(message: String, throwable: Throwable? = null, verbose: Boolean = false) {
         if (!verbose || AppConfig.verboseUpdateLog) {
             if (throwable != null) {
-                AppLog.putSource(message, throwable)
+                AppLog.putSource(message, throwable, SourceSubCategory.UPDATE)
             } else {
-                AppLog.putSource(message)
+                AppLog.putSource(message, subCategory = SourceSubCategory.UPDATE)
             }
         }
     }
