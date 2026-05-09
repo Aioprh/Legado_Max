@@ -876,6 +876,17 @@ class AnalyzeRule(
      * 执行JS
      */
     fun evalJS(jsStr: String, result: Any? = null): Any? {
+        val startTime = System.currentTimeMillis()
+        val containsReplace = jsStr.contains("replace")
+        
+        if (containsReplace) {
+            FlowLogRecorder.logReplace(
+                source = source,
+                message = "执行JS替换",
+                rule = jsStr.take(200)
+            )
+        }
+        
         val bindings = buildScriptBindings { bindings ->
             bindings["java"] = this
             bindings["cookie"] = CookieStore
@@ -904,8 +915,19 @@ class AnalyzeRule(
             }
         }
         val script = compileScriptCache(jsStr)
-        val result = script.eval(scope, coroutineContext)
-        return result
+        val jsResult = script.eval(scope, coroutineContext)
+        
+        if (containsReplace) {
+            FlowLogRecorder.logReplace(
+                source = source,
+                message = "JS替换完成",
+                rule = jsStr.take(200),
+                result = jsResult?.toString()?.take(100),
+                duration = System.currentTimeMillis() - startTime
+            )
+        }
+        
+        return jsResult
     }
 
     private fun compileScriptCache(jsStr: String): CompiledScript {
