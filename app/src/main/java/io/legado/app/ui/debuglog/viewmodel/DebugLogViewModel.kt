@@ -142,14 +142,25 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         loadHistoryLogs()
         subscribeToEventFlow()
         subscribeToFlowLogs()
+        // 初始化时刷新一次流程日志，确保显示最新数据
+        refreshFlowLogs()
     }
 
     private fun subscribeToFlowLogs() {
         FlowLogRecorder.logs
             .onEach { logs ->
-                _uiState.value = _uiState.value.copy(flowLogs = logs)
+                _uiState.update { it.copy(flowLogs = logs) }
             }
             .launchIn(viewModelScope)
+    }
+    
+    /**
+     * 刷新流程日志
+     * 手动刷新流程日志列表，确保显示最新数据
+     */
+    fun refreshFlowLogs() {
+        val currentLogs = FlowLogRecorder.getCurrentLogs()
+        _uiState.update { it.copy(flowLogs = currentLogs) }
     }
 
     fun selectCategory(category: DebugCategory) {

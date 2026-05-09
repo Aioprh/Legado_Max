@@ -5,9 +5,9 @@ import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -32,9 +32,16 @@ object FlowLogRecorder {
     // 最大日志数量限制
     private const val MAX_LOG_COUNT = 3000
 
-    // 日志列表，使用StateFlow实现响应式更新
-    private val _logs = MutableStateFlow<List<FlowLogItem>>(emptyList())
-    val logs: StateFlow<List<FlowLogItem>> = _logs.asStateFlow()
+    // 日志列表，使用MutableSharedFlow实现响应式更新，设置缓冲区避免丢失更新
+    private val _logs = MutableSharedFlow<List<FlowLogItem>>(
+        replay = 1,  // 保留最新的1个值，新订阅者可以立即收到
+        extraBufferCapacity = 64  // 缓冲区大小，减少丢失更新的风险
+    )
+    val logs: SharedFlow<List<FlowLogItem>> = _logs.asSharedFlow()
+    
+    // 当前日志列表的快照，用于同步访问
+    @Volatile
+    private var currentLogs: List<FlowLogItem> = emptyList()
 
     // 请求会话映射：书源URL -> 请求ID
     private val requestSessions = ConcurrentHashMap<String, String>()
@@ -304,28 +311,49 @@ object FlowLogRecorder {
      */
     @Synchronized
     private fun addLog(item: FlowLogItem) {
-        val currentLogs = _logs.value.toMutableList()
+        // 获取当前日志列表的副本
+        val logs = currentLogs.toMutableList()
         // 新日志添加到列表开头（最新的在前面）
-        currentLogs.add(0, item)
+        logs.add(0, item)
 
         // 如果超过最大数量限制，删除最旧的日志
-        if (currentLogs.size > MAX_LOG_COUNT) {
-            val removedCount = currentLogs.size - MAX_LOG_COUNT
+        if (logs.size > MAX_LOG_COUNT) {
+            val removedCount = logs.size - MAX_LOG_COUNT
             repeat(removedCount) {
-                currentLogs.removeAt(currentLogs.size - 1)
+                logs.removeAt(logs.size - 1)
             }
         }
 
-        _logs.value = currentLogs
+        // 更新当前日志列表快照
+        currentLogs = logs
+        
+        // 发送更新到Flow
+        GlobalScope.launch(Dispatchers.IO) {
+            _logs.emit(logs)
+        }
+    }
+    
+    /**
+     * 获取当前日志列表快照（同步方法）
+     * 
+     * @return 当前日志列表
+     */
+    fun getCurrentLogs(): List<FlowLogItem> {
+        return currentLogs
     }
 
     /**
      * 清空所有日志
      */
     fun clear() {
-        _logs.value = emptyList()
+        currentLogs = emptyList()
         requestSessions.clear()
         operationMap.clear()
+        
+        // 发送空列表到Flow
+        GlobalScope.launch(Dispatchers.IO) {
+            _logs.emit(emptyList())
+        }
     }
 
     /**

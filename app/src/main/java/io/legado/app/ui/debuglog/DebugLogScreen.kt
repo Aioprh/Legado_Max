@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -84,6 +85,12 @@ fun DebugLogScreen(
                         }
                     },
                     actions = {
+                        IconButton(onClick = { viewModel.refreshFlowLogs() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "刷新"
+                            )
+                        }
                         IconButton(onClick = { showSearch = !showSearch }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
