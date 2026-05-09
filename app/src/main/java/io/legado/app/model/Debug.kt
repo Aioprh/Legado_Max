@@ -12,6 +12,7 @@ import io.legado.app.help.source.sortUrls
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
+import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.model.rss.Rss
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.HtmlFormatter
@@ -98,6 +99,7 @@ object Debug {
                         else -> DebugLevel.DEBUG
                     },
                     category = eventCategory,
+                    subCategory = if (eventCategory == DebugCategory.RULE) SourceSubCategory.RULE else null,
                     message = printMsg,
                     detail = msg,
                     sourceUrl = sourceUrl,
