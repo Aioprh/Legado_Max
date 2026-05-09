@@ -63,7 +63,7 @@ class ReadRecordViewModel : ViewModel() {
         timeZone = TimeZone.getDefault()
     }
 
-    private val _displayMode = MutableStateFlow(DisplayMode.AGGREGATE)
+    private val _displayMode = MutableStateFlow(loadDisplayMode())
     val displayMode = _displayMode.asStateFlow()
     private val _searchKey = MutableStateFlow("")
     private val _selectedDate = MutableStateFlow<LocalDate?>(null)
@@ -80,6 +80,11 @@ class ReadRecordViewModel : ViewModel() {
                 )
             }
         }
+    }
+
+    private fun loadDisplayMode(): DisplayMode {
+        val savedOrdinal = appCtx.getPrefInt(PreferKey.readRecordDisplayMode, DisplayMode.AGGREGATE.ordinal)
+        return enumValueOf<DisplayMode>(DisplayMode.values().getOrNull(savedOrdinal)?.name ?: DisplayMode.AGGREGATE.name)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -220,6 +225,7 @@ class ReadRecordViewModel : ViewModel() {
 
     fun setDisplayMode(mode: DisplayMode) {
         _displayMode.value = mode
+        appCtx.putPrefInt(PreferKey.readRecordDisplayMode, mode.ordinal)
     }
 
     fun setSelectedDate(date: LocalDate?) {
