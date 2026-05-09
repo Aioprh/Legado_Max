@@ -32,6 +32,16 @@ enum class AppVariant {
 
 }
 
+fun appVariantFromAssetName(name: String, preRelease: Boolean = false): AppVariant {
+    return when {
+        name.contains("releaseS", ignoreCase = true) || name.contains("正式版") -> AppVariant.BETA_COEXIST
+        name.contains("legacy", ignoreCase = true) || name.contains("兼容版") -> AppVariant.BETA_LEGACY
+        name.contains("release", ignoreCase = true) || name.contains("测试版") -> AppVariant.BETA_RELEASE
+        preRelease -> AppVariant.BETA_RELEASE
+        else -> AppVariant.OFFICIAL
+    }
+}
+
 @Keep
 data class GithubRelease(
     val assets: List<Asset>?,
@@ -83,12 +93,7 @@ data class Asset(
         val instant = Instant.parse(createdAt)
         val timestamp: Long = instant.toEpochMilli()
 
-        val appVariant = when {
-            preRelease && name.contains("releaseS") -> AppVariant.BETA_COEXIST
-            preRelease && name.contains("legacy") -> AppVariant.BETA_LEGACY
-            preRelease && name.contains("release") -> AppVariant.BETA_RELEASE
-            else -> AppVariant.OFFICIAL
-        }
+        val appVariant = appVariantFromAssetName(name, preRelease)
 
         return AppReleaseInfo(appVariant, timestamp, note, name, apkUrl, url)
     }
@@ -105,12 +110,7 @@ data class GiteeAsset(
         get() = apkUrl.contains(".apk")
 
     fun assetToAppReleaseInfo(preRelease: Boolean, note: String): AppReleaseInfo {
-        val appVariant = when {
-            name.contains("正式版") || name.contains("releaseS") -> AppVariant.BETA_COEXIST
-            name.contains("兼容版") || name.contains("legacy") -> AppVariant.BETA_LEGACY
-            name.contains("测试版") || name.contains("release") -> AppVariant.BETA_RELEASE
-            else -> AppVariant.OFFICIAL
-        }
+        val appVariant = appVariantFromAssetName(name, preRelease)
 
         return AppReleaseInfo(appVariant, 0, note, name, apkUrl, "")
     }

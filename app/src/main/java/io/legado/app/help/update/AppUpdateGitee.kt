@@ -23,6 +23,7 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
             "beta_release_version" -> AppVariant.BETA_RELEASE
             "beta_legacy_version" -> AppVariant.BETA_LEGACY
             "beta_coexist_version" -> AppVariant.BETA_COEXIST
+            "beta_releaseS_version" -> AppVariant.BETA_COEXIST
             else -> AppConst.appInfo.appVariant
         }
 
@@ -50,14 +51,8 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
         scope: CoroutineScope,
     ): Coroutine<AppUpdate.UpdateInfo> {
         return Coroutine.async(scope) {
-            val targetVariant = if (AppConst.appInfo.appVariant == AppVariant.OFFICIAL) {
-                AppVariant.BETA_COEXIST
-            } else {
-                AppConst.appInfo.appVariant
-            }
-            
             getLatestRelease()
-                .filter { it.appVariant == targetVariant }
+                .filter { it.appVariant == checkVariant }
                 .firstOrNull { it.versionName > AppConst.appInfo.versionName }
                 ?.let {
                     return@async AppUpdate.UpdateInfo(
