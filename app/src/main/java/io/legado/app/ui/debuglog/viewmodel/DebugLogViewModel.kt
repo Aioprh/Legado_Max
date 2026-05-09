@@ -149,7 +149,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     private fun subscribeToFlowLogs() {
         FlowLogRecorder.logs
             .onEach { logs ->
-                _uiState.update { it.copy(flowLogs = logs) }
+                _uiState.value = _uiState.value.copy(flowLogs = logs)
             }
             .launchIn(viewModelScope)
     }
@@ -160,7 +160,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      */
     fun refreshFlowLogs() {
         val currentLogs = FlowLogRecorder.getCurrentLogs()
-        _uiState.update { it.copy(flowLogs = currentLogs) }
+        _uiState.value = _uiState.value.copy(flowLogs = currentLogs)
     }
 
     fun selectCategory(category: DebugCategory) {
