@@ -55,20 +55,34 @@ private fun compareVersionName(remoteVersionName: String, currentVersionName: St
     if (remoteVersion.isBlank() || currentVersion.isBlank()) {
         return remoteVersion.compareTo(currentVersion)
     }
-    if (remoteVersion == currentVersion || remoteVersion.startsWith(currentVersion)) {
+    if (remoteVersion == currentVersion) {
         return 0
     }
-    val remoteParts = remoteVersion.split(".").map { it.toLongOrNull() ?: 0L }
-    val currentParts = currentVersion.split(".").map { it.toLongOrNull() ?: 0L }
+    val remoteParts = remoteVersion.split(".")
+    val currentParts = currentVersion.split(".")
     val maxSize = maxOf(remoteParts.size, currentParts.size)
     for (index in 0 until maxSize) {
-        val remotePart = remoteParts.getOrElse(index) { 0L }
-        val currentPart = currentParts.getOrElse(index) { 0L }
-        if (remotePart != currentPart) {
-            return remotePart.compareTo(currentPart)
+        val remotePart = remoteParts.getOrElse(index) { "0" }
+        val currentPart = currentParts.getOrElse(index) { "0" }
+        val compare = comparePart(remotePart, currentPart)
+        if (compare != 0) {
+            return compare
         }
     }
     return 0
+}
+
+private fun comparePart(remote: String, current: String): Int {
+    val remoteNum = remote.toLongOrNull()
+    val currentNum = current.toLongOrNull()
+    if (remoteNum != null && currentNum != null) {
+        val maxLen = maxOf(remote.length, current.length)
+        val isDateTimePart = maxLen > 5
+        val remotePadded = if (isDateTimePart) remote.padEnd(maxLen, '0') else remote.padStart(maxLen, '0')
+        val currentPadded = if (isDateTimePart) current.padEnd(maxLen, '0') else current.padStart(maxLen, '0')
+        return remotePadded.compareTo(currentPadded)
+    }
+    return remote.compareTo(current)
 }
 
 @Keep
