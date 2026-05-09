@@ -70,13 +70,13 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     fun setActivityCallback(callback: CallBack) {
         this.callback = callback
     }
-    
+
     private fun logUpdate(message: String, throwable: Throwable? = null, verbose: Boolean = false) {
         if (!verbose || AppConfig.verboseUpdateLog) {
             if (throwable != null) {
-                AppLog.put(message, throwable)
+                AppLog.putSource(message, throwable)
             } else {
-                AppLog.put(message)
+                AppLog.putSource(message)
             }
         }
     }
