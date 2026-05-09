@@ -14,10 +14,10 @@ import org.junit.Test
 class UpdateTest {
 
     private val lastReleaseUrl =
-        "https://gitee.com/api/v5/repos/lyc486/legado/releases?page=1&per_page=3&direction=desc"
+        "https://gitee.com/api/v5/repos/GEd520/legados/releases?page=1&per_page=3&direction=desc"
 
     private val lastBetaReleaseUrl =
-        "https://gitee.com/api/v5/repos/lyc486/legado/releases/latest"
+        "https://gitee.com/api/v5/repos/GEd520/legados/releases/latest"
 
     @Test
     fun updateApp_beta() {

@@ -47,7 +47,6 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
                 .getOrElse {
                     throw NoStackTraceException("获取新版本出错 " + it.localizedMessage)
                 }
-                .filter { !it.prerelease }
                 .flatMap { it.gitReleaseToAppReleaseInfo() }
                 .sortedByDescending { it.createdAt }
         }
