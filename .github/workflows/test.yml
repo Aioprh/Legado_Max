@@ -407,11 +407,13 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
+          pattern: 'legado.app.*'
           path: apk/
+          merge-multiple: true
       - working-directory: apk/
         run: |
-          mv */*.apk .
-          rm -rf */
+          echo "📋 下载的文件列表："
+          ls -la
 
           for file in `ls *.apk`; do
             if [[ "$file" == *原包名* ]]; then
@@ -444,9 +446,9 @@ jobs:
             RELEASE_NAME="legado_app_$VERSION"
             echo "🚀 发布正式版: $TAG_NAME"
           else
-            TAG_NAME="beta"
+            TAG_NAME="beta-${{ needs.prepare.outputs.versionL }}"
             PRERELEASE="true"
-            RELEASE_NAME="legado_app_$VERSION"
+            RELEASE_NAME="legado_app_${{ needs.prepare.outputs.versionL }}"
             echo "🧪 发布预发布版: $TAG_NAME"
           fi
 
