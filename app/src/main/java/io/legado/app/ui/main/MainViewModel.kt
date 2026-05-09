@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
 import java.util.LinkedList
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -55,6 +56,7 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     private val waitUpTocBooks = LinkedList<String>()
     private val onUpTocBooks = ConcurrentHashMap.newKeySet<String>()
     private val eventListenerSource = ConcurrentHashMap<BookSource, Boolean>()
+    private val sourceSemaphores = ConcurrentHashMap<String, Semaphore>()
     val onUpBooksLiveData = MutableLiveData<Int>()
     private var upTocJob: Job? = null
     private var cacheBookJob: Job? = null
@@ -180,41 +182,46 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
             }
             return
         }
-        if (source.eventListener) {
-            // 使用 putIfAbsent 确保只添加一次
-            if (eventListenerSource.putIfAbsent(source, true) == null) {
-                // 通知监听事件的书源，书架刷新开始
-                SourceCallBack.callBackSource(viewModelScope, SourceCallBack.START_SHELF_REFRESH, source)
+        
+        val semaphore = sourceSemaphores.getOrPut(source.bookSourceUrl) { Semaphore(1) }
+        semaphore.acquire()
+        
+        try {
+            if (source.eventListener) {
+                if (eventListenerSource.putIfAbsent(source, true) == null) {
+                    SourceCallBack.callBackSource(viewModelScope, SourceCallBack.START_SHELF_REFRESH, source)
+                }
             }
-        }
-        kotlin.runCatching {
-            val oldBook = book.copy()
-            if (book.tocUrl.isBlank()) {
-                WebBook.getBookInfoAwait(source, book)
-            } else {
-                WebBook.runPreUpdateJs(source, book)
+            kotlin.runCatching {
+                val oldBook = book.copy()
+                if (book.tocUrl.isBlank()) {
+                    WebBook.getBookInfoAwait(source, book)
+                } else {
+                    WebBook.runPreUpdateJs(source, book)
+                }
+                val toc = WebBook.getChapterListAwait(source, book).getOrThrow()
+                book.sync(oldBook)
+                book.removeType(BookType.updateError)
+                if (book.bookUrl == bookUrl) {
+                    appDb.bookDao.update(book)
+                } else {
+                    appDb.bookDao.replace(oldBook, book)
+                    BookHelp.updateCacheFolder(oldBook, book)
+                }
+                appDb.bookChapterDao.delByBook(bookUrl)
+                appDb.bookChapterDao.insert(*toc.toTypedArray())
+                ReadBook.onChapterListUpdated(book)
+                addDownload(source, book)
+            }.onFailure {
+                currentCoroutineContext().ensureActive()
+                AppLog.put("${book.name} 更新目录失败\n${it.localizedMessage}", it)
+                appDb.bookDao.getBook(book.bookUrl)?.let { book ->
+                    book.addType(BookType.updateError)
+                    appDb.bookDao.update(book)
+                }
             }
-            val toc = WebBook.getChapterListAwait(source, book).getOrThrow()
-            book.sync(oldBook)
-            book.removeType(BookType.updateError)
-            if (book.bookUrl == bookUrl) {
-                appDb.bookDao.update(book)
-            } else {
-                appDb.bookDao.replace(oldBook, book)
-                BookHelp.updateCacheFolder(oldBook, book)
-            }
-            appDb.bookChapterDao.delByBook(bookUrl)
-            appDb.bookChapterDao.insert(*toc.toTypedArray())
-            ReadBook.onChapterListUpdated(book)
-            addDownload(source, book)
-        }.onFailure {
-            currentCoroutineContext().ensureActive()
-            AppLog.put("${book.name} 更新目录失败\n${it.localizedMessage}", it)
-            //这里可能因为时间太长书籍信息已经更改,所以重新获取
-            appDb.bookDao.getBook(book.bookUrl)?.let { book ->
-                book.addType(BookType.updateError)
-                appDb.bookDao.update(book)
-            }
+        } finally {
+            semaphore.release()
         }
     }
 

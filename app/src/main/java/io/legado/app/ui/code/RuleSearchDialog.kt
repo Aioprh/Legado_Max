@@ -62,7 +62,10 @@ class RuleSearchDialog(
     private val tabNames: Map<String, String> by lazy {
         if (sourceType == "rssSource") {
             mapOf(
-                "base" to "订阅源字段"
+                "base" to "基本",
+                "start" to "启动",
+                "list" to "列表",
+                "webview" to "WEB_VIEW"
             )
         } else {
             mapOf(
@@ -83,13 +86,13 @@ class RuleSearchDialog(
         if (sourceType == "rssSource") {
             mapOf(
                 "base" to listOf(
-                    "sourceUrl" to "源地址",
+                    "sourceUrl" to "源URL",
                     "sourceName" to "源名称",
                     "sourceGroup" to "源分组",
                     "sourceComment" to "源注释",
                     "sourceIcon" to "源图标",
-                    "loginUrl" to "登录地址",
-                    "loginUi" to "登录界面",
+                    "loginUrl" to "登录URL",
+                    "loginUi" to "登录UI",
                     "loginCheckJs" to "登录检查JS",
                     "coverDecodeJs" to "封面解密JS",
                     "header" to "请求头",

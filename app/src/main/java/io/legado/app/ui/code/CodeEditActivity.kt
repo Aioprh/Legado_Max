@@ -538,9 +538,9 @@ class CodeEditActivity :
     private fun showRssSourceRuleSelector() {
         val tabs = listOf(
             SelectItem("基本", "base"),
-            SelectItem("搜索", "search"),
-            SelectItem("发现", "explore"),
-            SelectItem("文章", "article")
+            SelectItem("启动", "start"),
+            SelectItem("列表", "list"),
+            SelectItem("WEB_VIEW", "webView")
         )
         selector(tabs.map { it.title }) { _, position ->
             showRssSourceFieldSelector(tabs[position].value)
@@ -553,20 +553,21 @@ class CodeEditActivity :
     private fun showRssSourceFieldSelector(tabKey: String) {
         val fields = when (tabKey) {
             "base" -> listOf(
-                SelectItem("源地址", "sourceUrl"),
                 SelectItem("源名称", "sourceName"),
+                SelectItem("源URL", "sourceUrl"),
+                SelectItem("源图标", "sourceIcon"),
                 SelectItem("源分组", "sourceGroup"),
                 SelectItem("源注释", "sourceComment"),
-                SelectItem("登录地址", "loginUrl"),
-                SelectItem("登录界面", "loginUi"),
-                SelectItem("请求头", "header"),
-                SelectItem("并发率", "concurrentRate"),
-                SelectItem("js库", "jsLib"),
                 SelectItem("搜索地址", "searchUrl"),
-                SelectItem("分类地址", "sortUrl"),
+                SelectItem("分类URL", "sortUrl"),
+                SelectItem("登录URL", "loginUrl"),
+                SelectItem("登录UI", "loginUi"),
                 SelectItem("登录检查JS", "loginCheckJs"),
                 SelectItem("封面解密JS", "coverDecodeJs"),
-                SelectItem("变量注释", "variableComment")
+                SelectItem("请求头", "header"),
+                SelectItem("变量说明", "variableComment"),
+                SelectItem("并发率", "concurrentRate"),
+                SelectItem("js库", "jsLib")
             )
             "search" -> listOf(
                 SelectItem("搜索地址", "searchUrl"),
@@ -579,8 +580,8 @@ class CodeEditActivity :
                 SelectItem("图片", "ruleImage"),
                 SelectItem("日期", "rulePubDate")
             )
-            "explore" -> listOf(
-                SelectItem("分类地址", "sortUrl"),
+            "start" -> listOf(
+                SelectItem("分类URL", "sortUrl"),
                 SelectItem("文章列表", "ruleArticles"),
                 SelectItem("下一篇", "ruleNextPage"),
                 SelectItem("标题", "ruleTitle"),
