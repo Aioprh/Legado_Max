@@ -445,6 +445,7 @@ object Backup {
         if (selectedFiles.contains("config.xml")) {
             appCtx.getSharedPreferences(backupPath, "config")?.let { sp ->
                 val edit = sp.edit()
+                edit.clear()
                 appCtx.defaultSharedPreferences.all.forEach { (key, value) ->
                     if (BackupConfig.keyIsNotIgnore(key)) {
                         when (key) {
@@ -475,6 +476,7 @@ object Backup {
         if (selectedFiles.contains("videoConfig.xml")) {
             appCtx.getSharedPreferences(backupPath, "videoConfig")?.let { sp ->
                 sp.edit(commit = true) {
+                    clear()
                     appCtx.getSharedPreferences(VIDEO_PREF_NAME, Context.MODE_PRIVATE).all.forEach { (key, value) ->
                         when (value) {
                             is Int -> putInt(key, value)

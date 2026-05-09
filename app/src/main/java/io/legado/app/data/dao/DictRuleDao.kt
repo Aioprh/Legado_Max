@@ -29,4 +29,7 @@ interface DictRuleDao {
     @Delete
     fun delete(vararg dictRule: DictRule)
 
+    @Query("delete from dictRules")
+    fun deleteAll()
+
 }

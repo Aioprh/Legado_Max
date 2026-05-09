@@ -36,6 +36,12 @@ interface ReadRecordDao {
     @Query("DELETE FROM readRecord")
     suspend fun clear()
 
+    @Query("DELETE FROM readRecordDetail")
+    suspend fun clearDetails()
+
+    @Query("DELETE FROM readRecordSession")
+    suspend fun clearSessions()
+
     @Query("DELETE FROM readRecord WHERE bookName = :bookName AND bookAuthor = :bookAuthor")
     suspend fun deleteByNameAndAuthor(bookName: String, bookAuthor: String)
 

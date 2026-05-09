@@ -81,4 +81,7 @@ interface BookmarkDao {
     @Delete
     fun delete(vararg bookmark: Bookmark)
 
+    @Query("delete from bookmarks")
+    fun deleteAll()
+
 }
