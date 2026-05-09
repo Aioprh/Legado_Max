@@ -62,6 +62,7 @@ object PreferKey {
     const val restoreIgnore = "restoreIgnore"
     const val restoreShowSelector = "restoreShowSelector"
     const val threadCount = "threadCount"
+    const val verboseUpdateLog = "verboseUpdateLog" // 详细更新日志开关
     const val webPort = "webPort"
     const val keepLight = "keep_light"
     const val webService = "webService"

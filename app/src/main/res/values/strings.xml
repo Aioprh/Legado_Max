@@ -676,6 +676,8 @@
     <string name="copy_crash_log_summary">应用崩溃后再次进入app将自动将日志复制到剪贴板</string>
     <string name="md_link_inner_browser">用内置浏览器打开</string>
     <string name="md_link_inner_browser_summary">md文件中的链接默认用内置浏览器打开</string>
+    <string name="verbose_update_log">详细更新日志</string>
+    <string name="verbose_update_log_summary">开启后在调试日志中显示详细的书籍更新流程信息</string>
     <string name="service_stop">Service stopped</string>
     <string name="service_start">Starting service\nChecking notification bar for details</string>
     <string name="default_path">Default path</string>

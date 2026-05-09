@@ -70,6 +70,16 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     fun setActivityCallback(callback: CallBack) {
         this.callback = callback
     }
+    
+    private fun logUpdate(message: String, throwable: Throwable? = null, verbose: Boolean = false) {
+        if (!verbose || AppConfig.verboseUpdateLog) {
+            if (throwable != null) {
+                AppLog.put(message, throwable)
+            } else {
+                AppLog.put(message)
+            }
+        }
+    }
 
     init {
         deleteNotShelfBook()
@@ -139,10 +149,10 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
             }
         }
         if (addedBooks.isNotEmpty()) {
-            AppLog.put("📚 更新队列：新增 ${addedBooks.size} 本书到更新队列，当前队列总数：${waitUpTocBooks.size}")
+            logUpdate("📚 更新队列：新增 ${addedBooks.size} 本书到更新队列，当前队列总数：${waitUpTocBooks.size}")
         }
         if (upTocJob == null) {
-            AppLog.put("🚀 更新启动：开始处理更新队列，并发数：$threadCount")
+            logUpdate("🚀 更新启动：开始处理更新队列，并发数：$threadCount")
             startUpTocJob()
         }
     }
@@ -166,18 +176,17 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
             }.onCompletion {
                 upTocJob = null
                 if (waitUpTocBooks.isNotEmpty()) {
-                    AppLog.put("🔄 更新继续：队列中还有 ${waitUpTocBooks.size} 本书待更新")
+                    logUpdate("🔄 更新继续：队列中还有 ${waitUpTocBooks.size} 本书待更新", verbose = true)
                     startUpTocJob()
                 } else {
-                    AppLog.put("✨ 更新完成：所有书籍更新任务已完成")
+                    logUpdate("✨ 更新完成：所有书籍更新任务已完成")
                 }
                 if (it == null && cacheBookJob == null && !CacheBookService.isRun) {
-                    //所有目录更新完再开始缓存章节
-                    AppLog.put("📖 开始缓存：准备缓存章节内容")
+                    logUpdate("📖 开始缓存：准备缓存章节内容")
                     cacheBook()
                 }
             }.catch {
-                AppLog.put("❌ 更新出错：${it.localizedMessage}", it)
+                logUpdate("❌ 更新出错：${it.localizedMessage}", it)
             }.collect()
         }
     }
@@ -190,24 +199,20 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
                 book.addType(BookType.updateError)
                 appDb.bookDao.update(book)
             }
-            AppLog.put("⚠️ 书籍《${book.name}》未找到对应书源")
+            logUpdate("⚠️ 书籍《${book.name}》未找到对应书源")
             return
         }
         
         val semaphore = sourceSemaphores.getOrPut(source.bookSourceUrl) { Semaphore(1) }
         
-        val queueSize = sourceSemaphores[source.bookSourceUrl]?.availablePermits?.let { 
-            if (it == 0) "等待中" else "可获取"
-        } ?: "首次"
-        
         if (semaphore.availablePermits == 0) {
-            AppLog.put("⏸️ 任务等待（书源${source.bookSourceName}，书籍《${book.name}》）：等待书源信号量...")
+            logUpdate("⏸️ 任务等待（书源${source.bookSourceName}，书籍《${book.name}》）：等待书源信号量...", verbose = true)
         }
         
         semaphore.acquire()
         
         try {
-            AppLog.put("✅ 任务开始（书源${source.bookSourceName}，书籍《${book.name}》）：获取信号量成功，开始更新")
+            logUpdate("✅ 任务开始（书源${source.bookSourceName}，书籍《${book.name}》）：获取信号量成功，开始更新", verbose = true)
             
             if (source.eventListener) {
                 if (eventListenerSource.putIfAbsent(source, true) == null) {
@@ -234,10 +239,10 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
                 appDb.bookChapterDao.insert(*toc.toTypedArray())
                 ReadBook.onChapterListUpdated(book)
                 addDownload(source, book)
-                AppLog.put("✅ 任务完成（书源${source.bookSourceName}，书籍《${book.name}》）：更新成功")
+                logUpdate("✅ 任务完成（书源${source.bookSourceName}，书籍《${book.name}》）：更新成功")
             }.onFailure {
                 currentCoroutineContext().ensureActive()
-                AppLog.put("❌ 任务失败（书源${source.bookSourceName}，书籍《${book.name}》）：${it.localizedMessage}", it)
+                logUpdate("❌ 任务失败（书源${source.bookSourceName}，书籍《${book.name}》）：${it.localizedMessage}", it)
                 appDb.bookDao.getBook(book.bookUrl)?.let { book ->
                     book.addType(BookType.updateError)
                     appDb.bookDao.update(book)
@@ -245,7 +250,7 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
             }
         } finally {
             semaphore.release()
-            AppLog.put("🔓 信号量释放（书源${source.bookSourceName}，书籍《${book.name}》）：允许下一个任务执行")
+            logUpdate("🔓 信号量释放（书源${source.bookSourceName}，书籍《${book.name}》）：允许下一个任务执行", verbose = true)
         }
     }
 
