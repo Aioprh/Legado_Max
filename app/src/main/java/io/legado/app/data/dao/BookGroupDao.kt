@@ -88,6 +88,9 @@ interface BookGroupDao {
     @Delete
     fun delete(vararg bookGroup: BookGroup)
 
+    @Query("delete from book_groups")
+    fun deleteAll()
+
     fun isInRules(id: Long): Boolean {
         if (id < 0) {
             return true

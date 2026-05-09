@@ -27,11 +27,7 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
         }
 
     private suspend fun getLatestRelease(): List<AppReleaseInfo> {
-        val lastReleaseUrl = if (checkVariant.isBeta()) {
-            "https://gitee.com/api/v5/repos/GEd520/legados/releases/latest"
-        } else {
-            "https://gitee.com/api/v5/repos/GEd520/legados/releases?page=1&per_page=3&direction=desc"
-        }
+        val lastReleaseUrl = "https://gitee.com/api/v5/repos/GEd520/legados/releases/latest"
         val res = okHttpClient.newCallResponse {
             url(lastReleaseUrl)
         }
@@ -41,15 +37,6 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
         val body = res.body.text()
         if (body.isBlank()) {
             throw NoStackTraceException("获取新版本出错")
-        }
-        if (!checkVariant.isBeta()) {
-            return GSON.fromJsonArray<GiteeRelease>(body)
-                .getOrElse {
-                    throw NoStackTraceException("获取新版本出错 " + it.localizedMessage)
-                }
-                .filter { !it.prerelease }
-                .flatMap { it.gitReleaseToAppReleaseInfo() }
-                .sortedByDescending { it.createdAt }
         }
         return GSON.fromJsonObject<GiteeRelease>(body)
             .getOrElse {
@@ -63,14 +50,14 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
         scope: CoroutineScope,
     ): Coroutine<AppUpdate.UpdateInfo> {
         return Coroutine.async(scope) {
+            val targetVariant = if (AppConst.appInfo.appVariant == AppVariant.OFFICIAL) {
+                AppVariant.BETA_COEXIST
+            } else {
+                AppConst.appInfo.appVariant
+            }
+            
             getLatestRelease()
-                .filter {
-                    if (AppConst.appInfo.appVariant.isBeta()) { //所有Beta版本都不切换
-                        it.appVariant == AppConst.appInfo.appVariant
-                    } else {
-                        it.appVariant == checkVariant
-                    }
-                }
+                .filter { it.appVariant == targetVariant }
                 .firstOrNull { it.versionName > AppConst.appInfo.versionName }
                 ?.let {
                     return@async AppUpdate.UpdateInfo(

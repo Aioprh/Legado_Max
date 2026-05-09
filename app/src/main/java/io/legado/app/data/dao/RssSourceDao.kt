@@ -110,6 +110,9 @@ interface RssSourceDao {
     @Delete
     fun delete(vararg rssSource: RssSource)
 
+    @Query("delete from rssSources")
+    fun deleteAll()
+
     @Query("delete from rssSources where sourceUrl = :sourceUrl")
     fun delete(sourceUrl: String)
 

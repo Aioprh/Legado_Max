@@ -233,4 +233,5 @@ object PreferKey {
     const val recordUrl = "recordUrl"
     const val textBoldFineTipShown = "textBoldFineTipShown"
     const val textBoldMode = "textBoldMode"
+    const val readRecordDisplayMode = "readRecordDisplayMode"
 }

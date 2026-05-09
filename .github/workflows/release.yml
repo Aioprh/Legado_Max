@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        product: [ appS, appMax ]   # 只打两个包
+        product: [ appS, appMax, appLegacy ]   # 打三个包：共存版、测试版、兼容版
       fail-fast: false
     outputs:
       version: ${{ needs.prepare.outputs.version }}
@@ -42,17 +42,30 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            app/build/caches
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - name: 统一版本号
         run: |
           sed "/def version/c def version = \"${{ env.VERSION }}\"" app/build.gradle -i
 
       - name: 配置 Gradle
         uses: gradle/actions/setup-gradle@v5
+        with:
+          cache-read-only: false
 
       - name: 开始打包
         run: |
           chmod +x gradlew
-          ./gradlew assemble${{ env.product }}Release --parallel
+          ./gradlew assemble${{ env.product }}Release --parallel --build-cache --no-daemon
 
       - name: 上传 APK（带产品标识）
         uses: actions/upload-artifact@v7
@@ -117,15 +130,9 @@ jobs:
           
           TAG_NAME="$VERSION"
           RELEASE_NAME="阅读双包版 $VERSION"
-          BODY="## 自动打包：两个版本共存\n\n- 📱 阅读A·Max\n- 📱 阅读·Max\n\n两个版本可以同时安装，互不冲突。"
+          BODY="## 自动打包：两个版本共存\n\n- 📱 阅读A·Max\n- 📱 阅读·Max\n- 📱 阅读·兼容版\n\n三个版本可以同时安装，互不冲突。"
           
-          if release_data=$(curl -sH "$AUTH_HEADER" "$API_BASE/releases/tags/$TAG_NAME"); then
-            release_id=$(echo "$release_data" | jq -r '.id // empty')
-            if [ -n "$release_id" ]; then
-              curl -sX DELETE -H "$AUTH_HEADER" "$API_BASE/releases/$release_id"
-              echo "✅ 已删除旧 release"
-            fi
-          fi
+          echo "📦 直接创建新release，保留历史版本"
           
           RELEASE_JSON=$(curl -sS -X POST \
               -H "Content-Type: application/json" \
@@ -145,10 +152,17 @@ jobs:
             exit 1
           fi
           
+          echo "🚀 开始并行上传APK文件..."
+          PIDS=()
           for APK_FILE in all_apks/*.apk; do
             curl -sS -X POST \
               -H "$AUTH_HEADER" \
               -F "file=@$APK_FILE" \
-              "$API_BASE/releases/$RELEASE_ID/attach_files"
-            echo "✅ 已上传 $APK_FILE"
+              "$API_BASE/releases/$RELEASE_ID/attach_files" &
+            PIDS+=($!)
           done
+          
+          for PID in "${PIDS[@]}"; do
+            wait $PID
+          done
+          echo "✅ 所有APK上传完成"

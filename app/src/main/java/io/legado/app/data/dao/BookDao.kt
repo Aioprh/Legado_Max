@@ -161,6 +161,9 @@ interface BookDao {
     @Delete
     fun delete(vararg book: Book)
 
+    @Query("delete from books")
+    fun deleteAll()
+
     @Transaction
     fun replace(oldBook: Book, newBook: Book) {
         delete(oldBook)
