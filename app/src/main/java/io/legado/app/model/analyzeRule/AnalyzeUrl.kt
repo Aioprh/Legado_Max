@@ -17,6 +17,7 @@ import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.CacheManager
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.help.ConcurrentRateLimiter
 import io.legado.app.help.JsExtensions
 import io.legado.app.help.config.AppConfig
@@ -440,6 +441,14 @@ class AnalyzeUrl(
     ): StrResponse {
         setCookie()
         val startTime = System.currentTimeMillis()
+        
+        FlowLogRecorder.logNetwork(
+            source = source,
+            message = "发起网络请求",
+            url = url,
+            method = method.name
+        )
+        
         val strResponse: StrResponse
         try {
             if (this.useWebView && useWebView) {
@@ -512,8 +521,26 @@ class AnalyzeUrl(
             }
             val connectionTime = System.currentTimeMillis() - startTime
             strResponse.putCallTime(connectionTime.toInt())
+            
+            FlowLogRecorder.logNetwork(
+                source = source,
+                message = "网络请求成功",
+                url = url,
+                method = method.name,
+                statusCode = strResponse.code(),
+                duration = connectionTime
+            )
+            
             return strResponse
         } catch (e: Exception) {
+            FlowLogRecorder.logNetwork(
+                source = source,
+                message = "网络请求失败: ${e.message}",
+                url = url,
+                method = method.name,
+                error = e
+            )
+            
             if (!isTest) {
                 throw e
             }

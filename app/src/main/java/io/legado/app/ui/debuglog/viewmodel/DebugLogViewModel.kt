@@ -7,9 +7,12 @@ import android.content.Context
 import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.repository.debug.DebugEventCenter
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
+import io.legado.app.model.debug.FlowLogItem
+import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +45,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
 
     data class UiState(
         val logs: List<DebugEvent> = emptyList(),
+        val flowLogs: List<FlowLogItem> = emptyList(),
         val selectedLog: DebugEvent? = null,
         val isLoading: Boolean = false,
         val isEmpty: Boolean = false,
@@ -58,6 +62,9 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
 
     private val _selectedSubCategory = MutableStateFlow<SourceSubCategory?>(null)
     val selectedSubCategory: StateFlow<SourceSubCategory?> = _selectedSubCategory.asStateFlow()
+
+    private val _selectedFlowStage = MutableStateFlow<FlowStage?>(null)
+    val selectedFlowStage: StateFlow<FlowStage?> = _selectedFlowStage.asStateFlow()
 
     private val _isPaused = MutableStateFlow(false)
     val isPaused: StateFlow<Boolean> = _isPaused.asStateFlow()
@@ -101,12 +108,48 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         initialValue = emptyList()
     )
 
+    val filteredFlowLogs = combine(_uiState, _selectedFlowStage, _searchQuery) { uiState, stage, query ->
+        var result = uiState.flowLogs
+
+        if (stage != null) {
+            result = result.filter { it.stage == stage }
+        }
+
+        query?.let { q ->
+            if (q.isNotBlank()) {
+                result = result.filter { log ->
+                    log.message.contains(q, ignoreCase = true) ||
+                    log.detail?.contains(q, ignoreCase = true) == true ||
+                    log.url?.contains(q, ignoreCase = true) == true ||
+                    log.sourceName?.contains(q, ignoreCase = true) == true ||
+                    log.rule?.contains(q, ignoreCase = true) == true ||
+                    log.result?.contains(q, ignoreCase = true) == true
+                }
+            }
+        }
+
+        result
+    }.stateIn(
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
     private val _singleEvents = MutableSharedFlow<String>()
     val singleEvents: SharedFlow<String> = _singleEvents.asSharedFlow()
 
     init {
         loadHistoryLogs()
         subscribeToEventFlow()
+        subscribeToFlowLogs()
+    }
+
+    private fun subscribeToFlowLogs() {
+        FlowLogRecorder.logs
+            .onEach { logs ->
+                _uiState.value = _uiState.value.copy(flowLogs = logs)
+            }
+            .launchIn(viewModelScope)
     }
 
     fun selectCategory(category: DebugCategory) {
@@ -118,6 +161,10 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
 
     fun selectSubCategory(subCategory: SourceSubCategory?) {
         _selectedSubCategory.value = subCategory
+    }
+
+    fun selectFlowStage(stage: FlowStage?) {
+        _selectedFlowStage.value = stage
     }
 
     fun setSearchQuery(query: String?) {

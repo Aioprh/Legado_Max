@@ -4,6 +4,7 @@ import android.text.TextUtils
 import io.legado.app.R
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.isWebFile
@@ -101,6 +102,12 @@ object BookInfo {
             }
         }
         val mCanReName = canReName && !infoRule.canReName.isNullOrBlank()
+        
+        FlowLogRecorder.logExtract(
+            source = bookSource,
+            message = "开始提取书籍信息字段"
+        )
+        
         currentCoroutineContext().ensureActive()
         Debug.log(bookSource.bookSourceUrl, "┌获取书名")
         BookHelp.formatBookName(analyzeRule.getString(infoRule.name)).let {
@@ -108,6 +115,13 @@ object BookInfo {
                 book.name = it
             }
             Debug.log(bookSource.bookSourceUrl, "└${it}")
+            
+            FlowLogRecorder.logExtract(
+                source = bookSource,
+                message = "提取书名",
+                rule = infoRule.name,
+                result = it
+            )
         }
         currentCoroutineContext().ensureActive()
         Debug.log(bookSource.bookSourceUrl, "┌获取作者")
@@ -116,6 +130,13 @@ object BookInfo {
                 book.author = it
             }
             Debug.log(bookSource.bookSourceUrl, "└${it}")
+            
+            FlowLogRecorder.logExtract(
+                source = bookSource,
+                message = "提取作者",
+                rule = infoRule.author,
+                result = it
+            )
         }
         currentCoroutineContext().ensureActive()
         Debug.log(bookSource.bookSourceUrl, "┌获取分类")

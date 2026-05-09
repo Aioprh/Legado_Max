@@ -40,10 +40,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
+import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.ui.debuglog.components.DebugCategoryTabs
-import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
 import io.legado.app.ui.debuglog.components.DebugLogItem
+import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
+import io.legado.app.ui.debuglog.components.FlowLogList
+import io.legado.app.ui.debuglog.components.FlowStageFilter
 import io.legado.app.ui.debuglog.viewmodel.DebugLogViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.utils.share
@@ -59,8 +62,10 @@ fun DebugLogScreen(
     val uiState by viewModel.uiState.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val selectedSubCategory by viewModel.selectedSubCategory.collectAsState()
+    val selectedFlowStage by viewModel.selectedFlowStage.collectAsState()
     val isPaused by viewModel.isPaused.collectAsState()
     val filteredLogs by viewModel.filteredLogs.collectAsState()
+    val filteredFlowLogs by viewModel.filteredFlowLogs.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     
     var showSearch by remember { mutableStateOf(false) }
@@ -165,6 +170,13 @@ fun DebugLogScreen(
                     selectedSubCategory = selectedSubCategory,
                     onSubCategorySelected = viewModel::selectSubCategory
                 )
+                
+                if (selectedSubCategory == SourceSubCategory.FLOW) {
+                    FlowStageFilter(
+                        selectedStage = selectedFlowStage,
+                        onStageSelected = viewModel::selectFlowStage
+                    )
+                }
             }
 
             HorizontalDivider()
@@ -173,6 +185,20 @@ fun DebugLogScreen(
                 when {
                     uiState.isLoading -> {
                         LoadingIndicator()
+                    }
+                    selectedCategory == DebugCategory.SOURCE && selectedSubCategory == SourceSubCategory.FLOW -> {
+                        if (filteredFlowLogs.isEmpty()) {
+                            EmptyState(
+                                message = if (searchQuery.isNullOrBlank()) "暂无流程日志" 
+                                         else "未找到匹配的日志"
+                            )
+                        } else {
+                            FlowLogList(
+                                logs = filteredFlowLogs,
+                                onLogClick = { },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
                     uiState.isEmpty || filteredLogs.isEmpty() -> {
                         EmptyState(

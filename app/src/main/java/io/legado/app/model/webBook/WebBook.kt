@@ -6,6 +6,7 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.SearchBook
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.book.addType
 import io.legado.app.help.book.removeAllBookType
@@ -98,6 +99,7 @@ object WebBook {
         filter: ((name: String, author: String, kind: String?) -> Boolean)? = null,
         shouldBreak: ((size: Int) -> Boolean)? = null
     ): ArrayList<SearchBook> {
+        FlowLogRecorder.setOperation(bookSource.bookSourceUrl, "搜索")
         val searchUrl = bookSource.searchUrl
         if (searchUrl.isNullOrBlank()) {
             throw NoStackTraceException("搜索url不能为空")
@@ -189,6 +191,7 @@ object WebBook {
         url: String,
         page: Int? = 1,
     ): ArrayList<SearchBook> {
+        FlowLogRecorder.setOperation(bookSource.bookSourceUrl, "发现")
         val ruleData = RuleData()
         val sourceUrl = bookSource.bookSourceUrl
         val exploreInfoMap = exploreInfoMapList[sourceUrl]
@@ -277,6 +280,7 @@ object WebBook {
         book: Book,
         canReName: Boolean = true,
     ): Book {
+        FlowLogRecorder.setOperation(bookSource.bookSourceUrl, "详情")
         book.removeAllBookType()
         book.addType(bookSource.getBookType())
         if (!book.infoHtml.isNullOrEmpty()) {
@@ -403,6 +407,7 @@ object WebBook {
         runPerJs: Boolean = false,
         isFromBookInfo : Boolean = false
     ): Result<List<BookChapter>> {
+        FlowLogRecorder.setOperation(bookSource.bookSourceUrl, "目录")
         book.removeAllBookType()
         book.addType(bookSource.getBookType())
         return kotlin.runCatching {
@@ -609,6 +614,7 @@ object WebBook {
         nextChapterUrl: String? = null,
         needSave: Boolean = true
     ): String {
+        FlowLogRecorder.setOperation(bookSource.bookSourceUrl, "正文")
         val contentRule = bookSource.getContentRule()
         if (contentRule.content.isNullOrEmpty()) {
             Debug.log(bookSource.bookSourceUrl, "⇒正文规则为空,使用章节链接:${bookChapter.url}")

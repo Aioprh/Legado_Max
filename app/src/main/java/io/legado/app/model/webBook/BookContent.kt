@@ -7,6 +7,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.rule.ContentRule
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.exception.ContentEmptyException
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.book.BookHelp
@@ -93,6 +94,13 @@ object BookContent {
         analyzeRule.setCoroutineContext(currentCoroutineContext())
         analyzeRule.setChapter(bookChapter)
         analyzeRule.setNextChapterUrl(mNextChapterUrl)
+        
+        FlowLogRecorder.logExtract(
+            source = bookSource,
+            message = "开始提取正文内容",
+            rule = contentRule.content
+        )
+        
         currentCoroutineContext().ensureActive()
         var contentData = analyzeContent(
             book, baseUrl, redirectUrl, body, contentRule, bookChapter, bookSource, mNextChapterUrl
@@ -195,11 +203,22 @@ object BookContent {
         //全文替换
         val replaceRegex = contentRule.replaceRegex
         if (!replaceRegex.isNullOrEmpty()) {
+            FlowLogRecorder.logReplace(
+                source = bookSource,
+                message = "开始正文全文替换",
+                rule = replaceRegex
+            )
             contentStr = contentStr.split(AppPattern.LFRegex).joinToString("\n") { it.trim() }
             contentStr = analyzeRule.getString(replaceRegex, contentStr)
             if (book.isOnLineTxt) {
                 contentStr = contentStr.split(AppPattern.LFRegex).joinToString("\n") { "　　$it" }
             }
+            FlowLogRecorder.logReplace(
+                source = bookSource,
+                message = "正文全文替换完成",
+                rule = replaceRegex,
+                result = contentStr.take(100)
+            )
         }
         val titleRule = contentRule.title //先正文再章节名称
         if (!titleRule.isNullOrBlank()) {

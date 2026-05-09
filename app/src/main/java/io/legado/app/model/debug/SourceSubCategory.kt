@@ -13,5 +13,8 @@ enum class SourceSubCategory(val displayName: String) {
     UPDATE("更新"),
 
     /** 规则调试：规则解析、JS运行等调试操作 */
-    RULE("规则")
+    RULE("规则"),
+
+    /** 流程追踪：源规则执行的完整生命周期 */
+    FLOW("流程")
 }
