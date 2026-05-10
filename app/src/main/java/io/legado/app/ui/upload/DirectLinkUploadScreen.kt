@@ -3,6 +3,7 @@ package io.legado.app.ui.upload
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -164,11 +165,15 @@ fun DirectLinkUploadScreen(
                 )
                 1 -> HistoryListTab(
                     histories = histories,
-                    onDelete = { viewModel.deleteHistory(it) },
+                    onDelete = { history ->
+                        viewModel.deleteHistory(history)
+                        Toast.makeText(context, "已删除历史记录", Toast.LENGTH_SHORT).show()
+                    },
                     onCopy = { history ->
                         if (history.downloadUrl.isNotBlank()) {
                             val clip = ClipData.newPlainText("下载链接", history.downloadUrl)
                             clipboardManager.setPrimaryClip(clip)
+                            Toast.makeText(context, "已复制下载链接", Toast.LENGTH_SHORT).show()
                         }
                     }
                 )
