@@ -1,17 +1,19 @@
 package io.legado.app.data.repository.debug
 
 import io.legado.app.data.entities.BaseSource
+import io.legado.app.help.config.AppConfig
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-
 /**
  * 流程日志记录器
  * 
@@ -27,27 +29,31 @@ import java.util.concurrent.ConcurrentHashMap
  * - 按书源URL分组管理请求ID
  * - 支持按阶段、书源、操作类型过滤
  */
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+
 object FlowLogRecorder {
 
-    // 最大日志数量限制
-    private const val MAX_LOG_COUNT = 3000
-
+     // 最大日志数量限制
+    private const val MAX_LOG_COUNT = 500
+    private const val UPDATE_DEBOUNCE_MS = 500L
     // 日志列表，使用MutableSharedFlow实现响应式更新，设置缓冲区避免丢失更新
     private val _logs = MutableSharedFlow<List<FlowLogItem>>(
-        replay = 1,  // 保留最新的1个值，新订阅者可以立即收到
-        extraBufferCapacity = 64  // 缓冲区大小，减少丢失更新的风险
+        replay = 1, // 保留最新的1个值，新订阅者可以立即收到
+        extraBufferCapacity = 64// 缓冲区大小，减少丢失更新的风险
     )
     val logs: SharedFlow<List<FlowLogItem>> = _logs.asSharedFlow()
     
-    // 当前日志列表的快照，用于同步访问
-    @Volatile
-    private var currentLogs: List<FlowLogItem> = emptyList()
+    private val logDeque = ArrayDeque<FlowLogItem>()
+    private val logSize = AtomicInteger(0)
+    private val pendingUpdate = AtomicBoolean(false)
 
-    // 请求会话映射：书源URL -> 请求ID
     private val requestSessions = ConcurrentHashMap<String, String>()
     
     // 操作类型映射：书源URL -> 操作类型（搜索/详情/目录/正文）
     private val operationMap = ConcurrentHashMap<String, String>()
+
+    val isEnabled: Boolean get() = AppConfig.debugLogFloatingBall
 
     /**
      * 设置当前书源的操作类型
@@ -276,13 +282,12 @@ object FlowLogRecorder {
         result: String? = null,
         error: Throwable? = null
     ) {
-        // 使用GlobalScope异步记录日志，避免阻塞主流程
+        if (!isEnabled) return
+        
         GlobalScope.launch(Dispatchers.IO) {
-            // 获取或创建请求ID，用于分组
             val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
                 ?: UUID.randomUUID().toString()
 
-            // 创建日志项
             val item = FlowLogItem(
                 requestId = requestId,
                 sourceUrl = sourceUrl,
@@ -311,25 +316,24 @@ object FlowLogRecorder {
      */
     @Synchronized
     private fun addLog(item: FlowLogItem) {
-        // 获取当前日志列表的副本
-        val logs = currentLogs.toMutableList()
-        // 新日志添加到列表开头（最新的在前面）
-        logs.add(0, item)
-
-        // 如果超过最大数量限制，删除最旧的日志
-        if (logs.size > MAX_LOG_COUNT) {
-            val removedCount = logs.size - MAX_LOG_COUNT
-            repeat(removedCount) {
-                logs.removeAt(logs.size - 1)
-            }
-        }
-
-        // 更新当前日志列表快照
-        currentLogs = logs
+        logDeque.addFirst(item)
+        logSize.incrementAndGet()
         
-        // 发送更新到Flow
-        GlobalScope.launch(Dispatchers.IO) {
-            _logs.emit(logs)
+        while (logSize.get() > MAX_LOG_COUNT) {
+            logDeque.removeLast()
+            logSize.decrementAndGet()
+        }
+        
+        scheduleUpdate()
+    }
+    
+    private fun scheduleUpdate() {
+        if (pendingUpdate.compareAndSet(false, true)) {
+            GlobalScope.launch(Dispatchers.IO) {
+                delay(UPDATE_DEBOUNCE_MS)
+                pendingUpdate.set(false)
+                _logs.emit(getCurrentLogs())
+            }
         }
     }
     
@@ -339,14 +343,19 @@ object FlowLogRecorder {
      * @return 当前日志列表
      */
     fun getCurrentLogs(): List<FlowLogItem> {
-        return currentLogs
+        return synchronized(logDeque) {
+            logDeque.toList()
+        }
     }
 
     /**
      * 清空所有日志
      */
     fun clear() {
-        currentLogs = emptyList()
+        synchronized(logDeque) {
+            logDeque.clear()
+            logSize.set(0)
+        }
         requestSessions.clear()
         operationMap.clear()
         

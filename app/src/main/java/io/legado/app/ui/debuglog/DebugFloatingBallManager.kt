@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.dp
 import androidx.core.view.postDelayed
 import io.legado.app.constant.AppLog
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.debuglog.components.DebugFloatingBall
 
@@ -34,6 +35,7 @@ object DebugFloatingBallManager {
             }
         } else {
             hide()
+            FlowLogRecorder.clear()
         }
     }
     
