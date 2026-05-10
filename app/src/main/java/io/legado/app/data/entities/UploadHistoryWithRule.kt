@@ -1,23 +1,37 @@
 package io.legado.app.data.entities
 
-/**
- * 上传历史记录与规则名称的关联数据类
- * 
- * 用于在显示历史记录时获取最新的规则名称
- * 如果规则被删除，则使用历史记录中保存的规则名称
- * 
- * @property history 上传历史记录
- * @property ruleSummary 规则名称（从规则表实时查询，如果规则被删除则为null）
- */
 data class UploadHistoryWithRule(
-    val history: UploadHistory,
-    val ruleSummary: String?
+    val id: Long,
+    val fileName: String,
+    val fileSize: Long,
+    val contentType: String,
+    val uploadTime: Long,
+    val duration: Long,
+    val downloadUrl: String,
+    val expireTime: Long?,
+    val ruleId: Long,
+    val ruleSummary: String?,
+    val success: Boolean,
+    val errorMsg: String?
 ) {
-    /**
-     * 获取显示的规则名称
-     * 优先使用规则表中的最新名称，如果规则被删除则使用历史记录中保存的名称
-     */
+    fun toUploadHistory(): UploadHistory {
+        return UploadHistory(
+            id = id,
+            fileName = fileName,
+            fileSize = fileSize,
+            contentType = contentType,
+            uploadTime = uploadTime,
+            duration = duration,
+            downloadUrl = downloadUrl,
+            expireTime = expireTime,
+            ruleId = ruleId,
+            ruleSummary = ruleSummary ?: "",
+            success = success,
+            errorMsg = errorMsg
+        )
+    }
+    
     fun getDisplayRuleSummary(): String {
-        return ruleSummary ?: history.ruleSummary
+        return ruleSummary ?: ""
     }
 }

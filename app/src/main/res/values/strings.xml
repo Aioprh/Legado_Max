@@ -1543,4 +1543,5 @@
     <string name="view_js_lib">查看JS库</string>
     <string name="view_result">查看结果</string>
     <string name="open_editor">打开编辑器</string>
+    <string name="info">信息</string>
 </resources>

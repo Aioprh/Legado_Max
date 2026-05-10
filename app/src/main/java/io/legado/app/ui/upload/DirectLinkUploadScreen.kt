@@ -167,12 +167,12 @@ fun DirectLinkUploadScreen(
                 1 -> HistoryListTab(
                     histories = histories,
                     onDelete = { historyWithRule ->
-                        viewModel.deleteHistory(historyWithRule.history)
+                        viewModel.deleteHistory(historyWithRule.toUploadHistory())
                         Toast.makeText(context, "已删除历史记录", Toast.LENGTH_SHORT).show()
                     },
                     onCopy = { historyWithRule ->
-                        if (historyWithRule.history.downloadUrl.isNotBlank()) {
-                            val clip = ClipData.newPlainText("下载链接", historyWithRule.history.downloadUrl)
+                        if (historyWithRule.downloadUrl.isNotBlank()) {
+                            val clip = ClipData.newPlainText("下载链接", historyWithRule.downloadUrl)
                             clipboardManager.setPrimaryClip(clip)
                             Toast.makeText(context, "已复制下载链接", Toast.LENGTH_SHORT).show()
                         }
@@ -554,7 +554,7 @@ fun HistoryCard(
     onDelete: () -> Unit,
     onCopy: () -> Unit
 ) {
-    val history = historyWithRule.history
+    val history = historyWithRule.toUploadHistory()
     Card(
         modifier = Modifier
             .fillMaxWidth()
