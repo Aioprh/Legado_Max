@@ -96,7 +96,7 @@ class RuleSearchDialog(
                     "loginCheckJs" to "登录检查JS",
                     "coverDecodeJs" to "封面解密JS",
                     "header" to "请求头",
-                    "variableComment" to "变量注释",
+                    "variableComment" to "变量说明",
                     "concurrentRate" to "并发率",
                     "jsLib" to "js库",
                     "searchUrl" to "搜索地址",
@@ -133,21 +133,21 @@ class RuleSearchDialog(
                     "coverDecodeJs" to "封面解密JS",
                     "bookUrlPattern" to "书籍URL正则",
                     "header" to "请求头",
-                    "variableComment" to "变量注释",
+                    "variableComment" to "变量说明",
                     "concurrentRate" to "并发率",
                     "jsLib" to "jsLib"
                 ),
                 "search" to listOf(
                     "searchUrl" to "搜索地址",
-                    "checkKeyWord" to "验证关键字",
+                    "checkKeyWord" to "校验关键字",
                     "bookList" to "书籍列表",
                     "name" to "书名",
                     "author" to "作者",
                     "kind" to "分类",
                     "wordCount" to "字数",
                     "lastChapter" to "最新章节",
-                    "intro" to "简介",
-                    "coverUrl" to "封面",
+                    "intro" to "简介规则",
+                    "coverUrl" to "封面规则",
                     "bookUrl" to "书籍URL"
                 ),
                 "explore" to listOf(
@@ -158,8 +158,8 @@ class RuleSearchDialog(
                     "kind" to "分类",
                     "wordCount" to "字数",
                     "lastChapter" to "最新章节",
-                    "intro" to "简介",
-                    "coverUrl" to "封面",
+                    "intro" to "简介规则",
+                    "coverUrl" to "封面规则",
                     "bookUrl" to "书籍URL"
                 ),
                 "info" to listOf(
@@ -169,23 +169,23 @@ class RuleSearchDialog(
                     "kind" to "分类",
                     "wordCount" to "字数",
                     "lastChapter" to "最新章节",
-                    "intro" to "简介",
-                    "coverUrl" to "封面",
+                    "intro" to "简介规则",
+                    "coverUrl" to "封面规则",
                     "tocUrl" to "目录URL",
-                    "canReName" to "可重命名",
+                    "canReName" to "允许修改书名作者",
                     "downloadUrls" to "下载地址"
                 ),
                 "toc" to listOf(
-                    "preUpdateJs" to "预处理JS",
-                    "chapterList" to "章节列表",
+                    "preUpdateJs" to "更新之前JS",
+                    "chapterList" to "目录列表规则",
                     "chapterName" to "章节名称",
                     "chapterUrl" to "章节URL",
-                    "formatJs" to "格式化JS",
-                    "isVolume" to "是否分卷",
+                    "formatJs" to "格式化规则",
+                    "isVolume" to "Volume标识",
                     "updateTime" to "更新时间",
                     "isVip" to "是否VIP",
-                    "isPay" to "是否付费",
-                    "nextTocUrl" to "下页目录URL"
+                    "isPay" to "购买标识",
+                    "nextTocUrl" to "目录下一页规则"
                 ),
                 "content" to listOf(
                     "content" to "正文内容",
