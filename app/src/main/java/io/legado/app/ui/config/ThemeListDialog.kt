@@ -11,6 +11,7 @@ import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
+import io.legado.app.constant.AppLog
 import io.legado.app.databinding.DialogRecyclerViewBinding
 import io.legado.app.databinding.ItemThemeConfigBinding
 import io.legado.app.help.config.ThemeConfig
@@ -173,6 +174,8 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_recycler_view),
     // 移动选中主题到顶部
     private fun toTopSelected() {
         val positions = selectedPositions.sorted()
+        val themeNames = positions.map { ThemeConfig.configList[it].themeName }
+        AppLog.put("置顶主题: ${themeNames.joinToString(", ")}", toast = true)
         ThemeConfig.toTopConfigs(positions)
         exitMultiSelectMode()
         initData()
@@ -208,6 +211,10 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_recycler_view),
         ) {
             binding.apply {
                 tvName.text = item.themeName
+                val currentConfig = ThemeConfig.getDurConfig(context)
+                val isCurrentTheme = item.themeName == currentConfig.themeName 
+                    && item.isNightTheme == currentConfig.isNightTheme
+                ivCurrent.visibility = if (isCurrentTheme && !isMultiSelectMode) View.VISIBLE else View.GONE
                 if (isMultiSelectMode) {
                     cbSelect.visibility = View.VISIBLE
                     cbSelect.isChecked = selectedPositions.contains(holder.layoutPosition)
@@ -228,7 +235,10 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_recycler_view),
                     if (isMultiSelectMode) {
                         toggleSelection(position)
                     } else {
-                        ThemeConfig.applyConfig(context, ThemeConfig.configList[position])
+                        val config = ThemeConfig.configList[position]
+                        AppLog.put("应用主题: ${config.themeName}", toast = true)
+                        ThemeConfig.applyConfig(context, config)
+                        adapter.notifyDataSetChanged()
                     }
                 }
                 root.setOnLongClickListener {
