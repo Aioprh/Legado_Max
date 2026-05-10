@@ -1537,4 +1537,10 @@
     <string name="clear_all_records">清除所有记录</string>
     <string name="search_url_record_hint">搜索URL/域名/来源</string>
     <string name="filter_by_domain">按域名筛选</string>
+    
+    <!-- TTS Debug -->
+    <string name="play_audio">播放音频</string>
+    <string name="view_js_lib">查看JS库</string>
+    <string name="view_result">查看结果</string>
+    <string name="open_editor">打开编辑器</string>
 </resources>
