@@ -13,6 +13,7 @@ data class DebugEvent(
     val time: Long = System.currentTimeMillis(),
     val level: DebugLevel,
     val category: DebugCategory,
+    val subCategory: SourceSubCategory? = null,
     val message: String,
     val detail: String? = null,
     val sourceName: String? = null,
@@ -23,6 +24,9 @@ data class DebugEvent(
     val method: String? = null,
     val statusCode: Int? = null,
     val duration: Long? = null,
+    val requestHeaders: Map<String, String>? = null,
+    val userAgent: String? = null,
+    val cookies: String? = null,
     val throwable: Throwable? = null,
     val tags: Map<String, String> = emptyMap()
 ) {

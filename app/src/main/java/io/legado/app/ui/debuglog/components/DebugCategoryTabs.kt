@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -90,6 +91,7 @@ private fun getIconForCategory(category: DebugCategory) = when (category) {
     DebugCategory.RULE -> Icons.Default.Code
     DebugCategory.SOURCE -> Icons.Default.Code
     DebugCategory.RSS -> Icons.Default.Code
+    DebugCategory.TOAST -> Icons.Default.Notifications
     DebugCategory.CHECK -> Icons.Default.CheckCircle
     DebugCategory.CRASH -> Icons.Default.Error
 }

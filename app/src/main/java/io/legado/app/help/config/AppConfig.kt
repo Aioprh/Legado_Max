@@ -361,6 +361,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefInt(PreferKey.threadCount, value)
         }
 
+    var verboseUpdateLog: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.verboseUpdateLog, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.verboseUpdateLog, value)
+        }
+
     var remoteServerId: Long
         get() = appCtx.getPrefLong(PreferKey.remoteServerId)
         set(value) {

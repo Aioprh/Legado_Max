@@ -28,6 +28,9 @@ enum class DebugCategory(val displayName: String) {
     /** RSS源操作：与RSS源相关的操作 */
     RSS("RSS"),
 
+    /** Toast消息：应用内所有Toast消息记录 */
+    TOAST("Toast"),
+
     /** 书源校验：来自CheckSource的校验结果 */
     CHECK("校验"),
 

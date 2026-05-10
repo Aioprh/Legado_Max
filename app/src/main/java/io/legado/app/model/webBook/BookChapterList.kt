@@ -9,6 +9,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.rule.TocRule
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.exception.TocEmptyException
 import io.legado.app.help.book.ContentProcessor
@@ -501,6 +502,12 @@ object BookChapterList {
         currentCoroutineContext().ensureActive()
         if (elements.isNotEmpty()) {
             Debug.log(bookSource.bookSourceUrl, "┌解析目录列表", log)
+            
+            FlowLogRecorder.logExtract(
+                source = bookSource,
+                message = "开始提取章节列表字段"
+            )
+            
             val nameRule = analyzeRule.splitSourceRule(tocRule.chapterName)
             val urlRule = analyzeRule.splitSourceRule(tocRule.chapterUrl)
             val vipRule = analyzeRule.splitSourceRule(tocRule.isVip)
@@ -515,6 +522,23 @@ object BookChapterList {
                 analyzeRule.setChapter(bookChapter)
                 bookChapter.title = analyzeRule.getString(nameRule)
                 bookChapter.url = analyzeRule.getString(urlRule)
+                
+                if (index == 0) {
+                    FlowLogRecorder.logExtract(
+                        source = bookSource,
+                        message = "提取章节标题",
+                        rule = tocRule.chapterName,
+                        result = bookChapter.title
+                    )
+                    
+                    FlowLogRecorder.logExtract(
+                        source = bookSource,
+                        message = "提取章节URL",
+                        rule = tocRule.chapterUrl,
+                        result = bookChapter.url
+                    )
+                }
+                
                 val info = analyzeRule.getString(upTimeRule)
                 val isVolume = analyzeRule.getString(isVolumeRule)
                 bookChapter.isVolume = false

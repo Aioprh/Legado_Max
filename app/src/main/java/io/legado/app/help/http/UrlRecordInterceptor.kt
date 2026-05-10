@@ -112,6 +112,11 @@ object UrlRecordInterceptor : Interceptor {
 
                     // 简单的URL脱敏（移除敏感参数）
                     val sanitizedUrl = sanitizeUrl(url)
+                    
+                    // 提取请求头信息
+                    val requestHeaders = request.headers.toMap()
+                    val userAgent = request.header("User-Agent")
+                    val cookies = request.header("Cookie")
 
                     DebugEventCenter.emit(
                         DebugEvent(
@@ -129,6 +134,9 @@ object UrlRecordInterceptor : Interceptor {
                             method = request.method,
                             statusCode = if (responseCode > 0) responseCode else null,
                             duration = duration,
+                            requestHeaders = requestHeaders,
+                            userAgent = userAgent,
+                            cookies = cookies,
                             sourceName = sourceName,
                             sourceUrl = sourceUrl,
                             throwable = if (errorMsg != null) IOException(errorMsg) else null,

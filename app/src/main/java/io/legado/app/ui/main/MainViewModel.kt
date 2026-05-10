@@ -24,6 +24,7 @@ import io.legado.app.help.book.sync
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.CacheBook
 import io.legado.app.model.ReadBook
+import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.service.CacheBookService
 import io.legado.app.utils.onEachParallel
@@ -40,6 +41,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
 import java.util.LinkedList
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -55,6 +57,7 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     private val waitUpTocBooks = LinkedList<String>()
     private val onUpTocBooks = ConcurrentHashMap.newKeySet<String>()
     private val eventListenerSource = ConcurrentHashMap<BookSource, Boolean>()
+    private val sourceSemaphores = ConcurrentHashMap<String, Semaphore>()
     val onUpBooksLiveData = MutableLiveData<Int>()
     private var upTocJob: Job? = null
     private var cacheBookJob: Job? = null
@@ -67,6 +70,16 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     var callback: CallBack? = null
     fun setActivityCallback(callback: CallBack) {
         this.callback = callback
+    }
+
+    private fun logUpdate(message: String, throwable: Throwable? = null, verbose: Boolean = false) {
+        if (!verbose || AppConfig.verboseUpdateLog) {
+            if (throwable != null) {
+                AppLog.putSource(message, throwable, SourceSubCategory.UPDATE)
+            } else {
+                AppLog.putSource(message, subCategory = SourceSubCategory.UPDATE)
+            }
+        }
     }
 
     init {
@@ -128,13 +141,19 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
 
     @Synchronized
     private fun addToWaitUp(books: List<Book>, onlyUpdateRead: Boolean) {
+        val addedBooks = mutableListOf<Book>()
         books.forEach { book ->
             if (onlyUpdateRead && book.getUnreadChapterNum() > 0) return@forEach
             if (!waitUpTocBooks.contains(book.bookUrl) && !onUpTocBooks.contains(book.bookUrl)) {
                 waitUpTocBooks.add(book.bookUrl)
+                addedBooks.add(book)
             }
         }
+        if (addedBooks.isNotEmpty()) {
+            logUpdate("📚 更新队列：新增 ${addedBooks.size} 本书到更新队列，当前队列总数：${waitUpTocBooks.size}")
+        }
         if (upTocJob == null) {
+            logUpdate("🚀 更新启动：开始处理更新队列，并发数：$threadCount")
             startUpTocJob()
         }
     }
@@ -158,14 +177,17 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
             }.onCompletion {
                 upTocJob = null
                 if (waitUpTocBooks.isNotEmpty()) {
+                    logUpdate("🔄 更新继续：队列中还有 ${waitUpTocBooks.size} 本书待更新", verbose = true)
                     startUpTocJob()
+                } else {
+                    logUpdate("✨ 更新完成：所有书籍更新任务已完成")
                 }
                 if (it == null && cacheBookJob == null && !CacheBookService.isRun) {
-                    //所有目录更新完再开始缓存章节
+                    logUpdate("📖 开始缓存：准备缓存章节内容")
                     cacheBook()
                 }
             }.catch {
-                AppLog.put("更新目录出错\n${it.localizedMessage}", it)
+                logUpdate("❌ 更新出错：${it.localizedMessage}", it)
             }.collect()
         }
     }
@@ -178,43 +200,58 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
                 book.addType(BookType.updateError)
                 appDb.bookDao.update(book)
             }
+            logUpdate("⚠️ 书籍《${book.name}》未找到对应书源")
             return
         }
-        if (source.eventListener) {
-            // 使用 putIfAbsent 确保只添加一次
-            if (eventListenerSource.putIfAbsent(source, true) == null) {
-                // 通知监听事件的书源，书架刷新开始
-                SourceCallBack.callBackSource(viewModelScope, SourceCallBack.START_SHELF_REFRESH, source)
-            }
+        
+        val semaphore = sourceSemaphores.getOrPut(source.bookSourceUrl) { Semaphore(1) }
+        
+        if (semaphore.availablePermits == 0) {
+            logUpdate("⏸️ 任务等待（书源${source.bookSourceName}，书籍《${book.name}》）：等待书源信号量...", verbose = true)
         }
-        kotlin.runCatching {
-            val oldBook = book.copy()
-            if (book.tocUrl.isBlank()) {
-                WebBook.getBookInfoAwait(source, book)
-            } else {
-                WebBook.runPreUpdateJs(source, book)
+        
+        semaphore.acquire()
+        
+        try {
+            logUpdate("✅ 任务开始（书源${source.bookSourceName}，书籍《${book.name}》）：获取信号量成功，开始更新", verbose = true)
+            
+            if (source.eventListener) {
+                if (eventListenerSource.putIfAbsent(source, true) == null) {
+                    SourceCallBack.callBackSource(viewModelScope, SourceCallBack.START_SHELF_REFRESH, source)
+                }
             }
-            val toc = WebBook.getChapterListAwait(source, book).getOrThrow()
-            book.sync(oldBook)
-            book.removeType(BookType.updateError)
-            if (book.bookUrl == bookUrl) {
-                appDb.bookDao.update(book)
-            } else {
-                appDb.bookDao.replace(oldBook, book)
-                BookHelp.updateCacheFolder(oldBook, book)
+            kotlin.runCatching {
+                val oldBook = book.copy()
+                if (book.tocUrl.isBlank()) {
+                    WebBook.getBookInfoAwait(source, book)
+                } else {
+                    WebBook.runPreUpdateJs(source, book)
+                }
+                val toc = WebBook.getChapterListAwait(source, book).getOrThrow()
+                book.sync(oldBook)
+                book.removeType(BookType.updateError)
+                if (book.bookUrl == bookUrl) {
+                    appDb.bookDao.update(book)
+                } else {
+                    appDb.bookDao.replace(oldBook, book)
+                    BookHelp.updateCacheFolder(oldBook, book)
+                }
+                appDb.bookChapterDao.delByBook(bookUrl)
+                appDb.bookChapterDao.insert(*toc.toTypedArray())
+                ReadBook.onChapterListUpdated(book)
+                addDownload(source, book)
+                logUpdate("✅ 任务完成（书源${source.bookSourceName}，书籍《${book.name}》）：更新成功")
+            }.onFailure {
+                currentCoroutineContext().ensureActive()
+                logUpdate("❌ 任务失败（书源${source.bookSourceName}，书籍《${book.name}》）：${it.localizedMessage}", it)
+                appDb.bookDao.getBook(book.bookUrl)?.let { book ->
+                    book.addType(BookType.updateError)
+                    appDb.bookDao.update(book)
+                }
             }
-            appDb.bookChapterDao.delByBook(bookUrl)
-            appDb.bookChapterDao.insert(*toc.toTypedArray())
-            ReadBook.onChapterListUpdated(book)
-            addDownload(source, book)
-        }.onFailure {
-            currentCoroutineContext().ensureActive()
-            AppLog.put("${book.name} 更新目录失败\n${it.localizedMessage}", it)
-            //这里可能因为时间太长书籍信息已经更改,所以重新获取
-            appDb.bookDao.getBook(book.bookUrl)?.let { book ->
-                book.addType(BookType.updateError)
-                appDb.bookDao.update(book)
-            }
+        } finally {
+            semaphore.release()
+            logUpdate("🔓 信号量释放（书源${source.bookSourceName}，书籍《${book.name}》）：允许下一个任务执行", verbose = true)
         }
     }
 

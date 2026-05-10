@@ -188,6 +188,26 @@ fun DebugLogDetailDialog(
                                     DetailRow("耗时", "${log.duration ?: 0}ms", searchQuery)
                                 }
 
+                                // 请求详情板块
+                                if (log.userAgent != null || log.cookies != null || !log.requestHeaders.isNullOrEmpty()) {
+                                    Spacer(Modifier.height(12.dp))
+                                    DetailSection(title = "请求详情", searchQuery = searchQuery) {
+                                        log.userAgent?.let { 
+                                            DetailRow("User-Agent", it, searchQuery) 
+                                        }
+                                        log.cookies?.let { 
+                                            DetailRow("Cookie", it, searchQuery) 
+                                        }
+                                        
+                                        // 显示其他请求头
+                                        log.requestHeaders?.forEach { (key, value) ->
+                                            if (key !in listOf("User-Agent", "Cookie", "X-Source-Name", "X-Source-Url")) {
+                                                DetailRow(key, value, searchQuery)
+                                            }
+                                        }
+                                    }
+                                }
+
                                 if (log.sourceName != null || log.sourceUrl != null) {
                                     Spacer(Modifier.height(12.dp))
                                     DetailSection(title = "来源信息", searchQuery = searchQuery) {

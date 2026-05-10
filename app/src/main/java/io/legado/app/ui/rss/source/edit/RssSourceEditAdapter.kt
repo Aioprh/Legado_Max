@@ -67,6 +67,7 @@ class RssSourceEditAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(editEntity: EditEntity) = binding.run {
+            editText.setTag(R.id.tag, editEntity.key)
             editText.maxLines = editEntityMaxLine
             if (editText.getTag(R.id.tag1) == null) {
                 val listener = object : View.OnAttachStateChangeListener {

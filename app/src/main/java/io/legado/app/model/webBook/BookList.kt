@@ -6,6 +6,7 @@ import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.entities.rule.BookListRule
 import io.legado.app.data.entities.rule.ExploreKind
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.source.exploreKindsJson
@@ -286,15 +287,37 @@ object BookList {
         searchBook.originOrder = bookSource.customOrder
         analyzeRule.setRuleData(searchBook)
         analyzeRule.setContent(item)
+        
+        FlowLogRecorder.logExtract(
+            source = bookSource,
+            message = "开始提取搜索结果字段"
+        )
+        
         currentCoroutineContext().ensureActive()
         Debug.log(bookSource.bookSourceUrl, "┌获取书名", log)
         searchBook.name = BookHelp.formatBookName(analyzeRule.getString(ruleName))
         Debug.log(bookSource.bookSourceUrl, "└${searchBook.name}", log)
+        
+        FlowLogRecorder.logExtract(
+            source = bookSource,
+            message = "提取书名",
+            rule = ruleName.joinToString("&&") { it.rule },
+            result = searchBook.name
+        )
+        
         if (searchBook.name.isNotEmpty()) {
             currentCoroutineContext().ensureActive()
             Debug.log(bookSource.bookSourceUrl, "┌获取作者", log)
             searchBook.author = BookHelp.formatBookAuthor(analyzeRule.getString(ruleAuthor))
             Debug.log(bookSource.bookSourceUrl, "└${searchBook.author}", log)
+            
+            FlowLogRecorder.logExtract(
+                source = bookSource,
+                message = "提取作者",
+                rule = ruleAuthor.joinToString("&&") { it.rule },
+                result = searchBook.author
+            )
+            
             currentCoroutineContext().ensureActive()
             Debug.log(bookSource.bookSourceUrl, "┌获取分类", log)
             try {

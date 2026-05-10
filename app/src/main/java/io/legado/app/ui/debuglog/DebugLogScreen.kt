@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,9 +41,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
+import io.legado.app.model.debug.FlowStage
+import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.ui.debuglog.components.DebugCategoryTabs
-import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
 import io.legado.app.ui.debuglog.components.DebugLogItem
+import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
+import io.legado.app.ui.debuglog.components.FlowLogList
+import io.legado.app.ui.debuglog.components.FlowStageFilter
 import io.legado.app.ui.debuglog.viewmodel.DebugLogViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.utils.share
@@ -57,8 +62,11 @@ fun DebugLogScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val selectedSubCategory by viewModel.selectedSubCategory.collectAsState()
+    val selectedFlowStage by viewModel.selectedFlowStage.collectAsState()
     val isPaused by viewModel.isPaused.collectAsState()
     val filteredLogs by viewModel.filteredLogs.collectAsState()
+    val filteredFlowLogs by viewModel.filteredFlowLogs.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     
     var showSearch by remember { mutableStateOf(false) }
@@ -77,6 +85,12 @@ fun DebugLogScreen(
                         }
                     },
                     actions = {
+                        IconButton(onClick = { viewModel.refreshFlowLogs() }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "刷新"
+                            )
+                        }
                         IconButton(onClick = { showSearch = !showSearch }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
@@ -150,9 +164,27 @@ fun DebugLogScreen(
         ) {
             DebugCategoryTabs(
                 selectedCategory = selectedCategory,
-                categories = DebugCategory.entries.filter { it != DebugCategory.CHECK && it != DebugCategory.CRASH },
+                categories = DebugCategory.entries.filter { 
+                    it != DebugCategory.CHECK && 
+                    it != DebugCategory.CRASH && 
+                    it != DebugCategory.RULE 
+                },
                 onCategorySelected = viewModel::selectCategory
             )
+
+            if (selectedCategory == DebugCategory.SOURCE) {
+                SourceSubCategoryTabs(
+                    selectedSubCategory = selectedSubCategory,
+                    onSubCategorySelected = viewModel::selectSubCategory
+                )
+                
+                if (selectedSubCategory == SourceSubCategory.FLOW) {
+                    FlowStageFilter(
+                        selectedStage = selectedFlowStage,
+                        onStageSelected = viewModel::selectFlowStage
+                    )
+                }
+            }
 
             HorizontalDivider()
 
@@ -160,6 +192,20 @@ fun DebugLogScreen(
                 when {
                     uiState.isLoading -> {
                         LoadingIndicator()
+                    }
+                    selectedCategory == DebugCategory.SOURCE && selectedSubCategory == SourceSubCategory.FLOW -> {
+                        if (filteredFlowLogs.isEmpty()) {
+                            EmptyState(
+                                message = if (searchQuery.isNullOrBlank()) "暂无流程日志" 
+                                         else "未找到匹配的日志"
+                            )
+                        } else {
+                            FlowLogList(
+                                logs = filteredFlowLogs,
+                                onLogClick = { },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
                     uiState.isEmpty || filteredLogs.isEmpty() -> {
                         EmptyState(
@@ -200,6 +246,9 @@ private fun LoadingIndicator() {
     }
 }
 
+/**
+ * 空状态提示
+ */
 @Composable
 private fun EmptyState(message: String) {
     Box(
@@ -216,6 +265,9 @@ private fun EmptyState(message: String) {
     }
 }
 
+/**
+ * 日志列表容器
+ */
 @Composable
 private fun DebugLogList(
     logs: List<DebugEvent>,
@@ -239,6 +291,41 @@ private fun DebugLogList(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp)
             )
+        }
+    }
+}
+
+/**
+ * 源日志子分类选择器
+ */
+@Composable
+private fun SourceSubCategoryTabs(
+    selectedSubCategory: SourceSubCategory?,
+    onSubCategorySelected: (SourceSubCategory?) -> Unit
+) {
+    androidx.compose.material3.Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 2.dp
+    ) {
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+        ) {
+            androidx.compose.material3.FilterChip(
+                selected = selectedSubCategory == null,
+                onClick = { onSubCategorySelected(null) },
+                label = { Text("全部") }
+            )
+            SourceSubCategory.entries.forEach { subCategory ->
+                androidx.compose.material3.FilterChip(
+                    selected = selectedSubCategory == subCategory,
+                    onClick = { onSubCategorySelected(subCategory) },
+                    label = { Text(subCategory.displayName) }
+                )
+            }
         }
     }
 }

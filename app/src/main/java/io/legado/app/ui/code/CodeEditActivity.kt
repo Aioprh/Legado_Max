@@ -456,21 +456,21 @@ class CodeEditActivity :
                 SelectItem("封面解密JS", "coverDecodeJs"),
                 SelectItem("书籍URL正则", "bookUrlPattern"),
                 SelectItem("请求头", "header"),
-                SelectItem("变量注释", "variableComment"),
+                SelectItem("变量说明", "variableComment"),
                 SelectItem("并发率", "concurrentRate"),
                 SelectItem("jsLib", "jsLib")
             )
             "search" -> listOf(
                 SelectItem("搜索地址", "searchUrl"),
-                SelectItem("验证关键字", "checkKeyWord"),
+                SelectItem("校验关键字", "checkKeyWord"),
                 SelectItem("书籍列表", "bookList"),
-                SelectItem("书名", "name"),
+                SelectItem("书名", "name"), 
                 SelectItem("作者", "author"),
                 SelectItem("分类", "kind"),
                 SelectItem("字数", "wordCount"),
                 SelectItem("最新章节", "lastChapter"),
-                SelectItem("简介", "intro"),
-                SelectItem("封面", "coverUrl"),
+                SelectItem("简介规则", "intro"),
+                SelectItem("封面规则", "coverUrl"),
                 SelectItem("书籍URL", "bookUrl")
             )
             "explore" -> listOf(
@@ -482,7 +482,7 @@ class CodeEditActivity :
                 SelectItem("字数", "wordCount"),
                 SelectItem("最新章节", "lastChapter"),
                 SelectItem("简介", "intro"),
-                SelectItem("封面", "coverUrl"),
+                SelectItem("封面规则", "coverUrl"),
                 SelectItem("书籍URL", "bookUrl")
             )
             "info" -> listOf(
@@ -493,22 +493,22 @@ class CodeEditActivity :
                 SelectItem("字数", "wordCount"),
                 SelectItem("最新章节", "lastChapter"),
                 SelectItem("简介", "intro"),
-                SelectItem("封面", "coverUrl"),
+                SelectItem("封面规则", "coverUrl"),
                 SelectItem("目录URL", "tocUrl"),
-                SelectItem("可重命名", "canReName"),
+                SelectItem("允许修改书名作者", "canReName"),
                 SelectItem("下载地址", "downloadUrls")
             )
             "toc" -> listOf(
-                SelectItem("预处理JS", "preUpdateJs"),
-                SelectItem("章节列表", "chapterList"),
+                SelectItem("更新之前JS", "preUpdateJs"),
+                SelectItem("目录列表规则", "chapterList"),
                 SelectItem("章节名称", "chapterName"),
                 SelectItem("章节URL", "chapterUrl"),
-                SelectItem("格式化JS", "formatJs"),
-                SelectItem("是否分卷", "isVolume"),
+                SelectItem("格式化规则", "formatJs"),
+                SelectItem("Volume标识", "isVolume"),
                 SelectItem("更新时间", "updateTime"),
                 SelectItem("是否VIP", "isVip"),
-                SelectItem("是否付费", "isPay"),
-                SelectItem("下页目录URL", "nextTocUrl")
+                SelectItem("购买标识", "isPay"),
+                SelectItem("目录下一页规则", "nextTocUrl")
             )
             "content" -> listOf(
                 SelectItem("正文内容", "content"),
@@ -538,9 +538,9 @@ class CodeEditActivity :
     private fun showRssSourceRuleSelector() {
         val tabs = listOf(
             SelectItem("基本", "base"),
-            SelectItem("搜索", "search"),
-            SelectItem("发现", "explore"),
-            SelectItem("文章", "article")
+            SelectItem("启动", "start"),
+            SelectItem("列表", "list"),
+            SelectItem("WEB_VIEW", "webView")
         )
         selector(tabs.map { it.title }) { _, position ->
             showRssSourceFieldSelector(tabs[position].value)
@@ -553,18 +553,24 @@ class CodeEditActivity :
     private fun showRssSourceFieldSelector(tabKey: String) {
         val fields = when (tabKey) {
             "base" -> listOf(
-                SelectItem("源地址", "sourceUrl"),
                 SelectItem("源名称", "sourceName"),
+                SelectItem("源URL", "sourceUrl"),
+                SelectItem("源图标", "sourceIcon"),
                 SelectItem("源分组", "sourceGroup"),
                 SelectItem("源注释", "sourceComment"),
-                SelectItem("登录地址", "loginUrl"),
-                SelectItem("登录界面", "loginUi"),
+                SelectItem("搜索地址", "searchUrl"),
+                SelectItem("分类URL", "sortUrl"),
+                SelectItem("登录URL", "loginUrl"),
+                SelectItem("登录UI", "loginUi"),
+                SelectItem("登录检查JS", "loginCheckJs"),
+                SelectItem("封面解密JS", "coverDecodeJs"),
                 SelectItem("请求头", "header"),
-                SelectItem("并发率", "concurrentRate")
+                SelectItem("变量说明", "variableComment"),
+                SelectItem("并发率", "concurrentRate"),
+                SelectItem("js库", "jsLib")
             )
             "search" -> listOf(
                 SelectItem("搜索地址", "searchUrl"),
-                SelectItem("验证关键字", "checkKeyWord"),
                 SelectItem("文章列表", "ruleArticles"),
                 SelectItem("下一篇", "ruleNextPage"),
                 SelectItem("标题", "ruleTitle"),
@@ -574,8 +580,8 @@ class CodeEditActivity :
                 SelectItem("图片", "ruleImage"),
                 SelectItem("日期", "rulePubDate")
             )
-            "explore" -> listOf(
-                SelectItem("发现地址", "exploreUrl"),
+            "start" -> listOf(
+                SelectItem("分类URL", "sortUrl"),
                 SelectItem("文章列表", "ruleArticles"),
                 SelectItem("下一篇", "ruleNextPage"),
                 SelectItem("标题", "ruleTitle"),
@@ -593,14 +599,18 @@ class CodeEditActivity :
                 SelectItem("链接", "ruleLink"),
                 SelectItem("图片", "ruleImage"),
                 SelectItem("日期", "rulePubDate"),
-                SelectItem("样式", "style")
+                SelectItem("样式", "style"),
+                SelectItem("注入JS", "injectJs"),
+                SelectItem("URL跳转拦截", "shouldOverrideUrlLoading"),
+                SelectItem("内容白名单", "contentWhitelist"),
+                SelectItem("内容黑名单", "contentBlacklist")
             )
             else -> emptyList()
         }
         if (fields.isEmpty()) return
         selector(fields.map { it.title }) { _, position ->
             val fieldKey = fields[position].value
-            switchToField(tabKey, fieldKey)
+            switchToField("base", fieldKey)
         }
     }
 
@@ -676,8 +686,126 @@ class CodeEditActivity :
             viewModel.tabKey = tabKey
             // 更新初始文本，用于判断内容是否被修改
             viewModel.initialText = value ?: ""
+            // 更新标题栏显示的字段名
+            updateTitle(fieldKey)
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+    
+    /**
+     * 更新标题栏显示的字段名
+     * @param fieldKey 字段标识
+     */
+    private fun updateTitle(fieldKey: String) {
+        val fieldName = getFieldName(fieldKey)
+        if (fieldName.isNotEmpty()) {
+            binding.titleBar.title = fieldName
+        }
+    }
+    
+    /**
+     * 根据字段标识获取字段的中文名称
+     * @param fieldKey 字段标识
+     * @return 字段的中文名称
+     */
+    private fun getFieldName(fieldKey: String): String {
+        val sourceType = viewModel.sourceType ?: return ""
+        
+        // 订阅源字段映射
+        val rssFieldNames = mapOf(
+            "sourceUrl" to "源地址",
+            "sourceName" to "源名称",
+            "sourceGroup" to "源分组",
+            "sourceComment" to "源注释",
+            "sourceIcon" to "源图标",
+            "loginUrl" to "登录地址",
+            "loginUi" to "登录界面",
+            "loginCheckJs" to "登录检查JS",
+            "coverDecodeJs" to "封面解密JS",
+            "header" to "请求头",
+            "variableComment" to "变量说明",
+            "concurrentRate" to "并发率",
+            "jsLib" to "js库",
+            "searchUrl" to "搜索地址",
+            "sortUrl" to "分类地址",
+            "startHtml" to "起始页HTML",
+            "startStyle" to "起始页样式",
+            "startJs" to "起始页JS",
+            "preloadJs" to "预加载JS",
+            "ruleArticles" to "文章列表",
+            "ruleNextPage" to "下一篇",
+            "ruleTitle" to "标题",
+            "ruleDescription" to "描述",
+            "ruleLink" to "链接",
+            "ruleImage" to "图片",
+            "rulePubDate" to "日期",
+            "ruleContent" to "正文内容",
+            "style" to "样式",
+            "injectJs" to "注入JS",
+            "shouldOverrideUrlLoading" to "URL跳转拦截",
+            "contentWhitelist" to "内容白名单",
+            "contentBlacklist" to "内容黑名单"
+        )
+        
+        // 书源字段映射
+        val bookFieldNames = mapOf(
+            "bookSourceUrl" to "源地址",
+            "bookSourceName" to "源名称",
+            "bookSourceGroup" to "源分组",
+            "bookSourceComment" to "源注释",
+            "loginUrl" to "登录地址",
+            "loginUi" to "登录界面",
+            "loginCheckJs" to "登录检查JS",
+            "coverDecodeJs" to "封面解密JS",
+            "bookUrlPattern" to "书籍URL正则",
+            "header" to "请求头",
+            "variableComment" to "变量说明",
+            "concurrentRate" to "并发率",
+            "jsLib" to "jsLib",
+            "searchUrl" to "搜索地址",
+            "checkKeyWord" to "校验关键字",
+            "bookList" to "书籍列表",
+            "name" to "书名",
+            "author" to "作者",
+            "kind" to "分类",
+            "wordCount" to "字数",
+            "lastChapter" to "最新章节",
+            "intro" to "简介规则",
+            "coverUrl" to "封面规则",
+            "bookUrl" to "书籍URL",
+            "exploreUrl" to "发现地址",
+            "init" to "初始化",
+            "tocUrl" to "目录URL",
+            "canReName" to "允许修改书名作者",
+            "downloadUrls" to "下载地址",
+            "preUpdateJs" to "更新之前JS",
+            "chapterList" to "目录列表规则",
+            "chapterName" to "章节名称",
+            "chapterUrl" to "章节URL",
+            "formatJs" to "格式化规则",
+            "isVolume" to "Volume标识",
+            "updateTime" to "更新时间",
+            "isVip" to "是否VIP",
+            "isPay" to "购买标识",
+            "nextTocUrl" to "目录下一页规则",
+            "content" to "正文内容",
+            "nextContentUrl" to "下页内容URL",
+            "subContent" to "子内容",
+            "replaceRegex" to "替换正则",
+            "title" to "标题",
+            "sourceRegex" to "资源正则",
+            "imageStyle" to "图片样式",
+            "imageDecode" to "图片解码",
+            "webJs" to "网页JS",
+            "payAction" to "付费操作",
+            "callBackJs" to "回调JS"
+        )
+        
+        return when (sourceType) {
+            "rssSource" -> rssFieldNames[fieldKey] ?: fieldKey
+            "bookSource" -> bookFieldNames[fieldKey] ?: fieldKey
+            else -> fieldKey
         }
     }
 

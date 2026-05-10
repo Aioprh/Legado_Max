@@ -676,6 +676,8 @@
     <string name="copy_crash_log_summary">应用崩溃后再次进入app将自动将日志复制到剪贴板</string>
     <string name="md_link_inner_browser">用内置浏览器打开</string>
     <string name="md_link_inner_browser_summary">md文件中的链接默认用内置浏览器打开</string>
+    <string name="verbose_update_log">详细更新日志</string>
+    <string name="verbose_update_log_summary">开启后在调试日志中显示详细的书籍更新流程信息</string>
     <string name="service_stop">Service stopped</string>
     <string name="service_start">Starting service\nChecking notification bar for details</string>
     <string name="default_path">Default path</string>
@@ -922,10 +924,6 @@
     <string name="toc_src">Chapters source code</string>
     <string name="content_src">Content source code</string>
     <string name="list_src">List source code</string>
-    <string name="play_audio">播放音频</string>
-    <string name="view_js_lib">查看jsLib</string>
-    <string name="view_result">查看结果</string>
-    <string name="open_editor">在编辑器中打开</string>
     <string name="title_font_size">Font size</string>
     <string name="title_margin_top">Margin top</string>
     <string name="title_margin_bottom">Margin bottom</string>
@@ -1539,4 +1537,10 @@
     <string name="clear_all_records">清除所有记录</string>
     <string name="search_url_record_hint">搜索URL/域名/来源</string>
     <string name="filter_by_domain">按域名筛选</string>
+    
+    <!-- TTS Debug -->
+    <string name="play_audio">播放音频</string>
+    <string name="view_js_lib">查看JS库</string>
+    <string name="view_result">查看结果</string>
+    <string name="open_editor">打开编辑器</string>
 </resources>

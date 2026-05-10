@@ -14,6 +14,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.RssArticle
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.CacheManager
 import io.legado.app.help.JsExtensions
@@ -306,60 +307,91 @@ class AnalyzeRule(
         isUrl: Boolean = false,
         unescape: Boolean = true
     ): String {
-        var result: Any? = null
-        val content = mContent ?: this.content
-        if (content != null && ruleList.isNotEmpty()) {
-            result = content
-            if (result is NativeObject) {
-                val sourceRule = ruleList.first()
-                putRule(sourceRule.putMap)
-                sourceRule.makeUpRule(result)
-                result = if (sourceRule.getParamSize() > 1) {
-                    // get {{}}
-                    sourceRule.rule
-                } else {
-                    // 键值直接访问
-                    result[sourceRule.rule]?.toString()
-                }?.let {
-                    replaceRegex(it, sourceRule)
-                }
-            } else if (result is LinkedTreeMap<*, *>) {
-                // 键值直接访问
-                result = result[ruleList.first().rule]?.toString()
-            } else {
-                for (sourceRule in ruleList) {
+        val startTime = System.currentTimeMillis()
+        val ruleStr = ruleList.joinToString("&&") { it.rule }
+        
+        FlowLogRecorder.logParse(
+            source = source,
+            message = "开始解析规则",
+            rule = ruleStr
+        )
+        
+        val str = try {
+            var result: Any? = null
+            val content = mContent ?: this.content
+            if (content != null && ruleList.isNotEmpty()) {
+                result = content
+                if (result is NativeObject) {
+                    val sourceRule = ruleList.first()
                     putRule(sourceRule.putMap)
                     sourceRule.makeUpRule(result)
-                    result ?: continue
-                    val rule = sourceRule.rule
-                    if (rule.isNotBlank() || sourceRule.replaceRegex.isEmpty()) {
-                        result = when (sourceRule.mode) {
-                            Mode.WebJs -> getWebJsResult(rule, result)
-                            Mode.Js -> evalJS(rule, result)
-                            Mode.Json -> getAnalyzeByJSonPath(result).getString(rule)
-                            Mode.XPath -> getAnalyzeByXPath(result).getString(rule)
-                            Mode.Default -> if (isUrl) {
-                                getAnalyzeByJSoup(result).getString0(rule)
-                            } else {
-                                getAnalyzeByJSoup(result).getString(rule)
-                            }
-
-                            else -> rule
-                        }
+                    result = if (sourceRule.getParamSize() > 1) {
+                        // get {{}}
+                        sourceRule.rule
+                    } else {
+                        // 键值直接访问
+                        result[sourceRule.rule]?.toString()
+                    }?.let {
+                        replaceRegex(it, sourceRule)
                     }
-                    if (result != null && sourceRule.replaceRegex.isNotEmpty()) {
-                        result = replaceRegex(result.toString(), sourceRule)
+                } else if (result is LinkedTreeMap<*, *>) {
+                    // 键值直接访问
+                    result = result[ruleList.first().rule]?.toString()
+                } else {
+                    for (sourceRule in ruleList) {
+                        putRule(sourceRule.putMap)
+                        sourceRule.makeUpRule(result)
+                        result ?: continue
+                        val rule = sourceRule.rule
+                        if (rule.isNotBlank() || sourceRule.replaceRegex.isEmpty()) {
+                            result = when (sourceRule.mode) {
+                                Mode.WebJs -> getWebJsResult(rule, result)
+                                Mode.Js -> evalJS(rule, result)
+                                Mode.Json -> getAnalyzeByJSonPath(result).getString(rule)
+                                Mode.XPath -> getAnalyzeByXPath(result).getString(rule)
+                                Mode.Default -> if (isUrl) {
+                                    getAnalyzeByJSoup(result).getString0(rule)
+                                } else {
+                                    getAnalyzeByJSoup(result).getString(rule)
+                                }
+
+                                else -> rule
+                            }
+                        }
+                        if (result != null && sourceRule.replaceRegex.isNotEmpty()) {
+                            result = replaceRegex(result.toString(), sourceRule)
+                        }
                     }
                 }
             }
+            if (result == null) result = ""
+            val resultStr = result.toString()
+            if (unescape && resultStr.indexOf('&') > -1) {
+                StringEscapeUtils.unescapeHtml4(resultStr)
+            } else {
+                resultStr
+            }
+        } catch (e: Exception) {
+            val duration = System.currentTimeMillis() - startTime
+            FlowLogRecorder.logParse(
+                source = source,
+                message = "规则解析失败: ${e.localizedMessage}",
+                rule = ruleStr,
+                duration = duration,
+                error = e
+            )
+            throw e
         }
-        if (result == null) result = ""
-        val resultStr = result.toString()
-        val str = if (unescape && resultStr.indexOf('&') > -1) {
-            StringEscapeUtils.unescapeHtml4(resultStr)
-        } else {
-            resultStr
-        }
+        
+        val duration = System.currentTimeMillis() - startTime
+        FlowLogRecorder.logParse(
+            source = source,
+            message = "规则解析成功",
+            rule = ruleStr,
+            result = str.take(100),
+            duration = duration
+        )
+        
         if (isUrl) {
             return if (str.isBlank()) {
                 baseUrl ?: ""
@@ -481,28 +513,46 @@ class AnalyzeRule(
      */
     private fun replaceRegex(result: String, rule: SourceRule): String {
         if (rule.replaceRegex.isEmpty()) return result
+        
+        val startTime = System.currentTimeMillis()
         val replaceRegex = rule.replaceRegex
         val replacement = rule.replacement
+        
+        FlowLogRecorder.logReplace(
+            source = source,
+            message = "开始数据替换",
+            rule = "$replaceRegex -> $replacement"
+        )
+        
         val regex = compileRegexCache(replaceRegex)
-        if (rule.replaceFirst) {
+        val replacedResult = if (rule.replaceFirst) {
             /* ##match##replace### 获取第一个匹配到的结果并进行替换 */
             if (regex != null) kotlin.runCatching {
                 val pattern = regex.toPattern()
                 val matcher = pattern.matcher(result)
-                return if (matcher.find()) {
+                if (matcher.find()) {
                     matcher.group(0)!!.replaceFirst(regex, replacement)
                 } else {
                     ""
                 }
-            }
-            return replacement
+            }.getOrDefault(replacement) else replacement
         } else {
             /* ##match##replace 替换*/
             if (regex != null) kotlin.runCatching {
-                return result.replace(regex, replacement)
-            }
-            return result.replace(replaceRegex, replacement)
+                result.replace(regex, replacement)
+            }.getOrDefault(result) else result.replace(replaceRegex, replacement)
         }
+        
+        val duration = System.currentTimeMillis() - startTime
+        FlowLogRecorder.logReplace(
+            source = source,
+            message = "数据替换完成",
+            rule = "$replaceRegex -> $replacement",
+            result = replacedResult.take(100),  // 只记录前100个字符
+            duration = duration
+        )
+        
+        return replacedResult
     }
 
     private fun compileRegexCache(regex: String): Regex? {
@@ -826,6 +876,17 @@ class AnalyzeRule(
      * 执行JS
      */
     fun evalJS(jsStr: String, result: Any? = null): Any? {
+        val startTime = System.currentTimeMillis()
+        val containsReplace = jsStr.contains("replace")
+        
+        if (containsReplace) {
+            FlowLogRecorder.logReplace(
+                source = source,
+                message = "执行JS替换",
+                rule = jsStr.take(200)
+            )
+        }
+        
         val bindings = buildScriptBindings { bindings ->
             bindings["java"] = this
             bindings["cookie"] = CookieStore
@@ -854,8 +915,19 @@ class AnalyzeRule(
             }
         }
         val script = compileScriptCache(jsStr)
-        val result = script.eval(scope, coroutineContext)
-        return result
+        val jsResult = script.eval(scope, coroutineContext)
+        
+        if (containsReplace) {
+            FlowLogRecorder.logReplace(
+                source = source,
+                message = "JS替换完成",
+                rule = jsStr.take(200),
+                result = jsResult?.toString()?.take(100),
+                duration = System.currentTimeMillis() - startTime
+            )
+        }
+        
+        return jsResult
     }
 
     private fun compileScriptCache(jsStr: String): CompiledScript {

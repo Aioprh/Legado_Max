@@ -1,0 +1,246 @@
+package io.legado.app.ui.debuglog.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import io.legado.app.model.debug.FlowLogItem
+import io.legado.app.model.debug.FlowStage
+
+/**
+ * 流程日志列表
+ */
+@Composable
+fun FlowLogList(
+    logs: List<FlowLogItem>,
+    onLogClick: (FlowLogItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val groupedLogs = logs
+        .groupBy { it.requestId }
+        .entries
+        .sortedByDescending { (_, items) -> items.firstOrNull()?.startTime ?: 0L }
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
+        items(
+            count = groupedLogs.size,
+            key = { index -> groupedLogs[index].key }
+        ) { index ->
+            val (requestId, items) = groupedLogs[index]
+            FlowLogCard(
+                requestId = requestId,
+                logs = items,
+                onLogClick = onLogClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+    }
+}
+
+private fun formatDuration(ms: Long): String {
+    return when {
+        ms < 1000 -> "${ms}ms"
+        ms < 60000 -> "${ms / 1000.0}s"
+        else -> "${ms / 60000}m ${ms % 60000 / 1000}s"
+    }
+}
+
+/**
+ * 流程日志卡片
+ */
+@Composable
+private fun FlowLogCard(
+    requestId: String,
+    logs: List<FlowLogItem>,
+    onLogClick: (FlowLogItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val firstLog = logs.firstOrNull() ?: return
+    val totalDuration = logs.maxOfOrNull { (it.startTime + (it.duration ?: 0)) }
+        ?.let { it - firstLog.startTime } ?: 0L
+    val isSuccess = logs.none { it.error != null }
+    
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "请求 #${requestId.take(8)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    firstLog.sourceName?.let { sourceName ->
+                        Text(
+                            text = sourceName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = firstLog.formatTime(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                    text = formatDuration(totalDuration),
+                    style = MaterialTheme.typography.bodySmall,
+                        color = if (isSuccess) MaterialTheme.colorScheme.primary 
+                                else MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            logs.forEachIndexed { index, log ->
+                TimelineItem(
+                    log = log,
+                    isLast = index == logs.size - 1,
+                    onClick = { onLogClick(log) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 时间线项
+ */
+@Composable
+private fun TimelineItem(
+    log: FlowLogItem,
+    isLast: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 8.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(32.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(
+                        color = when {
+                            log.error != null -> MaterialTheme.colorScheme.error
+                            log.stage == FlowStage.NETWORK -> MaterialTheme.colorScheme.primaryContainer
+                            log.stage == FlowStage.PARSE -> MaterialTheme.colorScheme.secondaryContainer
+                            log.stage == FlowStage.EXTRACT -> MaterialTheme.colorScheme.tertiaryContainer
+                            log.stage == FlowStage.REPLACE -> MaterialTheme.colorScheme.surfaceVariant
+                            else -> MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = log.stage.icon,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            
+            if (!isLast) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(32.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+            }
+        }
+        
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 12.dp, bottom = if (isLast) 0.dp else 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = log.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = if (log.error != null) MaterialTheme.colorScheme.error 
+                            else MaterialTheme.colorScheme.onSurface
+                )
+                
+                log.duration?.let { duration ->
+                    Text(
+                        text = "${duration}ms",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            log.url?.let { url ->
+                Text(
+                    text = url,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+            
+            log.rule?.let { rule ->
+                Text(
+                    text = "规则: $rule",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
+            
+            log.result?.let { result ->
+                Text(
+                    text = "结果: ${result.take(50)}${if (result.length > 50) "..." else ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2
+                )
+            }
+            
+            log.error?.let { error ->
+                Text(
+                    text = "错误: ${error.message}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 2
+                )
+            }
+        }
+    }
+}

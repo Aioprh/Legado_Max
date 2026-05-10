@@ -119,7 +119,17 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
         
         // 加载菜单项并设置到适配器
         reloadMenuItems()
-        adapter.setItems(visibleMenuItems)
+        
+        // 根据配置决定初始显示状态
+        if (expandTextMenu) {
+            // 展开模式：显示所有菜单项，隐藏更多按钮
+            adapter.setItems(menuItems)
+            binding.ivMenuMore.gone()
+        } else {
+            // 折叠模式：只显示前5项，显示更多按钮
+            adapter.setItems(visibleMenuItems)
+            binding.ivMenuMore.visible()
+        }
     }
     
     /**
