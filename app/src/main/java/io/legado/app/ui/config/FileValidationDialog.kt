@@ -10,7 +10,6 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -199,12 +198,6 @@ fun ValidationErrorDetailDialog(
     result: ValidationResult,
     onDismiss: () -> Unit
 ) {
-    val icon = when (result.state) {
-        ValidationState.WARNING -> Icons.Default.Warning
-        ValidationState.ERROR -> Icons.Default.Error
-        else -> Icons.Default.Help
-    }
-
     val message = buildAnnotatedString {
         append(result.message)
         if (result.details.isNotBlank()) {
@@ -231,16 +224,7 @@ fun ValidationErrorDetailDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
-        icon = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (result.state == ValidationState.ERROR)
-                    MaterialTheme.colorScheme.error
-                else
-                    MaterialTheme.colorScheme.tertiary
-            )
-        },
+        shape = MaterialTheme.shapes.medium,
         title = {
             Text(text = result.fileName)
         },
