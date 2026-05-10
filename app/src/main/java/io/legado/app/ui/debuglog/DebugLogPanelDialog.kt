@@ -4,6 +4,7 @@ import android.app.Activity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -115,6 +116,13 @@ object DebugLogPanelDialog {
     private fun DebugLogPanelContent(onDismiss: () -> Unit) {
         val focusManager = LocalFocusManager.current
         
+        // 拦截系统返回键，关闭调试日志面板
+        // 因为 ComposeView 直接添加到 decorView，不会自动处理返回事件
+        BackHandler(enabled = true) {
+            onDismiss()
+        }
+        
+        // 进入面板时清除焦点，避免 EditText 等组件持有焦点
         DisposableEffect(Unit) {
             focusManager.clearFocus()
             onDispose {
