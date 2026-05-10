@@ -328,7 +328,7 @@ class BookSourceAdapter(
             }
             if (movedItems.size > sortNumberSet.size) {
                 callBack.upOrder(getItems().mapIndexed { index, bookSourcePart ->
-                    bookSourcePart.customOrder = if (callBack.sortAscending) index else -index
+                    bookSourcePart.customOrder = if (callBack.isSortAscending) index else -index
                     bookSourcePart
                 })
             } else {
@@ -365,7 +365,7 @@ class BookSourceAdapter(
 
     interface CallBack {
         val sort: BookSourceSort
-        val sortAscending: Boolean
+        val isSortAscending: Boolean
         fun del(bookSource: BookSourcePart)
         fun edit(bookSource: BookSourcePart)
         fun toTop(bookSource: BookSourcePart)
