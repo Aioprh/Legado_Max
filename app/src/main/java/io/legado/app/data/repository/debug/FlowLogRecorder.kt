@@ -44,6 +44,7 @@ object FlowLogRecorder {
     )
     val logs: SharedFlow<List<FlowLogItem>> = _logs.asSharedFlow()
     
+     // 请求会话映射：书源URL -> 请求ID
     private val logDeque = ArrayDeque<FlowLogItem>()
     private val logSize = AtomicInteger(0)
     private val pendingUpdate = AtomicBoolean(false)
@@ -285,9 +286,11 @@ object FlowLogRecorder {
         if (!isEnabled) return
         
         GlobalScope.launch(Dispatchers.IO) {
+            // 获取或创建请求ID，用于分组
             val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
                 ?: UUID.randomUUID().toString()
 
+            // 创建日志项
             val item = FlowLogItem(
                 requestId = requestId,
                 sourceUrl = sourceUrl,

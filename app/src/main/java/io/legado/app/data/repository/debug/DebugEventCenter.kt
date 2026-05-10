@@ -1,5 +1,6 @@
 package io.legado.app.data.repository.debug
 
+import io.legado.app.help.config.AppConfig
 import io.legado.app.model.debug.DebugEvent
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -46,10 +47,11 @@ object DebugEventCenter {
     /** 当前内存中的事件总数 */
     val eventCount: Int get() = _events.size
 
-    /**
-     * 发送调试事件（线程安全）
-     */
+    val isEnabled: Boolean get() = AppConfig.debugLogFloatingBall
+
     suspend fun emit(event: DebugEvent) {
+        // 检查是否启用调试日志
+        if (!isEnabled) return
         mutex.withLock {
             _events.addFirst(event)
             while (_events.size > MAX_EVENTS) {

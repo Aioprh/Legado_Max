@@ -35,7 +35,10 @@ object DebugFloatingBallManager {
             }
         } else {
             hide()
-            FlowLogRecorder.clear()
+            FlowLogRecorder.clear()// 清空所有日志
+            // DebugEventCenter.clear()// 清空所有事件
+            // DebugEventCenter.clearSync()// 同步清空所有事件
+            // DebugEventCenter.clearSync()// 同步清空所有事件
         }
     }
     
