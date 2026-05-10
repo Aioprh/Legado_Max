@@ -35,6 +35,7 @@ import io.legado.app.utils.getCheckedIndex
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.readText
+import io.legado.app.help.ExportResultHandler
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
@@ -64,25 +65,8 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
     }
     /** 导出书单结果的ActivityResultLauncher，用于选择保存位置 */
     private val exportResult = registerForActivityResult(HandleFileContract()) {
-        it.clipboardJson?.let { json ->
-            requireContext().sendToClip(json)
-            toastOnUi("已复制到剪贴板")
-            return@registerForActivityResult
-        }
-        it.uri?.let { uri ->
-            alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = getString(R.string.path)
-                    editView.setText(uri.toString())
-                }
-                customView { alertBinding.root }
-                okButton {
-                    requireContext().sendToClip(uri.toString())
-                }
-            }
+        ExportResultHandler.handleExportResult(requireActivity() as androidx.appcompat.app.AppCompatActivity, it) { text ->
+            requireContext().sendToClip(text)
         }
     }
     /** 当前分组ID，用于确定导入书籍的分组 */

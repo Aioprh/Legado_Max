@@ -59,6 +59,7 @@ import io.legado.app.utils.flowWithLifecycleAndDatabaseChangeFirst
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.launch
 import io.legado.app.utils.observeEvent
+import io.legado.app.help.ExportResultHandler
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.share
@@ -103,10 +104,10 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
     private var groupMenu: SubMenu? = null
     override var sort = BookSourceSort.Default
         private set
-    override var sortAscending = true
+    override var isSortAscending = true
         private set
     private var snackBar: Snackbar? = null
-    private var groupSourcesByDomain = false
+    private var isGroupSourcesByDomain = false
     private val hostMap = hashMapOf<String, String>()
     private val qrResult = registerForActivityResult(QrCodeResult()) {
         it ?: return@registerForActivityResult
@@ -118,25 +119,8 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
         }
     }
     private val exportDir = registerForActivityResult(HandleFileContract()) {
-        it.clipboardJson?.let { json ->
-            sendToClip(json)
-            toastOnUi("已复制到剪贴板")
-            return@registerForActivityResult
-        }
-        it.uri?.let { uri ->
-            alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = getString(R.string.path)
-                    editView.setText(uri.toString())
-                }
-                customView { alertBinding.root }
-                okButton {
-                    sendToClip(uri.toString())
-                }
-            }
+        ExportResultHandler.handleExportResult(this, it) { text ->
+            sendToClip(text)
         }
     }
     private val groupMenuLifecycleOwner = object : LifecycleOwner {
@@ -173,7 +157,7 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         groupMenu = menu.findItem(R.id.menu_group).subMenu
         val sortSubMenu = menu.findItem(R.id.action_sort).subMenu!!
-        sortSubMenu.findItem(R.id.menu_sort_desc).isChecked = !sortAscending
+        sortSubMenu.findItem(R.id.menu_sort_desc).isChecked = !isSortAscending
         sortSubMenu.setGroupCheckable(R.id.menu_group_sort, true, true)
         upGroupMenu()
         return super.onPrepareOptionsMenu(menu)
@@ -192,8 +176,8 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
             R.id.menu_import_onLine -> showImportDialog()
 
             R.id.menu_sort_desc -> {
-                sortAscending = !sortAscending
-                item.isChecked = !sortAscending
+                isSortAscending = !isSortAscending
+                item.isChecked = !isSortAscending
                 upBookSource(searchView.query?.toString())
             }
 
@@ -265,7 +249,7 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
 
             R.id.menu_group_sources_by_domain -> {
                 item.isChecked = !item.isChecked
-                groupSourcesByDomain = item.isChecked
+                isGroupSourcesByDomain = item.isChecked
                 adapter.showSourceHost = item.isChecked
                 upBookSource(searchView.query?.toString())
             }
@@ -344,12 +328,12 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
                 }
             }.map { data ->
                 hostMap.clear()
-                if (groupSourcesByDomain) {
+                if (isGroupSourcesByDomain) {
                     data.sortedWith(
                         compareBy<BookSourcePart> { getSourceHost(it.bookSourceUrl) == "#" }
                             .thenBy { getSourceHost(it.bookSourceUrl) }
                             .thenByDescending { it.lastUpdateTime })
-                } else if (sortAscending) {
+                } else if (isSortAscending) {
                     when (sort) {
                         BookSourceSort.Weight -> data.sortedBy { it.weight }
                         BookSourceSort.Name -> data.sortedWith { o1, o2 ->
@@ -398,7 +382,7 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
             }.flowOn(IO).conflate().collect { data ->
                 adapter.setItems(data, adapter.diffItemCallback, !Debug.isChecking)
                 itemTouchCallback.isCanDrag =
-                    sort == BookSourceSort.Default && !groupSourcesByDomain
+                    sort == BookSourceSort.Default && !isGroupSourcesByDomain
                 delay(500)
             }
         }
@@ -506,7 +490,7 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
             R.id.menu_export_selection -> viewModel.saveToFile(
                 adapter,
                 searchView.query?.toString(),
-                sortAscending,
+                isSortAscending,
                 sort
             ) { file, name ->
                 exportDir.launch {
@@ -522,7 +506,7 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
             R.id.menu_share_source -> viewModel.saveToFile(
                 adapter,
                 searchView.query?.toString(),
-                sortAscending,
+                isSortAscending,
                 sort
             ) { file, name ->
                 share(file)
@@ -789,7 +773,7 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
     }
 
     override fun toTop(bookSource: BookSourcePart) {
-        if (sortAscending) {
+        if (isSortAscending) {
             viewModel.topSource(bookSource)
         } else {
             viewModel.bottomSource(bookSource)
@@ -797,7 +781,7 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
     }
 
     override fun toBottom(bookSource: BookSourcePart) {
-        if (sortAscending) {
+        if (isSortAscending) {
             viewModel.bottomSource(bookSource)
         } else {
             viewModel.topSource(bookSource)

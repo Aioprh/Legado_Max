@@ -2,6 +2,7 @@ package io.legado.app.data.dao
 
 import androidx.room.*
 import io.legado.app.data.entities.UploadHistory
+import io.legado.app.data.entities.UploadHistoryWithRule
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -21,6 +22,22 @@ interface UploadHistoryDao {
      */
     @Query("SELECT * FROM upload_histories ORDER BY uploadTime DESC")
     fun flowAll(): Flow<List<UploadHistory>>
+
+    /**
+     * 获取所有历史记录（带规则名称，响应式）
+     * 关联查询规则表，获取最新的规则名称
+     * 如果规则被删除，则使用历史记录中保存的规则名称
+     * 按上传时间倒序排列
+     * 
+     * @return 历史记录与规则名称的关联列表的Flow流
+     */
+    @Query("""
+        SELECT h.*, r.summary as ruleSummary
+        FROM upload_histories h
+        LEFT JOIN direct_link_upload_rules r ON h.ruleId = r.id
+        ORDER BY h.uploadTime DESC
+    """)
+    fun flowAllWithRule(): Flow<List<UploadHistoryWithRule>>
 
     /**
      * 根据规则ID获取历史记录（响应式）

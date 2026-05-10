@@ -8,6 +8,14 @@ import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -24,10 +32,13 @@ import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
 import io.legado.app.help.storage.BackupConfig
+import io.legado.app.help.storage.BackupFileValidator
 import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.help.storage.BackupSelectorConfig
 import io.legado.app.help.storage.ImportOldData
 import io.legado.app.help.storage.Restore
+import io.legado.app.help.storage.ValidationResult
+import io.legado.app.help.storage.ValidationState
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.permission.Permissions
@@ -36,6 +47,7 @@ import io.legado.app.lib.prefs.fragment.PreferenceFragment
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.widget.dialog.BackupInfoDialog
 import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.utils.FileDoc
@@ -61,6 +73,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import splitties.init.appCtx
+
 
 class BackupConfigFragment : PreferenceFragment(),
     SharedPreferences.OnSharedPreferenceChangeListener,
@@ -497,50 +510,105 @@ class BackupConfigFragment : PreferenceFragment(),
         }
     }
     
-    /**
-     * 显示文件选择对话框
-     */
+    private var validationResults = mutableMapOf<String, ValidationResult>()
+    private var validationJob: Job? = null
+    private var composeDialogView: View? = null
+    
     private fun showFileSelectionDialog(
         files: List<BackupInfoHelper.BackupFileInfo>,
         backupPath: String
     ) {
-        val displayNames = files.map { 
-            "${it.displayName} (${BackupInfoHelper.formatSize(it.size)})"
-        }.toTypedArray()
-        val checkedItems = BooleanArray(files.size) { true }
+        validationResults.clear()
+        dismissComposeDialog()
         
-        alert(R.string.select_files_to_restore) {
-            multiChoiceItems(displayNames, checkedItems) { _, which, isChecked ->
-                checkedItems[which] = isChecked
+        val activity = requireActivity()
+        val rootView = activity.window.decorView as? ViewGroup ?: return
+        
+        var showDialog by mutableStateOf(true)
+        var showErrorDialog by mutableStateOf<ValidationResult?>(null)
+        val results = mutableStateMapOf<String, ValidationResult>()
+        
+        val composeView = ComposeView(activity).apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                LegadoTheme {
+                    if (showDialog) {
+                        FileValidationDialog(
+                            files = files,
+                            validationResults = results,
+                            onValidate = {
+                                validationJob?.cancel()
+                                validationJob = lifecycleScope.launch {
+                                    try {
+                                        BackupFileValidator.validateFiles(backupPath, files.map { it.fileName }) { fileName, result ->
+                                            results[fileName] = result
+                                            validationResults[fileName] = result
+                                        }
+                                    } catch (e: Exception) {
+                                        appCtx.toastOnUi("格式检测出错: ${e.message}")
+                                    }
+                                }
+                            },
+                            onConfirm = { selectedFiles ->
+                                if (selectedFiles.isEmpty()) {
+                                    appCtx.toastOnUi("请至少选择一个文件")
+                                    return@FileValidationDialog
+                                }
+                                showDialog = false
+                                dismissComposeDialog()
+                                
+                                validationJob?.cancel()
+                                waitDialog.setText("恢复中…")
+                                waitDialog.show()
+                                val task = Coroutine.async {
+                                    Restore.restoreSelected(appCtx, backupPath, selectedFiles)
+                                }.onFinally {
+                                    waitDialog.dismiss()
+                                }
+                                waitDialog.setOnCancelListener {
+                                    task.cancel()
+                                }
+                            },
+                            onDismiss = {
+                                showDialog = false
+                                dismissComposeDialog()
+                                validationJob?.cancel()
+                            },
+                            onInfoClick = { result ->
+                                showErrorDialog = result
+                            }
+                        )
+                        
+                        showErrorDialog?.let { result ->
+                            ValidationErrorDetailDialog(
+                                result = result,
+                                onDismiss = { showErrorDialog = null }
+                            )
+                        }
+                    }
+                }
             }
-            okButton {
-                val selectedFiles = files.filterIndexed { index, _ -> 
-                    checkedItems[index] 
-                }.map { it.fileName }
-                
-                if (selectedFiles.isEmpty()) {
-                    appCtx.toastOnUi("请至少选择一个文件")
-                    return@okButton
-                }
-                
-                // 执行选择性恢复
-                waitDialog.setText("恢复中…")
-                waitDialog.show()
-                val task = Coroutine.async {
-                    Restore.restoreSelected(appCtx, backupPath, selectedFiles)
-                }.onFinally {
-                    waitDialog.dismiss()
-                }
-                waitDialog.setOnCancelListener {
-                    task.cancel()
-                }
-            }
-            cancelButton()
         }
+        
+        val layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        )
+        rootView.addView(composeView, layoutParams)
+        composeDialogView = composeView
+    }
+    
+    private fun dismissComposeDialog() {
+        composeDialogView?.let { view ->
+            val parent = view.parent as? ViewGroup
+            parent?.removeView(view)
+        }
+        composeDialogView = null
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        dismissComposeDialog()
         waitDialog.dismiss()
     }
 

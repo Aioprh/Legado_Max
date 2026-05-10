@@ -840,7 +840,7 @@
     <string name="restore_ignore_summary">恢复时忽略一些内容不恢复，方便不同手机配置不同</string>
     <string name="restore_show_selector">恢复显示选择菜单</string>
     <string name="restore_show_selector_summary">恢复时显示文件选择对话框，可选择要恢复的内容</string>
-    <string name="select_files_to_restore">选择要恢复的文件</string>
+    <string name="select_files_to_restore">选择恢复文件</string>
     <string name="read_config">阅读界面设置</string>
     <string name="group_name">分组名称</string>
     <string name="note_content">备注内容</string>
@@ -916,9 +916,9 @@
     <string name="export_bookshelf">导出书单</string>
     <string name="export_to_clipboard">导出JSON到剪贴板</string>
     <string name="import_bookshelf">导入书单</string>
-    <string name="pre_download">预下载</string>
-    <string name="pre_download_m">预下载%s页</string>
-    <string name="pre_download_s">预先下载 %s 章正文</string>
+    <string name="pre_download">向后预下载</string>
+    <string name="pre_download_m">向后预下载%s页</string>
+    <string name="pre_download_s">向后预先下载 %s 章正文</string>
     <string name="backward_pre_download">向前预下载</string>
     <string name="backward_pre_download_s">向前预下载 %s 章</string>
     <string name="is_enabled">是否启用</string>

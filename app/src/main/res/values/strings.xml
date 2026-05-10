@@ -853,7 +853,7 @@
     <string name="restore_ignore_summary">Ignore some contents while restoring</string>
     <string name="restore_show_selector">Restore selection menu</string>
     <string name="restore_show_selector_summary">Show file selection dialog before restoring</string>
-    <string name="select_files_to_restore">Select files to restore</string>
+    <string name="select_files_to_restore">Select restore files</string>
     <string name="read_config">Reading interface settings</string>
     <string name="group_name">Group name</string>
     <string name="note_content">Remarks section</string>
@@ -1583,4 +1583,5 @@
     <string name="view_js_lib">查看JS库</string>
     <string name="view_result">查看结果</string>
     <string name="open_editor">打开编辑器</string>
+    <string name="info">信息</string>
 </resources>
