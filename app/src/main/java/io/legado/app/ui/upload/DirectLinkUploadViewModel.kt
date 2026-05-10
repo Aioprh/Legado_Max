@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.entities.DirectLinkUploadRule
 import io.legado.app.data.entities.UploadHistory
+import io.legado.app.data.entities.UploadHistoryWithRule
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.model.upload.DirectLinkUploadRepository
 import io.legado.app.model.upload.UploadStats
@@ -19,7 +20,7 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
     private val repository = DirectLinkUploadRepository()
 
     val rules = repository.getRules()
-    val histories = repository.getHistories()
+    val histories = repository.getHistoriesWithRule()
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()

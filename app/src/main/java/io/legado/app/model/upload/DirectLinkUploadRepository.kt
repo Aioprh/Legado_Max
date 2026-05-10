@@ -3,6 +3,7 @@ package io.legado.app.model.upload
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.DirectLinkUploadRule
 import io.legado.app.data.entities.UploadHistory
+import io.legado.app.data.entities.UploadHistoryWithRule
 import io.legado.app.help.DirectLinkUpload
 import kotlinx.coroutines.flow.Flow
 
@@ -100,6 +101,14 @@ class DirectLinkUploadRepository {
      * @return 历史记录列表的Flow流
      */
     fun getHistories(): Flow<List<UploadHistory>> = historyDao.flowAll()
+
+    /**
+     * 获取所有历史记录（带规则名称，响应式）
+     * 关联查询规则表，获取最新的规则名称
+     * 
+     * @return 历史记录与规则名称的关联列表的Flow流
+     */
+    fun getHistoriesWithRule(): Flow<List<UploadHistoryWithRule>> = historyDao.flowAllWithRule()
 
     /**
      * 根据规则ID获取历史记录（响应式）
