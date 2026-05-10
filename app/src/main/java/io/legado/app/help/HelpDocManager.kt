@@ -52,4 +52,9 @@ object HelpDocManager {
         return allHelpDocs.find { it.fileName == fileName }
             ?: hiddenHelpDocs.find { it.fileName == fileName }
     }
+    
+    // 判断文档是否为隐藏文档
+    fun isHiddenDoc(fileName: String): Boolean {
+        return hiddenHelpDocs.any { it.fileName == fileName }
+    }
 }

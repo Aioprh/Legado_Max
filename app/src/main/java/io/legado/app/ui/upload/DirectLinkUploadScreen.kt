@@ -25,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
 import io.legado.app.data.entities.DirectLinkUploadRule
 import io.legado.app.data.entities.UploadHistory
+import io.legado.app.data.entities.UploadHistoryWithRule
 import io.legado.app.ui.upload.DirectLinkUploadViewModel.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -165,13 +166,13 @@ fun DirectLinkUploadScreen(
                 )
                 1 -> HistoryListTab(
                     histories = histories,
-                    onDelete = { history ->
-                        viewModel.deleteHistory(history)
+                    onDelete = { historyWithRule ->
+                        viewModel.deleteHistory(historyWithRule.toUploadHistory())
                         Toast.makeText(context, "已删除历史记录", Toast.LENGTH_SHORT).show()
                     },
-                    onCopy = { history ->
-                        if (history.downloadUrl.isNotBlank()) {
-                            val clip = ClipData.newPlainText("下载链接", history.downloadUrl)
+                    onCopy = { historyWithRule ->
+                        if (historyWithRule.downloadUrl.isNotBlank()) {
+                            val clip = ClipData.newPlainText("下载链接", historyWithRule.downloadUrl)
                             clipboardManager.setPrimaryClip(clip)
                             Toast.makeText(context, "已复制下载链接", Toast.LENGTH_SHORT).show()
                         }
@@ -507,9 +508,9 @@ fun RuleCard(
 
 @Composable
 fun HistoryListTab(
-    histories: List<UploadHistory>,
-    onDelete: (UploadHistory) -> Unit,
-    onCopy: (UploadHistory) -> Unit
+    histories: List<UploadHistoryWithRule>,
+    onDelete: (UploadHistoryWithRule) -> Unit,
+    onCopy: (UploadHistoryWithRule) -> Unit
 ) {
     if (histories.isEmpty()) {
         Box(
@@ -536,11 +537,11 @@ fun HistoryListTab(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            items(histories) { history ->
+            items(histories) { historyWithRule ->
                 HistoryCard(
-                    history = history,
-                    onDelete = { onDelete(history) },
-                    onCopy = { onCopy(history) }
+                    historyWithRule = historyWithRule,
+                    onDelete = { onDelete(historyWithRule) },
+                    onCopy = { onCopy(historyWithRule) }
                 )
             }
         }
@@ -549,10 +550,11 @@ fun HistoryListTab(
 
 @Composable
 fun HistoryCard(
-    history: UploadHistory,
+    historyWithRule: UploadHistoryWithRule,
     onDelete: () -> Unit,
     onCopy: () -> Unit
 ) {
+    val history = historyWithRule.toUploadHistory()
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -590,17 +592,35 @@ fun HistoryCard(
                     )
                 }
                 
-                if (!history.success) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            text = "失败",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val displayRuleSummary = historyWithRule.getDisplayRuleSummary()
+                    if (displayRuleSummary.isNotBlank()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                text = displayRuleSummary,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    
+                    if (!history.success) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                text = "失败",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 }
             }

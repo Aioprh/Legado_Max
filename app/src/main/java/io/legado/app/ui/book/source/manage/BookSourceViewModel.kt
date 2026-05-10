@@ -147,7 +147,7 @@ class BookSourceViewModel(application: Application) : BaseViewModel(application)
     fun saveToFile(
         adapter: BookSourceAdapter,
         searchKey: String?,
-        sortAscending: Boolean,
+        isSortAscending: Boolean,
         sort: BookSourceSort,
         success: (file: File, name: String) -> Unit
     ) {
@@ -156,12 +156,12 @@ class BookSourceViewModel(application: Application) : BaseViewModel(application)
             val selectionSize = selection.size
             val selectedRate = selectionSize.toFloat() / adapter.itemCount.toFloat()
             val sources = if (selectedRate == 1f) {
-                getBookSources(searchKey, sortAscending, sort)
+                getBookSources(searchKey, isSortAscending, sort)
             } else if (selectedRate < ReadConstants.SOURCE_SELECTED_RATE_THRESHOLD) {
                 selection.toBookSource()
             } else {
                 val keys = selection.map { it.bookSourceUrl }.toHashSet()
-                val bookSources = getBookSources(searchKey, sortAscending, sort)
+                val bookSources = getBookSources(searchKey, isSortAscending, sort)
                 bookSources.filter {
                     keys.contains(it.bookSourceUrl)
                 }
@@ -178,7 +178,7 @@ class BookSourceViewModel(application: Application) : BaseViewModel(application)
 
     private fun getBookSources(
         searchKey: String?,
-        sortAscending: Boolean,
+        isSortAscending: Boolean,
         sort: BookSourceSort
     ): List<BookSource> {
         return when {
@@ -219,7 +219,7 @@ class BookSourceViewModel(application: Application) : BaseViewModel(application)
                 appDb.bookSourceDao.search(searchKey)
             }
         }.let { data ->
-            if (sortAscending) when (sort) {
+            if (isSortAscending) when (sort) {
                 BookSourceSort.Weight -> data.sortedBy { it.weight }
                 BookSourceSort.Name -> data.sortedWith { o1, o2 ->
                     o1.bookSourceName.cnCompare(o2.bookSourceName)

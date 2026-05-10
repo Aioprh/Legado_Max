@@ -46,6 +46,7 @@ import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.launch
+import io.legado.app.help.ExportResultHandler
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.setEdgeEffectColor
@@ -125,25 +126,8 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
         }
     }
     private val exportResult = registerForActivityResult(HandleFileContract()) {
-        it.clipboardJson?.let { json ->
-            sendToClip(json)
-            toastOnUi("已复制到剪贴板")
-            return@registerForActivityResult
-        }
-        it.uri?.let { uri ->
-            alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = getString(R.string.path)
-                    editView.setText(uri.toString())
-                }
-                customView { alertBinding.root }
-                okButton {
-                    sendToClip(uri.toString())
-                }
-            }
+        ExportResultHandler.handleExportResult(this, it) { text ->
+            sendToClip(text)
         }
     }
 

@@ -42,6 +42,7 @@ import io.legado.app.utils.applyTint
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.isAbsUrl
+import io.legado.app.help.ExportResultHandler
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showDialogFragment
@@ -87,20 +88,8 @@ class BookshelfManageActivity :
         DragSelectTouchHelper(adapter.dragSelectCallback).setSlideArea(16, 50)
     }
     private val exportDir = registerForActivityResult(HandleFileContract()) {
-        it.uri?.let { uri ->
-            alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = getString(R.string.path)
-                    editView.setText(uri.toString())
-                }
-                customView { alertBinding.root }
-                okButton {
-                    sendToClip(uri.toString())
-                }
-            }
+        ExportResultHandler.handleExportResult(this, it) { text ->
+            sendToClip(text)
         }
     }
 
