@@ -2,6 +2,7 @@ package io.legado.app.ui.book.read.page.provider
 
 import android.graphics.Paint
 import android.text.Layout
+import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -13,6 +14,7 @@ import android.text.style.URLSpan
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.PageAnim
+import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookContent
@@ -62,9 +64,13 @@ import io.legado.app.help.TextViewTagHandler.Companion.HR_PLACE_STR
 import io.legado.app.model.analyzeRule.AnalyzeUrl.Companion.paramPattern
 import io.legado.app.ui.book.read.page.entities.column.BaseColumn
 import io.legado.app.ui.book.read.page.entities.column.TextBaseColumn
+import io.legado.app.ui.book.read.config.HighlightRule
+import io.legado.app.ui.book.read.config.HighlightRuleStore
 import io.legado.app.ui.book.read.page.provider.ChapterProvider.reviewChar
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
+import io.legado.app.utils.getPrefBoolean
+import splitties.init.appCtx
 
 class TextChapterLayout(
     scope: CoroutineScope,
@@ -111,6 +117,10 @@ class TextChapterLayout(
     private val textFullJustify = ReadBookConfig.textFullJustify
     private val adaptSpecialStyle = AppConfig.adaptSpecialStyle
     private val pageAnim = book.getPageAnim()
+    private val highlightRules by lazy { HighlightRuleStore.loadEnabled(appCtx) }
+    private val dialogHighlightColor = 0xFFE58D2B.toInt()
+    private val noteHighlightColor = 0xFF8F959E.toInt()
+    private val bookTitleUnderlineColor = 0xFF63C37D.toInt()
 
     private var pendingTextPage = TextPage()
 
@@ -604,7 +614,14 @@ class TextChapterLayout(
         htmlContent: String,
     ) {
         val textViewTagHandler = TextViewTagHandler()
-        val spanned = htmlContent.parseAsHtml(HtmlCompat.FROM_HTML_MODE_COMPACT, tagHandler = textViewTagHandler)
+        val spanned = applyBuiltInHighlightRules(
+            SpannableStringBuilder(
+                htmlContent.parseAsHtml(
+                    HtmlCompat.FROM_HTML_MODE_COMPACT,
+                    tagHandler = textViewTagHandler
+                )
+            )
+        )
         val width = visibleWidth
         val textPaint = contentPaint
         val textColor = ReadBookConfig.textColor
@@ -660,6 +677,8 @@ class TextChapterLayout(
                 val textSize = extractTextSize(spanned, charIndex, textPaint.textSize)
                 val textColor = extractTextColor(spanned, charIndex)
                 val linkUrl = extractLinkUrl(spanned, charIndex)
+                val underlineMode = extractUnderlineMode(spanned, charIndex)
+                val underlineColor = extractUnderlineColor(spanned, charIndex)
                 val charRight = if (charIndex + 1 < lineEnd) {
                     staticLayout.getPrimaryHorizontal(charIndex + 1)
                 } else {
@@ -744,7 +763,9 @@ class TextChapterLayout(
                                 HR_PLACE_STR,
                                 textSize,
                                 textColor,
-                                linkUrl
+                                linkUrl,
+                                underlineMode,
+                                underlineColor
                             )
                         )
                         needAddText = false
@@ -758,7 +779,9 @@ class TextChapterLayout(
                             char,
                             textSize,
                             textColor,
-                            linkUrl
+                            linkUrl,
+                            underlineMode,
+                            underlineColor
                         )
                     )
                 }
@@ -881,7 +904,25 @@ class TextChapterLayout(
 
     private fun extractTextColor(spanned: Spanned, index: Int): Int? {
         val foregroundSpans = spanned.getSpans(index, index + 1, ForegroundColorSpan::class.java)
-        return foregroundSpans.firstOrNull()?.foregroundColor
+        return foregroundSpans.lastOrNull()?.foregroundColor
+    }
+
+    private fun extractUnderlineMode(spanned: CharSequence, index: Int): Int {
+        val underlineSpans = (spanned as? Spanned)?.getSpans(
+            index,
+            index + 1,
+            HighlightStyleSpan::class.java
+        ) ?: return 0
+        return underlineSpans.lastOrNull()?.underlineMode ?: 0
+    }
+
+    private fun extractUnderlineColor(spanned: CharSequence, index: Int): Int? {
+        val underlineSpans = (spanned as? Spanned)?.getSpans(
+            index,
+            index + 1,
+            HighlightStyleSpan::class.java
+        ) ?: return null
+        return underlineSpans.lastOrNull()?.underlineColor
     }
 
     private fun extractLinkUrl(spanned: Spanned, index: Int): String? {
@@ -897,6 +938,93 @@ class TextChapterLayout(
     /**
      * 排版文字
      */
+    private fun applyBuiltInHighlightRules(spannable: SpannableStringBuilder): SpannableStringBuilder {
+        if (appCtx.getPrefBoolean(PreferKey.highlightRuleBracketNote, true)) {
+            applyTextColorRule(
+                spannable,
+                Regex("（[^）\\n]{1,80}）|\\([^\\)\\n]{1,80}\\)|【[^】\\n]{1,80}】"),
+                noteHighlightColor
+            )
+        }
+        if (appCtx.getPrefBoolean(PreferKey.highlightRuleDialog, true)) {
+            applyTextColorRule(
+                spannable,
+                Regex("“[^”\\n]{1,120}”|\"[^\"\\n]{1,120}\"|「[^」\\n]{1,120}」|『[^』\\n]{1,120}』"),
+                dialogHighlightColor
+            )
+        }
+        if (appCtx.getPrefBoolean(PreferKey.highlightRuleBookTitle, true)) {
+            applyUnderlineRule(
+                spannable,
+                Regex("《[^》\\n]{1,80}》"),
+                3,
+                bookTitleUnderlineColor
+            )
+        }
+        return spannable
+    }
+
+    private fun applyTextColorRule(
+        spannable: SpannableStringBuilder,
+        regex: Regex,
+        color: Int,
+    ) {
+        regex.findAll(spannable).forEach { match ->
+            spannable.setSpan(
+                ForegroundColorSpan(color),
+                match.range.first,
+                match.range.last + 1,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+    }
+
+    private fun applyUnderlineRule(
+        spannable: SpannableStringBuilder,
+        regex: Regex,
+        mode: Int,
+        color: Int,
+    ) {
+        regex.findAll(spannable).forEach { match ->
+            spannable.setSpan(
+                HighlightStyleSpan(mode, color),
+                match.range.first,
+                match.range.last + 1,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+    }
+
+    private fun applyHighlightRulesFromStore(spannable: SpannableStringBuilder): SpannableStringBuilder {
+        highlightRules.forEach { rule ->
+            val regex = kotlin.runCatching { Regex(rule.pattern) }.getOrNull() ?: return@forEach
+            regex.findAll(spannable).forEach { match ->
+                val start = match.range.first
+                val end = match.range.last + 1
+                rule.textColor?.let { color ->
+                    spannable.setSpan(
+                        ForegroundColorSpan(color),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+                if (rule.underlineMode != 0) {
+                    spannable.setSpan(
+                        HighlightStyleSpan(
+                            rule.underlineMode,
+                            rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt()
+                        ),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+            }
+        }
+        return spannable
+    }
+
     @Suppress("DEPRECATION")
     private suspend fun setTypeText(
         book: Book,
@@ -912,6 +1040,7 @@ class TextChapterLayout(
         srcList: LinkedList<String>? = null,
         clickList: LinkedList<String?>?
     ) {
+        val styledText = applyHighlightRulesFromStore(SpannableStringBuilder(text))
         val widthsArray = allocateFloatArray(text.length)
         textPaint.getTextWidthsCompat(text, widthsArray, reviewCharWidth)
         val layout = if (useZhLayout) {
@@ -919,7 +1048,7 @@ class TextChapterLayout(
             val indentSize = if (isFirstLine) paragraphIndent.length else 0
             ZhLayout(text, textPaint, visibleWidth, words, widths, indentSize)
         } else {
-            StaticLayout(text, textPaint, visibleWidth, Layout.Alignment.ALIGN_NORMAL, 0f, 0f, true)
+            StaticLayout(styledText, textPaint, visibleWidth, Layout.Alignment.ALIGN_NORMAL, 0f, 0f, true)
         }
         durY = when {
             //标题y轴居中
@@ -970,7 +1099,7 @@ class TextChapterLayout(
                     //多行的第一行 非标题
                     addCharsToLineFirst(
                         book, absStartX, textLine, words, textPaint,
-                        desiredWidth, widths, srcList, clickList
+                        desiredWidth, widths, srcList, clickList, styledText, lineStart
                     )
                 }
                 layout.lineCount - 1 -> {
@@ -990,7 +1119,7 @@ class TextChapterLayout(
                     }
                     addCharsToLineNatural(
                         book, absStartX, textLine, words,
-                        startX, !isTitle && lineIndex == 0, widths, srcList, clickList
+                        startX, !isTitle && lineIndex == 0, widths, srcList, clickList, styledText, lineStart
                     )
                 }
                 else -> {
@@ -1006,13 +1135,13 @@ class TextChapterLayout(
                         }
                         addCharsToLineNatural(
                             book, absStartX, textLine, words,
-                            startX, false, widths, srcList, clickList
+                            startX, false, widths, srcList, clickList, styledText, lineStart
                         )
                     } else {
                         //中间行
                         addCharsToLineMiddle(
                             book, absStartX, textLine, words, textPaint,
-                            desiredWidth, 0f, widths, srcList, clickList
+                            desiredWidth, 0f, widths, srcList, clickList, styledText, lineStart
                         )
                     }
                 }
@@ -1066,13 +1195,15 @@ class TextChapterLayout(
         desiredWidth: Float,
         textWidths: List<Float>,
         srcList: LinkedList<String>?,
-        clickList: LinkedList<String?>?
+        clickList: LinkedList<String?>?,
+        styledText: CharSequence,
+        lineStart: Int,
     ) {
         var x = 0f
         if (!textFullJustify) {
             addCharsToLineNatural(
                 book, absStartX, textLine, words,
-                x, true, textWidths, srcList, clickList
+                x, true, textWidths, srcList, clickList, styledText, lineStart
             )
             return
         }
@@ -1095,7 +1226,7 @@ class TextChapterLayout(
             val textWidths1 = textWidths.subList(bodyIndent.length, textWidths.size)
             addCharsToLineMiddle(
                 book, absStartX, textLine, text1, textPaint,
-                desiredWidth, x, textWidths1, srcList, clickList
+                desiredWidth, x, textWidths1, srcList, clickList, styledText, lineStart + bodyIndent.length
             )
         }
     }
@@ -1115,13 +1246,15 @@ class TextChapterLayout(
         startX: Float,
         textWidths: List<Float>,
         srcList: LinkedList<String>?,
-        clickList: LinkedList<String?>?
+        clickList: LinkedList<String?>?,
+        styledText: CharSequence,
+        lineStart: Int,
     ) {
         if (!textFullJustify) {
             addCharsToLineNatural(
                 book, absStartX, textLine, words,
                 startX, false, textWidths, srcList,
-                clickList
+                clickList, styledText, lineStart
             )
             return
         }
@@ -1143,7 +1276,7 @@ class TextChapterLayout(
                 addCharToLine(
                     book, absStartX, textLine, char,
                     x, x1, index + 1 == words.size, srcList,
-                    clickList
+                    clickList, styledText, lineStart + index
                 )
                 x = x1
             }
@@ -1160,7 +1293,7 @@ class TextChapterLayout(
                 addCharToLine(
                     book, absStartX, textLine, char,
                     x, x1, index + 1 == words.size, srcList,
-                    clickList
+                    clickList, styledText, lineStart + index
                 )
                 x = x1
             }
@@ -1180,7 +1313,9 @@ class TextChapterLayout(
         hasIndent: Boolean,
         textWidths: List<Float>,
         srcList: LinkedList<String>?,
-        clickList: LinkedList<String?>?
+        clickList: LinkedList<String?>?,
+        styledText: CharSequence,
+        lineStart: Int,
     ) {
         val indentLength = paragraphIndent.length
         var x = startX
@@ -1189,7 +1324,19 @@ class TextChapterLayout(
             val char = words[index]
             val cw = textWidths[index]
             val x1 = x + cw
-            addCharToLine(book, absStartX, textLine, char, x, x1, index + 1 == words.size, srcList, clickList)
+            addCharToLine(
+                book,
+                absStartX,
+                textLine,
+                char,
+                x,
+                x1,
+                index + 1 == words.size,
+                srcList,
+                clickList,
+                styledText,
+                lineStart + index
+            )
             x = x1
             if (hasIndent && index == indentLength - 1) {
                 textLine.indentWidth = x
@@ -1210,8 +1357,13 @@ class TextChapterLayout(
         xEnd: Float,
         isLineEnd: Boolean,
         srcList: LinkedList<String>?,
-        clickList: LinkedList<String?>?
+        clickList: LinkedList<String?>?,
+        styledText: CharSequence,
+        textIndex: Int,
     ) {
+        val textColor = extractTextColor(styledText as Spanned, textIndex)
+        val underlineMode = extractUnderlineMode(styledText, textIndex)
+        val underlineColor = extractUnderlineColor(styledText, textIndex)
         val column = when {
             !srcList.isNullOrEmpty() && (char == srcReplaceStr || char == reviewStr) -> {
                 val src = srcList.removeFirst()
@@ -1236,7 +1388,10 @@ class TextChapterLayout(
                 TextColumn(
                     start = absStartX + xStart,
                     end = absStartX + xEnd,
-                    charData = char
+                    charData = char,
+                    textColor = textColor,
+                    underlineMode = underlineMode,
+                    underlineColor = underlineColor
                 )
             }
         }

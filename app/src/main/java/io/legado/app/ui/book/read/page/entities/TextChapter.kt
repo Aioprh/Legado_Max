@@ -260,6 +260,7 @@ data class TextChapter(
             page.searchResult.forEach {
                 it.selected = false
                 it.isSearchResult = false
+                it.isCurrentSearchResult = false
             }
             page.searchResult.clear()
         }

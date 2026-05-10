@@ -220,6 +220,9 @@ class MoreConfigDialog : BasePrefDialogFragment() {
                 "textMenuConfig" -> {
                     TextMenuConfigDialog().show(childFragmentManager, "textMenuConfig")
                 }
+                "highlightRuleConfig" -> {
+                    HighlightRuleConfigDialog().show(childFragmentManager, "highlightRuleConfig")
+                }
 
                 PreferKey.pageTouchSlop -> {
                     NumberPickerDialog(requireContext())

@@ -127,4 +127,11 @@
         <item>自定义</item>
     </string-array>
 
+    <string-array name="highlight_rule_underline_modes">
+        <item>无</item>
+        <item>实线下划线</item>
+        <item>虚线下划线</item>
+        <item>波浪下划线</item>
+    </string-array>
+
 </resources>

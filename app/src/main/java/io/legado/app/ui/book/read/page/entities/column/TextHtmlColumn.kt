@@ -22,8 +22,12 @@ data class TextHtmlColumn(
     override val charData: String,
     val mTextSize: Float,
     val mTextColor: Int?,
-    val linkUrl: String?
+    val linkUrl: String?,
+    override val underlineMode: Int = 0,
+    override val underlineColor: Int? = null,
 ) : TextBaseColumn {
+
+    override val textColor: Int? get() = mTextColor
 
     override var textLine: TextLine = emptyTextLine
 
@@ -50,6 +54,13 @@ data class TextHtmlColumn(
                 } else {
                     textLine.searchResultColumnCount--
                 }
+            }
+            field = value
+        }
+    override var isCurrentSearchResult: Boolean = false
+        set(value) {
+            if (field != value) {
+                textLine.invalidate()
             }
             field = value
         }
@@ -85,7 +96,7 @@ data class TextHtmlColumn(
         } else {
             canvas.drawText(charData, start, y, textPaint)
         }
-        if (selected) {
+        if (selected && !isSearchResult) {
             canvas.drawRect(start, 0f, end, textLine.height, view.selectedPaint)
         }
     }
