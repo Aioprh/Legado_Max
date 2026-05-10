@@ -164,7 +164,13 @@ fun DirectLinkUploadScreen(
                 )
                 1 -> HistoryListTab(
                     histories = histories,
-                    onDelete = { viewModel.deleteHistory(it) }
+                    onDelete = { viewModel.deleteHistory(it) },
+                    onCopy = { history ->
+                        if (history.downloadUrl.isNotBlank()) {
+                            val clip = ClipData.newPlainText("下载链接", history.downloadUrl)
+                            clipboardManager.setPrimaryClip(clip)
+                        }
+                    }
                 )
             }
         }
@@ -497,7 +503,8 @@ fun RuleCard(
 @Composable
 fun HistoryListTab(
     histories: List<UploadHistory>,
-    onDelete: (UploadHistory) -> Unit
+    onDelete: (UploadHistory) -> Unit,
+    onCopy: (UploadHistory) -> Unit
 ) {
     if (histories.isEmpty()) {
         Box(
@@ -527,7 +534,8 @@ fun HistoryListTab(
             items(histories) { history ->
                 HistoryCard(
                     history = history,
-                    onDelete = { onDelete(history) }
+                    onDelete = { onDelete(history) },
+                    onCopy = { onCopy(history) }
                 )
             }
         }
@@ -537,7 +545,8 @@ fun HistoryListTab(
 @Composable
 fun HistoryCard(
     history: UploadHistory,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onCopy: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -690,6 +699,13 @@ fun HistoryCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                if (history.success && history.downloadUrl.isNotBlank()) {
+                    TextButton(onClick = onCopy) {
+                        Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("复制链接", color = MaterialTheme.colorScheme.primary)
+                    }
+                }
                 TextButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                     Spacer(modifier = Modifier.width(4.dp))
