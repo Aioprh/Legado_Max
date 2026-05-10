@@ -765,6 +765,8 @@
     <string name="text_bold_not_supported_message">Fine font weight adjustment requires Android 9 (API 28) or above. Your device does not support this feature.</string>
     <string name="text_bold_fine_tip_title">Tip</string>
     <string name="text_bold_fine_tip_message">Fine tune mode supports font weight values from 100 to 900. Smaller values result in thinner fonts, larger values result in bolder fonts. This feature requires Android 9 (API 28) or above.</string>
+    <string name="text_bold_content">Content</string>
+    <string name="text_bold_title">Title</string>
     <string name="full_screen_gestures_support">Full screen gestures support</string>
     <string name="disable_return_key">Disable return key</string>
 

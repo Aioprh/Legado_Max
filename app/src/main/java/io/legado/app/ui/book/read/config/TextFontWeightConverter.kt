@@ -63,7 +63,9 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
     private fun showFontWeightDialog() {
         var currentMode = AppConfig.textBoldMode
         var currentBoldValue = ReadBookConfig.textBold
-        var tempFineValue = if (currentMode == 1) currentBoldValue.coerceIn(100, 900) else 400
+        var currentTitleBoldValue = if (currentMode == 1) ReadBookConfig.titleBold.coerceIn(100, 900) else 700
+        var tempTextValue = if (currentMode == 1) currentBoldValue.coerceIn(100, 900) else 400
+        var tempTitleValue = currentTitleBoldValue
         
         // 视图引用，用于后续切换
         var coarseView: LinearLayout? = null
@@ -123,8 +125,9 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                     }
                     
                     // 精细模式视图
-                    fineView = createFineModeView(tempFineValue) { newValue ->
-                        tempFineValue = newValue
+                    fineView = createFineModeView(tempTextValue, tempTitleValue) { newTextValue, newTitleValue ->
+                        tempTextValue = newTextValue
+                        tempTitleValue = newTitleValue
                     }.apply {
                         visibility = if (currentMode == 1) View.VISIBLE else View.GONE
                     }
@@ -136,7 +139,8 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
             
             positiveButton(android.R.string.ok) {
                 if (currentMode == 1) {
-                    ReadBookConfig.textBold = tempFineValue
+                    ReadBookConfig.textBold = tempTextValue
+                    ReadBookConfig.titleBold = tempTitleValue
                 } else {
                     ReadBookConfig.textBold = currentBoldValue
                 }
@@ -222,51 +226,138 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
     }
 
     private fun createFineModeView(
-        currentValue: Int,
-        onValueChanged: (Int) -> Unit
+        currentTextValue: Int,
+        currentTitleValue: Int,
+        onValueChanged: (Int, Int) -> Unit
     ): LinearLayout {
         val bg = context.bottomBackground
         val isLight = ColorUtils.isColorLight(bg)
         val textColor = context.getPrimaryTextColor(isLight)
+        val accentColor = context.accentColor
+        
+        var textValue = currentTextValue
+        var titleValue = currentTitleValue
         
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24.dpToPx(), 16.dpToPx(), 24.dpToPx(), 8.dpToPx())
             
-            val valueTextView = TextView(context).apply {
-                text = currentValue.toString()
+            val fontWeightNames = context.resources.getStringArray(R.array.text_font_weight_fine)
+            
+            // 正文标题
+            val contentLabel = TextView(context).apply {
+                text = context.getString(R.string.text_bold_content)
+                textSize = 14f
+                setTextColor(accentColor)
+                setPadding(0, 0, 0, 8.dpToPx())
+            }
+            
+            // 正文字重值显示
+            val textValueTextView = TextView(context).apply {
+                text = textValue.toString()
                 textSize = 18f
                 gravity = Gravity.CENTER
                 setTextColor(textColor)
             }
             
-            val fontWeightNames = context.resources.getStringArray(R.array.text_font_weight_fine)
-            val fontWeightNameTextView = TextView(context).apply {
-                text = getFontWeightName(currentValue, fontWeightNames)
+            // 正文字重名称
+            val textWeightNameTextView = TextView(context).apply {
+                text = getFontWeightName(textValue, fontWeightNames)
                 textSize = 14f
                 gravity = Gravity.CENTER
                 setTextColor(textColor)
             }
             
-            val seekBar = SeekBar(context).apply {
+            // 正文 SeekBar
+            val textSeekBar = SeekBar(context).apply {
                 max = 800
-                progress = currentValue - 100
-                setPadding(0, 16.dpToPx(), 0, 16.dpToPx())
+                progress = textValue - 100
+                setPadding(0, 8.dpToPx(), 0, 8.dpToPx())
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                        val value = progress + 100
-                        valueTextView.text = value.toString()
-                        fontWeightNameTextView.text = getFontWeightName(value, fontWeightNames)
-                        onValueChanged(value)
+                        textValue = progress + 100
+                        textValueTextView.text = textValue.toString()
+                        textWeightNameTextView.text = getFontWeightName(textValue, fontWeightNames)
+                        onValueChanged(textValue, titleValue)
                     }
                     override fun onStartTrackingTouch(seekBar: SeekBar?) {}
                     override fun onStopTrackingTouch(seekBar: SeekBar?) {}
                 })
             }
             
-            val labelsContainer = LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
+            // 正文标签容器
+            val textLabelsContainer = createLabelsContainer(textColor)
+            
+            // 分隔空间
+            val spacer = View(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    16.dpToPx()
+                )
             }
+            
+            // 标题标题
+            val titleLabel = TextView(context).apply {
+                text = context.getString(R.string.text_bold_title)
+                textSize = 14f
+                setTextColor(accentColor)
+                setPadding(0, 0, 0, 8.dpToPx())
+            }
+            
+            // 标题字重值显示
+            val titleValueTextView = TextView(context).apply {
+                text = titleValue.toString()
+                textSize = 18f
+                gravity = Gravity.CENTER
+                setTextColor(textColor)
+            }
+            
+            // 标题字重名称
+            val titleWeightNameTextView = TextView(context).apply {
+                text = getFontWeightName(titleValue, fontWeightNames)
+                textSize = 14f
+                gravity = Gravity.CENTER
+                setTextColor(textColor)
+            }
+            
+            // 标题 SeekBar
+            val titleSeekBar = SeekBar(context).apply {
+                max = 800
+                progress = titleValue - 100
+                setPadding(0, 8.dpToPx(), 0, 8.dpToPx())
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                        titleValue = progress + 100
+                        titleValueTextView.text = titleValue.toString()
+                        titleWeightNameTextView.text = getFontWeightName(titleValue, fontWeightNames)
+                        onValueChanged(textValue, titleValue)
+                    }
+                    override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+                })
+            }
+            
+            // 标题标签容器
+            val titleLabelsContainer = createLabelsContainer(textColor)
+            
+            // 添加所有视图
+            addView(contentLabel)
+            addView(textValueTextView)
+            addView(textWeightNameTextView)
+            addView(textSeekBar)
+            addView(textLabelsContainer)
+            addView(spacer)
+            addView(titleLabel)
+            addView(titleValueTextView)
+            addView(titleWeightNameTextView)
+            addView(titleSeekBar)
+            addView(titleLabelsContainer)
+        }
+    }
+    
+    private fun createLabelsContainer(textColor: Int): LinearLayout {
+        return LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
             
             val thinLabel = TextView(context).apply {
                 text = context.getString(R.string.text_bold_thin)
@@ -280,17 +371,10 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                 setTextColor(textColor)
             }
             
-            labelsContainer.apply {
-                addView(thinLabel, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                addView(boldLabel, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    gravity = Gravity.END
-                })
-            }
-            
-            addView(valueTextView)
-            addView(fontWeightNameTextView)
-            addView(seekBar)
-            addView(labelsContainer)
+            addView(thinLabel, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(boldLabel, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                gravity = Gravity.END
+            })
         }
     }
 
