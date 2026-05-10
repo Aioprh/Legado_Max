@@ -19,7 +19,8 @@ object HelpDocManager {
         HelpDoc("部分功能需要安卓特定版本", "部分功能需要安卓特定版本"),
         HelpDoc("下拉刷新流程与机制", "下拉刷新流程与机制"),
         HelpDoc("书源字段规则类型", "书源字段规则类型"),
-        HelpDoc("订阅源字段规则类型", "订阅源字段规则类型")  
+        HelpDoc("订阅源字段规则类型", "订阅源字段规则类型"),
+        HelpDoc("jsPackagesHelp", "JS Packages使用指南")
     )
     
     // 隐藏的帮助文档（可以在某些界面加载查看，但不会出现在切换列表中）
