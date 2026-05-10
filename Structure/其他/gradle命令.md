@@ -3,6 +3,8 @@
 只编译该渠道 Debug 版的 Kotlin 代码，不打包、不处理资源
 .\gradlew.bat :app:compileAppMaxDebugKotlin
 编译测试 : 运行 ./gradlew compileDebugKotlin 检查是否有语法错误
+.\gradlew.bat compileDebugKotlin --console=plain
+它用来控制 Gradle 输出的 控制台显示模式。plain 表示使用纯文本输出,不使用 Gradle 默认的彩色或进度条等美化效果。
 
 打包Debug版本
 .\gradlew.bat :app:assembleDebug

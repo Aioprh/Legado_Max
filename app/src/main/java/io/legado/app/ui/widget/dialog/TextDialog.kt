@@ -112,6 +112,10 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
         binding.toolBar.inflateMenu(R.menu.dialog_text)
         // 应用菜单着色
         binding.toolBar.menu.applyTint(requireContext())
+        
+        // 根据文档类型控制放大镜按钮的可见性
+        updateSearchButtonVisibility()
+        
         // 处理传递的参数
         arguments?.let {
             val title = it.getString("title")
@@ -336,6 +340,27 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
     }
     
     /**
+     * 更新放大镜按钮的可见性
+     * 
+     * 规则：
+     * 1. 非帮助文档模式：显示放大镜按钮
+     * 2. 帮助文档模式且是隐藏文档：隐藏放大镜按钮
+     * 3. 帮助文档模式且是公开文档：显示放大镜按钮
+     */
+    private fun updateSearchButtonVisibility() {
+        val searchMenuItem = binding.toolBar.menu.findItem(R.id.menu_search_help)
+        
+        if (!isHelpMode) {
+            // 非帮助文档模式，显示放大镜按钮
+            searchMenuItem?.isVisible = true
+        } else {
+            // 帮助文档模式，根据是否是隐藏文档决定
+            val isHidden = currentHelpDoc?.let { HelpDocManager.isHiddenDoc(it) } ?: false
+            searchMenuItem?.isVisible = !isHidden
+        }
+    }
+    
+    /**
      * 初始化帮助文档选择器
      * 仅在帮助模式下显示下拉列表供用户切换不同的帮助文档
      */
@@ -378,6 +403,8 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
                 if (selectedDoc.fileName != currentHelpDoc) {
                     currentHelpDoc = selectedDoc.fileName
                     loadHelpDoc(selectedDoc.fileName)
+                    // 切换文档时更新放大镜按钮可见性
+                    updateSearchButtonVisibility()
                 }
             }
             
