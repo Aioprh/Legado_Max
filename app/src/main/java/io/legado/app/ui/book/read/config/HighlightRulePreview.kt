@@ -19,7 +19,7 @@ object HighlightRulePreview {
             when (rule.underlineMode) {
                 4 -> {
                     spannable.setSpan(
-                        TitleEmphasisSpan(textColor, accentColor),
+                        DoubleUnderlineSpan(textColor, accentColor),
                         start,
                         end,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE

@@ -435,27 +435,10 @@ data class TextLine(
                 canvas.drawPath(path, paint)
             }
             4 -> {
-                val fillPaint = TextPaint(paint).apply {
-                    color = underlineColor
-                    style = android.graphics.Paint.Style.FILL
-                    pathEffect = null
-                }
-                val barWidth = 4.dpToPx().toFloat()
-                val gap = 8.dpToPx().toFloat()
-                val barRight = (startX - gap).coerceAtLeast(barWidth)
-                val barLeft = (barRight - barWidth).coerceAtLeast(0f)
-                val barTop = 3.dpToPx().toFloat()
-                val barBottom = height - 3.dpToPx().toFloat()
-                val radius = 2.dpToPx().toFloat()
-                canvas.drawRoundRect(
-                    barLeft,
-                    barTop,
-                    barRight,
-                    barBottom,
-                    radius,
-                    radius,
-                    fillPaint
-                )
+                val lineGap = 3.dpToPx().toFloat()
+                val line2Y = lineY + lineGap + 2.dpToPx()
+                canvas.drawLine(startX, lineY, endX, lineY, paint)
+                canvas.drawLine(startX, line2Y, endX, line2Y, paint)
             }
             5 -> {
                 if (svgPathStr.isNotBlank()) {
