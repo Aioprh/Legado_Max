@@ -255,8 +255,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             }
             showDialogFragment(dialog)
         } else if (!BuildConfig.DEBUG) {
-            val log = String(assets.open("updateLog.md").readBytes())
-            val dialog = TextDialog(getString(R.string.update_log), log, TextDialog.Mode.MD)
+            val log = String(assets.open("web/help/md/updateLog.md").readBytes())
+            val dialog = TextDialog(getString(R.string.update_log), log, TextDialog.Mode.MD, "updateLog")
             dialog.setOnDismissListener {
                 block.resume(null)
             }
