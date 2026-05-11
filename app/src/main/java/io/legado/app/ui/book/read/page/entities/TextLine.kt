@@ -2,8 +2,7 @@ package io.legado.app.ui.book.read.page.entities
 
 import android.annotation.SuppressLint
 import android.graphics.Canvas
-import android.graphics.DashPathEffect
-import android.graphics.Paint.FontMetrics
+import android.graphics.Paint
 import android.graphics.Path
 import android.os.Build
 import android.text.TextPaint
@@ -102,7 +101,7 @@ data class TextLine(
         return textColumns.size
     }
 
-    fun upTopBottom(durY: Float, textHeight: Float, fontMetrics: FontMetrics) {
+    fun upTopBottom(durY: Float, textHeight: Float, fontMetrics: Paint.FontMetrics) {
         lineTop = ChapterProvider.paddingTop + durY
         lineBottom = lineTop + textHeight
         lineBase = lineBottom - fontMetrics.descent
@@ -240,50 +239,58 @@ data class TextLine(
         }
         val distance = (ChapterProvider.lineSpacingExtra * 10 - 11).coerceIn(-1f, 10f)
         val lineY = height + distance.dpToPx()
-        if (underlineMode == 1) {
-            canvas.drawLine(
-                lineStart + indentWidth,
-                lineY,
-                lineEnd,
-                lineY,
-                paint
-            )
-        } else if (underlineMode == 2) {
-            paint.pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
-            canvas.drawLine(
-                lineStart + indentWidth,
-                lineY,
-                lineEnd,
-                lineY,
-                paint
-            )
-        } else if (underlineMode == 3) {
-            val path = Path()
-            val startX = lineStart + indentWidth
-            val endX = lineEnd
-            val waveAmplitude = 3.dpToPx().toFloat()
-            val waveLength = 12.dpToPx().toFloat()
-            
-            path.moveTo(startX, lineY)
-            var currentX = startX
-            
-            while (currentX < endX) {
-                val nextX = (currentX + waveLength).coerceAtMost(endX)
-                val midX = (currentX + nextX) / 2
-                
-                path.quadTo(midX, lineY - waveAmplitude, nextX, lineY)
-                currentX = nextX
-                
-                if (currentX < endX) {
-                    val nextX2 = (currentX + waveLength).coerceAtMost(endX)
-                    val midX2 = (currentX + nextX2) / 2
-                    path.quadTo(midX2, lineY + waveAmplitude, nextX2, lineY)
-                    currentX = nextX2
-                }
-            }
-            
-            canvas.drawPath(path, paint)
+        val startX = lineStart + indentWidth
+        val endX = lineEnd
+        when (underlineMode) {
+            1 -> canvas.drawLine(startX, lineY, endX, lineY, paint)
+            2 -> drawDashedLine(canvas, paint, startX, lineY, endX)
+            3 -> drawWavyLine(canvas, paint, startX, lineY, endX)
+            4 -> drawDottedLine(canvas, paint, startX, lineY, endX)
         }
+    }
+
+    private fun drawDashedLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float) {
+        val dashLen = 8.dpToPx().toFloat()
+        val gapLen = 5.dpToPx().toFloat()
+        var x = startX
+        while (x < endX) {
+            val x2 = (x + dashLen).coerceAtMost(endX)
+            canvas.drawLine(x, y, x2, y, paint)
+            x += dashLen + gapLen
+        }
+    }
+
+    private fun drawDottedLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float) {
+        val dotSize = 2.dpToPx().toFloat()
+        val gapLen = 4.dpToPx().toFloat()
+        paint.strokeCap = Paint.Cap.ROUND
+        var x = startX
+        while (x < endX) {
+            val x2 = (x + dotSize).coerceAtMost(endX)
+            canvas.drawLine(x, y, x2, y, paint)
+            x += dotSize + gapLen
+        }
+    }
+
+    private fun drawWavyLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float) {
+        val path = Path()
+        val waveAmplitude = 3.dpToPx().toFloat()
+        val waveLength = 12.dpToPx().toFloat()
+        path.moveTo(startX, y)
+        var currentX = startX
+        while (currentX < endX) {
+            val nextX = (currentX + waveLength).coerceAtMost(endX)
+            val midX = (currentX + nextX) / 2
+            path.quadTo(midX, y - waveAmplitude, nextX, y)
+            currentX = nextX
+            if (currentX < endX) {
+                val nextX2 = (currentX + waveLength).coerceAtMost(endX)
+                val midX2 = (currentX + nextX2) / 2
+                path.quadTo(midX2, y + waveAmplitude, nextX2, y)
+                currentX = nextX2
+            }
+        }
+        canvas.drawPath(path, paint)
     }
 
     fun checkFastDraw(): Boolean {
@@ -411,30 +418,8 @@ data class TextLine(
         val lineY = height + distance.dpToPx()
         when (underlineMode) {
             1 -> canvas.drawLine(startX, lineY, endX, lineY, paint)
-            2 -> {
-                paint.pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
-                canvas.drawLine(startX, lineY, endX, lineY, paint)
-            }
-            3 -> {
-                val path = Path()
-                val waveAmplitude = 3.dpToPx().toFloat()
-                val waveLength = 12.dpToPx().toFloat()
-                path.moveTo(startX, lineY)
-                var currentX = startX
-                while (currentX < endX) {
-                    val nextX = (currentX + waveLength).coerceAtMost(endX)
-                    val midX = (currentX + nextX) / 2
-                    path.quadTo(midX, lineY - waveAmplitude, nextX, lineY)
-                    currentX = nextX
-                    if (currentX < endX) {
-                        val nextX2 = (currentX + waveLength).coerceAtMost(endX)
-                        val midX2 = (currentX + nextX2) / 2
-                        path.quadTo(midX2, lineY + waveAmplitude, nextX2, lineY)
-                        currentX = nextX2
-                    }
-                }
-                canvas.drawPath(path, paint)
-            }
+            2 -> drawDashedLine(canvas, paint, startX, lineY, endX)
+            3 -> drawWavyLine(canvas, paint, startX, lineY, endX)
             4 -> {
                 val lineGap = 3.dpToPx().toFloat()
                 val line2Y = lineY + lineGap + 2.dpToPx()
