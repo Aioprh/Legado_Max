@@ -219,4 +219,11 @@
 		<item>Customize</item>
 	</string-array>
 
+	<string-array name="highlight_rule_underline_modes">
+		<item>None</item>
+		<item>Solid underline</item>
+		<item>Dashed underline</item>
+		<item>Wave underline</item>
+	</string-array>
+
 </resources>

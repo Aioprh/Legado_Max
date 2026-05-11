@@ -47,6 +47,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
+import io.legado.app.data.entities.Cache
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
 
 /**
@@ -84,6 +85,7 @@ import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
  * - videoConfig.xml: 视频播放配置
  */
 object Backup {
+    private const val runtimeSourceCacheFileName = "runtimeSourceCache.json"
 
     /** 备份临时目录路径，用于存放解压/压缩前的文件 */
     val backupPath: String by lazy {
@@ -212,6 +214,17 @@ object Backup {
             val prefKey = if (config.isNightTheme) PreferKey.bgImageN else PreferKey.bgImage
             resolveThemeBackgroundFile(bgPath, prefKey)?.let { prefKey to it }
         }.distinctBy { "${it.first}:${it.second.absolutePath}" }
+    }
+
+    private fun getRuntimeSourceCaches(): List<Cache> {
+        if (!BackupConfig.fullBackup) return emptyList()
+        return appDb.cacheDao.getRuntimeSourceCaches(System.currentTimeMillis())
+    }
+
+    private fun stageRuntimeSourceCaches(rootPath: String) {
+        val runtimeCaches = getRuntimeSourceCaches()
+        FileUtils.createFileIfNotExist(rootPath + File.separator + runtimeSourceCacheFileName)
+            .writeText(GSON.toJson(runtimeCaches))
     }
 
     fun stageBackgroundImageFiles(rootPath: String) {
@@ -495,6 +508,9 @@ object Backup {
         // 打包成ZIP文件
         if (selectedFiles.contains("bg")) {
             stageBackgroundImageFiles(backupPath)
+        }
+        if (BackupConfig.fullBackup) {
+            stageRuntimeSourceCaches(backupPath)
         }
 
         currentCoroutineContext().ensureActive()

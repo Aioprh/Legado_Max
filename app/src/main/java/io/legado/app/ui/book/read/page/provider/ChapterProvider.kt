@@ -237,8 +237,8 @@ object ChapterProvider {
      * 创建标题和正文的画笔
      * 
      * 根据系统版本和字重配置创建对应的字体画笔：
-     * - Android 9+ ：支持精细字重（100~900），标题比正文粗 100
-     * - Android 9 以下：只支持粗体/正常/细体三种模式
+     * - Android 9+ 精细模式：支持精细字重（100~900），标题和正文分别设置
+     * - Android 9+ 粗略模式 / Android 9 以下：保持旧版行为
      * 
      * @param typeface 基础字体
      * @return Pair<标题画笔, 正文画笔>
@@ -247,16 +247,26 @@ object ChapterProvider {
         val bold = Typeface.create(typeface, Typeface.BOLD)
         val normal = Typeface.create(typeface, Typeface.NORMAL)
         
-        // Android 9+ 支持精细字重
-        val (titleFont, textFont) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val fontWeight = ReadBookConfig.getTextBoldWeight()
-            // 标题比正文粗 100，最大不超过 900
-            Pair(Typeface.create(typeface, (fontWeight + 100).coerceAtMost(900), false), Typeface.create(typeface, fontWeight, false))
+        val (titleFont, textFont) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && AppConfig.textBoldMode == 1) {
+            // 精细模式：使用独立的标题和正文字重
+            val textWeight = ReadBookConfig.getTextBoldWeight()
+            val titleWeight = ReadBookConfig.getTitleBoldWeight()
+            Pair(Typeface.create(typeface, titleWeight, false), Typeface.create(typeface, textWeight, false))
         } else {
-            // 老版本只支持三种模式
+            // 粗略模式或老版本：保持旧版行为
             when (ReadBookConfig.textBold) {
-                1 -> Pair(bold, bold)
-                2 -> Pair(normal, normal)
+                1 -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                        Pair(Typeface.create(typeface, 900, false), bold)
+                    else
+                        Pair(bold, bold)
+                }
+                2 -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                        Pair(normal, Typeface.create(typeface, 300, false))
+                    else
+                        Pair(normal, normal)
+                }
                 else -> Pair(bold, normal)
             }
         }

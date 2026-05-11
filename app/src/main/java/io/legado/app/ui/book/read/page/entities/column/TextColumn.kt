@@ -18,6 +18,9 @@ data class TextColumn(
     override var start: Float,
     override var end: Float,
     override val charData: String,
+    override val textColor: Int? = null,
+    override val underlineMode: Int = 0,
+    override val underlineColor: Int? = null,
 ) : TextBaseColumn {
 
     override var textLine: TextLine = emptyTextLine
@@ -41,6 +44,13 @@ data class TextColumn(
             }
             field = value
         }
+    override var isCurrentSearchResult: Boolean = false
+        set(value) {
+            if (field != value) {
+                textLine.invalidate()
+            }
+            field = value
+        }
 
     override fun draw(view: ContentTextView, canvas: Canvas) {
         val textPaint = if (textLine.isTitle) {
@@ -48,13 +58,13 @@ data class TextColumn(
         } else {
             ChapterProvider.contentPaint
         }
-        val textColor = if (textLine.isReadAloud || isSearchResult) {
+        val drawColor = if (textLine.isReadAloud || isSearchResult) {
             ReadBookConfig.textAccentColor
         } else {
-            ReadBookConfig.textColor
+            textColor ?: ReadBookConfig.textColor
         }
-        if (textPaint.color != textColor) {
-            textPaint.color = textColor
+        if (textPaint.color != drawColor) {
+            textPaint.color = drawColor
         }
         val y = textLine.lineBase - textLine.lineTop
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
@@ -64,7 +74,7 @@ data class TextColumn(
         } else {
             canvas.drawText(charData, start, y, textPaint)
         }
-        if (selected) {
+        if (selected && !isSearchResult) {
             canvas.drawRect(start, 0f, end, textLine.height, view.selectedPaint)
         }
     }

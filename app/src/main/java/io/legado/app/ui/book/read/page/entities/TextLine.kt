@@ -16,6 +16,7 @@ import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.page.ContentTextView
 import io.legado.app.ui.book.read.page.entities.TextPage.Companion.emptyTextPage
 import io.legado.app.ui.book.read.page.entities.column.BaseColumn
+import io.legado.app.ui.book.read.page.entities.column.TextBaseColumn
 import io.legado.app.ui.book.read.page.entities.column.TextColumn
 import io.legado.app.ui.book.read.page.provider.ChapterProvider
 import io.legado.app.utils.canvasrecorder.CanvasRecorderFactory
@@ -164,6 +165,7 @@ data class TextLine(
     }
 
     private fun drawTextLine(view: ContentTextView, canvas: Canvas) {
+        drawCurrentSearchResultBackgrounds(canvas)
         if (checkFastDraw()) {
             fastDrawTextLine(view, canvas)
         } else {
@@ -181,6 +183,8 @@ data class TextLine(
             canvas.drawLine(lineStart + indentWidth, lineY, lineEnd, lineY, underlinePaint)
             PaintPool.recycle(underlinePaint)
         }
+
+        drawStyledUnderlines(canvas)
 
         val underlineMode = ReadBookConfig.underlineMode
         if (underlineMode == 0) return
@@ -219,7 +223,7 @@ data class TextLine(
         PaintPool.recycle(paint)
         for (i in columns.indices) {
             val column = columns[i] as TextColumn
-            if (column.selected) {
+            if (column.selected && !column.isSearchResult) {
                 canvas.drawRect(column.start, 0f, column.end, height, view.selectedPaint)
             }
         }
@@ -288,7 +292,163 @@ data class TextLine(
         if (wordSpacing != 0f && (!atLeastApi26 || !wordSpacingWorking)) {
             return false
         }
-        return searchResultColumnCount == 0
+        if (searchResultColumnCount != 0) {
+            return false
+        }
+        return columns.none {
+            it is TextBaseColumn && (it.textColor != null || it.underlineMode != 0)
+        }
+    }
+
+    private fun drawStyledUnderlines(canvas: Canvas) {
+        if (isImage || columns.isEmpty()) return
+        var rangeStart = 0f
+        var rangeEnd = 0f
+        var mode = 0
+        var color = 0
+        var active = false
+        columns.forEachIndexed { index, column ->
+            val textColumn = column as? TextBaseColumn
+            val currentMode = textColumn?.underlineMode ?: 0
+            val currentColor = textColumn?.underlineColor ?: ReadBookConfig.textAccentColor
+            val shouldContinue = active && currentMode == mode && currentColor == color
+            when {
+                currentMode == 0 && active -> {
+                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color)
+                    active = false
+                }
+                currentMode != 0 && !active -> {
+                    rangeStart = textColumn!!.start
+                    rangeEnd = textColumn.end
+                    mode = currentMode
+                    color = currentColor
+                    active = true
+                }
+                currentMode != 0 && shouldContinue -> {
+                    rangeEnd = textColumn!!.end
+                }
+                currentMode != 0 -> {
+                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color)
+                    rangeStart = textColumn!!.start
+                    rangeEnd = textColumn.end
+                    mode = currentMode
+                    color = currentColor
+                }
+            }
+            if (active && index == columns.lastIndex) {
+                drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color)
+            }
+        }
+    }
+
+    private fun drawCurrentSearchResultBackgrounds(canvas: Canvas) {
+        if (columns.isEmpty()) return
+        var startX = 0f
+        var endX = 0f
+        var active = false
+        columns.forEachIndexed { index, column ->
+            val textColumn = column as? TextBaseColumn
+            val current = textColumn?.isCurrentSearchResult == true
+            when {
+                current && !active -> {
+                    startX = textColumn.start
+                    endX = textColumn.end
+                    active = true
+                }
+                current -> {
+                    endX = textColumn.end
+                }
+                active -> {
+                    drawCurrentSearchRange(canvas, startX, endX)
+                    active = false
+                }
+            }
+            if (active && index == columns.lastIndex) {
+                drawCurrentSearchRange(canvas, startX, endX)
+            }
+        }
+    }
+
+    private fun drawCurrentSearchRange(canvas: Canvas, startX: Float, endX: Float) {
+        val paint = PaintPool.obtain()
+        paint.set(ChapterProvider.contentPaint)
+        paint.color = (0x33 shl 24) or (ReadBookConfig.textAccentColor and 0x00FFFFFF)
+        paint.style = android.graphics.Paint.Style.FILL
+        val radius = 5.dpToPx().toFloat()
+        canvas.drawRoundRect(
+            startX,
+            1.dpToPx().toFloat(),
+            endX,
+            height - 1.dpToPx().toFloat(),
+            radius,
+            radius,
+            paint
+        )
+        PaintPool.recycle(paint)
+    }
+
+    private fun drawUnderlineSegment(
+        canvas: Canvas,
+        startX: Float,
+        endX: Float,
+        underlineMode: Int,
+        underlineColor: Int,
+    ) {
+        val paint = TextPaint(ChapterProvider.contentPaint).apply {
+            color = underlineColor
+            strokeWidth = 2.dpToPx().toFloat()
+            style = android.graphics.Paint.Style.STROKE
+        }
+        val distance = (ChapterProvider.lineSpacingExtra * 10 - 11).coerceIn(-1f, 10f)
+        val lineY = height + distance.dpToPx()
+        when (underlineMode) {
+            1 -> canvas.drawLine(startX, lineY, endX, lineY, paint)
+            2 -> {
+                paint.pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
+                canvas.drawLine(startX, lineY, endX, lineY, paint)
+            }
+            3 -> {
+                val path = Path()
+                val waveAmplitude = 3.dpToPx().toFloat()
+                val waveLength = 12.dpToPx().toFloat()
+                path.moveTo(startX, lineY)
+                var currentX = startX
+                while (currentX < endX) {
+                    val nextX = (currentX + waveLength).coerceAtMost(endX)
+                    val midX = (currentX + nextX) / 2
+                    path.quadTo(midX, lineY - waveAmplitude, nextX, lineY)
+                    currentX = nextX
+                    if (currentX < endX) {
+                        val nextX2 = (currentX + waveLength).coerceAtMost(endX)
+                        val midX2 = (currentX + nextX2) / 2
+                        path.quadTo(midX2, lineY + waveAmplitude, nextX2, lineY)
+                        currentX = nextX2
+                    }
+                }
+                canvas.drawPath(path, paint)
+            }
+            4 -> {
+                val fillPaint = TextPaint(paint).apply {
+                    color = underlineColor
+                    style = android.graphics.Paint.Style.FILL
+                    pathEffect = null
+                }
+                val barRight = (startX - 5.dpToPx()).coerceAtLeast(2.dpToPx().toFloat())
+                val barLeft = (barRight - 4.dpToPx()).coerceAtLeast(0f)
+                val barTop = 3.dpToPx().toFloat()
+                val barBottom = height - 3.dpToPx().toFloat()
+                val radius = 2.dpToPx().toFloat()
+                canvas.drawRoundRect(
+                    barLeft,
+                    barTop,
+                    barRight,
+                    barBottom,
+                    radius,
+                    radius,
+                    fillPaint
+                )
+            }
+        }
     }
 
     fun invalidate() {

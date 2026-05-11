@@ -609,6 +609,7 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
                         column.selected = compareStart >= 0 && compareEnd <= 0
                         column.isSearchResult =
                             column.selected && callBack.isSelectingSearchResult
+                        column.isCurrentSearchResult = column.isSearchResult
                         if (column.isSearchResult) {
                             textPage.searchResult.add(column)
                         }
@@ -646,6 +647,7 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
                         it.selected = false
                         if (clearSearchResult) {
                             it.isSearchResult = false
+                            it.isCurrentSearchResult = false
                             textPage.searchResult.remove(it)
                         }
                     }

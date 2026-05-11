@@ -14,6 +14,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.Bookmark
+import io.legado.app.data.entities.Cache
 import io.legado.app.data.entities.DictRule
 import io.legado.app.data.entities.HttpTTS
 import io.legado.app.data.entities.KeyboardAssist
@@ -27,6 +28,7 @@ import io.legado.app.data.entities.RssStar
 import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.TxtTocRule
+import io.legado.app.help.AppCacheManager
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.LauncherIconHelp
 import io.legado.app.help.book.isLocal
@@ -88,6 +90,7 @@ import java.io.FileInputStream
  * - WebDav密码：需要解密
  */
 object Restore {
+    private const val runtimeSourceCacheFileName = "runtimeSourceCache.json"
 
     /** 互斥锁，防止并发恢复操作 */
     private val mutex = Mutex()
@@ -427,6 +430,10 @@ object Restore {
         }
 
         // 应用阅读配置
+        if (runtimeSourceCacheFileName in selectedSet) {
+            restoreRuntimeSourceCaches(path)
+        }
+
         ReadBookConfig.apply {
             comicStyleSelect = appCtx.getPrefInt(PreferKey.comicStyleSelect)
             readStyleSelect = appCtx.getPrefInt(PreferKey.readStyleSelect)
@@ -690,6 +697,7 @@ object Restore {
 
         // 修正主题背景图片路径
         restoreThemeBackgrounds(path, clearExisting = true)
+        restoreRuntimeSourceCaches(path)
         fixThemeBackgroundPaths()
         fixThemeConfigBackgroundPaths()
 
@@ -758,6 +766,17 @@ object Restore {
             appCtx.toastOnUi("$fileName\n读取文件出错\n${e.localizedMessage}")
         }
         return null
+    }
+
+    private fun restoreRuntimeSourceCaches(path: String) {
+        val runtimeCacheFile = File(path, runtimeSourceCacheFileName)
+        if (!runtimeCacheFile.exists()) return
+        val caches = fileToListT<Cache>(path, runtimeSourceCacheFileName).orEmpty()
+        appDb.cacheDao.deleteAllRuntimeSourceCaches()
+        AppCacheManager.clearSourceVariables()
+        if (caches.isNotEmpty()) {
+            appDb.cacheDao.insert(*caches.toTypedArray())
+        }
     }
 
     private fun readBackupPrefs(path: String, fileName: String): Map<String, Any>? {

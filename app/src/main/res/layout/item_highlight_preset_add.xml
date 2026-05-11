@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="14dp"
+    android:layout_marginTop="10dp"
+    android:layout_marginEnd="14dp"
+    android:layout_marginBottom="4dp"
+    android:background="@drawable/shape_highlight_rule_card"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/primaryText"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_desc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="@color/secondaryText"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/iv_add"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/shape_highlight_rule_icon_button"
+            android:contentDescription="@string/add"
+            android:padding="10dp"
+            android:src="@drawable/ic_add"
+            android:tint="@color/primaryText" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_preview_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/preview"
+        android:textColor="@color/secondaryText"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/tv_preview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/shape_highlight_rule_preview_soft"
+        android:lineSpacingExtra="7dp"
+        android:minHeight="110dp"
+        android:padding="16dp"
+        android:textColor="@color/primaryText"
+        android:textSize="18sp" />
+
+</LinearLayout>

@@ -94,6 +94,13 @@
         app:iconSpaceReserved="false"
         app:isBottomBackground="true" />
 
+    <io.legado.app.lib.prefs.Preference
+        android:key="highlightRuleConfig"
+        android:summary="@string/highlight_rule_config_summary"
+        android:title="@string/highlight_rule_config"
+        app:iconSpaceReserved="false"
+        app:isBottomBackground="true" />
+
     <io.legado.app.lib.prefs.SwitchPreference
         android:defaultValue="true"
         android:key="mouseWheelPage"
