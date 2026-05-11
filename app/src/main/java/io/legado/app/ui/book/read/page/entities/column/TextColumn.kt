@@ -21,6 +21,7 @@ data class TextColumn(
     override val textColor: Int? = null,
     override val underlineMode: Int = 0,
     override val underlineColor: Int? = null,
+    override val underlineSvgPath: String = "",
 ) : TextBaseColumn {
 
     override var textLine: TextLine = emptyTextLine

@@ -20,6 +20,13 @@ class TitleEmphasisSpan(
         end: Int,
         fm: Paint.FontMetricsInt?
     ): Int {
+        if (fm != null) {
+            val metrics = paint.fontMetricsInt
+            fm.top = metrics.top
+            fm.ascent = metrics.ascent
+            fm.descent = metrics.descent
+            fm.bottom = metrics.bottom
+        }
         return (paint.measureText(text, start, end) + gap + barWidth).toInt()
     }
 
@@ -34,7 +41,13 @@ class TitleEmphasisSpan(
         bottom: Int,
         paint: Paint
     ) {
-        val originColor = paint.color
+        val textStr = text.subSequence(start, end).toString()
+        val textPaint = Paint(paint).apply {
+            color = textColor
+        }
+        val drawX = x + barWidth + gap
+        canvas.drawText(textStr, drawX, y.toFloat(), textPaint)
+        
         val barLeft = x
         val barRight = x + barWidth
         val barPaint = Paint(paint).apply {
@@ -52,9 +65,5 @@ class TitleEmphasisSpan(
             radius,
             barPaint
         )
-        paint.color = textColor
-        val drawX = x + barWidth + gap
-        canvas.drawText(text, start, end, drawX, y.toFloat(), paint)
-        paint.color = originColor
     }
 }

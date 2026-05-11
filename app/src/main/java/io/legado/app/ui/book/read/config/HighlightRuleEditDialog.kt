@@ -38,10 +38,12 @@ class HighlightRuleEditDialog(
             binding.dragHandle,
             binding.sheetContainer
         ) { dismissAllowingStateLoss() }
+
         binding.tvPageTitle.text =
             getString(if (sourceRule == null) R.string.highlight_rule_add else R.string.highlight_rule_edit)
         binding.tvPageSubtitle.text =
             if (sourceRule == null) "新增一条正文高亮规则" else "调整这条规则的匹配和显示方式"
+
         binding.spGroup.adapter = ArrayAdapter(
             requireContext(),
             R.layout.item_text_common,
@@ -52,10 +54,11 @@ class HighlightRuleEditDialog(
         binding.spUnderlineMode.adapter = ArrayAdapter(
             requireContext(),
             R.layout.item_text_common,
-            listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "标题强调条")
+            listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "标题强调条", "自定义SVG")
         ).apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
+
         bindData()
         bindEvents()
         updatePreview()
@@ -68,9 +71,11 @@ class HighlightRuleEditDialog(
         binding.etSampleText.setText(editingRule.sampleText)
         binding.etTextColor.setText(editingRule.textColor?.toHexColor().orEmpty())
         binding.etUnderlineColor.setText(editingRule.underlineColor?.toHexColor().orEmpty())
-        binding.spUnderlineMode.setSelection(editingRule.underlineMode.coerceIn(0, 4))
+        binding.etSvgPath.setText(editingRule.underlineSvgPath)
+        binding.spUnderlineMode.setSelection(editingRule.underlineMode.coerceIn(0, 5))
         val groupIndex = groupItems.indexOf(editingRule.group).takeIf { it >= 0 } ?: 0
         binding.spGroup.setSelection(groupIndex)
+        updateSvgPathVisibility(editingRule.underlineMode)
     }
 
     private fun bindEvents() {
@@ -112,11 +117,16 @@ class HighlightRuleEditDialog(
                     id: Long
                 ) {
                     editingRule.underlineMode = position
+                    updateSvgPathVisibility(position)
                     updatePreview()
                 }
 
                 override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
             }
+        binding.etSvgPath.doAfterTextChanged {
+            editingRule.underlineSvgPath = it?.toString().orEmpty()
+            updatePreview()
+        }
         binding.spGroup.onItemSelectedListener =
             object : android.widget.AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(
@@ -161,6 +171,7 @@ class HighlightRuleEditDialog(
             textColor = parseColorOrNull(binding.etTextColor.text?.toString().orEmpty(), binding.tvTextColorError),
             underlineMode = binding.spUnderlineMode.selectedItemPosition,
             underlineColor = parseColorOrNull(binding.etUnderlineColor.text?.toString().orEmpty(), binding.tvUnderlineColorError),
+            underlineSvgPath = binding.etSvgPath.text?.toString().orEmpty(),
         )
         onSave(editingRule)
         dismissAllowingStateLoss()
@@ -185,8 +196,15 @@ class HighlightRuleEditDialog(
                 textColor = parseColorOrNull(binding.etTextColor.text?.toString().orEmpty(), binding.tvTextColorError),
                 underlineMode = binding.spUnderlineMode.selectedItemPosition,
                 underlineColor = parseColorOrNull(binding.etUnderlineColor.text?.toString().orEmpty(), binding.tvUnderlineColorError),
+                underlineSvgPath = binding.etSvgPath.text?.toString().orEmpty(),
             )
         )
+    }
+
+    private fun updateSvgPathVisibility(mode: Int) {
+        val isVisible = mode == 5
+        binding.tvSvgPathLabel.visibility = if (isVisible) View.VISIBLE else View.GONE
+        binding.etSvgPath.visibility = if (isVisible) View.VISIBLE else View.GONE
     }
 
     private fun validatePattern(pattern: String): String? {

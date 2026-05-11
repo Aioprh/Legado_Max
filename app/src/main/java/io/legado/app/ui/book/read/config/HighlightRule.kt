@@ -10,6 +10,7 @@ data class HighlightRule(
     var textColor: Int? = null,
     var underlineMode: Int = 0,
     var underlineColor: Int? = null,
+    var underlineSvgPath: String = "",
 ) {
 
     fun styleSummary(): String {
@@ -24,6 +25,7 @@ data class HighlightRule(
                     2 -> "虚线下划线"
                     3 -> "波浪下划线"
                     4 -> "标题强调条"
+                    5 -> "自定义SVG"
                     else -> "下划线"
                 } + underlineColor?.let { " ${it.toHexColor()}" }.orEmpty()
             )

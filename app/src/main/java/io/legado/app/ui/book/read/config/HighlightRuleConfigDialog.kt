@@ -57,7 +57,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
         binding.recyclerView.clipToPadding = false
-        binding.recyclerView.setPadding(0, 10.dpToPx(), 0, 18.dpToPx())
+        binding.recyclerView.setPadding(0, 12.dpToPx(), 0, 28.dpToPx())
 
         binding.ivClose.setOnClickListener { dismissAllowingStateLoss() }
         binding.ivMenu.setOnClickListener { showMenu(it) }
@@ -90,40 +90,17 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.menu_select -> {
-                showRuleSelector()
-                return true
-            }
-            R.id.menu_add -> {
-                editRule(null)
-                return true
-            }
-            R.id.menu_preset -> {
-                showPresetRules()
-                return true
-            }
-            R.id.menu_import -> {
-                importRulesFromClipboard()
-                return true
-            }
-            R.id.menu_group -> {
-                showGroupManager()
-                return true
-            }
-            R.id.menu_share -> {
-                shareRules(rules)
-                return true
-            }
-            R.id.menu_export -> {
-                exportRulesToClipboard(rules)
-                return true
-            }
-            R.id.menu_reset -> {
-                resetRules()
-                return true
-            }
+            R.id.menu_select -> showRuleSelector()
+            R.id.menu_add -> editRule(null)
+            R.id.menu_preset -> showPresetRules()
+            R.id.menu_import -> importRulesFromClipboard()
+            R.id.menu_group -> showGroupManager()
+            R.id.menu_share -> shareRules(rules)
+            R.id.menu_export -> exportRulesToClipboard(rules)
+            R.id.menu_reset -> resetRules()
+            else -> return false
         }
-        return false
+        return true
     }
 
     private fun loadRules() {
@@ -176,10 +153,6 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     private fun showPresetRules() {
         HighlightPresetRuleDialog { rule ->
-            if (rules.any { it.id == rule.id }) {
-                requireContext().toastOnUi("该预置规则已存在")
-                return@HighlightPresetRuleDialog
-            }
             rules.add(rule)
             syncRules()
         }.show(childFragmentManager, "highlightPresetRule")
@@ -197,7 +170,9 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             return
         }
         val selected = BooleanArray(rules.size)
-        val names = rules.map { "${it.name.ifBlank { "未命名规则" }}  /  ${it.group}" }.toTypedArray()
+        val names = rules.map {
+            "${it.name.ifBlank { "未命名规则" }} / ${it.group}"
+        }.toTypedArray()
         alert("选择规则") {
             multiChoiceItems(names, selected) { _, which, isChecked ->
                 selected[which] = isChecked
@@ -306,6 +281,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             binding.tvDesc.text = item.styleSummary()
             binding.tvPattern.text = "${item.group} / ${item.displayPattern()}"
             binding.tvPreview.text = HighlightRulePreview.build(item)
+
             binding.switchEnable.setOnCheckedChangeListener(null)
             binding.switchEnable.isChecked = item.enabled
             binding.switchEnable.setOnCheckedChangeListener { _, isChecked ->
@@ -321,11 +297,15 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             binding.tvPreviewLabel.setTextColor(secondaryTextColor)
             binding.tvPreview.setTextColor(primaryTextColor)
 
-            (binding.tvEdit.getChildAt(0) as? android.widget.ImageView)?.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
-            (binding.tvEdit.getChildAt(1) as? android.widget.TextView)?.setTextColor(primaryTextColor)
+            (binding.tvEdit.getChildAt(0) as? android.widget.ImageView)
+                ?.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+            (binding.tvEdit.getChildAt(1) as? android.widget.TextView)
+                ?.setTextColor(primaryTextColor)
 
-            (binding.tvDelete.getChildAt(0) as? android.widget.ImageView)?.setColorFilter(context.getColor(R.color.error), PorterDuff.Mode.SRC_IN)
-            (binding.tvDelete.getChildAt(1) as? android.widget.TextView)?.setTextColor(context.getColor(R.color.error))
+            (binding.tvDelete.getChildAt(0) as? android.widget.ImageView)
+                ?.setColorFilter(context.getColor(R.color.error), PorterDuff.Mode.SRC_IN)
+            (binding.tvDelete.getChildAt(1) as? android.widget.TextView)
+                ?.setTextColor(context.getColor(R.color.error))
         }
     }
 }

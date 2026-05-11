@@ -936,6 +936,15 @@ class TextChapterLayout(
         return underlineSpans.lastOrNull()?.underlineColor
     }
 
+    private fun extractUnderlineSvgPath(spanned: CharSequence, index: Int): String {
+        val underlineSpans = (spanned as? Spanned)?.getSpans(
+            index,
+            index + 1,
+            HighlightStyleSpan::class.java
+        ) ?: return ""
+        return underlineSpans.lastOrNull()?.underlineSvgPath ?: ""
+    }
+
     private fun extractLinkUrl(spanned: Spanned, index: Int): String? {
         // 检查URLSpan（超链接）
         val urlSpans = spanned.getSpans(index, index + 1, URLSpan::class.java)
@@ -1024,7 +1033,8 @@ class TextChapterLayout(
                     spannable.setSpan(
                         HighlightStyleSpan(
                             rule.underlineMode,
-                            rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt()
+                            rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt(),
+                            rule.underlineSvgPath
                         ),
                         start,
                         end,
@@ -1056,7 +1066,8 @@ class TextChapterLayout(
                             compiled.rule.underlineMode,
                             compiled.rule.underlineColor
                                 ?: compiled.rule.textColor
-                                ?: 0xFF63C37D.toInt()
+                                ?: 0xFF63C37D.toInt(),
+                            compiled.rule.underlineSvgPath
                         ),
                         start,
                         end,
@@ -1407,6 +1418,7 @@ class TextChapterLayout(
         val textColor = extractTextColor(styledText as Spanned, textIndex)
         val underlineMode = extractUnderlineMode(styledText, textIndex)
         val underlineColor = extractUnderlineColor(styledText, textIndex)
+        val underlineSvgPath = extractUnderlineSvgPath(styledText, textIndex)
         val column = when {
             !srcList.isNullOrEmpty() && (char == srcReplaceStr || char == reviewStr) -> {
                 val src = srcList.removeFirst()
@@ -1434,7 +1446,8 @@ class TextChapterLayout(
                     charData = char,
                     textColor = textColor,
                     underlineMode = underlineMode,
-                    underlineColor = underlineColor
+                    underlineColor = underlineColor,
+                    underlineSvgPath = underlineSvgPath
                 )
             }
         }

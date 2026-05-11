@@ -10,6 +10,7 @@ interface TextBaseColumn : BaseColumn {
     val textColor: Int?
     val underlineMode: Int
     val underlineColor: Int?
+    val underlineSvgPath: String
     var selected: Boolean
     var isSearchResult: Boolean
     var isCurrentSearchResult: Boolean

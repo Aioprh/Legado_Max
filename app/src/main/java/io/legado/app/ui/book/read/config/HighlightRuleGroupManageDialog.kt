@@ -40,6 +40,7 @@ class HighlightRuleGroupManageDialog(
             binding.dragHandle,
             binding.sheetContainer
         ) { dismissAllowingStateLoss() }
+
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
         binding.ivBack.setOnClickListener { dismissAllowingStateLoss() }

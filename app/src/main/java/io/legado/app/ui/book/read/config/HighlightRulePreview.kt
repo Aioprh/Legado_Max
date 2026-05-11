@@ -26,6 +26,25 @@ object HighlightRulePreview {
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                     )
                 }
+                5 -> {
+                    if (rule.underlineSvgPath.isNotBlank()) {
+                        spannable.setSpan(
+                            SvgUnderlineSpan(textColor, accentColor, rule.underlineSvgPath),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    } else {
+                        rule.textColor?.let { color ->
+                            spannable.setSpan(
+                                ForegroundColorSpan(color),
+                                start,
+                                end,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                            )
+                        }
+                    }
+                }
                 else -> {
                     rule.textColor?.let { color ->
                         spannable.setSpan(
@@ -58,7 +77,7 @@ object HighlightRulePreview {
                     }
                 }
             }
-            if (index == 0 && rule.underlineMode != 4) {
+            if (index == 0 && rule.underlineMode != 4 && rule.underlineMode != 5) {
                 val baseColor = rule.textColor ?: rule.underlineColor ?: 0xFF63C37D.toInt()
                 spannable.setSpan(
                     BackgroundColorSpan((0x33 shl 24) or (baseColor and 0x00FFFFFF)),

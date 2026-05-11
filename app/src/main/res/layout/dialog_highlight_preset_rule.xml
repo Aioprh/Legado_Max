@@ -62,7 +62,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="点击右侧加号，将预置规则加入当前规则列表"
+                    android:gravity="center"
+                    android:text="点右侧加号，只把这一条预置规则加入当前列表。"
                     android:textColor="@color/secondaryText"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -79,7 +80,7 @@
             android:layout_weight="1"
             android:clipToPadding="false"
             android:paddingStart="16dp"
-            android:paddingTop="10dp"
+            android:paddingTop="12dp"
             android:paddingEnd="16dp"
             android:paddingBottom="28dp" />
 

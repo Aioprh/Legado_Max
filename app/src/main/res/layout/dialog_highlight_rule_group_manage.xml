@@ -62,7 +62,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="管理高亮规则分组，支持新增、重命名和删除"
+                    android:gravity="center"
+                    android:text="管理高亮规则分组，支持新增、重命名和删除。"
                     android:textColor="@color/secondaryText"
                     android:textSize="13sp" />
             </LinearLayout>

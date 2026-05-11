@@ -96,7 +96,7 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "thought_default",
                 name = "心理活动",
-                pattern = "（[^）\\n]{0,40}(?:心想|暗道|心道|想到|寻思|琢磨|嘀咕)[^）\\n]{0,40}）",
+                pattern = "（[^）\\n]{0,40}(?:心想|暗道|心道|想到|寻思着|琢磨|嘀咕)[^）\\n]{0,40}）",
                 sampleText = "她心中一紧（不对，这里一定有问题）。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
@@ -107,7 +107,7 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "narrator_default",
                 name = "旁白说明",
-                pattern = "（(?:未完待续|待续|略|下文再表|按：?|注：?)[^）\\n]{0,40}）|【(?:注|旁白|作者有话说)[:：][^】\\n]{0,40}】",
+                pattern = "(?:未完待续|待续|下文再表|按：?|注：?)[^\\n]{0,40}|（(?:注|旁白|作者有话说)[:：][^）\\n]{0,40}）",
                 sampleText = "（注：此处时间线与前文同步）",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
@@ -147,7 +147,7 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "number_default",
                 name = "数字金额",
-                pattern = "(?:￥|¥)?\\d+(?:\\.\\d+)?(?:元|块|万|亿|%|％)|[零〇一二两三四五六七八九十百千万亿]+(?:元|块|万|亿)",
+                pattern = "(?:¥|￥)?\\d+(?:\\.\\d+)?(?:元|块|万|千|百|亿|%|％)|[零〇一二两三四五六七八九十百千万亿]+(?:元|块|万|千|百|亿)",
                 sampleText = "原价100元，现在只要50元。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
@@ -166,7 +166,7 @@ object HighlightRuleStore {
                 id = "date_time_default",
                 name = "时间日期",
                 pattern = "(?:\\d{2,4}|[零〇一二两三四五六七八九十]{2,4})年(?:\\d{1,2}|[正一二三四五六七八九十冬腊])月(?:\\d{1,2}|[一二三四五六七八九十廿三])?[日号]?|\\b\\d{1,2}:\\d{2}\\b|(?:[0-1]?\\d|2[0-3])点(?:[0-5]?\\d分?)?",
-                sampleText = "2024年5月1日，上午10:30出发。",
+                sampleText = "2024年8月12日，上午10:30出发。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
                 textColor = 0xFF20B2AA.toInt()
@@ -203,8 +203,8 @@ object HighlightRuleStore {
             append(rule.pattern)
             append(rule.sampleText)
         }
-        return garbledMarkers.any { inspectText.contains(it) }
-            || legacyBuiltinPatterns[rule.id] == rule.pattern
+        return garbledMarkers.any { inspectText.contains(it) } ||
+            legacyBuiltinPatterns[rule.id] == rule.pattern
     }
 
     private val builtinIds = setOf(
@@ -227,9 +227,9 @@ object HighlightRuleStore {
         "book_title_default" to "《[^》\\n]{1,80}》",
         "bracket_note_default" to "（[^）\\n]{1,80}）|\\([^\\)\\n]{1,80}\\)|【[^】\\n]{1,80}】",
         "title_emphasis_default" to "(?m)^(第[0-9零一二三四五六七八九十百千两0123456789IVXLCDMivxlcdm]{1,12}[章节回卷部篇集幕]|序章|楔子|引子|终章|尾声|后记|番外)[^\\n]{0,40}$",
-        "thought_default" to "（[^）]*?(想|寻思|暗道|心道|心里|想着|思量|思忖|盘算|盘算着)[^）]*?）",
+        "thought_default" to "（[^）]*?(想道|暗道|心道|心里|想着|思量|思忖|盘算|盘算着)[^）]*?）",
         "narrator_default" to "（以下\\S{0,20}省略|省略\\S{0,20}内容|[^\\n]{0,20}的情景不再赘述|[^\\n]{0,20}的情况不再多说）",
-        "emphasis_default" to "[*＊]{1,2}[^*\\n]{1,50}[*＊]{1,2}",
+        "emphasis_default" to "[*！]{1,2}[^*\\n]{1,50}[*！]{1,2}",
         "poetry_default" to "[\\n]([七五言绝句律诗词牌曲牌][^\\n]{0,60}[^\\n]{10,50}[^\\n]{0,20}[，。！？])\\n",
         "ellipsis_default" to "x{2,}|\\*{2,}|\\.{2,}",
         "number_default" to "[0-9零一二三四五六七八九十百千万亿]+[元块美元英镑]|[0-9]+[%％]",

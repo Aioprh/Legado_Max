@@ -306,15 +306,17 @@ data class TextLine(
         var rangeEnd = 0f
         var mode = 0
         var color = 0
+        var svgPath = ""
         var active = false
         columns.forEachIndexed { index, column ->
             val textColumn = column as? TextBaseColumn
             val currentMode = textColumn?.underlineMode ?: 0
             val currentColor = textColumn?.underlineColor ?: ReadBookConfig.textAccentColor
-            val shouldContinue = active && currentMode == mode && currentColor == color
+            val currentSvgPath = textColumn?.underlineSvgPath ?: ""
+            val shouldContinue = active && currentMode == mode && currentColor == color && currentSvgPath == svgPath
             when {
                 currentMode == 0 && active -> {
-                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color)
+                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, svgPath)
                     active = false
                 }
                 currentMode != 0 && !active -> {
@@ -322,21 +324,23 @@ data class TextLine(
                     rangeEnd = textColumn.end
                     mode = currentMode
                     color = currentColor
+                    svgPath = currentSvgPath
                     active = true
                 }
                 currentMode != 0 && shouldContinue -> {
                     rangeEnd = textColumn!!.end
                 }
                 currentMode != 0 -> {
-                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color)
+                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, svgPath)
                     rangeStart = textColumn!!.start
                     rangeEnd = textColumn.end
                     mode = currentMode
                     color = currentColor
+                    svgPath = currentSvgPath
                 }
             }
             if (active && index == columns.lastIndex) {
-                drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color)
+                drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, svgPath)
             }
         }
     }
@@ -393,6 +397,7 @@ data class TextLine(
         endX: Float,
         underlineMode: Int,
         underlineColor: Int,
+        svgPathStr: String = "",
     ) {
         val paint = TextPaint(ChapterProvider.contentPaint).apply {
             color = underlineColor
@@ -448,7 +453,37 @@ data class TextLine(
                     fillPaint
                 )
             }
+            5 -> {
+                if (svgPathStr.isNotBlank()) {
+                    drawSvgPath(canvas, startX, endX, lineY, svgPathStr, paint)
+                }
+            }
         }
+    }
+    
+    private fun drawSvgPath(
+        canvas: Canvas,
+        startX: Float,
+        endX: Float,
+        lineY: Float,
+        svgPathStr: String,
+        paint: TextPaint
+    ) {
+        val baseWidth = 100f
+        val baseY = 50f
+        val path = io.legado.app.ui.book.read.config.SvgPathParser.parse(svgPathStr) ?: return
+        
+        val width = endX - startX
+        val scaleX = width / baseWidth
+        val scaleY = 1f
+        val translateX = startX
+        val translateY = lineY - baseY
+        
+        canvas.save()
+        canvas.translate(translateX, translateY)
+        canvas.scale(scaleX, scaleY)
+        canvas.drawPath(path, paint)
+        canvas.restore()
     }
 
     fun invalidate() {

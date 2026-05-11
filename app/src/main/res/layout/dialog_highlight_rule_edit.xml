@@ -313,6 +313,38 @@
                         android:layout_marginTop="6dp"
                         android:textColor="@color/error"
                         android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tv_svg_path_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:text="SVG路径（自定义模式）"
+                        android:textColor="@color/primaryText"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <EditText
+                        android:id="@+id/et_svg_path"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/shape_highlight_rule_input"
+                        android:gravity="top|start"
+                        android:hint="M0,50 Q25,0 50,50 Q75,100 100,50"
+                        android:inputType="textMultiLine"
+                        android:minHeight="80dp"
+                        android:padding="14dp"
+                        android:textColor="@color/primaryText"
+                        android:textColorHint="@color/secondaryText" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="坐标范围：X(0-100)，Y(0-100)，Y=50为基准线"
+                        android:textColor="@color/secondaryText"
+                        android:textSize="11sp" />
                 </LinearLayout>
 
                 <TextView
