@@ -46,6 +46,8 @@ object CacheBook {
     private val workingState = MutableStateFlow(true)
     private val mutex = Mutex()
 
+    private val downloadingBySource = ConcurrentHashMap<String, String>()
+
     /**
      * 根据书籍URL获取或创建缓存模型
      * @param bookUrl 书籍URL
@@ -150,6 +152,7 @@ object CacheBook {
     fun close() {
         cacheBookMap.forEach { it.value.stop() }
         cacheBookMap.clear()
+        downloadingBySource.clear()
         successDownloadSet.clear()
         errorDownloadMap.clear()
     }
@@ -174,8 +177,13 @@ object CacheBook {
 
                 cacheBookMap.forEach { (_, model) ->
                     if (!model.isLoading()) {
-                        emit(model)
-                        emitted = true
+                        val sourceUrl = model.bookSource.bookSourceUrl
+                        val currentDownloading = downloadingBySource[sourceUrl]
+                        if (currentDownloading == null || currentDownloading == model.book.bookUrl) {
+                            downloadingBySource[sourceUrl] = model.book.bookUrl
+                            emit(model)
+                            emitted = true
+                        }
                     }
                     workingState.first { it }
                 }
@@ -292,6 +300,7 @@ object CacheBook {
             tasks.clear()
             isStopped = true
             isLoading = false
+            downloadingBySource.remove(bookSource.bookSourceUrl)
             postEvent(EventBus.UP_DOWNLOAD, book.bookUrl)
         }
 
@@ -386,6 +395,7 @@ object CacheBook {
         private fun onFinally() {
             if (waitDownloadSet.isEmpty() && onDownloadSet.isEmpty()) {
                 cacheBookMap.remove(book.bookUrl)
+                downloadingBySource.remove(bookSource.bookSourceUrl)
             }
             postEvent(EventBus.UP_DOWNLOAD, book.bookUrl)
         }
@@ -399,6 +409,7 @@ object CacheBook {
             if (chapterIndex == null) {
                 if (!isLoading && onDownloadSet.isEmpty()) {
                     cacheBookMap.remove(book.bookUrl)
+                    downloadingBySource.remove(bookSource.bookSourceUrl)
                 }
                 return
             }

@@ -31,6 +31,7 @@ object HelpDocManager {
         HelpDoc("readMenuHelp", "阅读界面帮助文档"),
         HelpDoc("webDavBookHelp", "WebDav书籍简明使用教程"),
         HelpDoc("webDavHelp", "WebDav备份教程"),
+        HelpDoc("updateLog", "更新日志")
     )
     
     // 所有帮助文档（切换列表 + 隐藏文档）
