@@ -331,6 +331,7 @@ object CacheBook {
             onDownloadSet.remove(chapter.index)
             successDownloadSet.add(chapter.primaryStr())
             errorDownloadMap.remove(chapter.primaryStr())
+            AppLog.put("《${book.name}》章节《${chapter.title}》缓存成功")
         }
 
         /**
@@ -358,9 +359,10 @@ object CacheBook {
             //重试3次
             if ((errorDownloadMap[chapter.primaryStr()] ?: 0) < 3 && !isStopped) {
                 waitDownloadSet.add(chapter.index)
+                AppLog.put("《${book.name}》章节《${chapter.title}》缓存失败，准备重试\n${error.localizedMessage}")
             } else {
                 AppLog.put(
-                    "下载${book.name}-${chapter.title}失败\n${error.localizedMessage}",
+                    "《${book.name}》章节《${chapter.title}》缓存失败\n${error.localizedMessage}",
                     error
                 )
             }

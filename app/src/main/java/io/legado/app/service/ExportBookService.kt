@@ -180,6 +180,7 @@ class ExportBookService : BaseService() {
                 val book = appDb.bookDao.getBook(bookUrl)
                 try {
                     book ?: throw NoStackTraceException("获取${bookUrl}书籍出错")
+                    AppLog.put("开始导出《${book.name}》")
                     refreshChapterList(book)
                     notificationContentText = getString(
                         R.string.export_book_notification_content,
@@ -199,6 +200,7 @@ class ExportBookService : BaseService() {
                     } else {
                         exportTxt(exportConfig.path, book)
                     }
+                    AppLog.put("《${book.name}》导出成功")
                     exportMsg[book.bookUrl] = getString(R.string.export_success)
                 } catch (e: Throwable) {
                     ensureActive()

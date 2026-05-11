@@ -106,6 +106,7 @@ class CacheBookService : BaseService() {
             val cacheBook = CacheBook.getOrCreate(bookUrl) ?: return@execute
             val chapterCount = appDb.bookChapterDao.getChapterCount(bookUrl)
             val book = cacheBook.book
+            AppLog.put("开始缓存《${book.name}》章节范围:$start-$end")
             if (chapterCount == 0) {
                 cacheBook.setLoading()
                 mutex.withLock {
@@ -166,6 +167,7 @@ class CacheBookService : BaseService() {
         downloadJob?.cancel()
         downloadJob = lifecycleScope.launch(cachePool) {
             CacheBook.startProcessJob(cachePool)
+            AppLog.put("缓存任务全部完成")
             stopSelf()
         }
     }
