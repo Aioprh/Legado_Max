@@ -26,6 +26,7 @@ class HandleFileViewModel(application: Application) : BaseViewModel(application)
         success: (url: String) -> Unit
     ) {
         execute {
+            repository.importDefaultRules()
             val rule = repository.getDefaultRule()
                 ?: throw IllegalStateException("没有可用的上传规则")
             

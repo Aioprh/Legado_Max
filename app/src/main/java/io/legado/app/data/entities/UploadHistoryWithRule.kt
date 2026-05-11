@@ -32,6 +32,11 @@ data class UploadHistoryWithRule(
     }
     
     fun getDisplayRuleSummary(): String {
-        return ruleSummary ?: ""
+        val summary = ruleSummary ?: ""
+        return if (summary.length > 6) {
+            summary.take(6) + "…"
+        } else {
+            summary
+        }
     }
 }
