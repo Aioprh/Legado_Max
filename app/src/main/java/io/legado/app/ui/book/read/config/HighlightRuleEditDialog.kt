@@ -82,8 +82,15 @@ class HighlightRuleEditDialog(
         secondaryTextColor = requireContext().getSecondaryTextColor(isLight)
         accentColor = requireContext().accentColor
 
+        val surfaceBg = if (isLight) {
+            ColorUtils.blendColors(bg, 0xFF000000.toInt(), 0.08f)
+        } else {
+            ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.06f)
+        }
+
         binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.ivBack.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+        binding.ivBack.background?.mutate()?.setTint(accentColor)
         binding.tvPageTitle.setTextColor(primaryTextColor)
         binding.tvPageSubtitle.setTextColor(secondaryTextColor)
 
@@ -94,6 +101,50 @@ class HighlightRuleEditDialog(
 
         binding.switchEnable.trackTintList = android.content.res.ColorStateList.valueOf(accentColor)
         binding.switchEnable.thumbTintList = android.content.res.ColorStateList.valueOf(accentColor)
+
+        binding.tvSectionBasic.setTextColor(secondaryTextColor)
+        binding.tvSectionStyle.setTextColor(secondaryTextColor)
+        binding.tvSectionPreview.setTextColor(secondaryTextColor)
+
+        binding.tvEnableLabel.setTextColor(primaryTextColor)
+        binding.tvEnableDesc.setTextColor(secondaryTextColor)
+        binding.tvNameLabel.setTextColor(primaryTextColor)
+        binding.tvGroupLabel.setTextColor(primaryTextColor)
+        binding.tvPatternLabel.setTextColor(primaryTextColor)
+        binding.tvTextColorLabel.setTextColor(primaryTextColor)
+        binding.tvUnderlineModeLabel.setTextColor(primaryTextColor)
+        binding.tvUnderlineColorLabel.setTextColor(primaryTextColor)
+        binding.tvSvgPathLabel.setTextColor(primaryTextColor)
+        binding.tvSvgPathHint.setTextColor(secondaryTextColor)
+        binding.tvSampleHint.setTextColor(secondaryTextColor)
+        binding.tvPreview.setTextColor(primaryTextColor)
+
+        binding.etName.setTextColor(primaryTextColor)
+        binding.etName.setHintTextColor(secondaryTextColor)
+        binding.etPattern.setTextColor(primaryTextColor)
+        binding.etPattern.setHintTextColor(secondaryTextColor)
+        binding.etTextColor.setTextColor(primaryTextColor)
+        binding.etTextColor.setHintTextColor(secondaryTextColor)
+        binding.etUnderlineColor.setTextColor(primaryTextColor)
+        binding.etUnderlineColor.setHintTextColor(secondaryTextColor)
+        binding.etSvgPath.setTextColor(primaryTextColor)
+        binding.etSvgPath.setHintTextColor(secondaryTextColor)
+        binding.etSampleText.setTextColor(primaryTextColor)
+        binding.etSampleText.setHintTextColor(secondaryTextColor)
+
+        binding.panelBasic.background?.mutate()?.setTint(surfaceBg)
+        binding.panelStyle.background?.mutate()?.setTint(surfaceBg)
+        binding.panelPreview.background?.mutate()?.setTint(surfaceBg)
+
+        binding.etName.background?.mutate()?.setTint(bg)
+        binding.etPattern.background?.mutate()?.setTint(bg)
+        binding.spGroup.background?.mutate()?.setTint(bg)
+        binding.etTextColor.background?.mutate()?.setTint(bg)
+        binding.spUnderlineMode.background?.mutate()?.setTint(bg)
+        binding.etUnderlineColor.background?.mutate()?.setTint(bg)
+        binding.etSvgPath.background?.mutate()?.setTint(bg)
+        binding.etSampleText.background?.mutate()?.setTint(bg)
+        binding.tvPreview.background?.mutate()?.setTint(bg)
     }
 
     private fun bindData() {

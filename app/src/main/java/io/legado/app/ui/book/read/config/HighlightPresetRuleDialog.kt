@@ -31,6 +31,8 @@ class HighlightPresetRuleDialog(
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
     private var accentColor = 0
+    private var cardBgColor = 0
+    private var previewBgColor = 0
 
     override fun onStart() {
         super.onStart()
@@ -59,8 +61,16 @@ class HighlightPresetRuleDialog(
         secondaryTextColor = requireContext().getSecondaryTextColor(isLight)
         accentColor = requireContext().accentColor
 
+        cardBgColor = if (isLight) {
+            ColorUtils.blendColors(bg, 0xFF000000.toInt(), 0.08f)
+        } else {
+            ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.06f)
+        }
+        previewBgColor = cardBgColor
+
         binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.ivBack.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+        binding.ivBack.background?.mutate()?.setTint(accentColor)
         binding.tvPageTitle.setTextColor(primaryTextColor)
         binding.tvPageSubtitle.setTextColor(secondaryTextColor)
     }
@@ -81,6 +91,10 @@ class HighlightPresetRuleDialog(
             item: HighlightRule,
             payloads: MutableList<Any>
         ) {
+            binding.root.background?.mutate()?.setTint(cardBgColor)
+            binding.tvPreview.background?.mutate()?.setTint(previewBgColor)
+            binding.ivAdd.background?.mutate()?.setTint(accentColor)
+
             binding.tvTitle.text = item.name
             binding.tvTitle.setTextColor(primaryTextColor)
             binding.tvDesc.text = item.displayPattern()
@@ -88,7 +102,10 @@ class HighlightPresetRuleDialog(
             binding.tvPreviewLabel.setTextColor(secondaryTextColor)
             binding.tvPreview.text = HighlightRulePreview.build(item)
             binding.tvPreview.setTextColor(primaryTextColor)
-            binding.ivAdd.setColorFilter(accentColor, PorterDuff.Mode.SRC_IN)
+            binding.ivAdd.setColorFilter(
+                if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt(),
+                PorterDuff.Mode.SRC_IN
+            )
             binding.ivAdd.setOnClickListener {
                 onAddRule(item.copy(id = System.currentTimeMillis().toString()))
                 dismissAllowingStateLoss()

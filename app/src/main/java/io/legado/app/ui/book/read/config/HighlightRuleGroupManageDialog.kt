@@ -37,6 +37,7 @@ class HighlightRuleGroupManageDialog(
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
     private var accentColor = 0
+    private var cardBgColor = 0
 
     override fun onStart() {
         super.onStart()
@@ -66,8 +67,15 @@ class HighlightRuleGroupManageDialog(
         secondaryTextColor = requireContext().getSecondaryTextColor(isLight)
         accentColor = requireContext().accentColor
 
+        cardBgColor = if (isLight) {
+            ColorUtils.blendColors(bg, 0xFF000000.toInt(), 0.08f)
+        } else {
+            ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.06f)
+        }
+
         binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.ivBack.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+        binding.ivBack.background?.mutate()?.setTint(accentColor)
         binding.tvPageTitle.setTextColor(primaryTextColor)
         binding.tvPageSubtitle.setTextColor(secondaryTextColor)
 
@@ -188,11 +196,16 @@ class HighlightRuleGroupManageDialog(
             item: String,
             payloads: MutableList<Any>
         ) {
+            binding.itemRoot.background?.mutate()?.setTint(cardBgColor)
+            binding.tvEdit.background?.mutate()?.setTint(accentColor)
+
             binding.tvTitle.text = item
             binding.tvTitle.setTextColor(primaryTextColor)
             binding.tvCount.text = "${groupCount(item)} 条规则"
             binding.tvCount.setTextColor(secondaryTextColor)
-            binding.tvEdit.setTextColor(primaryTextColor)
+            binding.tvEdit.setTextColor(
+                if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+            )
             binding.tvDelete.setTextColor(context.getColor(R.color.error))
             binding.tvDelete.visibility =
                 if (item == HighlightRuleGroupStore.DEFAULT_GROUP) View.GONE else View.VISIBLE

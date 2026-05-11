@@ -42,6 +42,8 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
     private var accentColor = 0
+    private var cardBgColor = 0
+    private var previewBgColor = 0
 
     override fun onStart() {
         super.onStart()
@@ -76,13 +78,23 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         secondaryTextColor = requireContext().getSecondaryTextColor(isLight)
         accentColor = requireContext().accentColor
 
+        cardBgColor = if (isLight) {
+            ColorUtils.blendColors(bg, 0xFF000000.toInt(), 0.08f)
+        } else {
+            ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.06f)
+        }
+        previewBgColor = cardBgColor
+
         binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.ivClose.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+        binding.ivClose.background?.mutate()?.setTint(accentColor)
         binding.tvPageTitle.setTextColor(primaryTextColor)
         binding.tvPageSubtitle.setTextColor(secondaryTextColor)
         binding.ivMenu.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+        binding.ivMenu.background?.mutate()?.setTint(accentColor)
         binding.ivEmpty.setColorFilter(secondaryTextColor, PorterDuff.Mode.SRC_IN)
         binding.tvEmptyMsg.setTextColor(secondaryTextColor)
+        binding.tvEmptyHint.setTextColor(secondaryTextColor)
 
         binding.tvEmptyAdd.background?.mutate()?.setTint(accentColor)
         binding.tvEmptyAdd.setTextColor(
@@ -291,6 +303,11 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             binding.tvPattern.text = "${item.group} / ${item.displayPattern()}"
             binding.tvPreview.text = HighlightRulePreview.build(item)
 
+            binding.root.background?.mutate()?.setTint(cardBgColor)
+            binding.tvPattern.background?.mutate()?.setTint(accentColor)
+            binding.tvPreview.background?.mutate()?.setTint(previewBgColor)
+            binding.tvEdit.background?.mutate()?.setTint(accentColor)
+
             binding.switchEnable.setOnCheckedChangeListener(null)
             binding.switchEnable.isChecked = item.enabled
             binding.switchEnable.trackTintList = android.content.res.ColorStateList.valueOf(
@@ -308,14 +325,21 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
             binding.tvTitle.setTextColor(primaryTextColor)
             binding.tvDesc.setTextColor(secondaryTextColor)
-            binding.tvPattern.setTextColor(secondaryTextColor)
+            binding.tvPattern.setTextColor(
+                if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+            )
             binding.tvPreviewLabel.setTextColor(secondaryTextColor)
             binding.tvPreview.setTextColor(primaryTextColor)
 
             (binding.tvEdit.getChildAt(0) as? android.widget.ImageView)
-                ?.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+                ?.setColorFilter(
+                    if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt(),
+                    PorterDuff.Mode.SRC_IN
+                )
             (binding.tvEdit.getChildAt(1) as? android.widget.TextView)
-                ?.setTextColor(primaryTextColor)
+                ?.setTextColor(
+                    if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+                )
 
             (binding.tvDelete.getChildAt(0) as? android.widget.ImageView)
                 ?.setColorFilter(context.getColor(R.color.error), PorterDuff.Mode.SRC_IN)
