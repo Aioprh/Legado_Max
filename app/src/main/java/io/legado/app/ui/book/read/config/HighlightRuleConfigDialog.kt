@@ -18,6 +18,7 @@ import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogHighlightRuleConfigBinding
 import io.legado.app.databinding.ItemHighlightPresetRuleBinding
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
@@ -40,11 +41,13 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     private val rules = ArrayList<HighlightRule>()
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
+    private var accentColor = 0
 
     override fun onStart() {
         super.onStart()
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.92f)
         dialog?.window?.setGravity(Gravity.BOTTOM)
+        dialog?.window?.setBackgroundDrawableResource(R.drawable.shape_highlight_rule_sheet)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
@@ -71,14 +74,20 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         val isLight = ColorUtils.isColorLight(bg)
         primaryTextColor = requireContext().getPrimaryTextColor(isLight)
         secondaryTextColor = requireContext().getSecondaryTextColor(isLight)
+        accentColor = requireContext().accentColor
 
-        binding.sheetContainer.setBackgroundColor(bg)
+        binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.ivClose.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
         binding.tvPageTitle.setTextColor(primaryTextColor)
         binding.tvPageSubtitle.setTextColor(secondaryTextColor)
         binding.ivMenu.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
         binding.ivEmpty.setColorFilter(secondaryTextColor, PorterDuff.Mode.SRC_IN)
         binding.tvEmptyMsg.setTextColor(secondaryTextColor)
+
+        binding.tvEmptyAdd.background?.mutate()?.setTint(accentColor)
+        binding.tvEmptyAdd.setTextColor(
+            if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+        )
     }
 
     private fun showMenu(anchor: View) {
@@ -284,6 +293,12 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
             binding.switchEnable.setOnCheckedChangeListener(null)
             binding.switchEnable.isChecked = item.enabled
+            binding.switchEnable.trackTintList = android.content.res.ColorStateList.valueOf(
+                if (item.enabled) accentColor else 0xFF666666.toInt()
+            )
+            binding.switchEnable.thumbTintList = android.content.res.ColorStateList.valueOf(
+                if (item.enabled) accentColor else 0xFF999999.toInt()
+            )
             binding.switchEnable.setOnCheckedChangeListener { _, isChecked ->
                 if (item.enabled != isChecked) {
                     item.enabled = isChecked

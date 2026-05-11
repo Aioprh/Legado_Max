@@ -1,5 +1,6 @@
 package io.legado.app.ui.book.read.config
 
+import android.graphics.PorterDuff
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
@@ -15,6 +16,11 @@ import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.databinding.DialogHighlightRuleGroupManageBinding
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.getSecondaryTextColor
+import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
@@ -28,14 +34,19 @@ class HighlightRuleGroupManageDialog(
     private val adapter by lazy { GroupAdapter(requireContext()) }
     private val groups = ArrayList<String>()
     private val rules = ArrayList<HighlightRule>()
+    private var primaryTextColor = 0
+    private var secondaryTextColor = 0
+    private var accentColor = 0
 
     override fun onStart() {
         super.onStart()
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.92f)
         dialog?.window?.setGravity(Gravity.BOTTOM)
+        dialog?.window?.setBackgroundDrawableResource(R.drawable.shape_highlight_rule_sheet)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
+        initTheme()
         attachBottomSheetDismiss(
             binding.dragHandle,
             binding.sheetContainer
@@ -46,6 +57,26 @@ class HighlightRuleGroupManageDialog(
         binding.ivBack.setOnClickListener { dismissAllowingStateLoss() }
         binding.tvAddGroup.setOnClickListener { showGroupInputDialog(null) }
         loadData()
+    }
+
+    private fun initTheme() {
+        val bg = requireContext().bottomBackground
+        val isLight = ColorUtils.isColorLight(bg)
+        primaryTextColor = requireContext().getPrimaryTextColor(isLight)
+        secondaryTextColor = requireContext().getSecondaryTextColor(isLight)
+        accentColor = requireContext().accentColor
+
+        binding.sheetContainer.background?.mutate()?.setTint(bg)
+        binding.ivBack.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+        binding.tvPageTitle.setTextColor(primaryTextColor)
+        binding.tvPageSubtitle.setTextColor(secondaryTextColor)
+
+        binding.tvAddGroup.background?.mutate()?.setTint(accentColor)
+        binding.tvAddGroup.setTextColor(
+            if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+        )
+
+        binding.tvEmptyMsg.setTextColor(secondaryTextColor)
     }
 
     private fun loadData() {
@@ -158,7 +189,11 @@ class HighlightRuleGroupManageDialog(
             payloads: MutableList<Any>
         ) {
             binding.tvTitle.text = item
+            binding.tvTitle.setTextColor(primaryTextColor)
             binding.tvCount.text = "${groupCount(item)} 条规则"
+            binding.tvCount.setTextColor(secondaryTextColor)
+            binding.tvEdit.setTextColor(primaryTextColor)
+            binding.tvDelete.setTextColor(context.getColor(R.color.error))
             binding.tvDelete.visibility =
                 if (item == HighlightRuleGroupStore.DEFAULT_GROUP) View.GONE else View.VISIBLE
         }
