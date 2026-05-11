@@ -47,6 +47,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         val logs: List<DebugEvent> = emptyList(),
         val flowLogs: List<FlowLogItem> = emptyList(),
         val selectedLog: DebugEvent? = null,
+        val selectedFlowLog: FlowLogItem? = null,
         val isLoading: Boolean = false,
         val isEmpty: Boolean = false,
         val isPaused: Boolean = false
@@ -186,8 +187,33 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         _uiState.value = _uiState.value.copy(selectedLog = log)
     }
 
+    fun selectFlowLog(log: FlowLogItem) {
+        _uiState.value = _uiState.value.copy(selectedFlowLog = log)
+    }
+
     fun clearSelection() {
-        _uiState.value = _uiState.value.copy(selectedLog = null)
+        _uiState.value = _uiState.value.copy(selectedLog = null, selectedFlowLog = null)
+    }
+
+    fun copyFlowLogDetail(log: FlowLogItem) {
+        val text = buildString {
+            appendLine("[${log.stage.displayName}] ${log.sourceName ?: "未知书源"}")
+            appendLine("时间: ${formatTime(log.startTime)}")
+            appendLine("消息: ${log.message}")
+            log.sourceUrl?.let { appendLine("书源URL: $it") }
+            log.operation?.let { appendLine("操作: $it") }
+            log.url?.let { appendLine("请求URL: $it") }
+            log.method?.let { appendLine("请求方法: $it") }
+            log.statusCode?.let { appendLine("状态码: $it") }
+            log.duration?.let { appendLine("耗时: ${it}ms") }
+            log.rule?.let { appendLine("规则: $it") }
+            log.result?.let { appendLine("结果: $it") }
+            log.detail?.let { appendLine("\n详情:\n$it") }
+            log.error?.let { appendLine("\n异常:\n${it.stackTraceToString()}") }
+        }
+
+        copyToClipboard(text)
+        showToast("已复制到剪贴板")
     }
 
     fun togglePause() {

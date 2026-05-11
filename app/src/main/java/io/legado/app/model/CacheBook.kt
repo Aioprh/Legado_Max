@@ -331,7 +331,7 @@ object CacheBook {
             onDownloadSet.remove(chapter.index)
             successDownloadSet.add(chapter.primaryStr())
             errorDownloadMap.remove(chapter.primaryStr())
-            AppLog.put("《${book.name}》章节《${chapter.title}》缓存成功")
+            AppLog.put("✅《${book.name}》章节《${chapter.title}》缓存成功")
         }
 
         /**
@@ -362,7 +362,7 @@ object CacheBook {
                 AppLog.put("《${book.name}》章节《${chapter.title}》缓存失败，准备重试\n${error.localizedMessage}")
             } else {
                 AppLog.put(
-                    "《${book.name}》章节《${chapter.title}》缓存失败\n${error.localizedMessage}",
+                    "❌《${book.name}》章节《${chapter.title}》缓存失败\n${error.localizedMessage}",
                     error
                 )
             }

@@ -1,6 +1,8 @@
 package io.legado.app.ui.debuglog.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -133,6 +135,7 @@ private fun FlowLogCard(
 /**
  * 时间线项
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TimelineItem(
     log: FlowLogItem,
@@ -142,6 +145,7 @@ private fun TimelineItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .combinedClickable(onClick = onClick)
             .padding(start = 8.dp)
     ) {
         Column(
