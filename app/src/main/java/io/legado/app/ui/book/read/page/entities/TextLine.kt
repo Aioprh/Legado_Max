@@ -311,7 +311,9 @@ data class TextLine(
         columns.forEachIndexed { index, column ->
             val textColumn = column as? TextBaseColumn
             val currentMode = textColumn?.underlineMode ?: 0
-            val currentColor = textColumn?.underlineColor ?: ReadBookConfig.textAccentColor
+            val currentColor = textColumn?.underlineColor
+                ?: textColumn?.textColor
+                ?: ReadBookConfig.textColor
             val currentSvgPath = textColumn?.underlineSvgPath ?: ""
             val shouldContinue = active && currentMode == mode && currentColor == color && currentSvgPath == svgPath
             when {
@@ -438,8 +440,10 @@ data class TextLine(
                     style = android.graphics.Paint.Style.FILL
                     pathEffect = null
                 }
-                val barRight = (startX - 5.dpToPx()).coerceAtLeast(2.dpToPx().toFloat())
-                val barLeft = (barRight - 4.dpToPx()).coerceAtLeast(0f)
+                val barWidth = 4.dpToPx().toFloat()
+                val gap = 8.dpToPx().toFloat()
+                val barRight = (startX - gap).coerceAtLeast(barWidth)
+                val barLeft = (barRight - barWidth).coerceAtLeast(0f)
                 val barTop = 3.dpToPx().toFloat()
                 val barBottom = height - 3.dpToPx().toFloat()
                 val radius = 2.dpToPx().toFloat()

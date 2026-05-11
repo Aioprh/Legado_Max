@@ -4,7 +4,6 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
-import android.text.style.UnderlineSpan
 
 object HighlightRulePreview {
 
@@ -35,29 +34,27 @@ object HighlightRulePreview {
                             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                         )
                     } else {
-                        rule.textColor?.let { color ->
-                            spannable.setSpan(
-                                ForegroundColorSpan(color),
-                                start,
-                                end,
-                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                            )
-                        }
-                    }
-                }
-                else -> {
-                    rule.textColor?.let { color ->
                         spannable.setSpan(
-                            ForegroundColorSpan(color),
+                            ForegroundColorSpan(textColor),
                             start,
                             end,
                             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                         )
                     }
+                }
+                else -> {
                     when (rule.underlineMode) {
-                        1, 2 -> {
+                        1 -> {
                             spannable.setSpan(
-                                UnderlineSpan(),
+                                SolidUnderlineSpan(textColor, accentColor),
+                                start,
+                                end,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                            )
+                        }
+                        2 -> {
+                            spannable.setSpan(
+                                DashUnderlineSpan(textColor, accentColor),
                                 start,
                                 end,
                                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -65,10 +62,15 @@ object HighlightRulePreview {
                         }
                         3 -> {
                             spannable.setSpan(
-                                WaveUnderlineSpan(
-                                    textColor = textColor,
-                                    underlineColor = accentColor
-                                ),
+                                WaveUnderlineSpan(textColor, accentColor),
+                                start,
+                                end,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                            )
+                        }
+                        else -> {
+                            spannable.setSpan(
+                                ForegroundColorSpan(textColor),
                                 start,
                                 end,
                                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE

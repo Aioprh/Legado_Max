@@ -5,13 +5,12 @@ import android.graphics.Paint
 import android.text.style.ReplacementSpan
 import io.legado.app.utils.dpToPx
 
-class TitleEmphasisSpan(
+class SolidUnderlineSpan(
     private val textColor: Int,
-    private val accentColor: Int,
+    private val underlineColor: Int,
 ) : ReplacementSpan() {
 
-    private val gap = 8.dpToPx()
-    private val barWidth = 4.dpToPx()
+    private val underlineOffset = 6.dpToPx()
 
     override fun getSize(
         paint: Paint,
@@ -24,8 +23,8 @@ class TitleEmphasisSpan(
             val metrics = paint.fontMetricsInt
             fm.top = metrics.top
             fm.ascent = metrics.ascent
-            fm.descent = metrics.descent
-            fm.bottom = metrics.bottom
+            fm.descent = metrics.descent + underlineOffset
+            fm.bottom = metrics.bottom + underlineOffset
         }
         return paint.measureText(text, start, end).toInt()
     }
@@ -44,23 +43,15 @@ class TitleEmphasisSpan(
         val textStr = text.subSequence(start, end).toString()
         paint.color = textColor
         canvas.drawText(textStr, x, y.toFloat(), paint)
-        
-        val barPaint = Paint(paint).apply {
-            color = accentColor
-            style = Paint.Style.FILL
+
+        val width = paint.measureText(text, start, end)
+        val lineY = y + underlineOffset
+        val linePaint = Paint(paint).apply {
+            color = underlineColor
+            style = Paint.Style.STROKE
+            strokeWidth = 2.dpToPx().toFloat()
             isAntiAlias = true
         }
-        val barRight = (x - gap).coerceAtLeast(barWidth.toFloat())
-        val barLeft = (barRight - barWidth).coerceAtLeast(0f)
-        val radius = 2.dpToPx().toFloat()
-        canvas.drawRoundRect(
-            barLeft,
-            (top + 3.dpToPx()).toFloat(),
-            barRight,
-            (bottom - 3.dpToPx()).toFloat(),
-            radius,
-            radius,
-            barPaint
-        )
+        canvas.drawLine(x, lineY.toFloat(), x + width, lineY.toFloat(), linePaint)
     }
 }
