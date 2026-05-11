@@ -21,7 +21,10 @@ object HelpDocManager {
         HelpDoc("下拉刷新流程与机制", "下拉刷新流程与机制"),
         HelpDoc("部分功能需要安卓特定版本", "需要安卓特定版本的功能"),
         HelpDoc("ExtensionContentType", "扩展内容类型"),
-        HelpDoc("jsVariableHelp", "JS 变量存储机制详解")
+        HelpDoc("jsVariableHelp", "JS 变量存储机制详解"),
+        HelpDoc("图片加载机制", "图片加载机制"),
+        HelpDoc("网络请求机制", "网络请求机制"),
+        HelpDoc("错误处理机制", "错误处理机制")
     )
     
     // 隐藏的帮助文档（可以在某些界面加载查看，但不会出现在切换列表中）
