@@ -748,7 +748,7 @@
     <string name="highlight_rule_export_success">Highlight rules copied to clipboard</string>
     <string name="action_menu">Actions</string>
     <string name="preview">Preview</string>
-    <string name="text_menu_config">Text Menu Config</string>
+    <string name="text_menu_config">Expand Text Menu Config</string>
     <string name="text_menu_config_desc">Select the menu items you want to display</string>
     <string name="process_text_menu_config">Other Apps Menu Config</string>
     <string name="process_text_menu_config_desc">Select the other apps menu items you want to display</string>

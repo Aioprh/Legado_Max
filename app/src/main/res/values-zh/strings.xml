@@ -735,7 +735,7 @@
     <string name="highlight_rule_export_success">高亮规则已复制到剪贴板</string>
     <string name="action_menu">功能</string>
     <string name="preview">预览</string>
-    <string name="text_menu_config">文本菜单配置</string>
+    <string name="text_menu_config">展开文本菜单配置</string>
     <string name="text_menu_config_desc">选择您想要显示的菜单项</string>
     <string name="process_text_menu_config">其他应用菜单配置</string>
     <string name="process_text_menu_config_desc">选择您想要显示的其他应用菜单项</string>
