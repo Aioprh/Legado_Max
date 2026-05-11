@@ -71,6 +71,9 @@ data class TextLine(
     var textPage: TextPage = emptyTextPage
     var isLeftLine = true
 
+    /**
+     * 向行中添加文本列
+     */
     fun addColumn(column: BaseColumn) {
         if (column !is TextColumn) {
             onlyTextColumn = false
@@ -79,6 +82,9 @@ data class TextLine(
         textColumns.add(column)
     }
 
+    /**
+     * 向行中批量添加文本列
+     */
     fun addColumns(columns: Collection<BaseColumn>) {
         onlyTextColumn = false
         columns.forEach { column ->
@@ -87,26 +93,41 @@ data class TextLine(
         textColumns.addAll(columns)
     }
 
+    /**
+     * 获取指定位置的文本列，越界时返回最后一个
+     */
     fun getColumn(index: Int): BaseColumn {
         return textColumns.getOrElse(index) {
             textColumns.last()
         }
     }
 
+    /**
+     * 从后向前获取指定位置的文本列
+     */
     fun getColumnReverseAt(index: Int, offset: Int = 0): BaseColumn {
         return textColumns[textColumns.lastIndex - offset - index]
     }
 
+    /**
+     * 获取行内文本列数量
+     */
     fun getColumnsCount(): Int {
         return textColumns.size
     }
 
+    /**
+     * 更新行的顶部、底部和基线位置
+     */
     fun upTopBottom(durY: Float, textHeight: Float, fontMetrics: Paint.FontMetrics) {
         lineTop = ChapterProvider.paddingTop + durY
         lineBottom = lineTop + textHeight
         lineBase = lineBottom - fontMetrics.descent
     }
 
+    /**
+     * 判断触摸坐标是否在当前行范围内
+     */
     fun isTouch(x: Float, y: Float, relativeOffset: Float): Boolean {
         return y > lineTop + relativeOffset
                 && y < lineBottom + relativeOffset
@@ -114,11 +135,17 @@ data class TextLine(
                 && x <= lineEnd + 20.dpToPx()
     }
 
+    /**
+     * 判断触摸Y坐标是否在当前行范围内
+     */
     fun isTouchY(y: Float, relativeOffset: Float): Boolean {
         return y > lineTop + relativeOffset
                 && y < lineBottom + relativeOffset
     }
 
+    /**
+     * 判断行是否在可视区域内
+     */
     fun isVisible(relativeOffset: Float): Boolean {
         val top = lineTop + relativeOffset
         val bottom = lineBottom + relativeOffset
@@ -153,6 +180,9 @@ data class TextLine(
         return visible
     }
 
+    /**
+     * 绘制整行内容，包含优化渲染和普通渲染两种模式
+     */
     fun draw(view: ContentTextView, canvas: Canvas) {
         if (AppConfig.optimizeRender) {
             canvasRecorder.recordIfNeededThenDraw(canvas, view.width, height.toInt()) {
@@ -163,6 +193,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制行内文本和列内容，包含搜索高亮、墨水屏下划线、自定义下划线等
+     */
     private fun drawTextLine(view: ContentTextView, canvas: Canvas) {
         drawCurrentSearchResultBackgrounds(canvas)
         if (checkFastDraw()) {
@@ -192,6 +225,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 快速绘制纯文本行，适用于优化渲染模式
+     */
     @SuppressLint("NewApi")
     private fun fastDrawTextLine(view: ContentTextView, canvas: Canvas) {
         val textPaint = if (isTitle) {
@@ -229,7 +265,7 @@ data class TextLine(
     }
 
     /**
-     * 绘制下划线
+     * 绘制全局下划线（朗读标记除外），支持实线/虚线/波浪线/点线
      */
     private fun drawUnderline(canvas: Canvas, underlineMode: Int) {
         val paint = TextPaint(ChapterProvider.contentPaint).apply {
@@ -249,6 +285,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制虚线下划线，每段8dp线段+5dp间隔
+     */
     private fun drawDashedLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float) {
         val dashLen = 8.dpToPx().toFloat()
         val gapLen = 5.dpToPx().toFloat()
@@ -260,6 +299,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制点线下划线，2dp圆点+4dp间隔
+     */
     private fun drawDottedLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float) {
         val dotSize = 2.dpToPx().toFloat()
         val gapLen = 4.dpToPx().toFloat()
@@ -272,6 +314,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制波浪线下划线，使用贝塞尔曲线实现
+     */
     private fun drawWavyLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float) {
         val path = Path()
         val waveAmplitude = 3.dpToPx().toFloat()
@@ -293,6 +338,9 @@ data class TextLine(
         canvas.drawPath(path, paint)
     }
 
+    /**
+     * 判断是否满足快速绘制条件
+     */
     fun checkFastDraw(): Boolean {
         if (!AppConfig.optimizeRender || exceed || !onlyTextColumn || textPage.isMsgPage) {
             return false
@@ -308,6 +356,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制高亮规则匹配文本的下划线段
+     */
     private fun drawStyledUnderlines(canvas: Canvas) {
         if (isImage || columns.isEmpty()) return
         var rangeStart = 0f
@@ -355,6 +406,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制当前搜索结果匹配区域的高亮背景
+     */
     private fun drawCurrentSearchResultBackgrounds(canvas: Canvas) {
         if (columns.isEmpty()) return
         var startX = 0f
@@ -383,6 +437,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制搜索结果匹配范围的圆角背景
+     */
     private fun drawCurrentSearchRange(canvas: Canvas, startX: Float, endX: Float) {
         val paint = PaintPool.obtain()
         paint.set(ChapterProvider.contentPaint)
@@ -401,6 +458,9 @@ data class TextLine(
         PaintPool.recycle(paint)
     }
 
+    /**
+     * 绘制单段下划线，用于高亮规则匹配区域，支持实线/虚线/波浪线/标题强调条
+     */
     private fun drawUnderlineSegment(
         canvas: Canvas,
         startX: Float,
@@ -459,19 +519,31 @@ data class TextLine(
         canvas.restore()
     }
 
+    /**
+     * 触发行重绘，同时刷新页面缓存
+     */
     fun invalidate() {
         invalidateSelf()
         textPage.invalidate()
     }
 
+    /**
+     * 仅触发行自身缓存失效
+     */
     fun invalidateSelf() {
         canvasRecorder.invalidate()
     }
 
+    /**
+     * 释放 Canvas 录制器资源
+     */
     fun recycleRecorder() {
         canvasRecorder.recycle()
     }
 
+    /**
+     * 静态常量和兼容性检测
+     */
     @SuppressLint("NewApi")
     companion object {
         val emptyTextLine = TextLine()
