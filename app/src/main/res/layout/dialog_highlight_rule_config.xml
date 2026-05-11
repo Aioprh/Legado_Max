@@ -17,6 +17,7 @@
         android:paddingTop="12dp">
 
         <View
+            android:id="@+id/drag_handle"
             android:layout_width="96dp"
             android:layout_height="8dp"
             android:layout_gravity="center_horizontal"
@@ -36,7 +37,7 @@
                 android:id="@+id/iv_close"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/shape_highlight_rule_icon_button"
                 android:contentDescription="@string/back"
                 android:padding="10dp"
                 android:src="@drawable/ic_arrow_back"
@@ -72,7 +73,7 @@
                 android:id="@+id/iv_menu"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/shape_highlight_rule_icon_button"
                 android:contentDescription="@string/action_menu"
                 android:padding="10dp"
                 android:src="@drawable/ic_more_vert"

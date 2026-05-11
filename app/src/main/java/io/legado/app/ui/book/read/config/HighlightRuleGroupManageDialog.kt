@@ -8,13 +8,12 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
-import io.legado.app.databinding.DialogRecyclerViewBinding
+import io.legado.app.databinding.DialogHighlightRuleGroupManageBinding
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.setLayout
@@ -23,9 +22,9 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 class HighlightRuleGroupManageDialog(
     private val onChanged: () -> Unit,
-) : BaseDialogFragment(R.layout.dialog_recycler_view) {
+) : BaseDialogFragment(R.layout.dialog_highlight_rule_group_manage) {
 
-    private val binding by viewBinding(DialogRecyclerViewBinding::bind)
+    private val binding by viewBinding(DialogHighlightRuleGroupManageBinding::bind)
     private val adapter by lazy { GroupAdapter(requireContext()) }
     private val groups = ArrayList<String>()
     private val rules = ArrayList<HighlightRule>()
@@ -37,18 +36,14 @@ class HighlightRuleGroupManageDialog(
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(
-            ContextCompat.getColor(requireContext(), R.color.background_card)
-        )
-        binding.toolBar.title = "管理分组"
+        attachBottomSheetDismiss(
+            binding.dragHandle,
+            binding.sheetContainer
+        ) { dismissAllowingStateLoss() }
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
-        binding.tvFooterLeft.visibility = View.GONE
-        binding.tvCancel.visibility = View.GONE
-        binding.tvOk.visibility = View.VISIBLE
-        binding.tvOk.text = "新增分组"
-        binding.tvOk.setTextColor(ContextCompat.getColor(requireContext(), R.color.primaryText))
-        binding.tvOk.setOnClickListener { showGroupInputDialog(null) }
+        binding.ivBack.setOnClickListener { dismissAllowingStateLoss() }
+        binding.tvAddGroup.setOnClickListener { showGroupInputDialog(null) }
         loadData()
     }
 
@@ -58,8 +53,7 @@ class HighlightRuleGroupManageDialog(
         rules.clear()
         rules.addAll(HighlightRuleStore.load(requireContext()))
         adapter.setItems(groups.toList())
-        binding.tvMsg.visibility = if (groups.isEmpty()) View.VISIBLE else View.GONE
-        binding.tvMsg.text = "暂无分组"
+        binding.tvEmptyMsg.visibility = if (groups.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun showGroupInputDialog(source: String?) {

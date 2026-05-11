@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.ArrayAdapter
 import androidx.core.widget.doAfterTextChanged
 import io.legado.app.R
@@ -27,11 +28,16 @@ class HighlightRuleEditDialog(
         super.onStart()
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.92f)
         dialog?.window?.setGravity(Gravity.BOTTOM)
+        dialog?.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         editingRule = sourceRule?.copy() ?: HighlightRule()
         groupItems = HighlightRuleGroupStore.load(requireContext())
+        attachBottomSheetDismiss(
+            binding.dragHandle,
+            binding.sheetContainer
+        ) { dismissAllowingStateLoss() }
         binding.tvPageTitle.text =
             getString(if (sourceRule == null) R.string.highlight_rule_add else R.string.highlight_rule_edit)
         binding.tvPageSubtitle.text =

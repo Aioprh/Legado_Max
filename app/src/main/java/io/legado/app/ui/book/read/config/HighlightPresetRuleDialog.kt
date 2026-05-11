@@ -30,6 +30,10 @@ class HighlightPresetRuleDialog(
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
+        attachBottomSheetDismiss(
+            binding.dragHandle,
+            binding.sheetContainer
+        ) { dismissAllowingStateLoss() }
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
         adapter.setItems(presetRules)

@@ -80,6 +80,10 @@ class TextChapterLayout(
     private val bookContent: BookContent,
 ) {
 
+    private val noteHighlightColor = 0xFF8F959E.toInt()
+    private val dialogHighlightColor = 0xFFFF8C00.toInt()
+    private val bookTitleUnderlineColor = 0xFF63C37D.toInt()
+
     @Volatile
     private var listener: LayoutProgressListener? = textChapter
 
@@ -118,9 +122,16 @@ class TextChapterLayout(
     private val adaptSpecialStyle = AppConfig.adaptSpecialStyle
     private val pageAnim = book.getPageAnim()
     private val highlightRules by lazy { HighlightRuleStore.loadEnabled(appCtx) }
-    private val dialogHighlightColor = 0xFFE58D2B.toInt()
-    private val noteHighlightColor = 0xFF8F959E.toInt()
-    private val bookTitleUnderlineColor = 0xFF63C37D.toInt()
+    private val compiledHighlightRules by lazy {
+        HighlightRuleStore.loadEnabled(appCtx).mapNotNull { rule ->
+            kotlin.runCatching {
+                CompiledHighlightRule(
+                    rule = rule,
+                    regex = Regex(rule.pattern)
+                )
+            }.getOrNull()
+        }
+    }
 
     private var pendingTextPage = TextPage()
 
@@ -614,7 +625,7 @@ class TextChapterLayout(
         htmlContent: String,
     ) {
         val textViewTagHandler = TextViewTagHandler()
-        val spanned = applyBuiltInHighlightRules(
+        val spanned = applyHighlightRules(
             SpannableStringBuilder(
                 htmlContent.parseAsHtml(
                     HtmlCompat.FROM_HTML_MODE_COMPACT,
@@ -1025,6 +1036,38 @@ class TextChapterLayout(
         return spannable
     }
 
+    private fun applyHighlightRules(spannable: SpannableStringBuilder): SpannableStringBuilder {
+        compiledHighlightRules.forEach { compiled ->
+            compiled.regex.findAll(spannable).forEach { match ->
+                val start = match.range.first
+                val end = match.range.last + 1
+                if (start >= end) return@forEach
+                compiled.rule.textColor?.let { color ->
+                    spannable.setSpan(
+                        ForegroundColorSpan(color),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+                if (compiled.rule.underlineMode != 0) {
+                    spannable.setSpan(
+                        HighlightStyleSpan(
+                            compiled.rule.underlineMode,
+                            compiled.rule.underlineColor
+                                ?: compiled.rule.textColor
+                                ?: 0xFF63C37D.toInt()
+                        ),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+            }
+        }
+        return spannable
+    }
+
     @Suppress("DEPRECATION")
     private suspend fun setTypeText(
         book: Book,
@@ -1040,7 +1083,7 @@ class TextChapterLayout(
         srcList: LinkedList<String>? = null,
         clickList: LinkedList<String?>?
     ) {
-        val styledText = applyHighlightRulesFromStore(SpannableStringBuilder(text))
+        val styledText = applyHighlightRules(SpannableStringBuilder(text))
         val widthsArray = allocateFloatArray(text.length)
         textPaint.getTextWidthsCompat(text, widthsArray, reviewCharWidth)
         val layout = if (useZhLayout) {
@@ -1491,5 +1534,10 @@ class TextChapterLayout(
         val code = char.code
         return code == 8203 || code == 8204 || code == 8205 || code == 8288
     }
+
+    private data class CompiledHighlightRule(
+        val rule: HighlightRule,
+        val regex: Regex,
+    )
 
 }

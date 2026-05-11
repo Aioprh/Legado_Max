@@ -16,14 +16,18 @@ object HighlightRuleStore {
 
     fun load(context: Context): MutableList<HighlightRule> {
         val stored = context.getPrefString(PreferKey.highlightRuleItems)
+        if (stored.isNullOrBlank()) {
+            return mutableListOf()
+        }
         val rules = GSON.fromJsonArray<HighlightRule>(stored).getOrNull()?.toMutableList()
-        if (!rules.isNullOrEmpty()) {
-            val merged = ensureBuiltinRules(rules, context)
-            HighlightRuleGroupStore.ensureFromRules(context, merged)
-            if (merged.size != rules.size) {
-                save(context, merged)
+        if (rules != null) {
+            val normalized = normalizeRules(rules, context)
+            if (normalized != rules) {
+                save(context, normalized)
+            } else {
+                HighlightRuleGroupStore.ensureFromRules(context, normalized)
             }
-            return merged.toMutableList()
+            return normalized.toMutableList()
         }
         return mutableListOf()
     }
@@ -33,7 +37,9 @@ object HighlightRuleStore {
     }
 
     fun save(context: Context, rules: List<HighlightRule>) {
-        val normalized = rules.map { it.copy(group = it.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP }) }
+        val normalized = rules.map {
+            it.copy(group = it.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP })
+        }
         context.putPrefString(PreferKey.highlightRuleItems, GSON.toJson(normalized))
         HighlightRuleGroupStore.ensureFromRules(context, normalized)
     }
@@ -49,8 +55,8 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "dialog_default",
                 name = "对话高亮",
-                pattern = "[“\"]([^”\"\\n]{1,120})[”\"]|「[^」\\n]{1,120}」|『[^』\\n]{1,120}』",
-                sampleText = "她轻声说：\u201C今晚就出发。\u201D",
+                pattern = "“[^”\\n]{1,120}”|\"[^\"\\n]{1,120}\"|「[^」\\n]{1,120}」|『[^』\\n]{1,120}』",
+                sampleText = "她轻声说：“今晚就出发。”",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = context.getPrefBoolean(PreferKey.highlightRuleDialog, true),
                 textColor = 0xFFFF8C00.toInt()
@@ -59,7 +65,7 @@ object HighlightRuleStore {
                 id = "book_title_default",
                 name = "书名号高亮",
                 pattern = "《[^》\\n]{1,80}》",
-                sampleText = "最近在重读《百年孤独》，节奏很稳。",
+                sampleText = "最近在重读《百年孤独》，节奏依然很稳。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = context.getPrefBoolean(PreferKey.highlightRuleBookTitle, true),
                 underlineMode = 3,
@@ -68,8 +74,8 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "bracket_note_default",
                 name = "括号标注高亮",
-                pattern = "（[^）\\n]{1,80}）|\\([^\\)\\n]{1,80}\\)|【[^】\\n]{1,80}】",
-                sampleText = "他停了一下（像是忽然想起什么）。",
+                pattern = "（[^（）\\n]{1,80}）|\\([^()\\n]{1,80}\\)|【[^】\\n]{1,80}】|\\[[^\\]\\n]{1,80}]",
+                sampleText = "他停了一下（像是忽然想起了什么）。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = context.getPrefBoolean(PreferKey.highlightRuleBracketNote, true),
                 textColor = 0xFF8F959E.toInt(),
@@ -79,7 +85,7 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "title_emphasis_default",
                 name = "标题强调",
-                pattern = "(?m)^(第[0-9零一二三四五六七八九十百千两0123456789IVXLCDMivxlcdm]{1,12}[章节回卷部篇集幕]|序章|楔子|引子|终章|尾声|后记|番外)[^\\n]{0,40}$",
+                pattern = "(?m)^\\s{0,2}(?:第[0-9零〇一二两三四五六七八九十百千万IVXLCDMivxlcdm]{1,12}[章节卷回部篇集幕]|序章|楔子|引子|终章|尾声|后记|番外)[^\\n]{0,40}$",
                 sampleText = "第一章 雨夜来客",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = true,
@@ -90,8 +96,8 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "thought_default",
                 name = "心理活动",
-                pattern = "（[^）]*?(想|寻思|暗道|心道|心里|想着|思量|思忖|盘算|盘算着)[^）]*?）",
-                sampleText = "她心中暗道：（这究竟是怎么回事？）",
+                pattern = "（[^）\\n]{0,40}(?:心想|暗道|心道|想到|寻思|琢磨|嘀咕)[^）\\n]{0,40}）",
+                sampleText = "她心中一紧（不对，这里一定有问题）。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
                 textColor = 0xFF9370DB.toInt(),
@@ -101,17 +107,17 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "narrator_default",
                 name = "旁白说明",
-                pattern = "（以下\\S{0,20}省略|省略\\S{0,20}内容|[^\\n]{0,20}的情景不再赘述|[^\\n]{0,20}的情况不再多说）",
-                sampleText = "（中间的情节不再赘述）",
+                pattern = "（(?:未完待续|待续|略|下文再表|按：?|注：?)[^）\\n]{0,40}）|【(?:注|旁白|作者有话说)[:：][^】\\n]{0,40}】",
+                sampleText = "（注：此处时间线与前文同步）",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
                 textColor = 0xFF708090.toInt()
             ),
             HighlightRule(
                 id = "emphasis_default",
-                name = "着重强调",
-                pattern = "[*＊]{1,2}[^*\\n]{1,50}[*＊]{1,2}",
-                sampleText = "**这是重点内容**，需要特别关注。",
+                name = "重点强调",
+                pattern = "(?:\\*\\*|__)[^\\n*_]{1,40}(?:\\*\\*|__)|(?:!!!|！？|\\?!)[^\\n]{0,20}",
+                sampleText = "**这是重点内容**，需要特别注意。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
                 textColor = 0xFFDC143C.toInt(),
@@ -121,8 +127,8 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "poetry_default",
                 name = "诗词引用",
-                pattern = "[\\n]([七五言绝句律诗词牌曲牌][^\\n]{0,60}[^\\n]{10,50}[^\\n]{0,20}[，。！？])\\n",
-                sampleText = "床前明月光，疑是地上霜。\n举头望明月，低头思故乡。",
+                pattern = "(?m)^(?:[\\p{IsHan}，。！？；：、]{5,24})$",
+                sampleText = "床前明月光，疑是地上霜。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
                 textColor = 0xFF2F4F4F.toInt(),
@@ -131,9 +137,9 @@ object HighlightRuleStore {
             ),
             HighlightRule(
                 id = "ellipsis_default",
-                name = "省略语",
-                pattern = "x{2,}|\\*{2,}|\\.{2,}",
-                sampleText = "他xxx地笑了笑。",
+                name = "省略停顿",
+                pattern = "…{2,}|\\.{3,}|—{2,}|-{3,}",
+                sampleText = "他沉默了很久……最后还是点了头。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
                 textColor = 0xFF8B8B8B.toInt()
@@ -141,7 +147,7 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "number_default",
                 name = "数字金额",
-                pattern = "[0-9零一二三四五六七八九十百千万亿]+[元块美元英镑]|[0-9]+[%％]",
+                pattern = "(?:￥|¥)?\\d+(?:\\.\\d+)?(?:元|块|万|亿|%|％)|[零〇一二两三四五六七八九十百千万亿]+(?:元|块|万|亿)",
                 sampleText = "原价100元，现在只要50元。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
@@ -150,8 +156,8 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "english_default",
                 name = "英文单词",
-                pattern = "[a-zA-Z]{2,}[a-zA-Z0-9'-]*",
-                sampleText = "Hello World，你好世界！",
+                pattern = "\\b[A-Za-z]{2,}[A-Za-z0-9'-]*\\b",
+                sampleText = "Hello World，你好世界。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
                 textColor = 0xFF4169E1.toInt()
@@ -159,8 +165,8 @@ object HighlightRuleStore {
             HighlightRule(
                 id = "date_time_default",
                 name = "时间日期",
-                pattern = "[0-9零一二三四五六七八九十]+年[0-9零一二三四五六七八九十]+月[0-9零一二三四五六七八九十]*日?|[0-9]+点[0-9零一二三四五六七八九十]*分?",
-                sampleText = "2024年5月1日，上午10点30分",
+                pattern = "(?:\\d{2,4}|[零〇一二两三四五六七八九十]{2,4})年(?:\\d{1,2}|[正一二三四五六七八九十冬腊])月(?:\\d{1,2}|[一二三四五六七八九十廿三])?[日号]?|\\b\\d{1,2}:\\d{2}\\b|(?:[0-1]?\\d|2[0-3])点(?:[0-5]?\\d分?)?",
+                sampleText = "2024年5月1日，上午10:30出发。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
                 textColor = 0xFF20B2AA.toInt()
@@ -168,20 +174,68 @@ object HighlightRuleStore {
         )
     }
 
-    private fun ensureBuiltinRules(
+    private fun normalizeRules(
         rules: List<HighlightRule>,
         context: Context,
     ): List<HighlightRule> {
-        val builtins = createDefaultRules(context)
-        val ids = rules.mapTo(HashSet()) { it.id }
-        val merged = rules.map {
-            if (it.group.isBlank()) it.copy(group = HighlightRuleGroupStore.DEFAULT_GROUP) else it
-        }.toMutableList()
-        builtins.forEach { builtin ->
-            if (!ids.contains(builtin.id)) {
-                merged.add(builtin)
+        val builtins = createDefaultRules(context).associateBy { it.id }
+        return rules.map { rule ->
+            val normalizedGroup = rule.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP }
+            val builtin = builtins[rule.id]
+            if (builtin != null && shouldRefreshBuiltin(rule)) {
+                builtin.copy(
+                    enabled = rule.enabled,
+                    group = normalizedGroup,
+                    textColor = rule.textColor ?: builtin.textColor,
+                    underlineMode = rule.underlineMode.takeIf { it != 0 } ?: builtin.underlineMode,
+                    underlineColor = rule.underlineColor ?: builtin.underlineColor
+                )
+            } else {
+                rule.copy(group = normalizedGroup)
             }
         }
-        return merged
     }
+
+    private fun shouldRefreshBuiltin(rule: HighlightRule): Boolean {
+        if (rule.id !in builtinIds) return false
+        val inspectText = buildString {
+            append(rule.name)
+            append(rule.pattern)
+            append(rule.sampleText)
+        }
+        return garbledMarkers.any { inspectText.contains(it) }
+            || legacyBuiltinPatterns[rule.id] == rule.pattern
+    }
+
+    private val builtinIds = setOf(
+        "dialog_default",
+        "book_title_default",
+        "bracket_note_default",
+        "title_emphasis_default",
+        "thought_default",
+        "narrator_default",
+        "emphasis_default",
+        "poetry_default",
+        "ellipsis_default",
+        "number_default",
+        "english_default",
+        "date_time_default"
+    )
+
+    private val legacyBuiltinPatterns = mapOf(
+        "dialog_default" to "[“\"]([^”\"\\n]{1,120})[”\"]|「[^」\\n]{1,120}」|『[^』\\n]{1,120}』",
+        "book_title_default" to "《[^》\\n]{1,80}》",
+        "bracket_note_default" to "（[^）\\n]{1,80}）|\\([^\\)\\n]{1,80}\\)|【[^】\\n]{1,80}】",
+        "title_emphasis_default" to "(?m)^(第[0-9零一二三四五六七八九十百千两0123456789IVXLCDMivxlcdm]{1,12}[章节回卷部篇集幕]|序章|楔子|引子|终章|尾声|后记|番外)[^\\n]{0,40}$",
+        "thought_default" to "（[^）]*?(想|寻思|暗道|心道|心里|想着|思量|思忖|盘算|盘算着)[^）]*?）",
+        "narrator_default" to "（以下\\S{0,20}省略|省略\\S{0,20}内容|[^\\n]{0,20}的情景不再赘述|[^\\n]{0,20}的情况不再多说）",
+        "emphasis_default" to "[*＊]{1,2}[^*\\n]{1,50}[*＊]{1,2}",
+        "poetry_default" to "[\\n]([七五言绝句律诗词牌曲牌][^\\n]{0,60}[^\\n]{10,50}[^\\n]{0,20}[，。！？])\\n",
+        "ellipsis_default" to "x{2,}|\\*{2,}|\\.{2,}",
+        "number_default" to "[0-9零一二三四五六七八九十百千万亿]+[元块美元英镑]|[0-9]+[%％]",
+        "english_default" to "[a-zA-Z]{2,}[a-zA-Z0-9'-]*",
+        "date_time_default" to "[0-9零一二三四五六七八九十]+年[0-9零一二三四五六七八九十]+月[0-9零一二三四五六七八九十]*日?|[0-9]+点[0-9零一二三四五六七八九十]*分?"
+    )
+
+    private val garbledMarkers = listOf("锛", "銆", "鈥", "瀵", "涔", "鏍", "鐪", "鏈", "绗")
 }

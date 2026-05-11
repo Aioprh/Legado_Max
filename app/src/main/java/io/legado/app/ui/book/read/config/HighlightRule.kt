@@ -40,7 +40,7 @@ data class HighlightRule(
 
     fun normalizedSampleText(): String {
         return sampleText.ifBlank {
-            "她轻声说：“今晚就出发。”\n最近在重读《百年孤独》（重刷版），节奏很稳。"
+            "她轻声说：“今晚就出发。”\n最近在重读《百年孤独》（纪念版），节奏依然很稳。"
         }
     }
 

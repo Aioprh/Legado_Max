@@ -49,7 +49,11 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         initTheme()
-        
+        attachBottomSheetDismiss(
+            binding.dragHandle,
+            binding.sheetContainer
+        ) { dismissAllowingStateLoss() }
+
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
         binding.recyclerView.clipToPadding = false
@@ -73,7 +77,6 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         binding.tvPageTitle.setTextColor(primaryTextColor)
         binding.tvPageSubtitle.setTextColor(secondaryTextColor)
         binding.ivMenu.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
-        
         binding.ivEmpty.setColorFilter(secondaryTextColor, PorterDuff.Mode.SRC_IN)
         binding.tvEmptyMsg.setTextColor(secondaryTextColor)
     }
@@ -162,7 +165,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     private fun deleteRule(rule: HighlightRule) {
         alert("删除") {
-            setMessage("确定删除《${rule.name}》吗？")
+            setMessage("确定删除“${rule.name}”吗？")
             okButton {
                 rules.removeAll { it.id == rule.id }
                 syncRules()
@@ -173,6 +176,10 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     private fun showPresetRules() {
         HighlightPresetRuleDialog { rule ->
+            if (rules.any { it.id == rule.id }) {
+                requireContext().toastOnUi("该预置规则已存在")
+                return@HighlightPresetRuleDialog
+            }
             rules.add(rule)
             syncRules()
         }.show(childFragmentManager, "highlightPresetRule")
@@ -190,7 +197,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             return
         }
         val selected = BooleanArray(rules.size)
-        val names = rules.map { "${it.name.ifBlank { "未命名规则" }}  ·  ${it.group}" }.toTypedArray()
+        val names = rules.map { "${it.name.ifBlank { "未命名规则" }}  /  ${it.group}" }.toTypedArray()
         alert("选择规则") {
             multiChoiceItems(names, selected) { _, which, isChecked ->
                 selected[which] = isChecked
@@ -297,7 +304,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         ) {
             binding.tvTitle.text = item.name.ifBlank { getString(R.string.highlight_rule_unnamed) }
             binding.tvDesc.text = item.styleSummary()
-            binding.tvPattern.text = "${item.group} · ${item.displayPattern()}"
+            binding.tvPattern.text = "${item.group} / ${item.displayPattern()}"
             binding.tvPreview.text = HighlightRulePreview.build(item)
             binding.switchEnable.setOnCheckedChangeListener(null)
             binding.switchEnable.isChecked = item.enabled
@@ -313,10 +320,10 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             binding.tvPattern.setTextColor(secondaryTextColor)
             binding.tvPreviewLabel.setTextColor(secondaryTextColor)
             binding.tvPreview.setTextColor(primaryTextColor)
-            
+
             (binding.tvEdit.getChildAt(0) as? android.widget.ImageView)?.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
             (binding.tvEdit.getChildAt(1) as? android.widget.TextView)?.setTextColor(primaryTextColor)
-            
+
             (binding.tvDelete.getChildAt(0) as? android.widget.ImageView)?.setColorFilter(context.getColor(R.color.error), PorterDuff.Mode.SRC_IN)
             (binding.tvDelete.getChildAt(1) as? android.widget.TextView)?.setTextColor(context.getColor(R.color.error))
         }
