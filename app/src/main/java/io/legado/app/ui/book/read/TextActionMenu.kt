@@ -400,7 +400,7 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
             .setClassName(info.activityInfo.packageName, info.activityInfo.name)
     }
 
-    /**
+    /**长按文字菜单
      * 首先设置一个足够大的菜单项排序值
      * 确保你的“PROCESS_TEXT”菜单项显示在
      * 剪切、复制、粘贴等标准选择菜单项之后。
