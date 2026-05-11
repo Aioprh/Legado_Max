@@ -1,5 +1,9 @@
 package io.legado.app.ui.book.read
 
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ResolveInfo
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -10,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -61,6 +66,138 @@ fun TextMenuConfigDialogContent(
     var hiddenIds by remember { 
         mutableStateOf(TextMenuConfig.getHiddenMenuItemIds(context))
     }
+    var showProcessTextConfig by remember { mutableStateOf(false) }
+
+    if (showProcessTextConfig) {
+        ProcessTextConfigContent(
+            onDismiss = { showProcessTextConfig = false }
+        )
+    } else {
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true
+            )
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = stringResource(R.string.text_menu_config),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = onDismiss) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "关闭"
+                                )
+                            }
+                        },
+                        actions = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                IconButton(onClick = { showProcessTextConfig = true }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.MoreVert,
+                                        contentDescription = "更多选项"
+                                    )
+                                }
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            titleContentColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
+
+                    Text(
+                        text = stringResource(R.string.text_menu_config_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                    ) {
+                        items(menuItems) { item ->
+                            MenuItemRow(
+                                item = item,
+                                isChecked = item.id !in hiddenIds,
+                                onCheckedChange = { checked ->
+                                    val newHiddenIds = hiddenIds.toMutableSet()
+                                    if (checked) {
+                                        newHiddenIds.remove(item.id)
+                                    } else {
+                                        newHiddenIds.add(item.id)
+                                    }
+                                    TextMenuConfig.setHiddenMenuItemIds(context, newHiddenIds)
+                                    hiddenIds = newHiddenIds
+                                }
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        TextButton(
+                            onClick = {
+                                TextMenuConfig.resetToDefault(context)
+                                hiddenIds = emptySet()
+                                context.toastOnUi("已重置为默认配置")
+                            }
+                        ) {
+                            Text(text = stringResource(R.string.reset_to_default))
+                        }
+
+                        TextButton(onClick = onDismiss) {
+                            Text(text = stringResource(R.string.close))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 其他应用菜单配置界面
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProcessTextConfigContent(
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var hiddenItems by remember { 
+        mutableStateOf(TextMenuConfig.getHiddenProcessTextItems(context))
+    }
+    
+    val processTextApps = remember {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            getProcessTextApps(context)
+        } else {
+            emptyList()
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -79,11 +216,10 @@ fun TextMenuConfigDialogContent(
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // 标题栏
                 TopAppBar(
                     title = {
                         Text(
-                            text = stringResource(R.string.text_menu_config),
+                            text = stringResource(R.string.process_text_menu_config),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -92,7 +228,7 @@ fun TextMenuConfigDialogContent(
                         IconButton(onClick = onDismiss) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "关闭"
+                                contentDescription = "返回"
                             )
                         }
                     },
@@ -102,41 +238,51 @@ fun TextMenuConfigDialogContent(
                     )
                 )
 
-                // 说明文字
                 Text(
-                    text = stringResource(R.string.text_menu_config_desc),
+                    text = stringResource(R.string.process_text_menu_config_desc),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
 
-                // 菜单项列表
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
-                ) {
-                    items(menuItems) { item ->
-                        MenuItemRow(
-                            item = item,
-                            isChecked = item.id !in hiddenIds,
-                            onCheckedChange = { checked ->
-                                // 更新隐藏ID集合
-                                val newHiddenIds = hiddenIds.toMutableSet()
-                                if (checked) {
-                                    newHiddenIds.remove(item.id)
-                                } else {
-                                    newHiddenIds.add(item.id)
-                                }
-                                // 保存配置
-                                TextMenuConfig.setHiddenMenuItemIds(context, newHiddenIds)
-                                hiddenIds = newHiddenIds
-                            }
+                if (processTextApps.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.no_process_text_apps),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                    ) {
+                        items(processTextApps) { appInfo ->
+                            ProcessTextAppRow(
+                                appInfo = appInfo,
+                                isChecked = appInfo.key !in hiddenItems,
+                                onCheckedChange = { checked ->
+                                    val newHiddenItems = hiddenItems.toMutableSet()
+                                    if (checked) {
+                                        newHiddenItems.remove(appInfo.key)
+                                    } else {
+                                        newHiddenItems.add(appInfo.key)
+                                    }
+                                    TextMenuConfig.setHiddenProcessTextItems(context, newHiddenItems)
+                                    hiddenItems = newHiddenItems
+                                }
+                            )
+                        }
                     }
                 }
 
-                // 底部按钮
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -145,8 +291,8 @@ fun TextMenuConfigDialogContent(
                 ) {
                     TextButton(
                         onClick = {
-                            TextMenuConfig.resetToDefault(context)
-                            hiddenIds = emptySet()
+                            TextMenuConfig.resetProcessTextConfig(context)
+                            hiddenItems = emptySet()
                             context.toastOnUi("已重置为默认配置")
                         }
                     ) {
@@ -159,6 +305,46 @@ fun TextMenuConfigDialogContent(
                 }
             }
         }
+    }
+}
+
+/**
+ * 其他应用信息
+ */
+data class ProcessTextAppInfo(
+    val key: String,
+    val label: String,
+    val packageName: String,
+    val className: String
+)
+
+/**
+ * 获取能处理 ACTION_PROCESS_TEXT 的应用列表
+ */
+@Suppress("DEPRECATION")
+private fun getProcessTextApps(context: Context): List<ProcessTextAppInfo> {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        return emptyList()
+    }
+    
+    val intent = Intent()
+        .setAction(Intent.ACTION_PROCESS_TEXT)
+        .setType("text/plain")
+    
+    return try {
+        val resolveInfoList = context.packageManager.queryIntentActivities(intent, 0)
+        resolveInfoList.map { resolveInfo ->
+            val packageName = resolveInfo.activityInfo.packageName
+            val className = resolveInfo.activityInfo.name
+            ProcessTextAppInfo(
+                key = TextMenuConfig.getProcessTextItemKey(packageName, className),
+                label = resolveInfo.loadLabel(context.packageManager).toString(),
+                packageName = packageName,
+                className = className
+            )
+        }.sortedBy { it.label }
+    } catch (e: Exception) {
+        emptyList()
     }
 }
 
@@ -190,6 +376,46 @@ fun MenuItemRow(
             )
             Text(
                 text = "ID: ${item.id}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Checkbox(
+            checked = isChecked,
+            onCheckedChange = onCheckedChange
+        )
+    }
+}
+
+/**
+ * 其他应用菜单项行
+ */
+@Composable
+fun ProcessTextAppRow(
+    appInfo: ProcessTextAppInfo,
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!isChecked) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 16.dp)
+        ) {
+            Text(
+                text = appInfo.label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = appInfo.packageName,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

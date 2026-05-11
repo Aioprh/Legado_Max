@@ -117,4 +117,52 @@ object TextMenuConfig {
         Log.d(TAG, "resetToDefault")
         context.putPrefString(PreferKey.hiddenTextMenuItems, "")
     }
+
+    // ==================== 其他应用菜单配置 ====================
+
+    /**
+     * 生成其他应用菜单项的唯一标识
+     * 格式：包名/类名
+     */
+    fun getProcessTextItemKey(packageName: String, className: String): String {
+        return "$packageName/$className"
+    }
+
+    /**
+     * 获取隐藏的其他应用菜单项集合
+     */
+    fun getHiddenProcessTextItems(context: Context): Set<String> {
+        val hiddenStr = context.getPrefString(PreferKey.hiddenProcessTextItems, "")
+        Log.d(TAG, "getHiddenProcessTextItems: hiddenStr='$hiddenStr'")
+        return if (hiddenStr.isNullOrEmpty()) {
+            emptySet()
+        } else {
+            hiddenStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        }
+    }
+
+    /**
+     * 设置隐藏的其他应用菜单项集合
+     */
+    fun setHiddenProcessTextItems(context: Context, keys: Set<String>) {
+        val hiddenStr = keys.joinToString(",")
+        Log.d(TAG, "setHiddenProcessTextItems: keys=$keys, hiddenStr='$hiddenStr'")
+        context.putPrefString(PreferKey.hiddenProcessTextItems, hiddenStr)
+    }
+
+    /**
+     * 检查其他应用菜单项是否被隐藏
+     */
+    fun isProcessTextItemHidden(context: Context, packageName: String, className: String): Boolean {
+        val key = getProcessTextItemKey(packageName, className)
+        return key in getHiddenProcessTextItems(context)
+    }
+
+    /**
+     * 重置其他应用菜单配置（全部显示）
+     */
+    fun resetProcessTextConfig(context: Context) {
+        Log.d(TAG, "resetProcessTextConfig")
+        context.putPrefString(PreferKey.hiddenProcessTextItems, "")
+    }
 }

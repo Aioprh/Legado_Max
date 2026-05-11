@@ -737,6 +737,9 @@
     <string name="preview">预览</string>
     <string name="text_menu_config">文本菜单配置</string>
     <string name="text_menu_config_desc">选择您想要显示的菜单项</string>
+    <string name="process_text_menu_config">其他应用菜单配置</string>
+    <string name="process_text_menu_config_desc">选择您想要显示的其他应用菜单项</string>
+    <string name="no_process_text_apps">没有找到支持文本处理的应用</string>
     <string name="reset_to_default">恢复默认</string>
     <string name="reduce">减</string>
     <string name="plus">加</string>
