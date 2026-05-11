@@ -210,6 +210,7 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
         endX: Int,
         endBottomY: Int
     ) {
+        upMenu()
         if (expandTextMenu) {
             // 展开模式：菜单显示在屏幕底部
             when {
@@ -400,20 +401,26 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
             .setClassName(info.activityInfo.packageName, info.activityInfo.name)
     }
 
-    /**
+    /**长按文字菜单
      * 首先设置一个足够大的菜单项排序值
-     * 确保你的“PROCESS_TEXT”菜单项显示在
+     * 确保你的"PROCESS_TEXT"菜单项显示在
      * 剪切、复制、粘贴等标准选择菜单项之后。
      */
     @RequiresApi(Build.VERSION_CODES.M)
     private fun onInitializeMenu(menu: Menu) {
         kotlin.runCatching {
+            val hiddenItems = TextMenuConfig.getHiddenProcessTextItems(context)
             var menuItemOrder = 100
             for (resolveInfo in getSupportedActivities()) {
-                menu.add(
-                    Menu.NONE, Menu.NONE,
-                    menuItemOrder++, resolveInfo.loadLabel(context.packageManager)
-                ).intent = createProcessTextIntentForResolveInfo(resolveInfo)
+                val packageName = resolveInfo.activityInfo.packageName
+                val className = resolveInfo.activityInfo.name
+                val itemKey = TextMenuConfig.getProcessTextItemKey(packageName, className)
+                if (itemKey !in hiddenItems) {
+                    menu.add(
+                        Menu.NONE, Menu.NONE,
+                        menuItemOrder++, resolveInfo.loadLabel(context.packageManager)
+                    ).intent = createProcessTextIntentForResolveInfo(resolveInfo)
+                }
             }
         }.onFailure {
             context.toastOnUi("获取文字操作菜单出错:${it.localizedMessage}")

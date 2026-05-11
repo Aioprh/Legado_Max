@@ -113,9 +113,6 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
         // 应用菜单着色
         binding.toolBar.menu.applyTint(requireContext())
         
-        // 根据文档类型控制放大镜按钮的可见性
-        updateSearchButtonVisibility()
-        
         // 处理传递的参数
         arguments?.let {
             val title = it.getString("title")
@@ -125,6 +122,10 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
             val mode = it.getString("mode")
             val scrollToLine = it.getInt("scrollToLine", 0)
             val highlightTerm = it.getString("highlightTerm")
+            // 从 arguments 恢复帮助文档模式相关变量
+            val helpDocName = it.getString("helpDocName")
+            isHelpMode = helpDocName != null
+            currentHelpDoc = helpDocName
             when (mode) {
                 Mode.MD.name -> viewLifecycleOwner.lifecycleScope.launch {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -175,6 +176,9 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
             }
             time = it.getLong("time", 0L)
         }
+        
+        // 根据文档类型控制放大镜按钮的可见性（必须在恢复 isHelpMode 和 currentHelpDoc 之后调用）
+        updateSearchButtonVisibility()
         
         binding.toolBar.setOnMenuItemClickListener { menu ->
             when (menu.itemId) {

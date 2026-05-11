@@ -14,13 +14,13 @@ object HelpDocManager {
         HelpDoc("dictRuleHelp", "字典规则说明"),
         HelpDoc("httpTTSHelp", "在线朗读规则"),
         HelpDoc("debugHelp", "书源调试说明"),
-        HelpDoc("替换规则流程与机制", "替换规则流程与机制"),
-        HelpDoc("ExtensionContentType", "扩展内容类型"),
-        HelpDoc("部分功能需要安卓特定版本", "部分功能需要安卓特定版本"),
-        HelpDoc("下拉刷新流程与机制", "下拉刷新流程与机制"),
         HelpDoc("书源字段规则类型", "书源字段规则类型"),
         HelpDoc("订阅源字段规则类型", "订阅源字段规则类型"),
-        HelpDoc("jsPackagesHelp", "JS Packages使用指南")
+        HelpDoc("jsPackagesHelp", "JS Packages使用指南"),
+        HelpDoc("替换规则流程与机制", "替换规则流程与机制"),
+        HelpDoc("下拉刷新流程与机制", "下拉刷新流程与机制"),
+        HelpDoc("部分功能需要安卓特定版本", "需要安卓特定版本的功能"),
+        HelpDoc("ExtensionContentType", "扩展内容类型")
     )
     
     // 隐藏的帮助文档（可以在某些界面加载查看，但不会出现在切换列表中）
@@ -31,6 +31,7 @@ object HelpDocManager {
         HelpDoc("readMenuHelp", "阅读界面帮助文档"),
         HelpDoc("webDavBookHelp", "WebDav书籍简明使用教程"),
         HelpDoc("webDavHelp", "WebDav备份教程"),
+        HelpDoc("updateLog", "更新日志")
     )
     
     // 所有帮助文档（切换列表 + 隐藏文档）

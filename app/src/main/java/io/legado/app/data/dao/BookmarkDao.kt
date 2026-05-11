@@ -19,6 +19,15 @@ interface BookmarkDao {
     fun flowAll(): Flow<List<Bookmark>>
 
     @Query(
+        """SELECT * FROM bookmarks 
+        where bookName like '%'||:key||'%' or bookAuthor like '%'||:key||'%'
+        or chapterName like '%'||:key||'%' or bookText like '%'||:key||'%'
+        or content like '%'||:key||'%'
+        order by bookName collate localized, bookAuthor collate localized, chapterIndex, chapterPos"""
+    )
+    fun flowSearchAll(key: String): Flow<List<Bookmark>>
+
+    @Query(
         """select * from bookmarks 
         where bookName = :bookName and bookAuthor = :bookAuthor 
         order by chapterIndex"""

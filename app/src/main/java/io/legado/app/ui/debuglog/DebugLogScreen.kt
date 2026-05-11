@@ -46,6 +46,7 @@ import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.ui.debuglog.components.DebugCategoryTabs
 import io.legado.app.ui.debuglog.components.DebugLogItem
 import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
+import io.legado.app.ui.debuglog.components.FlowLogDetailDialog
 import io.legado.app.ui.debuglog.components.FlowLogList
 import io.legado.app.ui.debuglog.components.FlowStageFilter
 import io.legado.app.ui.debuglog.viewmodel.DebugLogViewModel
@@ -202,7 +203,7 @@ fun DebugLogScreen(
                         } else {
                             FlowLogList(
                                 logs = filteredFlowLogs,
-                                onLogClick = { },
+                                onLogClick = viewModel::selectFlowLog,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -227,6 +228,14 @@ fun DebugLogScreen(
                         log = uiState.selectedLog!!,
                         onDismiss = { viewModel.clearSelection() },
                         onCopy = { viewModel.copyLogDetail(uiState.selectedLog!!) }
+                    )
+                }
+
+                if (uiState.selectedFlowLog != null) {
+                    FlowLogDetailDialog(
+                        log = uiState.selectedFlowLog!!,
+                        onDismiss = { viewModel.clearSelection() },
+                        onCopy = { viewModel.copyFlowLogDetail(uiState.selectedFlowLog!!) }
                     )
                 }
             }

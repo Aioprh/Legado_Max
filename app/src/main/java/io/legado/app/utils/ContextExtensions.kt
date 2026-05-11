@@ -398,6 +398,8 @@ fun Context.openInInnerBrowser(uri: Uri) {
     }
 }
 
+// 打开文件uri 弹出式菜单显示其他软件
+// 7.0版本以上需要添加读取权限
 @SuppressLint("ObsoleteSdkInt")
 fun Context.openFileUri(uri: Uri, type: String? = null) {
     val intent = Intent()

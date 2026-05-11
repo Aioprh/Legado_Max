@@ -233,7 +233,11 @@ data class TextLine(
      * 绘制下划线
      */
     private fun drawUnderline(canvas: Canvas, underlineMode: Int) {
-        val paint = ChapterProvider.contentPaint
+        val paint = TextPaint(ChapterProvider.contentPaint).apply {
+            strokeWidth = 2.dpToPx().toFloat()
+            style = android.graphics.Paint.Style.STROKE
+            isAntiAlias = true
+        }
         val distance = (ChapterProvider.lineSpacingExtra * 10 - 11).coerceIn(-1f, 10f)
         val lineY = height + distance.dpToPx()
         if (underlineMode == 1) {
@@ -244,23 +248,21 @@ data class TextLine(
                 lineY,
                 paint
             )
-        } else if (underlineMode == 2) { // 虚线
-            val dashPathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
-            val dashPath = TextPaint(paint)
-            dashPath.pathEffect = dashPathEffect
+        } else if (underlineMode == 2) {
+            paint.pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
             canvas.drawLine(
                 lineStart + indentWidth,
                 lineY,
                 lineEnd,
                 lineY,
-                dashPath
+                paint
             )
-        } else if (underlineMode == 3) { // 波浪线
+        } else if (underlineMode == 3) {
             val path = Path()
             val startX = lineStart + indentWidth
             val endX = lineEnd
-            val waveAmplitude = 3.dpToPx().toFloat() // 波浪振幅
-            val waveLength = 12.dpToPx().toFloat() // 波浪长度
+            val waveAmplitude = 3.dpToPx().toFloat()
+            val waveLength = 12.dpToPx().toFloat()
             
             path.moveTo(startX, lineY)
             var currentX = startX
@@ -269,7 +271,6 @@ data class TextLine(
                 val nextX = (currentX + waveLength).coerceAtMost(endX)
                 val midX = (currentX + nextX) / 2
                 
-                // 绘制波浪的上下半部分
                 path.quadTo(midX, lineY - waveAmplitude, nextX, lineY)
                 currentX = nextX
                 

@@ -3,6 +3,7 @@ package io.legado.app.ui.book.bookmark
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import androidx.appcompat.widget.SearchView
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
@@ -11,12 +12,15 @@ import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.databinding.ActivityAllBookmarkBinding
+import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.applyNavigationBarPadding
+import io.legado.app.utils.applyTint
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivityForBook
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
@@ -41,16 +45,12 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
             }
         }
     }
+    private var searchJob: Job? = null
+    private var searchView: SearchView? = null
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         initView()
-        lifecycleScope.launch {
-            appDb.bookmarkDao.flowAll().catch {
-                AppLog.put("所有书签界面获取数据失败\n${it.localizedMessage}", it)
-            }.flowOn(IO).collect {
-                adapter.setItems(it)
-            }
-        }
+        searchData("")
     }
 
     private fun initView() {
@@ -61,7 +61,51 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.bookmark, menu)
+        val searchItem = menu.findItem(R.id.menu_search)
+        searchView = searchItem?.actionView as? SearchView
+        searchView?.apply {
+            applyTint(primaryTextColor)
+            queryHint = getString(R.string.search)
+            isSubmitButtonEnabled = true
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(query: String?): Boolean {
+                    return false
+                }
+
+                override fun onQueryTextChange(newText: String?): Boolean {
+                    searchData(newText ?: "")
+                    return true
+                }
+            })
+        }
+        searchItem?.setOnActionExpandListener(object : MenuItem.OnActionExpandListener {
+            override fun onMenuItemActionExpand(item: MenuItem): Boolean {
+                binding.titleBar.toolbar.title = ""
+                return true
+            }
+
+            override fun onMenuItemActionCollapse(item: MenuItem): Boolean {
+                binding.titleBar.toolbar.title = getString(R.string.all_bookmark)
+                return true
+            }
+        })
         return super.onCompatCreateOptionsMenu(menu)
+    }
+
+    private fun searchData(searchKey: String) {
+        searchJob?.cancel()
+        searchJob = lifecycleScope.launch {
+            val flow = if (searchKey.isBlank()) {
+                appDb.bookmarkDao.flowAll()
+            } else {
+                appDb.bookmarkDao.flowSearchAll(searchKey)
+            }
+            flow.catch {
+                AppLog.put("所有书签界面获取数据失败\n${it.localizedMessage}", it)
+            }.flowOn(IO).collect {
+                adapter.setItems(it)
+            }
+        }
     }
 
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
