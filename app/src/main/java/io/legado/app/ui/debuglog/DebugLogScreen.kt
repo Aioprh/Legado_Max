@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -366,10 +368,10 @@ private fun DebugLogList(
  * 用于书源分类下的子分类筛选：
  * - 全部：显示所有书源相关日志
  * - 更新：书源更新相关
- * - 搜索：书源搜索相关
- * - 目录：书源目录相关
- * - 正文：书源正文相关
+ * - 规则：规则调试相关
  * - 流程：书源操作流程日志
+ *
+ * 支持水平滚动，确保在手机上也能看到所有选项。
  *
  * @param selectedSubCategory 当前选中的子分类
  * @param onSubCategorySelected 子分类选择回调
@@ -387,6 +389,7 @@ private fun SourceSubCategoryTabs(
         androidx.compose.foundation.layout.Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())//添加水平滚动支持
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
         ) {
