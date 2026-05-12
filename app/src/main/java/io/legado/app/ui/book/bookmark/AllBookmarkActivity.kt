@@ -3,9 +3,11 @@ package io.legado.app.ui.book.bookmark
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import androidx.appcompat.widget.SearchView
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.AppLog
@@ -37,6 +39,7 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
     private val adapter by lazy {
         BookmarkAdapter(this, this)
     }
+    private lateinit var decoration: BookmarkDecoration
     private val exportDir = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             when (it.requestCode) {
@@ -47,6 +50,7 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
     }
     private var searchJob: Job? = null
     private var searchView: SearchView? = null
+    private var allBookmarks: List<Bookmark> = emptyList()
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         initView()
@@ -54,9 +58,29 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
     }
 
     private fun initView() {
-        binding.recyclerView.addItemDecoration(BookmarkDecoration(adapter))
+        decoration = BookmarkDecoration(adapter)
+        binding.recyclerView.addItemDecoration(decoration)
         binding.recyclerView.adapter = adapter
         binding.recyclerView.applyNavigationBarPadding()
+        binding.recyclerView.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                if (e.action == MotionEvent.ACTION_UP) {
+                    val headerPosition = decoration.getHeaderPositionForTouch(rv, e)
+                    if (headerPosition >= 0) {
+                        if (adapter.toggleGroup(headerPosition)) {
+                            adapter.setItemsWithCollapse(allBookmarks)
+                            rv.post { rv.requestLayout() }
+                            return true
+                        }
+                    }
+                }
+                return false
+            }
+
+            override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
+
+            override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
+        })
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
@@ -103,7 +127,8 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
             flow.catch {
                 AppLog.put("所有书签界面获取数据失败\n${it.localizedMessage}", it)
             }.flowOn(IO).collect {
-                adapter.setItems(it)
+                allBookmarks = it
+                adapter.setItemsWithCollapse(it)
             }
         }
     }
