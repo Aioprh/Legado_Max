@@ -289,8 +289,8 @@ data class TextLine(
     /**
      * 绘制虚线下划线，每段8dp线段+5dp间隔
      */
-    private fun drawDashedLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float, underlineWidth: Int) {
-        paint.strokeWidth = underlineWidth.dpToPx().toFloat()
+    private fun drawDashedLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float, underlineWidth: Float) {
+        paint.strokeWidth = underlineWidth.dpToPx()
         val dashLen = 8.dpToPx().toFloat()
         val gapLen = 5.dpToPx().toFloat()
         var x = startX
@@ -304,8 +304,8 @@ data class TextLine(
     /**
      * 绘制点线下划线，2dp圆点+4dp间隔
      */
-    private fun drawDottedLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float, underlineWidth: Int) {
-        paint.strokeWidth = underlineWidth.dpToPx().toFloat()
+    private fun drawDottedLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float, underlineWidth: Float) {
+        paint.strokeWidth = underlineWidth.dpToPx()
         val dotSize = 2.dpToPx().toFloat()
         val gapLen = 4.dpToPx().toFloat()
         paint.strokeCap = Paint.Cap.ROUND
@@ -320,8 +320,8 @@ data class TextLine(
     /**
      * 绘制波浪线下划线，使用贝塞尔曲线实现
      */
-    private fun drawWavyLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float, underlineWidth: Int) {
-        paint.strokeWidth = underlineWidth.dpToPx().toFloat()
+    private fun drawWavyLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float, underlineWidth: Float) {
+        paint.strokeWidth = underlineWidth.dpToPx()
         val path = Path()
         val waveAmplitude = 3.dpToPx().toFloat()
         val waveLength = 12.dpToPx().toFloat()

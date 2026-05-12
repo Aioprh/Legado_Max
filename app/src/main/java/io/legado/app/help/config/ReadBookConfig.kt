@@ -649,7 +649,7 @@ object ReadBookConfig {
         var titleBottomSpacing: Int = 0,
         var paragraphIndent: String = "　　",//段落缩进
         var underlineMode: Int = 0, //下划线
-        var underlineWidth: Int = 2, //下划线粗细(dp)
+        var underlineWidth: Float = 2f, //下划线粗细(dp)
         var paddingBottom: Int = 6,
         var paddingLeft: Int = 16,
         var paddingRight: Int = 16,

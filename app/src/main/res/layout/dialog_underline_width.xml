@@ -62,7 +62,7 @@
         android:id="@+id/seek_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:max="8"
+        android:max="9"
         android:paddingTop="8dp"
         android:paddingBottom="16dp" />
 

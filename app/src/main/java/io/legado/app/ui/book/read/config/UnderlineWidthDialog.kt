@@ -64,7 +64,7 @@ class UnderlineWidthDialog : BaseDialogFragment(R.layout.dialog_underline_width)
 
         val currentWidth = ReadBookConfig.durConfig.underlineWidth
         binding.tvValue.text = currentWidth.toString()
-        binding.seekBar.progress = currentWidth - 1
+        binding.seekBar.progress = ((currentWidth / 0.5f) - 1).toInt().coerceIn(0, 9)
 
         val previewView = UnderlinePreviewView(context)
         (binding.previewView as? ViewGroup)?.addView(previewView, ViewGroup.LayoutParams(
@@ -74,7 +74,7 @@ class UnderlineWidthDialog : BaseDialogFragment(R.layout.dialog_underline_width)
 
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                val width = progress + 1
+                val width = (progress + 1) * 0.5f
                 binding.tvValue.text = width.toString()
                 previewView.setUnderlineWidth(width)
                 previewView.invalidate()
@@ -87,13 +87,13 @@ class UnderlineWidthDialog : BaseDialogFragment(R.layout.dialog_underline_width)
     }
 
     private class UnderlinePreviewView(context: android.content.Context) : View(context) {
-        private var underlineWidth = 2
+        private var underlineWidth = 2f
         private val paint = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.STROKE
         }
 
-        fun setUnderlineWidth(width: Int) {
+        fun setUnderlineWidth(width: Float) {
             underlineWidth = width
         }
 
