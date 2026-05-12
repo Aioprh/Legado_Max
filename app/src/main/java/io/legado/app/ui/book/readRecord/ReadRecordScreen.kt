@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -155,67 +157,103 @@ fun ReadRecordScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarColor,
-                    scrolledContainerColor = topBarColor,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
-                    titleContentColor = MaterialTheme.colorScheme.onSecondary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSecondary
-                ),
-                title = {
-                    Column {
+            if (state.isSelectionMode) {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = topBarColor,
+                        scrolledContainerColor = topBarColor,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
+                        titleContentColor = MaterialTheme.colorScheme.onSecondary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSecondary
+                    ),
+                    title = {
                         Text(
-                            text = "阅读记录",
-                            style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                            text = "已选择 ${state.selectedRecords.size} 项",
+                            style = MaterialTheme.typography.titleMedium
                         )
-                        Text(
-                            text = when (displayMode) {
-                                DisplayMode.AGGREGATE -> "汇总视图"
-                                DisplayMode.TIMELINE -> "时间线视图"
-                                DisplayMode.LATEST -> "最后阅读"
-                                DisplayMode.READ_TIME -> "阅读时长"
-                            },
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showSearch = !showSearch }) {
-                        Icon(Icons.Default.Search, contentDescription = "搜索")
-                    }
-                    IconButton(onClick = { showCalendar = true }) {
-                        Icon(Icons.Default.CalendarMonth, contentDescription = "日历")
-                    }
-                    IconButton(onClick = {
-                        viewModel.setDisplayMode(
-                            when (displayMode) {
-                                DisplayMode.AGGREGATE -> DisplayMode.TIMELINE
-                                DisplayMode.TIMELINE -> DisplayMode.LATEST
-                                DisplayMode.LATEST -> DisplayMode.READ_TIME
-                                DisplayMode.READ_TIME -> DisplayMode.AGGREGATE
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.exitSelectionMode() }) {
+                            Icon(Icons.Default.Close, contentDescription = "取消选择")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.selectAllRecords(displayMode) }) {
+                            Icon(Icons.Default.SelectAll, contentDescription = "全选")
+                        }
+                        IconButton(onClick = {
+                            if (state.selectedRecords.isNotEmpty()) {
+                                pendingDeleteAction = { viewModel.deleteSelectedRecords() }
+                                showDeleteConfirm = true
                             }
-                        )
-                    }) {
-                        Icon(
-                            imageVector = when (displayMode) {
-                                DisplayMode.AGGREGATE -> Icons.Default.Timeline
-                                DisplayMode.TIMELINE -> Icons.Default.List
-                                DisplayMode.LATEST -> Icons.Default.AutoAwesome
-                                DisplayMode.READ_TIME -> Icons.Default.Schedule
-                            },
-                            contentDescription = "切换视图"
-                        )
+                        }) {
+                            Icon(Icons.Default.Delete, contentDescription = "删除选中")
+                        }
                     }
-                },
-                scrollBehavior = scrollBehavior
-            )
+                )
+            } else {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = topBarColor,
+                        scrolledContainerColor = topBarColor,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
+                        titleContentColor = MaterialTheme.colorScheme.onSecondary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSecondary
+                    ),
+                    title = {
+                        Column {
+                            Text(
+                                text = "阅读记录",
+                                style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.Medium)
+                            )
+                            Text(
+                                text = when (displayMode) {
+                                    DisplayMode.AGGREGATE -> "汇总视图"
+                                    DisplayMode.TIMELINE -> "时间线视图"
+                                    DisplayMode.LATEST -> "最后阅读"
+                                    DisplayMode.READ_TIME -> "阅读时长"
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showSearch = !showSearch }) {
+                            Icon(Icons.Default.Search, contentDescription = "搜索")
+                        }
+                        IconButton(onClick = { showCalendar = true }) {
+                            Icon(Icons.Default.CalendarMonth, contentDescription = "日历")
+                        }
+                        IconButton(onClick = {
+                            viewModel.setDisplayMode(
+                                when (displayMode) {
+                                    DisplayMode.AGGREGATE -> DisplayMode.TIMELINE
+                                    DisplayMode.TIMELINE -> DisplayMode.LATEST
+                                    DisplayMode.LATEST -> DisplayMode.READ_TIME
+                                    DisplayMode.READ_TIME -> DisplayMode.AGGREGATE
+                                }
+                            )
+                        }) {
+                            Icon(
+                                imageVector = when (displayMode) {
+                                    DisplayMode.AGGREGATE -> Icons.Default.Timeline
+                                    DisplayMode.TIMELINE -> Icons.Default.List
+                                    DisplayMode.LATEST -> Icons.Default.AutoAwesome
+                                    DisplayMode.READ_TIME -> Icons.Default.Schedule
+                                },
+                                contentDescription = "切换视图"
+                            )
+                        }
+                    },
+                    scrollBehavior = scrollBehavior
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
@@ -411,7 +449,22 @@ private fun LazyListScope.RecordListContent(
                     RecordDetailItem(
                         detail = detail,
                         viewModel = viewModel,
-                        onClick = { onBookClick(detail.bookName, detail.bookAuthor) },
+                        isSelectionMode = state.isSelectionMode,
+                        isSelected = state.selectedRecords.contains(
+                            Triple(detail.deviceId, detail.bookName, detail.bookAuthor)
+                        ),
+                        onClick = { 
+                            if (state.isSelectionMode) {
+                                viewModel.toggleRecordSelection(detail)
+                            } else {
+                                onBookClick(detail.bookName, detail.bookAuthor)
+                            }
+                        },
+                        onLongClick = {
+                            if (!state.isSelectionMode) {
+                                viewModel.enterSelectionMode(detail)
+                            }
+                        },
                         onDelete = { onConfirmDelete { viewModel.deleteDetail(detail) } }
                     )
                 }
@@ -433,7 +486,22 @@ private fun LazyListScope.RecordListContent(
                             session = session,
                             isLast = index == sessions.size - 1,
                             viewModel = viewModel,
-                            onClick = { onBookClick(session.bookName, session.bookAuthor) },
+                            isSelectionMode = state.isSelectionMode,
+                            isSelected = state.selectedRecords.contains(
+                                Triple(session.deviceId, session.bookName, session.bookAuthor)
+                            ),
+                            onClick = { 
+                                if (state.isSelectionMode) {
+                                    viewModel.toggleRecordSelection(session)
+                                } else {
+                                    onBookClick(session.bookName, session.bookAuthor)
+                                }
+                            },
+                            onLongClick = {
+                                if (!state.isSelectionMode) {
+                                    viewModel.enterSelectionMode(session)
+                                }
+                            },
                             onDelete = { onConfirmDelete { viewModel.deleteSession(session) } }
                         )
                     }
@@ -445,7 +513,22 @@ private fun LazyListScope.RecordListContent(
                 LatestRecordItem(
                     record = record,
                     viewModel = viewModel,
-                    onClick = { onBookClick(record.bookName, record.bookAuthor) },
+                    isSelectionMode = state.isSelectionMode,
+                    isSelected = state.selectedRecords.contains(
+                        Triple(record.deviceId, record.bookName, record.bookAuthor)
+                    ),
+                    onClick = { 
+                        if (state.isSelectionMode) {
+                            viewModel.toggleRecordSelection(record)
+                        } else {
+                            onBookClick(record.bookName, record.bookAuthor)
+                        }
+                    },
+                    onLongClick = {
+                        if (!state.isSelectionMode) {
+                            viewModel.enterSelectionMode(record)
+                        }
+                    },
                     onDelete = { onConfirmDelete { viewModel.deleteReadRecord(record) } },
                     onMerge = { onMergeClick(record) }
                 )
@@ -456,7 +539,22 @@ private fun LazyListScope.RecordListContent(
                 ReadTimeRecordItem(
                     record = record,
                     viewModel = viewModel,
-                    onClick = { onBookClick(record.bookName, record.bookAuthor) },
+                    isSelectionMode = state.isSelectionMode,
+                    isSelected = state.selectedRecords.contains(
+                        Triple(record.deviceId, record.bookName, record.bookAuthor)
+                    ),
+                    onClick = { 
+                        if (state.isSelectionMode) {
+                            viewModel.toggleRecordSelection(record)
+                        } else {
+                            onBookClick(record.bookName, record.bookAuthor)
+                        }
+                    },
+                    onLongClick = {
+                        if (!state.isSelectionMode) {
+                            viewModel.enterSelectionMode(record)
+                        }
+                    },
                     onDelete = { onConfirmDelete { viewModel.deleteReadRecord(record) } }
                 )
             }
@@ -536,12 +634,16 @@ private fun TimelineDateHeader(date: String, totalDuration: Long) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TimelineSessionView(
     session: ReadRecordSession,
     isLast: Boolean,
     viewModel: ReadRecordViewModel,
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -556,16 +658,22 @@ private fun TimelineSessionView(
         chapterTitle = viewModel.getBookDurChapterTitle(session.bookName, session.bookAuthor)
     }
     
-    SwipeActionContainer(
-        modifier = Modifier.fillMaxWidth(),
-        startActions = listOf(deleteAction)
-    ) {
+    if (isSelectionMode) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 0.dp)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = { onClick() },
+                modifier = Modifier.padding(end = 8.dp)
+            )
             Box(
                 modifier = Modifier.width(20.dp),
                 contentAlignment = Alignment.Center
@@ -606,7 +714,6 @@ private fun TimelineSessionView(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .clickable(onClick = onClick)
                     .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -645,14 +752,112 @@ private fun TimelineSessionView(
                 }
             }
         }
+    } else {
+        SwipeActionContainer(
+            modifier = Modifier.fillMaxWidth(),
+            startActions = listOf(deleteAction)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 0.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier.width(20.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!isLast) {
+                        Box(
+                            modifier = Modifier
+                                .width(2.dp)
+                                .height(48.dp)
+                                .shadow(2.dp, RoundedCornerShape(1.dp), clip = false)
+                                .background(timelineAccentColor.copy(alpha = 0.7f))
+                        )
+                    }
+                    Surface(
+                        shape = CircleShape,
+                        color = timelineAccentColor,
+                        modifier = Modifier
+                            .size(12.dp)
+                            .shadow(3.dp, CircleShape, clip = false)
+                    ) {}
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Box(
+                    modifier = Modifier.width(48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = startTime,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = secondaryTextColor
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .combinedClickable(
+                            onClick = onClick,
+                            onLongClick = onLongClick
+                        )
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BookCoverImage(
+                        bookName = session.bookName,
+                        bookAuthor = session.bookAuthor,
+                        viewModel = viewModel,
+                        modifier = Modifier.width(40.dp).height(54.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = session.bookName,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = session.bookAuthor.ifBlank { "未知作者" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        chapterTitle?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RecordDetailItem(
     detail: ReadRecordDetail,
     viewModel: ReadRecordViewModel,
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
     val deleteAction = rememberSwipeDeleteAction(onDelete)
@@ -663,16 +868,15 @@ private fun RecordDetailItem(
         chapterTitle = viewModel.getBookDurChapterTitle(detail.bookName, detail.bookAuthor)
     }
     
-    SwipeActionContainer(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        startActions = listOf(deleteAction)
-    ) {
+    if (isSelectionMode) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick),
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                ),
             color = containerColor,
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -682,6 +886,11 @@ private fun RecordDetailItem(
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    modifier = Modifier.padding(end = 8.dp)
+                )
                 BookCoverImage(
                     bookName = detail.bookName,
                     bookAuthor = detail.bookAuthor,
@@ -723,14 +932,83 @@ private fun RecordDetailItem(
                 )
             }
         }
+    } else {
+        SwipeActionContainer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            startActions = listOf(deleteAction)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = onLongClick
+                    ),
+                color = containerColor,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BookCoverImage(
+                        bookName = detail.bookName,
+                        bookAuthor = detail.bookAuthor,
+                        viewModel = viewModel,
+                        modifier = Modifier.width(44.dp).height(60.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = detail.bookName,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = detail.bookAuthor.ifBlank { "未知作者" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        chapterTitle?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    
+                    Text(
+                        text = formatReadDuration(detail.readTime),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun LatestRecordItem(
     record: ReadRecord,
     viewModel: ReadRecordViewModel,
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onDelete: () -> Unit,
     onMerge: () -> Unit
 ) {
@@ -746,7 +1024,10 @@ private fun LatestRecordItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         color = containerColor,
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -756,6 +1037,13 @@ private fun LatestRecordItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
             BookCoverImage(
                 bookName = record.bookName,
                 bookAuthor = record.bookAuthor,
@@ -809,46 +1097,52 @@ private fun LatestRecordItem(
                     )
                 }
             }
-            Box {
-                IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "更多", tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false },
-                    containerColor = MaterialTheme.colorScheme.surface
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("合并同名书籍") },
-                        onClick = {
-                            onMerge()
-                            showMenu = false
-                        },
-                        leadingIcon = { 
-                            Icon(Icons.Default.Merge, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) 
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("删除", color = MaterialTheme.colorScheme.error) },
-                        onClick = {
-                            onDelete()
-                            showMenu = false
-                        },
-                        leadingIcon = { 
-                            Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) 
-                        }
-                    )
+            if (!isSelectionMode) {
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "更多", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("合并同名书籍") },
+                            onClick = {
+                                onMerge()
+                                showMenu = false
+                            },
+                            leadingIcon = { 
+                                Icon(Icons.Default.Merge, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) 
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                onDelete()
+                                showMenu = false
+                            },
+                            leadingIcon = { 
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) 
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ReadTimeRecordItem(
     record: ReadRecord,
     viewModel: ReadRecordViewModel,
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
     var chapterTitle by remember { mutableStateOf<String?>(null) }
@@ -860,16 +1154,15 @@ private fun ReadTimeRecordItem(
 
     val deleteAction = rememberSwipeDeleteAction(onDelete)
 
-    SwipeActionContainer(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        startActions = listOf(deleteAction)
-    ) {
+    if (isSelectionMode) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick),
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                ),
             color = containerColor,
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -879,6 +1172,11 @@ private fun ReadTimeRecordItem(
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    modifier = Modifier.padding(end = 8.dp)
+                )
                 BookCoverImage(
                     bookName = record.bookName,
                     bookAuthor = record.bookAuthor,
@@ -919,6 +1217,72 @@ private fun ReadTimeRecordItem(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+            }
+        }
+    } else {
+        SwipeActionContainer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            startActions = listOf(deleteAction)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = onLongClick
+                    ),
+                color = containerColor,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BookCoverImage(
+                        bookName = record.bookName,
+                        bookAuthor = record.bookAuthor,
+                        viewModel = viewModel,
+                        modifier = Modifier.width(44.dp).height(60.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = record.bookName,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = record.bookAuthor.ifBlank { "未知作者" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        chapterTitle?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = formatReadDuration(record.readTime),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
     }
