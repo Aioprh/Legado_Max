@@ -28,7 +28,7 @@ import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
-class HighlightRuleGroupManageDialog(
+class HighlightRuleGroupManageDialog @JvmOverloads constructor(
     private val onChanged: () -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_group_manage) {
 

@@ -23,7 +23,7 @@ import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
-class HighlightRuleEditDialog(
+class HighlightRuleEditDialog @JvmOverloads constructor(
     private val sourceRule: HighlightRule? = null,
     private val onSave: (HighlightRule) -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_edit, true) {

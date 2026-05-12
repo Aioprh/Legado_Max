@@ -23,7 +23,7 @@ import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
-class HighlightPresetRuleDialog(
+class HighlightPresetRuleDialog @JvmOverloads constructor(
     private val onAddRule: (HighlightRule) -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_preset_rule) {
 
