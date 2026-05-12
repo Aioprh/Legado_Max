@@ -48,22 +48,20 @@ class BookmarkDecoration(val adapter: BookmarkAdapter) : RecyclerView.ItemDecora
             val isHeader = adapter.isItemHeader(position)
             if (isHeader) {
                 val isCollapsed = adapter.isGroupCollapsed(position)
+                val headerTop = view.top - headerHeight
                 c.drawRect(
                     0f,
-                    view.top - headerHeight,
+                    headerTop,
                     parent.width.toFloat(),
                     view.top.toFloat(),
                     headerPaint
                 )
-                drawArrow(c, view.top - headerHeight, isCollapsed)
+                drawArrow(c, headerTop, isCollapsed)
                 val headerText = adapter.getHeaderText(position)
                 textPaint.getTextBounds(headerText, 0, headerText.length, textRect)
-                c.drawText(
-                    headerText,
-                    headerLeft + arrowSize + arrowPadding,
-                    (view.top - headerHeight) + headerHeight / 2 + textRect.height() / 2,
-                    textPaint
-                )
+                val textX = headerLeft + arrowSize + arrowPadding
+                val textY = headerTop + headerHeight / 2 + (textRect.height() / 2 - textRect.bottom)
+                c.drawText(headerText, textX, textY, textPaint)
             }
         }
     }
@@ -93,23 +91,22 @@ class BookmarkDecoration(val adapter: BookmarkAdapter) : RecyclerView.ItemDecora
         val isHeader = adapter.isItemHeader(position + 1)
         val headerText = adapter.getHeaderText(position)
         val isCollapsed = adapter.isGroupCollapsed(position)
+        textPaint.getTextBounds(headerText, 0, headerText.length, textRect)
+        val textX = headerLeft + arrowSize + arrowPadding
+        
         if (isHeader) {
             val bottom = min(headerHeight.toInt(), view.bottom)
+            val headerTop = view.top - headerHeight
             c.drawRect(
                 0f,
-                view.top - headerHeight,
+                headerTop,
                 parent.width.toFloat(),
                 bottom.toFloat(),
                 headerPaint
             )
-            drawArrow(c, view.top - headerHeight, isCollapsed)
-            textPaint.getTextBounds(headerText, 0, headerText.length, textRect)
-            c.drawText(
-                headerText,
-                headerLeft + arrowSize + arrowPadding,
-                headerHeight / 2 + textRect.height() / 2 - (headerHeight - bottom),
-                textPaint
-            )
+            drawArrow(c, headerTop, isCollapsed)
+            val textY = headerHeight / 2 + (textRect.height() / 2 - textRect.bottom) - (headerHeight - bottom)
+            c.drawText(headerText, textX, textY, textPaint)
         } else {
             c.drawRect(
                 0f,
@@ -119,13 +116,8 @@ class BookmarkDecoration(val adapter: BookmarkAdapter) : RecyclerView.ItemDecora
                 headerPaint
             )
             drawArrow(c, 0f, isCollapsed)
-            textPaint.getTextBounds(headerText, 0, headerText.length, textRect)
-            c.drawText(
-                headerText,
-                headerLeft + arrowSize + arrowPadding,
-                headerHeight / 2 + textRect.height() / 2,
-                textPaint
-            )
+            val textY = headerHeight / 2 + (textRect.height() / 2 - textRect.bottom)
+            c.drawText(headerText, textX, textY, textPaint)
         }
         c.save()
     }
