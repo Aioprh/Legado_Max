@@ -43,7 +43,7 @@ import kotlinx.coroutines.launch
 /**
  * 辅助按键配置
  */
-class KeyboardAssistsConfig(private val callBack: CallBack) : BaseDialogFragment(R.layout.dialog_recycler_view),
+class KeyboardAssistsConfig(private val callBack: CallBack = object : CallBack { override fun requestLayout() {} }) : BaseDialogFragment(R.layout.dialog_recycler_view),
     Toolbar.OnMenuItemClickListener {
 
     private val binding by viewBinding(DialogRecyclerViewBinding::bind)

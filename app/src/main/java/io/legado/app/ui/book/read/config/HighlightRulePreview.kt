@@ -26,7 +26,7 @@ object HighlightRulePreview {
                     )
                 }
                 5 -> {
-                    if (rule.underlineSvgPath.isNotBlank()) {
+                    if (!rule.underlineSvgPath.isNullOrBlank()) {
                         spannable.setSpan(
                             SvgUnderlineSpan(textColor, accentColor, rule.underlineSvgPath),
                             start,

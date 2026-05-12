@@ -11,19 +11,21 @@ import android.widget.ArrayAdapter
 import androidx.core.widget.doAfterTextChanged
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
+import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogHighlightRuleEditBinding
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 class HighlightRuleEditDialog(
     private val sourceRule: HighlightRule? = null,
-    private val onSave: (HighlightRule) -> Unit,
+    private val onSave: (HighlightRule) -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_edit, true) {
 
     private val binding by viewBinding(DialogHighlightRuleEditBinding::bind)
@@ -73,6 +75,15 @@ class HighlightRuleEditDialog(
         bindData()
         bindEvents()
         updatePreview()
+    }
+
+    override fun observeLiveBus() {
+        observeEvent<ArrayList<Int>>(EventBus.UP_CONFIG) {
+            if (it.contains(1) || it.contains(2)) {
+                initTheme()
+                updatePreview()
+            }
+        }
     }
 
     private fun initTheme() {
@@ -154,7 +165,7 @@ class HighlightRuleEditDialog(
         binding.etSampleText.setText(editingRule.sampleText)
         binding.etTextColor.setText(editingRule.textColor?.toHexColor().orEmpty())
         binding.etUnderlineColor.setText(editingRule.underlineColor?.toHexColor().orEmpty())
-        binding.etSvgPath.setText(editingRule.underlineSvgPath)
+        binding.etSvgPath.setText(editingRule.underlineSvgPath.orEmpty())
         binding.spUnderlineMode.setSelection(editingRule.underlineMode.coerceIn(0, 5))
         val groupIndex = groupItems.indexOf(editingRule.group).takeIf { it >= 0 } ?: 0
         binding.spGroup.setSelection(groupIndex)

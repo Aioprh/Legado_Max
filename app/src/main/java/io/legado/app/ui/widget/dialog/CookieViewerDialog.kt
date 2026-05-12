@@ -24,7 +24,7 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
  *
  * @param url 要查看Cookie的目标URL
  */
-class CookieViewerDialog(private val url: String) : BaseDialogFragment(R.layout.dialog_recycler_view),
+class CookieViewerDialog(private val url: String = "") : BaseDialogFragment(R.layout.dialog_recycler_view),
     androidx.appcompat.widget.Toolbar.OnMenuItemClickListener {
 
     private val viewModel by viewModels<CookieViewerViewModel>()

@@ -1034,7 +1034,7 @@ class TextChapterLayout(
                         HighlightStyleSpan(
                             rule.underlineMode,
                             rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt(),
-                            rule.underlineSvgPath
+                            rule.underlineSvgPath.orEmpty()
                         ),
                         start,
                         end,
@@ -1067,7 +1067,7 @@ class TextChapterLayout(
                             compiled.rule.underlineColor
                                 ?: compiled.rule.textColor
                                 ?: 0xFF63C37D.toInt(),
-                            compiled.rule.underlineSvgPath
+                            compiled.rule.underlineSvgPath.orEmpty()
                         ),
                         start,
                         end,

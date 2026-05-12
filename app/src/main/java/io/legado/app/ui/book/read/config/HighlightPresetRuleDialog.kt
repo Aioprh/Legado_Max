@@ -11,6 +11,7 @@ import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
+import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogHighlightPresetRuleBinding
 import io.legado.app.databinding.ItemHighlightPresetAddBinding
 import io.legado.app.lib.theme.accentColor
@@ -18,11 +19,12 @@ import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 class HighlightPresetRuleDialog(
-    private val onAddRule: (HighlightRule) -> Unit,
+    private val onAddRule: (HighlightRule) -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_preset_rule) {
 
     private val binding by viewBinding(DialogHighlightPresetRuleBinding::bind)
@@ -52,6 +54,15 @@ class HighlightPresetRuleDialog(
         adapter.setItems(presetRules)
 
         binding.ivBack.setOnClickListener { dismissAllowingStateLoss() }
+    }
+
+    override fun observeLiveBus() {
+        observeEvent<ArrayList<Int>>(EventBus.UP_CONFIG) {
+            if (it.contains(1) || it.contains(2)) {
+                initTheme()
+                adapter.notifyDataSetChanged()
+            }
+        }
     }
 
     private fun initTheme() {

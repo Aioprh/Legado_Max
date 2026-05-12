@@ -80,14 +80,14 @@ jobs:
           fi
 
           CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null)
-          UPDATE_LOG_CHANGED=$(echo "$CHANGED_FILES" | grep -q "app/src/main/assets/updateLog.md" && echo "yes" || echo "no")
+          UPDATE_LOG_CHANGED=$(echo "$CHANGED_FILES" | grep -q "app/src/main/assets/web/help/md/updateLog.md" && echo "yes" || echo "no")
           CRONET_JSON_CHANGED=$(echo "$CHANGED_FILES" | grep -q "app/src/main/assets/cronet.json" && echo "yes" || echo "no")
 
           echo "DEBUG: CHANGED_FILES=$CHANGED_FILES"
 
           if [ "$UPDATE_LOG_CHANGED" = "yes" ] && [ "$CRONET_JSON_CHANGED" = "no" ]; then
             echo "updated=yes" >> $GITHUB_OUTPUT
-            if [ -f "app/src/main/assets/updateLog.md" ]; then
+            if [ -f "app/src/main/assets/web/help/md/updateLog.md" ]; then
               UPDATED_CONTENT=$(awk '
               /^\*\*20/ && !found {
                 found=1
@@ -96,9 +96,9 @@ jobs:
                 if (NF == 0) exit
                 print
               }
-              ' app/src/main/assets/updateLog.md)
+              ' app/src/main/assets/web/help/md/updateLog.md)
               if [ -z "$UPDATED_CONTENT" ]; then
-                UPDATED_CONTENT=$(head -n 10 app/src/main/assets/updateLog.md)
+                UPDATED_CONTENT=$(head -n 10 app/src/main/assets/web/help/md/updateLog.md)
               fi
             fi
             echo "DEBUG: UPDATED_CONTENT (from updateLog.md)="

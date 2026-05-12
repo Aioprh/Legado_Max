@@ -14,6 +14,7 @@ import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
+import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogHighlightRuleGroupManageBinding
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.accentColor
@@ -22,12 +23,13 @@ import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
+import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 class HighlightRuleGroupManageDialog(
-    private val onChanged: () -> Unit,
+    private val onChanged: () -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_group_manage) {
 
     private val binding by viewBinding(DialogHighlightRuleGroupManageBinding::bind)
@@ -58,6 +60,15 @@ class HighlightRuleGroupManageDialog(
         binding.ivBack.setOnClickListener { dismissAllowingStateLoss() }
         binding.tvAddGroup.setOnClickListener { showGroupInputDialog(null) }
         loadData()
+    }
+
+    override fun observeLiveBus() {
+        observeEvent<ArrayList<Int>>(EventBus.UP_CONFIG) {
+            if (it.contains(1) || it.contains(2)) {
+                initTheme()
+                adapter.notifyDataSetChanged()
+            }
+        }
     }
 
     private fun initTheme() {

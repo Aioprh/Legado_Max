@@ -10,7 +10,7 @@ data class HighlightRule(
     var textColor: Int? = null,
     var underlineMode: Int = 0,
     var underlineColor: Int? = null,
-    var underlineSvgPath: String = "",
+    var underlineSvgPath: String? = null,
 ) {
 
     fun styleSummary(): String {
