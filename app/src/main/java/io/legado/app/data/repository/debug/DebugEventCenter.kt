@@ -56,9 +56,7 @@ object DebugEventCenter {
                 _events.removeLast()
             }
         }
-        if (isEnabled) {
-            _eventFlow.emit(event)
-        }
+        _eventFlow.emit(event)
     }
 
     /**

@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +73,11 @@ fun DebugLogScreen(
     
     var showSearch by remember { mutableStateOf(false) }
 
+    LaunchedEffect(Unit) {
+        viewModel.refreshLogs()
+        viewModel.refreshFlowLogs()
+    }
+
     Scaffold(
         topBar = {
             Column {
@@ -86,7 +92,10 @@ fun DebugLogScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { viewModel.refreshFlowLogs() }) {
+                        IconButton(onClick = { 
+                            viewModel.refreshLogs()
+                            viewModel.refreshFlowLogs()
+                        }) {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
                                 contentDescription = "刷新"

@@ -15,10 +15,6 @@ import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.utils.toastOnUi
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -29,8 +25,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
@@ -104,8 +98,8 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
 
         result
     }.stateIn(
-        scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
-        started = SharingStarted.WhileSubscribed(5000),
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
         initialValue = emptyList()
     )
 
@@ -131,8 +125,8 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
 
         result
     }.stateIn(
-        scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
-        started = SharingStarted.WhileSubscribed(5000),
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
         initialValue = emptyList()
     )
 
@@ -162,6 +156,18 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     fun refreshFlowLogs() {
         val currentLogs = FlowLogRecorder.getCurrentLogs()
         _uiState.value = _uiState.value.copy(flowLogs = currentLogs)
+    }
+
+    /**
+     * 刷新日志
+     * 手动刷新日志列表，确保显示最新数据
+     */
+    fun refreshLogs() {
+        _allLogs = DebugEventCenter.getRecentLogs(DebugEventCenter.MAX_EVENTS)
+        _uiState.value = _uiState.value.copy(
+            logs = _allLogs,
+            isEmpty = _allLogs.isEmpty()
+        )
     }
 
     fun selectCategory(category: DebugCategory) {
