@@ -49,7 +49,7 @@ class SolidUnderlineSpan(
         val linePaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
-            strokeWidth = 2.dpToPx().toFloat()
+            strokeWidth = 1.dpToPx().toFloat()
             isAntiAlias = true
         }
         canvas.drawLine(x, lineY.toFloat(), x + width, lineY.toFloat(), linePaint)

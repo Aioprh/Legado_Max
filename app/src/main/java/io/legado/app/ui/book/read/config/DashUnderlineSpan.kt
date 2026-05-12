@@ -50,7 +50,7 @@ class DashUnderlineSpan(
         val dashPaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
-            strokeWidth = 2.dpToPx().toFloat()
+            strokeWidth = 1.dpToPx().toFloat()
             pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
             isAntiAlias = true
         }

@@ -47,11 +47,11 @@ class DoubleUnderlineSpan(
 
         val width = paint.measureText(text, start, end)
         val line1Y = y + underlineOffset
-        val line2Y = line1Y + lineGap + 2.dpToPx()
+        val line2Y = line1Y + lineGap + 1.dpToPx()
         val linePaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
-            strokeWidth = 2.dpToPx().toFloat()
+            strokeWidth = 1.dpToPx().toFloat()
             isAntiAlias = true
         }
         canvas.drawLine(x, line1Y.toFloat(), x + width, line1Y.toFloat(), linePaint)

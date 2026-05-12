@@ -53,7 +53,7 @@ class WaveUnderlineSpan(
         val wavePaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
-            strokeWidth = 2.dpToPx().toFloat()
+            strokeWidth = 1.dpToPx().toFloat()
             isAntiAlias = true
         }
         val path = Path().apply { moveTo(x, lineY.toFloat()) }

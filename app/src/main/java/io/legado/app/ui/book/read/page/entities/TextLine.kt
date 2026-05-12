@@ -234,7 +234,7 @@ data class TextLine(
      */
     private fun drawUnderline(canvas: Canvas, underlineMode: Int) {
         val paint = TextPaint(ChapterProvider.contentPaint).apply {
-            strokeWidth = 2.dpToPx().toFloat()
+            strokeWidth = 0.5f.dpToPx()
             style = android.graphics.Paint.Style.STROKE
             isAntiAlias = true
         }
@@ -404,7 +404,7 @@ data class TextLine(
     ) {
         val paint = TextPaint(ChapterProvider.contentPaint).apply {
             color = underlineColor
-            strokeWidth = 2.dpToPx().toFloat()
+            strokeWidth = 0.5f.dpToPx()
             style = android.graphics.Paint.Style.STROKE
         }
         val distance = (ChapterProvider.lineSpacingExtra * 10 - 11).coerceIn(-1f, 10f)
@@ -437,7 +437,7 @@ data class TextLine(
             }
             4 -> {
                 val lineGap = 3.dpToPx().toFloat()
-                val line2Y = lineY + lineGap + 2.dpToPx()
+                val line2Y = lineY + lineGap + 1.dpToPx()
                 canvas.drawLine(startX, lineY, endX, lineY, paint)
                 canvas.drawLine(startX, line2Y, endX, line2Y, paint)
             }
