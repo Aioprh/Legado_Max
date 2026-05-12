@@ -18,6 +18,7 @@ import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogHighlightRuleConfigBinding
 import io.legado.app.databinding.ItemHighlightPresetRuleBinding
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
@@ -26,6 +27,7 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getClipText
+import io.legado.app.utils.observeEvent
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
@@ -40,20 +42,28 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     private val rules = ArrayList<HighlightRule>()
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
+    private var accentColor = 0
+    private var cardBgColor = 0
+    private var previewBgColor = 0
 
     override fun onStart() {
         super.onStart()
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.92f)
         dialog?.window?.setGravity(Gravity.BOTTOM)
+        dialog?.window?.setBackgroundDrawableResource(R.drawable.shape_highlight_rule_sheet)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         initTheme()
-        
+        attachBottomSheetDismiss(
+            binding.dragHandle,
+            binding.sheetContainer
+        ) { dismissAllowingStateLoss() }
+
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
         binding.recyclerView.clipToPadding = false
-        binding.recyclerView.setPadding(0, 10.dpToPx(), 0, 18.dpToPx())
+        binding.recyclerView.setPadding(0, 12.dpToPx(), 0, 28.dpToPx())
 
         binding.ivClose.setOnClickListener { dismissAllowingStateLoss() }
         binding.ivMenu.setOnClickListener { showMenu(it) }
@@ -62,20 +72,44 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         loadRules()
     }
 
+    override fun observeLiveBus() {
+        observeEvent<ArrayList<Int>>(EventBus.UP_CONFIG) {
+            if (it.contains(1) || it.contains(2)) {
+                initTheme()
+                adapter.notifyDataSetChanged()
+            }
+        }
+    }
+
     private fun initTheme() {
         val bg = requireContext().bottomBackground
         val isLight = ColorUtils.isColorLight(bg)
         primaryTextColor = requireContext().getPrimaryTextColor(isLight)
         secondaryTextColor = requireContext().getSecondaryTextColor(isLight)
+        accentColor = requireContext().accentColor
 
-        binding.sheetContainer.setBackgroundColor(bg)
+        cardBgColor = if (isLight) {
+            ColorUtils.blendColors(bg, 0xFF000000.toInt(), 0.08f)
+        } else {
+            ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.06f)
+        }
+        previewBgColor = cardBgColor
+
+        binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.ivClose.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+        binding.ivClose.background?.mutate()?.setTint(accentColor)
         binding.tvPageTitle.setTextColor(primaryTextColor)
         binding.tvPageSubtitle.setTextColor(secondaryTextColor)
         binding.ivMenu.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
-        
+        binding.ivMenu.background?.mutate()?.setTint(accentColor)
         binding.ivEmpty.setColorFilter(secondaryTextColor, PorterDuff.Mode.SRC_IN)
         binding.tvEmptyMsg.setTextColor(secondaryTextColor)
+        binding.tvEmptyHint.setTextColor(secondaryTextColor)
+
+        binding.tvEmptyAdd.background?.mutate()?.setTint(accentColor)
+        binding.tvEmptyAdd.setTextColor(
+            if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+        )
     }
 
     private fun showMenu(anchor: View) {
@@ -87,40 +121,17 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.menu_select -> {
-                showRuleSelector()
-                return true
-            }
-            R.id.menu_add -> {
-                editRule(null)
-                return true
-            }
-            R.id.menu_preset -> {
-                showPresetRules()
-                return true
-            }
-            R.id.menu_import -> {
-                importRulesFromClipboard()
-                return true
-            }
-            R.id.menu_group -> {
-                showGroupManager()
-                return true
-            }
-            R.id.menu_share -> {
-                shareRules(rules)
-                return true
-            }
-            R.id.menu_export -> {
-                exportRulesToClipboard(rules)
-                return true
-            }
-            R.id.menu_reset -> {
-                resetRules()
-                return true
-            }
+            R.id.menu_select -> showRuleSelector()
+            R.id.menu_add -> editRule(null)
+            R.id.menu_preset -> showPresetRules()
+            R.id.menu_import -> importRulesFromClipboard()
+            R.id.menu_group -> showGroupManager()
+            R.id.menu_share -> shareRules(rules)
+            R.id.menu_export -> exportRulesToClipboard(rules)
+            R.id.menu_reset -> resetRules()
+            else -> return false
         }
-        return false
+        return true
     }
 
     private fun loadRules() {
@@ -162,7 +173,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     private fun deleteRule(rule: HighlightRule) {
         alert("删除") {
-            setMessage("确定删除《${rule.name}》吗？")
+            setMessage("确定删除“${rule.name}”吗？")
             okButton {
                 rules.removeAll { it.id == rule.id }
                 syncRules()
@@ -190,7 +201,9 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             return
         }
         val selected = BooleanArray(rules.size)
-        val names = rules.map { "${it.name.ifBlank { "未命名规则" }}  ·  ${it.group}" }.toTypedArray()
+        val names = rules.map {
+            "${it.name.ifBlank { "未命名规则" }} / ${it.group}"
+        }.toTypedArray()
         alert("选择规则") {
             multiChoiceItems(names, selected) { _, which, isChecked ->
                 selected[which] = isChecked
@@ -297,10 +310,22 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         ) {
             binding.tvTitle.text = item.name.ifBlank { getString(R.string.highlight_rule_unnamed) }
             binding.tvDesc.text = item.styleSummary()
-            binding.tvPattern.text = "${item.group} · ${item.displayPattern()}"
+            binding.tvPattern.text = "${item.group} / ${item.displayPattern()}"
             binding.tvPreview.text = HighlightRulePreview.build(item)
+
+            binding.root.background?.mutate()?.setTint(cardBgColor)
+            binding.tvPattern.background?.mutate()?.setTint(accentColor)
+            binding.tvPreview.background?.mutate()?.setTint(previewBgColor)
+            binding.tvEdit.background?.mutate()?.setTint(accentColor)
+
             binding.switchEnable.setOnCheckedChangeListener(null)
             binding.switchEnable.isChecked = item.enabled
+            binding.switchEnable.trackTintList = android.content.res.ColorStateList.valueOf(
+                if (item.enabled) accentColor else 0xFF666666.toInt()
+            )
+            binding.switchEnable.thumbTintList = android.content.res.ColorStateList.valueOf(
+                if (item.enabled) accentColor else 0xFF999999.toInt()
+            )
             binding.switchEnable.setOnCheckedChangeListener { _, isChecked ->
                 if (item.enabled != isChecked) {
                     item.enabled = isChecked
@@ -310,15 +335,26 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
             binding.tvTitle.setTextColor(primaryTextColor)
             binding.tvDesc.setTextColor(secondaryTextColor)
-            binding.tvPattern.setTextColor(secondaryTextColor)
+            binding.tvPattern.setTextColor(
+                if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+            )
             binding.tvPreviewLabel.setTextColor(secondaryTextColor)
             binding.tvPreview.setTextColor(primaryTextColor)
-            
-            (binding.tvEdit.getChildAt(0) as? android.widget.ImageView)?.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
-            (binding.tvEdit.getChildAt(1) as? android.widget.TextView)?.setTextColor(primaryTextColor)
-            
-            (binding.tvDelete.getChildAt(0) as? android.widget.ImageView)?.setColorFilter(context.getColor(R.color.error), PorterDuff.Mode.SRC_IN)
-            (binding.tvDelete.getChildAt(1) as? android.widget.TextView)?.setTextColor(context.getColor(R.color.error))
+
+            (binding.tvEdit.getChildAt(0) as? android.widget.ImageView)
+                ?.setColorFilter(
+                    if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt(),
+                    PorterDuff.Mode.SRC_IN
+                )
+            (binding.tvEdit.getChildAt(1) as? android.widget.TextView)
+                ?.setTextColor(
+                    if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+                )
+
+            (binding.tvDelete.getChildAt(0) as? android.widget.ImageView)
+                ?.setColorFilter(context.getColor(R.color.error), PorterDuff.Mode.SRC_IN)
+            (binding.tvDelete.getChildAt(1) as? android.widget.TextView)
+                ?.setTextColor(context.getColor(R.color.error))
         }
     }
 }

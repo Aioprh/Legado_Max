@@ -80,6 +80,10 @@ class TextChapterLayout(
     private val bookContent: BookContent,
 ) {
 
+    private val noteHighlightColor = 0xFF8F959E.toInt()
+    private val dialogHighlightColor = 0xFFFF8C00.toInt()
+    private val bookTitleUnderlineColor = 0xFF63C37D.toInt()
+
     @Volatile
     private var listener: LayoutProgressListener? = textChapter
 
@@ -118,9 +122,16 @@ class TextChapterLayout(
     private val adaptSpecialStyle = AppConfig.adaptSpecialStyle
     private val pageAnim = book.getPageAnim()
     private val highlightRules by lazy { HighlightRuleStore.loadEnabled(appCtx) }
-    private val dialogHighlightColor = 0xFFE58D2B.toInt()
-    private val noteHighlightColor = 0xFF8F959E.toInt()
-    private val bookTitleUnderlineColor = 0xFF63C37D.toInt()
+    private val compiledHighlightRules by lazy {
+        HighlightRuleStore.loadEnabled(appCtx).mapNotNull { rule ->
+            kotlin.runCatching {
+                CompiledHighlightRule(
+                    rule = rule,
+                    regex = Regex(rule.pattern)
+                )
+            }.getOrNull()
+        }
+    }
 
     private var pendingTextPage = TextPage()
 
@@ -614,7 +625,7 @@ class TextChapterLayout(
         htmlContent: String,
     ) {
         val textViewTagHandler = TextViewTagHandler()
-        val spanned = applyBuiltInHighlightRules(
+        val spanned = applyHighlightRules(
             SpannableStringBuilder(
                 htmlContent.parseAsHtml(
                     HtmlCompat.FROM_HTML_MODE_COMPACT,
@@ -925,6 +936,15 @@ class TextChapterLayout(
         return underlineSpans.lastOrNull()?.underlineColor
     }
 
+    private fun extractUnderlineSvgPath(spanned: CharSequence, index: Int): String {
+        val underlineSpans = (spanned as? Spanned)?.getSpans(
+            index,
+            index + 1,
+            HighlightStyleSpan::class.java
+        ) ?: return ""
+        return underlineSpans.lastOrNull()?.underlineSvgPath ?: ""
+    }
+
     private fun extractLinkUrl(spanned: Spanned, index: Int): String? {
         // 检查URLSpan（超链接）
         val urlSpans = spanned.getSpans(index, index + 1, URLSpan::class.java)
@@ -1013,7 +1033,41 @@ class TextChapterLayout(
                     spannable.setSpan(
                         HighlightStyleSpan(
                             rule.underlineMode,
-                            rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt()
+                            rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt(),
+                            rule.underlineSvgPath.orEmpty()
+                        ),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+            }
+        }
+        return spannable
+    }
+
+    private fun applyHighlightRules(spannable: SpannableStringBuilder): SpannableStringBuilder {
+        compiledHighlightRules.forEach { compiled ->
+            compiled.regex.findAll(spannable).forEach { match ->
+                val start = match.range.first
+                val end = match.range.last + 1
+                if (start >= end) return@forEach
+                compiled.rule.textColor?.let { color ->
+                    spannable.setSpan(
+                        ForegroundColorSpan(color),
+                        start,
+                        end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+                }
+                if (compiled.rule.underlineMode != 0) {
+                    spannable.setSpan(
+                        HighlightStyleSpan(
+                            compiled.rule.underlineMode,
+                            compiled.rule.underlineColor
+                                ?: compiled.rule.textColor
+                                ?: 0xFF63C37D.toInt(),
+                            compiled.rule.underlineSvgPath.orEmpty()
                         ),
                         start,
                         end,
@@ -1040,7 +1094,7 @@ class TextChapterLayout(
         srcList: LinkedList<String>? = null,
         clickList: LinkedList<String?>?
     ) {
-        val styledText = applyHighlightRulesFromStore(SpannableStringBuilder(text))
+        val styledText = applyHighlightRules(SpannableStringBuilder(text))
         val widthsArray = allocateFloatArray(text.length)
         textPaint.getTextWidthsCompat(text, widthsArray, reviewCharWidth)
         val layout = if (useZhLayout) {
@@ -1364,6 +1418,7 @@ class TextChapterLayout(
         val textColor = extractTextColor(styledText as Spanned, textIndex)
         val underlineMode = extractUnderlineMode(styledText, textIndex)
         val underlineColor = extractUnderlineColor(styledText, textIndex)
+        val underlineSvgPath = extractUnderlineSvgPath(styledText, textIndex)
         val column = when {
             !srcList.isNullOrEmpty() && (char == srcReplaceStr || char == reviewStr) -> {
                 val src = srcList.removeFirst()
@@ -1391,7 +1446,8 @@ class TextChapterLayout(
                     charData = char,
                     textColor = textColor,
                     underlineMode = underlineMode,
-                    underlineColor = underlineColor
+                    underlineColor = underlineColor,
+                    underlineSvgPath = underlineSvgPath
                 )
             }
         }
@@ -1491,5 +1547,10 @@ class TextChapterLayout(
         val code = char.code
         return code == 8203 || code == 8204 || code == 8205 || code == 8288
     }
+
+    private data class CompiledHighlightRule(
+        val rule: HighlightRule,
+        val regex: Regex,
+    )
 
 }

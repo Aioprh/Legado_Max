@@ -10,6 +10,7 @@ import android.text.style.UpdateAppearance
 class HighlightStyleSpan(
     val underlineMode: Int,
     val underlineColor: Int,
+    val underlineSvgPath: String = "",
 ) : CharacterStyle(), UpdateAppearance {
 
     override fun updateDrawState(tp: TextPaint) = Unit

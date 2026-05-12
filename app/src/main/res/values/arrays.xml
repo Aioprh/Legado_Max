@@ -224,6 +224,8 @@
 		<item>Solid underline</item>
 		<item>Dashed underline</item>
 		<item>Wave underline</item>
+		<item>Double underline</item>
+		<item>Custom SVG</item>
 	</string-array>
 
 </resources>

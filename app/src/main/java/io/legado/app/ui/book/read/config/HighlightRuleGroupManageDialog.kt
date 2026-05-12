@@ -1,5 +1,6 @@
 package io.legado.app.ui.book.read.config
 
+import android.graphics.PorterDuff
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
@@ -8,48 +9,93 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
-import io.legado.app.databinding.DialogRecyclerViewBinding
+import io.legado.app.constant.EventBus
+import io.legado.app.databinding.DialogHighlightRuleGroupManageBinding
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.getSecondaryTextColor
+import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
+import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
-class HighlightRuleGroupManageDialog(
-    private val onChanged: () -> Unit,
-) : BaseDialogFragment(R.layout.dialog_recycler_view) {
+class HighlightRuleGroupManageDialog @JvmOverloads constructor(
+    private val onChanged: () -> Unit = {},
+) : BaseDialogFragment(R.layout.dialog_highlight_rule_group_manage) {
 
-    private val binding by viewBinding(DialogRecyclerViewBinding::bind)
+    private val binding by viewBinding(DialogHighlightRuleGroupManageBinding::bind)
     private val adapter by lazy { GroupAdapter(requireContext()) }
     private val groups = ArrayList<String>()
     private val rules = ArrayList<HighlightRule>()
+    private var primaryTextColor = 0
+    private var secondaryTextColor = 0
+    private var accentColor = 0
+    private var cardBgColor = 0
 
     override fun onStart() {
         super.onStart()
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.92f)
         dialog?.window?.setGravity(Gravity.BOTTOM)
+        dialog?.window?.setBackgroundDrawableResource(R.drawable.shape_highlight_rule_sheet)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(
-            ContextCompat.getColor(requireContext(), R.color.background_card)
-        )
-        binding.toolBar.title = "管理分组"
+        initTheme()
+        attachBottomSheetDismiss(
+            binding.dragHandle,
+            binding.sheetContainer
+        ) { dismissAllowingStateLoss() }
+
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
-        binding.tvFooterLeft.visibility = View.GONE
-        binding.tvCancel.visibility = View.GONE
-        binding.tvOk.visibility = View.VISIBLE
-        binding.tvOk.text = "新增分组"
-        binding.tvOk.setTextColor(ContextCompat.getColor(requireContext(), R.color.primaryText))
-        binding.tvOk.setOnClickListener { showGroupInputDialog(null) }
+        binding.ivBack.setOnClickListener { dismissAllowingStateLoss() }
+        binding.tvAddGroup.setOnClickListener { showGroupInputDialog(null) }
         loadData()
+    }
+
+    override fun observeLiveBus() {
+        observeEvent<ArrayList<Int>>(EventBus.UP_CONFIG) {
+            if (it.contains(1) || it.contains(2)) {
+                initTheme()
+                adapter.notifyDataSetChanged()
+            }
+        }
+    }
+
+    private fun initTheme() {
+        val bg = requireContext().bottomBackground
+        val isLight = ColorUtils.isColorLight(bg)
+        primaryTextColor = requireContext().getPrimaryTextColor(isLight)
+        secondaryTextColor = requireContext().getSecondaryTextColor(isLight)
+        accentColor = requireContext().accentColor
+
+        cardBgColor = if (isLight) {
+            ColorUtils.blendColors(bg, 0xFF000000.toInt(), 0.08f)
+        } else {
+            ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.06f)
+        }
+
+        binding.sheetContainer.background?.mutate()?.setTint(bg)
+        binding.ivBack.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+        binding.ivBack.background?.mutate()?.setTint(accentColor)
+        binding.tvPageTitle.setTextColor(primaryTextColor)
+        binding.tvPageSubtitle.setTextColor(secondaryTextColor)
+
+        binding.tvAddGroup.background?.mutate()?.setTint(accentColor)
+        binding.tvAddGroup.setTextColor(
+            if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+        )
+
+        binding.tvEmptyMsg.setTextColor(secondaryTextColor)
     }
 
     private fun loadData() {
@@ -58,8 +104,7 @@ class HighlightRuleGroupManageDialog(
         rules.clear()
         rules.addAll(HighlightRuleStore.load(requireContext()))
         adapter.setItems(groups.toList())
-        binding.tvMsg.visibility = if (groups.isEmpty()) View.VISIBLE else View.GONE
-        binding.tvMsg.text = "暂无分组"
+        binding.tvEmptyMsg.visibility = if (groups.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun showGroupInputDialog(source: String?) {
@@ -162,8 +207,17 @@ class HighlightRuleGroupManageDialog(
             item: String,
             payloads: MutableList<Any>
         ) {
+            binding.itemRoot.background?.mutate()?.setTint(cardBgColor)
+            binding.tvEdit.background?.mutate()?.setTint(accentColor)
+
             binding.tvTitle.text = item
+            binding.tvTitle.setTextColor(primaryTextColor)
             binding.tvCount.text = "${groupCount(item)} 条规则"
+            binding.tvCount.setTextColor(secondaryTextColor)
+            binding.tvEdit.setTextColor(
+                if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+            )
+            binding.tvDelete.setTextColor(context.getColor(R.color.error))
             binding.tvDelete.visibility =
                 if (item == HighlightRuleGroupStore.DEFAULT_GROUP) View.GONE else View.VISIBLE
         }

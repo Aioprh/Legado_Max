@@ -10,6 +10,7 @@ data class HighlightRule(
     var textColor: Int? = null,
     var underlineMode: Int = 0,
     var underlineColor: Int? = null,
+    var underlineSvgPath: String? = null,
 ) {
 
     fun styleSummary(): String {
@@ -23,7 +24,8 @@ data class HighlightRule(
                     1 -> "实线下划线"
                     2 -> "虚线下划线"
                     3 -> "波浪下划线"
-                    4 -> "标题强调条"
+                    4 -> "双下划线"
+                    5 -> "自定义SVG"
                     else -> "下划线"
                 } + underlineColor?.let { " ${it.toHexColor()}" }.orEmpty()
             )
@@ -40,7 +42,7 @@ data class HighlightRule(
 
     fun normalizedSampleText(): String {
         return sampleText.ifBlank {
-            "她轻声说：“今晚就出发。”\n最近在重读《百年孤独》（重刷版），节奏很稳。"
+            "她轻声说：“今晚就出发。”\n最近在重读《百年孤独》（纪念版），节奏依然很稳。"
         }
     }
 

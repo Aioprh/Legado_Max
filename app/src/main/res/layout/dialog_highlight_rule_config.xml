@@ -17,6 +17,7 @@
         android:paddingTop="12dp">
 
         <View
+            android:id="@+id/drag_handle"
             android:layout_width="96dp"
             android:layout_height="8dp"
             android:layout_gravity="center_horizontal"
@@ -36,7 +37,7 @@
                 android:id="@+id/iv_close"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/shape_highlight_rule_icon_button"
                 android:contentDescription="@string/back"
                 android:padding="10dp"
                 android:src="@drawable/ic_arrow_back"
@@ -72,7 +73,7 @@
                 android:id="@+id/iv_menu"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/shape_highlight_rule_icon_button"
                 android:contentDescription="@string/action_menu"
                 android:padding="10dp"
                 android:src="@drawable/ic_more_vert"
@@ -99,16 +100,16 @@
                 android:layout_gravity="center"
                 android:gravity="center"
                 android:orientation="vertical"
-                android:paddingStart="24dp"
-                android:paddingEnd="24dp"
-                android:paddingBottom="20dp"
+                android:paddingStart="28dp"
+                android:paddingEnd="28dp"
+                android:paddingBottom="24dp"
                 android:visibility="gone"
                 tools:visibility="visible">
 
                 <ImageView
                     android:id="@+id/iv_empty"
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
+                    android:layout_width="88dp"
+                    android:layout_height="88dp"
                     android:alpha="0.5"
                     android:src="@drawable/ic_bubble_chart"
                     android:tint="@color/secondaryText" />
@@ -117,10 +118,20 @@
                     android:id="@+id/tv_empty_msg"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="14dp"
                     android:text="@string/highlight_rule_empty"
                     android:textColor="@color/secondaryText"
                     android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tv_empty_hint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="先从预置规则挑几条，再按你的阅读习惯慢慢调。"
+                    android:textColor="@color/secondaryText"
+                    android:textSize="13sp" />
 
                 <TextView
                     android:id="@+id/tv_empty_add"

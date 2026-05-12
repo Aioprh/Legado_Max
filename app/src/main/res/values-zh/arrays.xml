@@ -132,6 +132,8 @@
         <item>实线下划线</item>
         <item>虚线下划线</item>
         <item>波浪下划线</item>
+        <item>双下划线</item>
+        <item>自定义SVG</item>
     </string-array>
 
 </resources>

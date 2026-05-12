@@ -15,6 +15,7 @@
         android:paddingTop="12dp">
 
         <View
+            android:id="@+id/drag_handle"
             android:layout_width="96dp"
             android:layout_height="8dp"
             android:layout_gravity="center_horizontal"
@@ -87,6 +88,7 @@
             android:overScrollMode="ifContentScrolls">
 
             <LinearLayout
+                android:id="@+id/content_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
@@ -96,13 +98,14 @@
                 android:paddingBottom="28dp">
 
                 <TextView
+                    android:id="@+id/tv_section_basic"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="基础信息"
-                    android:textColor="@color/secondaryText"
                     android:textSize="13sp" />
 
                 <LinearLayout
+                    android:id="@+id/panel_basic"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
@@ -123,19 +126,19 @@
                             android:orientation="vertical">
 
                             <TextView
+                                android:id="@+id/tv_enable_label"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="启用规则"
-                                android:textColor="@color/primaryText"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
 
                             <TextView
+                                android:id="@+id/tv_enable_desc"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
                                 android:text="关闭后会保留规则，但不会作用到正文"
-                                android:textColor="@color/secondaryText"
                                 android:textSize="12sp" />
                         </LinearLayout>
 
@@ -146,11 +149,11 @@
                     </LinearLayout>
 
                     <TextView
+                        android:id="@+id/tv_name_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
                         android:text="规则名称"
-                        android:textColor="@color/primaryText"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -164,16 +167,14 @@
                         android:inputType="text"
                         android:minHeight="52dp"
                         android:paddingHorizontal="14dp"
-                        android:paddingVertical="12dp"
-                        android:textColor="@color/primaryText"
-                        android:textColorHint="@color/secondaryText" />
+                        android:paddingVertical="12dp" />
 
                     <TextView
+                        android:id="@+id/tv_group_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
                         android:text="所属分组"
-                        android:textColor="@color/primaryText"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -187,11 +188,11 @@
                         android:paddingHorizontal="8dp" />
 
                     <TextView
+                        android:id="@+id/tv_pattern_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
                         android:text="匹配规则"
-                        android:textColor="@color/primaryText"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -205,9 +206,7 @@
                         android:hint="输入正则表达式"
                         android:inputType="textMultiLine"
                         android:minHeight="110dp"
-                        android:padding="14dp"
-                        android:textColor="@color/primaryText"
-                        android:textColorHint="@color/secondaryText" />
+                        android:padding="14dp" />
 
                     <TextView
                         android:id="@+id/tv_pattern_error"
@@ -219,14 +218,15 @@
                 </LinearLayout>
 
                 <TextView
+                    android:id="@+id/tv_section_style"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
                     android:text="样式设置"
-                    android:textColor="@color/secondaryText"
                     android:textSize="13sp" />
 
                 <LinearLayout
+                    android:id="@+id/panel_style"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
@@ -235,10 +235,10 @@
                     android:padding="18dp">
 
                     <TextView
+                        android:id="@+id/tv_text_color_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="文字颜色"
-                        android:textColor="@color/primaryText"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -252,9 +252,7 @@
                         android:inputType="textCapCharacters"
                         android:minHeight="52dp"
                         android:paddingHorizontal="14dp"
-                        android:paddingVertical="12dp"
-                        android:textColor="@color/primaryText"
-                        android:textColorHint="@color/secondaryText" />
+                        android:paddingVertical="12dp" />
 
                     <TextView
                         android:id="@+id/tv_text_color_error"
@@ -265,11 +263,11 @@
                         android:visibility="gone" />
 
                     <TextView
+                        android:id="@+id/tv_underline_mode_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
                         android:text="下划线样式"
-                        android:textColor="@color/primaryText"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -283,11 +281,11 @@
                         android:paddingHorizontal="8dp" />
 
                     <TextView
+                        android:id="@+id/tv_underline_color_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="18dp"
                         android:text="下划线颜色"
-                        android:textColor="@color/primaryText"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
@@ -301,9 +299,7 @@
                         android:inputType="textCapCharacters"
                         android:minHeight="52dp"
                         android:paddingHorizontal="14dp"
-                        android:paddingVertical="12dp"
-                        android:textColor="@color/primaryText"
-                        android:textColorHint="@color/secondaryText" />
+                        android:paddingVertical="12dp" />
 
                     <TextView
                         android:id="@+id/tv_underline_color_error"
@@ -312,17 +308,47 @@
                         android:layout_marginTop="6dp"
                         android:textColor="@color/error"
                         android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tv_svg_path_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:text="SVG路径（自定义模式）"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <EditText
+                        android:id="@+id/et_svg_path"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/shape_highlight_rule_input"
+                        android:gravity="top|start"
+                        android:hint="M0,50 Q25,0 50,50 Q75,100 100,50"
+                        android:inputType="textMultiLine"
+                        android:minHeight="80dp"
+                        android:padding="14dp" />
+
+                    <TextView
+                        android:id="@+id/tv_svg_path_hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="坐标范围：X(0-100)，Y(0-100)，Y=50为基准线"
+                        android:textSize="11sp" />
                 </LinearLayout>
 
                 <TextView
+                    android:id="@+id/tv_section_preview"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="18dp"
                     android:text="预览文本"
-                    android:textColor="@color/secondaryText"
                     android:textSize="13sp" />
 
                 <LinearLayout
+                    android:id="@+id/panel_preview"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
@@ -331,10 +357,10 @@
                     android:padding="18dp">
 
                     <TextView
+                        android:id="@+id/tv_sample_hint"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="用于实时检查规则效果"
-                        android:textColor="@color/secondaryText"
                         android:textSize="12sp" />
 
                     <EditText
@@ -344,12 +370,10 @@
                         android:layout_marginTop="10dp"
                         android:background="@drawable/shape_highlight_rule_input"
                         android:gravity="top|start"
-                        android:hint="输入一段示例文本，下面会即时渲染"
+                        android:hint="输入一段示例文本，下面会即时预览"
                         android:inputType="textMultiLine"
                         android:minHeight="96dp"
-                        android:padding="14dp"
-                        android:textColor="@color/primaryText"
-                        android:textColorHint="@color/secondaryText" />
+                        android:padding="14dp" />
 
                     <TextView
                         android:id="@+id/tv_preview"
@@ -360,7 +384,6 @@
                         android:lineSpacingExtra="8dp"
                         android:minHeight="96dp"
                         android:padding="16dp"
-                        android:textColor="@color/primaryText"
                         android:textSize="18sp" />
                 </LinearLayout>
             </LinearLayout>

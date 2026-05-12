@@ -2,13 +2,13 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="14dp"
-    android:layout_marginTop="10dp"
-    android:layout_marginEnd="14dp"
+    android:layout_marginStart="10dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginEnd="10dp"
     android:background="@drawable/shape_highlight_rule_card"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="18dp">
+    android:padding="12dp">
 
     <LinearLayout
         android:layout_width="0dp"
@@ -20,17 +20,15 @@
             android:id="@+id/tv_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/primaryText"
-            android:textSize="18sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tv_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textColor="@color/secondaryText"
-            android:textSize="13sp" />
+            android:layout_marginTop="2dp"
+            android:textSize="11sp" />
     </LinearLayout>
 
     <TextView
@@ -38,26 +36,24 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:background="@drawable/shape_highlight_rule_action"
-        android:paddingStart="12dp"
-        android:paddingTop="8dp"
-        android:paddingEnd="12dp"
-        android:paddingBottom="8dp"
+        android:paddingStart="8dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="5dp"
         android:text="重命名"
-        android:textColor="@color/primaryText"
-        android:textSize="13sp" />
+        android:textSize="11sp" />
 
     <TextView
         android:id="@+id/tv_delete"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
+        android:layout_marginStart="6dp"
         android:background="@drawable/shape_highlight_rule_action_danger"
-        android:paddingStart="12dp"
-        android:paddingTop="8dp"
-        android:paddingEnd="12dp"
-        android:paddingBottom="8dp"
+        android:paddingStart="8dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="5dp"
         android:text="删除"
-        android:textColor="@color/error"
-        android:textSize="13sp" />
+        android:textSize="11sp" />
 
 </LinearLayout>
