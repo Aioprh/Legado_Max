@@ -26,9 +26,10 @@ object HighlightRulePreview {
                     )
                 }
                 5 -> {
-                    if (!rule.underlineSvgPath.isNullOrBlank()) {
+                    val svgPath = rule.underlineSvgPath
+                    if (!svgPath.isNullOrBlank()) {
                         spannable.setSpan(
-                            SvgUnderlineSpan(textColor, accentColor, rule.underlineSvgPath),
+                            SvgUnderlineSpan(textColor, accentColor, svgPath),
                             start,
                             end,
                             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
