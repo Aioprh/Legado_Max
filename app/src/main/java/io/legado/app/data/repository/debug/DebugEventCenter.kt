@@ -50,15 +50,15 @@ object DebugEventCenter {
     val isEnabled: Boolean get() = AppConfig.debugLogFloatingBall
 
     suspend fun emit(event: DebugEvent) {
-        // 检查是否启用调试日志
-        if (!isEnabled) return
         mutex.withLock {
             _events.addFirst(event)
             while (_events.size > MAX_EVENTS) {
                 _events.removeLast()
             }
         }
-        _eventFlow.emit(event)
+        if (isEnabled) {
+            _eventFlow.emit(event)
+        }
     }
 
     /**

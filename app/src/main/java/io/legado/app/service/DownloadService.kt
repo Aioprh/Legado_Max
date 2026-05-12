@@ -36,6 +36,7 @@ class DownloadService : BaseService() {
     private val groupKey = "${appCtx.packageName}.download"
     private val downloads = hashMapOf<Long, DownloadInfo>()
     private val completeDownloads = hashSetOf<Long>()
+    private val failedDownloads = hashSetOf<Long>()
     private var upStateJob: Job? = null
     private val downloadReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -109,6 +110,7 @@ class DownloadService : BaseService() {
             val downloadId = downloadManager.enqueue(request)
             downloads[downloadId] =
                 DownloadInfo(url, fileName, NotificationId.Download + downloads.size)
+            AppLog.put("📥开始下载: $fileName\nURL: $url")
             queryState()
             if (upStateJob == null) {
                 checkDownloadState()
@@ -134,6 +136,7 @@ class DownloadService : BaseService() {
         }
         downloads.remove(downloadId)
         completeDownloads.remove(downloadId)
+        failedDownloads.remove(downloadId)
         notificationManager.cancel(downloadId.toInt())
     }
 
@@ -145,6 +148,7 @@ class DownloadService : BaseService() {
         if (!completeDownloads.contains(downloadId)) {
             completeDownloads.add(downloadId)
             val fileName = downloads[downloadId]?.fileName
+            AppLog.put("✅下载完成: $fileName")
             openDownload(downloadId, fileName)
         }
     }
@@ -191,7 +195,14 @@ class DownloadService : BaseService() {
                             getString(R.string.download_success)
                         }
 
-                        DownloadManager.STATUS_FAILED -> getString(R.string.download_error)
+                        DownloadManager.STATUS_FAILED -> {
+                            if (!failedDownloads.contains(id)) {
+                                failedDownloads.add(id)
+                                val failedFileName = downloads[id]?.fileName
+                                AppLog.put("❌下载失败: $failedFileName")
+                            }
+                            getString(R.string.download_error)
+                        }
                         else -> getString(R.string.unknown_state)
                     }
                     downloads[id]?.let { downloadInfo ->
