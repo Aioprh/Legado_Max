@@ -5,9 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapShader
 import android.graphics.Canvas
-import android.graphics.DashPathEffect
 import android.graphics.Paint
-import android.graphics.Paint.FontMetrics
 import android.graphics.Path
 import android.graphics.Shader
 import android.os.Build
@@ -78,6 +76,9 @@ data class TextLine(
     var textPage: TextPage = emptyTextPage
     var isLeftLine = true
 
+    /**
+     * 向行中添加文本列
+     */
     fun addColumn(column: BaseColumn) {
         if (column !is TextColumn) {
             onlyTextColumn = false
@@ -86,6 +87,9 @@ data class TextLine(
         textColumns.add(column)
     }
 
+    /**
+     * 向行中批量添加文本列
+     */
     fun addColumns(columns: Collection<BaseColumn>) {
         onlyTextColumn = false
         columns.forEach { column ->
@@ -94,26 +98,41 @@ data class TextLine(
         textColumns.addAll(columns)
     }
 
+    /**
+     * 获取指定位置的文本列，越界时返回最后一个
+     */
     fun getColumn(index: Int): BaseColumn {
         return textColumns.getOrElse(index) {
             textColumns.last()
         }
     }
 
+    /**
+     * 从后向前获取指定位置的文本列
+     */
     fun getColumnReverseAt(index: Int, offset: Int = 0): BaseColumn {
         return textColumns[textColumns.lastIndex - offset - index]
     }
 
+    /**
+     * 获取行内文本列数量
+     */
     fun getColumnsCount(): Int {
         return textColumns.size
     }
 
-    fun upTopBottom(durY: Float, textHeight: Float, fontMetrics: FontMetrics) {
+    /**
+     * 更新行的顶部、底部和基线位置
+     */
+    fun upTopBottom(durY: Float, textHeight: Float, fontMetrics: Paint.FontMetrics) {
         lineTop = ChapterProvider.paddingTop + durY
         lineBottom = lineTop + textHeight
         lineBase = lineBottom - fontMetrics.descent
     }
 
+    /**
+     * 判断触摸坐标是否在当前行范围内
+     */
     fun isTouch(x: Float, y: Float, relativeOffset: Float): Boolean {
         return y > lineTop + relativeOffset
                 && y < lineBottom + relativeOffset
@@ -121,11 +140,17 @@ data class TextLine(
                 && x <= lineEnd + 20.dpToPx()
     }
 
+    /**
+     * 判断触摸Y坐标是否在当前行范围内
+     */
     fun isTouchY(y: Float, relativeOffset: Float): Boolean {
         return y > lineTop + relativeOffset
                 && y < lineBottom + relativeOffset
     }
 
+    /**
+     * 判断行是否在可视区域内
+     */
     fun isVisible(relativeOffset: Float): Boolean {
         val top = lineTop + relativeOffset
         val bottom = lineBottom + relativeOffset
@@ -160,6 +185,9 @@ data class TextLine(
         return visible
     }
 
+    /**
+     * 绘制整行内容，包含优化渲染和普通渲染两种模式
+     */
     fun draw(view: ContentTextView, canvas: Canvas) {
         if (AppConfig.optimizeRender) {
             canvasRecorder.recordIfNeededThenDraw(canvas, view.width, height.toInt()) {
@@ -170,6 +198,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制行内文本和列内容，包含搜索高亮、墨水屏下划线、自定义下划线等
+     */
     private fun drawTextLine(view: ContentTextView, canvas: Canvas) {
         drawCurrentSearchResultBackgrounds(canvas)
         drawStyledBackgrounds(canvas)
@@ -200,6 +231,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 快速绘制纯文本行，适用于优化渲染模式
+     */
     @SuppressLint("NewApi")
     private fun fastDrawTextLine(view: ContentTextView, canvas: Canvas) {
         val textPaint = if (isTitle) {
@@ -237,61 +271,88 @@ data class TextLine(
     }
 
     /**
-     * 绘制下划线
+     * 绘制全局下划线（朗读标记除外），支持实线/虚线/波浪线/点线
      */
     private fun drawUnderline(canvas: Canvas, underlineMode: Int) {
+        val underlineWidth = ReadBookConfig.durConfig.underlineWidth
         val paint = PaintPool.obtain()
         paint.set(ChapterProvider.contentPaint)
-        paint.strokeWidth = 0.5f.dpToPx()
+        paint.strokeWidth = underlineWidth.dpToPx().toFloat()
         paint.style = android.graphics.Paint.Style.STROKE
         paint.isAntiAlias = true
         val distance = (ChapterProvider.lineSpacingExtra * 10 - 11).coerceIn(-1f, 10f)
         val lineY = height + distance.dpToPx()
-        if (underlineMode == 1) {
-            canvas.drawLine(
-                lineStart + indentWidth,
-                lineY,
-                lineEnd,
-                lineY,
-                paint
-            )
-        } else if (underlineMode == 2) {
-            paint.pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
-            canvas.drawLine(
-                lineStart + indentWidth,
-                lineY,
-                lineEnd,
-                lineY,
-                paint
-            )
-        } else if (underlineMode == 3) {
-            val path = Path()
-            val startX = lineStart + indentWidth
-            val endX = lineEnd
-            
-            path.moveTo(startX, lineY)
-            var currentX = startX
-            
-            while (currentX < endX) {
-                val nextX = (currentX + waveLength).coerceAtMost(endX)
-                val midX = (currentX + nextX) / 2
-                
-                path.quadTo(midX, lineY - waveAmplitude, nextX, lineY)
-                currentX = nextX
-                
-                if (currentX < endX) {
-                    val nextX2 = (currentX + waveLength).coerceAtMost(endX)
-                    val midX2 = (currentX + nextX2) / 2
-                    path.quadTo(midX2, lineY + waveAmplitude, nextX2, lineY)
-                    currentX = nextX2
-                }
-            }
-            
-            canvas.drawPath(path, paint)
+        val startX = lineStart + indentWidth
+        val endX = lineEnd
+        when (underlineMode) {
+            1 -> canvas.drawLine(startX, lineY, endX, lineY, paint)
+            2 -> drawDashedLine(canvas, paint, startX, lineY, endX, underlineWidth)
+            3 -> drawWavyLine(canvas, paint, startX, lineY, endX, underlineWidth)
+            4 -> drawDottedLine(canvas, paint, startX, lineY, endX, underlineWidth)
+        }
         }
         PaintPool.recycle(paint)
     }
 
+    /**
+     * 绘制虚线下划线，每段8dp线段+5dp间隔
+     */
+    private fun drawDashedLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float, underlineWidth: Float) {
+        paint.strokeWidth = underlineWidth.dpToPx()
+        val dashLen = 8.dpToPx().toFloat()
+        val gapLen = 5.dpToPx().toFloat()
+        var x = startX
+        while (x < endX) {
+            val x2 = (x + dashLen).coerceAtMost(endX)
+            canvas.drawLine(x, y, x2, y, paint)
+            x += dashLen + gapLen
+        }
+    }
+
+    /**
+     * 绘制点线下划线，2dp圆点+4dp间隔
+     */
+    private fun drawDottedLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float, underlineWidth: Float) {
+        paint.strokeWidth = underlineWidth.dpToPx()
+        val dotSize = 2.dpToPx().toFloat()
+        val gapLen = 4.dpToPx().toFloat()
+        paint.strokeCap = Paint.Cap.ROUND
+        var x = startX
+        while (x < endX) {
+            val x2 = (x + dotSize).coerceAtMost(endX)
+            canvas.drawLine(x, y, x2, y, paint)
+            x += dotSize + gapLen
+        }
+    }
+
+    /**
+     * 绘制波浪线下划线，使用贝塞尔曲线实现
+     */
+    private fun drawWavyLine(canvas: Canvas, paint: Paint, startX: Float, y: Float, endX: Float, underlineWidth: Float) {
+        paint.strokeWidth = underlineWidth.dpToPx()
+        val path = Path()
+        val waveAmplitude = 3.dpToPx().toFloat()
+        val waveLength = 12.dpToPx().toFloat()
+        path.moveTo(startX, y)
+        var currentX = startX
+        while (currentX < endX) {
+            val nextX = (currentX + waveLength).coerceAtMost(endX)
+            val midX = (currentX + nextX) / 2
+            path.quadTo(midX, y - waveAmplitude, nextX, y)
+            currentX = nextX
+            if (currentX < endX) {
+                val nextX2 = (currentX + waveLength).coerceAtMost(endX)
+                val midX2 = (currentX + nextX2) / 2
+                path.quadTo(midX2, y + waveAmplitude, nextX2, y)
+                currentX = nextX2
+            }
+        }
+        canvas.drawPath(path, paint)
+    }
+
+    /**
+     * 判断是否满足快速绘制条件
+     */
     fun checkFastDraw(): Boolean {
         if (!AppConfig.optimizeRender || exceed || !onlyTextColumn || textPage.isMsgPage) {
             return false
@@ -352,6 +413,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制高亮规则匹配文本的下划线段
+     */
     private fun drawStyledUnderlines(canvas: Canvas) {
         if (isImage || columns.isEmpty()) return
         if (columns.none { (it as? TextBaseColumn)?.underlineMode?.let { m -> m != 0 } == true }) return
@@ -404,6 +468,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制当前搜索结果匹配区域的高亮背景
+     */
     private fun drawCurrentSearchResultBackgrounds(canvas: Canvas) {
         if (columns.isEmpty() || searchResultColumnCount == 0) return
         var startX = 0f
@@ -432,6 +499,9 @@ data class TextLine(
         }
     }
 
+    /**
+     * 绘制搜索结果匹配范围的圆角背景
+     */
     private fun drawCurrentSearchRange(canvas: Canvas, startX: Float, endX: Float) {
         val paint = PaintPool.obtain()
         paint.set(ChapterProvider.contentPaint)
@@ -449,6 +519,9 @@ data class TextLine(
         PaintPool.recycle(paint)
     }
 
+    /**
+     * 绘制单段下划线，用于高亮规则匹配区域，支持实线/虚线/波浪线/标题强调条
+     */
     private fun drawUnderlineSegment(
         canvas: Canvas,
         startX: Float,
@@ -467,28 +540,8 @@ data class TextLine(
         val lineY = height + distance.dpToPx()
         when (underlineMode) {
             1 -> canvas.drawLine(startX, lineY, endX, lineY, paint)
-            2 -> {
-                paint.pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
-                canvas.drawLine(startX, lineY, endX, lineY, paint)
-            }
-            3 -> {
-                val path = Path()
-                path.moveTo(startX, lineY)
-                var currentX = startX
-                while (currentX < endX) {
-                    val nextX = (currentX + waveLength).coerceAtMost(endX)
-                    val midX = (currentX + nextX) / 2
-                    path.quadTo(midX, lineY - waveAmplitude, nextX, lineY)
-                    currentX = nextX
-                    if (currentX < endX) {
-                        val nextX2 = (currentX + waveLength).coerceAtMost(endX)
-                        val midX2 = (currentX + nextX2) / 2
-                        path.quadTo(midX2, lineY + waveAmplitude, nextX2, lineY)
-                        currentX = nextX2
-                    }
-                }
-                canvas.drawPath(path, paint)
-            }
+            2 -> drawDashedLine(canvas, paint, startX, lineY, endX, underlineWidth)
+            3 -> drawWavyLine(canvas, paint, startX, lineY, endX, underlineWidth)
             4 -> {
                 val line2Y = lineY + doubleLineGap + underlineWidth.dpToPx()
                 canvas.drawLine(startX, lineY, endX, lineY, paint)
@@ -590,19 +643,31 @@ data class TextLine(
         PaintPool.recycle(paint)
     }
 
+    /**
+     * 触发行重绘，同时刷新页面缓存
+     */
     fun invalidate() {
         invalidateSelf()
         textPage.invalidate()
     }
 
+    /**
+     * 仅触发行自身缓存失效
+     */
     fun invalidateSelf() {
         canvasRecorder.invalidate()
     }
 
+    /**
+     * 释放 Canvas 录制器资源
+     */
     fun recycleRecorder() {
         canvasRecorder.recycle()
     }
 
+    /**
+     * 静态常量和兼容性检测
+     */
     @SuppressLint("NewApi")
     companion object {
         val emptyTextLine = TextLine()

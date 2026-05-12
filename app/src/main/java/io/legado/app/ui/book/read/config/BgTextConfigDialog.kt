@@ -149,12 +149,16 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
         ivImport.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
         ivExport.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
         ivDelete.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+        ivUnderlineSetting.setColorFilter(secondaryTextColor, PorterDuff.Mode.SRC_IN)
+        ivUnderlineSetting.setOnClickListener {
+            UnderlineWidthDialog().show(childFragmentManager, "underlineWidthDialog")
+        }
         tvBgAlpha.setTextColor(primaryTextColor)
         tvBgImage.setTextColor(primaryTextColor)
         if (ReadBook.book?.isImage == true) {
             spUnderline.isGone = true
         } else {
-            val textStyles = arrayOf("关闭", "实线", "虚线", "波浪")
+            val textStyles = arrayOf("关闭", "实线", "虚线", "波浪", "点线")
             val adapter = object : ArrayAdapter<String>(requireContext(), R.layout.item_text_common, textStyles) {
                 override fun getDropDownView(
                     position: Int,

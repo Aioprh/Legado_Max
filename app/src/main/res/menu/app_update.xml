@@ -7,4 +7,9 @@
         android:title="@string/action_download"
         app:showAsAction="always" />
 
+    <item
+        android:id="@+id/menu_all_versions"
+        android:title="@string/all_versions"
+        app:showAsAction="never" />
+
 </menu>

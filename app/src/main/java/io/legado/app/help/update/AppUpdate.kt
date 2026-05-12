@@ -24,6 +24,8 @@ object AppUpdate {
 
         fun check(scope: CoroutineScope): Coroutine<UpdateInfo>
 
+        fun getAllVariants(scope: CoroutineScope): Coroutine<List<UpdateInfo>>
+
     }
 
 }
