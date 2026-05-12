@@ -1,12 +1,15 @@
 package io.legado.app.ui.about
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.databinding.DialogUpdateBinding
 import io.legado.app.help.update.AppUpdate
+import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.Download
 import io.legado.app.utils.setLayout
@@ -89,8 +92,35 @@ class UpdateDialog() : BaseDialogFragment(R.layout.dialog_update) {
                         toastOnUi(R.string.download_start)
                     }
                 }
+                R.id.menu_all_versions -> {
+                    showAllVersionsDialog()
+                }
             }
             return@setOnMenuItemClickListener true
         }
+    }
+
+    private fun showAllVersionsDialog() {
+        AppUpdate.giteeUpdate.getAllVariants(lifecycleScope)
+            .onSuccess { variants: List<AppUpdate.UpdateInfo> ->
+                if (variants.isEmpty()) {
+                    toastOnUi("没有其他版本")
+                    return@onSuccess
+                }
+                val items = variants.map { variant: AppUpdate.UpdateInfo ->
+                    SelectItem(variant.fileName, variant)
+                }
+                AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.all_versions)
+                    .setItems(items.map { it.title }.toTypedArray()) { _, which ->
+                        val selected = items[which].value
+                        Download.start(requireContext(), selected.downloadUrl, selected.fileName)
+                        toastOnUi(R.string.download_start)
+                    }
+                    .show()
+            }
+            .onError {
+                toastOnUi("${getString(R.string.check_update)}\n${it.localizedMessage}")
+            }
     }
 }

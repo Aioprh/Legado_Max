@@ -65,4 +65,24 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
             throw NoStackTraceException("已是最新版本")
         }.timeout(10000)
     }
+
+    override fun getAllVariants(scope: CoroutineScope): Coroutine<List<AppUpdate.UpdateInfo>> {
+        return Coroutine.async(scope) {
+            getLatestRelease()
+                .sortedByDescending { it.createdAt }
+                .groupBy { it.appVariant }
+                .flatMap { (_, infos) ->
+                    infos.firstOrNull()?.let {
+                        listOf(
+                            AppUpdate.UpdateInfo(
+                                it.versionName,
+                                it.note,
+                                it.downloadUrl,
+                                it.name
+                            )
+                        )
+                    }.orEmpty()
+                }
+        }.timeout(10000)
+    }
 }

@@ -58,6 +58,7 @@
     <string name="bookshelf_empty">The bookshelf is still empty. Search for books or add them from discovery!</string>
     <string name="action_search">Search</string>
     <string name="action_download">Download</string>
+    <string name="all_versions">All Versions</string>
     <string name="layout_list">List</string>
     <string name="layout_grid2">Grid-2</string>
     <string name="layout_grid3">Grid-3</string>

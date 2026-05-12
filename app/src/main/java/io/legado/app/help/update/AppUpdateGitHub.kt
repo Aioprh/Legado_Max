@@ -68,4 +68,43 @@ object AppUpdateGitHub : AppUpdate.AppUpdateInterface {
                 ?: throw NoStackTraceException("已是最新版本")
         }.timeout(10000)
     }
+
+    override fun getAllVariants(scope: CoroutineScope): Coroutine<List<AppUpdate.UpdateInfo>> {
+        return Coroutine.async(scope) {
+            getAllReleases()
+                .sortedByDescending { it.createdAt }
+                .groupBy { it.appVariant }
+                .flatMap { (_, infos) ->
+                    infos.firstOrNull()?.let {
+                        listOf(
+                            AppUpdate.UpdateInfo(
+                                it.versionName,
+                                it.note,
+                                it.downloadUrl,
+                                it.name
+                            )
+                        )
+                    }.orEmpty()
+                }
+        }.timeout(10000)
+    }
+
+    private suspend fun getAllReleases(): List<AppReleaseInfo> {
+        val latestReleaseUrl = "https://api.github.com/repos/gedoor/legado/releases/latest"
+        val res = okHttpClient.newCallResponse {
+            url(latestReleaseUrl)
+        }
+        if (!res.isSuccessful) {
+            throw NoStackTraceException("获取新版本出错(${res.code})")
+        }
+        val body = res.body.text()
+        if (body.isBlank()) {
+            throw NoStackTraceException("获取新版本出错")
+        }
+        return GSON.fromJsonObject<GithubRelease>(body)
+            .getOrElse {
+                throw NoStackTraceException("获取新版本出错 " + it.localizedMessage)
+            }
+            .gitReleaseToAppReleaseInfo()
+    }
 }
