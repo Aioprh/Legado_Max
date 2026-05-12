@@ -180,7 +180,6 @@ object BackupController {
             writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", webBackupPath)
             writeListToJson(appDb.readRecordDao.all, "readRecord.json", webBackupPath)
             writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", webBackupPath)
-            writeListToJson(appDb.readRecordDao.getAllSessionsList(), "readRecordSession.json", webBackupPath)
             writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", webBackupPath)
             writeListToJson(appDb.txtTocRuleDao.all, "txtTocRule.json", webBackupPath)
             writeListToJson(appDb.httpTTSDao.all, "httpTTS.json", webBackupPath)
@@ -330,9 +329,6 @@ object BackupController {
             BackupItemDef("readRecordDetail.json", "阅读详情", "每本书每天的阅读统计") {
                 appDb.readRecordDao.getDetailsCount()
             },
-            BackupItemDef("readRecordSession.json", "阅读会话", "每次阅读会话记录") {
-                appDb.readRecordDao.getSessionsCount()
-            },
             BackupItemDef("searchHistory.json", "搜索历史", "搜索关键词历史") {
                 appDb.searchKeywordDao.all.size
             },
@@ -373,6 +369,7 @@ object BackupController {
             ConfigItemDef(ReadBookConfig.shareConfigFileName, "共享阅读配置", "跨设备共享的阅读配置"),
             ConfigItemDef(ThemeConfig.configFileName, "主题配置", "界面主题样式配置"),
             ConfigItemDef(BookCover.configFileName, "封面规则", "自定义封面生成规则"),
+            ConfigItemDef(DirectLinkUpload.ruleFileName, "直链上传配置", "直链上传规则配置"),
             ConfigItemDef("config.xml", "应用设置", "应用程序偏好设置"),
             ConfigItemDef("videoConfig.xml", "视频配置", "视频播放器设置")
         )

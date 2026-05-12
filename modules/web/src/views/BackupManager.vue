@@ -126,7 +126,7 @@ const categoryConfig = [
   { name: '规则相关', icon: '🔧', keywords: ['replaceRule', 'txtTocRule', 'dictRule', 'keyboardAssist'] },
   { name: '语音相关', icon: '🔊', keywords: ['httpTTS'] },
   { name: '配置相关', icon: '⚙️', keywords: ['config', 'videoConfig', 'readConfig', 'shareConfig', 'themeConfig', 'coverConfig', 'servers'] },
-  { name: '其他', icon: '📁', keywords: ['searchHistory', 'DirectLinkUpload'] },
+  { name: '其他', icon: '📁', keywords: ['searchHistory', 'directLink'] },
 ]
 
 const categories = computed<CategoryGroup[]>(() => {
