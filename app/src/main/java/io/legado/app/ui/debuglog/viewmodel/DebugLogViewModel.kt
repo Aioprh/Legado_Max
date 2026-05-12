@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -101,6 +102,29 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         scope = viewModelScope,
         started = SharingStarted.Lazily,
         initialValue = emptyList()
+    )
+
+    /**
+     * 各分类的日志数量
+     * 用于在分类标签页显示数量统计
+     */
+    val categoryCounts = _uiState.map { uiState ->
+        val logs = uiState.logs
+        mapOf(
+            DebugCategory.ALL to logs.size,
+            DebugCategory.APP to logs.count { it.category == DebugCategory.APP },
+            DebugCategory.NETWORK to logs.count { it.category == DebugCategory.NETWORK },
+            DebugCategory.SOURCE to logs.count { it.category == DebugCategory.SOURCE || it.category == DebugCategory.RULE },
+            DebugCategory.RSS to logs.count { it.category == DebugCategory.RSS },
+            DebugCategory.TOAST to logs.count { it.category == DebugCategory.TOAST },
+            DebugCategory.CHECK to logs.count { it.category == DebugCategory.CHECK },
+            DebugCategory.CRASH to logs.count { it.category == DebugCategory.CRASH },
+            DebugCategory.RULE to logs.count { it.category == DebugCategory.RULE }
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
+        initialValue = emptyMap()
     )
 
     val filteredFlowLogs = combine(_uiState, _selectedFlowStage, _searchQuery) { uiState, stage, query ->

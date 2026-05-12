@@ -91,6 +91,7 @@ fun DebugLogScreen(
     val filteredLogs by viewModel.filteredLogs.collectAsState()
     val filteredFlowLogs by viewModel.filteredFlowLogs.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val categoryCounts by viewModel.categoryCounts.collectAsState()
 
     // 搜索框显示状态
     var showSearch by remember { mutableStateOf(false) }
@@ -208,6 +209,7 @@ fun DebugLogScreen(
                 categories = DebugCategory.entries.filter {
                     it != DebugCategory.RULE
                 },
+                categoryCounts = categoryCounts,
                 onCategorySelected = viewModel::selectCategory
             )
 

@@ -1,9 +1,6 @@
 package io.legado.app.ui.debuglog.components
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -14,7 +11,6 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
@@ -28,11 +24,19 @@ import io.legado.app.model.debug.DebugCategory
 
 /**
  * 调试日志分类 Tab 组件
+ *
+ * 显示各分类标签页，支持显示每个分类的日志数量。
+ *
+ * @param selectedCategory 当前选中的分类
+ * @param categories 要显示的分类列表
+ * @param categoryCounts 各分类的日志数量映射，分类 -> 数量
+ * @param onCategorySelected 分类选择回调
  */
 @Composable
 fun DebugCategoryTabs(
     selectedCategory: DebugCategory,
     categories: List<DebugCategory>,
+    categoryCounts: Map<DebugCategory, Int> = emptyMap(),
     onCategorySelected: (DebugCategory) -> Unit
 ) {
     ScrollableTabRow(
@@ -44,13 +48,14 @@ fun DebugCategoryTabs(
     ) {
         categories.forEach { category ->
             val isSelected = category == selectedCategory
+            val count = categoryCounts[category] ?: 0
 
             Tab(
                 selected = isSelected,
                 onClick = { onCategorySelected(category) },
                 text = {
                     Text(
-                        text = category.displayName,
+                        text = if (count > 0) "${category.displayName}($count)" else category.displayName,
                         style = if (isSelected)
                             MaterialTheme.typography.titleSmall
                         else
