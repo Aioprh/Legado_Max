@@ -9,6 +9,7 @@ import io.legado.app.utils.dpToPx
 class WaveUnderlineSpan(
     private val textColor: Int,
     private val underlineColor: Int,
+    private val underlineWidth: Float = 1f,
 ) : ReplacementSpan() {
 
     private val underlineOffset = 6.dpToPx()
@@ -53,7 +54,7 @@ class WaveUnderlineSpan(
         val wavePaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
-            strokeWidth = 1.dpToPx().toFloat()
+            strokeWidth = underlineWidth.dpToPx()
             isAntiAlias = true
         }
         val path = Path().apply { moveTo(x, lineY.toFloat()) }

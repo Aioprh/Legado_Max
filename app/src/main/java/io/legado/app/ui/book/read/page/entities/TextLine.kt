@@ -1,10 +1,15 @@
 package io.legado.app.ui.book.read.page.entities
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.DashPathEffect
+import android.graphics.Paint
 import android.graphics.Paint.FontMetrics
 import android.graphics.Path
+import android.graphics.Shader
 import android.os.Build
 import android.text.TextPaint
 import androidx.annotation.Keep
@@ -22,6 +27,7 @@ import io.legado.app.ui.book.read.page.provider.ChapterProvider
 import io.legado.app.utils.canvasrecorder.CanvasRecorderFactory
 import io.legado.app.utils.canvasrecorder.recordIfNeededThenDraw
 import io.legado.app.utils.dpToPx
+import splitties.init.appCtx
 
 /**
  * 行信息
@@ -166,6 +172,7 @@ data class TextLine(
 
     private fun drawTextLine(view: ContentTextView, canvas: Canvas) {
         drawCurrentSearchResultBackgrounds(canvas)
+        drawStyledBackgrounds(canvas)
         if (checkFastDraw()) {
             fastDrawTextLine(view, canvas)
         } else {
@@ -178,8 +185,8 @@ data class TextLine(
         if (AppConfig.isEInkMode && (isReadAloud || searchResultColumnCount > 0)) {
             val underlinePaint = PaintPool.obtain()
             underlinePaint.set(ChapterProvider.contentPaint)
-            underlinePaint.strokeWidth = 1.dpToPx().toFloat()
-            val lineY = height - 1.dpToPx()
+            underlinePaint.strokeWidth = einkUnderlineWidth
+            val lineY = height - einkUnderlineWidth
             canvas.drawLine(lineStart + indentWidth, lineY, lineEnd, lineY, underlinePaint)
             PaintPool.recycle(underlinePaint)
         }
@@ -233,11 +240,11 @@ data class TextLine(
      * 绘制下划线
      */
     private fun drawUnderline(canvas: Canvas, underlineMode: Int) {
-        val paint = TextPaint(ChapterProvider.contentPaint).apply {
-            strokeWidth = 0.5f.dpToPx()
-            style = android.graphics.Paint.Style.STROKE
-            isAntiAlias = true
-        }
+        val paint = PaintPool.obtain()
+        paint.set(ChapterProvider.contentPaint)
+        paint.strokeWidth = 0.5f.dpToPx()
+        paint.style = android.graphics.Paint.Style.STROKE
+        paint.isAntiAlias = true
         val distance = (ChapterProvider.lineSpacingExtra * 10 - 11).coerceIn(-1f, 10f)
         val lineY = height + distance.dpToPx()
         if (underlineMode == 1) {
@@ -261,8 +268,6 @@ data class TextLine(
             val path = Path()
             val startX = lineStart + indentWidth
             val endX = lineEnd
-            val waveAmplitude = 3.dpToPx().toFloat()
-            val waveLength = 12.dpToPx().toFloat()
             
             path.moveTo(startX, lineY)
             var currentX = startX
@@ -284,6 +289,7 @@ data class TextLine(
             
             canvas.drawPath(path, paint)
         }
+        PaintPool.recycle(paint)
     }
 
     fun checkFastDraw(): Boolean {
@@ -297,16 +303,63 @@ data class TextLine(
             return false
         }
         return columns.none {
-            it is TextBaseColumn && (it.textColor != null || it.underlineMode != 0)
+            it is TextBaseColumn && (it.textColor != null || it.underlineMode != 0 || it.bgImage.isNotEmpty())
+        }
+    }
+
+    private fun drawStyledBackgrounds(canvas: Canvas) {
+        if (isImage || columns.isEmpty()) return
+        if (columns.none { (it as? TextBaseColumn)?.bgImage?.isNotEmpty() == true }) return
+        var rangeStart = 0f
+        var rangeEnd = 0f
+        var currentBgImage = ""
+        var currentBgImageFit = 0
+        var currentBgImageScale = 1f
+        var active = false
+        columns.forEachIndexed { index, column ->
+            val textColumn = column as? TextBaseColumn
+            val bgImage = textColumn?.bgImage ?: ""
+            val bgImageFit = textColumn?.bgImageFit ?: 0
+            val bgImageScale = textColumn?.bgImageScale ?: 1f
+            when {
+                bgImage.isEmpty() && active -> {
+                    drawBgImageSegment(canvas, rangeStart, rangeEnd, currentBgImage, currentBgImageFit, currentBgImageScale)
+                    active = false
+                }
+                bgImage.isNotEmpty() && !active -> {
+                    rangeStart = textColumn!!.start
+                    rangeEnd = textColumn.end
+                    currentBgImage = bgImage
+                    currentBgImageFit = bgImageFit
+                    currentBgImageScale = bgImageScale
+                    active = true
+                }
+                bgImage.isNotEmpty() && bgImage == currentBgImage && bgImageFit == currentBgImageFit && bgImageScale == currentBgImageScale -> {
+                    rangeEnd = textColumn!!.end
+                }
+                bgImage.isNotEmpty() -> {
+                    drawBgImageSegment(canvas, rangeStart, rangeEnd, currentBgImage, currentBgImageFit, currentBgImageScale)
+                    rangeStart = textColumn!!.start
+                    rangeEnd = textColumn.end
+                    currentBgImage = bgImage
+                    currentBgImageFit = bgImageFit
+                    currentBgImageScale = bgImageScale
+                }
+            }
+            if (active && index == columns.lastIndex) {
+                drawBgImageSegment(canvas, rangeStart, rangeEnd, currentBgImage, currentBgImageFit, currentBgImageScale)
+            }
         }
     }
 
     private fun drawStyledUnderlines(canvas: Canvas) {
         if (isImage || columns.isEmpty()) return
+        if (columns.none { (it as? TextBaseColumn)?.underlineMode?.let { m -> m != 0 } == true }) return
         var rangeStart = 0f
         var rangeEnd = 0f
         var mode = 0
         var color = 0
+        var width = 1f
         var svgPath = ""
         var active = false
         columns.forEachIndexed { index, column ->
@@ -315,11 +368,12 @@ data class TextLine(
             val currentColor = textColumn?.underlineColor
                 ?: textColumn?.textColor
                 ?: ReadBookConfig.textColor
+            val currentWidth = textColumn?.underlineWidth ?: 1f
             val currentSvgPath = textColumn?.underlineSvgPath ?: ""
-            val shouldContinue = active && currentMode == mode && currentColor == color && currentSvgPath == svgPath
+            val shouldContinue = active && currentMode == mode && currentColor == color && currentWidth == width && currentSvgPath == svgPath
             when {
                 currentMode == 0 && active -> {
-                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, svgPath)
+                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, width, svgPath)
                     active = false
                 }
                 currentMode != 0 && !active -> {
@@ -327,6 +381,7 @@ data class TextLine(
                     rangeEnd = textColumn.end
                     mode = currentMode
                     color = currentColor
+                    width = currentWidth
                     svgPath = currentSvgPath
                     active = true
                 }
@@ -334,22 +389,23 @@ data class TextLine(
                     rangeEnd = textColumn!!.end
                 }
                 currentMode != 0 -> {
-                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, svgPath)
+                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, width, svgPath)
                     rangeStart = textColumn!!.start
                     rangeEnd = textColumn.end
                     mode = currentMode
                     color = currentColor
+                    width = currentWidth
                     svgPath = currentSvgPath
                 }
             }
             if (active && index == columns.lastIndex) {
-                drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, svgPath)
+                drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, width, svgPath)
             }
         }
     }
 
     private fun drawCurrentSearchResultBackgrounds(canvas: Canvas) {
-        if (columns.isEmpty()) return
+        if (columns.isEmpty() || searchResultColumnCount == 0) return
         var startX = 0f
         var endX = 0f
         var active = false
@@ -381,14 +437,13 @@ data class TextLine(
         paint.set(ChapterProvider.contentPaint)
         paint.color = (0x33 shl 24) or (ReadBookConfig.textAccentColor and 0x00FFFFFF)
         paint.style = android.graphics.Paint.Style.FILL
-        val radius = 5.dpToPx().toFloat()
         canvas.drawRoundRect(
             startX,
-            1.dpToPx().toFloat(),
+            searchPadding,
             endX,
-            height - 1.dpToPx().toFloat(),
-            radius,
-            radius,
+            height - searchPadding,
+            searchRadius,
+            searchRadius,
             paint
         )
         PaintPool.recycle(paint)
@@ -400,13 +455,14 @@ data class TextLine(
         endX: Float,
         underlineMode: Int,
         underlineColor: Int,
+        underlineWidth: Float = 1f,
         svgPathStr: String = "",
     ) {
-        val paint = TextPaint(ChapterProvider.contentPaint).apply {
-            color = underlineColor
-            strokeWidth = 0.5f.dpToPx()
-            style = android.graphics.Paint.Style.STROKE
-        }
+        val paint = PaintPool.obtain()
+        paint.set(ChapterProvider.contentPaint)
+        paint.color = underlineColor
+        paint.strokeWidth = underlineWidth.dpToPx()
+        paint.style = android.graphics.Paint.Style.STROKE
         val distance = (ChapterProvider.lineSpacingExtra * 10 - 11).coerceIn(-1f, 10f)
         val lineY = height + distance.dpToPx()
         when (underlineMode) {
@@ -417,8 +473,6 @@ data class TextLine(
             }
             3 -> {
                 val path = Path()
-                val waveAmplitude = 3.dpToPx().toFloat()
-                val waveLength = 12.dpToPx().toFloat()
                 path.moveTo(startX, lineY)
                 var currentX = startX
                 while (currentX < endX) {
@@ -436,8 +490,7 @@ data class TextLine(
                 canvas.drawPath(path, paint)
             }
             4 -> {
-                val lineGap = 3.dpToPx().toFloat()
-                val line2Y = lineY + lineGap + 1.dpToPx()
+                val line2Y = lineY + doubleLineGap + underlineWidth.dpToPx()
                 canvas.drawLine(startX, lineY, endX, lineY, paint)
                 canvas.drawLine(startX, line2Y, endX, line2Y, paint)
             }
@@ -447,6 +500,7 @@ data class TextLine(
                 }
             }
         }
+        PaintPool.recycle(paint)
     }
     
     private fun drawSvgPath(
@@ -455,7 +509,7 @@ data class TextLine(
         endX: Float,
         lineY: Float,
         svgPathStr: String,
-        paint: TextPaint
+        paint: Paint
     ) {
         val baseWidth = 100f
         val baseY = 50f
@@ -472,6 +526,68 @@ data class TextLine(
         canvas.scale(scaleX, scaleY)
         canvas.drawPath(path, paint)
         canvas.restore()
+    }
+
+    private fun drawBgImageSegment(
+        canvas: Canvas,
+        startX: Float,
+        endX: Float,
+        bgImage: String,
+        bgImageFit: Int,
+        bgImageScale: Float,
+    ) {
+        val bitmap = getBgBitmap(bgImage) ?: return
+        val paint = PaintPool.obtain()
+        paint.style = android.graphics.Paint.Style.FILL
+        paint.isAntiAlias = true
+        paint.isFilterBitmap = true
+        val top = bgPaddingTop
+        val bottom = height - bgPaddingBottom
+        val rectWidth = endX - startX
+        val rectHeight = bottom - top
+        val scale = bgImageScale.coerceIn(0.1f, 5f)
+        when (bgImageFit) {
+            1 -> {
+                val sw = rectWidth * scale
+                val sh = rectHeight * scale
+                val dx = startX + (rectWidth - sw) / 2f
+                val dy = top + (rectHeight - sh) / 2f
+                canvas.save()
+                canvas.clipRect(startX, top, endX, bottom)
+                canvas.drawBitmap(bitmap, null, android.graphics.RectF(dx, dy, dx + sw, dy + sh), paint)
+                canvas.restore()
+            }
+            2 -> {
+                val bw = bitmap.width.toFloat()
+                val bh = bitmap.height.toFloat()
+                val fitScale = (rectWidth / bw).coerceAtLeast(rectHeight / bh) * scale
+                val scaledW = bw * fitScale
+                val scaledH = bh * fitScale
+                val dx = startX + (rectWidth - scaledW) / 2f
+                val dy = top + (rectHeight - scaledH) / 2f
+                canvas.save()
+                canvas.clipRect(startX, top, endX, bottom)
+                canvas.drawBitmap(bitmap, null, android.graphics.RectF(dx, dy, dx + scaledW, dy + scaledH), paint)
+                canvas.restore()
+            }
+            else -> {
+                val tileBitmap = if (scale != 1f) {
+                    val sw = (bitmap.width * scale).toInt().coerceAtLeast(1)
+                    val sh = (bitmap.height * scale).toInt().coerceAtLeast(1)
+                    getScaledBitmap("${bgImage}_s${scale}", bitmap, sw, sh)
+                } else {
+                    bitmap
+                }
+                val shader = BitmapShader(tileBitmap, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                val matrix = android.graphics.Matrix()
+                matrix.setTranslate(startX, top)
+                shader.setLocalMatrix(matrix)
+                paint.shader = shader
+                canvas.drawRect(startX, top, endX, bottom, paint)
+                paint.shader = null
+            }
+        }
+        PaintPool.recycle(paint)
     }
 
     fun invalidate() {
@@ -493,6 +609,157 @@ data class TextLine(
         private val atLeastApi26 = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
         val atLeastApi28 = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
         private val atLeastApi35 = Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM
+        private val bgPaddingTop = 1.dpToPx().toFloat()
+        private val bgPaddingBottom = 1.dpToPx().toFloat()
+        private val waveAmplitude = 3.dpToPx().toFloat()
+        private val waveLength = 12.dpToPx().toFloat()
+        private val doubleLineGap = 3.dpToPx().toFloat()
+        private val searchRadius = 5.dpToPx().toFloat()
+        private val searchPadding = 1.dpToPx().toFloat()
+        private val einkUnderlineWidth = 1.dpToPx().toFloat()
+        private val bgBitmapCache = android.util.LruCache<String, Bitmap>(16 * 1024 * 1024)
+        private val bgScaledBitmapCache = android.util.LruCache<String, Bitmap>(8 * 1024 * 1024)
+        private val bgSampleWidth by lazy {
+            appCtx.resources.displayMetrics.widthPixels
+        }
+        private val bgSampleHeight by lazy {
+            appCtx.resources.displayMetrics.heightPixels
+        }
+
+        fun getBgBitmap(path: String): Bitmap? {
+            if (path.isBlank()) return null
+            bgBitmapCache.get(path)?.let { return it }
+            val bitmap = loadBgBitmap(path) ?: return null
+            bgBitmapCache.put(path, bitmap)
+            return bitmap
+        }
+
+        private fun getScaledBitmap(path: String, source: Bitmap, width: Int, height: Int): Bitmap {
+            if (width <= 0 || height <= 0) return source
+            val key = "${path}_${width}_${height}"
+            bgScaledBitmapCache.get(key)?.let { return it }
+            val scaled = Bitmap.createScaledBitmap(source, width, height, true)
+            bgScaledBitmapCache.put(key, scaled)
+            return scaled
+        }
+
+        private fun loadBgBitmap(path: String): Bitmap? {
+            return try {
+                val ctx = appCtx
+                if (path.startsWith("assets://")) {
+                    val assetPath = path.removePrefix("assets://")
+                    ctx.assets.open(assetPath).use { input ->
+                        decodeSampledBitmap(input)
+                    }
+                } else if (path.startsWith("content://")) {
+                    val uri = android.net.Uri.parse(path)
+                    ctx.contentResolver.openInputStream(uri)?.use { input ->
+                        decodeSampledBitmap(input)
+                    }
+                } else {
+                    val file = java.io.File(path)
+                    if (file.exists()) {
+                        decodeSampledBitmapFile(path)
+                    } else {
+                        val assetPath = if (path.startsWith("bg/")) path else "bg/$path"
+                        kotlin.runCatching {
+                            ctx.assets.open(assetPath).use { input ->
+                                decodeSampledBitmap(input)
+                            }
+                        }.getOrNull()
+                    }
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        private fun decodeSampledBitmap(input: java.io.InputStream): Bitmap? {
+            val buffered = if (input.markSupported()) input else java.io.BufferedInputStream(input)
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            buffered.mark(buffered.available())
+            BitmapFactory.decodeStream(buffered, null, options)
+            options.inSampleSize = calculateInSampleSize(options, bgSampleWidth, bgSampleHeight)
+            options.inJustDecodeBounds = false
+            buffered.reset()
+            return BitmapFactory.decodeStream(buffered, null, options)
+        }
+
+        private fun decodeSampledBitmapFile(path: String): Bitmap? {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(path, options)
+            options.inSampleSize = calculateInSampleSize(options, bgSampleWidth, bgSampleHeight)
+            options.inJustDecodeBounds = false
+            return BitmapFactory.decodeFile(path, options)
+        }
+
+        private fun calculateInSampleSize(
+            options: BitmapFactory.Options,
+            reqWidth: Int,
+            reqHeight: Int
+        ): Int {
+            val (height, width) = options.outHeight to options.outWidth
+            var inSampleSize = 1
+            if (height > reqHeight || width > reqWidth) {
+                val halfHeight = height / 2
+                val halfWidth = width / 2
+                while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                    inSampleSize *= 2
+                }
+            }
+            return inSampleSize
+        }
+
+        fun clearBgBitmapCache() {
+            bgBitmapCache.evictAll()
+            bgScaledBitmapCache.evictAll()
+        }
+
+        fun copyBgImageToInternal(context: android.content.Context, sourcePath: String): String? {
+            if (sourcePath.startsWith("assets://")) return sourcePath
+            return try {
+                val dir = java.io.File(context.filesDir, "bg_images")
+                if (!dir.exists()) dir.mkdirs()
+                val hash = Integer.toHexString(sourcePath.hashCode()).replace("-", "n")
+                val ext = sourcePath.substringAfterLast('.', "png")
+                val fileName = "bg_$hash.$ext"
+                val destFile = java.io.File(dir, fileName)
+                if (destFile.exists()) return destFile.absolutePath
+                if (sourcePath.startsWith("content://")) {
+                    val uri = android.net.Uri.parse(sourcePath)
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        java.io.FileOutputStream(destFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                } else {
+                    val srcFile = java.io.File(sourcePath)
+                    if (srcFile.exists()) {
+                        srcFile.inputStream().use { input ->
+                            java.io.FileOutputStream(destFile).use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    } else {
+                        return sourcePath
+                    }
+                }
+                destFile.absolutePath
+            } catch (e: Exception) {
+                sourcePath
+            }
+        }
+
+        fun cleanupUnusedBgImages(context: android.content.Context, usedPaths: Set<String>) {
+            val dir = java.io.File(context.filesDir, "bg_images")
+            if (!dir.exists()) return
+            dir.listFiles()?.forEach { file ->
+                if (file.absolutePath !in usedPaths) {
+                    bgBitmapCache.remove(file.absolutePath)
+                    file.delete()
+                }
+            }
+        }
         private val wordSpacingWorking by lazy {
             // issue 3785 3846
             val paint = PaintPool.obtain()

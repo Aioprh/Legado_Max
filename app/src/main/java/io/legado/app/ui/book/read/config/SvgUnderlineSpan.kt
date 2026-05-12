@@ -8,6 +8,7 @@ import io.legado.app.utils.dpToPx
 class SvgUnderlineSpan(
     private val textColor: Int,
     private val underlineColor: Int,
+    private val underlineWidth: Float = 1f,
     private val svgPath: String,
 ) : ReplacementSpan() {
 
@@ -55,7 +56,7 @@ class SvgUnderlineSpan(
                 
                 val underlinePaint = Paint(paint).apply {
                     color = underlineColor
-                    strokeWidth = 2.dpToPx().toFloat()
+                    strokeWidth = underlineWidth.dpToPx()
                     style = Paint.Style.STROKE
                     isAntiAlias = true
                 }

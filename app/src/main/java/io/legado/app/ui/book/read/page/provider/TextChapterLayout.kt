@@ -688,8 +688,12 @@ class TextChapterLayout(
                 val textSize = extractTextSize(spanned, charIndex, textPaint.textSize)
                 val textColor = extractTextColor(spanned, charIndex)
                 val linkUrl = extractLinkUrl(spanned, charIndex)
-                val underlineMode = extractUnderlineMode(spanned, charIndex)
-                val underlineColor = extractUnderlineColor(spanned, charIndex)
+                val highlightStyle = extractHighlightStyle(spanned, charIndex)
+                val underlineMode = highlightStyle?.underlineMode ?: 0
+                val underlineColor = highlightStyle?.underlineColor
+                val bgImage = highlightStyle?.bgImage ?: ""
+                val bgImageFit = highlightStyle?.bgImageFit ?: 0
+                val bgImageScale = highlightStyle?.bgImageScale ?: 1f
                 val charRight = if (charIndex + 1 < lineEnd) {
                     staticLayout.getPrimaryHorizontal(charIndex + 1)
                 } else {
@@ -776,7 +780,10 @@ class TextChapterLayout(
                                 textColor,
                                 linkUrl,
                                 underlineMode,
-                                underlineColor
+                                underlineColor,
+                                bgImage = bgImage,
+                                bgImageFit = bgImageFit,
+                                bgImageScale = bgImageScale
                             )
                         )
                         needAddText = false
@@ -792,7 +799,10 @@ class TextChapterLayout(
                             textColor,
                             linkUrl,
                             underlineMode,
-                            underlineColor
+                            underlineColor,
+                            bgImage = bgImage,
+                            bgImageFit = bgImageFit,
+                            bgImageScale = bgImageScale
                         )
                     )
                 }
@@ -918,31 +928,12 @@ class TextChapterLayout(
         return foregroundSpans.lastOrNull()?.foregroundColor
     }
 
-    private fun extractUnderlineMode(spanned: CharSequence, index: Int): Int {
-        val underlineSpans = (spanned as? Spanned)?.getSpans(
+    private fun extractHighlightStyle(spanned: CharSequence, index: Int): HighlightStyleSpan? {
+        return (spanned as? Spanned)?.getSpans(
             index,
             index + 1,
             HighlightStyleSpan::class.java
-        ) ?: return 0
-        return underlineSpans.lastOrNull()?.underlineMode ?: 0
-    }
-
-    private fun extractUnderlineColor(spanned: CharSequence, index: Int): Int? {
-        val underlineSpans = (spanned as? Spanned)?.getSpans(
-            index,
-            index + 1,
-            HighlightStyleSpan::class.java
-        ) ?: return null
-        return underlineSpans.lastOrNull()?.underlineColor
-    }
-
-    private fun extractUnderlineSvgPath(spanned: CharSequence, index: Int): String {
-        val underlineSpans = (spanned as? Spanned)?.getSpans(
-            index,
-            index + 1,
-            HighlightStyleSpan::class.java
-        ) ?: return ""
-        return underlineSpans.lastOrNull()?.underlineSvgPath ?: ""
+        )?.lastOrNull()
     }
 
     private fun extractLinkUrl(spanned: Spanned, index: Int): String? {
@@ -1007,7 +998,7 @@ class TextChapterLayout(
     ) {
         regex.findAll(spannable).forEach { match ->
             spannable.setSpan(
-                HighlightStyleSpan(mode, color),
+                HighlightStyleSpan(mode, color, 0.5f),
                 match.range.first,
                 match.range.last + 1,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -1018,65 +1009,52 @@ class TextChapterLayout(
     private fun applyHighlightRulesFromStore(spannable: SpannableStringBuilder): SpannableStringBuilder {
         highlightRules.forEach { rule ->
             val regex = kotlin.runCatching { Regex(rule.pattern) }.getOrNull() ?: return@forEach
-            regex.findAll(spannable).forEach { match ->
-                val start = match.range.first
-                val end = match.range.last + 1
-                rule.textColor?.let { color ->
-                    spannable.setSpan(
-                        ForegroundColorSpan(color),
-                        start,
-                        end,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                }
-                if (rule.underlineMode != 0) {
-                    spannable.setSpan(
-                        HighlightStyleSpan(
-                            rule.underlineMode,
-                            rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt(),
-                            rule.underlineSvgPath.orEmpty()
-                        ),
-                        start,
-                        end,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                }
-            }
+            applyRuleSpans(spannable, rule, regex)
         }
         return spannable
     }
 
     private fun applyHighlightRules(spannable: SpannableStringBuilder): SpannableStringBuilder {
         compiledHighlightRules.forEach { compiled ->
-            compiled.regex.findAll(spannable).forEach { match ->
-                val start = match.range.first
-                val end = match.range.last + 1
-                if (start >= end) return@forEach
-                compiled.rule.textColor?.let { color ->
-                    spannable.setSpan(
-                        ForegroundColorSpan(color),
-                        start,
-                        end,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                }
-                if (compiled.rule.underlineMode != 0) {
-                    spannable.setSpan(
-                        HighlightStyleSpan(
-                            compiled.rule.underlineMode,
-                            compiled.rule.underlineColor
-                                ?: compiled.rule.textColor
-                                ?: 0xFF63C37D.toInt(),
-                            compiled.rule.underlineSvgPath.orEmpty()
-                        ),
-                        start,
-                        end,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                }
-            }
+            applyRuleSpans(spannable, compiled.rule, compiled.regex)
         }
         return spannable
+    }
+
+    private fun applyRuleSpans(
+        spannable: SpannableStringBuilder,
+        rule: HighlightRule,
+        regex: Regex
+    ) {
+        regex.findAll(spannable).forEach { match ->
+            val start = match.range.first
+            val end = match.range.last + 1
+            if (start >= end) return@forEach
+            rule.textColor?.let { color ->
+                spannable.setSpan(
+                    ForegroundColorSpan(color),
+                    start,
+                    end,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+            if (rule.underlineMode != 0 || !rule.bgImage.isNullOrBlank()) {
+                spannable.setSpan(
+                    HighlightStyleSpan(
+                        rule.underlineMode,
+                        rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt(),
+                        rule.underlineWidth,
+                        rule.underlineSvgPath.orEmpty(),
+                        rule.bgImage.orEmpty(),
+                        rule.bgImageFit,
+                        rule.bgImageScale
+                    ),
+                    start,
+                    end,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -1416,9 +1394,14 @@ class TextChapterLayout(
         textIndex: Int,
     ) {
         val textColor = extractTextColor(styledText as Spanned, textIndex)
-        val underlineMode = extractUnderlineMode(styledText, textIndex)
-        val underlineColor = extractUnderlineColor(styledText, textIndex)
-        val underlineSvgPath = extractUnderlineSvgPath(styledText, textIndex)
+        val highlightStyle = extractHighlightStyle(styledText, textIndex)
+        val underlineMode = highlightStyle?.underlineMode ?: 0
+        val underlineColor = highlightStyle?.underlineColor
+        val underlineWidth = highlightStyle?.underlineWidth ?: 1f
+        val underlineSvgPath = highlightStyle?.underlineSvgPath ?: ""
+        val bgImage = highlightStyle?.bgImage ?: ""
+        val bgImageFit = highlightStyle?.bgImageFit ?: 0
+        val bgImageScale = highlightStyle?.bgImageScale ?: 1f
         val column = when {
             !srcList.isNullOrEmpty() && (char == srcReplaceStr || char == reviewStr) -> {
                 val src = srcList.removeFirst()
@@ -1447,7 +1430,11 @@ class TextChapterLayout(
                     textColor = textColor,
                     underlineMode = underlineMode,
                     underlineColor = underlineColor,
-                    underlineSvgPath = underlineSvgPath
+                    underlineWidth = underlineWidth,
+                    underlineSvgPath = underlineSvgPath,
+                    bgImage = bgImage,
+                    bgImageFit = bgImageFit,
+                    bgImageScale = bgImageScale
                 )
             }
         }

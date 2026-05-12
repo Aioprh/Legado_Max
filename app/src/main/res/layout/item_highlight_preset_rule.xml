@@ -2,13 +2,13 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="10dp"
-    android:layout_marginTop="4dp"
-    android:layout_marginEnd="10dp"
+    android:layout_marginStart="6dp"
+    android:layout_marginTop="2dp"
+    android:layout_marginEnd="6dp"
     android:layout_marginBottom="2dp"
     android:background="@drawable/shape_highlight_rule_card"
     android:orientation="vertical"
-    android:padding="12dp">
+    android:padding="6dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -26,15 +26,15 @@
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="16sp"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_desc"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:textSize="12sp" />
+                android:layout_marginTop="1dp"
+                android:textSize="10sp" />
         </LinearLayout>
 
         <androidx.appcompat.widget.SwitchCompat
@@ -49,39 +49,39 @@
         android:id="@+id/tv_pattern"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="3dp"
         android:background="@drawable/shape_highlight_rule_tag"
         android:ellipsize="end"
         android:maxLines="1"
-        android:paddingStart="6dp"
-        android:paddingTop="3dp"
-        android:paddingEnd="6dp"
-        android:paddingBottom="3dp"
-        android:textSize="10sp" />
+        android:paddingStart="3dp"
+        android:paddingTop="1dp"
+        android:paddingEnd="3dp"
+        android:paddingBottom="1dp"
+        android:textSize="8sp" />
 
     <TextView
         android:id="@+id/tv_preview_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="4dp"
         android:text="@string/preview"
-        android:textSize="11sp" />
+        android:textSize="9sp" />
 
     <TextView
         android:id="@+id/tv_preview"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="2dp"
         android:background="@drawable/shape_highlight_rule_preview_soft"
-        android:lineSpacingExtra="4dp"
-        android:minHeight="48dp"
-        android:padding="10dp"
-        android:textSize="15sp" />
+        android:lineSpacingExtra="2dp"
+        android:minHeight="28dp"
+        android:padding="6dp"
+        android:textSize="12sp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="3dp"
         android:gravity="end"
         android:orientation="horizontal">
 
@@ -92,20 +92,20 @@
             android:background="@drawable/shape_highlight_rule_action"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="8dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="4dp">
+            android:paddingStart="5dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="5dp"
+            android:paddingBottom="2dp">
 
             <ImageView
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
                 android:src="@drawable/ic_edit" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="3dp"
+                android:layout_marginStart="2dp"
                 android:text="@string/edit"
                 android:textSize="11sp" />
         </LinearLayout>
@@ -114,24 +114,24 @@
             android:id="@+id/tv_delete"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="3dp"
             android:background="@drawable/shape_highlight_rule_action_danger"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="8dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="4dp">
+            android:paddingStart="5dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="5dp"
+            android:paddingBottom="2dp">
 
             <ImageView
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
                 android:src="@drawable/ic_outline_delete" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="3dp"
+                android:layout_marginStart="2dp"
                 android:text="@string/delete"
                 android:textSize="11sp" />
         </LinearLayout>

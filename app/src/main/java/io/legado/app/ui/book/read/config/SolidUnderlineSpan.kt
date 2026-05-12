@@ -8,6 +8,7 @@ import io.legado.app.utils.dpToPx
 class SolidUnderlineSpan(
     private val textColor: Int,
     private val underlineColor: Int,
+    private val underlineWidth: Float = 1f,
 ) : ReplacementSpan() {
 
     private val underlineOffset = 6.dpToPx()
@@ -49,7 +50,7 @@ class SolidUnderlineSpan(
         val linePaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
-            strokeWidth = 1.dpToPx().toFloat()
+            strokeWidth = underlineWidth.dpToPx()
             isAntiAlias = true
         }
         canvas.drawLine(x, lineY.toFloat(), x + width, lineY.toFloat(), linePaint)

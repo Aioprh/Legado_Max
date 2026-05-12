@@ -739,6 +739,7 @@
     <string name="highlight_rule_underline_color">Underline color</string>
     <string name="highlight_rule_color_hint">Leave empty or use #AARRGGBB / #RRGGBB</string>
     <string name="highlight_rule_color_invalid">Invalid color format</string>
+    <string name="select_color">Select color</string>
     <string name="highlight_rule_add">Add rule</string>
     <string name="highlight_rule_edit">Edit rule</string>
     <string name="highlight_rule_unnamed">Unnamed rule</string>

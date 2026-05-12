@@ -8,6 +8,7 @@ import io.legado.app.utils.dpToPx
 class DoubleUnderlineSpan(
     private val textColor: Int,
     private val underlineColor: Int,
+    private val underlineWidth: Float = 1f,
 ) : ReplacementSpan() {
 
     private val underlineOffset = 6.dpToPx()
@@ -24,8 +25,8 @@ class DoubleUnderlineSpan(
             val metrics = paint.fontMetricsInt
             fm.top = metrics.top
             fm.ascent = metrics.ascent
-            fm.descent = metrics.descent + underlineOffset + lineGap + 2.dpToPx()
-            fm.bottom = metrics.bottom + underlineOffset + lineGap + 2.dpToPx()
+            fm.descent = metrics.descent + underlineOffset + lineGap + underlineWidth.dpToPx().toInt()
+            fm.bottom = metrics.bottom + underlineOffset + lineGap + underlineWidth.dpToPx().toInt()
         }
         return paint.measureText(text, start, end).toInt()
     }
@@ -47,11 +48,11 @@ class DoubleUnderlineSpan(
 
         val width = paint.measureText(text, start, end)
         val line1Y = y + underlineOffset
-        val line2Y = line1Y + lineGap + 1.dpToPx()
+        val line2Y = line1Y + lineGap + underlineWidth.dpToPx().toInt()
         val linePaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
-            strokeWidth = 1.dpToPx().toFloat()
+            strokeWidth = underlineWidth.dpToPx()
             isAntiAlias = true
         }
         canvas.drawLine(x, line1Y.toFloat(), x + width, line1Y.toFloat(), linePaint)

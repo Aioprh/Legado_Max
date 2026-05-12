@@ -9,6 +9,7 @@ import io.legado.app.utils.dpToPx
 class DashUnderlineSpan(
     private val textColor: Int,
     private val underlineColor: Int,
+    private val underlineWidth: Float = 1f,
 ) : ReplacementSpan() {
 
     private val underlineOffset = 6.dpToPx()
@@ -50,7 +51,7 @@ class DashUnderlineSpan(
         val dashPaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
-            strokeWidth = 1.dpToPx().toFloat()
+            strokeWidth = underlineWidth.dpToPx()
             pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
             isAntiAlias = true
         }

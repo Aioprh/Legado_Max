@@ -7,14 +7,19 @@ import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.putPrefString
+import io.legado.app.ui.book.read.page.entities.TextLine
 
 object HighlightRuleStore {
+
+    @Volatile
+    private var cachedRules: List<HighlightRule>? = null
 
     fun defaultPresetRules(context: Context): List<HighlightRule> {
         return createDefaultRules(context)
     }
 
     fun load(context: Context): MutableList<HighlightRule> {
+        cachedRules?.let { return it.toMutableList() }
         val stored = context.getPrefString(PreferKey.highlightRuleItems)
         if (stored.isNullOrBlank()) {
             return mutableListOf()
@@ -27,6 +32,7 @@ object HighlightRuleStore {
             } else {
                 HighlightRuleGroupStore.ensureFromRules(context, normalized)
             }
+            cachedRules = normalized
             return normalized.toMutableList()
         }
         return mutableListOf()
@@ -40,11 +46,15 @@ object HighlightRuleStore {
         val normalized = rules.map {
             it.copy(group = it.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP })
         }
+        cachedRules = normalized
         context.putPrefString(PreferKey.highlightRuleItems, GSON.toJson(normalized))
         HighlightRuleGroupStore.ensureFromRules(context, normalized)
+        val usedPaths = normalized.mapNotNull { it.bgImage }.toSet()
+        TextLine.cleanupUnusedBgImages(context, usedPaths)
     }
 
     fun reset(context: Context): MutableList<HighlightRule> {
+        cachedRules = null
         val defaults = createDefaultRules(context)
         save(context, defaults)
         return defaults.toMutableList()
@@ -69,6 +79,7 @@ object HighlightRuleStore {
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = context.getPrefBoolean(PreferKey.highlightRuleBookTitle, true),
                 underlineMode = 3,
+                underlineWidth = 0.5f,
                 underlineColor = 0xFF63C37D.toInt()
             ),
             HighlightRule(
@@ -80,6 +91,7 @@ object HighlightRuleStore {
                 enabled = context.getPrefBoolean(PreferKey.highlightRuleBracketNote, true),
                 textColor = 0xFF8F959E.toInt(),
                 underlineMode = 2,
+                underlineWidth = 0.5f,
                 underlineColor = 0xFF5A8DEE.toInt()
             ),
             HighlightRule(
@@ -102,6 +114,7 @@ object HighlightRuleStore {
                 enabled = false,
                 textColor = 0xFF9370DB.toInt(),
                 underlineMode = 1,
+                underlineWidth = 0.5f,
                 underlineColor = 0xFF9370DB.toInt()
             ),
             HighlightRule(
@@ -133,6 +146,7 @@ object HighlightRuleStore {
                 enabled = false,
                 textColor = 0xFF2F4F4F.toInt(),
                 underlineMode = 3,
+                underlineWidth = 0.5f,
                 underlineColor = 0xFF2F4F4F.toInt()
             ),
             HighlightRule(
@@ -179,21 +193,41 @@ object HighlightRuleStore {
         context: Context,
     ): List<HighlightRule> {
         val builtins = createDefaultRules(context).associateBy { it.id }
+        val internalDir = context.filesDir.absolutePath
         return rules.map { rule ->
             val normalizedGroup = rule.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP }
             val builtin = builtins[rule.id]
-            if (builtin != null && shouldRefreshBuiltin(rule)) {
+            val base = if (builtin != null && shouldRefreshBuiltin(rule)) {
                 builtin.copy(
                     enabled = rule.enabled,
                     group = normalizedGroup,
                     textColor = rule.textColor ?: builtin.textColor,
                     underlineMode = rule.underlineMode.takeIf { it != 0 } ?: builtin.underlineMode,
-                    underlineColor = rule.underlineColor ?: builtin.underlineColor
+                    underlineColor = rule.underlineColor ?: builtin.underlineColor,
+                    underlineWidth = rule.underlineWidth.takeIf { it != 1f } ?: builtin.underlineWidth,
+                    underlineSvgPath = rule.underlineSvgPath ?: builtin.underlineSvgPath,
+                    bgImage = rule.bgImage ?: builtin.bgImage,
+                    bgImageFit = rule.bgImageFit.takeIf { it != 0 } ?: builtin.bgImageFit,
+                    bgImageScale = rule.bgImageScale.takeIf { it != 1f } ?: builtin.bgImageScale
                 )
             } else {
                 rule.copy(group = normalizedGroup)
             }
+            migrateBgImage(base, internalDir, context)
         }
+    }
+
+    private fun migrateBgImage(
+        rule: HighlightRule,
+        internalDir: String,
+        context: Context,
+    ): HighlightRule {
+        val path = rule.bgImage ?: return rule
+        if (path.startsWith("assets://")) return rule
+        if (path.startsWith(internalDir)) return rule
+        val migrated = TextLine.copyBgImageToInternal(context, path) ?: return rule
+        if (migrated == path) return rule
+        return rule.copy(bgImage = migrated)
     }
 
     private fun shouldRefreshBuiltin(rule: HighlightRule): Boolean {
