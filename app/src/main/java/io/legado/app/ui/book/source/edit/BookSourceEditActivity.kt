@@ -287,9 +287,16 @@ class BookSourceEditActivity :
 
             R.id.menu_edit_json -> showSourceJsonEdit()
 
-            R.id.menu_save -> viewModel.save(getSource()) {
-                setResult(RESULT_OK, Intent().putExtra("origin", it.bookSourceUrl))
-                finish()
+            R.id.menu_save -> {
+                val source = getSource()
+                if (source.nextPageLazyLoad && source.getContentRule().nextContentUrl.isNullOrBlank()) {
+                    toastOnUi("未填正文下一页规则")
+                    return true
+                }
+                viewModel.save(source) {
+                    setResult(RESULT_OK, Intent().putExtra("origin", it.bookSourceUrl))
+                    finish()
+                }
             }
 
             R.id.menu_debug_source -> viewModel.save(getSource()) { source ->
