@@ -360,6 +360,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             log.statusCode?.let { appendLine("状态码: $it") }
             log.duration?.let { appendLine("耗时: ${it}ms") }
             log.rule?.let { appendLine("规则: $it") }
+            log.originalValue?.let { appendLine("原始数据: $it") }
             log.result?.let { appendLine("结果: $it") }
             log.detail?.let { appendLine("\n详情:\n$it") }
             log.error?.let { appendLine("\n异常:\n${it.stackTraceToString()}") }

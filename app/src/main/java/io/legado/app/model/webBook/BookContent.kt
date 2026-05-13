@@ -203,6 +203,7 @@ object BookContent {
         //全文替换
         val replaceRegex = contentRule.replaceRegex
         if (!replaceRegex.isNullOrEmpty()) {
+            val originalContent = contentStr.take(100)  // 保存原始数据
             FlowLogRecorder.logReplace(
                 source = bookSource,
                 message = "开始正文全文替换",
@@ -217,7 +218,8 @@ object BookContent {
                 source = bookSource,
                 message = "正文全文替换完成",
                 rule = replaceRegex,
-                result = contentStr.take(100)
+                result = contentStr.take(100),
+                originalValue = originalContent
             )
         }
         val titleRule = contentRule.title //先正文再章节名称

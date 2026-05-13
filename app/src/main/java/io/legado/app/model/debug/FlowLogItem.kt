@@ -25,6 +25,7 @@ data class FlowLogItem(
     val statusCode: Int? = null,     // 状态码
     val rule: String? = null,        // 规则内容
     val result: String? = null,      // 执行结果
+    val originalValue: String? = null, // 原始数据（替换前的数据）
     val error: Throwable? = null     // 错误信息
 ) {
     /**

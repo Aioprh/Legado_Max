@@ -191,11 +191,14 @@ fun FlowLogDetailDialog(
                         }
                     }
 
-                    if (log.rule != null || log.result != null) {
+                    if (log.rule != null || log.result != null || log.originalValue != null) {
                         Spacer(Modifier.height(12.dp))
                         DetailSection(title = "规则信息", searchQuery = searchQuery) {
                             log.rule?.let { rule ->
                                 DetailRow("规则", rule, searchQuery)
+                            }
+                            log.originalValue?.let { originalValue ->
+                                DetailRow("原始数据", originalValue, searchQuery)
                             }
                             log.result?.let { result ->
                                 DetailRow("结果", result, searchQuery)

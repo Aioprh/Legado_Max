@@ -549,6 +549,7 @@ class AnalyzeRule(
             message = "数据替换完成",
             rule = "$replaceRegex -> $replacement",
             result = replacedResult.take(100),  // 只记录前100个字符
+            originalValue = result.take(100),  // 只记录前100个字符
             duration = duration
         )
         
@@ -923,6 +924,7 @@ class AnalyzeRule(
                 message = "JS替换完成",
                 rule = jsStr.take(200),
                 result = jsResult?.toString()?.take(100),
+                originalValue = result?.toString()?.take(100),
                 duration = System.currentTimeMillis() - startTime
             )
         }
