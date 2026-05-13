@@ -105,6 +105,15 @@ object BookContent {
         var contentData = analyzeContent(
             book, baseUrl, redirectUrl, body, contentRule, bookChapter, bookSource, mNextChapterUrl
         )
+        
+        FlowLogRecorder.logExtract(
+            source = bookSource,
+            message = "正文内容提取完成",
+            rule = contentRule.content,
+            result = contentData.first.take(100),
+            originalValue = body?.take(100)
+        )
+        
         contentList.add(contentData.first)
         if (contentData.second.size == 1) {
             val webJs = contentRule.webJs
