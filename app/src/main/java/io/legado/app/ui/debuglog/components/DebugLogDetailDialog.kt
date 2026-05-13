@@ -171,6 +171,10 @@ fun DebugLogDetailDialog(
                         DetailRow("级别", log.level.displayName, searchQuery)
                         DetailRow("分类", log.category.displayName, searchQuery)
 
+                        if (!log.dialogName.isNullOrBlank()) {
+                            DetailRow("Dialog", log.dialogName, searchQuery)
+                        }
+
                         if (!log.traceId.isNullOrBlank()) {
                             DetailRow("Trace ID", log.traceId, searchQuery)
                         }

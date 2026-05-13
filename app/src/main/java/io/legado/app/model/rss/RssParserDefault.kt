@@ -2,6 +2,7 @@ package io.legado.app.model.rss
 
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.model.Debug
+import io.legado.app.model.debug.DebugCategory
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserException
 import org.xmlpull.v1.XmlPullParserFactory
@@ -125,16 +126,16 @@ object RssParserDefault {
             eventType = xmlPullParser.next()
         }
         articleList.firstOrNull()?.let {
-            Debug.log(sourceUrl, "┌获取标题")
-            Debug.log(sourceUrl, "└${it.title}")
-            Debug.log(sourceUrl, "┌获取时间")
-            Debug.log(sourceUrl, "└${it.pubDate}")
-            Debug.log(sourceUrl, "┌获取描述")
-            Debug.log(sourceUrl, "└${it.description}")
-            Debug.log(sourceUrl, "┌获取图片url")
-            Debug.log(sourceUrl, "└${it.image}")
-            Debug.log(sourceUrl, "┌获取文章链接")
-            Debug.log(sourceUrl, "└${it.link}")
+            Debug.log(sourceUrl, "┌获取标题", category = DebugCategory.RSS)
+            Debug.log(sourceUrl, "└${it.title}", category = DebugCategory.RSS)
+            Debug.log(sourceUrl, "┌获取时间", category = DebugCategory.RSS)
+            Debug.log(sourceUrl, "└${it.pubDate}", category = DebugCategory.RSS)
+            Debug.log(sourceUrl, "┌获取描述", category = DebugCategory.RSS)
+            Debug.log(sourceUrl, "└${it.description}", category = DebugCategory.RSS)
+            Debug.log(sourceUrl, "┌获取图片url", category = DebugCategory.RSS)
+            Debug.log(sourceUrl, "└${it.image}", category = DebugCategory.RSS)
+            Debug.log(sourceUrl, "┌获取文章链接", category = DebugCategory.RSS)
+            Debug.log(sourceUrl, "└${it.link}", category = DebugCategory.RSS)
         }
         return Pair(articleList, null)
     }

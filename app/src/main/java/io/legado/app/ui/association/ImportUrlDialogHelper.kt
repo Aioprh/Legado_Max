@@ -108,7 +108,7 @@ object ImportUrlDialogHelper {
                     response.isSuccessful
                 }
             } catch (e: Exception) {
-                AppLog.put("URL连接检测失败: $url", e)
+                AppLog.put("URL连接检测失败: $url", e, dialogName = "URL导入")
                 false
             }
         }

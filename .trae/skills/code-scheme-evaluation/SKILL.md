@@ -3,12 +3,6 @@ name: "\"code-scheme-evaluation\""
 description: "\"Comprehensive evaluation of code solutions. Invoke when user asks '怎么样', '你觉得咋样', '代码如何', '评估一下', '分析一下', '可行吗' about code approaches. Specially optimized for Android Compose/View hybrid projects.\""
 ---
 
-***
-
-name: "code-scheme-evaluation"
-description: "Comprehensive evaluation of code solutions. Invoke when user asks '怎么样', '你觉得咋样', '代码如何', '评估一下', '分析一下', '可行吗' about code approaches. Specially optimized for Android Compose/View hybrid projects."
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 # 代码方案综合评估（Android 混合开发增强版）
 
 ## 触发条件

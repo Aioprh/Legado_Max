@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.postDelayed
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import io.legado.app.constant.AppLog
 
 object DebugLogPanelDialog {
@@ -104,9 +106,13 @@ object DebugLogPanelDialog {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent {
                 MaterialTheme {
-                    DebugLogPanelContent(
-                        onDismiss = { dismiss() }
-                    )
+                    CompositionLocalProvider(
+                        LocalViewModelStoreOwner provides activity as androidx.lifecycle.ViewModelStoreOwner
+                    ) {
+                        DebugLogPanelContent(
+                            onDismiss = { dismiss() }
+                        )
+                    }
                 }
             }
         }

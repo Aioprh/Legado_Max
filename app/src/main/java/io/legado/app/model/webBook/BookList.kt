@@ -295,6 +295,7 @@ object BookList {
         
         currentCoroutineContext().ensureActive()
         Debug.log(bookSource.bookSourceUrl, "┌获取书名", log)
+        val originalName = searchBook.name
         searchBook.name = BookHelp.formatBookName(analyzeRule.getString(ruleName))
         Debug.log(bookSource.bookSourceUrl, "└${searchBook.name}", log)
         
@@ -302,12 +303,14 @@ object BookList {
             source = bookSource,
             message = "提取书名",
             rule = ruleName.joinToString("&&") { it.rule },
-            result = searchBook.name
+            result = searchBook.name,
+            originalValue = originalName.takeIf { it.isNotEmpty() }
         )
         
         if (searchBook.name.isNotEmpty()) {
             currentCoroutineContext().ensureActive()
             Debug.log(bookSource.bookSourceUrl, "┌获取作者", log)
+            val originalAuthor = searchBook.author
             searchBook.author = BookHelp.formatBookAuthor(analyzeRule.getString(ruleAuthor))
             Debug.log(bookSource.bookSourceUrl, "└${searchBook.author}", log)
             
@@ -315,17 +318,34 @@ object BookList {
                 source = bookSource,
                 message = "提取作者",
                 rule = ruleAuthor.joinToString("&&") { it.rule },
-                result = searchBook.author
+                result = searchBook.author,
+                originalValue = originalAuthor.takeIf { it.isNotEmpty() }
             )
             
             currentCoroutineContext().ensureActive()
             Debug.log(bookSource.bookSourceUrl, "┌获取分类", log)
             try {
+                val originalKind = searchBook.kind
                 searchBook.kind = analyzeRule.getStringList(ruleKind)?.joinToString(",")
                 Debug.log(bookSource.bookSourceUrl, "└${searchBook.kind ?: ""}", log)
+                
+                FlowLogRecorder.logExtract(
+                    source = bookSource,
+                    message = "提取分类",
+                    rule = ruleKind.joinToString("&&") { it.rule },
+                    result = searchBook.kind,
+                    originalValue = originalKind
+                )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 Debug.log(bookSource.bookSourceUrl, "└${e.localizedMessage}", log)
+                
+                FlowLogRecorder.logExtract(
+                    source = bookSource,
+                    message = "提取分类",
+                    rule = ruleKind.joinToString("&&") { it.rule },
+                    error = e
+                )
             }
             if (filter?.invoke(searchBook.name, searchBook.author, searchBook.kind) == false) {
                 return null
@@ -333,50 +353,124 @@ object BookList {
             currentCoroutineContext().ensureActive()
             Debug.log(bookSource.bookSourceUrl, "┌获取字数", log)
             try {
+                val originalWordCount = searchBook.wordCount
                 searchBook.wordCount = wordCountFormat(analyzeRule.getString(ruleWordCount))
                 Debug.log(bookSource.bookSourceUrl, "└${searchBook.wordCount}", log)
+                
+                FlowLogRecorder.logExtract(
+                    source = bookSource,
+                    message = "提取字数",
+                    rule = ruleWordCount.joinToString("&&") { it.rule },
+                    result = searchBook.wordCount,
+                    originalValue = originalWordCount?.takeIf { it.isNotEmpty() }
+                )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 Debug.log(bookSource.bookSourceUrl, "└${e.localizedMessage}", log)
+                
+                FlowLogRecorder.logExtract(
+                    source = bookSource,
+                    message = "提取字数",
+                    rule = ruleWordCount.joinToString("&&") { it.rule },
+                    error = e
+                )
             }
             currentCoroutineContext().ensureActive()
             Debug.log(bookSource.bookSourceUrl, "┌获取最新章节", log)
             try {
+                val originalLatestChapter = searchBook.latestChapterTitle
                 searchBook.latestChapterTitle = analyzeRule.getString(ruleLastChapter)
                 Debug.log(bookSource.bookSourceUrl, "└${searchBook.latestChapterTitle}", log)
+                
+                FlowLogRecorder.logExtract(
+                    source = bookSource,
+                    message = "提取最新章节",
+                    rule = ruleLastChapter.joinToString("&&") { it.rule },
+                    result = searchBook.latestChapterTitle,
+                    originalValue = originalLatestChapter?.takeIf { it.isNotEmpty() }
+                )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 Debug.log(bookSource.bookSourceUrl, "└${e.localizedMessage}", log)
+                
+                FlowLogRecorder.logExtract(
+                    source = bookSource,
+                    message = "提取最新章节",
+                    rule = ruleLastChapter.joinToString("&&") { it.rule },
+                    error = e
+                )
             }
             currentCoroutineContext().ensureActive()
             Debug.log(bookSource.bookSourceUrl, "┌获取简介", log)
             try {
+                val originalIntro = searchBook.intro
                 searchBook.intro = HtmlFormatter.format(analyzeRule.getString(ruleIntro))
                 Debug.log(bookSource.bookSourceUrl, "└${searchBook.intro}", log)
+                
+                FlowLogRecorder.logExtract(
+                    source = bookSource,
+                    message = "提取简介",
+                    rule = ruleIntro.joinToString("&&") { it.rule },
+                    result = searchBook.intro,
+                    originalValue = originalIntro
+                )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 Debug.log(bookSource.bookSourceUrl, "└${e.localizedMessage}", log)
+                
+                FlowLogRecorder.logExtract(
+                    source = bookSource,
+                    message = "提取简介",
+                    rule = ruleIntro.joinToString("&&") { it.rule },
+                    error = e
+                )
             }
             currentCoroutineContext().ensureActive()
             Debug.log(bookSource.bookSourceUrl, "┌获取封面链接", log)
             try {
+                val originalCoverUrl = searchBook.coverUrl
                 analyzeRule.getString(ruleCoverUrl).let {
                     if (it.isNotEmpty()) {
                         searchBook.coverUrl = NetworkUtils.getAbsoluteURL(baseUrl, it)
                     }
                 }
                 Debug.log(bookSource.bookSourceUrl, "└${searchBook.coverUrl ?: ""}", log)
+                
+                FlowLogRecorder.logExtract(
+                    source = bookSource,
+                    message = "提取封面链接",
+                    rule = ruleCoverUrl.joinToString("&&") { it.rule },
+                    result = searchBook.coverUrl,
+                    originalValue = originalCoverUrl
+                )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 Debug.log(bookSource.bookSourceUrl, "└${e.localizedMessage}", log)
+                
+                FlowLogRecorder.logExtract(
+                    source = bookSource,
+                    message = "提取封面链接",
+                    rule = ruleCoverUrl.joinToString("&&") { it.rule },
+                    error = e
+                )
             }
             currentCoroutineContext().ensureActive()
             Debug.log(bookSource.bookSourceUrl, "┌获取详情页链接", log)
+            val originalBookUrl = searchBook.bookUrl
             searchBook.bookUrl = analyzeRule.getString(ruleBookUrl, isUrl = true)
             if (searchBook.bookUrl.isEmpty()) {
                 searchBook.bookUrl = baseUrl
             }
             Debug.log(bookSource.bookSourceUrl, "└${searchBook.bookUrl}", log)
+            
+            FlowLogRecorder.logExtract(
+                source = bookSource,
+                message = "提取详情页链接",
+                rule = ruleBookUrl.joinToString("&&") { it.rule },
+                result = searchBook.bookUrl,
+                originalValue = originalBookUrl.takeIf { it.isNotEmpty() }
+            )
+            
             return searchBook
         }
         return null

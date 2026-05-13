@@ -67,7 +67,7 @@ class BackupInfoDialog : BaseDialogFragment(R.layout.dialog_recycler_view) {
             totalDataSize = BackupInfoHelper.formatSize(overview.totalSize)
         ))
 
-        val categories = BackupInfoHelper.categorizeItems(overview.items, onlySelected = true)
+        val categories = BackupInfoHelper.categorizeItems(overview.items, onlySelected = false)
         categories.forEach { cat ->
             items.add(BackupInfoItem.Category(
                 name = cat.name,

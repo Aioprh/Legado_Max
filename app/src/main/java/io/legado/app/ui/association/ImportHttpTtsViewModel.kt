@@ -70,7 +70,7 @@ class ImportHttpTtsViewModel(app: Application) : BaseViewModel(app) {
             importSourceAwait(text.trim())
         }.onError {
             errorLiveData.postValue("ImportError:${it.localizedMessage}")
-            AppLog.put("ImportError:${it.localizedMessage}", it)
+            AppLog.put("ImportError:${it.localizedMessage}", it, dialogName = "导入HTTP朗读引擎")
         }.onSuccess {
             comparisonSource()
         }

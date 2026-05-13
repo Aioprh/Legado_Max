@@ -188,6 +188,7 @@ object FlowLogRecorder {
      * @param message 日志消息
      * @param rule 提取规则
      * @param result 提取结果
+     * @param originalValue 原始数据（提取前的数据）
      * @param duration 提取耗时（毫秒）
      * @param detail 详细信息
      * @param error 错误信息
@@ -197,6 +198,7 @@ object FlowLogRecorder {
         message: String,
         rule: String? = null,
         result: String? = null,
+        originalValue: String? = null,
         duration: Long? = null,
         detail: String? = null,
         error: Throwable? = null
@@ -211,6 +213,7 @@ object FlowLogRecorder {
             detail = detail,
             rule = rule,
             result = result,
+            originalValue = originalValue,
             duration = duration,
             error = error
         )
@@ -223,6 +226,7 @@ object FlowLogRecorder {
      * @param message 日志消息
      * @param rule 替换规则
      * @param result 替换结果
+     * @param originalValue 原始数据（替换前的数据）
      * @param duration 替换耗时（毫秒）
      * @param detail 详细信息
      * @param error 错误信息
@@ -232,6 +236,7 @@ object FlowLogRecorder {
         message: String,
         rule: String? = null,
         result: String? = null,
+        originalValue: String? = null,
         duration: Long? = null,
         detail: String? = null,
         error: Throwable? = null
@@ -246,6 +251,7 @@ object FlowLogRecorder {
             detail = detail,
             rule = rule,
             result = result,
+            originalValue = originalValue,
             duration = duration,
             error = error
         )
@@ -266,6 +272,7 @@ object FlowLogRecorder {
      * @param statusCode 状态码
      * @param rule 规则内容
      * @param result 执行结果
+     * @param originalValue 原始数据（替换前的数据）
      * @param error 错误信息
      */
     fun log(
@@ -281,6 +288,7 @@ object FlowLogRecorder {
         statusCode: Int? = null,
         rule: String? = null,
         result: String? = null,
+        originalValue: String? = null,
         error: Throwable? = null
     ) {
         if (!isEnabled) return
@@ -305,6 +313,7 @@ object FlowLogRecorder {
                 statusCode = statusCode,
                 rule = rule,
                 result = result,
+                originalValue = originalValue,
                 error = error
             )
 

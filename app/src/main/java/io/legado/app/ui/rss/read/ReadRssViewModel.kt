@@ -27,6 +27,7 @@ import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.writeBytes
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.launch
 import splitties.init.appCtx
 import java.util.Date
 
@@ -133,19 +134,23 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application) {
 
     fun refresh(finish: () -> Unit) {
         val rssArticle = rssArticle ?: return finish.invoke()
-        if (!rssArticle.description.isNullOrBlank()) {
-            return finish.invoke()
-        }
         val rssSource = rssSource ?: let {
             appCtx.toastOnUi("订阅源不存在")
             return finish.invoke()
         }
-        val ruleContent = rssSource.ruleContent
-        if (!ruleContent.isNullOrBlank()) {
-            loadContent(rssArticle, ruleContent)
+        if (!rssArticle.description.isNullOrBlank()) {
+            contentLiveData.postValue(rssArticle.description!!)
         } else {
-            finish.invoke()
+            val ruleContent = rssSource.ruleContent
+            if (!ruleContent.isNullOrBlank()) {
+                loadContent(rssArticle, ruleContent)
+            } else {
+                viewModelScope.launch(IO) {
+                    loadUrl(rssArticle.link, rssArticle.origin)
+                }
+            }
         }
+        finish()
     }
 
     fun favorite() {

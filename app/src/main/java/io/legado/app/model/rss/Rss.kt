@@ -9,6 +9,7 @@ import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.RuleData
+import io.legado.app.model.debug.DebugCategory
 import io.legado.app.utils.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -116,7 +117,7 @@ object Rss {
             }
         }
         checkRedirect(rssSource, res)
-        Debug.log(rssSource.sourceUrl, "≡获取成功:${analyzeUrl.ruleUrl}")
+        Debug.log(rssSource.sourceUrl, "≡获取成功:${analyzeUrl.ruleUrl}", category = DebugCategory.RSS)
         return RssParserByRule.parseXML(sortName, sortUrl, res.url, res.body, rssSource, ruleData)
     }
 
@@ -191,8 +192,8 @@ object Rss {
             }
         }
         checkRedirect(rssSource, res)
-        Debug.log(rssSource.sourceUrl, "≡获取成功:${rssSource.sourceUrl}")
-        Debug.log(rssSource.sourceUrl, res.body ?: "", state = 20)
+        Debug.log(rssSource.sourceUrl, "≡获取成功:${rssSource.sourceUrl}", category = DebugCategory.RSS)
+        Debug.log(rssSource.sourceUrl, res.body ?: "", state = 20, category = DebugCategory.RSS)
         val analyzeRule = AnalyzeRule(rssArticle, rssSource)
         analyzeRule.setContent(res.body)
             .setBaseUrl(NetworkUtils.getAbsoluteURL(rssArticle.origin, rssArticle.link))
@@ -212,9 +213,9 @@ object Rss {
     private fun checkRedirect(rssSource: RssSource, response: StrResponse) {
         response.raw.priorResponse?.let {
             if (it.isRedirect) {
-                Debug.log(rssSource.sourceUrl, "≡检测到重定向(${it.code})")
-                Debug.log(rssSource.sourceUrl, "┌重定向后地址")
-                Debug.log(rssSource.sourceUrl, "└${response.url}")
+                Debug.log(rssSource.sourceUrl, "≡检测到重定向(${it.code})", category = DebugCategory.RSS)
+                Debug.log(rssSource.sourceUrl, "┌重定向后地址", category = DebugCategory.RSS)
+                Debug.log(rssSource.sourceUrl, "└${response.url}", category = DebugCategory.RSS)
             }
         }
     }

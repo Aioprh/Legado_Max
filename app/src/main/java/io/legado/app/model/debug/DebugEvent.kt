@@ -28,7 +28,8 @@ data class DebugEvent(
     val userAgent: String? = null,
     val cookies: String? = null,
     val throwable: Throwable? = null,
-    val tags: Map<String, String> = emptyMap()
+    val tags: Map<String, String> = emptyMap(),
+    val dialogName: String? = null
 ) {
     /**
      * 转换为旧版AppLog格式（兼容性）

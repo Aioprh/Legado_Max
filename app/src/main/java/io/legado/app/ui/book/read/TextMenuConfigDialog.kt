@@ -28,6 +28,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.fragment.app.DialogFragment
 import io.legado.app.R
+import io.legado.app.ui.theme.LegadoTheme
+import io.legado.app.ui.theme.pageCardContainerColor
+import io.legado.app.ui.theme.pageTopBarContainerColor
 import io.legado.app.utils.toastOnUi
 
 /**
@@ -45,9 +48,11 @@ class TextMenuConfigDialog : DialogFragment() {
     ): View {
         return ComposeView(requireContext()).apply {
             setContent {
-                TextMenuConfigDialogContent(
-                    onDismiss = { dismiss() }
-                )
+                LegadoTheme {
+                    TextMenuConfigDialogContent(
+                        onDismiss = { dismiss() }
+                    )
+                }
             }
         }
     }
@@ -67,6 +72,9 @@ fun TextMenuConfigDialogContent(
         mutableStateOf(TextMenuConfig.getHiddenMenuItemIds(context))
     }
     var showProcessTextConfig by remember { mutableStateOf(false) }
+    
+    val topBarColor = pageTopBarContainerColor()
+    val cardColor = pageCardContainerColor()
 
     if (showProcessTextConfig) {
         ProcessTextConfigContent(
@@ -85,7 +93,7 @@ fun TextMenuConfigDialogContent(
                     .fillMaxWidth()
                     .wrapContentHeight(),
                 shape = MaterialTheme.shapes.large,
-                color = MaterialTheme.colorScheme.surface
+                color = cardColor
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth()
@@ -117,7 +125,7 @@ fun TextMenuConfigDialogContent(
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
+                            containerColor = topBarColor,
                             titleContentColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
@@ -198,6 +206,9 @@ fun ProcessTextConfigContent(
             emptyList()
         }
     }
+    
+    val topBarColor = pageTopBarContainerColor()
+    val cardColor = pageCardContainerColor()
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -211,7 +222,7 @@ fun ProcessTextConfigContent(
                 .fillMaxWidth()
                 .wrapContentHeight(),
             shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.surface
+            color = cardColor
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth()
@@ -233,7 +244,7 @@ fun ProcessTextConfigContent(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
+                        containerColor = topBarColor,
                         titleContentColor = MaterialTheme.colorScheme.onSurface
                     )
                 )

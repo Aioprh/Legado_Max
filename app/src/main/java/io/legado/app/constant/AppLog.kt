@@ -24,7 +24,7 @@ object AppLog {
     val sourceLogs get() = mSourceLogs.toList()
 
     @Synchronized
-    fun put(message: String?, throwable: Throwable? = null, toast: Boolean = false) {
+    fun put(message: String?, throwable: Throwable? = null, toast: Boolean = false, dialogName: String? = null) {
         message ?: return
         if (toast) {
             appCtx.toastOnUi(message)
@@ -50,14 +50,15 @@ object AppLog {
                     category = DebugCategory.APP,
                     message = message,
                     detail = throwable?.stackTraceToString(),
-                    throwable = throwable
+                    throwable = throwable,
+                    dialogName = dialogName
                 )
             )
         }
     }
 
     @Synchronized
-    fun putSource(message: String?, throwable: Throwable? = null, subCategory: SourceSubCategory = SourceSubCategory.UPDATE) {
+    fun putSource(message: String?, throwable: Throwable? = null, subCategory: SourceSubCategory = SourceSubCategory.UPDATE, dialogName: String? = null) {
         message ?: return
         if (mSourceLogs.size > 200) {
             mSourceLogs.removeLastOrNull()
@@ -81,14 +82,15 @@ object AppLog {
                     subCategory = subCategory,
                     message = message,
                     detail = throwable?.stackTraceToString(),
-                    throwable = throwable
+                    throwable = throwable,
+                    dialogName = dialogName
                 )
             )
         }
     }
 
     @Synchronized
-    fun putNotSave(message: String?, throwable: Throwable? = null, toast: Boolean = false) {
+    fun putNotSave(message: String?, throwable: Throwable? = null, toast: Boolean = false, dialogName: String? = null) {
         message ?: return
         if (toast) {
             appCtx.toastOnUi(message)
@@ -110,7 +112,8 @@ object AppLog {
                     category = DebugCategory.APP,
                     message = message,
                     detail = throwable?.stackTraceToString(),
-                    throwable = throwable
+                    throwable = throwable,
+                    dialogName = dialogName
                 )
             )
         }
@@ -122,9 +125,9 @@ object AppLog {
         mSourceLogs.clear()
     }
 
-    fun putDebug(message: String?, throwable: Throwable? = null) {
+    fun putDebug(message: String?, throwable: Throwable? = null, dialogName: String? = null) {
         if (AppConfig.recordLog) {
-            put(message, throwable)
+            put(message, throwable, dialogName = dialogName)
         }
 
         // 新增：即使recordLog为false也上报调试级别日志到事件中心
@@ -135,7 +138,8 @@ object AppLog {
                     category = DebugCategory.APP,
                     message = message ?: "",
                     detail = throwable?.stackTraceToString(),
-                    throwable = throwable
+                    throwable = throwable,
+                    dialogName = dialogName
                 )
             )
         }
