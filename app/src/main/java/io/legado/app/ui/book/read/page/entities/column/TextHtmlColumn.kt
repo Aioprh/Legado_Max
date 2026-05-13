@@ -25,7 +25,11 @@ data class TextHtmlColumn(
     val linkUrl: String?,
     override val underlineMode: Int = 0,
     override val underlineColor: Int? = null,
+    override val underlineWidth: Float = 1f,
     override val underlineSvgPath: String = "",
+    override val bgImage: String = "",
+    override val bgImageFit: Int = 0,
+    override val bgImageScale: Float = 1f,
 ) : TextBaseColumn {
 
     override val textColor: Int? get() = mTextColor

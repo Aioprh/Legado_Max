@@ -10,7 +10,11 @@ data class HighlightRule(
     var textColor: Int? = null,
     var underlineMode: Int = 0,
     var underlineColor: Int? = null,
+    var underlineWidth: Float = 1f,
     var underlineSvgPath: String? = null,
+    var bgImage: String? = null,
+    var bgImageFit: Int = 0,
+    var bgImageScale: Float = 1f,
 ) {
 
     fun styleSummary(): String {
@@ -28,6 +32,15 @@ data class HighlightRule(
                     5 -> "自定义SVG"
                     else -> "下划线"
                 } + underlineColor?.let { " ${it.toHexColor()}" }.orEmpty()
+            )
+        }
+        if (!bgImage.isNullOrBlank()) {
+            parts.add(
+                when (bgImageFit) {
+                    1 -> "背景图(拉伸)"
+                    2 -> "背景图(裁剪)"
+                    else -> "背景图(平铺)"
+                }
             )
         }
         if (parts.isEmpty()) {

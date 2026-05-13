@@ -7,7 +7,17 @@ import kotlin.math.sin
 
 object SvgPathParser {
 
+    private val cache = android.util.LruCache<String, Path>(32)
+
     fun parse(svgPath: String): Path? {
+        if (svgPath.isBlank()) return null
+        cache.get(svgPath)?.let { return it }
+        val path = parseInternal(svgPath) ?: return null
+        cache.put(svgPath, path)
+        return path
+    }
+
+    private fun parseInternal(svgPath: String): Path? {
         if (svgPath.isBlank()) return null
         
         val path = Path()

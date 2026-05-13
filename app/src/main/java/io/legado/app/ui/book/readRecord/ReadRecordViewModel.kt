@@ -2,6 +2,7 @@ package io.legado.app.ui.book.readRecord
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.legado.app.constant.AppConst
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.readRecord.ReadRecord
@@ -43,7 +44,9 @@ data class ReadRecordUiState(
     val selectedDate: LocalDate? = null,
     val searchKey: String? = null,
     val dailyReadCounts: Map<LocalDate, Int> = emptyMap(),
-    val dailyReadTimes: Map<LocalDate, Long> = emptyMap()
+    val dailyReadTimes: Map<LocalDate, Long> = emptyMap(),
+    val isSelectionMode: Boolean = false,
+    val selectedRecords: Set<RecordIdentity> = emptySet()
 )
 
 enum class DisplayMode {
@@ -67,6 +70,8 @@ class ReadRecordViewModel : ViewModel() {
     val displayMode = _displayMode.asStateFlow()
     private val _searchKey = MutableStateFlow("")
     private val _selectedDate = MutableStateFlow<LocalDate?>(null)
+    private val _isSelectionMode = MutableStateFlow(false)
+    private val _selectedRecords = MutableStateFlow<Set<RecordIdentity>>(emptySet())
 
     init {
         viewModelScope.launch {
@@ -103,8 +108,10 @@ class ReadRecordViewModel : ViewModel() {
     val uiState: StateFlow<ReadRecordUiState> = combine(
         loadedDataFlow,
         _selectedDate,
-        _searchKey
-    ) { data, selectedDate, searchKey ->
+        _searchKey,
+        _isSelectionMode,
+        _selectedRecords
+    ) { data, selectedDate, searchKey, isSelectionMode, selectedRecords ->
         val today = LocalDate.now()
         val dateStr = selectedDate?.format(DateTimeFormatter.ISO_LOCAL_DATE)
 
@@ -211,7 +218,9 @@ class ReadRecordViewModel : ViewModel() {
             selectedDate = selectedDate,
             searchKey = searchKey,
             dailyReadCounts = dailyCounts,
-            dailyReadTimes = dailyTimes
+            dailyReadTimes = dailyTimes,
+            isSelectionMode = isSelectionMode,
+            selectedRecords = selectedRecords
         )
     }.stateIn(
         scope = viewModelScope,
@@ -295,6 +304,133 @@ class ReadRecordViewModel : ViewModel() {
         viewModelScope.launch {
             repository.mergeReadRecordInto(targetRecord, sourceRecords)
         }
+    }
+
+    fun enterSelectionMode(record: ReadRecord) {
+        _isSelectionMode.value = true
+        _selectedRecords.value = setOf(recordIdentity(record.deviceId, record.bookName, record.bookAuthor))
+    }
+
+    fun enterSelectionMode(detail: ReadRecordDetail) {
+        _isSelectionMode.value = true
+        _selectedRecords.value = setOf(recordIdentity(detail.deviceId, detail.bookName, detail.bookAuthor))
+    }
+
+    fun enterSelectionMode(session: ReadRecordSession) {
+        _isSelectionMode.value = true
+        _selectedRecords.value = setOf(recordIdentity(session.deviceId, session.bookName, session.bookAuthor))
+    }
+
+    fun exitSelectionMode() {
+        _isSelectionMode.value = false
+        _selectedRecords.value = emptySet()
+    }
+
+    fun toggleRecordSelection(record: ReadRecord) {
+        val identity = recordIdentity(record.deviceId, record.bookName, record.bookAuthor)
+        toggleIdentitySelection(identity)
+    }
+
+    fun toggleRecordSelection(detail: ReadRecordDetail) {
+        val identity = recordIdentity(detail.deviceId, detail.bookName, detail.bookAuthor)
+        toggleIdentitySelection(identity)
+    }
+
+    fun toggleRecordSelection(session: ReadRecordSession) {
+        val identity = recordIdentity(session.deviceId, session.bookName, session.bookAuthor)
+        toggleIdentitySelection(identity)
+    }
+
+    private fun toggleIdentitySelection(identity: RecordIdentity) {
+        val currentSelection = _selectedRecords.value.toMutableSet()
+        if (currentSelection.contains(identity)) {
+            currentSelection.remove(identity)
+            if (currentSelection.isEmpty()) {
+                _isSelectionMode.value = false
+            }
+        } else {
+            currentSelection.add(identity)
+        }
+        _selectedRecords.value = currentSelection
+    }
+
+    fun selectAllRecords(displayMode: DisplayMode) {
+        val allIdentities = _selectedRecords.value.toMutableSet()
+        when (displayMode) {
+            DisplayMode.LATEST -> {
+                allIdentities.addAll(uiState.value.latestRecords.map { 
+                    recordIdentity(it.deviceId, it.bookName, it.bookAuthor) 
+                })
+            }
+            DisplayMode.READ_TIME -> {
+                allIdentities.addAll(uiState.value.readTimeRecords.map { 
+                    recordIdentity(it.deviceId, it.bookName, it.bookAuthor) 
+                })
+            }
+            DisplayMode.AGGREGATE -> {
+                allIdentities.addAll(uiState.value.groupedRecords.values.flatten().map { 
+                    recordIdentity(it.deviceId, it.bookName, it.bookAuthor) 
+                })
+            }
+            DisplayMode.TIMELINE -> {
+                allIdentities.addAll(uiState.value.timelineRecords.values.flatten().map { 
+                    recordIdentity(it.deviceId, it.bookName, it.bookAuthor) 
+                })
+            }
+        }
+        _selectedRecords.value = allIdentities
+    }
+
+    fun deleteSelectedRecords() {
+        viewModelScope.launch {
+            val selectedList = _selectedRecords.value.map { identity ->
+                ReadRecord(
+                    deviceId = identity.first,
+                    bookName = identity.second,
+                    bookAuthor = identity.third
+                )
+            }
+            selectedList.forEach { record ->
+                repository.deleteReadRecord(record)
+            }
+            exitSelectionMode()
+        }
+    }
+
+    fun addTestReadRecord(bookName: String, bookAuthor: String): ReadRecord {
+        val deviceId = AppConst.androidId
+        val now = System.currentTimeMillis()
+        val record = ReadRecord(
+            deviceId = deviceId,
+            bookName = bookName,
+            bookAuthor = bookAuthor,
+            readTime = 30 * 60 * 1000L,
+            lastRead = now
+        )
+        val session = ReadRecordSession(
+            deviceId = deviceId,
+            bookName = bookName,
+            bookAuthor = bookAuthor,
+            startTime = now - 30 * 60 * 1000L,
+            endTime = now,
+            words = 5000L
+        )
+        viewModelScope.launch {
+            repository.saveReadSession(session)
+        }
+        return record
+    }
+
+    fun isSelected(record: ReadRecord): Boolean {
+        return _selectedRecords.value.contains(recordIdentity(record.deviceId, record.bookName, record.bookAuthor))
+    }
+
+    fun isSelected(detail: ReadRecordDetail): Boolean {
+        return _selectedRecords.value.contains(recordIdentity(detail.deviceId, detail.bookName, detail.bookAuthor))
+    }
+
+    fun isSelected(session: ReadRecordSession): Boolean {
+        return _selectedRecords.value.contains(recordIdentity(session.deviceId, session.bookName, session.bookAuthor))
     }
 
     private data class LoadedData(

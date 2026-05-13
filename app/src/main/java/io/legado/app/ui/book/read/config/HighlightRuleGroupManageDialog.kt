@@ -30,6 +30,7 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 class HighlightRuleGroupManageDialog @JvmOverloads constructor(
     private val onChanged: () -> Unit = {},
+    private val onSelectGroup: (String?) -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_group_manage) {
 
     private val binding by viewBinding(DialogHighlightRuleGroupManageBinding::bind)
@@ -43,7 +44,7 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
 
     override fun onStart() {
         super.onStart()
-        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.92f)
+        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.85f)
         dialog?.window?.setGravity(Gravity.BOTTOM)
         dialog?.window?.setBackgroundDrawableResource(R.drawable.shape_highlight_rule_sheet)
     }
@@ -59,6 +60,10 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
         binding.recyclerView.adapter = adapter
         binding.ivBack.setOnClickListener { dismissAllowingStateLoss() }
         binding.tvAddGroup.setOnClickListener { showGroupInputDialog(null) }
+        binding.llViewAll.setOnClickListener {
+            onSelectGroup(null)
+            dismissAllowingStateLoss()
+        }
         loadData()
     }
 
@@ -86,7 +91,7 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
 
         binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.ivBack.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
-        binding.ivBack.background?.mutate()?.setTint(accentColor)
+        binding.ivBack.background?.mutate()?.setTint(cardBgColor)
         binding.tvPageTitle.setTextColor(primaryTextColor)
         binding.tvPageSubtitle.setTextColor(secondaryTextColor)
 
@@ -96,6 +101,9 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
         )
 
         binding.tvEmptyMsg.setTextColor(secondaryTextColor)
+        
+        binding.llViewAll.background?.mutate()?.setTint(cardBgColor)
+        binding.tvAllCount.setTextColor(secondaryTextColor)
     }
 
     private fun loadData() {
@@ -105,6 +113,7 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
         rules.addAll(HighlightRuleStore.load(requireContext()))
         adapter.setItems(groups.toList())
         binding.tvEmptyMsg.visibility = if (groups.isEmpty()) View.VISIBLE else View.GONE
+        binding.tvAllCount.text = "${rules.size} 条规则"
     }
 
     private fun showGroupInputDialog(source: String?) {
@@ -193,6 +202,12 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
         }
 
         override fun registerListener(holder: ItemViewHolder, binding: ViewBindingHolder) {
+            binding.itemRoot.setOnClickListener {
+                getItem(holder.layoutPosition)?.let { group ->
+                    onSelectGroup(group)
+                    dismissAllowingStateLoss()
+                }
+            }
             binding.tvEdit.setOnClickListener {
                 getItem(holder.layoutPosition)?.let(::showGroupInputDialog)
             }

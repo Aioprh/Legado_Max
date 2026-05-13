@@ -132,4 +132,10 @@
         <item name="android:windowNoTitle">true</item>
     </style>
 
+    <style name="HighlightRuleTabText" parent="TextAppearance.Design.Tab">
+        <item name="android:textSize">13sp</item>
+        <item name="textAllCaps">false</item>
+        <item name="android:textColor">@color/secondaryText</item>
+    </style>
+
 </resources>

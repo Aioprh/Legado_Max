@@ -40,6 +40,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     private val binding by viewBinding(DialogHighlightRuleConfigBinding::bind)
     private val adapter by lazy { HighlightRuleAdapter(requireContext()) }
     private val rules = ArrayList<HighlightRule>()
+    private var currentGroup: String? = null
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
     private var accentColor = 0
@@ -48,7 +49,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     override fun onStart() {
         super.onStart()
-        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.92f)
+        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.85f)
         dialog?.window?.setGravity(Gravity.BOTTOM)
         dialog?.window?.setBackgroundDrawableResource(R.drawable.shape_highlight_rule_sheet)
     }
@@ -119,6 +120,21 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }.show()
     }
 
+    private fun showItemMenu(rule: HighlightRule, anchor: View) {
+        PopupMenu(requireContext(), anchor).apply {
+            menuInflater.inflate(R.menu.highlight_rule_item, menu)
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.menu_edit -> editRule(rule)
+                    R.id.menu_delete -> deleteRule(rule)
+                    R.id.menu_export_single -> exportRulesToClipboard(listOf(rule))
+                    R.id.menu_share_single -> shareRules(listOf(rule))
+                }
+                true
+            }
+        }.show()
+    }
+
     override fun onMenuItemClick(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_select -> showRuleSelector()
@@ -137,12 +153,34 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     private fun loadRules() {
         rules.clear()
         rules.addAll(HighlightRuleStore.load(requireContext()))
-        adapter.setItems(rules.toList())
+        applyGroupFilter()
+    }
+
+    private fun applyGroupFilter() {
+        val filtered = if (currentGroup == null) {
+            rules.toList()
+        } else {
+            rules.filter { it.group == currentGroup }
+        }
+        adapter.setItems(filtered)
         updateEmptyState()
+        updateSubtitle()
+    }
+
+    private fun updateSubtitle() {
+        val groupText = currentGroup ?: "全部分组"
+        val count = if (currentGroup == null) rules.size else rules.count { it.group == currentGroup }
+        binding.tvPageSubtitle.text = "$groupText · $count 条规则"
+    }
+
+    fun switchToGroup(group: String?) {
+        currentGroup = group
+        applyGroupFilter()
     }
 
     private fun updateEmptyState() {
-        val empty = rules.isEmpty()
+        val filteredCount = if (currentGroup == null) rules.size else rules.count { it.group == currentGroup }
+        val empty = filteredCount == 0
         binding.recyclerView.visibility = if (empty) View.GONE else View.VISIBLE
         binding.emptyPanel.visibility = if (empty) View.VISIBLE else View.GONE
     }
@@ -190,9 +228,13 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     }
 
     private fun showGroupManager() {
-        HighlightRuleGroupManageDialog {
-            loadRules()
-        }.show(childFragmentManager, "highlightRuleGroupManage")
+        HighlightRuleGroupManageDialog(
+            onChanged = { loadRules() },
+            onSelectGroup = { group ->
+                currentGroup = group
+                applyGroupFilter()
+            }
+        ).show(childFragmentManager, "highlightRuleGroupManage")
     }
 
     private fun showRuleSelector() {
@@ -243,7 +285,8 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         imported.forEach { rule ->
             val normalized = rule.copy(
                 id = if (rules.none { it.id == rule.id }) rule.id else rule.copyWithNewId().id,
-                group = rule.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP }
+                group = rule.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP },
+                underlineWidth = rule.underlineWidth.coerceIn(0.1f, 10f)
             )
             rules.add(normalized)
         }
@@ -275,8 +318,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     private fun syncRules() {
         HighlightRuleStore.save(requireContext(), rules)
-        adapter.setItems(rules.toList())
-        updateEmptyState()
+        applyGroupFilter()
         postEvent(EventBus.UP_CONFIG, arrayListOf(5))
     }
 
@@ -290,6 +332,10 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         override fun registerListener(holder: ItemViewHolder, binding: ItemHighlightPresetRuleBinding) {
             binding.root.setOnClickListener {
                 getItem(holder.layoutPosition)?.let(::editRule)
+            }
+            binding.root.setOnLongClickListener {
+                getItem(holder.layoutPosition)?.let { showItemMenu(it, binding.root) }
+                true
             }
             binding.tvPreview.setOnClickListener {
                 getItem(holder.layoutPosition)?.let(::editRule)
