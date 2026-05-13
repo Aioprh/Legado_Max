@@ -27,6 +27,7 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.ActivityCodeEditBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
+import io.legado.app.lib.dialogs.AndroidAlertBuilder
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
@@ -435,8 +436,12 @@ class CodeEditActivity :
             SelectItem("目录", "toc"),
             SelectItem("正文", "content")
         )
-        selector(tabs.map { it.title }) { _, position ->
-            showBookSourceFieldSelector(tabs[position].value)
+        with(AndroidAlertBuilder(this)) {
+            setTitle("切换规则")
+            items(tabs.map { it.title }) { _, position ->
+                showBookSourceFieldSelector(tabs[position].value)
+            }
+            show()
         }
     }
 
@@ -526,9 +531,16 @@ class CodeEditActivity :
             else -> emptyList()
         }
         if (fields.isEmpty()) return
-        selector(fields.map { it.title }) { _, position ->
-            val fieldKey = fields[position].value
-            switchToField(tabKey, fieldKey)
+        with(AndroidAlertBuilder(this)) {
+            setTitle("选择字段")
+            items(fields.map { it.title }) { _, position ->
+                val fieldKey = fields[position].value
+                switchToField(tabKey, fieldKey)
+            }
+            onCancelled {
+                showBookSourceRuleSelector()
+            }
+            show()
         }
     }
 
@@ -542,8 +554,12 @@ class CodeEditActivity :
             SelectItem("列表", "list"),
             SelectItem("WEB_VIEW", "webView")
         )
-        selector(tabs.map { it.title }) { _, position ->
-            showRssSourceFieldSelector(tabs[position].value)
+        with(AndroidAlertBuilder(this)) {
+            setTitle("切换规则")
+            items(tabs.map { it.title }) { _, position ->
+                showRssSourceFieldSelector(tabs[position].value)
+            }
+            show()
         }
     }
 
@@ -608,9 +624,16 @@ class CodeEditActivity :
             else -> emptyList()
         }
         if (fields.isEmpty()) return
-        selector(fields.map { it.title }) { _, position ->
-            val fieldKey = fields[position].value
-            switchToField("base", fieldKey)
+        with(AndroidAlertBuilder(this)) {
+            setTitle("选择字段")
+            items(fields.map { it.title }) { _, position ->
+                val fieldKey = fields[position].value
+                switchToField("base", fieldKey)
+            }
+            onCancelled {
+                showRssSourceRuleSelector()
+            }
+            show()
         }
     }
 
