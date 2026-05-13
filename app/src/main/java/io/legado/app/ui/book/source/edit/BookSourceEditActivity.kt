@@ -451,6 +451,7 @@ class BookSourceEditActivity :
             )
             binding.cbIsEventListener.isChecked = it.eventListener
             binding.cbIsCustomButton.isChecked = it.customButton
+            binding.cbNextPageLazyLoad.isChecked = it.nextPageLazyLoad
         }
         // 基本信息
         sourceEntities.clear()
@@ -584,6 +585,7 @@ class BookSourceEditActivity :
         }
         source.eventListener = binding.cbIsEventListener.isChecked
         source.customButton = binding.cbIsCustomButton.isChecked
+        source.nextPageLazyLoad = binding.cbNextPageLazyLoad.isChecked
         val searchRule = SearchRule()
         val exploreRule = ExploreRule()
         val bookInfoRule = BookInfoRule()
