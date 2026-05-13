@@ -139,10 +139,9 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
         currentWebView.title?.let {
             refreshNameList.add(it)
         }
-        viewModel.rssArticle?.let {
-            start(this@ReadRssActivity,true, it.origin, it.title, it.link)
-        } ?: run {
-            viewModel.initData(intent)
+        viewModel.refresh {
+            binding.progressBar.visible()
+            binding.progressBar.setDurProgress(30)
         }
     }
     private val editSourceResult = registerForActivityResult(

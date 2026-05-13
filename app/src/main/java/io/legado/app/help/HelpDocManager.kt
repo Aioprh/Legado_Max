@@ -16,6 +16,7 @@ object HelpDocManager {
         HelpDoc("debugHelp", "书源调试说明"),
         HelpDoc("书源字段规则类型", "书源字段规则类型"),
         HelpDoc("订阅源字段规则类型", "订阅源字段规则类型"),
+        HelpDoc("订阅源机制详解", "订阅源机制详解"),
         HelpDoc("jsPackagesHelp", "JS Packages使用指南"),
         HelpDoc("替换规则流程与机制", "替换规则流程与机制"),
         HelpDoc("下拉刷新流程与机制", "下拉刷新流程与机制"),

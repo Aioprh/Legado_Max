@@ -112,17 +112,15 @@ object BackupInfoHelper {
             items.add(BackupFileInfo(fileName, displayName, estimatedSize, selected))
         }
 
-        if (BackupConfig.fullBackup) {
-            val runtimeCacheCount = appDb.cacheDao.getRuntimeSourceCaches(System.currentTimeMillis()).size
-            if (runtimeCacheCount > 0) {
-                val fileName = "runtimeSourceCache.json"
-                val displayName = displayNameMap[fileName] ?: fileName
-                val estimatedSize = runtimeCacheCount * 500L
-                val selected = isFileSelected(fileName)
-                totalSize += estimatedSize
-                if (selected) selectedSize += estimatedSize
-                items.add(BackupFileInfo(fileName, displayName, estimatedSize, selected))
-            }
+        val runtimeCacheCount = appDb.cacheDao.getRuntimeSourceCaches(System.currentTimeMillis()).size
+        run {
+            val fileName = "runtimeSourceCache.json"
+            val displayName = displayNameMap[fileName] ?: fileName
+            val estimatedSize = runtimeCacheCount * 500L
+            val selected = isFileSelected(fileName)
+            totalSize += estimatedSize
+            if (selected) selectedSize += estimatedSize
+            items.add(BackupFileInfo(fileName, displayName, estimatedSize, selected))
         }
 
         val configFiles = listOf(
@@ -137,33 +135,32 @@ object BackupInfoHelper {
         configFiles.forEach { fileName ->
             val file = File(appCtx.filesDir, fileName)
             val size = if (file.exists()) file.length() else 0L
-            if (size > 0) {
-                val selected = isFileSelected(fileName)
-                totalSize += size
-                if (selected) selectedSize += size
-                val displayName = displayNameMap[fileName] ?: fileName
-                items.add(BackupFileInfo(fileName, displayName, size, selected))
-            }
+            val selected = isFileSelected(fileName)
+            totalSize += size
+            if (selected) selectedSize += size
+            val displayName = displayNameMap[fileName] ?: fileName
+            items.add(BackupFileInfo(fileName, displayName, size, selected))
         }
 
-        DirectLinkUpload.getConfig()?.let {
+        run {
             val fileName = DirectLinkUpload.ruleFileName
-            val json = io.legado.app.utils.GSON.toJson(it)
-            val size = json.length.toLong()
+            val config = DirectLinkUpload.getConfig()
+            val size = if (config != null) {
+                io.legado.app.utils.GSON.toJson(config).length.toLong()
+            } else 0L
             val selected = isFileSelected(fileName)
             totalSize += size
             if (selected) selectedSize += size
             items.add(BackupFileInfo(fileName, "直链上传配置", size, selected))
         }
 
-        val bgSelected = BackupSelectorConfig.isSelected("backgroundImages")
-        Backup.getBackgroundImageFiles().let { bgFiles ->
+        run {
+            val bgSelected = BackupSelectorConfig.isSelected("backgroundImages")
+            val bgFiles = Backup.getBackgroundImageFiles()
             val totalBgSize = bgFiles.sumOf { it.length() }
-            if (totalBgSize > 0L) {
-                totalSize += totalBgSize
-                if (bgSelected) selectedSize += totalBgSize
-                items.add(BackupFileInfo("backgroundImages", "阅读背景", totalBgSize, bgSelected))
-            }
+            totalSize += totalBgSize
+            if (bgSelected) selectedSize += totalBgSize
+            items.add(BackupFileInfo("backgroundImages", "阅读背景", totalBgSize, bgSelected))
         }
 
         return BackupOverview(items, totalSize, selectedSize)
