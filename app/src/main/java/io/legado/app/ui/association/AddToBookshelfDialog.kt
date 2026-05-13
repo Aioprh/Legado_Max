@@ -69,7 +69,7 @@ class AddToBookshelfDialog() : BaseDialogFragment(R.layout.dialog_add_to_bookshe
             return
         }
         appDb.bookDao.getBook(bookUrl)?.let { //已在书架时直接跳转到书籍详情页
-            AppLog.put("${it.name} 已在书架", null, true)
+            AppLog.put("${it.name} 已在书架", null, true, dialogName = "添加到书架")
             startActivity<BookInfoActivity> {
                 putExtra("name", it.name)
                 putExtra("author", it.author)
@@ -149,7 +149,7 @@ class AddToBookshelfDialog() : BaseDialogFragment(R.layout.dialog_add_to_bookshe
                 }
                 throw NoStackTraceException("未找到匹配书源")
             }.onError {
-                AppLog.put("添加书籍 $bookUrl 出错", it)
+                AppLog.put("添加书籍 $bookUrl 出错", it, dialogName = "添加到书架")
                 loadErrorLiveData.postValue(it.localizedMessage)
             }.onSuccess {
                 book = it

@@ -88,7 +88,7 @@ class ImportReplaceRuleViewModel(app: Application) : BaseViewModel(app) {
             importAwait(text.trim())
         }.onError {
             errorLiveData.postValue("ImportError:${it.localizedMessage}")
-            AppLog.put("ImportError:${it.localizedMessage}", it)
+            AppLog.put("ImportError:${it.localizedMessage}", it, dialogName = "导入替换规则")
         }.onSuccess {
             comparisonSource()
         }

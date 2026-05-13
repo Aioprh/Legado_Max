@@ -97,7 +97,7 @@ class OpenUrlConfirmDialog() : BaseDialogFragment(R.layout.dialog_open_url_confi
                 toastOnUi(R.string.can_not_open)
             }
         } catch (e: Exception) {
-            AppLog.put("打开链接失败", e, true)
+            AppLog.put("打开链接失败", e, true, dialogName = "打开链接确认")
         }
     }
 

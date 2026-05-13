@@ -205,7 +205,7 @@ class FileAssociationActivity :
 
                     else -> {
                         val msg = "导入书籍失败\n${it.localizedMessage}"
-                        AppLog.put(msg, it)
+                        AppLog.put(msg, it, dialogName = "文件关联")
                         toastOnUi(msg)
                         handler.postDelayed(2000) {
                             finish()

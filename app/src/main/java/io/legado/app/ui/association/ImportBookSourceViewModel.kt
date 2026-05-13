@@ -181,7 +181,7 @@ class ImportBookSourceViewModel(app: Application) : BaseViewModel(app) {
             }
         }.onError {
             errorLiveData.postValue("ImportError:${it.localizedMessage}")
-            AppLog.put("ImportError:${it.localizedMessage}", it)
+            AppLog.put("ImportError:${it.localizedMessage}", it, dialogName = "导入书源")
         }.onSuccess {
             comparisonSource()
         }
