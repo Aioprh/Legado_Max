@@ -37,6 +37,10 @@ data class TextChapter(
 
     val layoutChannel get() = layout!!.channel
 
+    fun appendContent(newContents: List<String>) {
+        layout?.appendContent(newContents)
+    }
+
     fun getPage(index: Int): TextPage? {
         return pages.getOrNull(index)
     }

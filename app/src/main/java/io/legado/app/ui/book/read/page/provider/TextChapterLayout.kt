@@ -178,6 +178,206 @@ class TextChapterLayout(
         listener = null
     }
 
+    fun appendContent(newContents: List<String>) {
+        if (isCompleted) return
+        if (newContents.isEmpty()) return
+        
+        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+            try {
+                appendContentInternal(newContents)
+            } catch (e: Exception) {
+                AppLog.put("追加内容失败: ${e.localizedMessage}", e)
+            }
+        }
+    }
+    
+    private suspend fun appendContentInternal(newContents: List<String>) {
+        val imageStyle = book.getImageStyle()
+        val isTextImageStyle = imageStyle.equals(Book.imgStyleText, true)
+        
+        val sb = StringBuffer()
+        var isSetTypedImage = false
+        var wordCount = 0
+        
+        for (content in newContents) {
+            currentCoroutineContext().ensureActive()
+            if (adaptSpecialStyle) {
+                val text = content.trim()
+                if (text == "[newpage]") {
+                    prepareNextPageIfNeed()
+                    return@forEach
+                } else if (text.startsWith("<usehtml>")) {
+                    val endInt = text.lastIndexOf("<")
+                    if (endInt > 9) {
+                        setTypeHtml(imageStyle, book, text.substring(9, endInt))
+                        return@forEach
+                    }
+                }
+            }
+            var text = content.replace(srcReplaceChar, srcReplacementChar)
+            if (isTextImageStyle) {
+                val srcList = LinkedList<String>()
+                sb.setLength(0)
+                val matcher = AppPattern.imgPattern.matcher(text)
+                while (matcher.find()) {
+                    matcher.group(1)?.let { src ->
+                        srcList.add(src)
+                        matcher.appendReplacement(sb, srcReplaceStr)
+                    }
+                }
+                matcher.appendTail(sb)
+                text = sb.toString()
+                wordCount += text.replace(noWordCountRegex,"").length
+                setTypeText(
+                    book,
+                    text,
+                    contentPaint,
+                    contentPaintTextHeight,
+                    contentPaintFontMetrics,
+                    imageStyle,
+                    srcList = srcList,
+                    clickList = null
+                )
+            } else {
+                if (isSetTypedImage) {
+                    isSetTypedImage = false
+                    prepareNextPageIfNeed()
+                }
+                var start = 0
+                val srcList = LinkedList<String>()
+                val clickList = LinkedList<String?>()
+                sb.setLength(0)
+                var isFirstLine = true
+                if (content.contains("<img")) {
+                    val matcher = AppPattern.imgPattern.matcher(text)
+                    while (matcher.find()) {
+                        currentCoroutineContext().ensureActive()
+                        val imgSrc = matcher.group(1)!!
+                        var style: String? = null
+                        var click: String? = null
+                        var imgSize = ImageProvider.getImageSize(book, imgSrc, ReadBook.bookSource)
+                        val urlMatcher = paramPattern.matcher(imgSrc)
+                        if (urlMatcher.find()) {
+                            var width: String? = null
+                            val urlOptionStr = imgSrc.substring(urlMatcher.end())
+                            GSON.fromJsonObject<Map<String, String>>(urlOptionStr)?.let { map ->
+                                map.forEach { (key, value) ->
+                                    when (key) {
+                                        "style" -> style = value
+                                        "width" -> width = value
+                                        "click" -> click = value
+                                    }
+                                }
+                            }
+                            width?.let {
+                                if (width.endsWith("%")) {
+                                    width.dropLast(1).toIntOrNull()?.let { percentage ->
+                                        val imgWidth = visibleWidth * percentage / 100
+                                        val (sizeHeight, sizeWidth) = imgSize
+                                        imgSize = Size(imgWidth, sizeHeight * imgWidth / sizeWidth)
+                                    }
+                                } else {
+                                    width.toIntOrNull()?.let { width ->
+                                        val (sizeHeight, sizeWidth) = imgSize
+                                        imgSize = Size(width, sizeHeight * width / sizeWidth)
+                                    }
+                                }
+                            }
+                        }
+                        if (style == null) {
+                            style = if (imgSize.width < 80 && imgSize.height < 80) {
+                                "text"
+                            } else {
+                                imageStyle
+                            }
+                        }
+                        if (start < matcher.start()) {
+                            sb.append(text.subSequence(start, matcher.start()))
+                        }
+                        when (style) {
+                            "TEXT" -> {
+                                sb.append(reviewChar)
+                                srcList.add(imgSrc)
+                                clickList.add(click)
+                            }
+                            "text" -> {
+                                sb.append(srcReplaceChar)
+                                srcList.add(imgSrc)
+                                clickList.add(click)
+                            }
+                            else -> {
+                                val textBefore = sb.toString()
+                                if (textBefore.isNotBlank()) {
+                                    wordCount += textBefore.replace(noWordCountRegex, "").length
+                                    setTypeText(
+                                        book,
+                                        sb.toString(),
+                                        contentPaint,
+                                        contentPaintTextHeight,
+                                        contentPaintFontMetrics,
+                                        "TEXT",
+                                        isFirstLine = isFirstLine,
+                                        srcList = srcList,
+                                        clickList = clickList
+                                    )
+                                    sb.setLength(0)
+                                    isFirstLine = false
+                                }
+                                setTypeImage(
+                                    book,
+                                    imgSrc,
+                                    contentPaintTextHeight,
+                                    style,
+                                    imgSize,
+                                    click
+                                )
+                                isSetTypedImage = true
+                            }
+                        }
+                        start = matcher.end()
+                    }
+                }
+                if (start < content.length) {
+                    if (isSetTypedImage) {
+                        isSetTypedImage = false
+                        prepareNextPageIfNeed()
+                    }
+                    val textAfter = content.subSequence(start, content.length)
+                    sb.append(textAfter)
+                }
+                text = sb.toString()
+                if (text.isNotBlank()) {
+                    wordCount += text.replace(noWordCountRegex,"").length
+                    setTypeText(
+                        book,
+                        text,
+                        contentPaint,
+                        contentPaintTextHeight,
+                        contentPaintFontMetrics,
+                        "TEXT",
+                        isFirstLine = isFirstLine,
+                        srcList = srcList,
+                        clickList = clickList
+                    )
+                }
+            }
+            pendingTextPage.lines.lastOrNull()?.isParagraphEnd = true
+            stringBuilder.append("\n")
+        }
+        
+        val textPage = pendingTextPage
+        val endPadding = 20.dpToPx()
+        val durYPadding = durY + endPadding
+        if (textPage.height < durYPadding) {
+            textPage.height = durYPadding
+        } else {
+            textPage.height += endPadding
+        }
+        textPage.text = stringBuilder.toString()
+        currentCoroutineContext().ensureActive()
+        onPageCompleted()
+    }
+
     private fun onPageCompleted() {
         val textPage = pendingTextPage
         textPage.index = textPages.size
