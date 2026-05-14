@@ -108,15 +108,7 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             viewModel.bookData.value?.bookUrl?.let { bookUrl ->
                 if (book.bookUrl == bookUrl) {
                     adapter.cacheFileNames.add(chapter.getFileName())
-                    if (viewModel.searchKey.isNullOrEmpty()) {
-                        adapter.notifyItemChanged(chapter.index, true)
-                    } else {
-                        adapter.getItems().forEachIndexed { index, bookChapter ->
-                            if (bookChapter.index == chapter.index) {
-                                adapter.notifyItemChanged(index, true)
-                            }
-                        }
-                    }
+                    adapter.notifyChapterChanged(chapter.index)
                 }
             }
         }
@@ -135,7 +127,7 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                     else -> appDb.bookChapterDao.search(viewModel.bookUrl, searchKey, 0, end)
                 }
             }.let {
-                adapter.setItems(it)
+                adapter.setChapterItems(it, applyCollapse = searchKey.isNullOrBlank())
             }
         }
     }
