@@ -85,6 +85,16 @@ abstract class BaseReadAloudService : BaseService(),
         var timeMinute: Int = 0
             private set
 
+        @Volatile
+        @JvmStatic
+        var lastTtsProgress: Int = 0
+            private set
+
+        @Volatile
+        @JvmStatic
+        var lastTtsChapterIndex: Int = -1
+            private set
+
         fun isPlay(): Boolean {
             return isRun && !pause
         }
@@ -194,6 +204,8 @@ abstract class BaseReadAloudService : BaseService(),
         }
         isRun = false
         pause = true
+        lastTtsProgress = 0
+        lastTtsChapterIndex = -1
         abandonFocus()
         unregisterReceiver(broadcastReceiver)
         postEvent(EventBus.ALOUD_STATE, Status.STOP)
@@ -326,6 +338,8 @@ abstract class BaseReadAloudService : BaseService(),
     abstract fun upSpeechRate(reset: Boolean = false)
 
     fun upTtsProgress(progress: Int) {
+        lastTtsChapterIndex = ReadBook.durChapterIndex
+        lastTtsProgress = progress
         postEvent(EventBus.TTS_PROGRESS, progress)
     }
 

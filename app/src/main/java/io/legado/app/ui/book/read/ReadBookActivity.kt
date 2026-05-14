@@ -265,6 +265,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
     private var justInitData: Boolean = false
     private var syncDialog: AlertDialog? = null
+    private var needSyncReadAloudOnResume: Boolean = false
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -343,6 +344,10 @@ class ReadBookActivity : BaseReadBookActivity(),
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onResume() {
         super.onResume()
+        if (BaseReadAloudService.isPlay() || needSyncReadAloudOnResume) {
+            syncReadAloudProgress(allowChapterMismatch = true)
+            needSyncReadAloudOnResume = false
+        }
         if (!BaseReadAloudService.isPlay()) {
             ReadBook.markReadStart()
         }
@@ -376,6 +381,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         super.onPause()
         autoPageStop()
         backupJob?.cancel()
+        needSyncReadAloudOnResume = BaseReadAloudService.isPlay()
         if (!BaseReadAloudService.isPlay()) {
             ReadBook.upReadTime()
         }
@@ -395,6 +401,26 @@ class ReadBookActivity : BaseReadBookActivity(),
         }
         justInitData = false
         networkChangedListener.unRegister()
+    }
+
+    private fun syncReadAloudProgress(allowChapterMismatch: Boolean = false) {
+        val ttsChapterIndex = BaseReadAloudService.lastTtsChapterIndex
+        val ttsProgress = BaseReadAloudService.lastTtsProgress
+        if (ttsProgress <= 0) return
+        if (ttsChapterIndex != ReadBook.durChapterIndex) {
+            if (allowChapterMismatch) upContent()
+            return
+        }
+        ReadBook.curTextChapter?.let { textChapter ->
+            if (!textChapter.isCompleted) return
+            ReadBook.durChapterPos = ttsProgress
+            val pageIndex = ReadBook.durPageIndex
+            if (pageIndex >= 0) {
+                val aloudSpanStart = ttsProgress - textChapter.getReadLength(pageIndex)
+                textChapter.getPage(pageIndex)?.upPageAloudSpan(aloudSpanStart)
+            }
+            upContent()
+        }
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
@@ -1779,17 +1805,10 @@ class ReadBookActivity : BaseReadBookActivity(),
                 }
             }
         }
-        observeEventSticky<Int>(EventBus.TTS_PROGRESS) { chapterStart ->
+        observeEventSticky<Int>(EventBus.TTS_PROGRESS) {
             lifecycleScope.launch(IO) {
                 if (BaseReadAloudService.isPlay()) {
-                    ReadBook.curTextChapter?.let { textChapter ->
-                        ReadBook.durChapterPos = chapterStart
-                        val pageIndex = ReadBook.durPageIndex
-                        val aloudSpanStart = chapterStart - textChapter.getReadLength(pageIndex)
-                        textChapter.getPage(pageIndex)
-                            ?.upPageAloudSpan(aloudSpanStart)
-                        upContent()
-                    }
+                    syncReadAloudProgress(allowChapterMismatch = false)
                 }
             }
         }
