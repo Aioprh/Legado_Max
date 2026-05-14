@@ -25,6 +25,7 @@ import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 class HighlightPresetRuleDialog @JvmOverloads constructor(
+    private val defaultGroup: String? = null,
     private val onAddRule: (HighlightRule) -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_preset_rule) {
 
@@ -136,7 +137,11 @@ class HighlightPresetRuleDialog @JvmOverloads constructor(
                 PorterDuff.Mode.SRC_IN
             )
             binding.ivAdd.setOnClickListener {
-                onAddRule(item.copy(id = System.currentTimeMillis().toString()))
+                val groupToUse = defaultGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP
+                onAddRule(item.copy(
+                    id = System.currentTimeMillis().toString(),
+                    group = groupToUse
+                ))
                 dismissAllowingStateLoss()
             }
         }

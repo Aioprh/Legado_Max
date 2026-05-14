@@ -16,6 +16,7 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.constant.EventBus
+import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.DialogHighlightRuleConfigBinding
 import io.legado.app.databinding.ItemHighlightPresetRuleBinding
 import io.legado.app.lib.dialogs.alert
@@ -28,8 +29,10 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getClipText
+import io.legado.app.utils.getPrefString
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.putPrefString
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
@@ -151,8 +154,8 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             R.id.menu_preset -> showPresetRules()
             R.id.menu_import -> importRulesFromClipboard()
             R.id.menu_group -> showGroupManager()
-            R.id.menu_share -> shareRules(rules)
-            R.id.menu_export -> exportRulesToClipboard(rules)
+            R.id.menu_share -> shareRules(getFilteredRules())
+            R.id.menu_export -> exportRulesToClipboard(getFilteredRules())
             R.id.menu_reset -> resetRules()
             else -> return false
         }
@@ -162,23 +165,46 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     private fun loadRules() {
         rules.clear()
         rules.addAll(HighlightRuleStore.load(requireContext()))
+        loadCurrentGroup()
         applyGroupFilter()
     }
 
+    private fun loadCurrentGroup() {
+        val saved = requireContext().getPrefString(PreferKey.highlightRuleCurrentGroup)
+        if (!saved.isNullOrBlank()) {
+            val groups = HighlightRuleGroupStore.load(requireContext())
+            if (groups.contains(saved)) {
+                currentGroup = saved
+            } else {
+                currentGroup = null
+                saveCurrentGroup()
+            }
+        }
+    }
+
+    private fun saveCurrentGroup() {
+        requireContext().putPrefString(PreferKey.highlightRuleCurrentGroup, currentGroup.orEmpty())
+    }
+
     private fun applyGroupFilter() {
-        val filtered = if (currentGroup == null) {
+        val filtered = getFilteredRules()
+        adapter.setItems(filtered)
+        updateEmptyState()
+        updateSubtitle()
+        saveCurrentGroup()
+    }
+
+    private fun getFilteredRules(): List<HighlightRule> {
+        return if (currentGroup == null) {
             rules.toList()
         } else {
             rules.filter { it.group == currentGroup }
         }
-        adapter.setItems(filtered)
-        updateEmptyState()
-        updateSubtitle()
     }
 
     private fun updateSubtitle() {
         val groupText = currentGroup ?: "全部分组"
-        val count = if (currentGroup == null) rules.size else rules.count { it.group == currentGroup }
+        val count = getFilteredRules().size
         binding.tvPageSubtitle.text = "$groupText · $count 条规则"
     }
 
@@ -188,7 +214,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     }
 
     private fun updateEmptyState() {
-        val filteredCount = if (currentGroup == null) rules.size else rules.count { it.group == currentGroup }
+        val filteredCount = getFilteredRules().size
         val empty = filteredCount == 0
         binding.recyclerView.visibility = if (empty) View.GONE else View.VISIBLE
         binding.emptyPanel.visibility = if (empty) View.VISIBLE else View.GONE
@@ -207,7 +233,8 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     }
 
     private fun editRule(rule: HighlightRule?) {
-        HighlightRuleEditDialog(rule) { newRule ->
+        val defaultGroup = rule?.group ?: currentGroup
+        HighlightRuleEditDialog(rule, defaultGroup) { newRule ->
             val index = rules.indexOfFirst { it.id == newRule.id }
             if (index >= 0) {
                 rules[index] = newRule
@@ -230,7 +257,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     }
 
     private fun showPresetRules() {
-        HighlightPresetRuleDialog { rule ->
+        HighlightPresetRuleDialog(currentGroup) { rule ->
             rules.add(rule)
             syncRules()
         }.show(childFragmentManager, "highlightPresetRule")
@@ -238,7 +265,12 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     private fun showGroupManager() {
         HighlightRuleGroupManageDialog(
-            onChanged = { loadRules() },
+            onChanged = { oldGroup, newGroup ->
+                if (oldGroup != null && currentGroup == oldGroup) {
+                    currentGroup = newGroup
+                }
+                loadRules()
+            },
             onSelectGroup = { group ->
                 currentGroup = group
                 applyGroupFilter()
@@ -291,10 +323,11 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             context?.toastOnUi(R.string.highlight_rule_import_invalid)
             return
         }
+        val targetGroup = currentGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP
         imported.forEach { rule ->
             val normalized = rule.copy(
                 id = if (rules.none { it.id == rule.id }) rule.id else rule.copyWithNewId().id,
-                group = rule.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP },
+                group = targetGroup,
                 underlineWidth = rule.underlineWidth.coerceIn(0.1f, 10f)
             )
             rules.add(normalized)

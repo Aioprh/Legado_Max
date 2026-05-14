@@ -33,6 +33,7 @@ import io.legado.app.ui.file.HandleFileContract
 
 class HighlightRuleEditDialog @JvmOverloads constructor(
     private val sourceRule: HighlightRule? = null,
+    private val defaultGroup: String? = null,
     private val onSave: (HighlightRule) -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_edit, true), ColorPickerDialogListener {
 
@@ -62,7 +63,9 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         initTheme()
-        editingRule = sourceRule?.copy() ?: HighlightRule()
+        editingRule = sourceRule?.copy() ?: HighlightRule(
+            group = defaultGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP
+        )
         groupItems = HighlightRuleGroupStore.load(requireContext())
         attachBottomSheetDismiss(
             binding.dragHandle,
