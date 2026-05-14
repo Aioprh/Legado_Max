@@ -324,13 +324,18 @@ object BookContent {
         }
         //获取下一页链接
         if (getNextPageUrl) {
-            val nextUrlRule = contentRule.nextContentUrl
-            if (!nextUrlRule.isNullOrEmpty()) {
+            if (bookSource.nextPageLazyLoad) {
                 Debug.log(bookSource.bookSourceUrl, "┌获取正文下一页链接", printLog)
-                analyzeRule.getStringList(nextUrlRule, isUrl = true)?.let {
-                    nextUrlList.addAll(it)
+                Debug.log(bookSource.bookSourceUrl, "└下一页懒加载已开启，请在阅读界面查看效果", printLog)
+            } else {
+                val nextUrlRule = contentRule.nextContentUrl
+                if (!nextUrlRule.isNullOrEmpty()) {
+                    Debug.log(bookSource.bookSourceUrl, "┌获取正文下一页链接", printLog)
+                    analyzeRule.getStringList(nextUrlRule, isUrl = true)?.let {
+                        nextUrlList.addAll(it)
+                    }
+                    Debug.log(bookSource.bookSourceUrl, "└" + nextUrlList.joinToString("，"), printLog)
                 }
-                Debug.log(bookSource.bookSourceUrl, "└" + nextUrlList.joinToString("，"), printLog)
             }
         }
         return Pair(content, nextUrlList)
