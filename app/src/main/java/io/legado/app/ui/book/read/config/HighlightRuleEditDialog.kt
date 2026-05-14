@@ -2,6 +2,7 @@ package io.legado.app.ui.book.read.config
 
 import android.graphics.Color
 import android.graphics.PorterDuff
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -120,6 +121,26 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.08f)
         }
 
+        val cardStrokeColor = if (isLight) {
+            ColorUtils.blendColors(0xFF000000.toInt(), bg, 0.88f)
+        } else {
+            ColorUtils.blendColors(0xFFFFFFFF.toInt(), bg, 0.85f)
+        }
+
+        val inputStrokeColor = if (isLight) {
+            ColorUtils.blendColors(0xFF000000.toInt(), bg, 0.82f)
+        } else {
+            ColorUtils.blendColors(0xFFFFFFFF.toInt(), bg, 0.80f)
+        }
+
+        val inputBgColor = if (isLight) {
+            ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.5f)
+        } else {
+            ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.06f)
+        }
+
+        val density = resources.displayMetrics.density
+
         binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.tvPageTitle.setTextColor(primaryTextColor)
 
@@ -134,9 +155,15 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.switchEnable.trackTintList = android.content.res.ColorStateList.valueOf(accentColor)
         binding.switchEnable.thumbTintList = android.content.res.ColorStateList.valueOf(accentColor)
 
-        binding.cardInfo.background?.mutate()?.setTint(cardBg)
-        binding.cardStyle.background?.mutate()?.setTint(cardBg)
-        binding.cardPreview.background?.mutate()?.setTint(cardBg)
+        val cardDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 24f * density
+            setColor(cardBg)
+            setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
+        }
+        binding.cardInfo.background = cardDrawable
+        binding.cardStyle.background = makeCardDrawable(cardBg, cardStrokeColor, 24f, density)
+        binding.cardPreview.background = makeCardDrawable(cardBg, cardStrokeColor, 24f, density)
 
         binding.etPattern.setTextColor(primaryTextColor)
         binding.etPattern.setHintTextColor(secondaryTextColor)
@@ -152,26 +179,49 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etBgImage.setTextColor(primaryTextColor)
         binding.etBgImage.setHintTextColor(secondaryTextColor)
         binding.tvBgImagePick.setTextColor(primaryTextColor)
+        binding.etSampleText.setTextColor(primaryTextColor)
+        binding.etSampleText.setHintTextColor(secondaryTextColor)
 
         binding.tvRegexToggle.setTextColor(primaryTextColor)
         binding.tvRegexToggle.background?.mutate()?.setTint(bg)
         binding.tvWidthMinus.setTextColor(primaryTextColor)
         binding.tvWidthPlus.setTextColor(primaryTextColor)
 
-        binding.etPattern.background?.mutate()?.setTint(bg)
-        binding.etName.background?.mutate()?.setTint(bg)
-        binding.spGroup.background?.mutate()?.setTint(bg)
-        binding.etTextColor.background?.mutate()?.setTint(bg)
-        binding.spUnderlineMode.background?.mutate()?.setTint(bg)
-        binding.etUnderlineColor.background?.mutate()?.setTint(bg)
-        binding.etSvgPath.background?.mutate()?.setTint(bg)
-        binding.tvPreview.background?.mutate()?.setTint(bg)
-        binding.etBgImage.background?.mutate()?.setTint(bg)
-        binding.tvBgImagePick.background?.mutate()?.setTint(bg)
-        binding.spBgImageFit.background?.mutate()?.setTint(bg)
-        binding.tvWidthMinus.background?.mutate()?.setTint(bg)
-        binding.tvWidthPlus.background?.mutate()?.setTint(bg)
-        binding.etUnderlineWidth.background?.mutate()?.setTint(bg)
+        val inputBg = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        val previewBg = makeInputDrawable(inputBgColor, inputStrokeColor, 16f, density)
+        binding.etPattern.background = inputBg
+        binding.etName.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.spGroup.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.etTextColor.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.spUnderlineMode.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.etUnderlineColor.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.etSvgPath.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.tvPreview.background = previewBg
+        binding.etBgImage.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.tvBgImagePick.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.etSampleText.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.spBgImageFit.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.tvWidthMinus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.tvWidthPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.etUnderlineWidth.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+    }
+
+    private fun makeCardDrawable(
+        fillColor: Int, strokeColor: Int, cornerDp: Float, density: Float
+    ) = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = cornerDp * density
+        setColor(fillColor)
+        setStroke((1f * density).toInt().coerceAtLeast(1), strokeColor)
+    }
+
+    private fun makeInputDrawable(
+        fillColor: Int, strokeColor: Int, cornerDp: Float, density: Float
+    ) = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = cornerDp * density
+        setColor(fillColor)
+        setStroke((1f * density).toInt().coerceAtLeast(1), strokeColor)
     }
 
     private fun bindData() {
@@ -183,6 +233,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etUnderlineWidth.setText(editingRule.underlineWidth.toString())
         binding.etSvgPath.setText(editingRule.underlineSvgPath.orEmpty())
         binding.etBgImage.setText(editingRule.bgImage.orEmpty())
+        binding.etSampleText.setText(editingRule.sampleText.ifBlank { editingRule.normalizedSampleText() })
         binding.spBgImageFit.setSelection(editingRule.bgImageFit.coerceIn(0, 2))
         binding.sbBgImageScale.progress = (editingRule.bgImageScale.coerceIn(0.1f, 5f) * 10).toInt()
         binding.tvBgImageScale.text = "${editingRule.bgImageScale.coerceIn(0.1f, 5f).formatScale()}x"
@@ -251,6 +302,10 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etBgImage.doAfterTextChanged {
             editingRule.bgImage = it?.toString().orEmpty().takeIf { it.isNotBlank() }
             updateBgImagePreview()
+            updatePreview()
+        }
+        binding.etSampleText.doAfterTextChanged {
+            editingRule.sampleText = it?.toString().orEmpty()
             updatePreview()
         }
         binding.tvBgImagePick.setOnClickListener {
@@ -402,6 +457,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             id = editingRule.id.ifBlank { System.currentTimeMillis().toString() },
             name = name.ifBlank { pattern },
             pattern = pattern,
+            sampleText = binding.etSampleText.text?.toString().orEmpty(),
             group = groupItems.getOrElse(binding.spGroup.selectedItemPosition) {
                 HighlightRuleGroupStore.DEFAULT_GROUP
             },
@@ -431,6 +487,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             editingRule.copy(
                 name = binding.etName.text?.toString().orEmpty(),
                 pattern = pattern,
+                sampleText = binding.etSampleText.text?.toString().orEmpty(),
                 group = groupItems.getOrElse(binding.spGroup.selectedItemPosition) {
                     HighlightRuleGroupStore.DEFAULT_GROUP
                 },

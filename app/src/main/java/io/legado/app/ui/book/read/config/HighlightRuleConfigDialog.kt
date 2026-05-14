@@ -3,6 +3,7 @@ package io.legado.app.ui.book.read.config
 import android.content.Context
 import android.content.Intent
 import android.graphics.PorterDuff
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.MenuItem
@@ -45,7 +46,9 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     private var secondaryTextColor = 0
     private var accentColor = 0
     private var cardBgColor = 0
+    private var cardStrokeColor = 0
     private var previewBgColor = 0
+    private var previewStrokeColor = 0
 
     override fun onStart() {
         super.onStart()
@@ -94,7 +97,13 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         } else {
             ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.06f)
         }
+        cardStrokeColor = if (isLight) {
+            ColorUtils.blendColors(0xFF000000.toInt(), bg, 0.88f)
+        } else {
+            ColorUtils.blendColors(0xFFFFFFFF.toInt(), bg, 0.85f)
+        }
         previewBgColor = cardBgColor
+        previewStrokeColor = cardStrokeColor
 
         binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.ivClose.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
@@ -359,9 +368,20 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             binding.tvPattern.text = "${item.group} / ${item.displayPattern()}"
             binding.tvPreview.text = HighlightRulePreview.build(item)
 
-            binding.root.background?.mutate()?.setTint(cardBgColor)
+            val density = binding.root.context.resources.displayMetrics.density
+            binding.root.background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 24f * density
+                setColor(cardBgColor)
+                setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
+            }
             binding.tvPattern.background?.mutate()?.setTint(accentColor)
-            binding.tvPreview.background?.mutate()?.setTint(previewBgColor)
+            binding.tvPreview.background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 20f * density
+                setColor(previewBgColor)
+                setStroke((1f * density).toInt().coerceAtLeast(1), previewStrokeColor)
+            }
             binding.tvEdit.background?.mutate()?.setTint(accentColor)
 
             binding.switchEnable.setOnCheckedChangeListener(null)
