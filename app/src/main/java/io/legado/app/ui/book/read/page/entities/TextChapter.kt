@@ -6,6 +6,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.help.book.BookContent
+import io.legado.app.model.webBook.LazyContentManager
 import io.legado.app.ui.book.read.page.provider.LayoutProgressListener
 import io.legado.app.ui.book.read.page.provider.TextChapterLayout
 import io.legado.app.utils.fastBinarySearchBy
@@ -13,9 +14,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlin.math.abs
 import kotlin.math.min
 
-/**
- * 章节信息
- */
 @Keep
 @Suppress("unused")
 data class TextChapter(
@@ -26,7 +24,6 @@ data class TextChapter(
     val sameTitleRemoved: Boolean,
     val isVip: Boolean,
     val isPay: Boolean,
-    //起效的替换规则
     val effectiveReplaceRules: List<ReplaceRule>?
 ) : LayoutProgressListener {
 
@@ -34,6 +31,9 @@ data class TextChapter(
     val pages: List<TextPage> get() = textPages
 
     private var layout: TextChapterLayout? = null
+    
+    var lazyContent: LazyContentManager? = null
+    var useLazyLoading: Boolean = false
 
     val layoutChannel get() = layout!!.channel
 
