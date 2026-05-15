@@ -37,8 +37,7 @@ object DefaultData {
                     importDefaultDictRules()
                 }
                 if (LocalConfig.needUpThemeConfig) {
-                    ThemeConfig.mergeDefaultThemes()
-                    ThemeConfig.updateDefaultThemeColors(appCtx)
+                    upDefaultTheme()
                 }
             }.onError {
                 it.printOnDebug()
@@ -222,6 +221,14 @@ object DefaultData {
 
     fun importDefaultDictRules() {
         appDb.dictRuleDao.insert(*dictRules.toTypedArray())
+    }
+
+    /**
+     * 升级默认主题配置
+     * 检查用户是否使用旧的默认主题，如果是则更新为新的默认主题
+     */
+    private fun upDefaultTheme() {
+        ThemeConfig.upDefaultThemeConfig()
     }
 
 }

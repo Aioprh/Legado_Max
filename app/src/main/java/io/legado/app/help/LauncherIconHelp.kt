@@ -37,24 +37,23 @@ object LauncherIconHelp {
     fun fixLauncherIconPref() {
         if (Build.VERSION.SDK_INT < 26) return
         
-        val savedIcon = getPrefString(PreferKey.launcherIcon)
+        val savedIcon = appCtx.getPrefString(PreferKey.launcherIcon)
         
-        val isWelcomeEnabled = packageManager.getComponentEnabledSetting(
-            welcomeComponent
-        ) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        val welcomeState = packageManager.getComponentEnabledSetting(welcomeComponent)
+        val isWelcomeEnabled = welcomeState == PackageManager.COMPONENT_ENABLED_STATE_ENABLED 
+            || welcomeState == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
         
         if (isWelcomeEnabled) {
             if (savedIcon != "ic_launcher") {
-                putPrefString(PreferKey.launcherIcon, "ic_launcher")
+                appCtx.putPrefString(PreferKey.launcherIcon, "ic_launcher")
             }
             return
         }
         
         var actualEnabledIcon: String? = null
         for (component in componentNames) {
-            val isEnabled = packageManager.getComponentEnabledSetting(
-                component
-            ) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            val state = packageManager.getComponentEnabledSetting(component)
+            val isEnabled = state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
             if (isEnabled) {
                 actualEnabledIcon = component.className.substringAfterLast(".")
                 break
@@ -62,7 +61,7 @@ object LauncherIconHelp {
         }
         
         if (actualEnabledIcon != null && savedIcon != actualEnabledIcon) {
-            putPrefString(PreferKey.launcherIcon, actualEnabledIcon)
+            appCtx.putPrefString(PreferKey.launcherIcon, actualEnabledIcon)
         }
     }
 

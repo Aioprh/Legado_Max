@@ -151,45 +151,38 @@ object ThemeConfig {
     }
 
     /**
-     * 合并默认主题配置
-     * 用于版本更新时将新的默认主题添加到用户已有的主题列表中
-     * 不会覆盖用户已有的同名主题
+     * 升级默认主题配置
+     * 检查用户是否使用旧的默认主题，如果是则更新为新的默认主题
      */
-    fun mergeDefaultThemes() {
-        val defaultThemes = DefaultData.themeConfigs
-        var hasNew = false
-        defaultThemes.forEach { defaultTheme ->
-            val exists = configList.any { it.themeName == defaultTheme.themeName }
-            if (!exists) {
-                configList.add(defaultTheme)
-                hasNew = true
-            }
-        }
-        if (hasNew) {
-            save()
-        }
-    }
+    fun upDefaultThemeConfig() {
+        val context = appCtx
 
-    /**
-     * 更新默认主题颜色
-     * 如果用户使用的是旧的默认主题，则更新为新的默认主题颜色
-     */
-    fun updateDefaultThemeColors(context: Context) {
         val dayThemeName = context.getPrefString(PreferKey.dThemeName)
         val nightThemeName = context.getPrefString(PreferKey.dNThemeName)
-        
-        if (dayThemeName.isNullOrEmpty() || dayThemeName == "默认") {
-            val classicWhite = configList.find { it.themeName == "经典白" }
-            if (classicWhite != null) {
-                applyConfig(context, classicWhite)
-            }
+
+        val newDayPrimary = context.getCompatColor(R.color.default_primary)
+        val newDayAccent = context.getCompatColor(R.color.default_accent)
+        val newDayBackground = context.getCompatColor(R.color.default_background)
+        val newDayBottomBackground = context.getCompatColor(R.color.default_bottom_background)
+        val newNightPrimary = context.getCompatColor(R.color.default_night_primary)
+        val newNightAccent = context.getCompatColor(R.color.default_night_accent)
+        val newNightBackground = context.getCompatColor(R.color.default_night_background)
+        val newNightBottomBackground = context.getCompatColor(R.color.default_night_bottom_background)
+
+        if (dayThemeName == "默认") {
+            context.putPrefInt(PreferKey.cPrimary, newDayPrimary)
+            context.putPrefInt(PreferKey.cAccent, newDayAccent)
+            context.putPrefInt(PreferKey.cBackground, newDayBackground)
+            context.putPrefInt(PreferKey.cBBackground, newDayBottomBackground)
+            context.putPrefString(PreferKey.dThemeName, "经典白")
         }
-        
-        if (nightThemeName.isNullOrEmpty() || nightThemeName == "默认") {
-            val aScreenBlack = configList.find { it.themeName == "A屏黑" }
-            if (aScreenBlack != null) {
-                applyConfig(context, aScreenBlack)
-            }
+
+        if (nightThemeName == "默认") {
+            context.putPrefInt(PreferKey.cNPrimary, newNightPrimary)
+            context.putPrefInt(PreferKey.cNAccent, newNightAccent)
+            context.putPrefInt(PreferKey.cNBackground, newNightBackground)
+            context.putPrefInt(PreferKey.cNBBackground, newNightBottomBackground)
+            context.putPrefString(PreferKey.dNThemeName, "A屏黑")
         }
     }
 
