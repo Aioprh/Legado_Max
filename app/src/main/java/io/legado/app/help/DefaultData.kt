@@ -228,6 +228,7 @@ object DefaultData {
      * 检查用户是否使用旧的默认主题，如果是则更新为新的默认主题
      */
     private fun upDefaultTheme() {
+        ThemeConfig.upConfig()
         ThemeConfig.upDefaultThemeConfig()
     }
 
