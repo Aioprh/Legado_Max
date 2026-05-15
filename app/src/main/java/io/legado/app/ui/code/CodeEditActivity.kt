@@ -404,8 +404,8 @@ class CodeEditActivity :
         if (sourceJson.isNullOrEmpty() || sourceType.isNullOrEmpty()) {
             return
         }
-        showDialogFragment(RuleSearchDialog(sourceJson, sourceType) { tabKey, fieldKey ->
-            switchToField(tabKey, fieldKey)
+        showDialogFragment(RuleSearchDialog(sourceJson, sourceType) { tabKey, fieldKey, cursorPosition ->
+            switchToField(tabKey, fieldKey, cursorPosition)
         })
     }
 
@@ -516,17 +516,17 @@ class CodeEditActivity :
                 SelectItem("目录下一页规则", "nextTocUrl")
             )
             "content" -> listOf(
-                SelectItem("正文内容", "content"),
-                SelectItem("下页内容URL", "nextContentUrl"),
-                SelectItem("子内容", "subContent"),
+                SelectItem("正文规则", "content"),
+                SelectItem("正文下一页URL规则", "nextContentUrl"),
+                SelectItem("副文规则", "subContent"),
                 SelectItem("替换正则", "replaceRegex"),
-                SelectItem("标题", "title"),
+                SelectItem("章节名称规则", "ChapterName"),
                 SelectItem("资源正则", "sourceRegex"),
                 SelectItem("图片样式", "imageStyle"),
-                SelectItem("图片解码", "imageDecode"),
-                SelectItem("网页JS", "webJs"),
-                SelectItem("付费操作", "payAction"),
-                SelectItem("回调JS", "callBackJs")
+                SelectItem("图片解密", "imageDecode"),
+                SelectItem("WebView JS", "webJs"),
+                SelectItem("购买操作", "payAction"),
+                SelectItem("回调操作", "callBackJs")
             )
             else -> emptyList()
         }
@@ -642,8 +642,9 @@ class CodeEditActivity :
      *               - "list": 从根对象获取（如 ruleArticles、ruleTitle）
      *               - "webView": 从根对象获取（如 ruleContent、injectJs）
      * @param fieldKey 字段标识，如 "author" 表示作者，"name" 表示书名
+     * @param cursorPosition 光标位置，用于从搜索结果跳转到匹配位置
      */
-    private fun switchToField(tabKey: String, fieldKey: String) {
+    private fun switchToField(tabKey: String, fieldKey: String, cursorPosition: Int = 0) {
         val json = viewModel.sourceJson ?: return
         try {
             // 解析源JSON字符串为JsonObject
@@ -707,6 +708,12 @@ class CodeEditActivity :
             viewModel.initialText = value ?: ""
             // 更新标题栏显示的字段名
             updateTitle(fieldKey)
+            if (cursorPosition > 0) {
+                editor.post {
+                    val pos = editor.cursor.indexer.getCharPosition(cursorPosition)
+                    editor.setSelection(pos.line, pos.column)
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -812,17 +819,17 @@ class CodeEditActivity :
             "isVip" to "是否VIP",
             "isPay" to "购买标识",
             "nextTocUrl" to "目录下一页规则",
-            "content" to "正文内容",
-            "nextContentUrl" to "下页内容URL",
-            "subContent" to "子内容",
+            "content" to "正文规则",
+            "nextContentUrl" to "正文下一页URL规则",
+            "subContent" to "副文规则",
             "replaceRegex" to "替换正则",
-            "title" to "标题",
+            "ChapterName" to "章节名称规则",
             "sourceRegex" to "资源正则",
             "imageStyle" to "图片样式",
-            "imageDecode" to "图片解码",
-            "webJs" to "网页JS",
-            "payAction" to "付费操作",
-            "callBackJs" to "回调JS"
+            "imageDecode" to "图片解密",
+            "webJs" to "WebView JS",
+            "payAction" to "购买操作",
+            "callBackJs" to "回调操作"
         )
         
         return when (sourceType) {

@@ -38,7 +38,7 @@ import kotlinx.coroutines.withContext
 class RuleSearchDialog(
     private val sourceJson: String,
     private val sourceType: String,
-    private val onFieldSelected: (tabKey: String, fieldKey: String) -> Unit
+    private val onFieldSelected: (tabKey: String, fieldKey: String, cursorPosition: Int) -> Unit
 ) : BaseDialogFragment(R.layout.dialog_rule_search) {
 
     private val binding by viewBinding(DialogRuleSearchBinding::bind)
@@ -189,16 +189,16 @@ class RuleSearchDialog(
                 ),
                 "content" to listOf(
                     "content" to "正文内容",
-                    "nextContentUrl" to "下页内容URL",
-                    "subContent" to "子内容",
+                    "nextContentUrl" to "正文下一页URL规则",
+                    "subContent" to "副文规则",
                     "replaceRegex" to "替换正则",
-                    "title" to "标题",
+                    "ChapterName" to "章节名称规则",
                     "sourceRegex" to "资源正则",
                     "imageStyle" to "图片样式",
-                    "imageDecode" to "图片解码",
-                    "webJs" to "网页JS",
-                    "payAction" to "付费操作",
-                    "callBackJs" to "回调JS"
+                    "imageDecode" to "图片解密",
+                    "webJs" to "WebView JS",
+                    "payAction" to "购买操作",
+                    "callBackJs" to "回调操作"
                 )
             )
         }
@@ -337,7 +337,8 @@ class RuleSearchDialog(
                             fieldName = fieldName,
                             matchedText = contextText,
                             fullValue = value,
-                            searchTerm = query
+                            searchTerm = query,
+                            matchIndex = matchIndex
                         ))
                         startIndex = matchIndex + 1
                     }
@@ -631,8 +632,7 @@ class RuleSearchDialog(
                 binding.matchedTextText.text = highlightText(fieldResult.matchedText, fieldResult.searchTerm)
 
                 binding.root.setOnClickListener {
-                    val tabKey = if (sourceType == "rssSource") "base" else tabResult.tabKey
-                    onFieldSelected(tabKey, fieldResult.fieldKey)
+                    onFieldSelected(tabResult.tabKey, fieldResult.fieldKey, fieldResult.matchIndex)
                     dismiss()
                 }
             }
@@ -656,5 +656,6 @@ private data class FieldSearchResult(
     val fieldName: String,
     val matchedText: String,
     val fullValue: String,
-    val searchTerm: String
+    val searchTerm: String,
+    val matchIndex: Int = 0
 )
