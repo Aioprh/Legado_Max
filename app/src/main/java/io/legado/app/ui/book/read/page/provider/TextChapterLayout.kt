@@ -42,6 +42,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.LinkedList
 import kotlin.math.roundToInt
 import android.util.Size
@@ -141,6 +143,7 @@ class TextChapterLayout(
     private var durY = 0f
     private var absStartX = paddingLeft
     private var floatArray = FloatArray(128)
+    private val appendMutex = Mutex()
 
     private var isCompleted = false
     private val job: Coroutine<*>
@@ -183,7 +186,9 @@ class TextChapterLayout(
         kotlinx.coroutines.GlobalScope.launch(IO) {
             try {
                 AppLog.put("懒加载排版: 开始追加内容，共${newContents.size}段")
-                appendContentInternal(newContents)
+                appendMutex.withLock {
+                    appendContentInternal(newContents)
+                }
                 AppLog.put("懒加载排版: 追加内容完成")
             } catch (e: Exception) {
                 AppLog.put("追加内容失败: ${e.localizedMessage}", e)
@@ -747,6 +752,10 @@ class TextChapterLayout(
         textPage.text = stringBuilder.toString()
         currentCoroutineContext().ensureActive()
         onPageCompleted()
+        pendingTextPage = TextPage()
+        stringBuilder.clear()
+        durY = 0f
+        absStartX = paddingLeft
         onCompleted()
     }
 

@@ -550,6 +550,7 @@ object ReadBook : CoroutineScope by MainScope() {
      */
     private fun curPageChanged(pageChanged: Boolean = false) {
         callBack?.pageChanged()
+        curTextChapter?.maybePrefetchNextPage(durPageIndex)
         curTextChapter?.let {
             if (BaseReadAloudService.isRun && it.isCompleted) {
                 val scrollPageAnim = pageAnim() == 3
@@ -562,6 +563,13 @@ object ReadBook : CoroutineScope by MainScope() {
         }
         upReadTime()
         preDownload()
+    }
+
+    private fun nextChapterUrl(book: Book, chapter: BookChapter): String? {
+        if (chapter.index + 1 >= chapterSize) {
+            return null
+        }
+        return appDb.bookChapterDao.getChapter(book.bookUrl, chapter.index + 1)?.url
     }
 
     /**
@@ -719,7 +727,7 @@ object ReadBook : CoroutineScope by MainScope() {
                 bookSource = bookSource,
                 book = book,
                 bookChapter = chapter,
-                nextChapterUrl = null,
+                nextChapterUrl = nextChapterUrl(book, chapter),
                 callback = lazyCallback
             )
             contentLoadFinishLazy(
@@ -771,7 +779,7 @@ object ReadBook : CoroutineScope by MainScope() {
                         bookSource = bookSource,
                         book = book,
                         bookChapter = chapter,
-                        nextChapterUrl = null,
+                        nextChapterUrl = nextChapterUrl(book, chapter),
                         callback = lazyCallback
                     )
                     contentLoadFinishLazy(book, chapter, content, lazyContent, upContent, resetPageOffset)

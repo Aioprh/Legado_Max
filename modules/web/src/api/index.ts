@@ -28,7 +28,7 @@ const responseCheckInterceptor = (resp: AxiosResponse) => {
     for (const key of LeagdoApiResponseKeys) {
       if (!(key in data)) {
         isLeagdoApiResponse = false
-        LeagdoApiResponseKeys.length = 0
+        break
       }
     }
     if ((data as LeagdoApiResponse<unknown>).isSuccess === true) {

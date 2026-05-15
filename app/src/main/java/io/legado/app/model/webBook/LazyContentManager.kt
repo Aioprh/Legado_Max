@@ -105,11 +105,11 @@ class LazyContentManager(
         return pageContent
     }
     
-    fun prefetchNextPage() {
+    fun prefetchNextPage(): Boolean {
         val nextIdx: Int
         synchronized(lock) {
             nextIdx = getNextPageToLoad()
-            if (nextIdx < 0) return
+            if (nextIdx < 0) return false
             loadingPages[nextIdx] = AtomicBoolean(true)
         }
         
@@ -194,6 +194,7 @@ class LazyContentManager(
                 loadingPages[nextIdx]?.set(false)
             }
         }
+        return true
     }
     
     suspend fun loadPage(index: Int): PageContent? {
