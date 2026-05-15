@@ -96,7 +96,8 @@ class ContentProcessor private constructor(
         includeTitle: Boolean = true,
         useReplace: Boolean = true,
         chineseConvert: Boolean = true,
-        reSegment: Boolean = true
+        reSegment: Boolean = true,
+        forceRemoveTitle: Boolean = false
     ): BookContent {
         var mContent = content
         var sameTitleRemoved = false
@@ -125,6 +126,25 @@ class ContentProcessor private constructor(
                         .matcher(mContent)
                     if (matcher.find()) {
                         mContent = mContent.substring(matcher.end())
+                        sameTitleRemoved = true
+                    }
+                }
+                // 如果正则匹配失败且强制移除标题，尝试移除第一行
+                if (!sameTitleRemoved && forceRemoveTitle) {
+                    val firstLine = mContent.lines().firstOrNull()?.trim() ?: ""
+                    val chapterTitle = chapter.title.trim()
+                    val displayTitle = chapter.getDisplayTitle(
+                        titleReplaceRules,
+                        useReplace = useReplace && book.getUseReplaceRule(),
+                        chineseConvert = false,
+                        replaceBook = replaceBook
+                    ).trim()
+                    // 如果第一行与标题相同或相似，移除第一行
+                    if (firstLine.isNotEmpty() && 
+                        (firstLine == chapterTitle || firstLine == displayTitle ||
+                         firstLine.contains(chapterTitle) || chapterTitle.contains(firstLine) ||
+                         firstLine.contains(displayTitle) || displayTitle.contains(firstLine))) {
+                        mContent = mContent.removePrefix(firstLine).trimStart()
                         sameTitleRemoved = true
                     }
                 }
