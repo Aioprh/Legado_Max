@@ -571,7 +571,7 @@ class CodeEditActivity :
             "base" -> listOf(
                 SelectItem("源名称", "sourceName"),
                 SelectItem("源URL", "sourceUrl"),
-                SelectItem("源图标", "sourceIcon"),
+                SelectItem("图标", "sourceIcon"),
                 SelectItem("源分组", "sourceGroup"),
                 SelectItem("源注释", "sourceComment"),
                 SelectItem("搜索地址", "searchUrl"),
@@ -579,47 +579,34 @@ class CodeEditActivity :
                 SelectItem("登录URL", "loginUrl"),
                 SelectItem("登录UI", "loginUi"),
                 SelectItem("登录检查JS", "loginCheckJs"),
-                SelectItem("封面解密JS", "coverDecodeJs"),
+                SelectItem("封面解密", "coverDecodeJs"),
                 SelectItem("请求头", "header"),
                 SelectItem("变量说明", "variableComment"),
                 SelectItem("并发率", "concurrentRate"),
                 SelectItem("js库", "jsLib")
             )
-            "search" -> listOf(
-                SelectItem("搜索地址", "searchUrl"),
-                SelectItem("文章列表", "ruleArticles"),
-                SelectItem("下一篇", "ruleNextPage"),
-                SelectItem("标题", "ruleTitle"),
-                SelectItem("描述", "ruleDescription"),
-                SelectItem("链接", "ruleLink"),
-                SelectItem("内容", "ruleContent"),
-                SelectItem("图片", "ruleImage"),
-                SelectItem("日期", "rulePubDate")
-            )
             "start" -> listOf(
-                SelectItem("分类URL", "sortUrl"),
-                SelectItem("文章列表", "ruleArticles"),
-                SelectItem("下一篇", "ruleNextPage"),
-                SelectItem("标题", "ruleTitle"),
-                SelectItem("描述", "ruleDescription"),
-                SelectItem("链接", "ruleLink"),
-                SelectItem("内容", "ruleContent"),
-                SelectItem("图片", "ruleImage"),
-                SelectItem("日期", "rulePubDate")
+                SelectItem("起始页HTML", "startHtml"),
+                SelectItem("起始页样式", "startStyle"),
+                SelectItem("起始页JS", "startJs"),
+                SelectItem("预加载JS", "preloadJs")
             )
-            "article" -> listOf(
-                SelectItem("正文内容", "ruleContent"),
-                SelectItem("下一篇", "ruleNextPage"),
-                SelectItem("标题", "ruleTitle"),
-                SelectItem("描述", "ruleDescription"),
-                SelectItem("链接", "ruleLink"),
-                SelectItem("图片", "ruleImage"),
-                SelectItem("日期", "rulePubDate"),
+            "list" -> listOf(
+                SelectItem("列表规则", "ruleArticles"),
+                SelectItem("列表下一页规则", "ruleNextArticles"),
+                SelectItem("标题规则", "ruleTitle"),
+                SelectItem("时间规则", "rulePubDate"),
+                SelectItem("描述规则", "ruleDescription"),
+                SelectItem("图片URL规则", "ruleImage"),
+                SelectItem("链接规则", "ruleLink")
+            )
+            "webView" -> listOf(
+                SelectItem("内容规则", "ruleContent"),
                 SelectItem("样式", "style"),
                 SelectItem("注入JS", "injectJs"),
-                SelectItem("URL跳转拦截", "shouldOverrideUrlLoading"),
-                SelectItem("内容白名单", "contentWhitelist"),
-                SelectItem("内容黑名单", "contentBlacklist")
+                SelectItem("白名单", "contentWhitelist"),
+                SelectItem("黑名单", "contentBlacklist"),
+                SelectItem("URL跳转拦截", "shouldOverrideUrlLoading")
             )
             else -> emptyList()
         }
@@ -628,7 +615,7 @@ class CodeEditActivity :
             setTitle("选择字段")
             items(fields.map { it.title }) { _, position ->
                 val fieldKey = fields[position].value
-                switchToField("base", fieldKey)
+                switchToField(tabKey, fieldKey)
             }
             onCancelled {
                 showRssSourceRuleSelector()
@@ -642,12 +629,18 @@ class CodeEditActivity :
      * 从源JSON中获取指定字段的值，并更新编辑器内容
      * 
      * @param tabKey 板块标识，用于确定从哪个规则对象获取数据
+     *               书源：
      *               - "base": 从根对象获取（如 bookSourceUrl、bookSourceName）
      *               - "search": 从 ruleSearch 对象获取（如 bookList、name）
      *               - "explore": 从 ruleExplore 对象获取
      *               - "info": 从 ruleBookInfo 对象获取
      *               - "toc": 从 ruleToc 对象获取
      *               - "content": 从 ruleContent 对象获取
+     *               订阅源：
+     *               - "base": 从根对象获取（如 sourceUrl、sourceName）
+     *               - "start": 从根对象获取（如 startHtml、startJs）
+     *               - "list": 从根对象获取（如 ruleArticles、ruleTitle）
+     *               - "webView": 从根对象获取（如 ruleContent、injectJs）
      * @param fieldKey 字段标识，如 "author" 表示作者，"name" 表示书名
      */
     private fun switchToField(tabKey: String, fieldKey: String) {
@@ -698,6 +691,9 @@ class CodeEditActivity :
                 "article" -> {
                     val rule = jsonObj.getAsJsonObject("ruleArticle")
                     if (rule != null && rule.has(fieldKey)) rule.get(fieldKey).asString else ""
+                }
+                "start", "list", "webView" -> {
+                    if (jsonObj.has(fieldKey)) jsonObj.get(fieldKey).asString else ""
                 }
                 else -> ""
             }
@@ -762,13 +758,17 @@ class CodeEditActivity :
             "ruleDescription" to "描述",
             "ruleLink" to "链接",
             "ruleImage" to "图片",
-            "rulePubDate" to "日期",
+            "rulePubDate" to "发布日期",
             "ruleContent" to "正文内容",
             "style" to "样式",
             "injectJs" to "注入JS",
             "shouldOverrideUrlLoading" to "URL跳转拦截",
             "contentWhitelist" to "内容白名单",
-            "contentBlacklist" to "内容黑名单"
+            "contentBlacklist" to "内容黑名单",
+            "enableJs" to "启用JS",
+            "loadWithBaseUrl" to "使用BaseURL加载",
+            "showWebLog" to "显示Web日志",
+            "cacheFirst" to "缓存优先"
         )
         
         // 书源字段映射
