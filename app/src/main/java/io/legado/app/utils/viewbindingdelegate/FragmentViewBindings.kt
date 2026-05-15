@@ -6,13 +6,23 @@ package io.legado.app.utils.viewbindingdelegate
 import android.view.View
 import androidx.annotation.IdRes
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.LifecycleOwner
 import androidx.viewbinding.ViewBinding
 
 private class FragmentViewBindingProperty<F : Fragment, T : ViewBinding>(
     viewBinder: (F) -> T
 ) : ViewBindingProperty<F, T>(viewBinder) {
 
-    override fun getLifecycleOwner(thisRef: F) = thisRef.viewLifecycleOwner
+    override fun getLifecycleOwner(thisRef: F): LifecycleOwner {
+        if (thisRef.view == null) {
+            throw IllegalStateException(
+                "Can't access the Fragment View's LifecycleOwner when getView() is null. " +
+                "This happens before onCreateView() or after onDestroyView(). " +
+                "Make sure to only access the view binding when the fragment view is available."
+            )
+        }
+        return thisRef.viewLifecycleOwner
+    }
 }
 
 /**

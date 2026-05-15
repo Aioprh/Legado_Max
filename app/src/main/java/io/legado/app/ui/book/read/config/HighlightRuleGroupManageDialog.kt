@@ -4,10 +4,12 @@ import android.graphics.PorterDuff
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.R
@@ -22,8 +24,10 @@ import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.observeEvent
+import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -192,6 +196,34 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
         }
     }
 
+    private fun exportGroup(group: String) {
+        val targetRules = rules.filter { it.group == group }
+        if (targetRules.isEmpty()) {
+            context?.toastOnUi("璇ュ垎缁勬殏鏃犺鍒欏彲瀵煎嚭")
+            return
+        }
+        requireContext().sendToClip(GSON.toJson(targetRules))
+        context?.toastOnUi("宸插鍒?${targetRules.size} 鏉¤鍒?")
+    }
+
+    private fun showItemMenu(group: String, anchor: View) {
+        PopupMenu(requireContext(), anchor).apply {
+            menuInflater.inflate(R.menu.highlight_rule_group_item, menu)
+            if (group == HighlightRuleGroupStore.DEFAULT_GROUP) {
+                menu.findItem(R.id.menu_delete)?.isVisible = false
+            }
+            setOnMenuItemClickListener { item: MenuItem ->
+                when (item.itemId) {
+                    R.id.menu_rename_group -> showGroupInputDialog(group)
+                    R.id.menu_export_group -> exportGroup(group)
+                    R.id.menu_delete -> deleteGroup(group)
+                    else -> return@setOnMenuItemClickListener false
+                }
+                true
+            }
+        }.show()
+    }
+
     private fun groupCount(group: String): Int {
         return rules.count { it.group == group }
     }
@@ -211,11 +243,19 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
                     dismissAllowingStateLoss()
                 }
             }
+            binding.itemRoot.setOnLongClickListener {
+                getItem(holder.layoutPosition)?.let { group ->
+                    showItemMenu(group, binding.itemRoot)
+                }
+                true
+            }
             binding.tvEdit.setOnClickListener {
                 getItem(holder.layoutPosition)?.let(::showGroupInputDialog)
             }
             binding.tvDelete.setOnClickListener {
-                getItem(holder.layoutPosition)?.let(::deleteGroup)
+                getItem(holder.layoutPosition)?.let { group ->
+                    showItemMenu(group, binding.tvDelete)
+                }
             }
         }
 
@@ -235,9 +275,8 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
             binding.tvEdit.setTextColor(
                 if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
             )
-            binding.tvDelete.setTextColor(context.getColor(R.color.error))
-            binding.tvDelete.visibility =
-                if (item == HighlightRuleGroupStore.DEFAULT_GROUP) View.GONE else View.VISIBLE
+            binding.tvDelete.setTextColor(primaryTextColor)
+            binding.tvDelete.visibility = View.VISIBLE
         }
     }
 

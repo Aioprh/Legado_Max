@@ -48,12 +48,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="6dp"
-        android:background="@drawable/shape_highlight_rule_action_danger"
+        android:background="@drawable/shape_highlight_rule_action"
         android:paddingStart="8dp"
         android:paddingTop="5dp"
         android:paddingEnd="8dp"
         android:paddingBottom="5dp"
-        android:text="删除"
+        android:text="更多"
         android:textSize="11sp" />
 
 </LinearLayout>

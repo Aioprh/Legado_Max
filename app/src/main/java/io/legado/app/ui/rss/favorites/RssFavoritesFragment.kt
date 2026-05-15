@@ -38,6 +38,7 @@ class RssFavoritesFragment() : VMBaseFragment<RssFavoritesViewModel>(R.layout.fr
     private val adapter: RssFavoritesAdapter by lazy {
         RssFavoritesAdapter(requireContext(), this@RssFavoritesFragment)
     }
+    private val viewScope get() = viewLifecycleOwner.lifecycleScope
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         initView()
@@ -56,7 +57,7 @@ class RssFavoritesFragment() : VMBaseFragment<RssFavoritesViewModel>(R.layout.fr
     }
 
     private fun loadArticles() {
-        lifecycleScope.launch {
+        viewScope.launch {
             val group = arguments?.getString("group") ?: "默认分组"
             appDb.rssStarDao.flowByGroup(group).catch {
                 AppLog.put("订阅文章界面获取数据失败\n${it.localizedMessage}", it)
