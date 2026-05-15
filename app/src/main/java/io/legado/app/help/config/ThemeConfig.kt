@@ -150,6 +150,42 @@ object ThemeConfig {
         addConfigs(getConfigs())
     }
 
+    /**
+     * 升级默认主题配置
+     * 检查用户是否使用旧的默认主题，如果是则更新为新的默认主题
+     */
+    fun upDefaultThemeConfig() {
+        val context = appCtx
+
+        val dayThemeName = context.getPrefString(PreferKey.dThemeName)
+        val nightThemeName = context.getPrefString(PreferKey.dNThemeName)
+
+        val newDayPrimary = context.getCompatColor(R.color.default_primary)
+        val newDayAccent = context.getCompatColor(R.color.default_accent)
+        val newDayBackground = context.getCompatColor(R.color.default_background)
+        val newDayBottomBackground = context.getCompatColor(R.color.default_bottom_background)
+        val newNightPrimary = context.getCompatColor(R.color.default_night_primary)
+        val newNightAccent = context.getCompatColor(R.color.default_night_accent)
+        val newNightBackground = context.getCompatColor(R.color.default_night_background)
+        val newNightBottomBackground = context.getCompatColor(R.color.default_night_bottom_background)
+
+        if (dayThemeName == "默认") {
+            context.putPrefInt(PreferKey.cPrimary, newDayPrimary)
+            context.putPrefInt(PreferKey.cAccent, newDayAccent)
+            context.putPrefInt(PreferKey.cBackground, newDayBackground)
+            context.putPrefInt(PreferKey.cBBackground, newDayBottomBackground)
+            context.putPrefString(PreferKey.dThemeName, "经典白")
+        }
+
+        if (nightThemeName == "默认") {
+            context.putPrefInt(PreferKey.cNPrimary, newNightPrimary)
+            context.putPrefInt(PreferKey.cNAccent, newNightAccent)
+            context.putPrefInt(PreferKey.cNBackground, newNightBackground)
+            context.putPrefInt(PreferKey.cNBBackground, newNightBottomBackground)
+            context.putPrefString(PreferKey.dNThemeName, "A屏黑")
+        }
+    }
+
     fun replaceConfigs(newConfigs: List<Config>?) {
         val validConfigs = newConfigs?.filter { validateConfig(it) } ?: emptyList()
         configList.clear()
@@ -360,13 +396,13 @@ object ThemeConfig {
 
     private fun getDayTheme(context: Context, name: String): Config {
         val primary =
-            context.getPrefInt(PreferKey.cPrimary, context.getCompatColor(R.color.md_brown_500))
+            context.getPrefInt(PreferKey.cPrimary, context.getCompatColor(R.color.default_primary))
         val accent =
-            context.getPrefInt(PreferKey.cAccent, context.getCompatColor(R.color.md_red_600))
+            context.getPrefInt(PreferKey.cAccent, context.getCompatColor(R.color.default_accent))
         val background =
-            context.getPrefInt(PreferKey.cBackground, context.getCompatColor(R.color.md_grey_100))
+            context.getPrefInt(PreferKey.cBackground, context.getCompatColor(R.color.default_background))
         val bBackground =
-            context.getPrefInt(PreferKey.cBBackground, context.getCompatColor(R.color.md_grey_200))
+            context.getPrefInt(PreferKey.cBBackground, context.getCompatColor(R.color.default_bottom_background))
         val transparentNavBar =
             context.getPrefBoolean(PreferKey.tNavBar, false)
         val bgImgPath =
@@ -396,17 +432,17 @@ object ThemeConfig {
         val primary =
             context.getPrefInt(
                 PreferKey.cNPrimary,
-                context.getCompatColor(R.color.md_blue_grey_600)
+                context.getCompatColor(R.color.default_night_primary)
             )
         val accent =
             context.getPrefInt(
                 PreferKey.cNAccent,
-                context.getCompatColor(R.color.md_deep_orange_800)
+                context.getCompatColor(R.color.default_night_accent)
             )
         val background =
-            context.getPrefInt(PreferKey.cNBackground, context.getCompatColor(R.color.md_grey_900))
+            context.getPrefInt(PreferKey.cNBackground, context.getCompatColor(R.color.default_night_background))
         val bBackground =
-            context.getPrefInt(PreferKey.cNBBackground, context.getCompatColor(R.color.md_grey_850))
+            context.getPrefInt(PreferKey.cNBBackground, context.getCompatColor(R.color.default_night_bottom_background))
         val transparentNavBar =
             context.getPrefBoolean(PreferKey.tNavBarN, false)
         val bgImgPath =
@@ -448,17 +484,17 @@ object ThemeConfig {
 
             AppConfig.isNightTheme -> {
                 val primary =
-                    getPrefInt(PreferKey.cNPrimary, getCompatColor(R.color.md_blue_grey_600))
+                    getPrefInt(PreferKey.cNPrimary, getCompatColor(R.color.default_night_primary))
                 val accent =
-                    getPrefInt(PreferKey.cNAccent, getCompatColor(R.color.md_deep_orange_800))
+                    getPrefInt(PreferKey.cNAccent, getCompatColor(R.color.default_night_accent))
                 var background =
-                    getPrefInt(PreferKey.cNBackground, getCompatColor(R.color.md_grey_900))
+                    getPrefInt(PreferKey.cNBackground, getCompatColor(R.color.default_night_background))
                 if (ColorUtils.isColorLight(background)) {
-                    background = getCompatColor(R.color.md_grey_900)
+                    background = getCompatColor(R.color.default_night_background)
                     putPrefInt(PreferKey.cNBackground, background)
                 }
                 val bBackground =
-                    getPrefInt(PreferKey.cNBBackground, getCompatColor(R.color.md_grey_850))
+                    getPrefInt(PreferKey.cNBBackground, getCompatColor(R.color.default_night_bottom_background))
                 val transparentNavBar =
                     getPrefBoolean(PreferKey.tNavBarN, false)
                 ThemeStore.editTheme(this)
@@ -472,17 +508,17 @@ object ThemeConfig {
 
             else -> {
                 val primary =
-                    getPrefInt(PreferKey.cPrimary, getCompatColor(R.color.md_brown_500))
+                    getPrefInt(PreferKey.cPrimary, getCompatColor(R.color.default_primary))
                 val accent =
-                    getPrefInt(PreferKey.cAccent, getCompatColor(R.color.md_red_600))
+                    getPrefInt(PreferKey.cAccent, getCompatColor(R.color.default_accent))
                 var background =
-                    getPrefInt(PreferKey.cBackground, getCompatColor(R.color.md_grey_100))
+                    getPrefInt(PreferKey.cBackground, getCompatColor(R.color.default_background))
                 if (!ColorUtils.isColorLight(background)) {
-                    background = getCompatColor(R.color.md_grey_100)
+                    background = getCompatColor(R.color.default_background)
                     putPrefInt(PreferKey.cBackground, background)
                 }
                 val bBackground =
-                    getPrefInt(PreferKey.cBBackground, getCompatColor(R.color.md_grey_200))
+                    getPrefInt(PreferKey.cBBackground, getCompatColor(R.color.default_bottom_background))
                 val transparentNavBar =
                     getPrefBoolean(PreferKey.tNavBar, false)
                 ThemeStore.editTheme(this)

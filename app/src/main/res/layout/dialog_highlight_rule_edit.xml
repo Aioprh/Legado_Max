@@ -82,6 +82,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/shape_highlight_rule_card"
+                    android:elevation="3dp"
                     android:orientation="vertical"
                     android:padding="14dp">
 
@@ -198,6 +199,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:background="@drawable/shape_highlight_rule_card"
+                    android:elevation="3dp"
                     android:orientation="vertical"
                     android:padding="12dp">
 
@@ -499,6 +501,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:background="@drawable/shape_highlight_rule_card"
+                    android:elevation="3dp"
                     android:orientation="vertical"
                     android:padding="12dp">
 
@@ -507,6 +510,23 @@
                         android:layout_height="wrap_content"
                         android:text="预览效果"
                         android:textColor="@color/primaryText"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/et_sample_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/shape_highlight_rule_input"
+                        android:hint="输入预览文本，留空使用默认"
+                        android:inputType="textMultiLine"
+                        android:lineSpacingExtra="2dp"
+                        android:maxLines="4"
+                        android:minHeight="36dp"
+                        android:paddingStart="12dp"
+                        android:paddingTop="8dp"
+                        android:paddingEnd="12dp"
+                        android:paddingBottom="8dp"
                         android:textSize="13sp" />
 
                     <TextView

@@ -29,7 +29,7 @@ import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 class HighlightRuleGroupManageDialog @JvmOverloads constructor(
-    private val onChanged: () -> Unit = {},
+    private val onChanged: (oldGroup: String?, newGroup: String?) -> Unit = { _, _ -> },
     private val onSelectGroup: (String?) -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_group_manage) {
 
@@ -148,17 +148,20 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
                 }
                 if (source == null) {
                     groups.add(newName)
+                    HighlightRuleGroupStore.save(requireContext(), groups)
+                    loadData()
+                    onChanged(null, null)
                 } else {
                     val index = groups.indexOf(source)
                     if (index >= 0) groups[index] = newName
                     rules.replaceAll { rule ->
                         if (rule.group == source) rule.copy(group = newName) else rule
                     }
+                    HighlightRuleGroupStore.save(requireContext(), groups)
                     HighlightRuleStore.save(requireContext(), rules)
+                    loadData()
+                    onChanged(source, newName)
                 }
-                HighlightRuleGroupStore.save(requireContext(), groups)
-                loadData()
-                onChanged()
             }
             cancelButton()
         }
@@ -183,7 +186,7 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
                 HighlightRuleGroupStore.save(requireContext(), groups)
                 HighlightRuleStore.save(requireContext(), rules)
                 loadData()
-                onChanged()
+                onChanged(group, null)
             }
             cancelButton()
         }

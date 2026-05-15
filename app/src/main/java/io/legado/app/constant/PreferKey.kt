@@ -241,4 +241,5 @@ object PreferKey {
     const val highlightRuleBracketNote = "highlightRuleBracketNote"
     const val highlightRuleItems = "highlightRuleItems"
     const val highlightRuleGroups = "highlightRuleGroups"
+    const val highlightRuleCurrentGroup = "highlightRuleCurrentGroup"
 }

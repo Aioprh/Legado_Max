@@ -130,6 +130,13 @@ by appCtx.getSharedPreferences("local_plus", Context.MODE_PRIVATE) {
         get() = !isLastVersion(2, "needUpDictRule")
 
     /**
+     * 是否需要更新默认主题配置
+     * version=1, 版本号低于此值时会更新默认主题为"经典白"和"A屏黑"
+     */
+    val needUpThemeConfig: Boolean
+        get() = !isLastVersion(1, "themeConfigVersion")
+
+    /**
      * 应用版本号
      * 用于判断是否需要执行默认数据导入等升级操作
      */

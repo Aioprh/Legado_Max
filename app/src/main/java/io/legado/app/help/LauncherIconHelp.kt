@@ -4,7 +4,10 @@ import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Build
 import io.legado.app.R
+import io.legado.app.constant.PreferKey
 import io.legado.app.ui.welcome.*
+import io.legado.app.utils.getPrefString
+import io.legado.app.utils.putPrefString
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
 
@@ -24,6 +27,43 @@ object LauncherIconHelp {
         ComponentName(appCtx, Launcher7::class.java.name),
         ComponentName(appCtx, Launcher8::class.java.name)
     )
+
+    private val welcomeComponent = ComponentName(appCtx, WelcomeActivity::class.java.name)
+
+    /**
+     * 校验并修正图标设置
+     * 用于处理升级安装后 SharedPreferences 中保存的值与实际图标不一致的问题
+     */
+    fun fixLauncherIconPref() {
+        if (Build.VERSION.SDK_INT < 26) return
+        
+        val savedIcon = appCtx.getPrefString(PreferKey.launcherIcon)
+        
+        val welcomeState = packageManager.getComponentEnabledSetting(welcomeComponent)
+        val isWelcomeEnabled = welcomeState == PackageManager.COMPONENT_ENABLED_STATE_ENABLED 
+            || welcomeState == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+        
+        if (isWelcomeEnabled) {
+            if (savedIcon != "ic_launcher") {
+                appCtx.putPrefString(PreferKey.launcherIcon, "ic_launcher")
+            }
+            return
+        }
+        
+        var actualEnabledIcon: String? = null
+        for (component in componentNames) {
+            val state = packageManager.getComponentEnabledSetting(component)
+            val isEnabled = state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            if (isEnabled) {
+                actualEnabledIcon = component.className.substringAfterLast(".")
+                break
+            }
+        }
+        
+        if (actualEnabledIcon != null && savedIcon != actualEnabledIcon) {
+            appCtx.putPrefString(PreferKey.launcherIcon, actualEnabledIcon)
+        }
+    }
 
     fun changeIcon(icon: String?) {
         if (icon.isNullOrEmpty()) return

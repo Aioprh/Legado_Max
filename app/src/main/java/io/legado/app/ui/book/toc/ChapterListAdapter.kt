@@ -32,6 +32,10 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
     private val displayTitleMap = ConcurrentHashMap<String, String>()
     private val handler = Handler(Looper.getMainLooper())
 
+    private var fullItems: List<BookChapter> = emptyList()
+    private val collapsedVolumes = mutableSetOf<Int>()
+    private var pendingVolumeToggleIndex: Int? = null
+
     override val diffItemCallback: DiffUtil.ItemCallback<BookChapter>
         get() = object : DiffUtil.ItemCallback<BookChapter>() {
 
@@ -62,7 +66,110 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
 
     override fun onCurrentListChanged() {
         super.onCurrentListChanged()
+        pendingVolumeToggleIndex?.let { volumeIndex ->
+            handler.post {
+                val index = getItems().indexOfFirst { it.index == volumeIndex }
+                if (index >= 0) {
+                    notifyItemChanged(index)
+                }
+            }
+            pendingVolumeToggleIndex = null
+        }
         callback.onListChanged()
+    }
+
+    fun setChapterItems(items: List<BookChapter>, applyCollapse: Boolean = true) {
+        fullItems = items
+        if (applyCollapse) {
+            autoExpandVolumeForChapter(callback.durChapterIndex())
+            applyFilter()
+        } else {
+            setItems(items)
+        }
+    }
+
+    private fun autoExpandVolumeForChapter(chapterIndex: Int) {
+        var volumeIndex = -1
+        for (item in fullItems) {
+            if (item.isVolume) {
+                volumeIndex = item.index
+            }
+            if (item.index == chapterIndex) {
+                break
+            }
+        }
+        if (volumeIndex >= 0) {
+            collapsedVolumes.remove(volumeIndex)
+        }
+    }
+
+    private fun applyFilter() {
+        if (collapsedVolumes.isEmpty()) {
+            setItems(fullItems)
+            return
+        }
+        val filtered = mutableListOf<BookChapter>()
+        var skipUntilNextVolume = false
+        for (item in fullItems) {
+            if (item.isVolume) {
+                skipUntilNextVolume = item.index in collapsedVolumes
+                filtered.add(item)
+            } else if (!skipUntilNextVolume) {
+                filtered.add(item)
+            }
+        }
+        setItems(filtered)
+    }
+
+    fun toggleVolume(volumeIndex: Int) {
+        if (volumeIndex in collapsedVolumes) {
+            collapsedVolumes.remove(volumeIndex)
+        } else {
+            collapsedVolumes.add(volumeIndex)
+        }
+        pendingVolumeToggleIndex = volumeIndex
+        applyFilter()
+    }
+
+    fun isVolumeCollapsed(volumeIndex: Int): Boolean {
+        return volumeIndex in collapsedVolumes
+    }
+
+    private fun volumeHasChapters(volumeIndex: Int): Boolean {
+        var found = false
+        for (item in fullItems) {
+            if (item.index == volumeIndex) {
+                found = true
+                continue
+            }
+            if (found) {
+                if (item.isVolume) return false
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun isCurrentVolume(volumeIndex: Int): Boolean {
+        val durChapterIndex = callback.durChapterIndex()
+        var inVolume = false
+        for (item in fullItems) {
+            if (item.isVolume) {
+                inVolume = item.index == volumeIndex
+            }
+            if (item.index == durChapterIndex) {
+                return inVolume
+            }
+        }
+        return false
+    }
+
+    fun notifyChapterChanged(chapterIndex: Int) {
+        getItems().forEachIndexed { index, bookChapter ->
+            if (bookChapter.index == chapterIndex) {
+                notifyItemChanged(index, true)
+            }
+        }
     }
 
     fun clearDisplayTitle() {
@@ -129,31 +236,42 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                     || item.isVolume
                     || cacheFileNames.contains(item.getFileName())
             if (payloads.isEmpty()) {
-                if (isDur) {
-                    tvChapterName.setTextColor(context.accentColor)
+                val isCurrentVol = isCurrentVolume(item.index)
+                val textColor = if (isDur || (item.isVolume && isCurrentVol)) {
+                    context.accentColor
                 } else {
-                    tvChapterName.setTextColor(context.getCompatColor(R.color.primaryText))
+                    context.getCompatColor(R.color.primaryText)
                 }
+                tvChapterName.setTextColor(textColor)
                 tvChapterName.text = getDisplayTitle(item)
                 if (item.isVolume) {
-                    //卷名，如第一卷 突出显示
-                    tvChapterItem.setBackgroundColor(context.getCompatColor(R.color.btn_bg_press))
+                    if (isCurrentVol) {
+                        tvChapterItem.setBackgroundColor(context.getCompatColor(R.color.btn_bg_press))
+                    } else {
+                        tvChapterItem.background =
+                            ThemeUtils.resolveDrawable(context, android.R.attr.selectableItemBackground)
+                    }
+                    if (volumeHasChapters(item.index)) {
+                        ivVolumeIndicator.visible()
+                        ivVolumeIndicator.rotation =
+                            if (isVolumeCollapsed(item.index)) 0f else 90f
+                        ivVolumeIndicator.setColorFilter(textColor)
+                    } else {
+                        ivVolumeIndicator.gone()
+                    }
                 } else {
-                    //普通章节 保持不变
                     tvChapterItem.background =
                         ThemeUtils.resolveDrawable(context, android.R.attr.selectableItemBackground)
+                    ivVolumeIndicator.gone()
                 }
 
-                //卷名不显示 去掉了 !item.isVolume，让卷名也显示
                 if (!item.tag.isNullOrEmpty()) {
-                    //更新时间规则
                     tvTag.text = item.tag
                     tvTag.visible()
                 } else {
                     tvTag.gone()
                 }
                 if (AppConfig.tocCountWords && !item.wordCount.isNullOrEmpty() && !item.isVolume) {
-                    //章节字数
                     tvWordCount.text = item.wordCount
                     tvWordCount.visible()
                 } else {
@@ -177,7 +295,11 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
     override fun registerListener(holder: ItemViewHolder, binding: ItemChapterListBinding) {
         holder.itemView.setOnClickListener {
             getItem(holder.layoutPosition)?.let {
-                callback.openChapter(it)
+                if (it.isVolume) {
+                    toggleVolume(it.index)
+                } else {
+                    callback.openChapter(it)
+                }
             }
         }
         holder.itemView.setOnLongClickListener {

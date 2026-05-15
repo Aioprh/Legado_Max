@@ -36,6 +36,9 @@ object DefaultData {
                 if (LocalConfig.needUpDictRule) {
                     importDefaultDictRules()
                 }
+                if (LocalConfig.needUpThemeConfig) {
+                    upDefaultTheme()
+                }
             }.onError {
                 it.printOnDebug()
             }
@@ -218,6 +221,14 @@ object DefaultData {
 
     fun importDefaultDictRules() {
         appDb.dictRuleDao.insert(*dictRules.toTypedArray())
+    }
+
+    /**
+     * 升级默认主题配置
+     * 检查用户是否使用旧的默认主题，如果是则更新为新的默认主题
+     */
+    private fun upDefaultTheme() {
+        ThemeConfig.upDefaultThemeConfig()
     }
 
 }

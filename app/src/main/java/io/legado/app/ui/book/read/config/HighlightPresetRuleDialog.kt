@@ -2,6 +2,7 @@ package io.legado.app.ui.book.read.config
 
 import android.content.Context
 import android.graphics.PorterDuff
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -24,6 +25,7 @@ import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 class HighlightPresetRuleDialog @JvmOverloads constructor(
+    private val defaultGroup: String? = null,
     private val onAddRule: (HighlightRule) -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_preset_rule) {
 
@@ -34,6 +36,7 @@ class HighlightPresetRuleDialog @JvmOverloads constructor(
     private var secondaryTextColor = 0
     private var accentColor = 0
     private var cardBgColor = 0
+    private var cardStrokeColor = 0
     private var previewBgColor = 0
 
     override fun onStart() {
@@ -77,6 +80,11 @@ class HighlightPresetRuleDialog @JvmOverloads constructor(
         } else {
             ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.06f)
         }
+        cardStrokeColor = if (isLight) {
+            ColorUtils.blendColors(0xFF000000.toInt(), bg, 0.88f)
+        } else {
+            ColorUtils.blendColors(0xFFFFFFFF.toInt(), bg, 0.85f)
+        }
         previewBgColor = cardBgColor
 
         binding.sheetContainer.background?.mutate()?.setTint(bg)
@@ -102,8 +110,19 @@ class HighlightPresetRuleDialog @JvmOverloads constructor(
             item: HighlightRule,
             payloads: MutableList<Any>
         ) {
-            binding.root.background?.mutate()?.setTint(cardBgColor)
-            binding.tvPreview.background?.mutate()?.setTint(previewBgColor)
+            val density = binding.root.context.resources.displayMetrics.density
+            binding.root.background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 24f * density
+                setColor(cardBgColor)
+                setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
+            }
+            binding.tvPreview.background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 20f * density
+                setColor(previewBgColor)
+                setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
+            }
             binding.ivAdd.background?.mutate()?.setTint(accentColor)
 
             binding.tvTitle.text = item.name
@@ -118,7 +137,11 @@ class HighlightPresetRuleDialog @JvmOverloads constructor(
                 PorterDuff.Mode.SRC_IN
             )
             binding.ivAdd.setOnClickListener {
-                onAddRule(item.copy(id = System.currentTimeMillis().toString()))
+                val groupToUse = defaultGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP
+                onAddRule(item.copy(
+                    id = System.currentTimeMillis().toString(),
+                    group = groupToUse
+                ))
                 dismissAllowingStateLoss()
             }
         }
