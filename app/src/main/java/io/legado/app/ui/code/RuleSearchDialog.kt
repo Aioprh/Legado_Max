@@ -38,7 +38,7 @@ import kotlinx.coroutines.withContext
 class RuleSearchDialog(
     private val sourceJson: String,
     private val sourceType: String,
-    private val onFieldSelected: (tabKey: String, fieldKey: String) -> Unit
+    private val onFieldSelected: (tabKey: String, fieldKey: String, cursorPosition: Int) -> Unit
 ) : BaseDialogFragment(R.layout.dialog_rule_search) {
 
     private val binding by viewBinding(DialogRuleSearchBinding::bind)
@@ -86,38 +86,38 @@ class RuleSearchDialog(
         if (sourceType == "rssSource") {
             mapOf(
                 "base" to listOf(
-                    "sourceUrl" to "源URL",
                     "sourceName" to "源名称",
+                    "sourceUrl" to "源URL",
+                    "sourceIcon" to "图标",
                     "sourceGroup" to "源分组",
                     "sourceComment" to "源注释",
-                    "sourceIcon" to "源图标",
+                    "searchUrl" to "搜索地址",
+                    "sortUrl" to "分类URL",
                     "loginUrl" to "登录URL",
                     "loginUi" to "登录UI",
                     "loginCheckJs" to "登录检查JS",
-                    "coverDecodeJs" to "封面解密JS",
+                    "coverDecodeJs" to "封面解密",
                     "header" to "请求头",
                     "variableComment" to "变量说明",
                     "concurrentRate" to "并发率",
-                    "jsLib" to "js库",
-                    "searchUrl" to "搜索地址",
-                    "sortUrl" to "分类地址",
+                    "jsLib" to "jsLib",
                     "startHtml" to "起始页HTML",
                     "startStyle" to "起始页样式",
                     "startJs" to "起始页JS",
                     "preloadJs" to "预加载JS",
-                    "ruleArticles" to "文章列表",
-                    "ruleNextPage" to "下一篇",
-                    "ruleTitle" to "标题",
-                    "ruleDescription" to "描述",
-                    "ruleLink" to "链接",
-                    "ruleImage" to "图片",
-                    "rulePubDate" to "日期",
-                    "ruleContent" to "正文内容",
+                    "ruleArticles" to "列表规则",
+                    "ruleNextArticles" to "列表下一页规则",
+                    "ruleTitle" to "标题规则",
+                    "rulePubDate" to "时间规则",
+                    "ruleDescription" to "描述规则",
+                    "ruleImage" to "图片URL规则",
+                    "ruleLink" to "链接规则",
+                    "ruleContent" to "内容规则",
                     "style" to "样式",
                     "injectJs" to "注入JS",
-                    "shouldOverrideUrlLoading" to "URL跳转拦截",
                     "contentWhitelist" to "内容白名单",
-                    "contentBlacklist" to "内容黑名单"
+                    "contentBlacklist" to "内容黑名单",
+                    "shouldOverrideUrlLoading" to "URL跳转拦截"
                 )
             )
         } else {
@@ -189,16 +189,16 @@ class RuleSearchDialog(
                 ),
                 "content" to listOf(
                     "content" to "正文内容",
-                    "nextContentUrl" to "下页内容URL",
-                    "subContent" to "子内容",
+                    "nextContentUrl" to "正文下一页URL规则",
+                    "subContent" to "副文规则",
                     "replaceRegex" to "替换正则",
-                    "title" to "标题",
+                    "ChapterName" to "章节名称规则",
                     "sourceRegex" to "资源正则",
                     "imageStyle" to "图片样式",
-                    "imageDecode" to "图片解码",
-                    "webJs" to "网页JS",
-                    "payAction" to "付费操作",
-                    "callBackJs" to "回调JS"
+                    "imageDecode" to "图片解密",
+                    "webJs" to "WebView JS",
+                    "payAction" to "购买操作",
+                    "callBackJs" to "回调操作"
                 )
             )
         }
@@ -337,7 +337,8 @@ class RuleSearchDialog(
                             fieldName = fieldName,
                             matchedText = contextText,
                             fullValue = value,
-                            searchTerm = query
+                            searchTerm = query,
+                            matchIndex = matchIndex
                         ))
                         startIndex = matchIndex + 1
                     }
@@ -631,8 +632,7 @@ class RuleSearchDialog(
                 binding.matchedTextText.text = highlightText(fieldResult.matchedText, fieldResult.searchTerm)
 
                 binding.root.setOnClickListener {
-                    val tabKey = if (sourceType == "rssSource") "base" else tabResult.tabKey
-                    onFieldSelected(tabKey, fieldResult.fieldKey)
+                    onFieldSelected(tabResult.tabKey, fieldResult.fieldKey, fieldResult.matchIndex)
                     dismiss()
                 }
             }
@@ -656,5 +656,6 @@ private data class FieldSearchResult(
     val fieldName: String,
     val matchedText: String,
     val fullValue: String,
-    val searchTerm: String
+    val searchTerm: String,
+    val matchIndex: Int = 0
 )
