@@ -6,7 +6,7 @@
 </a>
 
 <div align="center">
-<img width="125" height="125" src="https://github.com/gedoor/legado/raw/master/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="legado"/>
+<img width="125" height="125" src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="legado"/>
 <br>
 阅读Max
 <br>
@@ -126,7 +126,12 @@ https://gedoor.github.io/Disclaimer
 
 # Interface-界面 [![](https://img.shields.io/badge/-Interface-F5F5F5.svg)](#Interface-界面-)
 
-<img src="static/1.png" width="270"><img src="static/2.png" width="270"><img src="static/3.png" width="270"><img src="static/4.png" width="270">
+<figure class="third">
+    <img src="https://gitee.com/GEd520/legados/raw/master/static/1.png" width="270">
+    <img src="https://gitee.com/GEd520/legados/raw/master/static/2.png" width="270">
+    <img src="https://gitee.com/GEd520/legados/raw/master/static/3.png" width="270">
+    <img src="https://gitee.com/GEd520/legados/raw/master/static/4.png" width="270">
+</figure>
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-orange.svg" alt="#" align="right">
 </a>

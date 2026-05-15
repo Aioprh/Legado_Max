@@ -33,6 +33,7 @@ data class TextChapter(
 
     private val textPages = arrayListOf<TextPage>()
     val pages: List<TextPage> get() = textPages
+    private var lastLazyPrefetchReadPosition = -1f
 
     private var layout: TextChapterLayout? = null
     
@@ -43,6 +44,28 @@ data class TextChapter(
 
     fun appendContent(newContents: List<String>) {
         layout?.appendContent(newContents)
+    }
+
+    fun isFullyLoaded(): Boolean {
+        return !useLazyLoading || lazyContent?.isCompleted?.get() == true
+    }
+
+    fun maybePrefetchNextPage(currentPageIndex: Int, currentPageProgress: Float = 0f) {
+        if (!useLazyLoading || currentPageIndex < 0 || pageSize <= 0) return
+        val manager = lazyContent ?: return
+        if (manager.isCompleted.get()) return
+        val readProgress = (
+            min(currentPageIndex, lastIndex).coerceAtLeast(0) +
+                currentPageProgress.coerceIn(0f, 1f)
+            ) / pageSize.toFloat()
+        if (readProgress >= 0.5f) {
+            val readPosition = min(currentPageIndex, lastIndex).coerceAtLeast(0) +
+                currentPageProgress.coerceIn(0f, 1f)
+            if (readPosition <= lastLazyPrefetchReadPosition) return
+            if (manager.prefetchNextPage()) {
+                lastLazyPrefetchReadPosition = readPosition
+            }
+        }
     }
 
     fun getPage(index: Int): TextPage? {
@@ -107,7 +130,7 @@ data class TextChapter(
      * @return 是否是最后一页
      */
     fun isLastIndex(index: Int): Boolean {
-        return isCompleted && index >= pages.size - 1
+        return isFullyLoaded() && index >= pages.size - 1
     }
 
     fun isLastIndexCurrent(index: Int): Boolean {

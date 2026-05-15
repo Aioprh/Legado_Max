@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.DialogInterface
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.graphics.Point
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -59,7 +60,10 @@ class MoreConfigDialog : BasePrefDialogFragment() {
             attr.dimAmount = 0.0f
             attr.gravity = Gravity.BOTTOM
             attributes = attr
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 360.dpToPx())
+            val size = Point()
+            windowManager.defaultDisplay.getSize(size)
+            val height = (size.y * 0.6).toInt()
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, height)
         }
     }
 

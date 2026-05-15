@@ -27,7 +27,18 @@ public abstract class ViewBindingProperty<in R : Any, T : ViewBinding>(
         viewBinding?.let { return it }
 
         this.thisRef = thisRef
-        val lifecycle = getLifecycleOwner(thisRef).lifecycle
+        val lifecycle = try {
+            getLifecycleOwner(thisRef).lifecycle
+        } catch (e: IllegalStateException) {
+            throw IllegalStateException(
+                "Cannot access view binding: the fragment view is not available. " +
+                "This typically happens when trying to access the binding from a coroutine " +
+                "that outlives the fragment view lifecycle. " +
+                "Use viewLifecycleOwner.lifecycleScope instead of lifecycleScope, " +
+                "or check isAdded && view != null before accessing the binding.",
+                e
+            )
+        }
         if (lifecycle.currentState == Lifecycle.State.DESTROYED) {
             mainHandler.post { viewBinding = null }
         } else {

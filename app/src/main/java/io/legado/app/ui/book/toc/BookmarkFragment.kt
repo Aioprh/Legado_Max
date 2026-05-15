@@ -36,6 +36,7 @@ class BookmarkFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_bookmark
     private val mLayoutManager by lazy { UpLinearLayoutManager(requireContext()) }
     private val adapter by lazy { BookmarkAdapter(requireContext(), this) }
     private var durChapterIndex = 0
+    private val viewScope get() = viewLifecycleOwner.lifecycleScope
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         viewModel.bookMarkCallBack = this
@@ -56,7 +57,7 @@ class BookmarkFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_bookmark
 
     override fun upBookmark(searchKey: String?) {
         val book = viewModel.bookData.value ?: return
-        lifecycleScope.launch {
+        viewScope.launch {
             when {
                 searchKey.isNullOrBlank() -> appDb.bookmarkDao.flowByBook(book.name, book.author)
                 else -> {

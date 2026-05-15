@@ -242,6 +242,7 @@
     <string name="remove_from_bookshelf">删除书籍</string>
     <string name="start_read">开始阅读</string>
     <string name="data_loading">加载数据中…</string>
+    <string name="next_page_lazy_loading">下一页懒加载中…</string>
     <string name="load_error_retry">加载失败，点击重试</string>
     <string name="book_intro">内容简介</string>
     <string name="intro_show">简介：%s</string>

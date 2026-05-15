@@ -73,6 +73,10 @@ class LazyContentManager(
         return loadingPages[index]?.get() == true
     }
     
+    fun isAnyPageLoading(): Boolean {
+        return loadingPages.values.any { it.get() }
+    }
+    
     fun getAllLoadedContent(): String {
         val sortedPages = pages.keys.sorted()
         return sortedPages.mapNotNull { pages[it]?.content }.joinToString("\n")
@@ -105,11 +109,11 @@ class LazyContentManager(
         return pageContent
     }
     
-    fun prefetchNextPage() {
+    fun prefetchNextPage(): Boolean {
         val nextIdx: Int
         synchronized(lock) {
             nextIdx = getNextPageToLoad()
-            if (nextIdx < 0) return
+            if (nextIdx < 0) return false
             loadingPages[nextIdx] = AtomicBoolean(true)
         }
         
@@ -194,6 +198,7 @@ class LazyContentManager(
                 loadingPages[nextIdx]?.set(false)
             }
         }
+        return true
     }
     
     suspend fun loadPage(index: Int): PageContent? {

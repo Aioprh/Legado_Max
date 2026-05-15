@@ -10,17 +10,30 @@ import splitties.init.appCtx
 class TextPageFactory(dataSource: DataSource) : PageFactory<TextPage>(dataSource) {
 
     private val keepSwipeTip = appCtx.getString(R.string.keep_swipe_tip)
+    private val lazyLoadingTip = appCtx.getString(R.string.next_page_lazy_loading)
+
+    private fun lazyLoadingPage(title: String): TextPage {
+        return TextPage(text = lazyLoadingTip, title = title).format()
+    }
 
     override fun hasPrev(): Boolean = with(dataSource) {
         return hasPrevChapter() || pageIndex > 0
     }
 
     override fun hasNext(): Boolean = with(dataSource) {
-        return hasNextChapter() || (currentChapter != null && currentChapter?.isLastIndex(pageIndex) != true)
+        val chapter = currentChapter ?: return@with hasNextChapter()
+        if (pageIndex >= 0 && pageIndex < chapter.pageSize - 1) {
+            return@with true
+        }
+        chapter.isFullyLoaded() && hasNextChapter()
     }
 
     override fun hasNextPlus(): Boolean = with(dataSource) {
-        return hasNextChapter() || pageIndex < (currentChapter?.pageSize ?: 1) - 2
+        val chapter = currentChapter ?: return@with hasNextChapter()
+        if (pageIndex >= 0 && pageIndex < chapter.pageSize - 2) {
+            return@with true
+        }
+        chapter.isFullyLoaded() && hasNextChapter()
     }
 
     override fun moveToFirst() {
@@ -39,14 +52,18 @@ class TextPageFactory(dataSource: DataSource) : PageFactory<TextPage>(dataSource
 
     override fun moveToNext(upContent: Boolean): Boolean = with(dataSource) {
         return if (hasNext()) {
+            val chapter = currentChapter
             val pageIndex = pageIndex
-            if (currentChapter == null || currentChapter?.isLastIndex(pageIndex) == true) {
-                if (currentChapter == null && nextChapter == null) {
+            if (chapter == null || pageIndex >= chapter.pageSize - 1) {
+                if (chapter != null && !chapter.isFullyLoaded()) {
+                    return@with false
+                }
+                if (chapter == null && nextChapter == null) {
                     return@with false
                 }
                 ReadBook.moveToNextChapter(upContent, false)
             } else {
-                if (pageIndex < 0 || currentChapter?.isLastIndexCurrent(pageIndex) == true) {
+                if (pageIndex < 0) {
                     return@with false
                 }
                 ReadBook.setPageIndex(pageIndex.plus(1))
@@ -102,13 +119,16 @@ class TextPageFactory(dataSource: DataSource) : PageFactory<TextPage>(dataSource
                     return@with it.getPage(pageIndex + 1)?.removePageAloudSpan()
                         ?: TextPage(title = it.title).format()
                 }
-                if (!it.isCompleted) {
-                    return@with TextPage(title = it.title).format()
+                if (it.useLazyLoading && it.lazyContent?.isAnyPageLoading() == true) {
+                    return@with lazyLoadingPage(it.title)
                 }
-            }
-            nextChapter?.let {
-                return@with it.getPage(0)?.removePageAloudSpan()
-                    ?: TextPage(title = it.title).format()
+                if (it.isFullyLoaded()) {
+                    nextChapter?.let { next ->
+                        return@with next.getPage(0)?.removePageAloudSpan()
+                            ?: TextPage(title = next.title).format()
+                    }
+                }
+                return@with TextPage(title = it.title).format()
             }
             return TextPage().format()
         }
@@ -143,17 +163,20 @@ class TextPageFactory(dataSource: DataSource) : PageFactory<TextPage>(dataSource
                     return@with it.getPage(pageIndex + 2)?.removePageAloudSpan()
                         ?: TextPage(title = it.title).format()
                 }
-                if (!it.isCompleted) {
-                    return@with TextPage(title = it.title).format()
+                if (it.useLazyLoading && it.lazyContent?.isAnyPageLoading() == true) {
+                    return@with lazyLoadingPage(it.title)
                 }
-                nextChapter?.let { nc ->
-                    if (pageIndex < it.pageSize - 1) {
-                        return@with nc.getPage(0)?.removePageAloudSpan()
-                            ?: TextPage(title = nc.title).format()
+                if (it.isFullyLoaded()) {
+                    nextChapter?.let { nc ->
+                        if (pageIndex < it.pageSize - 1) {
+                            return@with nc.getPage(0)?.removePageAloudSpan()
+                                ?: TextPage(title = nc.title).format()
+                        }
+                        return@with nc.getPage(1)?.removePageAloudSpan()
+                            ?: TextPage(text = keepSwipeTip).format()
                     }
-                    return@with nc.getPage(1)?.removePageAloudSpan()
-                        ?: TextPage(text = keepSwipeTip).format()
                 }
+                return@with TextPage(title = it.title).format()
             }
             return TextPage().format()
         }

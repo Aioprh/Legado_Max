@@ -42,6 +42,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.LinkedList
 import kotlin.math.roundToInt
 import android.util.Size
@@ -121,7 +123,6 @@ class TextChapterLayout(
     private val textFullJustify = ReadBookConfig.textFullJustify
     private val adaptSpecialStyle = AppConfig.adaptSpecialStyle
     private val pageAnim = book.getPageAnim()
-    private val highlightRules by lazy { HighlightRuleStore.loadEnabled(appCtx) }
     private val compiledHighlightRules by lazy {
         HighlightRuleStore.loadEnabled(appCtx).mapNotNull { rule ->
             kotlin.runCatching {
@@ -142,6 +143,7 @@ class TextChapterLayout(
     private var durY = 0f
     private var absStartX = paddingLeft
     private var floatArray = FloatArray(128)
+    private val appendMutex = Mutex()
 
     private var isCompleted = false
     private val job: Coroutine<*>
@@ -184,7 +186,9 @@ class TextChapterLayout(
         kotlinx.coroutines.GlobalScope.launch(IO) {
             try {
                 AppLog.put("懒加载排版: 开始追加内容，共${newContents.size}段")
-                appendContentInternal(newContents)
+                appendMutex.withLock {
+                    appendContentInternal(newContents)
+                }
                 AppLog.put("懒加载排版: 追加内容完成")
             } catch (e: Exception) {
                 AppLog.put("追加内容失败: ${e.localizedMessage}", e)
@@ -748,6 +752,10 @@ class TextChapterLayout(
         textPage.text = stringBuilder.toString()
         currentCoroutineContext().ensureActive()
         onPageCompleted()
+        pendingTextPage = TextPage()
+        stringBuilder.clear()
+        durY = 0f
+        absStartX = paddingLeft
         onCompleted()
     }
 
@@ -1149,11 +1157,46 @@ class TextChapterLayout(
     }
 
     private fun extractHighlightStyle(spanned: CharSequence, index: Int): HighlightStyleSpan? {
-        return (spanned as? Spanned)?.getSpans(
+        val spans = (spanned as? Spanned)?.getSpans(
             index,
             index + 1,
             HighlightStyleSpan::class.java
-        )?.lastOrNull()
+        ) ?: return null
+        if (spans.isEmpty()) return null
+        var underlineMode = 0
+        var underlineColor = 0xFF63C37D.toInt()
+        var underlineWidth = 1f
+        var underlineSvgPath = ""
+        var bgImage = ""
+        var bgImageFit = 0
+        var bgImageScale = 1f
+        var hasUnderline = false
+        var hasBgImage = false
+        spans.forEach { span ->
+            if (span.underlineMode != 0) {
+                underlineMode = span.underlineMode
+                underlineColor = span.underlineColor
+                underlineWidth = span.underlineWidth
+                underlineSvgPath = span.underlineSvgPath
+                hasUnderline = true
+            }
+            if (span.bgImage.isNotEmpty()) {
+                bgImage = span.bgImage
+                bgImageFit = span.bgImageFit
+                bgImageScale = span.bgImageScale
+                hasBgImage = true
+            }
+        }
+        if (!hasUnderline && !hasBgImage) return null
+        return HighlightStyleSpan(
+            underlineMode = if (hasUnderline) underlineMode else 0,
+            underlineColor = underlineColor,
+            underlineWidth = underlineWidth,
+            underlineSvgPath = if (hasUnderline) underlineSvgPath else "",
+            bgImage = if (hasBgImage) bgImage else "",
+            bgImageFit = if (hasBgImage) bgImageFit else 0,
+            bgImageScale = if (hasBgImage) bgImageScale else 1f,
+        )
     }
 
     private fun extractLinkUrl(spanned: Spanned, index: Int): String? {
@@ -1227,7 +1270,7 @@ class TextChapterLayout(
     }
 
     private fun applyHighlightRulesFromStore(spannable: SpannableStringBuilder): SpannableStringBuilder {
-        highlightRules.forEach { rule ->
+        HighlightRuleStore.loadEnabled(appCtx).forEach { rule ->
             val regex = kotlin.runCatching { Regex(rule.pattern) }.getOrNull() ?: return@forEach
             applyRuleSpans(spannable, rule, regex)
         }

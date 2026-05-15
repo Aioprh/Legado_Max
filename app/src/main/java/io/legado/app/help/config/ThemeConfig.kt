@@ -147,7 +147,7 @@ object ThemeConfig {
     }
 
     fun upConfig() {
-        addConfigs(getConfigs())
+        addConfigs(DefaultData.themeConfigs)
     }
 
     /**
