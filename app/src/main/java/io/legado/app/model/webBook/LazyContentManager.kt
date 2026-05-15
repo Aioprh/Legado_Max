@@ -73,6 +73,10 @@ class LazyContentManager(
         return loadingPages[index]?.get() == true
     }
     
+    fun isAnyPageLoading(): Boolean {
+        return loadingPages.values.any { it.get() }
+    }
+    
     fun getAllLoadedContent(): String {
         val sortedPages = pages.keys.sorted()
         return sortedPages.mapNotNull { pages[it]?.content }.joinToString("\n")

@@ -10,6 +10,11 @@ import splitties.init.appCtx
 class TextPageFactory(dataSource: DataSource) : PageFactory<TextPage>(dataSource) {
 
     private val keepSwipeTip = appCtx.getString(R.string.keep_swipe_tip)
+    private val lazyLoadingTip = appCtx.getString(R.string.next_page_lazy_loading)
+
+    private fun lazyLoadingPage(title: String): TextPage {
+        return TextPage(text = lazyLoadingTip, title = title).format()
+    }
 
     override fun hasPrev(): Boolean = with(dataSource) {
         return hasPrevChapter() || pageIndex > 0
@@ -114,6 +119,9 @@ class TextPageFactory(dataSource: DataSource) : PageFactory<TextPage>(dataSource
                     return@with it.getPage(pageIndex + 1)?.removePageAloudSpan()
                         ?: TextPage(title = it.title).format()
                 }
+                if (it.useLazyLoading && it.lazyContent?.isAnyPageLoading() == true) {
+                    return@with lazyLoadingPage(it.title)
+                }
                 if (it.isFullyLoaded()) {
                     nextChapter?.let { next ->
                         return@with next.getPage(0)?.removePageAloudSpan()
@@ -154,6 +162,9 @@ class TextPageFactory(dataSource: DataSource) : PageFactory<TextPage>(dataSource
                 if (pageIndex < it.pageSize - 2) {
                     return@with it.getPage(pageIndex + 2)?.removePageAloudSpan()
                         ?: TextPage(title = it.title).format()
+                }
+                if (it.useLazyLoading && it.lazyContent?.isAnyPageLoading() == true) {
+                    return@with lazyLoadingPage(it.title)
                 }
                 if (it.isFullyLoaded()) {
                     nextChapter?.let { nc ->
