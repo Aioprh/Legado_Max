@@ -1,6 +1,7 @@
 package io.legado.app.model.webBook
 
 import io.legado.app.R
+import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
@@ -57,7 +58,8 @@ object BookContent {
         baseUrl: String,
         redirectUrl: String,
         body: String?,
-        nextChapterUrl: String?
+        nextChapterUrl: String?,
+        callback: LazyContentCallback? = null
     ): Pair<String, LazyContentManager?> {
         body ?: throw NoStackTraceException(
             appCtx.getString(R.string.error_get_web_content, baseUrl)
@@ -75,7 +77,10 @@ object BookContent {
         val contentRule = bookSource.getContentRule()
         val nextContentUrlRule = contentRule.nextContentUrl ?: ""
         
+        AppLog.put("懒加载: analyzeContentLazy nextContentUrlRule=$nextContentUrlRule")
+        
         if (nextContentUrlRule.isBlank()) {
+            AppLog.put("懒加载: nextContentUrlRule 为空，走传统模式")
             val contentData = analyzeContent(
                 book, baseUrl, redirectUrl, body, contentRule, bookChapter, bookSource, mNextChapterUrl
             )
@@ -84,7 +89,7 @@ object BookContent {
         
         val analyzeRule = AnalyzeRule(book, bookSource)
         analyzeRule.setContent(body, baseUrl)
-        analyzeRule.setRedirectUrl(redirectUrl)
+        val rUrl = analyzeRule.setRedirectUrl(redirectUrl)
         analyzeRule.setCoroutineContext(currentCoroutineContext())
         analyzeRule.setChapter(bookChapter)
         analyzeRule.setNextChapterUrl(mNextChapterUrl)
@@ -99,7 +104,7 @@ object BookContent {
                     placeholder
                 }
             }
-            content = HtmlFormatter.formatKeepImg(content, redirectUrl)
+            content = HtmlFormatter.formatKeepImg(content, rUrl)
             if (content.indexOf('&') > -1) {
                 content = StringEscapeUtils.unescapeHtml4(content)
             }
@@ -123,11 +128,14 @@ object BookContent {
             initialBody = body,
             nextChapterUrl = mNextChapterUrl,
             nextContentUrlRule = nextContentUrlRule,
-            contentRule = contentRule.content,
-            webJs = contentRule.webJs
+            contentRule = contentRule.content ?: "",
+            webJs = contentRule.webJs,
+            callback = callback
         )
         
         lazyManager.pages[0] = PageContent(content, nextUrl)
+        
+        AppLog.put("懒加载: 创建 LazyContentManager 成功，第一页内容长度=${content.length}, nextUrl=$nextUrl")
         
         return Pair(content, lazyManager)
     }

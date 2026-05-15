@@ -462,7 +462,6 @@ class BookSourceEditActivity :
             )
             binding.cbIsEventListener.isChecked = it.eventListener
             binding.cbIsCustomButton.isChecked = it.customButton
-            binding.cbNextPageLazyLoad.isChecked = it.nextPageLazyLoad
         }
         // 基本信息
         sourceEntities.clear()
@@ -559,6 +558,7 @@ class BookSourceEditActivity :
             add(EditEntity("payAction", cr.payAction, R.string.rule_pay_action))
             add(EditEntity("callBackJs", cr.callBackJs, R.string.rule_call_back))
         }
+        binding.cbNextPageLazyLoad.isChecked = bs.nextPageLazyLoad
         // 段评
 //        val rr = bs.getReviewRule()
 //        reviewEntities.clear()

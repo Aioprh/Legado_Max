@@ -14,6 +14,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlin.math.abs
 import kotlin.math.min
 
+/**
+ * 章节信息
+ */
 @Keep
 @Suppress("unused")
 data class TextChapter(
@@ -24,6 +27,7 @@ data class TextChapter(
     val sameTitleRemoved: Boolean,
     val isVip: Boolean,
     val isPay: Boolean,
+    //起效的替换规则
     val effectiveReplaceRules: List<ReplaceRule>?
 ) : LayoutProgressListener {
 

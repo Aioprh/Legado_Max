@@ -179,12 +179,13 @@ class TextChapterLayout(
     }
 
     fun appendContent(newContents: List<String>) {
-        if (isCompleted) return
         if (newContents.isEmpty()) return
         
-        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+        kotlinx.coroutines.GlobalScope.launch(IO) {
             try {
+                AppLog.put("懒加载排版: 开始追加内容，共${newContents.size}段")
                 appendContentInternal(newContents)
+                AppLog.put("懒加载排版: 追加内容完成")
             } catch (e: Exception) {
                 AppLog.put("追加内容失败: ${e.localizedMessage}", e)
             }
@@ -194,6 +195,20 @@ class TextChapterLayout(
     private suspend fun appendContentInternal(newContents: List<String>) {
         val imageStyle = book.getImageStyle()
         val isTextImageStyle = imageStyle.equals(Book.imgStyleText, true)
+        
+        if (pendingTextPage.lines.isNotEmpty()) {
+            AppLog.put("懒加载排版: pendingTextPage 已有内容(${pendingTextPage.lines.size}行)，创建新页面")
+            val textPage = pendingTextPage
+            if (textPage.height < durY) {
+                textPage.height = durY
+            }
+            textPage.text = stringBuilder.toString()
+            onPageCompleted()
+            pendingTextPage = TextPage()
+            stringBuilder.clear()
+            durY = 0f
+            absStartX = paddingLeft
+        }
         
         val sb = StringBuffer()
         var isSetTypedImage = false
@@ -205,12 +220,12 @@ class TextChapterLayout(
                 val text = content.trim()
                 if (text == "[newpage]") {
                     prepareNextPageIfNeed()
-                    return@forEach
+                    continue
                 } else if (text.startsWith("<usehtml>")) {
                     val endInt = text.lastIndexOf("<")
                     if (endInt > 9) {
                         setTypeHtml(imageStyle, book, text.substring(9, endInt))
-                        return@forEach
+                        continue
                     }
                 }
             }
@@ -260,7 +275,7 @@ class TextChapterLayout(
                         if (urlMatcher.find()) {
                             var width: String? = null
                             val urlOptionStr = imgSrc.substring(urlMatcher.end())
-                            GSON.fromJsonObject<Map<String, String>>(urlOptionStr)?.let { map ->
+                            GSON.fromJsonObject<Map<String, String>>(urlOptionStr).getOrNull()?.let { map ->
                                 map.forEach { (key, value) ->
                                     when (key) {
                                         "style" -> style = value
@@ -376,6 +391,11 @@ class TextChapterLayout(
         textPage.text = stringBuilder.toString()
         currentCoroutineContext().ensureActive()
         onPageCompleted()
+        
+        pendingTextPage = TextPage()
+        stringBuilder.clear()
+        durY = 0f
+        absStartX = paddingLeft
     }
 
     private fun onPageCompleted() {
