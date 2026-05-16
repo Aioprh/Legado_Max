@@ -4,6 +4,10 @@ import io.legado.app.data.entities.BaseSource
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
+import io.legado.app.model.debug.JsExecutionRecord
+import io.legado.app.model.debug.JsExecutionContext
+import io.legado.app.model.debug.RuleExecutionTree
+import io.legado.app.model.debug.RuleType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -14,24 +18,25 @@ import kotlinx.coroutines.launch
 import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+
 /**
  * 流程日志记录器
  * 
  * 负责记录源规则执行的完整流程，包括：
  * - 网络请求阶段
- * - 规则解析阶段
+ * - 规则解析阶段（含规则执行路径树）
  * - 字段提取阶段
  * - 数据替换阶段
+ * - JS执行环境状态
  * 
  * 特性：
  * - 异步记录日志，不阻塞主流程
- * - 最多保留3000条日志，超过自动删除最旧的
+ * - 最多保留500条日志，超过自动删除最旧的
  * - 按书源URL分组管理请求ID
  * - 支持按阶段、书源、操作类型过滤
  */
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-
 object FlowLogRecorder {
 
      // 最大日志数量限制
@@ -146,17 +151,6 @@ object FlowLogRecorder {
         )
     }
 
-    /**
-     * 记录规则解析日志
-     * 
-     * @param source 书源对象
-     * @param message 日志消息
-     * @param rule 规则内容
-     * @param result 解析结果
-     * @param duration 解析耗时（毫秒）
-     * @param detail 详细信息
-     * @param error 错误信息
-     */
     fun logParse(
         source: BaseSource?,
         message: String,
@@ -182,17 +176,127 @@ object FlowLogRecorder {
     }
 
     /**
-     * 记录字段提取日志
+     * 记录规则执行路径树日志
      * 
      * @param source 书源对象
+     * @param executionTree 规则执行路径树
      * @param message 日志消息
-     * @param rule 提取规则
-     * @param result 提取结果
-     * @param originalValue 原始数据（提取前的数据）
-     * @param duration 提取耗时（毫秒）
-     * @param detail 详细信息
      * @param error 错误信息
      */
+    fun logRuleExecution(
+        source: BaseSource?,
+        executionTree: RuleExecutionTree,
+        message: String = "规则执行完成",
+        error: Throwable? = null
+    ) {
+        if (!isEnabled) return
+        
+        val sourceUrl = source?.getKey()
+        val sourceName = source?.getTag()
+        val operation = getOperation(sourceUrl)
+        
+        GlobalScope.launch(Dispatchers.IO) {
+            val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
+                ?: UUID.randomUUID().toString()
+
+            val item = FlowLogItem(
+                requestId = requestId,
+                sourceUrl = sourceUrl,
+                sourceName = sourceName,
+                stage = FlowStage.PARSE,
+                operation = operation,
+                message = message,
+                rule = executionTree.fullRule,
+                result = executionTree.root.output?.take(100),
+                duration = executionTree.totalDuration,
+                executionTree = executionTree,
+                ruleType = executionTree.root.ruleType,
+                matchCount = executionTree.root.matchCount,
+                inputPreview = executionTree.root.input?.take(100),
+                outputPreview = executionTree.root.output?.take(100),
+                error = error
+            )
+
+            addLog(item)
+        }
+    }
+
+    /**
+     * 记录JS执行日志
+     * 
+     * @param source 书源对象
+     * @param jsExecution JS执行记录
+     * @param message 日志消息
+     * @param error 错误信息
+     */
+    fun logJsExecution(
+        source: BaseSource?,
+        jsExecution: JsExecutionRecord,
+        message: String = "JS执行完成",
+        error: Throwable? = null
+    ) {
+        if (!isEnabled) return
+        
+        val sourceUrl = source?.getKey()
+        val sourceName = source?.getTag()
+        val operation = getOperation(sourceUrl)
+        
+        GlobalScope.launch(Dispatchers.IO) {
+            val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
+                ?: UUID.randomUUID().toString()
+
+            val item = FlowLogItem(
+                requestId = requestId,
+                sourceUrl = sourceUrl,
+                sourceName = sourceName,
+                stage = FlowStage.PARSE,
+                operation = operation,
+                message = message,
+                rule = jsExecution.jsCode.take(200),
+                result = jsExecution.result?.take(100),
+                duration = jsExecution.duration,
+                jsExecution = jsExecution,
+                ruleType = RuleType.JS,
+                error = error ?: jsExecution.error
+            )
+
+            addLog(item)
+        }
+    }
+
+    /**
+     * 记录JS执行环境状态
+     * 
+     * @param source 书源对象
+     * @param jsCode JS代码
+     * @param context JS执行环境
+     * @param result 执行结果
+     * @param duration 执行耗时
+     * @param error 错误信息
+     */
+    fun logJsContext(
+        source: BaseSource?,
+        jsCode: String,
+        context: JsExecutionContext,
+        result: String? = null,
+        duration: Long? = null,
+        error: Throwable? = null
+    ) {
+        val jsExecution = JsExecutionRecord(
+            jsCode = jsCode,
+            context = context,
+            result = result,
+            duration = duration,
+            error = error
+        )
+        logJsExecution(
+            source = source,
+            jsExecution = jsExecution,
+            message = if (error != null) "JS执行失败" else "JS执行完成",
+            error = error
+        )
+    }
+
     fun logExtract(
         source: BaseSource?,
         message: String,
@@ -289,7 +393,13 @@ object FlowLogRecorder {
         rule: String? = null,
         result: String? = null,
         originalValue: String? = null,
-        error: Throwable? = null
+        error: Throwable? = null,
+        executionTree: RuleExecutionTree? = null,
+        jsExecution: JsExecutionRecord? = null,
+        ruleType: RuleType? = null,
+        matchCount: Int? = null,
+        inputPreview: String? = null,
+        outputPreview: String? = null
     ) {
         if (!isEnabled) return
         
@@ -314,7 +424,13 @@ object FlowLogRecorder {
                 rule = rule,
                 result = result,
                 originalValue = originalValue,
-                error = error
+                error = error,
+                executionTree = executionTree,
+                jsExecution = jsExecution,
+                ruleType = ruleType,
+                matchCount = matchCount,
+                inputPreview = inputPreview,
+                outputPreview = outputPreview
             )
 
             addLog(item)

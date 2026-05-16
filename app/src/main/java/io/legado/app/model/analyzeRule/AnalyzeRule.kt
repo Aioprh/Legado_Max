@@ -310,11 +310,7 @@ class AnalyzeRule(
         val startTime = System.currentTimeMillis()
         val ruleStr = ruleList.joinToString("&&") { it.rule }
         
-        FlowLogRecorder.logParse(
-            source = source,
-            message = "开始解析规则",
-            rule = ruleStr
-        )
+        val tracker = io.legado.app.model.debug.RuleExecutionTracker(source, ruleStr)
         
         val str = try {
             var result: Any? = null
@@ -338,12 +334,24 @@ class AnalyzeRule(
                     // 键值直接访问
                     result = result[ruleList.first().rule]?.toString()
                 } else {
+                    var stepIndex = 0
                     for (sourceRule in ruleList) {
                         putRule(sourceRule.putMap)
                         sourceRule.makeUpRule(result)
                         result ?: continue
                         val rule = sourceRule.rule
                         if (rule.isNotBlank() || sourceRule.replaceRegex.isEmpty()) {
+                            val ruleType = when (sourceRule.mode) {
+                                Mode.WebJs -> io.legado.app.model.debug.RuleType.WEB_JS
+                                Mode.Js -> io.legado.app.model.debug.RuleType.JS
+                                Mode.Json -> io.legado.app.model.debug.RuleType.JSONPATH
+                                Mode.XPath -> io.legado.app.model.debug.RuleType.XPATH
+                                Mode.Default -> io.legado.app.model.debug.RuleType.CSS
+                                else -> io.legado.app.model.debug.RuleType.DEFAULT
+                            }
+                            
+                            tracker.startStep(ruleType, rule, result)
+                            
                             result = when (sourceRule.mode) {
                                 Mode.WebJs -> getWebJsResult(rule, result)
                                 Mode.Js -> evalJS(rule, result)
@@ -357,9 +365,14 @@ class AnalyzeRule(
 
                                 else -> rule
                             }
+                            
+                            tracker.endStep(result)
+                            stepIndex++
                         }
                         if (result != null && sourceRule.replaceRegex.isNotEmpty()) {
+                            tracker.startStep(io.legado.app.model.debug.RuleType.REPLACE, "${sourceRule.replaceRegex} -> ${sourceRule.replacement}", result)
                             result = replaceRegex(result.toString(), sourceRule)
+                            tracker.endStep(result)
                         }
                     }
                 }
@@ -372,25 +385,29 @@ class AnalyzeRule(
                 resultStr
             }
         } catch (e: Exception) {
-            val duration = System.currentTimeMillis() - startTime
-            FlowLogRecorder.logParse(
-                source = source,
-                message = "规则解析失败: ${e.localizedMessage}",
-                rule = ruleStr,
-                duration = duration,
-                error = e
-            )
+            if (tracker.hasSteps()) {
+                tracker.failStep(e)
+                val duration = System.currentTimeMillis() - startTime
+                val tree = tracker.buildTree()
+                FlowLogRecorder.logRuleExecution(
+                    source = source,
+                    executionTree = tree,
+                    message = "规则解析失败: ${e.localizedMessage}",
+                    error = e
+                )
+            }
             throw e
         }
         
         val duration = System.currentTimeMillis() - startTime
-        FlowLogRecorder.logParse(
-            source = source,
-            message = "规则解析成功",
-            rule = ruleStr,
-            result = str.take(100),
-            duration = duration
-        )
+        if (tracker.hasSteps()) {
+            val tree = tracker.buildTree()
+            FlowLogRecorder.logRuleExecution(
+                source = source,
+                executionTree = tree,
+                message = "规则解析成功"
+            )
+        }
         
         if (isUrl) {
             return if (str.isBlank()) {
@@ -888,6 +905,8 @@ class AnalyzeRule(
             )
         }
         
+        val jsContext = buildJsExecutionContext(result)
+        
         val bindings = buildScriptBindings { bindings ->
             bindings["java"] = this
             bindings["cookie"] = CookieStore
@@ -915,8 +934,31 @@ class AnalyzeRule(
                 prototype = topScope
             }
         }
-        val script = compileScriptCache(jsStr)
-        val jsResult = script.eval(scope, coroutineContext)
+        
+        val jsResult = try {
+            val script = compileScriptCache(jsStr)
+            script.eval(scope, coroutineContext)
+        } catch (e: Exception) {
+            val duration = System.currentTimeMillis() - startTime
+            FlowLogRecorder.logJsContext(
+                source = source,
+                jsCode = jsStr,
+                context = jsContext,
+                result = null,
+                duration = duration,
+                error = e
+            )
+            throw e
+        }
+        
+        val duration = System.currentTimeMillis() - startTime
+        FlowLogRecorder.logJsContext(
+            source = source,
+            jsCode = jsStr,
+            context = jsContext,
+            result = jsResult?.toString()?.take(200),
+            duration = duration
+        )
         
         if (containsReplace) {
             FlowLogRecorder.logReplace(
@@ -925,11 +967,49 @@ class AnalyzeRule(
                 rule = jsStr.take(200),
                 result = jsResult?.toString()?.take(100),
                 originalValue = result?.toString()?.take(100),
-                duration = System.currentTimeMillis() - startTime
+                duration = duration
             )
         }
         
         return jsResult
+    }
+    
+    private fun buildJsExecutionContext(result: Any?): io.legado.app.model.debug.JsExecutionContext {
+        return io.legado.app.model.debug.JsExecutionContext(
+            result = result?.toString()?.take(200),
+            src = content?.toString()?.take(200),
+            baseUrl = baseUrl,
+            book = book?.let { baseBook ->
+                val bookEntity = baseBook as? io.legado.app.data.entities.Book
+                io.legado.app.model.debug.BookContext(
+                    name = baseBook.name,
+                    author = baseBook.author,
+                    bookUrl = baseBook.bookUrl,
+                    coverUrl = bookEntity?.coverUrl,
+                    intro = bookEntity?.intro?.take(100),
+                    tocUrl = bookEntity?.tocUrl,
+                    variableMap = baseBook.variableMap.takeIf { it.isNotEmpty() }?.mapValues { (_, v) -> v.take(50) } ?: emptyMap()
+                )
+            },
+            chapter = chapter?.let {
+                io.legado.app.model.debug.ChapterContext(
+                    title = it.title,
+                    url = it.url,
+                    index = it.index,
+                    variableMap = it.variableMap.takeIf { it.isNotEmpty() }?.mapValues { (_, v) -> v.take(50) } ?: emptyMap()
+                )
+            },
+            source = source?.let {
+                io.legado.app.model.debug.SourceContext(
+                    name = it.getTag(),
+                    url = it.getKey(),
+                    group = (it as? io.legado.app.data.entities.BookSource)?.bookSourceGroup
+                )
+            },
+            variables = emptyMap(),
+            nextChapterUrl = nextChapterUrl,
+            fromBookInfo = isFromBookInfo
+        )
     }
 
     private fun compileScriptCache(jsStr: String): CompiledScript {
