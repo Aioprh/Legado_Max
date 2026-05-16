@@ -55,6 +55,7 @@ class RssSourceDebugWebSocket(handshakeRequest: NanoHTTPD.IHTTPSession) :
                     GSON.fromJsonObject<Map<String, String>>(message.textPayload).getOrNull()
                 if (debugBean != null) {
                     val tag = debugBean["tag"]
+                    val key = debugBean["key"]
                     if (tag.isNullOrBlank()) {
                         send(appCtx.getString(R.string.cannot_empty))
                         close(NanoWSD.WebSocketFrame.CloseCode.NormalClosure, "调试结束", false)
@@ -62,7 +63,11 @@ class RssSourceDebugWebSocket(handshakeRequest: NanoHTTPD.IHTTPSession) :
                     }
                     appDb.rssSourceDao.getByKey(tag)?.let {
                         Debug.callback = this@RssSourceDebugWebSocket
-                        Debug.startDebug(this, it)
+                        if (key.isNullOrBlank()) {
+                            Debug.startDebug(this, it)
+                        } else {
+                            Debug.startDebug(this, it, key)
+                        }
                     }
                 } else {
                     send("数据必须为Json格式")

@@ -1,9 +1,8 @@
 <template>
   <el-input
-    v-if="isBookSource"
     id="debug-key"
     v-model="searchKey"
-    placeholder="搜索书名、作者"
+    :placeholder="isBookSource ? '搜索书名、作者，或输入 URL/分类名::URL' : '输入分类名::URL 或内容页URL'"
     :prefix-icon="Search"
     style="padding-bottom: 4px"
     @keydown.enter="startDebug"
