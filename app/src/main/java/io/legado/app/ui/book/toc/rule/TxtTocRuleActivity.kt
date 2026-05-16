@@ -85,7 +85,7 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         initView()
-        initSearchView()
+        initSearchView()  // 初始化搜索框
         initBottomActionBar()
         initData()
     }
@@ -97,21 +97,30 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
         val showFastScroller = AppConfig.showBookshelfFastScroller
         recyclerView.setFastScrollEnabled(showFastScroller)
         recyclerView.isVerticalScrollBarEnabled = !showFastScroller
+        // When this page is opened, it is in selection mode
         val dragSelectTouchHelper =
             DragSelectTouchHelper(adapter.dragSelectCallback).setSlideArea(16, 50)
         dragSelectTouchHelper.attachToRecyclerView(binding.recyclerView)
         dragSelectTouchHelper.activeSlideSelect()
+        // Note: need judge selection first, so add ItemTouchHelper after it.
         val itemTouchCallback = ItemTouchCallback(adapter)
         itemTouchCallback.isCanDrag = true
         ItemTouchHelper(itemTouchCallback).attachToRecyclerView(binding.recyclerView)
     }
 
+    /**
+     * 初始化搜索框
+     * 设置搜索提示文字和文本变化监听器
+     */
     private fun initSearchView() {
         searchView.applyTint(primaryTextColor)
         searchView.queryHint = getString(R.string.txt_toc_rule_search)
         searchView.setOnQueryTextListener(this)
     }
 
+    /**
+     * 初始化底部选择操作栏
+     */
     private fun initBottomActionBar() {
         binding.selectActionBar.setMainActionText(R.string.delete)
         binding.selectActionBar.inflateMenu(R.menu.txt_toc_rule_sel)
@@ -119,7 +128,15 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
         binding.selectActionBar.setCallBack(this)
     }
 
+    /**
+     * 初始化TXT目录规则数据
+     * @param searchKey 搜索关键词，支持以下格式：
+     * - null或空字符串：显示所有规则
+     * - "启用"/"禁用"：按启用状态筛选
+     * - 其他：按名称模糊搜索
+     */
     private fun initData(searchKey: String? = null) {
+        // 取消之前的数据流订阅，避免重复
         txtTocRuleFlowJob?.cancel()
         txtTocRuleFlowJob = lifecycleScope.launch {
             when {
@@ -136,6 +153,7 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
                 }
 
                 else -> {
+                    // 模糊搜索，使用SQL LIKE语句，%表示任意字符
                     appDb.txtTocRuleDao.observeSearch("%$searchKey%")
                 }
             }.catch {
@@ -234,15 +252,24 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
             .upCountView(adapter.selection.size, adapter.itemCount)
     }
 
+    /**
+     * 搜索框文本变化时回调，实时搜索
+     */
     override fun onQueryTextChange(newText: String?): Boolean {
         initData(newText)
         return false
     }
 
+    /**
+     * 搜索框提交时回调（点击键盘搜索按钮）
+     */
     override fun onQueryTextSubmit(query: String?): Boolean {
         return false
     }
 
+    /**
+     * 显示删除确认对话框
+     */
     private fun delSourceDialog() {
         alert(titleResource = R.string.draw, messageResource = R.string.sure_del) {
             yesButton { viewModel.del(*adapter.selection.toTypedArray()) }

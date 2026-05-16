@@ -10,12 +10,22 @@ interface TxtTocRuleDao {
     @Query("select * from txtTocRules order by serialNumber")
     fun observeAll(): Flow<List<TxtTocRule>>
 
+    /**
+     * 按名称模糊搜索TXT目录规则
+     * @param key 搜索关键词，使用SQL的LIKE语句进行模糊匹配
+     */
     @Query("select * from txtTocRules where name like :key order by serialNumber")
     fun observeSearch(key: String): Flow<List<TxtTocRule>>
 
+    /**
+     * 获取所有已启用的TXT目录规则
+     */
     @Query("select * from txtTocRules where enable = 1 order by serialNumber")
     fun observeEnabled(): Flow<List<TxtTocRule>>
 
+    /**
+     * 获取所有已禁用的TXT目录规则
+     */
     @Query("select * from txtTocRules where enable != 1 order by serialNumber")
     fun observeDisabled(): Flow<List<TxtTocRule>>
 

@@ -81,7 +81,7 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         initRecyclerView()
-        initSearchView()
+        initSearchView()  // 初始化搜索框
         initSelectActionView()
         observeDictRuleData()
     }
@@ -105,12 +105,19 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
         ItemTouchHelper(itemTouchCallback).attachToRecyclerView(binding.recyclerView)
     }
 
+    /**
+     * 初始化搜索框
+     * 设置搜索提示文字和文本变化监听器
+     */
     private fun initSearchView() {
         searchView.applyTint(primaryTextColor)
         searchView.queryHint = getString(R.string.dict_rule_search)
         searchView.setOnQueryTextListener(this)
     }
 
+    /**
+     * 初始化选择操作栏
+     */
     private fun initSelectActionView() {
         binding.selectActionBar.setMainActionText(R.string.delete)
         binding.selectActionBar.inflateMenu(R.menu.dict_rule_sel)
@@ -118,7 +125,15 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
         binding.selectActionBar.setCallBack(this)
     }
 
+    /**
+     * 监听字典规则数据变化
+     * @param searchKey 搜索关键词，支持以下格式：
+     * - null或空字符串：显示所有规则
+     * - "启用"/"禁用"：按启用状态筛选
+     * - 其他：按名称模糊搜索
+     */
     private fun observeDictRuleData(searchKey: String? = null) {
+        // 取消之前的数据流订阅，避免重复
         dictRuleFlowJob?.cancel()
         dictRuleFlowJob = lifecycleScope.launch {
             when {
@@ -135,6 +150,7 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
                 }
 
                 else -> {
+                    // 模糊搜索，使用SQL LIKE语句，%表示任意字符
                     appDb.dictRuleDao.flowSearch("%$searchKey%")
                 }
             }.catch {
@@ -239,11 +255,17 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
         )
     }
 
+    /**
+     * 搜索框文本变化时回调，实时搜索
+     */
     override fun onQueryTextChange(newText: String?): Boolean {
         observeDictRuleData(newText)
         return false
     }
 
+    /**
+     * 搜索框提交时回调（点击键盘搜索按钮）
+     */
     override fun onQueryTextSubmit(query: String?): Boolean {
         return false
     }

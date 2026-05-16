@@ -17,12 +17,22 @@ interface DictRuleDao {
     @Query("select * from dictRules order by sortNumber")
     fun flowAll(): Flow<List<DictRule>>
 
+    /**
+     * 按名称模糊搜索字典规则
+     * @param key 搜索关键词，使用SQL的LIKE语句进行模糊匹配
+     */
     @Query("select * from dictRules where name like :key order by sortNumber")
     fun flowSearch(key: String): Flow<List<DictRule>>
 
+    /**
+     * 获取所有已启用的字典规则
+     */
     @Query("select * from dictRules where enabled = 1 order by sortNumber")
     fun flowEnabled(): Flow<List<DictRule>>
 
+    /**
+     * 获取所有已禁用的字典规则
+     */
     @Query("select * from dictRules where enabled != 1 order by sortNumber")
     fun flowDisabled(): Flow<List<DictRule>>
 
