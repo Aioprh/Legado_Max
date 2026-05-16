@@ -72,6 +72,7 @@ import io.legado.app.help.http.addHeaders
 import io.legado.app.help.http.newCallResponse
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.setSelectionSafely
+import io.legado.app.utils.observeEvent
 import kotlinx.coroutines.launch
 
 class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
@@ -80,6 +81,7 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
         const val TEXT_COLOR = 121
         const val BG_COLOR = 122
         const val TEXT_ACCENT_COLOR = 123
+        const val UNDERLINE_COLOR = 124
     }
 
     private val binding by viewBinding(DialogReadBgTextBinding::bind)
@@ -127,6 +129,9 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
         initView()
         initData()
         initEvent()
+        observeEvent<ArrayList<Int>>(EventBus.UP_CONFIG) {
+            updateUnderlineColorPreview()
+        }
     }
 
     override fun onDismiss(dialog: DialogInterface) {
@@ -213,6 +218,7 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
         binding.swDarkStatusIcon.isChecked = curStatusIconDark()
         binding.spUnderline.setSelectionSafely(underlineMode)
         binding.sbBgAlpha.progress = bgAlpha
+        updateUnderlineColorPreview()
     }
 
     @SuppressLint("InflateParams")
@@ -262,6 +268,14 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
                 .setShowAlphaSlider(false)
                 .setDialogType(ColorPickerDialog.TYPE_CUSTOM)
                 .setDialogId(TEXT_ACCENT_COLOR)
+                .show(requireActivity())
+        }
+        binding.tvUnderlineColor.setOnClickListener {
+            ColorPickerDialog.newBuilder()
+                .setColor(ReadBookConfig.durConfig.underlineColor.toColorInt())
+                .setShowAlphaSlider(false)
+                .setDialogType(ColorPickerDialog.TYPE_CUSTOM)
+                .setDialogId(UNDERLINE_COLOR)
                 .show(requireActivity())
         }
         binding.tvBgColor.setOnClickListener {
@@ -424,6 +438,13 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
             it.printOnDebug()
             longToast("导入失败:${it.localizedMessage}")
         }
+    }
+
+    private fun updateUnderlineColorPreview() {
+        val color = ReadBookConfig.durConfig.underlineColor.toColorInt()
+        binding.tvUnderlineColor.setBackgroundColor(color)
+        binding.tvUnderlineColor.setTextColor(if (ColorUtils.isColorLight(color)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt())
+        binding.tvUnderlineColor.text = "A"
     }
 
     private fun setBgFromUri(uri: Uri) {
