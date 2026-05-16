@@ -334,6 +334,11 @@
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true"
             android:exported="true" />
+        <!-- 存储管理 -->
+        <activity
+            android:name=".ui.book.storage.StorageManageActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
         <!-- 字典管理 -->
         <activity
             android:name=".ui.dict.rule.DictRuleActivity"

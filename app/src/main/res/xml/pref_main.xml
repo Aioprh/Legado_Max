@@ -118,6 +118,13 @@
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.Preference
+            android:icon="@drawable/ic_storage_black_24dp"
+            android:key="storageManage"
+            android:summary="@string/storage_manage_summary"
+            android:title="@string/storage_manage"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.Preference
             android:icon="@drawable/ic_folder_outline"
             android:key="fileManage"
             android:summary="@string/file_manage_summary"
