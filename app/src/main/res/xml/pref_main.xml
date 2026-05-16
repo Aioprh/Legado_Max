@@ -39,12 +39,7 @@
         android:title="@string/debug_tools"
         app:iconSpaceReserved="false" />
 
-    <io.legado.app.lib.prefs.Preference
-        android:icon="@drawable/ic_history"
-        android:key="urlRecord"
-        android:summary="@string/record_url_switch"
-        android:title="@string/url_record"
-        app:iconSpaceReserved="false" />
+    
 
     <io.legado.app.lib.prefs.NameListPreference
         android:defaultValue="0"
@@ -115,6 +110,13 @@
             android:key="readRecord"
             android:summary="@string/read_record_summary"
             android:title="@string/read_record"
+            app:iconSpaceReserved="false" />
+    
+        <io.legado.app.lib.prefs.Preference
+            android:icon="@drawable/ic_history"
+            android:key="urlRecord"
+            android:summary="@string/record_url_switch"
+            android:title="@string/url_record"
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.Preference
