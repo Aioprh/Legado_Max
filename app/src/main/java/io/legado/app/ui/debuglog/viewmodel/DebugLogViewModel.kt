@@ -542,8 +542,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     private fun subscribeToEventFlow() {
         DebugEventCenter.eventFlow
             .filter { !_isPaused.value }
-            .debounce(100)
-            .mapLatest { event ->
+            .onEach { event ->
                 val updatedLogs = mutableListOf(event)
                 updatedLogs.addAll(_allLogs)
 
@@ -554,7 +553,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
 
                 _allLogs = updatedLogs.toList()
 
-                _uiState.value.copy(
+                _uiState.value = _uiState.value.copy(
                     logs = _allLogs,
                     isEmpty = false,
                     isPaused = _isPaused.value
