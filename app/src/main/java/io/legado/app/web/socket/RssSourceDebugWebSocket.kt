@@ -64,6 +64,10 @@ class RssSourceDebugWebSocket(handshakeRequest: NanoHTTPD.IHTTPSession) :
                         Debug.callback = this@RssSourceDebugWebSocket
                         Debug.startDebug(this, it)
                     }
+                } else {
+                    send("数据必须为Json格式")
+                    close(NanoWSD.WebSocketFrame.CloseCode.NormalClosure, "调试结束", false)
+                    return@launch
                 }
             }
         }
