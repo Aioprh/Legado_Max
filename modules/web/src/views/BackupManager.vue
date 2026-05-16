@@ -131,7 +131,8 @@ const categoryConfig = [
 
 const categories = computed<CategoryGroup[]>(() => {
   if (!backupOverview.value) return []
-  const items = backupOverview.value.items
+  const items = backupOverview.value.items || []
+  if (!Array.isArray(items)) return []
   const result: CategoryGroup[] = []
 
   for (const cfg of categoryConfig) {
@@ -225,11 +226,13 @@ const handleBackup = async () => {
     const previewResponse = await fetch(`${legado_http_entry_point}backupPreview`)
     const previewData = await previewResponse.json()
 
-    if (previewData.isSuccess) {
+    if (previewData.isSuccess && previewData.data && Array.isArray(previewData.data.items)) {
       backupOverview.value = previewData.data
       categories.value.forEach(c => {
         expandedCategories[c.name] = true
       })
+    } else {
+      throw new Error(previewData.errorMsg || '获取备份预览失败')
     }
   } catch (e: any) {
     errorMsg.value = e.message || '备份过程中发生错误'

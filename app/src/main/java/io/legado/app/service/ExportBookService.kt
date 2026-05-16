@@ -554,7 +554,8 @@ class ExportBookService : BaseService() {
                     includeTitle = false,
                     useReplace = useReplace,
                     chineseConvert = false,
-                    reSegment = false
+                    reSegment = false,
+                    forceRemoveTitle = true
                 ).toString()
             val title = chapter.run {
                 // 不导出vip标识
@@ -750,7 +751,8 @@ class ExportBookService : BaseService() {
                             includeTitle = false,
                             useReplace = useReplace,
                             chineseConvert = false,
-                            reSegment = false
+                            reSegment = false,
+                            forceRemoveTitle = true
                         ).toString()
                     val title = chapter.run {
                         // 不导出vip标识

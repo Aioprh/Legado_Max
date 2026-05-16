@@ -6,6 +6,7 @@ import android.view.Menu
 import android.view.MenuItem
 import androidx.activity.viewModels
 import androidx.appcompat.widget.PopupMenu
+import androidx.appcompat.widget.SearchView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -19,6 +20,7 @@ import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.association.ImportDictRuleDialog
 import io.legado.app.ui.association.ImportUrlDialogHelper
 import io.legado.app.ui.browser.WebViewActivity
@@ -30,6 +32,7 @@ import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.ACache
 import io.legado.app.utils.GSON
+import io.legado.app.utils.applyTint
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.launch
 import io.legado.app.help.ExportResultHandler
@@ -41,11 +44,14 @@ import io.legado.app.utils.splitNotBlank
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
 class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewModel>(),
+    SearchView.OnQueryTextListener,
     PopupMenu.OnMenuItemClickListener,
     SelectActionBar.CallBack,
     DictRuleAdapter.CallBack {
@@ -54,6 +60,10 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
     override val binding by viewBinding(ActivityDictRuleBinding::inflate)
     private val importRecordKey = "dictRuleUrls"
     private val adapter by lazy { DictRuleAdapter(this, this) }
+    private val searchView: SearchView by lazy {
+        binding.titleBar.findViewById(R.id.search_view)
+    }
+    private var dictRuleFlowJob: Job? = null
     private val qrCodeResult = registerForActivityResult(QrCodeResult()) {
         it ?: return@registerForActivityResult
         showDialogFragment(ImportDictRuleDialog(it))
@@ -71,6 +81,7 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         initRecyclerView()
+        initSearchView()  // 初始化搜索框
         initSelectActionView()
         observeDictRuleData()
     }
@@ -90,14 +101,23 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
         val dragSelectTouchHelper: DragSelectTouchHelper =
             DragSelectTouchHelper(adapter.dragSelectCallback).setSlideArea(16, 50)
         dragSelectTouchHelper.attachToRecyclerView(binding.recyclerView)
-        // When this page is opened, it is in selection mode
         dragSelectTouchHelper.activeSlideSelect()
-
-        // Note: need judge selection first, so add ItemTouchHelper after it.
         ItemTouchHelper(itemTouchCallback).attachToRecyclerView(binding.recyclerView)
     }
 
+    /**
+     * 初始化搜索框
+     * 设置搜索提示文字和文本变化监听器
+     */
+    private fun initSearchView() {
+        searchView.applyTint(primaryTextColor)
+        searchView.queryHint = getString(R.string.dict_rule_search)
+        searchView.setOnQueryTextListener(this)
+    }
 
+    /**
+     * 初始化选择操作栏
+     */
     private fun initSelectActionView() {
         binding.selectActionBar.setMainActionText(R.string.delete)
         binding.selectActionBar.inflateMenu(R.menu.dict_rule_sel)
@@ -105,12 +125,39 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
         binding.selectActionBar.setCallBack(this)
     }
 
-    private fun observeDictRuleData() {
-        lifecycleScope.launch {
-            appDb.dictRuleDao.flowAll().catch {
+    /**
+     * 监听字典规则数据变化
+     * @param searchKey 搜索关键词，支持以下格式：
+     * - null或空字符串：显示所有规则
+     * - "启用"/"禁用"：按启用状态筛选
+     * - 其他：按名称模糊搜索
+     */
+    private fun observeDictRuleData(searchKey: String? = null) {
+        // 取消之前的数据流订阅，避免重复
+        dictRuleFlowJob?.cancel()
+        dictRuleFlowJob = lifecycleScope.launch {
+            when {
+                searchKey.isNullOrEmpty() -> {
+                    appDb.dictRuleDao.flowAll()
+                }
+
+                searchKey == getString(R.string.enabled) -> {
+                    appDb.dictRuleDao.flowEnabled()
+                }
+
+                searchKey == getString(R.string.disabled) -> {
+                    appDb.dictRuleDao.flowDisabled()
+                }
+
+                else -> {
+                    // 模糊搜索，使用SQL LIKE语句，%表示任意字符
+                    appDb.dictRuleDao.flowSearch("%$searchKey%")
+                }
+            }.catch {
                 AppLog.put("字典规则获取数据失败\n${it.localizedMessage}", it)
             }.flowOn(IO).collect {
                 adapter.setItems(it, adapter.diffItemCallBack)
+                delay(100)
             }
         }
     }
@@ -206,6 +253,21 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
             adapter.selection.size,
             adapter.itemCount
         )
+    }
+
+    /**
+     * 搜索框文本变化时回调，实时搜索
+     */
+    override fun onQueryTextChange(newText: String?): Boolean {
+        observeDictRuleData(newText)
+        return false
+    }
+
+    /**
+     * 搜索框提交时回调（点击键盘搜索按钮）
+     */
+    override fun onQueryTextSubmit(query: String?): Boolean {
+        return false
     }
 
     @SuppressLint("InflateParams")

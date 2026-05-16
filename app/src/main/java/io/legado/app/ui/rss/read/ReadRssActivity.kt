@@ -129,6 +129,13 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
         }
     }
     private val rssJsExtensions by lazy { RssJsExtensions(this, viewModel.rssSource) }
+    
+    /**
+     * WebView性能追踪器
+     * 用于测量页面加载各阶段耗时（HTML下载、解析、JS注入、DOM渲染等）
+     * 仅在订阅源的 showWebLog 字段为 true 时启用
+     */
+    private var perfTracker: RssWebViewPerfTracker? = null
 
     private val refreshNameList: MutableList<String> by lazy { mutableListOf() }
     private fun refresh() {
@@ -383,14 +390,39 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
         }
     }
 
+    /**
+     * 初始化LiveData观察者
+     * 订阅源加载有三种方式：
+     * 1. contentLiveData - 直接加载正文内容（最常用）
+     * 2. urlLiveData - 加载文章详情页URL
+     * 3. htmlLiveData - 加载启动页HTML
+     */
     @SuppressLint("SetJavaScriptEnabled")
     private fun initLiveData() {
+        /**
+         * 方式1: contentLiveData
+         * 加载文章的正文内容，通过 clHtml 方法处理后直接加载到WebView
+         * 适用于：订阅源有 ruleContent 规则的情况
+         */
         viewModel.contentLiveData.observe(this) { content ->
             viewModel.rssArticle?.let {
                 upWebviewSettings()
                 initJavascriptInterface()
                 val rssSource = viewModel.rssSource
+                
+                val showPerfLog = rssSource?.showWebLog == true
+                if (showPerfLog && rssSource != null) {
+                    perfTracker = RssWebViewPerfTracker(rssSource)
+                    perfTracker!!.start()
+                    perfTracker!!.htmlParseStart()
+                }
+                
                 val html = viewModel.clHtml(content, rssSource?.style)
+                
+                if (showPerfLog) {
+                    perfTracker?.htmlParseEnd()
+                }
+                
                 val url = NetworkUtils.getAbsoluteURL(it.origin, it.link).substringBefore("@js")
                 val baseUrl = if (rssSource?.loadWithBaseUrl == false) null else url
                 currentWebView.loadDataWithBaseURL(
@@ -398,16 +430,40 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                 )
             }
         }
+        /**
+         * 方式2: urlLiveData
+         * 直接加载文章详情页URL，WebView会请求真实网页
+         * 适用于：订阅源没有 ruleContent 规则，需要直接展示原网页
+         */
         viewModel.urlLiveData.observe(this) { urlState ->
             upWebviewSettings(urlState.getUserAgent())
             initJavascriptInterface()
             CookieManager.applyToWebView(urlState.url)
+            
+            val source = viewModel.rssSource
+            if (source?.showWebLog == true) {
+                perfTracker = RssWebViewPerfTracker(source)
+                perfTracker!!.start()
+            }
+            
             currentWebView.loadUrl(urlState.url, urlState.headerMap)
         }
+        /**
+         * 方式3: htmlLiveData
+         * 加载自定义的启动页HTML（如分类导航页）
+         * 适用于：订阅源设置了 startHtml 启动页
+         */
         viewModel.htmlLiveData.observe(this) { html ->
             viewModel.rssSource?.let {
                 upWebviewSettings()
                 initJavascriptInterface()
+                
+                if (it.showWebLog) {
+                    perfTracker = RssWebViewPerfTracker(it)
+                    perfTracker!!.start()
+                    perfTracker!!.htmlParseStart()
+                }
+                
                 val baseUrl = if (it.loadWithBaseUrl) it.sourceUrl else null
                 currentWebView.loadDataWithBaseURL(
                     baseUrl, html, "text/html", "utf-8", it.sourceUrl
@@ -608,38 +664,76 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
             }
             super.onPageStarted(view, url, favicon)
             currentWebView.evaluateJavascript(basicJs, null)
+            
+            val source = viewModel.rssSource
+            if (source?.showWebLog == true) {
+                // 如果还没有开始追踪，才创建新的追踪器
+                // 这样可以保留 contentLiveData 等地方已经记录的阶段数据
+                if (perfTracker == null || perfTracker!!.startTime == 0L) {
+                    perfTracker = RssWebViewPerfTracker(source)
+                    perfTracker!!.start()
+                }
+            }
         }
 
         private var jsInjected = false
+        
         /**
-         * 如果有黑名单,黑名单匹配返回空白,
+         * * 如果有黑名单,黑名单匹配返回空白,
          * 没有黑名单再判断白名单,在白名单中的才通过,
          * 都没有不做处理
+         * 拦截WebView的资源请求，处理以下逻辑：
+         * 1. 主框架请求 + 有预注入JS → 通过OkHttp下载HTML并注入JS脚本
+         * 2. JS注入请求 → 返回预注入的JS代码（包含Promise封装的异步函数）
+         * 3. 黑名单匹配 → 返回空白资源
+         * 4. 白名单不匹配 → 返回空白资源
+         * 5. 其他请求 → 放行
          */
         override fun shouldInterceptRequest(
             view: WebView, request: WebResourceRequest
         ): WebResourceResponse? {
             val url = request.url.toString()
             val source = viewModel.rssSource ?: return super.shouldInterceptRequest(view, request)
+            
+            // 1. 主框架请求 + 有预注入JS：通过OkHttp下载并注入JS
             if (request.isForMainFrame) {
                 if (viewModel.hasPreloadJs) {
                     jsInjected = false
+                    // data:text/html 和 POST 请求跳过处理
                     if (url.startsWith("data:text/html;") || request.method == "POST") {
                         return super.shouldInterceptRequest(view, request)
                     }
+                    // 异步下载并修改HTML内容
                     return runBlocking(IO) {
                         getModifiedContentWithJs(url, request) ?: super.shouldInterceptRequest(view, request)
                     }
                 }
-            } else if (!jsInjected && url == nameUrl) {
+            } 
+            // 2. JS注入请求：返回预注入的JS代码
+            else if (!jsInjected && url == nameUrl) {
                 jsInjected = true
                 val preloadJs = source.preloadJs ?: ""
-                return WebResourceResponse(
+                // JS_INJECTION：包含ajaxAwait、downloadFileAwait等Promise封装的异步函数
+                val injectionContent = "(() => {$JS_INJECTION\n$preloadJs\n})();"
+                
+                if (source.showWebLog) {
+                    perfTracker?.jsInjectStart()
+                }
+                
+                val response = WebResourceResponse(
                     "text/javascript",
                     "utf-8",
-                    ByteArrayInputStream("(() => {$JS_INJECTION\n$preloadJs\n})();".toByteArray())
+                    ByteArrayInputStream(injectionContent.toByteArray())
                 )
+                
+                if (source.showWebLog) {
+                    perfTracker?.jsInjectEnd(injectionContent.length)
+                }
+                
+                return response
             }
+            
+            // 3. 黑名单检查：匹配则返回空白资源
             val blacklist = source.contentBlacklist?.splitNotBlank(",")
             if (!blacklist.isNullOrEmpty()) {
                 blacklist.forEach {
@@ -670,8 +764,30 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
             return super.shouldInterceptRequest(view, request)
         }
 
+        /**
+         * 通过OkHttp下载HTML并注入预注入JS脚本
+         * 
+         * 流程：
+         * 1. 通过OkHttp下载网页内容
+         * 2. 解析HTML，找到<head>标签
+         * 3. 在<head>标签后插入JS脚本标签（JS_URL）
+         * 4. WebView加载时会拦截这个JS请求，返回预注入的JS代码
+         * 
+         * @param url 网页URL
+         * @param request 原始请求
+         * @return 修改后的HTML响应
+         */
         private suspend fun getModifiedContentWithJs(url: String, request: WebResourceRequest): WebResourceResponse? {
             try {
+                val source = viewModel.rssSource
+                val showPerfLog = source?.showWebLog == true
+                
+                // 阶段1：HTML下载
+                if (showPerfLog) {
+                    perfTracker?.htmlDownloadStart()
+                }
+                
+                // 发送OkHttp请求，携带Cookie和原始请求头
                 val cookie = webCookieManager.getCookie(url)
                 val res = okHttpClient.newCallResponse {
                     url(url)
@@ -683,20 +799,33 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                         addHeader(key, value)
                     }
                 }
+                
+                // 阶段2：HTML解析（注入JS标签）
+                if (showPerfLog) {
+                    perfTracker?.htmlDownloadEnd()
+                    perfTracker?.htmlParseStart()
+                }
+                
+                // 保存Set-Cookie
                 res.headers("Set-Cookie").forEach { setCookie ->
                     webCookieManager.setCookie(url, setCookie)
                 }
+                
+                // 解析响应内容
                 val body = res.body
                 val contentType = body.contentType()
                 val mimeType = contentType?.toString()?.substringBefore(";") ?: "text/html"
                 val charset = contentType?.charset() ?: Charsets.UTF_8
                 val charsetSre = charset.name()
+                
+                // 在HTML的<head>标签后插入JS脚本标签
                 val bodyText = body.text().let { originalText ->
                     val headIndex = originalText.indexOf("<head", ignoreCase = true)
                     if (headIndex >= 0) {
                         val closingHeadIndex = originalText.indexOf('>', startIndex = headIndex)
                         if (closingHeadIndex >= 0) {
                             val insertPos = closingHeadIndex + 1
+                            // JS_URL 是用于触发JS注入的假URL，格式：<script src="xxx"></script>
                             StringBuilder(originalText).insert(insertPos, JS_URL).toString()
                         } else {
                             originalText
@@ -705,6 +834,11 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                         originalText
                     }
                 }
+                
+                if (showPerfLog) {
+                    perfTracker?.htmlParseEnd()
+                }
+                
                 return WebResourceResponse(
                     mimeType,
                     charsetSre,
@@ -715,8 +849,21 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
             }
         }
 
+        /**
+         * 页面加载完成回调
+         * 1. 记录DOM渲染结束时间并输出性能报告
+         * 2. 更新标题栏
+         */
         override fun onPageFinished(view: WebView, url: String) {
             super.onPageFinished(view, url)
+            
+            // 阶段5：DOM渲染完成，记录性能数据
+            if (viewModel.rssSource?.showWebLog == true) {
+                perfTracker?.domRenderEnd()
+                perfTracker?.report()
+            }
+            
+            // 更新标题栏
             view.title?.let { title ->
                 if (title != url
                     && title != view.url

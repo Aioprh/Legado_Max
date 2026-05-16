@@ -6,6 +6,7 @@ import android.view.Menu
 import android.view.MenuItem
 import androidx.activity.viewModels
 import androidx.appcompat.widget.PopupMenu
+import androidx.appcompat.widget.SearchView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import io.legado.app.R
@@ -18,6 +19,7 @@ import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.association.ImportTxtTocRuleDialog
 import io.legado.app.ui.association.ImportUrlDialogHelper
 import io.legado.app.ui.browser.WebViewActivity
@@ -30,6 +32,7 @@ import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.ACache
 import io.legado.app.utils.GSON
+import io.legado.app.utils.applyTint
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.launch
 import io.legado.app.help.ExportResultHandler
@@ -41,12 +44,15 @@ import io.legado.app.utils.splitNotBlank
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 
 class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleViewModel>(),
+    SearchView.OnQueryTextListener,
     TxtTocRuleAdapter.CallBack,
     SelectActionBar.CallBack,
     TxtTocRuleEditDialog.Callback,
@@ -57,6 +63,10 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
     private val adapter: TxtTocRuleAdapter by lazy {
         TxtTocRuleAdapter(this, this)
     }
+    private val searchView: SearchView by lazy {
+        binding.titleBar.findViewById(R.id.search_view)
+    }
+    private var txtTocRuleFlowJob: Job? = null
     private val importTocRuleKey = "tocRuleUrl"
     private val qrCodeResult = registerForActivityResult(QrCodeResult()) {
         it ?: return@registerForActivityResult
@@ -75,6 +85,7 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         initView()
+        initSearchView()  // 初始化搜索框
         initBottomActionBar()
         initData()
     }
@@ -97,6 +108,19 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
         ItemTouchHelper(itemTouchCallback).attachToRecyclerView(binding.recyclerView)
     }
 
+    /**
+     * 初始化搜索框
+     * 设置搜索提示文字和文本变化监听器
+     */
+    private fun initSearchView() {
+        searchView.applyTint(primaryTextColor)
+        searchView.queryHint = getString(R.string.txt_toc_rule_search)
+        searchView.setOnQueryTextListener(this)
+    }
+
+    /**
+     * 初始化底部选择操作栏
+     */
     private fun initBottomActionBar() {
         binding.selectActionBar.setMainActionText(R.string.delete)
         binding.selectActionBar.inflateMenu(R.menu.txt_toc_rule_sel)
@@ -104,12 +128,39 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
         binding.selectActionBar.setCallBack(this)
     }
 
-    private fun initData() {
-        lifecycleScope.launch {
-            appDb.txtTocRuleDao.observeAll().catch {
+    /**
+     * 初始化TXT目录规则数据
+     * @param searchKey 搜索关键词，支持以下格式：
+     * - null或空字符串：显示所有规则
+     * - "启用"/"禁用"：按启用状态筛选
+     * - 其他：按名称模糊搜索
+     */
+    private fun initData(searchKey: String? = null) {
+        // 取消之前的数据流订阅，避免重复
+        txtTocRuleFlowJob?.cancel()
+        txtTocRuleFlowJob = lifecycleScope.launch {
+            when {
+                searchKey.isNullOrEmpty() -> {
+                    appDb.txtTocRuleDao.observeAll()
+                }
+
+                searchKey == getString(R.string.enabled) -> {
+                    appDb.txtTocRuleDao.observeEnabled()
+                }
+
+                searchKey == getString(R.string.disabled) -> {
+                    appDb.txtTocRuleDao.observeDisabled()
+                }
+
+                else -> {
+                    // 模糊搜索，使用SQL LIKE语句，%表示任意字符
+                    appDb.txtTocRuleDao.observeSearch("%$searchKey%")
+                }
+            }.catch {
                 AppLog.put("TXT目录规则界面获取数据失败\n${it.localizedMessage}", it)
             }.flowOn(IO).conflate().collect { tocRules ->
                 adapter.setItems(tocRules, adapter.diffItemCallBack)
+                delay(100)
             }
         }
     }
@@ -201,6 +252,24 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
             .upCountView(adapter.selection.size, adapter.itemCount)
     }
 
+    /**
+     * 搜索框文本变化时回调，实时搜索
+     */
+    override fun onQueryTextChange(newText: String?): Boolean {
+        initData(newText)
+        return false
+    }
+
+    /**
+     * 搜索框提交时回调（点击键盘搜索按钮）
+     */
+    override fun onQueryTextSubmit(query: String?): Boolean {
+        return false
+    }
+
+    /**
+     * 显示删除确认对话框
+     */
     private fun delSourceDialog() {
         alert(titleResource = R.string.draw, messageResource = R.string.sure_del) {
             yesButton { viewModel.del(*adapter.selection.toTypedArray()) }
