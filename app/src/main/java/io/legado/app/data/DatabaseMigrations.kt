@@ -1,7 +1,6 @@
 package io.legado.app.data
 
 import androidx.room.DeleteColumn
-import androidx.room.RenameColumn
 import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -21,6 +20,7 @@ object DatabaseMigrations {
             migration_31_32, migration_32_33, migration_33_34, migration_34_35,
             migration_35_36, migration_36_37, migration_37_38, migration_38_39,
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
+            migration_95_96
         )
     }
 
@@ -473,12 +473,26 @@ object DatabaseMigrations {
         }
     }
 
-    @Suppress("ClassName")
-    @RenameColumn(
-        tableName = "book_sources",
-        fromColumnName = "nextPagePreload",
-        toColumnName = "nextPageLazyLoad"
-    )
-    class Migration_95_96 : AutoMigrationSpec
+    private val migration_95_96 = object : Migration(95, 96) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val cursor = db.query("PRAGMA table_info(book_sources)")
+            var hasNextPagePreload = false
+            var hasNextPageLazyLoad = false
+            while (cursor.moveToNext()) {
+                val columnName = cursor.getString(cursor.getColumnIndexOrThrow("name"))
+                if (columnName == "nextPagePreload") hasNextPagePreload = true
+                if (columnName == "nextPageLazyLoad") hasNextPageLazyLoad = true
+            }
+            cursor.close()
+            when {
+                !hasNextPagePreload && !hasNextPageLazyLoad -> {
+                    db.execSQL("ALTER TABLE book_sources ADD COLUMN nextPageLazyLoad INTEGER NOT NULL DEFAULT 0")
+                }
+                hasNextPagePreload && !hasNextPageLazyLoad -> {
+                    db.execSQL("ALTER TABLE book_sources RENAME COLUMN nextPagePreload TO nextPageLazyLoad")
+                }
+            }
+        }
+    }
 
 }
