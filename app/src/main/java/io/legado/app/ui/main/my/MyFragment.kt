@@ -181,6 +181,7 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
                 "fileManage" -> startActivity<FileManageActivity>()
                 "readRecord" -> startActivity<ReadRecordActivity>()
                 "storageManage" -> startActivity<StorageManageActivity>()
+                "downloadManage" -> { }
                 "about" -> startActivity<AboutActivity>()
                 "exit" -> activity?.finish()
             }

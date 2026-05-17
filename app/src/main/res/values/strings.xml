@@ -884,6 +884,8 @@
     <string name="read_record_summary">Read record summary</string>
     <string name="storage_manage">Storage Management</string>
     <string name="storage_manage_summary">Manage app cache and storage</string>
+    <string name="download_manage">Download Management</string>
+    <string name="download_manage_summary">Manage book download tasks</string>
     <string name="local_tts">Local TTS</string>
     <string name="thread_count">Thread count</string>
     <string name="all_read_time">Total read time</string>
