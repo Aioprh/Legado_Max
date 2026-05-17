@@ -1,8 +1,12 @@
 package io.legado.app.ui.book.read
 
 import android.annotation.SuppressLint
+import android.animation.ObjectAnimator
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Looper
 import android.view.Gravity
@@ -12,10 +16,12 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
+import android.view.animation.LinearInterpolator
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.graphics.ColorUtils as AndroidXColorUtils
 import androidx.core.view.get
 import androidx.core.view.size
 import androidx.lifecycle.lifecycleScope
@@ -50,12 +56,15 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ReadTipConfig
 import io.legado.app.help.coroutine.Coroutine
+import io.legado.app.help.glide.ImageLoader
 import io.legado.app.help.source.getSourceType
 import io.legado.app.help.storage.Backup
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
 import io.legado.app.model.analyzeRule.AnalyzeRule
@@ -80,6 +89,7 @@ import io.legado.app.ui.book.read.config.BgTextConfigDialog.Companion.TEXT_ACCEN
 import io.legado.app.ui.book.read.config.BgTextConfigDialog.Companion.TEXT_COLOR
 import io.legado.app.ui.book.read.config.BgTextConfigDialog.Companion.UNDERLINE_COLOR
 import io.legado.app.ui.book.read.config.MoreConfigDialog
+import io.legado.app.ui.book.read.config.ReadAloudActivity
 import io.legado.app.ui.book.read.config.ReadAloudDialog
 import io.legado.app.ui.book.read.config.ReadStyleDialog
 import io.legado.app.ui.book.read.config.TipConfigDialog.Companion.TIP_COLOR
@@ -106,6 +116,7 @@ import io.legado.app.ui.replace.edit.ReplaceEditActivity
 import io.legado.app.ui.widget.PopupAction
 import io.legado.app.ui.widget.dialog.PhotoDialog
 import io.legado.app.utils.ACache
+import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.Debounce
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.NetworkUtils
@@ -113,6 +124,7 @@ import io.legado.app.utils.StartActivityContract
 import io.legado.app.utils.applyOpenTint
 import io.legado.app.utils.buildMainHandler
 import io.legado.app.utils.dismissDialogFragment
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.hexString
@@ -267,6 +279,9 @@ class ReadBookActivity : BaseReadBookActivity(),
     private var justInitData: Boolean = false
     private var syncDialog: AlertDialog? = null
     private var needSyncReadAloudOnResume: Boolean = false
+    private var miniCoverAnimator: ObjectAnimator? = null
+    private var miniBarVisible = false
+    private var miniBarThemeInitialized = false
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -275,6 +290,18 @@ class ReadBookActivity : BaseReadBookActivity(),
         binding.cursorRight.setColorFilter(accentColor)
         binding.cursorLeft.setOnTouchListener(this)
         binding.cursorRight.setOnTouchListener(this)
+        binding.readAloudMiniBar.setOnClickListener { openReadAloudActivity() }
+        binding.readAloudMiniBar.setOnLongClickListener {
+            showReadAloudDialog()
+            true
+        }
+        binding.ivReadAloudMiniPlay.setOnClickListener {
+            if (BaseReadAloudService.pause) ReadAloud.resume(this)
+            else ReadAloud.pause(this)
+        }
+        binding.ivReadAloudMiniClose.setOnClickListener {
+            ReadAloud.stop(this)
+        }
         window.setBackgroundDrawable(null)
         upScreenTimeOut()
         ReadBook.register(this)
@@ -349,6 +376,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             syncReadAloudProgress(allowChapterMismatch = true)
             needSyncReadAloudOnResume = false
         }
+        upReadAloudMiniBar()
         if (!BaseReadAloudService.isPlay()) {
             ReadBook.markReadStart()
         }
@@ -380,6 +408,7 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun onPause() {
         super.onPause()
+        pauseReadAloudMiniAnimation()
         autoPageStop()
         backupJob?.cancel()
         needSyncReadAloudOnResume = BaseReadAloudService.isPlay()
@@ -1155,7 +1184,6 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun showActionMenu() {
         when {
-            BaseReadAloudService.isRun -> showReadAloudDialog()
             isAutoPage -> showDialogFragment<AutoReadDialog>()
             isShowingSearchResult -> binding.searchMenu.runMenuIn()
             else -> binding.readMenu.runMenuIn()
@@ -1446,6 +1474,10 @@ class ReadBookActivity : BaseReadBookActivity(),
      * 朗读按钮
      */
     override fun onClickReadAloud() {
+        toggleReadAloud(launchUi = false, allowPauseWhenRunning = false)
+    }
+
+    private fun toggleReadAloud(launchUi: Boolean, allowPauseWhenRunning: Boolean) {
         autoPageStop()
         when {
             !BaseReadAloudService.isRun -> {
@@ -1458,16 +1490,20 @@ class ReadBookActivity : BaseReadBookActivity(),
                         if (ReadBook.durChapterIndex != index) {
                             ReadBook.openChapter(index, line.chapterPosition, false) {
                                 ReadBook.readAloud(startPos = line.pagePosition)
+                                if (launchUi) openReadAloudActivity()
                             }
                         } else {
                             ReadBook.durChapterPos = line.chapterPosition
                             ReadBook.readAloud(startPos = line.pagePosition)
+                            if (launchUi) openReadAloudActivity()
                         }
                     } else {
                         ReadBook.readAloud()
+                        if (launchUi) openReadAloudActivity()
                     }
                 } else {
                     ReadBook.readAloud()
+                    if (launchUi) openReadAloudActivity()
                 }
             }
 
@@ -1481,21 +1517,150 @@ class ReadBookActivity : BaseReadBookActivity(),
                         if (ReadBook.durChapterIndex != index) {
                             ReadBook.openChapter(index, line.chapterPosition, false) {
                                 ReadBook.readAloud(startPos = line.pagePosition)
+                                if (launchUi) openReadAloudActivity()
                             }
                         } else {
                             ReadBook.durChapterPos = line.chapterPosition
                             ReadBook.readAloud(startPos = line.pagePosition)
+                            if (launchUi) openReadAloudActivity()
                         }
                     } else {
                         ReadBook.readAloud()
+                        if (launchUi) openReadAloudActivity()
                     }
                 } else {
                     ReadAloud.resume(this)
+                    if (launchUi) openReadAloudActivity()
                 }
             }
 
-            else -> ReadAloud.pause(this)
+            else -> {
+                if (launchUi) {
+                    openReadAloudActivity()
+                } else if (allowPauseWhenRunning) {
+                    ReadAloud.pause(this)
+                } else {
+                    upReadAloudMiniBar()
+                }
+            }
         }
+    }
+
+    private fun openReadAloudActivity() {
+        startActivity<ReadAloudActivity>()
+    }
+
+    private fun upReadAloudMiniBar() = binding.run {
+        if (!BaseReadAloudService.isRun) {
+            readAloudMiniBar.invisible()
+            stopReadAloudMiniAnimation(reset = true)
+            miniBarVisible = false
+            miniBarThemeInitialized = false
+            return@run
+        }
+        ivReadAloudMiniPlay.setImageResource(
+            if (BaseReadAloudService.pause) R.drawable.ic_play_24dp else R.drawable.ic_pause_24dp
+        )
+        readAloudMiniBar.visible()
+        if (!miniBarVisible) {
+            miniBarVisible = true
+            readAloudMiniBar.alpha = 0f
+            readAloudMiniBar.translationY = 12f.dpToPx()
+            readAloudMiniBar.animate().alpha(1f).translationY(0f).setDuration(180L).start()
+        }
+        if (BaseReadAloudService.pause) {
+            pauseReadAloudMiniAnimation()
+        } else {
+            startReadAloudMiniAnimation()
+        }
+        if (miniBarThemeInitialized) return@run
+        miniBarThemeInitialized = true
+        val fallback = backgroundColor
+        applyMiniBarTheme(fallback)
+        ReadBook.book?.let { book ->
+            ImageLoader.load(this@ReadBookActivity, book.getDisplayCover())
+                .circleCrop()
+                .into(ivReadAloudMiniCover)
+            lifecycleScope.launch(IO) {
+                val bitmap = runCatching {
+                    ImageLoader.loadBitmap(this@ReadBookActivity, book.getDisplayCover()).submit().get()
+                }.getOrNull()
+                bitmap?.let {
+                    val dominant = extractDominantColor(it)
+                    withContext(Main) {
+                        applyMiniBarTheme(dominant)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun applyMiniBarTheme(color: Int) = binding.run {
+        val bubble = AndroidXColorUtils.blendARGB(color, 0xFF79658C.toInt(), 0.42f)
+        val textColor = if (ColorUtils.isColorLight(bubble)) 0xFF1A1422.toInt() else 0xFFFFFFFF.toInt()
+        val softColor = AndroidXColorUtils.setAlphaComponent(textColor, 72)
+        readAloudMiniBar.background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 30f.dpToPx()
+            setColor(AndroidXColorUtils.setAlphaComponent(bubble, 236))
+        }
+        readAloudMiniCoverShell.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 18))
+            setStroke(1.dpToPx(), AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 58))
+        }
+        ivReadAloudMiniPlay.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 8))
+            setStroke(2.dpToPx(), AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 84))
+        }
+        ivReadAloudMiniClose.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 6))
+        }
+        ivReadAloudMiniPlay.setColorFilter(textColor)
+        ivReadAloudMiniClose.setColorFilter(softColor)
+    }
+
+    private fun startReadAloudMiniAnimation() {
+        val animator = miniCoverAnimator ?: ObjectAnimator.ofFloat(binding.ivReadAloudMiniCover, View.ROTATION, 0f, 360f).apply {
+            duration = 9000L
+            repeatCount = ObjectAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            miniCoverAnimator = this
+        }
+        if (animator.isPaused) animator.resume()
+        if (!animator.isStarted) animator.start()
+    }
+
+    private fun pauseReadAloudMiniAnimation() {
+        miniCoverAnimator?.takeIf { it.isRunning }?.pause()
+    }
+
+    private fun stopReadAloudMiniAnimation(reset: Boolean) {
+        miniCoverAnimator?.cancel()
+        miniCoverAnimator = null
+        if (reset) binding.ivReadAloudMiniCover.rotation = 0f
+    }
+
+    private fun extractDominantColor(bitmap: Bitmap): Int {
+        val stepX = (bitmap.width / 16).coerceAtLeast(1)
+        val stepY = (bitmap.height / 16).coerceAtLeast(1)
+        var red = 0L
+        var green = 0L
+        var blue = 0L
+        var count = 0L
+        for (x in 0 until bitmap.width step stepX) {
+            for (y in 0 until bitmap.height step stepY) {
+                val pixel = bitmap.getPixel(x, y)
+                red += Color.red(pixel)
+                green += Color.green(pixel)
+                blue += Color.blue(pixel)
+                count++
+            }
+        }
+        if (count == 0L) return 0xFF7A688E.toInt()
+        return Color.rgb((red / count).toInt(), (green / count).toInt(), (blue / count).toInt())
     }
 
     override fun showHelp() {
@@ -1629,10 +1794,16 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun onMenuShow() {
         binding.readView.autoPager.pause()
+        if (BaseReadAloudService.isRun) {
+            binding.readAloudMiniBar.invisible()
+        }
     }
 
     override fun onMenuHide() {
         binding.readView.autoPager.resume()
+        if (BaseReadAloudService.isRun) {
+            upReadAloudMiniBar()
+        }
     }
 
     override fun onLayoutPageCompleted(index: Int, page: TextPage) {
@@ -1777,7 +1948,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         observeEvent<Int>(EventBus.BATTERY_CHANGED) { readView.upBattery(it) }
         observeEvent<Boolean>(EventBus.MEDIA_BUTTON) {
             if (it) {
-                onClickReadAloud()
+                toggleReadAloud(launchUi = false, allowPauseWhenRunning = true)
             } else {
                 ReadBook.readAloud(!BaseReadAloudService.pause)
             }
@@ -1810,6 +1981,7 @@ class ReadBookActivity : BaseReadBookActivity(),
                     }
                 }
             }
+            upReadAloudMiniBar()
         }
         observeEventSticky<Int>(EventBus.TTS_PROGRESS) {
             lifecycleScope.launch(IO) {
@@ -1817,6 +1989,7 @@ class ReadBookActivity : BaseReadBookActivity(),
                     syncReadAloudProgress(allowChapterMismatch = false)
                 }
             }
+            upReadAloudMiniBar()
         }
         observeEvent<Boolean>(PreferKey.keepLight) {
             upScreenTimeOut()
@@ -1832,6 +2005,9 @@ class ReadBookActivity : BaseReadBookActivity(),
         }
         observeEvent<Boolean>(EventBus.UPDATE_READ_ACTION_BAR) {
             readMenu.reset()
+        }
+        observeEvent<Boolean>(EventBus.SHOW_READ_MENU) {
+            showActionMenu()
         }
         observeEvent<Boolean>(EventBus.UP_SEEK_BAR) {
             readMenu.upSeekBar()

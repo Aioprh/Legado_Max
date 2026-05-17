@@ -553,12 +553,7 @@ object ReadBook : CoroutineScope by MainScope() {
         curTextChapter?.maybePrefetchNextPage(durPageIndex)
         curTextChapter?.let {
             if (BaseReadAloudService.isRun && it.isCompleted) {
-                val scrollPageAnim = pageAnim() == 3
-                if (scrollPageAnim && pageChanged) {
-                    ReadAloud.pause(appCtx)
-                } else {
-                    readAloud(!BaseReadAloudService.pause)
-                }
+                readAloud(!BaseReadAloudService.pause)
             }
         }
         upReadTime()
