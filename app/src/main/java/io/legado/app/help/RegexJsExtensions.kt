@@ -2,7 +2,9 @@ package io.legado.app.help
 
 import androidx.annotation.Keep
 import io.legado.app.constant.AppLog
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.model.analyzeRule.RuleData
+import io.legado.app.model.debug.VariableStorage
 import io.legado.app.utils.ChineseUtils
 
 @Keep
@@ -38,11 +40,28 @@ class RegexJsExtensions(private val name: String): JsEncodeUtils {
     }
 
     fun get(key: String): String {
-        return ruleData.getVariable(key).takeIf { it.isNotEmpty() } ?: ""
+        val value = ruleData.getVariable(key).takeIf { it.isNotEmpty() } ?: ""
+        if (value.isNotEmpty()) {
+            FlowLogRecorder.logVariableRead(
+                source = null,
+                key = key,
+                value = value,
+                storage = VariableStorage.RULE_DATA
+            )
+        }
+        return value
     }
 
     fun put(key: String, value: String): String {
+        val oldValue = ruleData.getVariable(key).takeIf { it.isNotEmpty() }
         ruleData.putVariable(key, value)
+        FlowLogRecorder.logVariableWrite(
+            source = null,
+            key = key,
+            value = value,
+            oldValue = oldValue,
+            storage = VariableStorage.RULE_DATA
+        )
         return value
     }
 }

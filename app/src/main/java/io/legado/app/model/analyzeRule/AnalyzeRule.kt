@@ -17,6 +17,7 @@ import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.CacheManager
+import io.legado.app.help.JsCacheManager
 import io.legado.app.help.JsExtensions
 import io.legado.app.help.http.BackstageWebView
 import io.legado.app.help.http.CookieStore
@@ -918,10 +919,33 @@ class AnalyzeRule(
         if (key == "bookName" || key == "title") {
             Debug.log("≡变量 $key 在特定情况下会被覆盖，建议使用其他键名")
         }
+        
+        val storage = when {
+            chapter != null -> io.legado.app.model.debug.VariableStorage.CHAPTER
+            book != null -> io.legado.app.model.debug.VariableStorage.BOOK
+            ruleData != null -> io.legado.app.model.debug.VariableStorage.RULE_DATA
+            source != null -> io.legado.app.model.debug.VariableStorage.SOURCE
+            else -> io.legado.app.model.debug.VariableStorage.UNKNOWN
+        }
+        
+        val oldValue = chapter?.getVariable(key)
+            ?: book?.getVariable(key)
+            ?: ruleData?.getVariable(key)
+            ?: source?.get(key)
+        
         chapter?.putVariable(key, value)
             ?: book?.putVariable(key, value)
             ?: ruleData?.putVariable(key, value)
             ?: source?.put(key, value)
+        
+        FlowLogRecorder.logVariableWrite(
+            source = source,
+            key = key,
+            value = value,
+            oldValue = oldValue,
+            storage = storage
+        )
+        
         return value
     }
 
@@ -931,18 +955,46 @@ class AnalyzeRule(
     fun get(key: String): String {
         when (key) {
             "bookName" -> book?.let {
+                FlowLogRecorder.logVariableRead(
+                    source = source,
+                    key = key,
+                    value = it.name,
+                    storage = io.legado.app.model.debug.VariableStorage.BOOK
+                )
                 return it.name
             }
 
             "title" -> chapter?.let {
+                FlowLogRecorder.logVariableRead(
+                    source = source,
+                    key = key,
+                    value = it.title,
+                    storage = io.legado.app.model.debug.VariableStorage.CHAPTER
+                )
                 return it.title
             }
         }
-        return chapter?.getVariable(key)?.takeIf { it.isNotEmpty() }
-            ?: book?.getVariable(key)?.takeIf { it.isNotEmpty() }
-            ?: ruleData?.getVariable(key)?.takeIf { it.isNotEmpty() }
-            ?: source?.get(key)?.takeIf { it.isNotEmpty() }
-            ?: ""
+        
+        val (result, storage) = chapter?.getVariable(key)?.takeIf { it.isNotEmpty() }?.let {
+            it to io.legado.app.model.debug.VariableStorage.CHAPTER
+        } ?: book?.getVariable(key)?.takeIf { it.isNotEmpty() }?.let {
+            it to io.legado.app.model.debug.VariableStorage.BOOK
+        } ?: ruleData?.getVariable(key)?.takeIf { it.isNotEmpty() }?.let {
+            it to io.legado.app.model.debug.VariableStorage.RULE_DATA
+        } ?: source?.get(key)?.takeIf { it.isNotEmpty() }?.let {
+            it to io.legado.app.model.debug.VariableStorage.SOURCE
+        } ?: ("" to io.legado.app.model.debug.VariableStorage.UNKNOWN)
+        
+        if (result.isNotEmpty()) {
+            FlowLogRecorder.logVariableRead(
+                source = source,
+                key = key,
+                value = result,
+                storage = storage
+            )
+        }
+        
+        return result
     }
 
     /**
@@ -962,10 +1014,12 @@ class AnalyzeRule(
         
         val jsContext = buildJsExecutionContext(result)
         
+        val jsCacheManager = JsCacheManager(source)
+        
         val bindings = buildScriptBindings { bindings ->
             bindings["java"] = this
             bindings["cookie"] = CookieStore
-            bindings["cache"] = CacheManager
+            bindings["cache"] = jsCacheManager
             bindings["source"] = source
             bindings["book"] = book
             bindings["result"] = result

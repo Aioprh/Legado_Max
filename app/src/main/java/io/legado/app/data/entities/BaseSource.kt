@@ -273,7 +273,15 @@ interface BaseSource : JsExtensions {
      */
     @JavascriptInterface
     fun put(key: String, value: String): String {
+        val oldValue = get(key)
         CacheManager.put("v_${getKey()}_${key}", value)
+        io.legado.app.data.repository.debug.FlowLogRecorder.logVariableWrite(
+            source = this as? io.legado.app.data.entities.BaseSource,
+            key = key,
+            value = value,
+            oldValue = oldValue.takeIf { it.isNotEmpty() },
+            storage = io.legado.app.model.debug.VariableStorage.SOURCE
+        )
         return value
     }
 
@@ -282,7 +290,16 @@ interface BaseSource : JsExtensions {
      */
     @JavascriptInterface
     fun get(key: String): String {
-        return CacheManager.get("v_${getKey()}_${key}") ?: ""
+        val value = CacheManager.get("v_${getKey()}_${key}") ?: ""
+        if (value.isNotEmpty()) {
+            io.legado.app.data.repository.debug.FlowLogRecorder.logVariableRead(
+                source = this as? io.legado.app.data.entities.BaseSource,
+                key = key,
+                value = value,
+                storage = io.legado.app.model.debug.VariableStorage.SOURCE
+            )
+        }
+        return value
     }
 
     /**

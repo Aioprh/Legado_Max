@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -57,6 +58,8 @@ import io.legado.app.model.debug.RuleExecutionTree
 import io.legado.app.model.debug.RuleExecutionNode
 import io.legado.app.model.debug.JsExecutionRecord
 import io.legado.app.model.debug.RuleType
+import io.legado.app.model.debug.VariableOperation
+import io.legado.app.model.debug.VariableOperationType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -237,6 +240,13 @@ fun FlowLogDetailDialog(
                         Spacer(Modifier.height(12.dp))
                         DetailSection(title = "JS执行环境", searchQuery = searchQuery) {
                             JsExecutionView(jsExec, searchQuery)
+                        }
+                    }
+
+                    if (log.variableOperations.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "变量操作", searchQuery = searchQuery) {
+                            VariableOperationsView(log.variableOperations, searchQuery)
                         }
                     }
 
@@ -630,6 +640,7 @@ private fun getStageColor(stage: FlowStage) = when (stage) {
     FlowStage.PARSE -> MaterialTheme.colorScheme.tertiary
     FlowStage.EXTRACT -> MaterialTheme.colorScheme.secondary
     FlowStage.REPLACE -> MaterialTheme.colorScheme.error
+    FlowStage.VARIABLE -> MaterialTheme.colorScheme.tertiary
 }
 
 @Composable
@@ -638,6 +649,7 @@ private fun getStageIcon(stage: FlowStage) = when (stage) {
     FlowStage.PARSE -> Icons.Default.Code
     FlowStage.EXTRACT -> Icons.Default.DataObject
     FlowStage.REPLACE -> Icons.Default.SwapHoriz
+    FlowStage.VARIABLE -> Icons.Default.Inventory
 }
 
 @Composable
@@ -674,4 +686,137 @@ private fun highlightText(text: String, query: String): androidx.compose.ui.text
 
 private fun formatFullTime(timestamp: Long): String {
     return SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date(timestamp))
+}
+
+@Composable
+private fun VariableOperationsView(
+    operations: List<VariableOperation>,
+    searchQuery: String
+) {
+    val readOps = operations.filter { it.operationType == VariableOperationType.READ }
+    val writeOps = operations.filter { it.operationType == VariableOperationType.WRITE }
+    val deleteOps = operations.filter { it.operationType == VariableOperationType.DELETE }
+    
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "统计: 读${readOps.size}次, 写${writeOps.size}次, 删${deleteOps.size}次",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+            Text(
+                text = "涉及${operations.map { it.key }.toSet().size}个变量",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
+        
+        Spacer(Modifier.height(12.dp))
+        
+        if (writeOps.isNotEmpty()) {
+            Text(
+                text = "📤 写入操作:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(4.dp))
+            
+            writeOps.forEach { op ->
+                VariableOperationItem(op, searchQuery)
+                Spacer(Modifier.height(4.dp))
+            }
+            
+            Spacer(Modifier.height(8.dp))
+        }
+        
+        if (readOps.isNotEmpty()) {
+            Text(
+                text = "📥 读取操作:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.secondary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(4.dp))
+            
+            readOps.forEach { op ->
+                VariableOperationItem(op, searchQuery)
+                Spacer(Modifier.height(4.dp))
+            }
+        }
+        
+        if (deleteOps.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "🗑️ 删除操作:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(4.dp))
+            
+            deleteOps.forEach { op ->
+                VariableOperationItem(op, searchQuery)
+                Spacer(Modifier.height(4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun VariableOperationItem(
+    operation: VariableOperation,
+    searchQuery: String
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        color = when (operation.operationType) {
+            VariableOperationType.READ -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+            VariableOperationType.WRITE -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            VariableOperationType.DELETE -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+        }
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = operation.key,
+                    style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+                    color = when (operation.operationType) {
+                        VariableOperationType.READ -> MaterialTheme.colorScheme.secondary
+                        VariableOperationType.WRITE -> MaterialTheme.colorScheme.primary
+                        VariableOperationType.DELETE -> MaterialTheme.colorScheme.error
+                    }
+                )
+                Text(
+                    text = operation.storage.displayName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+            
+            operation.value?.let { value ->
+                Text(
+                    text = "值: ${value.take(100)}${if (value.length > 100) "..." else ""}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            
+            operation.oldValue?.let { oldValue ->
+                Text(
+                    text = "原值: ${oldValue.take(50)}${if (oldValue.length > 50) "..." else ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+    }
 }

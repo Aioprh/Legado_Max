@@ -362,6 +362,101 @@ object FlowLogRecorder {
     }
 
     /**
+     * 记录变量操作日志
+     * 
+     * @param source 书源对象
+     * @param operations 变量操作列表
+     * @param message 日志消息
+     */
+    fun logVariable(
+        source: BaseSource?,
+        operations: List<io.legado.app.model.debug.VariableOperation>,
+        message: String = "变量操作"
+    ) {
+        if (!isEnabled || operations.isEmpty()) return
+        
+        val sourceUrl = source?.getKey()
+        val sourceName = source?.getTag()
+        val operation = getOperation(sourceUrl)
+        
+        GlobalScope.launch(Dispatchers.IO) {
+            val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
+                ?: UUID.randomUUID().toString()
+
+            val summary = buildString {
+                val reads = operations.count { it.operationType == io.legado.app.model.debug.VariableOperationType.READ }
+                val writes = operations.count { it.operationType == io.legado.app.model.debug.VariableOperationType.WRITE }
+                val deletes = operations.count { it.operationType == io.legado.app.model.debug.VariableOperationType.DELETE }
+                if (reads > 0) append("读${reads}次 ")
+                if (writes > 0) append("写${writes}次 ")
+                if (deletes > 0) append("删${deletes}次")
+            }.trim()
+
+            val item = FlowLogItem(
+                requestId = requestId,
+                sourceUrl = sourceUrl,
+                sourceName = sourceName,
+                stage = FlowStage.VARIABLE,
+                operation = operation,
+                message = message,
+                detail = summary,
+                variableOperations = operations
+            )
+
+            addLog(item)
+        }
+    }
+
+    /**
+     * 记录单个变量读取操作
+     * 
+     * @param source 书源对象
+     * @param key 变量名
+     * @param value 变量值
+     * @param storage 存储位置
+     */
+    fun logVariableRead(
+        source: BaseSource?,
+        key: String,
+        value: String?,
+        storage: io.legado.app.model.debug.VariableStorage = io.legado.app.model.debug.VariableStorage.UNKNOWN
+    ) {
+        val operation = io.legado.app.model.debug.VariableOperation(
+            operationType = io.legado.app.model.debug.VariableOperationType.READ,
+            key = key,
+            value = value,
+            storage = storage
+        )
+        logVariable(source, listOf(operation), "读取变量 $key")
+    }
+
+    /**
+     * 记录单个变量写入操作
+     * 
+     * @param source 书源对象
+     * @param key 变量名
+     * @param value 变量值
+     * @param oldValue 旧值（可选）
+     * @param storage 存储位置
+     */
+    fun logVariableWrite(
+        source: BaseSource?,
+        key: String,
+        value: String,
+        oldValue: String? = null,
+        storage: io.legado.app.model.debug.VariableStorage = io.legado.app.model.debug.VariableStorage.UNKNOWN
+    ) {
+        val operation = io.legado.app.model.debug.VariableOperation(
+            operationType = io.legado.app.model.debug.VariableOperationType.WRITE,
+            key = key,
+            value = value,
+            oldValue = oldValue,
+            storage = storage
+        )
+        logVariable(source, listOf(operation), "写入变量 $key")
+    }
+
+    /**
      * 记录流程日志（异步）
      * 
      * @param sourceUrl 书源URL

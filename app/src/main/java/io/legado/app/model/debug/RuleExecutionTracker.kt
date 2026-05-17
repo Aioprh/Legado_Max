@@ -131,21 +131,4 @@ class RuleExecutionTracker(
     fun hasSteps(): Boolean = steps.isNotEmpty() || currentStep != null
 
     fun getLastOutput(): String? = steps.lastOrNull()?.output ?: currentStep?.output
-
-    companion object {
-        fun fromMode(mode: AnalyzeRuleMode): RuleType {
-            return when (mode) {
-                AnalyzeRuleMode.XPath -> RuleType.XPATH
-                AnalyzeRuleMode.Json -> RuleType.JSONPATH
-                AnalyzeRuleMode.Js -> RuleType.JS
-                AnalyzeRuleMode.WebJs -> RuleType.WEB_JS
-                AnalyzeRuleMode.Regex -> RuleType.REGEX
-                AnalyzeRuleMode.Default -> RuleType.CSS
-            }
-        }
-    }
-}
-
-enum class AnalyzeRuleMode {
-    XPath, Json, Default, Js, Regex, WebJs
 }

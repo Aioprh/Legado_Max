@@ -162,6 +162,7 @@ private fun TimelineItem(
                             log.stage == FlowStage.PARSE -> MaterialTheme.colorScheme.secondaryContainer
                             log.stage == FlowStage.EXTRACT -> MaterialTheme.colorScheme.tertiaryContainer
                             log.stage == FlowStage.REPLACE -> MaterialTheme.colorScheme.surfaceVariant
+                            log.stage == FlowStage.VARIABLE -> MaterialTheme.colorScheme.tertiaryContainer
                             else -> MaterialTheme.colorScheme.surfaceVariant
                         },
                         shape = RoundedCornerShape(12.dp)

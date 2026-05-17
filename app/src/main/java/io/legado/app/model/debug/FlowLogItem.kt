@@ -37,7 +37,8 @@ data class FlowLogItem(
     val ruleType: RuleType? = null,
     val matchCount: Int? = null,
     val inputPreview: String? = null,
-    val outputPreview: String? = null
+    val outputPreview: String? = null,
+    val variableOperations: List<VariableOperation> = emptyList()
 ) {
     /**
      * 格式化显示时间
@@ -63,6 +64,20 @@ data class FlowLogItem(
     fun hasExecutionTree(): Boolean = executionTree != null
 
     fun hasJsExecution(): Boolean = jsExecution != null
+
+    fun hasVariableOperations(): Boolean = variableOperations.isNotEmpty()
+
+    fun getVariableSummary(): String {
+        if (variableOperations.isEmpty()) return ""
+        val reads = variableOperations.count { it.operationType == VariableOperationType.READ }
+        val writes = variableOperations.count { it.operationType == VariableOperationType.WRITE }
+        val deletes = variableOperations.count { it.operationType == VariableOperationType.DELETE }
+        val parts = mutableListOf<String>()
+        if (reads > 0) parts.add("读${reads}")
+        if (writes > 0) parts.add("写${writes}")
+        if (deletes > 0) parts.add("删${deletes}")
+        return parts.joinToString(" ")
+    }
 
     fun getSummaryText(): String {
         val parts = mutableListOf<String>()
