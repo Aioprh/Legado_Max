@@ -55,6 +55,9 @@ import androidx.compose.ui.window.Dialog
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
+import io.legado.app.model.debug.ToastContext
+import io.legado.app.model.debug.ToastRuleType
+import io.legado.app.model.debug.ToastSourceType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -260,6 +263,34 @@ fun DebugLogDetailDialog(
                                     log.method?.let { DetailRow("请求方法", it, searchQuery) }
                                     log.statusCode?.let { DetailRow("状态码", it.toString(), searchQuery) }
                                     log.duration?.let { DetailRow("耗时", "${it}ms", searchQuery) }
+                                }
+                            }
+                        }
+                        
+                        DebugCategory.TOAST -> {
+                            val toastContext = ToastContext.fromTagsMap(log.tags)
+                            
+                            if (toastContext.activityName != null) {
+                                DetailSection(title = "显示位置", searchQuery = searchQuery) {
+                                    DetailRow("界面", toastContext.activityName, searchQuery)
+                                }
+                            }
+                            
+                            if (toastContext.hasSourceContext()) {
+                                Spacer(Modifier.height(12.dp))
+                                DetailSection(title = "源信息", searchQuery = searchQuery) {
+                                    toastContext.sourceName?.let { 
+                                        DetailRow("源名称", it, searchQuery) 
+                                    }
+                                    toastContext.sourceType?.let { 
+                                        DetailRow("源类型", it.displayName, searchQuery) 
+                                    }
+                                    toastContext.ruleType?.let { 
+                                        DetailRow("规则类型", it.displayName, searchQuery) 
+                                    }
+                                    toastContext.ruleLine?.let { 
+                                        DetailRow("规则行号", "第${it}行", searchQuery) 
+                                    }
                                 }
                             }
                         }

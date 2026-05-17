@@ -58,6 +58,9 @@ import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.showHelp
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
+import io.legado.app.model.debug.ToastContext
+import io.legado.app.model.debug.ToastSourceType
+import io.legado.app.model.debug.ToastRuleType
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
@@ -389,7 +392,15 @@ class BookSourceEditActivity :
             if (isChecked) {
                 val nextContentUrl = contentEntities.find { it.key == "nextContentUrl" }?.value
                 if (nextContentUrl.isNullOrBlank()) {
-                    toastOnUi("未填正文下一页规则")
+                    toastOnUi(
+                        "未填正文下一页规则",
+                        ToastContext(
+                            activityName = "BookSourceEditActivity",
+                            sourceName = viewModel.bookSource?.bookSourceName,
+                            sourceType = ToastSourceType.BOOK,
+                            ruleType = ToastRuleType.CONTENT
+                        )
+                    )
                     buttonView.isChecked = false
                 }
             }

@@ -15,6 +15,9 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.CompositeCoroutine
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.model.webBook.WebBook
+import io.legado.app.model.debug.ToastContext
+import io.legado.app.model.debug.ToastSourceType
+import io.legado.app.model.debug.ToastRuleType
 import io.legado.app.service.CacheBookService
 import io.legado.app.utils.onEachParallel
 import io.legado.app.utils.postEvent
@@ -433,7 +436,15 @@ object CacheBook {
             }
             if (bookSource.nextPageLazyLoad) {
                 AppLog.put("书源「${bookSource.bookSourceName}」已开启下一页懒加载，只允许在线阅读\n源URL: ${bookSource.bookSourceUrl}\n书名: ${book.name}")
-                appCtx.toastOnUi("该书源已开启下一页懒加载，只允许在线阅读")
+                appCtx.toastOnUi(
+                    "该书源已开启下一页懒加载，只允许在线阅读",
+                    ToastContext(
+                        activityName = "CacheBook",
+                        sourceName = bookSource.bookSourceName,
+                        sourceType = ToastSourceType.BOOK,
+                        ruleType = ToastRuleType.CONTENT
+                    )
+                )
                 stop()
                 return
             }
