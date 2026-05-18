@@ -11,6 +11,7 @@ import android.graphics.Shader
 import android.os.Build
 import android.text.TextPaint
 import androidx.annotation.Keep
+import androidx.core.graphics.toColorInt
 import io.legado.app.help.PaintPool
 import io.legado.app.help.book.isImage
 import io.legado.app.help.config.AppConfig
@@ -275,8 +276,10 @@ data class TextLine(
      */
     private fun drawUnderline(canvas: Canvas, underlineMode: Int) {
         val underlineWidth = ReadBookConfig.durConfig.underlineWidth
+        val underlineColor = ReadBookConfig.durConfig.underlineColor.toColorInt()
         val paint = PaintPool.obtain()
         paint.set(ChapterProvider.contentPaint)
+        paint.color = underlineColor
         paint.strokeWidth = underlineWidth.dpToPx().toFloat()
         paint.style = android.graphics.Paint.Style.STROKE
         paint.isAntiAlias = true

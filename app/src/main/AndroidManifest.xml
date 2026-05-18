@@ -162,6 +162,9 @@
 
         <!-- 阅读漫画界面 -->
         <activity
+            android:name=".ui.book.read.config.ReadAloudActivity"
+            android:launchMode="singleTask" />
+        <activity
             android:name=".ui.book.manga.ReadMangaActivity"
             android:exported="false"
             android:launchMode="singleTask">

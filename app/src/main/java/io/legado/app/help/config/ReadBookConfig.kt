@@ -650,6 +650,7 @@ object ReadBookConfig {
         var paragraphIndent: String = "　　",//段落缩进
         var underlineMode: Int = 0, //下划线
         var underlineWidth: Float = 2f, //下划线粗细(dp)
+        var underlineColor: String = "#FF63C37D", //下划线颜色
         var paddingBottom: Int = 6,
         var paddingLeft: Int = 16,
         var paddingRight: Int = 16,
@@ -945,6 +946,7 @@ object ReadBookConfig {
             "paragraphIndent" to paragraphIndent,
             "underlineMode" to underlineMode,
             "underlineWidth" to underlineWidth,
+            "underlineColor" to underlineColor,
             "paddingBottom" to paddingBottom,
             "paddingLeft" to paddingLeft,
             "paddingRight" to paddingRight,

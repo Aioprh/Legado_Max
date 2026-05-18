@@ -1,0 +1,384 @@
+package io.legado.app.ui.book.read.config
+
+import android.annotation.SuppressLint
+import android.app.AlertDialog
+import android.graphics.Bitmap
+import android.graphics.drawable.GradientDrawable
+import android.os.Bundle
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.ViewGroup
+import android.widget.SeekBar
+import android.widget.LinearLayout
+import androidx.appcompat.widget.AppCompatCheckBox
+import androidx.core.graphics.ColorUtils as AndroidXColorUtils
+import androidx.lifecycle.lifecycleScope
+import androidx.appcompat.widget.AppCompatSeekBar
+import androidx.appcompat.widget.AppCompatTextView
+import io.legado.app.R
+import io.legado.app.base.BaseActivity
+import io.legado.app.constant.EventBus
+import io.legado.app.constant.Status
+import io.legado.app.databinding.ActivityReadAloudBinding
+import io.legado.app.help.config.AppConfig
+import io.legado.app.help.glide.ImageLoader
+import io.legado.app.lib.dialogs.selector
+import io.legado.app.model.BookCover
+import io.legado.app.model.ReadAloud
+import io.legado.app.model.ReadBook
+import io.legado.app.service.BaseReadAloudService
+import io.legado.app.ui.book.toc.TocActivityResult
+import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
+import io.legado.app.utils.dpToPx
+import io.legado.app.utils.observeEvent
+import io.legado.app.utils.postEvent
+import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.viewbindingdelegate.viewBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.abs
+
+class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false) {
+
+    override val binding by viewBinding(ActivityReadAloudBinding::inflate)
+    private val tocActivity = registerForActivityResult(TocActivityResult()) {
+        it?.let {
+            ReadBook.openChapter(it[0] as Int, it[1] as Int)
+            updateBookInfo()
+            updatePreviewText()
+        }
+    }
+    private var downY = 0f
+    private var downX = 0f
+    private var collapseHandled = false
+
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        applyFallbackTheme()
+        initData()
+        initEvent()
+        updateThemeFromCover()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateBookInfo()
+        updatePreviewText()
+        updatePlayState()
+    }
+
+    private fun initData() = binding.run {
+        updateBookInfo()
+        updatePreviewText()
+        seekTimer.max = 180
+        seekTimer.progress = if (BaseReadAloudService.timeMinute > 0) BaseReadAloudService.timeMinute else AppConfig.ttsTimer
+        updateSpeedText(AppConfig.ttsSpeechRate)
+        updateTimerText(BaseReadAloudService.timeMinute)
+        updatePlayState()
+    }
+
+    private fun initEvent() = binding.run {
+        ivBack.setOnClickListener { finish() }
+        llChapterQuick.setOnClickListener { openChapterList() }
+        ivChapterQuick.setOnClickListener { openChapterList() }
+        llTimerQuick.setOnClickListener { showTimerDialog() }
+        ivTimerQuick.setOnClickListener { showTimerDialog() }
+        llBackRead.setOnClickListener {
+            postEvent(EventBus.SHOW_READ_MENU, true)
+            finish()
+        }
+        ivBackRead.setOnClickListener {
+            postEvent(EventBus.SHOW_READ_MENU, true)
+            finish()
+        }
+        ivMore.setOnClickListener { showDialogFragment<ReadAloudConfigDialog>() }
+        llMoreSetting.setOnClickListener { showDialogFragment<ReadAloudConfigDialog>() }
+        ivMoreSetting.setOnClickListener { showDialogFragment<ReadAloudConfigDialog>() }
+        ivPlayPause.setOnClickListener {
+            if (BaseReadAloudService.pause) ReadAloud.resume(this@ReadAloudActivity)
+            else ReadAloud.pause(this@ReadAloudActivity)
+        }
+        ivPlayPrev.setOnClickListener { ReadAloud.prevChapter(this@ReadAloudActivity) }
+        ivPlayNext.setOnClickListener { ReadAloud.nextChapter(this@ReadAloudActivity) }
+        llStop.setOnClickListener { finish() }
+        ivStop.setOnClickListener { finish() }
+        llSpeed.setOnClickListener { showSpeedDialog() }
+        ivSpeedControl.setOnClickListener { showSpeedDialog() }
+        timerBadge.setOnClickListener { showTimerDialog() }
+        seekTimer.setOnSeekBarChangeListener(object : SeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                updateTimerText(progress)
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                ReadAloud.setTimer(this@ReadAloudActivity, seekBar.progress)
+            }
+        })
+        readAloudScroll.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downY = event.rawY
+                    downX = event.rawX
+                    collapseHandled = false
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val dy = event.rawY - downY
+                    val dx = event.rawX - downX
+                    if (!collapseHandled && readAloudScroll.scrollY == 0 && dy > 110f.dpToPx() && dy > abs(dx) * 1.3f) {
+                        collapseHandled = true
+                        finish()
+                    }
+                }
+            }
+            false
+        }
+    }
+
+    private fun openChapterList() {
+        ReadBook.book?.let { tocActivity.launch(it.bookUrl) }
+    }
+
+    private fun updateBookInfo() = binding.run {
+        ReadBook.book?.let { book ->
+            ivCover.load(book, false)
+            tvBookName.text = book.name
+            tvChapterName.text = book.durChapterTitle ?: ""
+        }
+    }
+
+    private fun updatePreviewText() = binding.run {
+        val paragraph = ReadBook.curTextChapter?.paragraphs?.firstOrNull {
+            ReadBook.durChapterPos in it.chapterIndices
+        }?.text?.replace("\n", "")?.trim()
+        tvPreview.text = paragraph?.takeIf { it.isNotEmpty() } ?: (ReadBook.book?.durChapterTitle ?: "")
+    }
+
+    private fun adjustSpeed(delta: Int) {
+        AppConfig.ttsSpeechRate = (AppConfig.ttsSpeechRate + delta).coerceIn(0, 45)
+        updateSpeedText(AppConfig.ttsSpeechRate)
+        val shouldResume = BaseReadAloudService.isRun && !BaseReadAloudService.pause
+        if (shouldResume) ReadAloud.pause(this)
+        ReadAloud.upTtsSpeechRate(this)
+        if (shouldResume) ReadAloud.resume(this)
+    }
+
+    private fun applySpeed(value: Int) {
+        AppConfig.ttsSpeechRate = value.coerceIn(0, 45)
+        updateSpeedText(AppConfig.ttsSpeechRate)
+        val shouldResume = BaseReadAloudService.isRun && !BaseReadAloudService.pause
+        if (shouldResume) ReadAloud.pause(this)
+        ReadAloud.upTtsSpeechRate(this)
+        if (shouldResume) ReadAloud.resume(this)
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun showSpeedDialog() {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(22f.dpToPx().toInt(), 18f.dpToPx().toInt(), 22f.dpToPx().toInt(), 10f.dpToPx().toInt())
+        }
+        val followSys = AppCompatCheckBox(this).apply {
+            text = getString(R.string.flow_sys)
+            isChecked = AppConfig.ttsFlowSys
+        }
+        val valueText = AppCompatTextView(this).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+            textSize = 18f
+            text = "${((if (AppConfig.ttsFlowSys) AppConfig.defaultSpeechRate else AppConfig.ttsSpeechRate) + 5) / 10f}x"
+            setPadding(0, 0, 0, 12f.dpToPx().toInt())
+        }
+        val seekBar = AppCompatSeekBar(this@ReadAloudActivity).apply {
+            max = 45
+            progress = if (AppConfig.ttsFlowSys) AppConfig.defaultSpeechRate else AppConfig.ttsSpeechRate
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setOnSeekBarChangeListener(object : SeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                    valueText.text = "${(progress + 5) / 10f}x"
+                }
+            })
+        }
+        followSys.setOnCheckedChangeListener { _, isChecked ->
+            AppConfig.ttsFlowSys = isChecked
+            seekBar.isEnabled = !isChecked
+            if (isChecked) {
+                seekBar.progress = AppConfig.defaultSpeechRate
+                valueText.text = "${(AppConfig.defaultSpeechRate + 5) / 10f}x"
+            }
+            val shouldResume = BaseReadAloudService.isRun && !BaseReadAloudService.pause
+            if (shouldResume) ReadAloud.pause(this)
+            ReadAloud.upTtsSpeechRate(this)
+            if (shouldResume) ReadAloud.resume(this)
+        }
+        seekBar.isEnabled = !AppConfig.ttsFlowSys
+        container.addView(followSys)
+        container.addView(valueText)
+        container.addView(seekBar)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.read_aloud_speed)
+            .setView(container)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                AppConfig.ttsFlowSys = followSys.isChecked
+                applySpeed(seekBar.progress)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showTimerDialog() {
+        val times = intArrayOf(0, 5, 10, 15, 30, 60, 90, 180)
+        selector(getString(R.string.set_timer), times.map { "$it min" }) { _, index ->
+            ReadAloud.setTimer(this@ReadAloudActivity, times[index])
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun updateSpeedText(value: Int) {
+        binding.tvSpeedValue.text = "${(value + 5) / 10f}x"
+    }
+
+    private fun updateTimerText(value: Int) {
+        binding.tvTimer.text = getString(R.string.timer_m, if (value < 0) 0 else value)
+    }
+
+    private fun updatePlayState() {
+        if (BaseReadAloudService.pause) {
+            binding.ivPlayPause.setImageResource(R.drawable.ic_play_24dp)
+            binding.ivPlayPause.background = null
+            binding.ivPlayPause.setColorFilter(0xFFFFFFFF.toInt())
+        } else {
+            binding.ivPlayPause.setImageResource(R.drawable.ic_pause_24dp)
+            binding.ivPlayPause.background = null
+            binding.ivPlayPause.setColorFilter(0xFFFFFFFF.toInt())
+        }
+    }
+
+    override fun observeLiveBus() {
+        observeEvent<Int>(EventBus.ALOUD_STATE) {
+            updatePlayState()
+            updateBookInfo()
+            updatePreviewText()
+            if (it == Status.STOP) finish()
+        }
+        observeEvent<Int>(EventBus.READ_ALOUD_DS) {
+            binding.seekTimer.progress = it
+            updateTimerText(it)
+        }
+        observeEvent<Int>(EventBus.TTS_PROGRESS) {
+            updateBookInfo()
+            updatePreviewText()
+        }
+    }
+
+    private fun applyFallbackTheme() {
+        applyTheme(
+            baseColor = 0xFF665185.toInt(),
+            textColor = 0xFFF7F1FF.toInt()
+        )
+    }
+
+    private fun updateThemeFromCover() {
+        val cover = ReadBook.book?.getDisplayCover() ?: return
+        updateBlurBackground()
+        lifecycleScope.launch(Dispatchers.IO) {
+            val bitmap = runCatching {
+                ImageLoader.loadBitmap(this@ReadAloudActivity, cover).submit().get()
+            }.getOrNull()
+            bitmap?.let {
+                val dominant = extractDominantColor(it)
+                withContext(Dispatchers.Main) {
+                    applyTheme(dominant, 0xFFF7F1FF.toInt())
+                    updatePlayState()
+                }
+            }
+        }
+    }
+
+    private fun updateBlurBackground() {
+        ReadBook.book?.let { book ->
+            BookCover.loadBlur(this, book.getDisplayCover(), sourceOrigin = book.origin)
+                .into(binding.ivBlurBackground)
+        }
+    }
+
+    private fun applyTheme(baseColor: Int, textColor: Int) = binding.run {
+        val pageColor = AndroidXColorUtils.blendARGB(baseColor, 0xFF22172D.toInt(), 0.32f)
+        val secondary = AndroidXColorUtils.setAlphaComponent(textColor, 190)
+        root.setBackgroundColor(0xFF000000.toInt())
+        root.tag = pageColor
+        vBackgroundMask.background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                AndroidXColorUtils.setAlphaComponent(pageColor, 182),
+                AndroidXColorUtils.setAlphaComponent(0xFF140E1C.toInt(), 220)
+            )
+        )
+        heroCard.radius = 34f.dpToPx()
+        heroCard.setCardBackgroundColor(AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 12))
+        coverMask.background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                AndroidXColorUtils.setAlphaComponent(0xFF1A1224.toInt(), 0),
+                AndroidXColorUtils.setAlphaComponent(0xFF1A1224.toInt(), 88),
+                AndroidXColorUtils.setAlphaComponent(0xFF1A1224.toInt(), 228)
+            )
+        ).apply {
+            cornerRadius = 34f.dpToPx()
+        }
+        timerBadge.background = createRoundDrawable(AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 22), 18f)
+        tvSpeedValue.background = createRoundDrawable(AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 18), 18f)
+        ivPlayPrev.background = null
+        ivPlayNext.background = null
+        ivStop.background = null
+        ivSpeedControl.background = null
+        ivMoreSetting.background = null
+        ivBackRead.background = null
+        ivChapterQuick.background = null
+        ivTimerQuick.background = null
+
+        listOf(tvPageTitle, tvChapterName, tvPreview, tvTimer, tvSpeedValue, tvTimerLabelLeft, tvTimerLabelRight).forEach { it.setTextColor(textColor) }
+        listOf(tvBookName, tvSpeedLabel, tvStop, tvMoreSetting, tvBackRead, tvChapterQuick, tvTimerQuick).forEach {
+            it.setTextColor(secondary)
+        }
+        ivBack.setColorFilter(textColor)
+        ivMore.setColorFilter(textColor)
+        ivTimer.setColorFilter(secondary)
+        ivStop.setColorFilter(secondary)
+        ivSpeedControl.setColorFilter(secondary)
+        ivBackRead.setColorFilter(secondary)
+        ivChapterQuick.setColorFilter(secondary)
+        ivTimerQuick.setColorFilter(secondary)
+        ivMoreSetting.setColorFilter(secondary)
+        ivPlayPrev.setColorFilter(textColor)
+        ivPlayNext.setColorFilter(textColor)
+    }
+
+    private fun extractDominantColor(bitmap: Bitmap): Int {
+        val stepX = (bitmap.width / 18).coerceAtLeast(1)
+        val stepY = (bitmap.height / 18).coerceAtLeast(1)
+        var red = 0L
+        var green = 0L
+        var blue = 0L
+        var count = 0L
+        for (x in 0 until bitmap.width step stepX) {
+            for (y in 0 until bitmap.height step stepY) {
+                val pixel = bitmap.getPixel(x, y)
+                red += android.graphics.Color.red(pixel)
+                green += android.graphics.Color.green(pixel)
+                blue += android.graphics.Color.blue(pixel)
+                count++
+            }
+        }
+        if (count == 0L) return 0xFF665185.toInt()
+        return android.graphics.Color.rgb((red / count).toInt(), (green / count).toInt(), (blue / count).toInt())
+    }
+
+    private fun createRoundDrawable(fillColor: Int, radiusDp: Float, strokeColor: Int? = null): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radiusDp.dpToPx()
+            setColor(fillColor)
+            strokeColor?.let { setStroke(1.dpToPx(), it) }
+        }
+    }
+}

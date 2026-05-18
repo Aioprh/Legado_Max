@@ -25,8 +25,8 @@ object ReadAloud {
     var httpTTS: HttpTTS? = null
 
     /**
-     * 获取朗读服务类
-     * @return 服务类
+     * 获取朗读服务�?
+     * @return 服务�?
      */
     private fun getReadAloudClass(): Class<*> {
         val ttsEngine = ttsEngine
@@ -43,7 +43,7 @@ object ReadAloud {
     }
 
     /**
-     * 更新朗读服务类
+     * 更新朗读服务�?
      */
     fun upReadAloudClass() {
         stop(appCtx)
@@ -52,7 +52,7 @@ object ReadAloud {
 
     /**
      * 播放朗读
-     * @param context 上下文
+     * @param context 上下�?
      * @param play 是否播放
      * @param pageIndex 页面索引
      * @param startPos 起始位置
@@ -99,7 +99,7 @@ object ReadAloud {
 
     /**
      * 暂停朗读
-     * @param context 上下文
+     * @param context 上下�?
      */
     fun pause(context: Context) {
         if (BaseReadAloudService.isRun) {
@@ -111,7 +111,7 @@ object ReadAloud {
 
     /**
      * 恢复朗读
-     * @param context 上下文
+     * @param context 上下�?
      */
     fun resume(context: Context) {
         if (BaseReadAloudService.isRun) {
@@ -123,7 +123,7 @@ object ReadAloud {
 
     /**
      * 停止朗读
-     * @param context 上下文
+     * @param context 上下�?
      */
     fun stop(context: Context) {
         if (BaseReadAloudService.isRun) {
@@ -134,8 +134,8 @@ object ReadAloud {
     }
 
     /**
-     * 上一段
-     * @param context 上下文
+     * 上一�?
+     * @param context 上下�?
      */
     fun prevParagraph(context: Context) {
         if (BaseReadAloudService.isRun) {
@@ -146,8 +146,8 @@ object ReadAloud {
     }
 
     /**
-     * 下一段
-     * @param context 上下文
+     * 下一�?
+     * @param context 上下�?
      */
     fun nextParagraph(context: Context) {
         if (BaseReadAloudService.isRun) {
@@ -157,9 +157,25 @@ object ReadAloud {
         }
     }
 
+    fun prevChapter(context: Context) {
+        if (BaseReadAloudService.isRun) {
+            val intent = Intent(context, aloudClass)
+            intent.action = IntentAction.prev
+            context.startForegroundServiceCompat(intent)
+        }
+    }
+
+    fun nextChapter(context: Context) {
+        if (BaseReadAloudService.isRun) {
+            val intent = Intent(context, aloudClass)
+            intent.action = IntentAction.next
+            context.startForegroundServiceCompat(intent)
+        }
+    }
+
     /**
-     * 更新TTS语速
-     * @param context 上下文
+     * 更新TTS语�?
+     * @param context 上下�?
      */
     fun upTtsSpeechRate(context: Context) {
         if (BaseReadAloudService.isRun) {
@@ -170,9 +186,9 @@ object ReadAloud {
     }
 
     /**
-     * 设置定时器
-     * @param context 上下文
-     * @param minute 分钟数
+     * 设置定时�?
+     * @param context 上下�?
+     * @param minute 分钟�?
      */
     fun setTimer(context: Context, minute: Int) {
         if (BaseReadAloudService.isRun) {
