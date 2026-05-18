@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -53,6 +54,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
+import io.legado.app.model.debug.RuleExecutionTree
+import io.legado.app.model.debug.RuleExecutionNode
+import io.legado.app.model.debug.JsExecutionRecord
+import io.legado.app.model.debug.RuleType
+import io.legado.app.model.debug.VariableOperation
+import io.legado.app.model.debug.VariableOperationType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -164,6 +171,12 @@ fun FlowLogDetailDialog(
                         if (log.duration != null && log.duration > 0) {
                             DetailRow("耗时", "${log.duration}ms", searchQuery)
                         }
+                        log.ruleType?.let { 
+                            DetailRow("规则类型", "${it.icon}${it.displayName}", searchQuery) 
+                        }
+                        log.matchCount?.let { 
+                            DetailRow("匹配数量", "$it 个", searchQuery) 
+                        }
                     }
 
                     Spacer(Modifier.height(12.dp))
@@ -191,18 +204,49 @@ fun FlowLogDetailDialog(
                         }
                     }
 
-                    if (log.rule != null || log.result != null || log.originalValue != null) {
+                    val hasRuleInfo = listOfNotNull(
+                        log.rule, log.inputPreview, log.originalValue, log.outputPreview, log.result
+                    ).any { it.isNotBlank() }
+                    
+                    if (hasRuleInfo) {
                         Spacer(Modifier.height(12.dp))
                         DetailSection(title = "规则信息", searchQuery = searchQuery) {
-                            log.rule?.let { rule ->
+                            log.rule?.takeIf { it.isNotBlank() }?.let { rule ->
                                 DetailRow("规则", rule, searchQuery)
                             }
-                            log.originalValue?.let { originalValue ->
+                            log.inputPreview?.takeIf { it.isNotBlank() }?.let { input ->
+                                DetailRow("输入", input, searchQuery)
+                            }
+                            log.originalValue?.takeIf { it.isNotBlank() }?.let { originalValue ->
                                 DetailRow("原始数据", originalValue, searchQuery)
                             }
-                            log.result?.let { result ->
+                            log.outputPreview?.takeIf { it.isNotBlank() }?.let { output ->
+                                DetailRow("输出", output, searchQuery)
+                            }
+                            log.result?.takeIf { it.isNotBlank() }?.let { result ->
                                 DetailRow("结果", result, searchQuery)
                             }
+                        }
+                    }
+
+                    log.executionTree?.takeIf { it.root.children.isNotEmpty() }?.let { tree ->
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "规则执行路径", searchQuery = searchQuery) {
+                            RuleExecutionTreeView(tree, searchQuery)
+                        }
+                    }
+
+                    log.jsExecution?.let { jsExec ->
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "JS执行环境", searchQuery = searchQuery) {
+                            JsExecutionView(jsExec, searchQuery)
+                        }
+                    }
+
+                    if (log.variableOperations.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "变量操作", searchQuery = searchQuery) {
+                            VariableOperationsView(log.variableOperations, searchQuery)
                         }
                     }
 
@@ -275,6 +319,267 @@ fun FlowLogDetailDialog(
 }
 
 @Composable
+private fun RuleExecutionTreeView(
+    tree: RuleExecutionTree,
+    searchQuery: String
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        DetailRow("完整规则", tree.fullRule, searchQuery)
+        DetailRow("总耗时", tree.formatTotalDuration(), searchQuery)
+        DetailRow("执行状态", if (tree.isSuccess()) "✅ 成功" else "❌ 失败", searchQuery)
+        
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "执行步骤:",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
+        Spacer(Modifier.height(4.dp))
+        
+        tree.root.children.forEach { node ->
+            RuleExecutionNodeView(node, searchQuery, indent = 0)
+        }
+    }
+}
+
+@Composable
+private fun RuleExecutionNodeView(
+    node: RuleExecutionNode,
+    searchQuery: String,
+    indent: Int
+) {
+    val indentStr = "  ".repeat(indent)
+    val prefix = if (indent == 0) "├──" else "│  ├──"
+    
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = (indent * 16).dp),
+        shape = MaterialTheme.shapes.small,
+        color = if (node.error != null) {
+            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        }
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${node.ruleType.icon} ${node.ruleType.displayName}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (node.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                )
+                node.duration?.let {
+                    Text(
+                        text = "${it}ms",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+            
+            if (node.ruleContent.isNotBlank()) {
+                Text(
+                    text = "规则: ${node.ruleContent.take(100)}${if (node.ruleContent.length > 100) "..." else ""}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            
+            node.input?.let { input ->
+                Text(
+                    text = "输入: ${input.take(50)}${if (input.length > 50) "..." else ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            
+            node.output?.let { output ->
+                Text(
+                    text = "输出: ${output.take(50)}${if (output.length > 50) "..." else ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            
+            node.matchCount?.let { count ->
+                Text(
+                    text = "匹配: $count 个",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            
+            node.error?.let { error ->
+                Text(
+                    text = "错误: ${error.localizedMessage}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            
+            node.children.forEach { child ->
+                Spacer(Modifier.height(4.dp))
+                RuleExecutionNodeView(child, searchQuery, indent + 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun JsExecutionView(
+    jsExec: JsExecutionRecord,
+    searchQuery: String
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        DetailRow("执行状态", if (jsExec.isSuccess()) "✅ 成功" else "❌ 失败", searchQuery)
+        jsExec.duration?.let {
+            DetailRow("执行耗时", jsExec.formatDuration() ?: "${it}ms", searchQuery)
+        }
+        
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "JS代码:",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
+        Spacer(Modifier.height(4.dp))
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            shape = MaterialTheme.shapes.small,
+            color = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Text(
+                text = jsExec.jsCode,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                modifier = Modifier.padding(8.dp)
+            )
+        }
+        
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "执行环境:",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
+        Spacer(Modifier.height(4.dp))
+        
+        val context = jsExec.context
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ) {
+            Column(modifier = Modifier.padding(8.dp)) {
+                context.result?.let {
+                    EnvVarRow("result", it)
+                }
+                context.src?.let {
+                    EnvVarRow("src", it)
+                }
+                context.baseUrl?.let {
+                    EnvVarRow("baseUrl", it)
+                }
+                context.book?.let { book ->
+                    EnvVarRow("book", "{name=\"${book.name}\", author=\"${book.author}\"}")
+                }
+                context.chapter?.let { chapter ->
+                    EnvVarRow("chapter", "{title=\"${chapter.title}\", index=${chapter.index}}")
+                }
+                context.source?.let { source ->
+                    EnvVarRow("source", "{name=\"${source.name}\"}")
+                }
+                context.nextChapterUrl?.let {
+                    EnvVarRow("nextChapterUrl", it)
+                }
+                if (context.fromBookInfo) {
+                    EnvVarRow("fromBookInfo", "true")
+                }
+                context.variables.forEach { (key, value) ->
+                    EnvVarRow(key, value)
+                }
+            }
+        }
+        
+        jsExec.result?.let { result ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "执行结果:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.outline
+            )
+            Spacer(Modifier.height(4.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            ) {
+                Text(
+                    text = result,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+        }
+        
+        jsExec.error?.let { error ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "执行错误:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+            Spacer(Modifier.height(4.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+            ) {
+                Text(
+                    text = error.localizedMessage ?: error.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EnvVarRow(name: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = "$name:",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.width(100.dp)
+        )
+        Text(
+            text = value.take(100) + if (value.length > 100) "..." else "",
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
 private fun DetailSection(
     title: String,
     searchQuery: String,
@@ -335,6 +640,7 @@ private fun getStageColor(stage: FlowStage) = when (stage) {
     FlowStage.PARSE -> MaterialTheme.colorScheme.tertiary
     FlowStage.EXTRACT -> MaterialTheme.colorScheme.secondary
     FlowStage.REPLACE -> MaterialTheme.colorScheme.error
+    FlowStage.VARIABLE -> MaterialTheme.colorScheme.tertiary
 }
 
 @Composable
@@ -343,6 +649,7 @@ private fun getStageIcon(stage: FlowStage) = when (stage) {
     FlowStage.PARSE -> Icons.Default.Code
     FlowStage.EXTRACT -> Icons.Default.DataObject
     FlowStage.REPLACE -> Icons.Default.SwapHoriz
+    FlowStage.VARIABLE -> Icons.Default.Inventory
 }
 
 @Composable
@@ -379,4 +686,137 @@ private fun highlightText(text: String, query: String): androidx.compose.ui.text
 
 private fun formatFullTime(timestamp: Long): String {
     return SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date(timestamp))
+}
+
+@Composable
+private fun VariableOperationsView(
+    operations: List<VariableOperation>,
+    searchQuery: String
+) {
+    val readOps = operations.filter { it.operationType == VariableOperationType.READ }
+    val writeOps = operations.filter { it.operationType == VariableOperationType.WRITE }
+    val deleteOps = operations.filter { it.operationType == VariableOperationType.DELETE }
+    
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "统计: 读${readOps.size}次, 写${writeOps.size}次, 删${deleteOps.size}次",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+            Text(
+                text = "涉及${operations.map { it.key }.toSet().size}个变量",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
+        
+        Spacer(Modifier.height(12.dp))
+        
+        if (writeOps.isNotEmpty()) {
+            Text(
+                text = "📤 写入操作:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(4.dp))
+            
+            writeOps.forEach { op ->
+                VariableOperationItem(op, searchQuery)
+                Spacer(Modifier.height(4.dp))
+            }
+            
+            Spacer(Modifier.height(8.dp))
+        }
+        
+        if (readOps.isNotEmpty()) {
+            Text(
+                text = "📥 读取操作:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.secondary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(4.dp))
+            
+            readOps.forEach { op ->
+                VariableOperationItem(op, searchQuery)
+                Spacer(Modifier.height(4.dp))
+            }
+        }
+        
+        if (deleteOps.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "🗑️ 删除操作:",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(4.dp))
+            
+            deleteOps.forEach { op ->
+                VariableOperationItem(op, searchQuery)
+                Spacer(Modifier.height(4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun VariableOperationItem(
+    operation: VariableOperation,
+    searchQuery: String
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        color = when (operation.operationType) {
+            VariableOperationType.READ -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+            VariableOperationType.WRITE -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            VariableOperationType.DELETE -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+        }
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = operation.key,
+                    style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+                    color = when (operation.operationType) {
+                        VariableOperationType.READ -> MaterialTheme.colorScheme.secondary
+                        VariableOperationType.WRITE -> MaterialTheme.colorScheme.primary
+                        VariableOperationType.DELETE -> MaterialTheme.colorScheme.error
+                    }
+                )
+                Text(
+                    text = operation.storage.displayName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+            
+            operation.value?.let { value ->
+                Text(
+                    text = "值: ${value.take(100)}${if (value.length > 100) "..." else ""}",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            
+            operation.oldValue?.let { oldValue ->
+                Text(
+                    text = "原值: ${oldValue.take(50)}${if (oldValue.length > 50) "..." else ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+    }
 }

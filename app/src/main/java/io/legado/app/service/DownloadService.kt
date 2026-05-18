@@ -44,6 +44,14 @@ class DownloadService : BaseService() {
         }
     }
 
+    companion object {
+        fun getAllTasks(): List<DownloadTask> = DownloadState.getAllTasks()
+        fun getTasksFlow() = DownloadState.tasks
+        fun cancelDownload(id: Long) = DownloadState.cancelDownload(id)
+        fun retryDownload(context: Context, id: Long) = DownloadState.retryDownload(context, id)
+        fun clearAllTasks() = DownloadState.clear()
+    }
+
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onCreate() {
         super.onCreate()
@@ -108,8 +116,9 @@ class DownloadService : BaseService() {
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
             // 添加一个下载任务
             val downloadId = downloadManager.enqueue(request)
-            downloads[downloadId] =
-                DownloadInfo(url, fileName, NotificationId.Download + downloads.size)
+            val notificationId = NotificationId.Download + downloads.size
+            downloads[downloadId] = DownloadInfo(url, fileName, notificationId)
+            DownloadState.addTask(downloadId, url, fileName, notificationId)
             AppLog.put("📥开始下载: $fileName\nURL: $url")
             queryState()
             if (upStateJob == null) {
@@ -137,6 +146,7 @@ class DownloadService : BaseService() {
         downloads.remove(downloadId)
         completeDownloads.remove(downloadId)
         failedDownloads.remove(downloadId)
+        DownloadState.removeTask(downloadId)
         notificationManager.cancel(downloadId.toInt())
     }
 
@@ -186,7 +196,8 @@ class DownloadService : BaseService() {
                     val id = cursor.getLong(idIndex)
                     val progress = cursor.getInt(progressIndex)
                     val max = cursor.getInt(fileSizeIndex)
-                    val status = when (cursor.getInt(statusIndex)) {
+                    val statusInt = cursor.getInt(statusIndex)
+                    val status = when (statusInt) {
                         DownloadManager.STATUS_PAUSED -> getString(R.string.pause)
                         DownloadManager.STATUS_PENDING -> getString(R.string.wait_download)
                         DownloadManager.STATUS_RUNNING -> getString(R.string.downloading)
@@ -194,7 +205,6 @@ class DownloadService : BaseService() {
                             successDownload(id)
                             getString(R.string.download_success)
                         }
-
                         DownloadManager.STATUS_FAILED -> {
                             if (!failedDownloads.contains(id)) {
                                 failedDownloads.add(id)
@@ -205,6 +215,16 @@ class DownloadService : BaseService() {
                         }
                         else -> getString(R.string.unknown_state)
                     }
+                    val dlStatus = when (statusInt) {
+                        DownloadManager.STATUS_PAUSED -> DownloadStatus.PAUSED
+                        DownloadManager.STATUS_PENDING -> DownloadStatus.PENDING
+                        DownloadManager.STATUS_RUNNING -> DownloadStatus.RUNNING
+                        DownloadManager.STATUS_SUCCESSFUL -> DownloadStatus.SUCCESSFUL
+                        DownloadManager.STATUS_FAILED -> DownloadStatus.FAILED
+                        else -> DownloadStatus.PENDING
+                    }
+                    val progressPercent = if (max > 0) (progress * 100 / max) else 0
+                    DownloadState.updateTask(id, dlStatus, progressPercent, max, progress)
                     downloads[id]?.let { downloadInfo ->
                         upDownloadNotification(
                             id,

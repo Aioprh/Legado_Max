@@ -18,9 +18,18 @@ object LifecycleHelp : Application.ActivityLifecycleCallbacks {
     private val activities: MutableList<WeakReference<Activity>> = arrayListOf()
     private val services: MutableList<WeakReference<BaseService>> = arrayListOf()
     private var appFinishedListener: (() -> Unit)? = null
+    private var currentActivityRef: WeakReference<Activity>? = null
 
     fun activitySize(): Int {
         return activities.size
+    }
+
+    fun getCurrentActivity(): Activity? {
+        return currentActivityRef?.get()
+    }
+
+    fun getCurrentActivityName(): String? {
+        return getCurrentActivity()?.javaClass?.simpleName
     }
 
     /**
@@ -63,6 +72,7 @@ object LifecycleHelp : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityResumed(activity: Activity) {
         LogUtils.d(TAG, "${activity::class.simpleName} onResume")
+        currentActivityRef = WeakReference(activity)
     }
 
     override fun onActivityStarted(activity: Activity) {

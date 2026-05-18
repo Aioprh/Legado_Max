@@ -14,6 +14,7 @@ import io.legado.app.model.debug.DebugLevel
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.SourceSubCategory
+import io.legado.app.model.debug.ToastContext
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -426,6 +427,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      * - 时间、消息
      * - URL、方法、状态码、耗时、书源名
      * - 详情、异常
+     * - Toast 上下文（如果是 Toast 分类）
      *
      * @param log 要复制的日志
      */
@@ -434,11 +436,22 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             appendLine("[${log.level.displayName}] ${log.category.displayName}")
             appendLine("时间: ${formatTime(log.time)}")
             appendLine("消息: ${log.message}")
-            log.url?.let { appendLine("URL: $it") }
-            log.method?.let { appendLine("方法: $it") }
-            log.statusCode?.let { appendLine("状态码: $it") }
-            log.duration?.let { appendLine("耗时: ${it}ms") }
-            log.sourceName?.let { appendLine("书源: $it") }
+            
+            if (log.category == DebugCategory.TOAST) {
+                val toastContext = ToastContext.fromTagsMap(log.tags)
+                toastContext.activityName?.let { appendLine("界面: $it") }
+                toastContext.sourceName?.let { appendLine("源名称: $it") }
+                toastContext.sourceType?.let { appendLine("源类型: ${it.displayName}") }
+                toastContext.ruleType?.let { appendLine("规则类型: ${it.displayName}") }
+                toastContext.ruleLine?.let { appendLine("规则行号: 第${it}行") }
+            } else {
+                log.url?.let { appendLine("URL: $it") }
+                log.method?.let { appendLine("方法: $it") }
+                log.statusCode?.let { appendLine("状态码: $it") }
+                log.duration?.let { appendLine("耗时: ${it}ms") }
+                log.sourceName?.let { appendLine("书源: $it") }
+            }
+            
             log.detail?.let { appendLine("\n详情:\n$it") }
             log.throwable?.let { appendLine("\n异常:\n${it.stackTraceToString()}") }
         }

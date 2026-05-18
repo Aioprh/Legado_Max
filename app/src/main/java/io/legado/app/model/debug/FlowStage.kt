@@ -19,5 +19,8 @@ enum class FlowStage(val displayName: String, val icon: String) {
     EXTRACT("字段提取", "📝"),
     
     /** 数据替换阶段 */
-    REPLACE("数据替换", "🔄")
+    REPLACE("数据替换", "🔄"),
+    
+    /** 变量存取阶段 */
+    VARIABLE("变量存取", "📦")
 }

@@ -6,27 +6,39 @@ import java.util.UUID
 /**
  * 流程日志项
  *
- * 记录源规则执行的每个步骤
+ * 记录源规则执行的每个步骤，包括：
+ * - 基础信息：时间、阶段、操作类型
+ * - 网络信息：URL、方法、状态码
+ * - 规则信息：规则内容、执行结果
+ * - 嵌套信息：规则执行路径树
+ * - JS信息：JS执行环境状态
  */
 @Immutable
 data class FlowLogItem(
     val id: String = UUID.randomUUID().toString(),
-    val requestId: String,           // 请求ID，用于分组
-    val sourceUrl: String?,          // 书源URL
-    val sourceName: String?,         // 书源名称
-    val stage: FlowStage,            // 流程阶段
-    val operation: String?,          // 操作类型（搜索、详情、目录、正文）
-    val message: String,             // 日志消息
-    val detail: String? = null,      // 详细信息
-    val startTime: Long = System.currentTimeMillis(),  // 开始时间
-    val duration: Long? = null,      // 耗时（毫秒）
-    val url: String? = null,         // 请求URL
-    val method: String? = null,      // 请求方法
-    val statusCode: Int? = null,     // 状态码
-    val rule: String? = null,        // 规则内容
-    val result: String? = null,      // 执行结果
-    val originalValue: String? = null, // 原始数据（替换前的数据）
-    val error: Throwable? = null     // 错误信息
+    val requestId: String,
+    val sourceUrl: String?,
+    val sourceName: String?,
+    val stage: FlowStage,
+    val operation: String?,
+    val message: String,
+    val detail: String? = null,
+    val startTime: Long = System.currentTimeMillis(),
+    val duration: Long? = null,
+    val url: String? = null,
+    val method: String? = null,
+    val statusCode: Int? = null,
+    val rule: String? = null,
+    val result: String? = null,
+    val originalValue: String? = null,
+    val error: Throwable? = null,
+    val executionTree: RuleExecutionTree? = null,
+    val jsExecution: JsExecutionRecord? = null,
+    val ruleType: RuleType? = null,
+    val matchCount: Int? = null,
+    val inputPreview: String? = null,
+    val outputPreview: String? = null,
+    val variableOperations: List<VariableOperation> = emptyList()
 ) {
     /**
      * 格式化显示时间
@@ -47,6 +59,32 @@ data class FlowLogItem(
                 else -> "${it / 60000}m ${it % 60000 / 1000}s"
             }
         }
+    }
+
+    fun hasExecutionTree(): Boolean = executionTree != null
+
+    fun hasJsExecution(): Boolean = jsExecution != null
+
+    fun hasVariableOperations(): Boolean = variableOperations.isNotEmpty()
+
+    fun getVariableSummary(): String {
+        if (variableOperations.isEmpty()) return ""
+        val reads = variableOperations.count { it.operationType == VariableOperationType.READ }
+        val writes = variableOperations.count { it.operationType == VariableOperationType.WRITE }
+        val deletes = variableOperations.count { it.operationType == VariableOperationType.DELETE }
+        val parts = mutableListOf<String>()
+        if (reads > 0) parts.add("读${reads}")
+        if (writes > 0) parts.add("写${writes}")
+        if (deletes > 0) parts.add("删${deletes}")
+        return parts.joinToString(" ")
+    }
+
+    fun getSummaryText(): String {
+        val parts = mutableListOf<String>()
+        ruleType?.let { parts.add("${it.icon}${it.displayName}") }
+        matchCount?.let { parts.add("匹配${it}个") }
+        duration?.let { parts.add(formatDuration() ?: "") }
+        return parts.filter { it.isNotBlank() }.joinToString(" | ")
     }
 }
 
@@ -85,5 +123,13 @@ data class FlowLogGroup(
             totalDuration < 60000 -> "${totalDuration / 1000.0}s"
             else -> "${totalDuration / 60000}m ${totalDuration % 60000 / 1000}s"
         }
+    }
+
+    fun getRuleExecutionTrees(): List<RuleExecutionTree> {
+        return items.mapNotNull { it.executionTree }
+    }
+
+    fun getJsExecutions(): List<JsExecutionRecord> {
+        return items.mapNotNull { it.jsExecution }
     }
 }

@@ -22,6 +22,9 @@ import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.webView.WebJsExtensions.Companion.JS_URL
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.rss.Rss
+import io.legado.app.model.debug.ToastContext
+import io.legado.app.model.debug.ToastSourceType
+import io.legado.app.model.debug.ToastRuleType
 import io.legado.app.utils.ACache
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.writeBytes
@@ -135,7 +138,13 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application) {
     fun refresh(finish: () -> Unit) {
         val rssArticle = rssArticle ?: return finish.invoke()
         val rssSource = rssSource ?: let {
-            appCtx.toastOnUi("订阅源不存在")
+            appCtx.toastOnUi(
+                "订阅源不存在",
+                ToastContext(
+                    activityName = "ReadRssActivity",
+                    sourceType = ToastSourceType.RSS
+                )
+            )
             return finish.invoke()
         }
         if (!rssArticle.description.isNullOrBlank()) {

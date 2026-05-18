@@ -29,6 +29,7 @@ import io.legado.app.ui.debug.DebugToolsActivity
 import io.legado.app.ui.dict.rule.DictRuleActivity
 import io.legado.app.ui.urlRecord.UrlRecordActivity
 import io.legado.app.ui.file.FileManageActivity
+import io.legado.app.ui.download.DownloadManageActivity
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.replace.ReplaceRuleActivity
@@ -181,6 +182,7 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
                 "fileManage" -> startActivity<FileManageActivity>()
                 "readRecord" -> startActivity<ReadRecordActivity>()
                 "storageManage" -> startActivity<StorageManageActivity>()
+                "downloadManage" -> startActivity<DownloadManageActivity>()
                 "about" -> startActivity<AboutActivity>()
                 "exit" -> activity?.finish()
             }

@@ -15,6 +15,8 @@ import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
+import io.legado.app.model.debug.ToastContext
+import io.legado.app.help.LifecycleHelp
 import io.legado.app.utils.runOnUI
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -107,10 +109,19 @@ fun Fragment.longToast(message: CharSequence) = requireContext().longToastOnUi(m
  * 记录Toast消息到调试日志
  */
 @OptIn(DelicateCoroutinesApi::class)
-private fun recordToast(message: CharSequence?, duration: Int) {
+private fun recordToast(message: CharSequence?, duration: Int, context: ToastContext = ToastContext()) {
     if (message.isNullOrBlank()) return
     
     val durationText = if (duration == Toast.LENGTH_LONG) "长" else "短"
+    
+    val activityName = context.activityName ?: LifecycleHelp.getCurrentActivityName()
+    val mergedContext = ToastContext(
+        activityName = activityName,
+        sourceName = context.sourceName,
+        sourceType = context.sourceType,
+        ruleType = context.ruleType,
+        ruleLine = context.ruleLine
+    )
     
     GlobalScope.launch(Dispatchers.Default) {
         DebugEventCenter.emit(
@@ -118,8 +129,38 @@ private fun recordToast(message: CharSequence?, duration: Int) {
                 level = DebugLevel.INFO,
                 category = DebugCategory.TOAST,
                 message = "[${durationText}Toast] $message",
-                detail = message.toString()
+                detail = message.toString(),
+                sourceName = mergedContext.sourceName,
+                tags = mergedContext.toTagsMap()
             )
         )
     }
 }
+
+fun Context.toastOnUi(message: CharSequence?, context: ToastContext, duration: Int = Toast.LENGTH_SHORT) {
+    runOnUI {
+        kotlin.runCatching {
+            toast?.cancel()
+            toast = Toast(this)
+            val isLight = ColorUtils.isColorLight(bottomBackground)
+            ViewToastBinding.inflate(layoutInflater).run {
+                toast?.view = root
+                cvToast.setCardBackgroundColor(bottomBackground)
+                tvText.setTextColor(getPrimaryTextColor(isLight))
+                tvText.text = message
+            }
+            toast?.duration = duration
+            toast?.show()
+            
+            recordToast(message, duration, context)
+        }
+    }
+}
+
+fun Context.longToastOnUi(message: CharSequence?, context: ToastContext) {
+    toastOnUi(message, context, Toast.LENGTH_LONG)
+}
+
+fun Fragment.toastOnUi(message: CharSequence, context: ToastContext) = requireActivity().toastOnUi(message, context)
+
+fun Fragment.longToast(message: CharSequence, context: ToastContext) = requireContext().longToastOnUi(message, context)
