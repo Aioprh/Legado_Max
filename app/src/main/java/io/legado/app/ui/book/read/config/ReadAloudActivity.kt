@@ -53,6 +53,8 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     private var downX = 0f
     private var collapseHandled = false
 
+    override fun showReadAloudMiniBar(): Boolean = false
+
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         applyFallbackTheme()
         initData()

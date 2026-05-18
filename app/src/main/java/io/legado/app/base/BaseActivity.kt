@@ -10,6 +10,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.activity.addCallback
 import androidx.annotation.RequiresApi
@@ -17,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.viewbinding.ViewBinding
 import io.legado.app.R
 import io.legado.app.constant.AppConst
+import io.legado.app.constant.EventBus
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.Theme
 import io.legado.app.help.config.AppConfig
@@ -24,6 +26,10 @@ import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.model.ReadBook
+import io.legado.app.ui.book.read.ReadBookActivity
+import io.legado.app.ui.book.read.config.ReadAloudActivity
+import io.legado.app.ui.widget.ReadAloudMiniBarController
 import io.legado.app.ui.widget.TitleBar
 import io.legado.app.ui.debuglog.DebugFloatingBallManager
 import io.legado.app.ui.debuglog.DebugLogPanelDialog
@@ -34,9 +40,11 @@ import io.legado.app.utils.applyTint
 import io.legado.app.utils.disableAutoFill
 import io.legado.app.utils.fullScreen
 import io.legado.app.utils.hideSoftInput
+import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLightStatusBar
 import io.legado.app.utils.setNavigationBarColorAuto
 import io.legado.app.utils.setStatusBarColorAuto
+import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.windowSize
 
@@ -50,6 +58,7 @@ abstract class BaseActivity<VB : ViewBinding>(
 ) : AppCompatActivity() {
 
     protected abstract val binding: VB
+    private var readAloudMiniBarController: ReadAloudMiniBarController? = null
 
     val isInMultiWindow: Boolean
         @SuppressLint("ObsoleteSdkInt")
@@ -84,6 +93,9 @@ abstract class BaseActivity<VB : ViewBinding>(
         super.onCreate(savedInstanceState)
         setupSystemBar()
         setContentView(binding.root)
+        findViewById<ViewGroup>(android.R.id.content)?.let {
+            readAloudMiniBarController = ReadAloudMiniBarController(this, it)
+        }
         upBackgroundImage()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             findViewById<TitleBar>(R.id.title_bar)
@@ -93,16 +105,21 @@ abstract class BaseActivity<VB : ViewBinding>(
             finish()
         }
         observeLiveBus()    // 模板方法：子类覆写 observeLiveBus() 注册事件订阅，自动在 onCreate 中调用
+        observeEvent<Int>(EventBus.ALOUD_STATE, EventBus.TTS_PROGRESS) {
+            refreshReadAloudMiniBar()
+        }
         onActivityCreated(savedInstanceState)
     }
 
     override fun onResume() {
         super.onResume()
         DebugFloatingBallManager.onActivityResumed(this)
+        refreshReadAloudMiniBar()
     }
 
     override fun onPause() {
         super.onPause()
+        readAloudMiniBarController?.onPause()
         DebugFloatingBallManager.onActivityPaused(this)
     }
 
@@ -228,6 +245,30 @@ abstract class BaseActivity<VB : ViewBinding>(
      */
     open fun observeLiveBus() {
     }
+
+    protected fun refreshReadAloudMiniBar() {
+        readAloudMiniBarController?.refresh()
+    }
+
+    protected fun hideReadAloudMiniBar() {
+        readAloudMiniBarController?.hide()
+    }
+
+    open fun showReadAloudMiniBar(): Boolean = true
+
+    open fun readAloudMiniBarBottomMarginDp(): Int = 76
+
+    open fun defaultReadAloudMiniBarColor(): Int = 0xFF665185.toInt()
+
+    open fun onReadAloudMiniBarClick() {
+        ReadBook.book?.let { book ->
+            startActivity<ReadBookActivity> {
+                putExtra("bookUrl", book.bookUrl)
+            }
+        } ?: startActivity<ReadAloudActivity>()
+    }
+
+    open fun onReadAloudMiniBarLongClick(): Boolean = false
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         return try {
