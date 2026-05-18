@@ -150,4 +150,68 @@ interface UrlRecordDao {
     @Query("SELECT COUNT(*) FROM url_records WHERE timestamp > :timestamp")
     fun getCountSince(timestamp: Long): Int
 
+    /**
+     * 按来源名称查询URL记录（Flow方式，支持实时观察）
+     * @param sourceName 来源名称
+     * @return 该来源的所有URL记录
+     */
+    @Query("SELECT * FROM url_records WHERE sourceName = :sourceName ORDER BY timestamp DESC")
+    fun flowBySourceName(sourceName: String): Flow<List<UrlRecord>>
+
+    /**
+     * 按HTTP方法查询URL记录（Flow方式）
+     * @param method HTTP方法
+     * @return 该方法的所有URL记录
+     */
+    @Query("SELECT * FROM url_records WHERE method = :method ORDER BY timestamp DESC")
+    fun flowByMethod(method: String): Flow<List<UrlRecord>>
+
+    /**
+     * 按状态筛选URL记录（Flow方式）
+     * @param success 是否成功（2xx为成功）
+     * @return 符合条件的URL记录
+     */
+    @Query("SELECT * FROM url_records WHERE (:success AND responseCode >= 200 AND responseCode < 300) OR (NOT :success AND (responseCode < 200 OR responseCode >= 300)) ORDER BY timestamp DESC")
+    fun flowByStatus(success: Boolean): Flow<List<UrlRecord>>
+
+    /**
+     * 多条件组合筛选URL记录（Flow方式）
+     * @param domain 域名，为null则不过滤
+     * @param sourceName 来源名称，为null则不过滤
+     * @param method HTTP方法，为null则不过滤
+     * @param success 是否成功，为null则不过滤
+     * @param keyword 搜索关键词，为null则不过滤
+     * @return 符合条件的URL记录
+     */
+    @Query("""
+        SELECT * FROM url_records 
+        WHERE (:domain IS NULL OR domain = :domain)
+        AND (:sourceName IS NULL OR sourceName = :sourceName)
+        AND (:method IS NULL OR method = :method)
+        AND (:success IS NULL OR (:success AND responseCode >= 200 AND responseCode < 300) OR (NOT :success AND (responseCode < 200 OR responseCode >= 300)))
+        AND (:keyword IS NULL OR url LIKE '%' || :keyword || '%' OR domain LIKE '%' || :keyword || '%' OR sourceName LIKE '%' || :keyword || '%')
+        ORDER BY timestamp DESC
+    """)
+    fun flowFilter(
+        domain: String?,
+        sourceName: String?,
+        method: String?,
+        success: Boolean?,
+        keyword: String?
+    ): Flow<List<UrlRecord>>
+
+    /**
+     * 获取所有不同的来源名称（Flow方式）
+     * @return 来源名称列表
+     */
+    @Query("SELECT DISTINCT sourceName FROM url_records WHERE sourceName IS NOT NULL ORDER BY sourceName")
+    fun flowAllSourceNames(): Flow<List<String>>
+
+    /**
+     * 获取所有不同的HTTP方法（Flow方式）
+     * @return HTTP方法列表
+     */
+    @Query("SELECT DISTINCT method FROM url_records ORDER BY method")
+    fun flowAllMethods(): Flow<List<String>>
+
 }
