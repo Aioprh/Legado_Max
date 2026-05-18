@@ -43,4 +43,10 @@
         android:checkable="true"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/menu_enable_locate"
+        android:title="@string/enable_locate"
+        android:checkable="true"
+        app:showAsAction="never" />
+
 </menu>
