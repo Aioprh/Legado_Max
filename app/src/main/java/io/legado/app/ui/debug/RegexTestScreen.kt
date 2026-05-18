@@ -35,6 +35,7 @@
 package io.legado.app.ui.debug
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -769,7 +770,8 @@ private fun HighlightCard(
             SelectionContainer {
                 Text(
                     text = highlightedText,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.horizontalScroll(rememberScrollState())//横着滚动
                 )
             }
         }
@@ -820,7 +822,8 @@ private fun ReplacePreviewCard(
             SelectionContainer {
                 Text(
                     text = replacedText,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.horizontalScroll(rememberScrollState())//横着滚动
                 )
             }
         }
