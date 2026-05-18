@@ -27,6 +27,7 @@ import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.ReadBook
+import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.config.ReadAloudActivity
 import io.legado.app.ui.widget.ReadAloudMiniBarController
@@ -256,12 +257,18 @@ abstract class BaseActivity<VB : ViewBinding>(
 
     open fun showReadAloudMiniBar(): Boolean = true
 
+    open fun lockReadAloudMiniBarPosition(): Boolean = false
+
     open fun readAloudMiniBarBottomMarginDp(): Int = 76
 
     open fun defaultReadAloudMiniBarColor(): Int = 0xFF665185.toInt()
 
     open fun onReadAloudMiniBarClick() {
-        ReadBook.book?.let { book ->
+        BaseReadAloudService.activeBookUrl?.let { bookUrl ->
+            startActivity<ReadBookActivity> {
+                putExtra("bookUrl", bookUrl)
+            }
+        } ?: ReadBook.book?.let { book ->
             startActivity<ReadBookActivity> {
                 putExtra("bookUrl", book.bookUrl)
             }

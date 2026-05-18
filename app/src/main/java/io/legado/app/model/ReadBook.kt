@@ -552,7 +552,7 @@ object ReadBook : CoroutineScope by MainScope() {
         callBack?.pageChanged()
         curTextChapter?.maybePrefetchNextPage(durPageIndex)
         curTextChapter?.let {
-            if (BaseReadAloudService.isRun && it.isCompleted) {
+            if (BaseReadAloudService.isActiveBook(book?.bookUrl) && it.isCompleted) {
                 readAloud(!BaseReadAloudService.pause)
             }
         }

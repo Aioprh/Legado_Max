@@ -342,7 +342,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onResume() {
         super.onResume()
-        if (BaseReadAloudService.isPlay() || needSyncReadAloudOnResume) {
+        if (isCurrentBookReadAloudBook() && (BaseReadAloudService.isPlay() || needSyncReadAloudOnResume)) {
             syncReadAloudProgress(allowChapterMismatch = true)
             needSyncReadAloudOnResume = false
         }
@@ -380,7 +380,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         super.onPause()
         autoPageStop()
         backupJob?.cancel()
-        needSyncReadAloudOnResume = BaseReadAloudService.isPlay()
+        needSyncReadAloudOnResume = BaseReadAloudService.isPlay() && isCurrentBookReadAloudBook()
         if (!BaseReadAloudService.isPlay()) {
             ReadBook.upReadTime()
         }
@@ -403,6 +403,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     private fun syncReadAloudProgress(allowChapterMismatch: Boolean = false) {
+        if (!isCurrentBookReadAloudBook()) return
         val ttsChapterIndex = BaseReadAloudService.lastTtsChapterIndex
         val ttsProgress = BaseReadAloudService.lastTtsProgress
         if (ttsProgress <= 0) return
@@ -1523,8 +1524,14 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun defaultReadAloudMiniBarColor(): Int = backgroundColor
 
+    override fun lockReadAloudMiniBarPosition(): Boolean = isCurrentBookReadAloudBook()
+
     override fun onReadAloudMiniBarClick() {
-        openReadAloudActivity()
+        if (isCurrentBookReadAloudBook()) {
+            openReadAloudActivity()
+        } else {
+            super.onReadAloudMiniBarClick()
+        }
     }
 
     override fun onReadAloudMiniBarLongClick(): Boolean {
@@ -1666,6 +1673,10 @@ class ReadBookActivity : BaseReadBookActivity(),
         if (BaseReadAloudService.isRun) {
             hideReadAloudMiniBar()
         }
+    }
+
+    private fun isCurrentBookReadAloudBook(): Boolean {
+        return BaseReadAloudService.isActiveBook(ReadBook.book?.bookUrl)
     }
 
     override fun onMenuHide() {
@@ -1841,7 +1852,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
         }
         observeEvent<Int>(EventBus.ALOUD_STATE) {
-            if (it == Status.STOP || it == Status.PAUSE) {
+            if (isCurrentBookReadAloudBook() && (it == Status.STOP || it == Status.PAUSE)) {
                 ReadBook.curTextChapter?.let { textChapter ->
                     val page = textChapter.getPageByReadPos(ReadBook.durChapterPos)
                     if (page != null) {
@@ -1854,7 +1865,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         }
         observeEventSticky<Int>(EventBus.TTS_PROGRESS) {
             lifecycleScope.launch(IO) {
-                if (BaseReadAloudService.isPlay()) {
+                if (BaseReadAloudService.isPlay() && isCurrentBookReadAloudBook()) {
                     syncReadAloudProgress(allowChapterMismatch = false)
                 }
             }

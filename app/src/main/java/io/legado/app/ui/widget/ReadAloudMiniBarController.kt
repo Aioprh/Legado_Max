@@ -46,9 +46,21 @@ class ReadAloudMiniBarController(
     private var miniCoverAnimator: ObjectAnimator? = null
     private var miniBarVisible = false
     private var miniBarThemeInitialized = false
+    private var lastActiveBookUrl: String? = null
     private var downX = 0f
     private var downY = 0f
     private var dragging = false
+
+    private fun isPositionLocked(): Boolean {
+        return activity.lockReadAloudMiniBarPosition()
+    }
+
+    private fun resetToDefaultPosition(view: View = binding.readAloudMiniBar) {
+        sharedTranslationX = 0f
+        sharedTranslationY = 0f
+        view.translationX = 0f
+        view.translationY = 0f
+    }
 
     init {
         parent.addView(binding.root)
@@ -62,28 +74,44 @@ class ReadAloudMiniBarController(
             readAloudMiniBar.invisible()
             stopAnimation(reset = true)
             miniBarVisible = false
-            miniBarThemeInitialized = false
             return
         }
         updateBottomMargin()
         ivReadAloudMiniPlay.setImageResource(
             if (BaseReadAloudService.pause) R.drawable.ic_play_24dp else R.drawable.ic_pause_24dp
         )
+        val activeBookUrl = BaseReadAloudService.activeBookUrl
+        if (lastActiveBookUrl != activeBookUrl) {
+            lastActiveBookUrl = activeBookUrl
+            miniBarThemeInitialized = false
+        }
+        val locked = isPositionLocked()
+        if (locked) {
+            resetToDefaultPosition()
+        }
         readAloudMiniBar.visible()
         if (!miniBarVisible) {
             miniBarVisible = true
             readAloudMiniBar.alpha = 0f
-            readAloudMiniBar.translationX = sharedTranslationX
-            readAloudMiniBar.translationY = sharedTranslationY + 12.dpToPx().toFloat()
+            val startX = if (locked) 0f else sharedTranslationX
+            val startY = if (locked) 12.dpToPx().toFloat() else sharedTranslationY + 12.dpToPx().toFloat()
+            val targetX = if (locked) 0f else sharedTranslationX
+            val targetY = if (locked) 0f else sharedTranslationY
+            readAloudMiniBar.translationX = startX
+            readAloudMiniBar.translationY = startY
             readAloudMiniBar.animate()
                 .alpha(1f)
-                .translationX(sharedTranslationX)
-                .translationY(sharedTranslationY)
+                .translationX(targetX)
+                .translationY(targetY)
                 .setDuration(180L)
                 .start()
         } else {
-            readAloudMiniBar.translationX = sharedTranslationX
-            readAloudMiniBar.translationY = sharedTranslationY
+            if (locked) {
+                resetToDefaultPosition()
+            } else {
+                readAloudMiniBar.translationX = sharedTranslationX
+                readAloudMiniBar.translationY = sharedTranslationY
+            }
         }
         if (BaseReadAloudService.pause) {
             pauseAnimation()
@@ -93,13 +121,14 @@ class ReadAloudMiniBarController(
         if (miniBarThemeInitialized) return
         miniBarThemeInitialized = true
         applyTheme(activity.defaultReadAloudMiniBarColor())
-        ReadBook.book?.let { book ->
-            ImageLoader.load(activity, book.getDisplayCover())
+        val cover = BaseReadAloudService.activeBookCover ?: ReadBook.book?.getDisplayCover()
+        if (cover != null) {
+            ImageLoader.load(activity, cover)
                 .circleCrop()
                 .into(ivReadAloudMiniCover)
             activity.lifecycleScope.launch(IO) {
                 val bitmap = runCatching {
-                    ImageLoader.loadBitmap(activity, book.getDisplayCover()).submit().get()
+                    ImageLoader.loadBitmap(activity, cover).submit().get()
                 }.getOrNull()
                 bitmap?.let {
                     val dominant = extractDominantColor(it)
@@ -109,7 +138,7 @@ class ReadAloudMiniBarController(
                 }
             }
         }
-    }
+        }
     }
 
     fun onPause() {
@@ -132,6 +161,10 @@ class ReadAloudMiniBarController(
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+                    if (isPositionLocked()) {
+                        dragging = false
+                        true
+                    } else {
                     val dx = event.rawX - downX
                     val dy = event.rawY - downY
                     if (kotlin.math.abs(dx) > 10 || kotlin.math.abs(dy) > 10) {
@@ -146,6 +179,7 @@ class ReadAloudMiniBarController(
                         downY = event.rawY
                     }
                     true
+                    }
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
