@@ -459,18 +459,25 @@ jobs:
           RETRY_COUNT=0
           RELEASE_ID=""
           RELEASE_JSON=""
+          PAYLOAD=$(jq -n \
+            --arg tag_name "$TAG_NAME" \
+            --arg name "$RELEASE_NAME" \
+            --arg body "$UPDATE_CONTENT" \
+            --arg target_commitish "main" \
+            --argjson prerelease "$PRERELEASE" \
+            '{
+              tag_name: $tag_name,
+              name: $name,
+              body: $body,
+              target_commitish: $target_commitish,
+              prerelease: $prerelease
+            }')
           while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ -z "$RELEASE_ID" ]; do
             set +e
             RELEASE_JSON=$(curl -sS --fail --tlsv1.2 --retry 3 --retry-delay 5 --retry-connrefused --connect-timeout 20 -X POST \
                 -H "Content-Type: application/json" \
                 -H "$AUTH_HEADER" \
-                -d '{
-                  "tag_name": "'"$TAG_NAME"'",
-                  "name": "'"$RELEASE_NAME"'",
-                  "body": "'"${UPDATE_CONTENT//\"/\\\"}"'",
-                  "target_commitish": "main",
-                  "prerelease": '"$PRERELEASE"'
-                }' \
+                -d "$PAYLOAD" \
                 "$API_BASE/releases")
             CURL_EXIT=$?
             set -e
@@ -479,6 +486,7 @@ jobs:
               RELEASE_ID=$(echo "$RELEASE_JSON" | jq -r '.id // empty')
             else
               RETRY_COUNT=$((RETRY_COUNT+1))
+              echo "$RELEASE_JSON"
               echo "⚠️  第 $RETRY_COUNT 次重试创建Release..."
               sleep 5
             fi

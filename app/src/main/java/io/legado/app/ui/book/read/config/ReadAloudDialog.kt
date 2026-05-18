@@ -91,6 +91,7 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
         cbTtsFollowSys.isChecked = requireContext().getPrefBoolean("ttsFollowSys", true)
         upTtsSpeechRateEnabled(!cbTtsFollowSys.isChecked)
         upSeekTimer()
+        upSkipActionState()
     }
 
     private fun initEvent() = binding.run {
@@ -108,8 +109,20 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
             dismissAllowingStateLoss()
         }
         ivPlayPause.setOnClickListener { callBack?.onClickReadAloud() }
-        ivPlayPrev.setOnClickListener { ReadAloud.prevParagraph(requireContext()) }
-        ivPlayNext.setOnClickListener { ReadAloud.nextParagraph(requireContext()) }
+        ivPlayPrev.setOnClickListener {
+            if (requireContext().getPrefBoolean("mediaButtonPerNext", false)) {
+                ReadAloud.prevChapter(requireContext())
+            } else {
+                ReadAloud.prevParagraph(requireContext())
+            }
+        }
+        ivPlayNext.setOnClickListener {
+            if (requireContext().getPrefBoolean("mediaButtonPerNext", false)) {
+                ReadAloud.nextChapter(requireContext())
+            } else {
+                ReadAloud.nextParagraph(requireContext())
+            }
+        }
         llCatalog.setOnClickListener { callBack?.openChapterList() }
         llToBackstage.setOnClickListener { callBack?.finish() }
         cbTtsFollowSys.setOnCheckedChangeListener { _, isChecked ->
@@ -185,6 +198,16 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
         val isLight = ColorUtils.isColorLight(bg)
         val textColor = requireContext().getPrimaryTextColor(isLight)
         binding.ivPlayPause.setColorFilter(textColor)
+    }
+
+    private fun upSkipActionState() {
+        val useChapter = requireContext().getPrefBoolean("mediaButtonPerNext", false)
+        binding.ivPlayPrev.contentDescription = getString(
+            if (useChapter) R.string.previous_chapter else R.string.read_aloud_prev_paragraph
+        )
+        binding.ivPlayNext.contentDescription = getString(
+            if (useChapter) R.string.next_chapter else R.string.read_aloud_next_paragraph
+        )
     }
 
     private fun upSeekTimer() {

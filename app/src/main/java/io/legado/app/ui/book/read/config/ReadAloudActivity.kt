@@ -30,6 +30,7 @@ import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
 import io.legado.app.utils.dpToPx
+import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.showDialogFragment
@@ -53,6 +54,8 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     private var downX = 0f
     private var collapseHandled = false
 
+    override fun showReadAloudMiniBar(): Boolean = false
+
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         applyFallbackTheme()
         initData()
@@ -65,6 +68,7 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         updateBookInfo()
         updatePreviewText()
         updatePlayState()
+        updateSkipActionState()
     }
 
     private fun initData() = binding.run {
@@ -75,6 +79,7 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         updateSpeedText(AppConfig.ttsSpeechRate)
         updateTimerText(BaseReadAloudService.timeMinute)
         updatePlayState()
+        updateSkipActionState()
     }
 
     private fun initEvent() = binding.run {
@@ -98,8 +103,20 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
             if (BaseReadAloudService.pause) ReadAloud.resume(this@ReadAloudActivity)
             else ReadAloud.pause(this@ReadAloudActivity)
         }
-        ivPlayPrev.setOnClickListener { ReadAloud.prevChapter(this@ReadAloudActivity) }
-        ivPlayNext.setOnClickListener { ReadAloud.nextChapter(this@ReadAloudActivity) }
+        ivPlayPrev.setOnClickListener {
+            if (getPrefBoolean("mediaButtonPerNext", false)) {
+                ReadAloud.prevChapter(this@ReadAloudActivity)
+            } else {
+                ReadAloud.prevParagraph(this@ReadAloudActivity)
+            }
+        }
+        ivPlayNext.setOnClickListener {
+            if (getPrefBoolean("mediaButtonPerNext", false)) {
+                ReadAloud.nextChapter(this@ReadAloudActivity)
+            } else {
+                ReadAloud.nextParagraph(this@ReadAloudActivity)
+            }
+        }
         llStop.setOnClickListener { finish() }
         ivStop.setOnClickListener { finish() }
         llSpeed.setOnClickListener { showSpeedDialog() }
@@ -140,18 +157,25 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     }
 
     private fun updateBookInfo() = binding.run {
-        ReadBook.book?.let { book ->
-            ivCover.load(book, false)
-            tvBookName.text = book.name
-            tvChapterName.text = book.durChapterTitle ?: ""
+        val activeBookName = BaseReadAloudService.activeBookName
+        val activeChapterTitle = BaseReadAloudService.activeChapterTitle
+        val activeCover = BaseReadAloudService.activeBookCover
+        if (activeCover != null) {
+            ivCover.load(activeCover, activeBookName, BaseReadAloudService.activeBookAuthor, false)
+        } else {
+            ReadBook.book?.let { ivCover.load(it, false) }
         }
+        tvBookName.text = activeBookName ?: ReadBook.book?.name ?: ""
+        tvChapterName.text = activeChapterTitle ?: ReadBook.book?.durChapterTitle ?: ""
     }
 
     private fun updatePreviewText() = binding.run {
-        val paragraph = ReadBook.curTextChapter?.paragraphs?.firstOrNull {
-            ReadBook.durChapterPos in it.chapterIndices
-        }?.text?.replace("\n", "")?.trim()
-        tvPreview.text = paragraph?.takeIf { it.isNotEmpty() } ?: (ReadBook.book?.durChapterTitle ?: "")
+        val paragraph = BaseReadAloudService.activePreviewText
+            ?: ReadBook.curTextChapter?.paragraphs?.firstOrNull {
+                ReadBook.durChapterPos in it.chapterIndices
+            }?.text?.replace("\n", "")?.trim()
+        tvPreview.text = paragraph?.takeIf { it.isNotEmpty() }
+            ?: (BaseReadAloudService.activeChapterTitle ?: ReadBook.book?.durChapterTitle ?: "")
     }
 
     private fun adjustSpeed(delta: Int) {
@@ -253,6 +277,16 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         }
     }
 
+    private fun updateSkipActionState() {
+        val useChapter = getPrefBoolean("mediaButtonPerNext", false)
+        binding.ivPlayPrev.contentDescription = getString(
+            if (useChapter) R.string.previous_chapter else R.string.read_aloud_prev_paragraph
+        )
+        binding.ivPlayNext.contentDescription = getString(
+            if (useChapter) R.string.next_chapter else R.string.read_aloud_next_paragraph
+        )
+    }
+
     override fun observeLiveBus() {
         observeEvent<Int>(EventBus.ALOUD_STATE) {
             updatePlayState()
@@ -278,7 +312,7 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     }
 
     private fun updateThemeFromCover() {
-        val cover = ReadBook.book?.getDisplayCover() ?: return
+        val cover = BaseReadAloudService.activeBookCover ?: ReadBook.book?.getDisplayCover() ?: return
         updateBlurBackground()
         lifecycleScope.launch(Dispatchers.IO) {
             val bitmap = runCatching {
@@ -295,6 +329,12 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     }
 
     private fun updateBlurBackground() {
+        val activeCover = BaseReadAloudService.activeBookCover
+        if (activeCover != null) {
+            BookCover.loadBlur(this, activeCover, false, null)
+                .into(binding.ivBlurBackground)
+            return
+        }
         ReadBook.book?.let { book ->
             BookCover.loadBlur(this, book.getDisplayCover(), sourceOrigin = book.origin)
                 .into(binding.ivBlurBackground)
