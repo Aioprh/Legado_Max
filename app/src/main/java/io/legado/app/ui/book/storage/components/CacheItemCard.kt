@@ -124,9 +124,24 @@ fun CacheItemCard(
                                     .rotate(rotation),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(4.dp))
+                    
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = item.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f, fill = false),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        
+                        if (item.canExpand) {
                             item.expandBadge?.let { badge ->
-                                Spacer(Modifier.width(4.dp))
+                                Spacer(Modifier.width(8.dp))
                                 Surface(
                                     color = MaterialTheme.colorScheme.surfaceVariant,
                                     shape = RoundedCornerShape(4.dp)
@@ -141,14 +156,6 @@ fun CacheItemCard(
                             }
                         }
                     }
-                    
-                    Spacer(Modifier.height(4.dp))
-                    
-                    Text(
-                        text = item.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
                 
                 Text(
