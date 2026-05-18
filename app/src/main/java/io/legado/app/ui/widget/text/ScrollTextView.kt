@@ -48,6 +48,7 @@ class ScrollTextView(context: Context, attrs: AttributeSet?) :
         t * t * t * t * t + 1.0f
     }
 
+    // 滑动事件监听器
     private val gestureDetector = GestureDetector(context,
         object : GestureDetector.SimpleOnGestureListener() {
 
@@ -83,6 +84,7 @@ class ScrollTextView(context: Context, attrs: AttributeSet?) :
         movementMethod = LinkMovementMethod.getInstance()
     }
 
+    // 初始化滑动距离的最大边界
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         initOffsetHeight()
