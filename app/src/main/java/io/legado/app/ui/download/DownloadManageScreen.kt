@@ -135,7 +135,7 @@ fun DownloadManageScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "在浏览器中下载的文件会显示在这里",
+                        text = "在WebView中下载的文件会显示在这里",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
