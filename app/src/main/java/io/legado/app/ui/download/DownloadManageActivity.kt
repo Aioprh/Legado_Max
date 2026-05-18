@@ -30,6 +30,11 @@ import io.legado.app.lib.theme.ThemeStore
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 
+/**
+ * 下载管理Activity
+ * 用于管理内置浏览器的下载任务
+ * 支持查看、取消、重试下载任务
+ */
 class DownloadManageActivity : AppCompatActivity() {
 
     private var bgDrawable: Drawable? = null
@@ -49,6 +54,9 @@ class DownloadManageActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 加载背景图片
+     */
     @Suppress("DEPRECATION")
     private fun loadBackgroundImage() {
         try {
@@ -67,6 +75,9 @@ class DownloadManageActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 初始化主题
+     */
     private fun initTheme() {
         val theme = ThemeConfig.getTheme()
         when (theme) {
@@ -86,6 +97,9 @@ class DownloadManageActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 设置系统栏（状态栏、导航栏）
+     */
     private fun setupSystemBar() {
         fullScreen()
         val isTransparentStatusBar = AppConfig.isTransparentStatusBar
@@ -100,6 +114,10 @@ class DownloadManageActivity : AppCompatActivity() {
     }
 }
 
+/**
+ * 下载管理内容Composable
+ * 配置Material3颜色方案和背景
+ */
 @Composable
 fun DownloadManageContent(
     bgDrawable: Drawable?,
@@ -121,11 +139,13 @@ fun DownloadManageContent(
     val onBackground = Color(textPrimaryColor)
     val onBackgroundVariant = Color(textSecondaryColor)
 
+    // 计算surface相关颜色
     val surface = lerp(background, if (isLight) Color.White else Color.Black, if (isLight) 0.04f else 0.10f)
     val surfaceVariant = lerp(background, onBackground, if (isLight) 0.05f else 0.14f)
     val outline = lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
     val onSurfaceVariant = lerp(onBackground, if (isLight) Color.Black else Color.White, if (isLight) 0.2f else 0.2f)
 
+    // 配置颜色方案
     val colorScheme = if (isLight) {
         lightColorScheme(
             primary = primary,
@@ -178,6 +198,10 @@ fun DownloadManageContent(
     }
 }
 
+/**
+ * 带背景的Box容器
+ * 支持背景图片和半透明遮罩
+ */
 @Composable
 fun DownloadManageBoxWithBackground(
     bgDrawable: Drawable?,
@@ -186,6 +210,7 @@ fun DownloadManageBoxWithBackground(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         if (bgDrawable != null) {
+            // 背景图片存在时，显示图片并添加半透明遮罩
             val overlayAlpha = if (bgColor.luminance() > 0.5f) 0.22f else 0.40f
             Image(
                 bitmap = bgDrawable.toBitmap().asImageBitmap(),
@@ -199,6 +224,7 @@ fun DownloadManageBoxWithBackground(
                     .background(bgColor.copy(alpha = overlayAlpha))
             )
         } else {
+            // 无背景图片时，使用纯色背景
             Box(
                 modifier = Modifier.fillMaxSize().background(bgColor)
             )

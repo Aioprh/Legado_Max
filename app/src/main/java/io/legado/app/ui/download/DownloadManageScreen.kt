@@ -55,6 +55,10 @@ import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
 import io.legado.app.utils.ConvertUtils
 
+/**
+ * 下载管理主界面
+ * 显示下载任务列表，支持取消、重试、清除等操作
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadManageScreen(
@@ -67,6 +71,7 @@ fun DownloadManageScreen(
     val containerColor = pageCardContainerColor()
     val topBarColor = pageTopBarContainerColor()
     
+    // 统计各状态任务数量
     val activeCount = tasks.count { it.status == DownloadStatus.RUNNING || it.status == DownloadStatus.PENDING }
     val completedCount = tasks.count { it.status == DownloadStatus.SUCCESSFUL }
     val failedCount = tasks.count { it.status == DownloadStatus.FAILED }
@@ -91,6 +96,7 @@ fun DownloadManageScreen(
                                 fontWeight = FontWeight.Medium
                             )
                         )
+                        // 显示任务统计信息
                         if (tasks.isNotEmpty()) {
                             Text(
                                 text = "下载中: $activeCount  已完成: $completedCount  失败: $failedCount",
@@ -106,6 +112,7 @@ fun DownloadManageScreen(
                     }
                 },
                 actions = {
+                    // 清除已完成任务按钮
                     IconButton(onClick = { viewModel.clearCompletedTasks() }) {
                         Icon(Icons.Default.DeleteSweep, contentDescription = "清除已完成")
                     }
@@ -114,6 +121,7 @@ fun DownloadManageScreen(
         }
     ) { paddingValues ->
         if (tasks.isEmpty()) {
+            // 空状态提示
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -135,13 +143,14 @@ fun DownloadManageScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "在WebView中下载的文件会显示在这里",
+                        text = "在浏览器中下载的文件会显示在这里",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
             }
         } else {
+            // 任务列表
             LazyColumn(
                 modifier = Modifier.padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
@@ -163,6 +172,10 @@ fun DownloadManageScreen(
     }
 }
 
+/**
+ * 下载任务卡片
+ * 显示单个下载任务的信息和操作按钮
+ */
 @Composable
 fun DownloadTaskCard(
     task: DownloadTask,
@@ -185,10 +198,12 @@ fun DownloadTaskCard(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // 状态图标
                 StatusIcon(task.status, modifier = Modifier.size(24.dp))
                 
                 Spacer(modifier = Modifier.width(12.dp))
                 
+                // 文件名和状态信息
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = task.fileName,
@@ -199,11 +214,13 @@ fun DownloadTaskCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // 状态文本
                         Text(
                             text = getStatusText(task.status),
                             style = MaterialTheme.typography.bodySmall,
                             color = getStatusColor(task.status)
                         )
+                        // 下载中显示进度百分比
                         if (task.status == DownloadStatus.RUNNING) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
@@ -213,6 +230,7 @@ fun DownloadTaskCard(
                                 fontWeight = FontWeight.Medium
                             )
                         }
+                        // 显示文件总大小
                         if (task.totalSize > 0) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
@@ -224,8 +242,10 @@ fun DownloadTaskCard(
                     }
                 }
                 
+                // 操作按钮
                 when (task.status) {
                     DownloadStatus.RUNNING, DownloadStatus.PENDING -> {
+                        // 取消按钮
                         IconButton(onClick = onCancelClick) {
                             Icon(
                                 Icons.Default.Pause,
@@ -235,6 +255,7 @@ fun DownloadTaskCard(
                         }
                     }
                     DownloadStatus.PAUSED -> {
+                        // 继续按钮
                         IconButton(onClick = onRetryClick) {
                             Icon(
                                 Icons.Default.PlayArrow,
@@ -244,6 +265,7 @@ fun DownloadTaskCard(
                         }
                     }
                     DownloadStatus.FAILED -> {
+                        // 重试按钮
                         IconButton(onClick = onRetryClick) {
                             Icon(
                                 Icons.Default.Refresh,
@@ -253,6 +275,7 @@ fun DownloadTaskCard(
                         }
                     }
                     DownloadStatus.SUCCESSFUL -> {
+                        // 删除按钮
                         IconButton(onClick = onCancelClick) {
                             Icon(
                                 Icons.Default.Delete,
@@ -264,6 +287,7 @@ fun DownloadTaskCard(
                 }
             }
             
+            // 下载中或等待中显示进度条
             if (task.status == DownloadStatus.RUNNING || task.status == DownloadStatus.PENDING) {
                 Spacer(modifier = Modifier.height(12.dp))
                 LinearProgressIndicator(
@@ -274,6 +298,7 @@ fun DownloadTaskCard(
                 )
             }
             
+            // 下载中显示已下载/总大小
             if (task.downloadedSize > 0 && task.totalSize > 0 && task.status == DownloadStatus.RUNNING) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -296,6 +321,10 @@ fun DownloadTaskCard(
     }
 }
 
+/**
+ * 状态图标
+ * 根据下载状态显示不同图标和颜色
+ */
 @Composable
 fun StatusIcon(status: DownloadStatus, modifier: Modifier = Modifier) {
     val (icon, color) = when (status) {
@@ -314,6 +343,9 @@ fun StatusIcon(status: DownloadStatus, modifier: Modifier = Modifier) {
     )
 }
 
+/**
+ * 获取状态文本
+ */
 @Composable
 fun getStatusText(status: DownloadStatus): String {
     return when (status) {
@@ -325,6 +357,9 @@ fun getStatusText(status: DownloadStatus): String {
     }
 }
 
+/**
+ * 获取状态颜色
+ */
 @Composable
 fun getStatusColor(status: DownloadStatus): Color {
     return when (status) {

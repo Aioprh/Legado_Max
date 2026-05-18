@@ -7,6 +7,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import splitties.systemservices.downloadManager
 
+/**
+ * 下载任务数据类
+ * @param id 系统DownloadManager返回的任务ID
+ * @param url 下载URL
+ * @param fileName 文件名
+ * @param notificationId 通知ID
+ * @param startTime 开始时间
+ * @param status 下载状态
+ * @param progress 下载进度(0-100)
+ * @param totalSize 文件总大小(字节)
+ * @param downloadedSize 已下载大小(字节)
+ */
 data class DownloadTask(
     val id: Long,
     val url: String,
@@ -19,20 +31,34 @@ data class DownloadTask(
     val downloadedSize: Int = 0
 )
 
+/**
+ * 下载状态枚举
+ */
 enum class DownloadStatus {
-    PENDING,
-    RUNNING,
-    PAUSED,
-    SUCCESSFUL,
-    FAILED
+    PENDING,      // 等待中
+    RUNNING,      // 下载中
+    PAUSED,       // 已暂停
+    SUCCESSFUL,   // 已完成
+    FAILED        // 下载失败
 }
 
+/**
+ * 下载状态管理单例
+ * 负责管理下载任务的内存存储和状态更新
+ * 使用StateFlow提供响应式数据，供UI层订阅
+ */
 object DownloadState {
+    
+    // 任务列表的StateFlow，供UI订阅
     private val _tasks = MutableStateFlow<List<DownloadTask>>(emptyList())
     val tasks: StateFlow<List<DownloadTask>> = _tasks.asStateFlow()
 
+    // 任务Map，key为downloadId，value为DownloadTask
     private val taskMap = mutableMapOf<Long, DownloadTask>()
 
+    /**
+     * 添加新下载任务
+     */
     fun addTask(id: Long, url: String, fileName: String, notificationId: Int) {
         val task = DownloadTask(
             id = id,
@@ -45,6 +71,9 @@ object DownloadState {
         updateFlow()
     }
 
+    /**
+     * 更新任务状态和进度
+     */
     fun updateTask(
         id: Long,
         status: DownloadStatus,
@@ -63,31 +92,57 @@ object DownloadState {
         }
     }
 
+    /**
+     * 移除任务
+     */
     fun removeTask(id: Long) {
         taskMap.remove(id)
         updateFlow()
     }
 
+    /**
+     * 获取单个任务
+     */
     fun getTask(id: Long): DownloadTask? = taskMap[id]
 
+    /**
+     * 获取所有任务列表
+     */
     fun getAllTasks(): List<DownloadTask> = taskMap.values.toList()
 
+    /**
+     * 检查指定URL是否已在下载列表中
+     */
     fun hasTask(url: String): Boolean = taskMap.values.any { it.url == url }
 
+    /**
+     * 清空所有任务
+     */
     fun clear() {
         taskMap.clear()
         updateFlow()
     }
 
+    /**
+     * 更新StateFlow，按开始时间倒序排列
+     */
     private fun updateFlow() {
         _tasks.value = taskMap.values.toList().sortedByDescending { it.startTime }
     }
 
+    /**
+     * 取消下载
+     * 调用系统DownloadManager移除任务，并从内存中删除
+     */
     fun cancelDownload(id: Long) {
         downloadManager.remove(id)
         removeTask(id)
     }
 
+    /**
+     * 重试下载
+     * 先移除旧任务，再重新启动下载
+     */
     fun retryDownload(context: android.content.Context, id: Long) {
         val task = taskMap[id] ?: return
         downloadManager.remove(id)
@@ -95,6 +150,11 @@ object DownloadState {
         Download.start(context, task.url, task.fileName)
     }
 
+    /**
+     * 查询所有任务的状态
+     * 通过系统DownloadManager查询每个任务的进度和状态
+     * @return 更新后的任务列表
+     */
     fun queryAllTaskStatus(): List<DownloadTask> {
         if (taskMap.isEmpty()) return emptyList()
         
