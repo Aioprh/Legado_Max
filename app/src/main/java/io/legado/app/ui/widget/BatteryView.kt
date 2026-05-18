@@ -138,28 +138,6 @@ class BatteryView @JvmOverloads constructor(
             cornerRadius,
             batteryPaint
         )
-        
-        if (battery > 0) {
-            val padding = 2.dpToPx()
-            val fillWidth = (outFrame.width() - padding * 2) * (battery.coerceIn(0, 100) / 100f)
-            if (fillWidth > 0) {
-                batteryPaint.style = Paint.Style.FILL
-                val fillLeft = outFrame.left + padding
-                val fillTop = outFrame.top + padding
-                val fillRight = fillLeft + fillWidth
-                val fillBottom = outFrame.bottom - padding
-                val fillRadius = 1.dpToPx().toFloat()
-                canvas.drawRoundRect(
-                    fillLeft.toFloat(),
-                    fillTop.toFloat(),
-                    fillRight.toFloat(),
-                    fillBottom.toFloat(),
-                    fillRadius,
-                    fillRadius,
-                    batteryPaint
-                )
-            }
-        }
     }
 
     @Suppress("UNNECESSARY_SAFE_CALL")
