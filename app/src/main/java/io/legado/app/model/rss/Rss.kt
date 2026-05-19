@@ -7,6 +7,7 @@ import io.legado.app.help.http.StrResponse
 import io.legado.app.model.Debug
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
+import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.RuleData
 import io.legado.app.model.debug.DebugCategory
@@ -198,7 +199,8 @@ object Rss {
         analyzeRule.setContent(res.body)
             .setBaseUrl(NetworkUtils.getAbsoluteURL(rssArticle.origin, rssArticle.link))
             .setCoroutineContext(currentCoroutineContext())
-            .setRedirectUrl(res.url)
+        analyzeRule.setRedirectUrl(res.url)
+        analyzeRule.setToastRuleType("RSS_CONTENT")
         return analyzeRule.getString(ruleContent)
     }
 

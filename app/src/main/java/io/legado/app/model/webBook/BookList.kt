@@ -15,6 +15,7 @@ import io.legado.app.model.Debug
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setRuleData
+import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.RuleData
 import io.legado.app.utils.GSON
@@ -86,6 +87,7 @@ object BookList {
         analyzeRule.setContent(body).setBaseUrl(baseUrl)
         analyzeRule.setRedirectUrl(baseUrl)
         analyzeRule.setCoroutineContext(currentCoroutineContext())
+        analyzeRule.setToastRuleType(if (isSearch) "SEARCH" else "EXPLORE")
         if (!isSearch) {
             checkExploreJson(bookSource)
         }

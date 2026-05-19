@@ -12,6 +12,8 @@ import io.legado.app.constant.AppConst.dateFormat
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.data.entities.BaseSource
+import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.RssSource
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.BackstageWebView
@@ -23,6 +25,7 @@ import io.legado.app.help.source.SourceHelp
 import io.legado.app.help.source.SourceVerificationHelp
 import io.legado.app.help.source.getSourceType
 import io.legado.app.model.Debug
+import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.QueryTTF
 import io.legado.app.ui.association.OnLineImportActivity
@@ -77,6 +80,9 @@ import kotlin.coroutines.EmptyCoroutineContext
 import androidx.core.net.toUri
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
+import io.legado.app.model.debug.ToastContext
+import io.legado.app.model.debug.ToastRuleType
+import io.legado.app.model.debug.ToastSourceType
 
 /**
  * js扩展类, 在js中通过java变量调用
@@ -1087,7 +1093,19 @@ interface JsExtensions : JsEncodeUtils {
      */
     fun toast(msg: Any?) {
         rhinoContextOrNull?.ensureActive()
-        appCtx.toastOnUi("${getTag()}: ${msg.toString()}")
+        val source = getSource()
+        val (ruleType, ruleLine) = extractRuleInfo()
+        val toastContext = ToastContext(
+            sourceName = getTag(),
+            sourceType = when (source) {
+                is BookSource -> ToastSourceType.BOOK
+                is RssSource -> ToastSourceType.RSS
+                else -> null
+            },
+            ruleType = ruleType,
+            ruleLine = ruleLine
+        )
+        appCtx.toastOnUi("${getTag()}: ${msg.toString()}", toastContext)
     }
 
     /**
@@ -1095,7 +1113,50 @@ interface JsExtensions : JsEncodeUtils {
      */
     fun longToast(msg: Any?) {
         rhinoContextOrNull?.ensureActive()
-        appCtx.longToastOnUi("${getTag()}: ${msg.toString()}")
+        val source = getSource()
+        val (ruleType, ruleLine) = extractRuleInfo()
+        val toastContext = ToastContext(
+            sourceName = getTag(),
+            sourceType = when (source) {
+                is BookSource -> ToastSourceType.BOOK
+                is RssSource -> ToastSourceType.RSS
+                else -> null
+            },
+            ruleType = ruleType,
+            ruleLine = ruleLine
+        )
+        appCtx.longToastOnUi("${getTag()}: ${msg.toString()}", toastContext)
+    }
+
+    /**
+     * 从调用堆栈中提取规则类型和行号
+     * @return Pair<规则类型, 行号>
+     */
+    private fun extractRuleInfo(): Pair<ToastRuleType?, Int?> {
+        val ruleTypeStr = AnalyzeRule.currentRuleTypeThreadLocal.get()
+        val ruleType = when (ruleTypeStr) {
+            "SEARCH" -> ToastRuleType.SEARCH
+            "EXPLORE" -> ToastRuleType.EXPLORE
+            "BOOK_INFO" -> ToastRuleType.BOOK_INFO
+            "TOC" -> ToastRuleType.TOC
+            "CONTENT" -> ToastRuleType.CONTENT
+            "RSS_INFO" -> ToastRuleType.RSS_INFO
+            "RSS_ARTICLE" -> ToastRuleType.RSS_ARTICLE
+            "RSS_CONTENT" -> ToastRuleType.RSS_CONTENT
+            else -> null
+        }
+        
+        val ruleLine = extractJsLineNumber()
+        
+        return Pair(ruleType, ruleLine)
+    }
+
+    /**
+     * 从 Rhino 调试器获取当前脚本行号
+     */
+    private fun extractJsLineNumber(): Int? {
+        val line = rhinoContextOrNull?.currentScriptLine ?: return null
+        return if (line > 0) line else null
     }
 
     /**

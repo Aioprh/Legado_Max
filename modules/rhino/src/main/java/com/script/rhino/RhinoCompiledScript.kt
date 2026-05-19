@@ -57,11 +57,13 @@ internal class RhinoCompiledScript(
     override fun eval(scope: Scriptable, coroutineContext: CoroutineContext?): Any? {
         val cx = Context.enter() as RhinoContext
         val previousCoroutineContext = cx.coroutineContext
+        val previousDebugger = cx.debugger
         if (coroutineContext != null && coroutineContext[Job] != null) {
             cx.coroutineContext = coroutineContext
         }
         cx.allowScriptRun = true
         cx.recursiveCount++
+        cx.setDebugger(RhinoDebugAdapter, null)
         val result: Any?
         try {
             cx.checkRecursive()
@@ -81,6 +83,7 @@ internal class RhinoCompiledScript(
             cx.coroutineContext = previousCoroutineContext
             cx.allowScriptRun = false
             cx.recursiveCount--
+            cx.setDebugger(previousDebugger, null)
             Context.exit()
         }
         return result

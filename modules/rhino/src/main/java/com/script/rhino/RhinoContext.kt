@@ -11,6 +11,8 @@ class RhinoContext(factory: ContextFactory) : Context(factory) {
     var coroutineContext: CoroutineContext? = null
     var allowScriptRun = false
     var recursiveCount = 0
+    var currentRuleType: String? = null
+    var currentScriptLine: Int = -1
 
     @Throws(RhinoInterruptError::class)
     fun ensureActive() {

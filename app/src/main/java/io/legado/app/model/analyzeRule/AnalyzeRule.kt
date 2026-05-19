@@ -88,6 +88,7 @@ class AnalyzeRule(
 
     private var loggedNonStandardJSON = false
     private var ruleName: String? = null
+    private var toastRuleType: String? = null
     fun setRuleName(name: String) {
         if (name.isNotBlank()) {
             ruleName = name
@@ -1046,7 +1047,13 @@ class AnalyzeRule(
         
         val jsResult = try {
             val script = compileScriptCache(jsStr)
-            script.eval(scope, coroutineContext)
+            val previousRuleType = currentRuleTypeThreadLocal.get()
+            try {
+                currentRuleTypeThreadLocal.set(toastRuleType)
+                script.eval(scope, coroutineContext)
+            } finally {
+                currentRuleTypeThreadLocal.set(previousRuleType)
+            }
         } catch (e: Exception) {
             val duration = System.currentTimeMillis() - startTime
             FlowLogRecorder.logJsContext(
@@ -1210,6 +1217,7 @@ class AnalyzeRule(
         private val evalPattern =
             Pattern.compile("@get:\\{[^}]+?\\}|\\{\\{[\\w\\W]*?\\}\\}", Pattern.CASE_INSENSITIVE)
         private val regexPattern = Pattern.compile("\\$\\d{1,2}")
+        val currentRuleTypeThreadLocal = ThreadLocal<String?>()
 
         fun AnalyzeRule.setCoroutineContext(context: CoroutineContext): AnalyzeRule {
             coroutineContext = context.minusKey(ContinuationInterceptor)
@@ -1228,6 +1236,11 @@ class AnalyzeRule(
 
         fun AnalyzeRule.setChapter(chapter: BookChapter?): AnalyzeRule {
             this.chapter = chapter
+            return this
+        }
+
+        fun AnalyzeRule.setToastRuleType(type: String): AnalyzeRule {
+            this.toastRuleType = type
             return this
         }
 

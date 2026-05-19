@@ -16,6 +16,7 @@ import io.legado.app.help.source.getBookType
 import io.legado.app.model.Debug
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
+import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.RuleData
 import io.legado.app.ui.main.explore.ExploreAdapter.Companion.exploreInfoMapList
@@ -378,6 +379,7 @@ object WebBook {
             if (!preUpdateJs.isNullOrBlank()) {
                 AnalyzeRule(book, bookSource, true, isFromBookInfo)
                     .setCoroutineContext(currentCoroutineContext())
+                    .setToastRuleType("TOC")
                     .evalJS(preUpdateJs)
             }
         }.onFailure {

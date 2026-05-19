@@ -146,7 +146,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             //自动更新书籍
             val isAutoRefreshedBook = savedInstanceState?.getBoolean("isAutoRefreshedBook") ?: false
             if (AppConfig.autoRefreshBook && !isAutoRefreshedBook) {
-                binding.viewPagerMain.postDelayed(2000) {
+                //每次进入书架后5秒自动更新书籍目录
+                binding.viewPagerMain.postDelayed(5000) {
                     viewModel.upAllBookToc()
                 }
             }
