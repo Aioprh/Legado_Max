@@ -23,7 +23,33 @@
 - **appS版**：包名 `io.legado.app.yuedu.a`，另一个共存包名
 #### 下载地址 [Gitee Releases](https://gitee.com/GEd520/legados/releases)
 
-[![](https://img.shields.io/badge/-Contents:-696969.svg)](#contents) [![](https://img.shields.io/badge/-Max特色-F5F5F5.svg)](#Max版特色功能-) [![](https://img.shields.io/badge/-Function-F5F5F5.svg)](#Function-主要功能-) [![](https://img.shields.io/badge/-Community-F5F5F5.svg)](#Community-交流社区-) [![](https://img.shields.io/badge/-API-F5F5F5.svg)](#API-) [![](https://img.shields.io/badge/-Other-F5F5F5.svg)](#Other-其他-) [![](https://img.shields.io/badge/-Grateful-F5F5F5.svg)](#Grateful-感谢-) [![](https://img.shields.io/badge/-Interface-F5F5F5.svg)](#Interface-界面-)
+# 覆盖安装注意事项 [![](https://img.shields.io/badge/-覆盖安装注意事项-F5F5F5.svg)](#覆盖安装注意事项-)
+
+> ⚠️ **重要提醒**：安装Max版前一定要备份！
+
+<details>
+<summary>从其他版本覆盖安装需要注意的事项</summary>
+**1. MD3版本书架分组兼容性问题**
+
+从MD3版本备份的书架分组在Max版本中无法正常显示。虽然在"分组管理"界面可以看到这些分组，但在其他界面无法显示。这是因为MD3版本自行修改了分组相关的备份数据格式，导致其他版本的阅读无法正常加载这些分组数据。
+
+**2. 跨版本升级可能导致数据丢失**
+
+从lyc版本（包括Sigma和Plus版）直接安装最新的Max版可能会出现书架和其他数据全部丢失的情况。这是因为Max版最近更新幅度非常大，跨越了太多版本，数据格式可能存在兼容性问题。
+
+⚠️ 此时使用WebDAV恢复和本地恢复都无法正常工作！
+
+**解决方案**：
+- 将软件完全卸载后重新安装
+- 再进行数据恢复操作，此时即可正常恢复
+
+</details>
+
+<a href="#readme">
+    <img src="https://img.shields.io/badge/-返回顶部-orange.svg" alt="#" align="right">
+</a>
+
+[![](https://img.shields.io/badge/-Contents:-696969.svg)](#contents) [![](https://img.shields.io/badge/-Max特色-F5F5F5.svg)](#Max版特色功能-) [![](https://img.shields.io/badge/-Function-F5F5F5.svg)](#Function-主要功能-) [![](https://img.shields.io/badge/-Community-F5F5F5.svg)](#Community-交流社区-) [![](https://img.shields.io/badge/-API-F5F5F5.svg)](#API-) [![](https://img.shields.io/badge/-Other-F5F5F5.svg)](#Other-其他-) [![](https://img.shields.io/badge/-Grateful-F5F5F5.svg)](#Grateful-感谢-) [![](https://img.shields.io/badge/-Interface-F5F5F5.svg)](#Interface-界面-) [![](https://img.shields.io/badge/-覆盖安装注意事项-F5F5F5.svg)](#覆盖安装注意事项-)
 
 >新用户？
 >
