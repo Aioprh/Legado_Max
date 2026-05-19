@@ -8,8 +8,10 @@ import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
+import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.help.storage.Backup
 import io.legado.app.help.storage.BackupAES
+import io.legado.app.help.storage.BookCacheSelectorConfig
 import io.legado.app.model.BookCover
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
 import io.legado.app.utils.FileUtils
@@ -262,6 +264,8 @@ object BackupController {
             }
 
             Backup.stageBackgroundImageFiles(webBackupPath)
+            Backup.stageBookCache(webBackupPath)
+            Backup.stageBookChapterForCache(webBackupPath)
         }
 
         // 打包ZIP
@@ -364,6 +368,48 @@ object BackupController {
                 description = item.description,
                 count = count,
                 size = size
+            ))
+        }
+
+        // 书籍缓存
+        val selectedBooks = BookCacheSelectorConfig.getSelectedBooks()
+        if (selectedBooks.isNotEmpty()) {
+            val cacheDir = File(io.legado.app.help.book.BookHelp.cachePath)
+            var bookCacheSize = 0L
+            var chapterCount = 0
+            if (cacheDir.exists()) {
+                selectedBooks.forEach { book ->
+                    val folderName = book.getFolderNameNoCache()
+                    val bookFolder = File(cacheDir, folderName)
+                    if (bookFolder.exists()) {
+                        bookCacheSize += bookFolder.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+                        chapterCount += appDb.bookChapterDao.getChapterList(book.bookUrl).size
+                    }
+                }
+            }
+            val indexEstimatedSize = selectedBooks.size * 300L
+            val chapterEstimatedSize = chapterCount * 200L
+            totalSize += bookCacheSize + indexEstimatedSize + chapterEstimatedSize
+            items.add(BackupItemInfo(
+                fileName = "book_cache",
+                displayName = "书籍缓存",
+                description = "已缓存的章节内容文件",
+                count = selectedBooks.size,
+                size = bookCacheSize
+            ))
+            items.add(BackupItemInfo(
+                fileName = "bookCacheIndex.json",
+                displayName = "书籍缓存索引",
+                description = "缓存文件的索引信息",
+                count = selectedBooks.size,
+                size = indexEstimatedSize
+            ))
+            items.add(BackupItemInfo(
+                fileName = "bookChapterCache.json",
+                displayName = "书籍章节目录",
+                description = "缓存书籍的章节目录数据",
+                count = chapterCount,
+                size = chapterEstimatedSize
             ))
         }
 

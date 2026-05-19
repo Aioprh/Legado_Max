@@ -48,6 +48,9 @@ object BackupConfig {
     /** 本地书籍忽略Key */
     private const val localBookKey = "localBook"
 
+    /** 书籍缓存备份Key */
+    private const val bookCacheKey = "bookCache"
+
     // ==================== 用户可配置忽略项 ====================
 
     /** 用户可配置忽略的配置Key列表 */
@@ -59,7 +62,8 @@ object BackupConfig {
         PreferKey.bookshelfLayout,
         PreferKey.showRss,
         PreferKey.threadCount,
-        localBookKey
+        localBookKey,
+        bookCacheKey
     )
 
     /** 用户可配置忽略的配置标题列表（用于UI显示） */
@@ -71,7 +75,8 @@ object BackupConfig {
         appCtx.getString(R.string.bookshelf_layout),
         appCtx.getString(R.string.show_rss),
         appCtx.getString(R.string.thread_count),
-        appCtx.getString(R.string.local_book)
+        appCtx.getString(R.string.local_book),
+        appCtx.getString(R.string.book_cache)
     )
 
     // ==================== 自动忽略项 ====================
@@ -203,6 +208,10 @@ object BackupConfig {
     /** 是否忽略本地书籍 */
     val ignoreLocalBook: Boolean
         get() = ignoreConfig[localBookKey] == true
+
+    /** 是否忽略书籍缓存备份 */
+    val ignoreBookCache: Boolean
+        get() = ignoreConfig[bookCacheKey] == true
 
     /** 是否启用完全备份 */
     val fullBackup: Boolean

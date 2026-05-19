@@ -11,6 +11,7 @@ import io.legado.app.constant.AppLog
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.Bookmark
@@ -33,6 +34,8 @@ import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.LauncherIconHelp
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.upType
+import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
@@ -91,6 +94,8 @@ import java.io.FileInputStream
  */
 object Restore {
     private const val runtimeSourceCacheFileName = "runtimeSourceCache.json"
+    private const val bookCacheFolderName = "book_cache"
+    private const val bookCacheIndexFileName = "bookCacheIndex.json"
 
     /** 互斥锁，防止并发恢复操作 */
     private val mutex = Mutex()
@@ -434,6 +439,11 @@ object Restore {
             restoreRuntimeSourceCaches(path)
         }
 
+        // 恢复书籍缓存和章节目录
+        if (bookCacheIndexFileName in selectedSet || "bookChapterCache.json" in selectedSet) {
+            restoreBookCache(path)
+        }
+
         ReadBookConfig.apply {
             comicStyleSelect = appCtx.getPrefInt(PreferKey.comicStyleSelect)
             readStyleSelect = appCtx.getPrefInt(PreferKey.readStyleSelect)
@@ -698,6 +708,7 @@ object Restore {
         // 修正主题背景图片路径
         restoreThemeBackgrounds(path, clearExisting = true)
         restoreRuntimeSourceCaches(path)
+        restoreBookCache(path)
         fixThemeBackgroundPaths()
         fixThemeConfigBackgroundPaths()
 
@@ -1044,6 +1055,218 @@ object Restore {
         }
         // 如果新路径不存在，返回文件名（ThemeConfig.getBgImage 会自动处理）
         return bgName
+    }
+
+    /**
+     * 恢复书籍缓存
+     * 
+     * 流程：
+     * 1. 恢复章节目录（如果有）
+     * 2. 读取缓存索引文件
+     * 3. 遍历索引，匹配当前设备上的书籍
+     * 4. 获取当前书籍的章节列表
+     * 5. 根据章节标题匹配，重命名章节文件
+     * 6. 复制缓存文件到对应位置
+     * 
+     * 匹配策略：
+     * 1. 优先按章节序号精确匹配
+     * 2. 其次按章节标题匹配
+     */
+    private fun restoreBookCache(path: String) {
+        if (BackupConfig.ignoreBookCache) {
+            LogUtils.d(TAG, "忽略书籍缓存恢复")
+            return
+        }
+        
+        // 先恢复章节目录
+        restoreBookChapterCache(path)
+        
+        val indexFile = File(path, bookCacheIndexFileName)
+        if (!indexFile.exists()) {
+            LogUtils.d(TAG, "书籍缓存索引文件不存在")
+            return
+        }
+        
+        val cacheIndexList = runCatching {
+            GSON.fromJsonArray<BookCacheIndex>(indexFile.readText()).getOrNull()
+        }.getOrNull() ?: run {
+            LogUtils.d(TAG, "解析书籍缓存索引失败")
+            return
+        }
+        
+        if (cacheIndexList.isEmpty()) {
+            LogUtils.d(TAG, "书籍缓存索引为空")
+            return
+        }
+        
+        val backupCacheDir = File(path, bookCacheFolderName)
+        if (!backupCacheDir.exists()) {
+            LogUtils.d(TAG, "备份缓存目录不存在")
+            return
+        }
+        
+        val targetCacheDir = File(BookHelp.cachePath)
+        if (!targetCacheDir.exists()) {
+            targetCacheDir.mkdirs()
+        }
+        
+        val allBooks = appDb.bookDao.all
+        var restoredCount = 0
+        var chapterRestoredCount = 0
+        
+        cacheIndexList.forEach { cacheIndex ->
+            val matchedBook = findMatchingBook(cacheIndex, allBooks)
+            if (matchedBook == null) {
+                LogUtils.d(TAG, "未找到匹配书籍: ${cacheIndex.bookName}")
+                return@forEach
+            }
+            
+            val sourceCacheDir = File(backupCacheDir, cacheIndex.folderName)
+            if (!sourceCacheDir.exists()) {
+                LogUtils.d(TAG, "备份缓存目录不存在: ${cacheIndex.folderName}")
+                return@forEach
+            }
+            
+            val targetFolderName = matchedBook.getFolderNameNoCache()
+            val targetBookDir = File(targetCacheDir, targetFolderName)
+            if (!targetBookDir.exists()) {
+                targetBookDir.mkdirs()
+            }
+            
+            // 获取当前书籍的章节列表
+            val currentChapters = appDb.bookChapterDao.getChapterList(matchedBook.bookUrl)
+            val currentChapterByIndex = currentChapters.associateBy { it.index }
+            val currentChapterByTitle = currentChapters.associateBy { it.title }
+            
+            // 恢复章节文件，根据需要重命名
+            cacheIndex.chapters.forEach { chapterInfo ->
+                val sourceFile = File(sourceCacheDir, chapterInfo.fileName)
+                if (!sourceFile.exists()) {
+                    return@forEach
+                }
+                
+                // 查找匹配的当前章节
+                val targetChapter = currentChapterByIndex[chapterInfo.index]
+                    ?: currentChapterByTitle[chapterInfo.title]
+                
+                if (targetChapter == null) {
+                    LogUtils.d(TAG, "未找到匹配章节: ${chapterInfo.title}")
+                    return@forEach
+                }
+                
+                // 计算目标文件名
+                val targetFileName = targetChapter.getFileName()
+                val targetFile = File(targetBookDir, targetFileName)
+                
+                // 复制文件（如果文件名不同则重命名）
+                sourceFile.copyTo(targetFile, overwrite = true)
+                chapterRestoredCount++
+            }
+            
+            // 复制图片文件夹（如果有）
+            val sourceImageDir = File(sourceCacheDir, "images")
+            if (sourceImageDir.exists()) {
+                val targetImageDir = File(targetBookDir, "images")
+                sourceImageDir.copyRecursively(targetImageDir, overwrite = true)
+            }
+            
+            restoredCount++
+            LogUtils.d(TAG, "恢复书籍缓存: ${matchedBook.name} -> $targetFolderName")
+        }
+        
+        LogUtils.d(TAG, "书籍缓存恢复完成，共恢复 $restoredCount 本书，$chapterRestoredCount 个章节")
+    }
+    
+    /**
+     * 恢复章节目录
+     * 从 bookChapterCache.json 恢复章节目录数据
+     * 
+     * @param path 备份文件解压后的目录路径
+     */
+    private fun restoreBookChapterCache(path: String) {
+        val chapterFile = File(path, "bookChapterCache.json")
+        if (!chapterFile.exists()) {
+            LogUtils.d(TAG, "章节目录文件不存在")
+            return
+        }
+        
+        val chapters = fileToListT<BookChapter>(path, "bookChapterCache.json")
+        if (chapters.isNullOrEmpty()) {
+            LogUtils.d(TAG, "章节目录为空")
+            return
+        }
+        
+        // 按 bookUrl 分组
+        val chaptersByBook = chapters.groupBy { it.bookUrl }
+        var restoredBookCount = 0
+        var restoredChapterCount = 0
+        
+        chaptersByBook.forEach { (bookUrl, chapterList) ->
+            // 检查书籍是否存在
+            val book = appDb.bookDao.getBook(bookUrl)
+            if (book == null) {
+                // 尝试通过缓存索引中的书名匹配
+                val cacheIndexFile = File(path, bookCacheIndexFileName)
+                if (cacheIndexFile.exists()) {
+                    val cacheIndexList = runCatching {
+                        GSON.fromJsonArray<BookCacheIndex>(cacheIndexFile.readText()).getOrNull()
+                    }.getOrNull()
+                    
+                    val cacheIndex = cacheIndexList?.find { it.bookUrl == bookUrl }
+                    if (cacheIndex != null) {
+                        val matchedBook = appDb.bookDao.all.find { it.name == cacheIndex.bookName }
+                        if (matchedBook != null) {
+                            // 更新章节的 bookUrl
+                            val updatedChapters = chapterList.map { chapter ->
+                                chapter.copy(bookUrl = matchedBook.bookUrl)
+                            }
+                            // 删除旧的章节，插入新的
+                            appDb.bookChapterDao.delByBook(matchedBook.bookUrl)
+                            appDb.bookChapterDao.insert(*updatedChapters.toTypedArray())
+                            restoredBookCount++
+                            restoredChapterCount += updatedChapters.size
+                            LogUtils.d(TAG, "恢复章节目录: ${matchedBook.name}, ${updatedChapters.size} 章")
+                        }
+                    }
+                }
+            } else {
+                // 书籍存在，直接恢复章节
+                appDb.bookChapterDao.delByBook(bookUrl)
+                appDb.bookChapterDao.insert(*chapterList.toTypedArray())
+                restoredBookCount++
+                restoredChapterCount += chapterList.size
+                LogUtils.d(TAG, "恢复章节目录: ${book.name}, ${chapterList.size} 章")
+            }
+        }
+        
+        LogUtils.d(TAG, "章节目录恢复完成，共 $restoredBookCount 本书，$restoredChapterCount 章")
+    }
+    
+    /**
+     * 查找匹配的书籍
+     * 
+     * @param cacheIndex 缓存索引信息
+     * @param allBooks 所有书籍列表
+     * @return 匹配的书籍，未找到返回null
+     */
+    private fun findMatchingBook(
+        cacheIndex: BookCacheIndex,
+        allBooks: List<Book>
+    ): Book? {
+        // 优先按 bookUrl 精确匹配
+        allBooks.find { it.bookUrl == cacheIndex.bookUrl }?.let { return it }
+        
+        // 其次按 书名+作者 匹配
+        val normalizedAuthor = cacheIndex.author.trim()
+        allBooks.filter { 
+            it.name == cacheIndex.bookName && 
+            (it.author?.trim() ?: "") == normalizedAuthor 
+        }.firstOrNull()?.let { return it }
+        
+        // 最后按书名模糊匹配（作者可能为空或不一致）
+        allBooks.filter { it.name == cacheIndex.bookName }.firstOrNull()?.let { return it }
+        
+        return null
     }
 
 }
