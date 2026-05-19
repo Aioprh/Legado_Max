@@ -13,13 +13,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -42,10 +46,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import io.legado.app.constant.PreferKey
+import io.legado.app.help.config.AppConfig
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.SourceSubCategory
+import io.legado.app.ui.debuglog.DebugFloatingBallManager
 import io.legado.app.ui.debuglog.components.DebugCategoryTabs
 import io.legado.app.ui.debuglog.components.DebugLogItem
 import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
@@ -54,6 +61,7 @@ import io.legado.app.ui.debuglog.components.FlowLogList
 import io.legado.app.ui.debuglog.components.FlowStageFilter
 import io.legado.app.ui.debuglog.viewmodel.DebugLogViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.share
 
 /**
@@ -141,22 +149,56 @@ fun DebugLogScreen(
                                 contentDescription = if (isPaused) "继续" else "暂停"
                             )
                         }
+
                         // 清空按钮：清除所有日志
                         IconButton(onClick = { viewModel.clearLogs() }) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
-                                contentDescription = "清空"
+                                contentDescription = "清空",
+                                tint = MaterialTheme.colorScheme.error
                             )
                         }
-                        // 导出按钮：导出当前筛选的日志
-                        IconButton(onClick = {
-                            val exportedText = viewModel.exportFilteredLogs()
-                            context.share(exportedText, "导出调试日志")
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Save,
-                                contentDescription = "导出"
-                            )
+
+                        // 溢出菜单：包含导出操作
+                        var showOverflowMenu by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { showOverflowMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "更多"
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("导出日志") },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        val exportedText = viewModel.exportFilteredLogs()
+                                        context.share(exportedText, "导出调试日志")
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Save, contentDescription = null)
+                                    }
+                                )
+
+                                HorizontalDivider()
+
+                                DropdownMenuItem(
+                                    text = { Text("关闭调试球") },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        context.putPrefBoolean(PreferKey.debugLogFloatingBall, false)
+                                        DebugFloatingBallManager.updateFloatingBallState(false)
+                                        onDismiss()
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Cancel, contentDescription = null)
+                                    }
+                                )
+                            }
                         }
                     }
                 )
