@@ -48,6 +48,13 @@
             android:key="streamReadAloudAudio"
             app:iconSpaceReserved="false" />
 
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="false"
+            android:title="@string/read_aloud_floating_ui"
+            android:summary="@string/read_aloud_floating_ui_summary"
+            android:key="readAloudFloatingUi"
+            app:iconSpaceReserved="false" />
+
         <io.legado.app.lib.prefs.Preference
             android:title="@string/speak_engine"
             android:summary="TTS"

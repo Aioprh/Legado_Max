@@ -108,7 +108,13 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
             ReadAloud.stop(requireContext())
             dismissAllowingStateLoss()
         }
-        ivPlayPause.setOnClickListener { callBack?.onClickReadAloud() }
+        ivPlayPause.setOnClickListener {
+            when {
+                !BaseReadAloudService.isRun -> callBack?.onClickReadAloud()
+                BaseReadAloudService.pause -> ReadAloud.resume(requireContext())
+                else -> ReadAloud.pause(requireContext())
+            }
+        }
         ivPlayPrev.setOnClickListener {
             if (requireContext().getPrefBoolean("mediaButtonPerNext", false)) {
                 ReadAloud.prevChapter(requireContext())

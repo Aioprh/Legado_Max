@@ -255,7 +255,7 @@ abstract class BaseActivity<VB : ViewBinding>(
         readAloudMiniBarController?.hide()
     }
 
-    open fun showReadAloudMiniBar(): Boolean = true
+    open fun showReadAloudMiniBar(): Boolean = AppConfig.readAloudFloatingUi
 
     open fun lockReadAloudMiniBarPosition(): Boolean = false
 
