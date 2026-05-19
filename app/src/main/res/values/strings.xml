@@ -390,6 +390,8 @@
     <string name="fattening_book">Awaiting more chapters books</string>
     <string name="finish_book">Finished books</string>
     <string name="local_book">Local books</string>
+    <string name="book_cache">Book cache</string>
+    <string name="no_book_cache">No cached books</string>
     <string name="status_bar_immersion">The status bar color becomes transparent</string>
     <string name="imm_navigation_bar">immersion navigation bar</string>
     <string name="imm_navigation_bar_s">The navigation bar becomes transparent</string>
@@ -885,7 +887,7 @@
     <string name="storage_manage">Storage Management</string>
     <string name="storage_manage_summary">Manage app cache and storage</string>
     <string name="download_manage">Download Management</string>
-    <string name="download_manage_summary">Manage book download tasks</string>
+    <string name="download_manage_summary">Manage WebView downloaded files</string>
     <string name="local_tts">Local TTS</string>
     <string name="thread_count">Thread count</string>
     <string name="all_read_time">Total read time</string>
@@ -1277,6 +1279,8 @@
     <string name="full_backup_s">Backup all user configuration data</string>
     <string name="backup_selector">Backup Selector</string>
     <string name="backup_selector_summary">Select items to backup</string>
+    <string name="book_cache_selector">Book Cache Selector</string>
+    <string name="book_cache_selector_summary">Select books to backup cache</string>
     <string name="view_backup_info_t">View Backup Info</string>
     <string name="view_backup_info_s">View backup file contents and sizes</string>
     <string name="view_backup_info">Backup Info</string>
@@ -1475,6 +1479,7 @@
     <string name="json_format">json格式</string>
     <string name="open_other_video_player">其它播放器打开</string>
     <string name="show_source_comment">显示源注释</string>
+    <string name="enable_locate">开启定位</string>
     <string name="adapt_special_style">适配特殊样式</string>
     <string name="show_line_number">展示%d行</string>
     <string name="setting_show_line_number">设置辅助按键展示的行数</string>

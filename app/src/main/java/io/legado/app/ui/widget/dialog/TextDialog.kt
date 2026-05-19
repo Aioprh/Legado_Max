@@ -13,11 +13,15 @@ import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
+import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.databinding.DialogTextViewBinding
 import io.legado.app.help.CacheManager
 import io.legado.app.help.HelpDocManager
 import io.legado.app.help.IntentData
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.model.debug.DebugCategory
+import io.legado.app.model.debug.DebugEvent
+import io.legado.app.model.debug.DebugLevel
 import io.legado.app.ui.code.CodeEditActivity
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.setHtml
@@ -41,6 +45,34 @@ import kotlinx.coroutines.withContext
  * 文本弹窗，支持显示Markdown、HTML、普通文本
  */
 class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
+    
+    private suspend fun logDebug(msg: String, detail: String? = null) {
+        android.util.Log.d("TextDialog", msg)
+        DebugEventCenter.emit(
+            DebugEvent(
+                level = DebugLevel.DEBUG,
+                category = DebugCategory.APP,
+                message = msg,
+                detail = detail,
+                dialogName = "TextDialog"
+            )
+        )
+    }
+    
+    private fun logDebugSync(msg: String, detail: String? = null) {
+        android.util.Log.d("TextDialog", msg)
+        lifecycleScope.launch {
+            DebugEventCenter.emit(
+                DebugEvent(
+                    level = DebugLevel.DEBUG,
+                    category = DebugCategory.APP,
+                    message = msg,
+                    detail = detail,
+                    dialogName = "TextDialog"
+                )
+            )
+        }
+    }
 
     // 显示模式枚举
     enum class Mode {
@@ -152,9 +184,10 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
                         }
                     )
                     if (scrollToLine > 0) {
-                        binding.textView.post {
-                            scrollToLineInText(binding.textView, scrollToLine, highlightTerm)
-                        }
+                        val totalLinesInOriginal = content.lineSequence().count()
+                        binding.textView.postDelayed({
+                            scrollToLineInText(binding.textView, scrollToLine, highlightTerm, null, totalLinesInOriginal)
+                        }, 200)
                     }
                 }
 
@@ -168,9 +201,10 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
                         binding.textView.text = content
                     }
                     if (scrollToLine > 0) {
-                        binding.textView.post {
-                            scrollToLineInText(binding.textView, scrollToLine, highlightTerm)
-                        }
+                        val totalLinesInOriginal = content.lineSequence().count()
+                        binding.textView.postDelayed({
+                            scrollToLineInText(binding.textView, scrollToLine, highlightTerm, null, totalLinesInOriginal)
+                        }, 200)
                     }
                 }
             }
@@ -241,13 +275,18 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
      * 3. 保持返回栈清晰，用户按返回键时不会需要多次点击
      */
     private fun setupHelpSearchResultListener() {
-        setFragmentResultListener(HelpSearchDialog.REQUEST_KEY) { _, bundle ->
+        // 使用 childFragmentManager，因为 HelpSearchDialog 是通过 childFragmentManager 显示的
+        childFragmentManager.setFragmentResultListener(HelpSearchDialog.REQUEST_KEY, this) { _, bundle ->
+            logDebugSync("setupHelpSearchResultListener - result received")
             // 从 Bundle 中解析搜索结果
             val docName = bundle.getString(HelpSearchDialog.RESULT_DOC_NAME) ?: return@setFragmentResultListener
             val fileName = bundle.getString(HelpSearchDialog.RESULT_FILE_NAME) ?: return@setFragmentResultListener
             val content = bundle.getString(HelpSearchDialog.RESULT_CONTENT) ?: return@setFragmentResultListener
             val lineNumber = bundle.getInt(HelpSearchDialog.RESULT_LINE_NUMBER, 0)
             val highlightTerm = bundle.getString(HelpSearchDialog.RESULT_HIGHLIGHT_TERM)
+            val lineContent = bundle.getString(HelpSearchDialog.RESULT_LINE_CONTENT)
+            
+            logDebugSync("setupHelpSearchResultListener - docName: $docName, lineNumber: $lineNumber, lineContent: \"$lineContent\"")
             
             // 更新当前文档信息
             currentHelpDoc = fileName
@@ -261,42 +300,62 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
             }
             
             // 更新内容显示并滚动到搜索结果所在行
-            updateContentWithScroll(content, lineNumber, highlightTerm)
+            updateContentWithScroll(content, lineNumber, highlightTerm, lineContent)
         }
     }
     
     /**
      * 更新内容并滚动到指定行
-     * 
+     *
      * 用于在用户从搜索结果中选择一项后，更新 TextDialog 显示的内容，
      * 并自动滚动到匹配的行号位置。
-     * 
+     *
      * @param content 要显示的文档内容
-     * @param scrollToLine 要滚动到的行号（1-based）
+     * @param scrollToLine 要滚动到的行号（1-based，原始 Markdown 文本的行号）
      * @param highlightTerm 要高亮的关键词（目前仅用于滚动定位，TextView 不支持文本高亮选区）
+     * @param lineContent 匹配行的完整内容，用于在渲染后的文本中精确定位
      */
-    private fun updateContentWithScroll(content: String, scrollToLine: Int, highlightTerm: String?) {
+    private fun updateContentWithScroll(content: String, scrollToLine: Int, highlightTerm: String?, lineContent: String?) {
+        logDebugSync("updateContentWithScroll called - scrollToLine: $scrollToLine, lineContent: \"$lineContent\"")
         currentContent = content
-        markwon?.let { mw ->
-            viewLifecycleOwner.lifecycleScope.launch {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    binding.textView.setTextClassifier(TextClassifier.NO_OP)
+        val totalLinesInOriginal = content.lineSequence().count()
+        logDebugSync("updateContentWithScroll - totalLinesInOriginal: $totalLinesInOriginal")
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                binding.textView.setTextClassifier(TextClassifier.NO_OP)
+            }
+            // 确保 markwon 已初始化
+            if (markwon == null) {
+                markwon = Markwon.builder(requireContext())
+                    .usePlugin(object : io.noties.markwon.AbstractMarkwonPlugin() {
+                        override fun configureConfiguration(builder: MarkwonConfiguration.Builder) {
+                            builder.linkResolver(InnerBrowserLinkResolver)
+                        }
+                    })
+                    .usePlugin(GlideImagesPlugin.create(Glide.with(requireContext())))
+                    .usePlugin(HtmlPlugin.create())
+                    .usePlugin(TablePlugin.create(requireContext()))
+                    .build()
+            }
+            val markdown = withContext(IO) {
+                markwon!!.toMarkdown(content)
+            }
+            logDebug("updateContentWithScroll - setting markdown, length: ${markdown.length}")
+            binding.textView.setMarkdown(
+                markwon!!,
+                markdown,
+                imgOnLongClickListener = { source ->
+                    showDialogFragment(PhotoDialog(source))
                 }
-                val markdown = withContext(IO) {
-                    mw.toMarkdown(content)
-                }
-                binding.textView.setMarkdown(
-                    mw,
-                    markdown,
-                    imgOnLongClickListener = { source ->
-                        showDialogFragment(PhotoDialog(source))
-                    }
-                )
-                if (scrollToLine > 0) {
-                    binding.textView.post {
-                        scrollToLineInText(binding.textView, scrollToLine, highlightTerm)
-                    }
-                }
+            )
+            // 滚动到指定位置
+            if (scrollToLine > 0) {
+                logDebug("updateContentWithScroll - posting scrollToLineInText")
+                binding.textView.postDelayed({
+                    logDebugSync("updateContentWithScroll - scrollToLineInText called from postDelayed")
+                    scrollToLineInText(binding.textView, scrollToLine, highlightTerm, lineContent, totalLinesInOriginal)
+                }, 200)
             }
         }
     }
@@ -304,43 +363,70 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
     /**
      * 滚动到指定行并高亮关键词
      * 
-     * 通过累加字符位置（charIndex）来定位目标行，而不是使用 indexOf 查找行内容。
-     * 这样可以正确处理文档中存在重复行的情况（如多个相同的 "## 标题"）。
+     * 优先使用 lineContent 在渲染后的文本中查找匹配位置，这样可以正确处理
+     * Markdown 渲染后文本内容变化的情况。
      * 
-     * 修复前的 bug：使用 text.indexOf(line) 会返回第一次出现的位置，
-     * 导致当文档中有重复行时，点击后面的搜索结果会跳转到错误的位置。
+     * 如果 lineContent 为空或在渲染后文本中找不到，则回退到使用行号计算。
+     * 
+     * @param textView 目标 TextView
+     * @param lineNumber 原始 Markdown 文本的行号（1-based）
+     * @param highlightTerm 要高亮的关键词
+     * @param lineContent 匹配行的完整内容，用于精确定位
+     * @param retryCount 重试次数，用于处理 layout 未就绪的情况
      */
-    private fun scrollToLineInText(textView: android.widget.TextView, lineNumber: Int, highlightTerm: String?) {
-        val text = textView.text.toString()
-        val lines = text.split("\n")
-        
-        var currentLine = 1
-        var charIndex = 0  // 累加字符位置，用于精确定位目标行
-        var targetIndex = 0
-        var found = false
-        
-        for ((index, line) in lines.withIndex()) {
-            if (currentLine == lineNumber) {
-                targetIndex = charIndex  // 使用累加的位置，而不是 indexOf(line)
-                found = true
-                break
+    private fun scrollToLineInText(
+        textView: android.widget.TextView,
+        lineNumber: Int,
+        highlightTerm: String?,
+        lineContent: String?,
+        totalLinesInOriginal: Int = 0,
+        retryCount: Int = 0
+    ) {
+        val layout = textView.layout
+
+        val logMsg = "scrollToLineInText - retryCount: $retryCount, lineNumber: $lineNumber, totalLinesInOriginal: $totalLinesInOriginal"
+        logDebugSync(logMsg)
+
+        // 如果 layout 未就绪，延迟重试（最多重试 20 次，每次间隔 100ms）
+        if (layout == null) {
+            logDebugSync("scrollToLineInText - layout is null, retrying...")
+            if (retryCount < 20) {
+                textView.postDelayed({
+                    scrollToLineInText(textView, lineNumber, highlightTerm, lineContent, totalLinesInOriginal, retryCount + 1)
+                }, 100)
             }
-            currentLine++
-            charIndex += line.length + 1  // +1 是换行符
+            return
         }
-        
-        if (found && targetIndex >= 0) {
-            val layout = textView.layout ?: return
-            val lineNum = layout.getLineForOffset(targetIndex)
-            val y = layout.getLineTop(lineNum)
-            val targetScrollY = (y - textView.height / 3).coerceAtLeast(0)
-            
-            textView.scrollTo(0, targetScrollY)
+
+        // 如果是 ScrollTextView，检查是否可以滚动
+        if (textView is io.legado.app.ui.widget.text.ScrollTextView) {
+            logDebugSync("scrollToLineInText - canScroll: ${textView.canScroll()}, maxScrollOffset: ${textView.getMaxScrollOffset()}")
+            if (!textView.canScroll()) {
+                if (retryCount < 20) {
+                    textView.postDelayed({
+                        scrollToLineInText(textView, lineNumber, highlightTerm, lineContent, totalLinesInOriginal, retryCount + 1)
+                    }, 100)
+                }
+                return
+            }
         }
-        
-        if (highlightTerm != null && found) {
-            // TextView 不支持 setSelection，仅滚动到指定行
+
+        // 简单的方法：按百分比滚动
+        val totalLinesInView = layout.lineCount
+        val scrollPercent = if (totalLinesInOriginal > 0) {
+            lineNumber.toFloat() / totalLinesInOriginal.toFloat()
+        } else {
+            0.5f
         }
+        logDebugSync("scrollToLineInText - totalLinesInView: $totalLinesInView, scrollPercent: $scrollPercent")
+
+        val targetLine = (scrollPercent * totalLinesInView).toInt().coerceIn(0, totalLinesInView - 1)
+        val y = layout.getLineTop(targetLine)
+        val targetScrollY = (y - textView.height / 4).coerceAtLeast(0)
+        logDebugSync("scrollToLineInText - targetLine: $targetLine, y: $y, targetScrollY: $targetScrollY, textView.height: ${textView.height}")
+
+        textView.scrollTo(0, targetScrollY)
+        logDebugSync("scrollToLineInText - scrollTo called, current scrollY: ${textView.scrollY}")
     }
     
     /**

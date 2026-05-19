@@ -1,14 +1,12 @@
 /**
  * URL访问记录界面 - Jetpack Compose实现
  * 
- * 这个文件展示了如何使用Compose构建一个完整的列表界面
- * 包含：搜索、筛选、菜单、对话框等常见功能
- * 
- * Compose核心概念：
- * 1. @Composable - 标记一个函数是可组合函数（UI组件）
- * 2. State - 状态，当状态变化时UI自动更新
- * 3. Modifier - 修饰符，用于设置组件的大小、位置、样式等
- * 4. Material3 - Google的UI设计系统，提供现成的组件
+ * 功能特性：
+ * 1. 多条件筛选：域名、来源、方法、状态
+ * 2. 日期分组显示：今天、昨天、本周、更早
+ * 3. 详情对话框：显示完整请求/响应信息
+ * 4. 相对时间显示：如"5分钟前"
+ * 5. FilterChip显示当前筛选条件
  */
 package io.legado.app.ui.urlRecord
 
@@ -19,9 +17,12 @@ import androidx.compose.animation.AnimatedVisibility
 // 基础布局和交互
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn      // 类似RecyclerView的高效列表
-import androidx.compose.foundation.lazy.items          // 列表项渲染
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 
 // 图标
@@ -37,84 +38,62 @@ import androidx.compose.runtime.*
 // UI相关工具
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-// 协程和ViewModel
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-
-// Android Context和Toast
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
-
-// 数据模型
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import io.legado.app.data.entities.UrlRecord
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.util.*
+import kotlin.math.abs
 
-/**
- * URL记录主界面
- * 
- * @Composable 注解表示这是一个可组合函数
- * 可组合函数是Compose的基本构建块，类似于View系统中的View
- * 
- * @param viewModel ViewModel实例，通过viewModel()自动创建
- * @param onBackClick 返回按钮点击回调
- */
-@OptIn(ExperimentalMaterial3Api::class)  // 使用实验性API
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UrlRecordScreen(
-    viewModel: UrlRecordViewModel = viewModel(),  // 自动创建ViewModel
+    viewModel: UrlRecordViewModel = viewModel(),
     onBackClick: () -> Unit
 ) {
-    // ==================== 状态管理 ====================
-    // collectAsState() 将StateFlow转换为Compose的State
-    // 当Flow中的值变化时，UI会自动重新绘制（这叫"重组"）
-    // "by" 是属性委托，让我们可以直接用变量名访问值，而不是state.value
+    val uiState by viewModel.uiState.collectAsState()
+    val domains by viewModel.domains.collectAsState()
+    val sourceNames by viewModel.sourceNames.collectAsState()
+    val methods by viewModel.methods.collectAsState()
+    val recordCount by viewModel.recordCount.collectAsState()
+    val isRecordEnabled by viewModel.isRecordEnabled.collectAsState()
     
-    val uiState by viewModel.uiState.collectAsState()           // UI状态
-    val domains by viewModel.domains.collectAsState()           // 域名列表
-    val recordCount by viewModel.recordCount.collectAsState()   // 记录数量
-    val isRecordEnabled by viewModel.isRecordEnabled.collectAsState()  // 开关状态
+    var showSearch by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var showFilterPanel by remember { mutableStateOf(false) }
+    var showClearDialog by remember { mutableStateOf<Int?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
+    var selectedRecord by remember { mutableStateOf<UrlRecord?>(null) }
     
-    // ==================== 本地UI状态 ====================
-    // remember 保存状态，在重组时不会丢失
-    // mutableStateOf 创建一个可变状态，变化时会触发重组
-    
-    var showSearch by remember { mutableStateOf(false) }        // 是否显示搜索框
-    var searchQuery by remember { mutableStateOf("") }          // 搜索关键词
-    var showDomainFilter by remember { mutableStateOf(false) }  // 是否显示域名筛选
-    var showClearDialog by remember { mutableStateOf<Int?>(null) } // 显示清除对话框（null不显示）
-    var showMenu by remember { mutableStateOf(false) }          // 是否显示菜单
-    
-    // ==================== 其他配置 ====================
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val containerColor = pageCardContainerColor()
     val topBarColor = pageTopBarContainerColor()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // ==================== 副作用 ====================
-    // LaunchedEffect 当key变化时执行副作用
-    // 这里当searchQuery或currentDomain变化时，更新ViewModel
-    LaunchedEffect(searchQuery, viewModel.currentDomain) {
+    LaunchedEffect(searchQuery) {
         viewModel.setSearchQuery(searchQuery.ifBlank { null })
     }
 
-    // ==================== 清除确认对话框 ====================
-    // 条件渲染：只有showClearDialog不为null时才显示
     if (showClearDialog != null) {
         val days = showClearDialog!!
         AlertDialog(
-            onDismissRequest = { showClearDialog = null },  // 点击外部关闭
+            onDismissRequest = { showClearDialog = null },
             containerColor = MaterialTheme.colorScheme.surface,
             title = { Text(if (days == 0) "清除所有记录" else "清除${days}天前的记录") },
             text = {
@@ -123,7 +102,6 @@ fun UrlRecordScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // 在协程中调用suspend函数
                         coroutineScope.launch {
                             if (days == 0) {
                                 viewModel.clearAll()
@@ -145,13 +123,16 @@ fun UrlRecordScreen(
         )
     }
 
-    // ==================== 页面骨架 ====================
-    // Scaffold 是Material3的基础页面模板
-    // 它提供了topBar、bottomBar、floatingActionButton等预定义区域
+    selectedRecord?.let { record ->
+        RecordDetailDialog(
+            record = record,
+            onDismiss = { selectedRecord = null }
+        )
+    }
+
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            // ==================== 标题栏 ====================
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = topBarColor,
@@ -161,13 +142,11 @@ fun UrlRecordScreen(
                     actionIconContentColor = MaterialTheme.colorScheme.onSecondary
                 ),
                 title = {
-                    // Column 是垂直布局，子元素从上到下排列
                     Column {
                         Text(
                             text = "URL访问记录",
                             style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.Medium)
                         )
-                        // 条件显示：只有recordCount > 0时才显示
                         if (recordCount > 0) {
                             Text(
                                 text = "共 $recordCount 条记录",
@@ -177,47 +156,39 @@ fun UrlRecordScreen(
                         }
                     }
                 },
-                // 导航图标（返回按钮）
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
                     }
                 },
-                // 右侧操作按钮
                 actions = {
-                    // 搜索按钮
                     IconButton(onClick = { showSearch = !showSearch }) {
                         Icon(Icons.Default.Search, contentDescription = "搜索")
                     }
-                    // 更多菜单
+                    IconButton(onClick = { showFilterPanel = !showFilterPanel }) {
+                        val hasFilters = viewModel.hasActiveFilters()
+                        Badge(
+                            containerColor = if (hasFilters) MaterialTheme.colorScheme.error 
+                                             else Color.Transparent,
+                            contentColor = Color.White
+                        ) {
+                            Icon(Icons.Default.FilterList, contentDescription = "筛选")
+                        }
+                    }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "更多")
                         }
-                        // 下拉菜单
                         DropdownMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false },
                             containerColor = MaterialTheme.colorScheme.surface
                         ) {
-                            // 域名筛选菜单项
-                            DropdownMenuItem(
-                                text = { Text("按域名筛选") },
-                                onClick = {
-                                    showDomainFilter = !showDomainFilter
-                                    showMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.FilterList, contentDescription = null)
-                                }
-                            )
-                            // URL记录开关菜单项
                             DropdownMenuItem(
                                 text = {
-                                    // Row 是水平布局，子元素从左到右排列
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text("开启URL记录")
-                                        Spacer(Modifier.weight(1f))  // 占满剩余空间
+                                        Spacer(Modifier.weight(1f))
                                         if (isRecordEnabled) {
                                             Icon(
                                                 Icons.Default.Check,
@@ -230,7 +201,6 @@ fun UrlRecordScreen(
                                 onClick = {
                                     val newEnabled = !isRecordEnabled
                                     viewModel.setRecordUrl(newEnabled)
-                                    // 显示Toast提示
                                     Toast.makeText(
                                         context,
                                         if (newEnabled) "已开启URL记录" else "已关闭URL记录",
@@ -246,8 +216,7 @@ fun UrlRecordScreen(
                                     )
                                 }
                             )
-                            HorizontalDivider()  // 分割线
-                            // 清除记录菜单项
+                            HorizontalDivider()
                             DropdownMenuItem(
                                 text = { Text("清除7天前的记录") },
                                 onClick = {
@@ -291,19 +260,15 @@ fun UrlRecordScreen(
             )
         }
     ) { paddingValues ->
-        // paddingValues 是Scaffold计算出的内边距，避免内容被标题栏遮挡
-        
-        // ==================== 主内容区域 ====================
         Column(
             modifier = Modifier
-                .fillMaxSize()           // 填满父容器
-                .padding(paddingValues)  // 应用Scaffold的内边距
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
-            // ==================== 搜索框（可动画显示/隐藏）====================
             AnimatedVisibility(visible = showSearch) {
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = { searchQuery = it },  // 输入时更新状态
+                    onValueChange = { searchQuery = it },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -322,60 +287,31 @@ fun UrlRecordScreen(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline
                     ),
-                    singleLine = true  // 单行输入
+                    singleLine = true
                 )
             }
 
-            // ==================== 域名筛选列表 ====================
-            AnimatedVisibility(visible = showDomainFilter && domains.isNotEmpty()) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ) {
-                    // LazyColumn 类似 RecyclerView，只渲染可见项，高效
-                    LazyColumn(
-                        modifier = Modifier.heightIn(max = 200.dp),
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        // 单个静态项
-                        item {
-                            DomainFilterItem(
-                                domain = "全部",
-                                isSelected = viewModel.currentDomain == null,
-                                onClick = {
-                                    viewModel.filterByDomain(null)
-                                    showDomainFilter = false
-                                }
-                            )
-                        }
-                        // 动态列表项
-                        items(domains) { domain ->
-                            DomainFilterItem(
-                                domain = domain,
-                                isSelected = viewModel.currentDomain == domain,
-                                onClick = {
-                                    viewModel.filterByDomain(domain)
-                                    showDomainFilter = false
-                                }
-                            )
-                        }
-                    }
-                }
+            AnimatedVisibility(visible = showFilterPanel) {
+                FilterPanel(
+                    viewModel = viewModel,
+                    domains = domains,
+                    sourceNames = sourceNames,
+                    methods = methods,
+                    containerColor = containerColor
+                )
             }
 
-            // ==================== 根据UI状态显示不同内容 ====================
-            // when 表达式根据状态显示不同UI
+            ActiveFilterChips(viewModel = viewModel)
+
             when (val state = uiState) {
-                // 加载中状态
                 is UrlRecordUIState.Loading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()  // 加载动画
+                        CircularProgressIndicator()
                     }
                 }
-                // 空数据状态
                 is UrlRecordUIState.Empty -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -388,7 +324,7 @@ fun UrlRecordScreen(
                                 modifier = Modifier.size(64.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Spacer(modifier = Modifier.height(16.dp))  // 垂直间距
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = "暂无URL访问记录",
                                 style = MaterialTheme.typography.titleMedium,
@@ -403,7 +339,6 @@ fun UrlRecordScreen(
                         }
                     }
                 }
-                // 错误状态
                 is UrlRecordUIState.Error -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -425,17 +360,14 @@ fun UrlRecordScreen(
                         }
                     }
                 }
-                // 成功状态 - 显示列表
                 is UrlRecordUIState.Success -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(vertical = 8.dp)
-                    ) {
-                        // key 参数用于唯一标识列表项，提高性能
-                        items(state.records, key = { it.id }) { record ->
-                            UrlRecordItem(record = record)
-                        }
+                    val groupedRecords = remember(state.records) { 
+                        groupRecordsByDate(state.records) 
                     }
+                    GroupedRecordList(
+                        groupedRecords = groupedRecords,
+                        onRecordClick = { selectedRecord = it }
+                    )
                 }
             }
         }
@@ -443,62 +375,327 @@ fun UrlRecordScreen(
 }
 
 /**
- * 域名筛选项组件
- * 
- * 这是一个自定义的可组合函数
- * 可以在其他地方复用
- * 
- * @param domain 域名文本
- * @param isSelected 是否选中
- * @param onClick 点击回调
+ * 按日期分组记录
  */
-@Composable
-private fun DomainFilterItem(
-    domain: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)  // 添加点击效果
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = domain,
-            style = MaterialTheme.typography.bodyMedium,
-            // 根据选中状态设置不同颜色
-            color = if (isSelected) MaterialTheme.colorScheme.primary 
-                    else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)  // 占满剩余空间
-        )
-        // 条件显示：选中时显示勾选图标
-        if (isSelected) {
-            Icon(
-                Icons.Default.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
+private fun groupRecordsByDate(records: List<UrlRecord>): Map<String, List<UrlRecord>> {
+    val calendar = Calendar.getInstance()
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    val todayStart = calendar.timeInMillis
+    
+    calendar.add(Calendar.DAY_OF_YEAR, -1)
+    val yesterdayStart = calendar.timeInMillis
+    
+    calendar.add(Calendar.DAY_OF_YEAR, -5)
+    val weekStart = calendar.timeInMillis
+    
+    return records.groupBy { record ->
+        when {
+            record.timestamp >= todayStart -> "今天"
+            record.timestamp >= yesterdayStart -> "昨天"
+            record.timestamp >= weekStart -> "本周"
+            else -> {
+                val sdf = SimpleDateFormat("MM月dd日", Locale.getDefault())
+                sdf.format(Date(record.timestamp))
+            }
         }
     }
 }
 
 /**
- * URL记录列表项组件
- * 
- * 展示单条URL记录的详细信息
- * 
- * @param record URL记录数据
+ * 计算相对时间
+ */
+private fun getRelativeTime(timestamp: Long): String {
+    val now = System.currentTimeMillis()
+    val diff = now - timestamp
+    
+    return when {
+        diff < 60_000 -> "刚刚"
+        diff < 3_600_000 -> "${diff / 60_000}分钟前"
+        diff < 86_400_000 -> "${diff / 3_600_000}小时前"
+        diff < 604_800_000 -> "${diff / 86_400_000}天前"
+        else -> {
+            val sdf = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
+            sdf.format(Date(timestamp))
+        }
+    }
+}
+
+/**
+ * 筛选面板
  */
 @Composable
-private fun UrlRecordItem(record: UrlRecord) {
-    val dateFormat = remember { SimpleDateFormat("MM-dd HH:mm:ss", Locale.getDefault()) }
+private fun FilterPanel(
+    viewModel: UrlRecordViewModel,
+    domains: List<String>,
+    sourceNames: List<String>,
+    methods: List<String>,
+    containerColor: Color
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (domains.isNotEmpty()) {
+                FilterSection(
+                    title = "域名",
+                    items = domains,
+                    selectedItem = viewModel.currentDomain,
+                    onSelect = { viewModel.filterByDomain(it) }
+                )
+            }
+            
+            if (sourceNames.isNotEmpty()) {
+                FilterSection(
+                    title = "来源",
+                    items = sourceNames,
+                    selectedItem = viewModel.currentSourceName,
+                    onSelect = { viewModel.filterBySourceName(it) }
+                )
+            }
+            
+            if (methods.isNotEmpty()) {
+                FilterSection(
+                    title = "方法",
+                    items = methods,
+                    selectedItem = viewModel.currentMethod,
+                    onSelect = { viewModel.filterByMethod(it) }
+                )
+            }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "状态",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.width(50.dp)
+                )
+                FilterChip(
+                    selected = viewModel.currentSuccess == true,
+                    onClick = { viewModel.filterByStatus(if (viewModel.currentSuccess == true) null else true) },
+                    label = { Text("成功") },
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+                FilterChip(
+                    selected = viewModel.currentSuccess == false,
+                    onClick = { viewModel.filterByStatus(if (viewModel.currentSuccess == false) null else false) },
+                    label = { Text("失败") }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 筛选区域
+ */
+@Composable
+private fun FilterSection(
+    title: String,
+    items: List<String>,
+    selectedItem: String?,
+    onSelect: (String?) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.width(50.dp)
+        )
+        val scrollState = rememberScrollState()
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .horizontalScroll(scrollState),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            FilterChip(
+                selected = selectedItem == null,
+                onClick = { onSelect(null) },
+                label = { Text("全部") }
+            )
+            items.take(10).forEach { item ->
+                FilterChip(
+                    selected = selectedItem == item,
+                    onClick = { onSelect(if (selectedItem == item) null else item) },
+                    label = { 
+                        Text(
+                            text = item.take(15) + if (item.length > 15) "..." else "",
+                            maxLines = 1
+                        ) 
+                    }
+                )
+            }
+            if (items.size > 10) {
+                Text(
+                    text = "+${items.size - 10}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 激活的筛选条件标签
+ */
+@Composable
+private fun ActiveFilterChips(viewModel: UrlRecordViewModel) {
+    val hasFilters = viewModel.hasActiveFilters()
+    
+    if (hasFilters) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                viewModel.currentDomain?.let { domain ->
+                    FilterChip(
+                        selected = true,
+                        onClick = { viewModel.filterByDomain(null) },
+                        label = { Text("域名: ${domain.take(20)}") },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "清除",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
+                }
+                viewModel.currentSourceName?.let { source ->
+                    FilterChip(
+                        selected = true,
+                        onClick = { viewModel.filterBySourceName(null) },
+                        label = { Text("来源: ${source.take(15)}") },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "清除",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
+                }
+                viewModel.currentMethod?.let { method ->
+                    FilterChip(
+                        selected = true,
+                        onClick = { viewModel.filterByMethod(null) },
+                        label = { Text("方法: $method") },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "清除",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
+                }
+                viewModel.currentSuccess?.let { success ->
+                    FilterChip(
+                        selected = true,
+                        onClick = { viewModel.filterByStatus(null) },
+                        label = { Text(if (success) "状态: 成功" else "状态: 失败") },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "清除",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
+                }
+                viewModel.searchViewQuery?.let { query ->
+                    if (query.isNotBlank()) {
+                        FilterChip(
+                            selected = true,
+                            onClick = { viewModel.setSearchQuery(null) },
+                            label = { Text("搜索: ${query.take(10)}") },
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "清除",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+                TextButton(
+                    onClick = { viewModel.clearAllFilters() },
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Text("清除全部", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 分组记录列表
+ */
+@Composable
+private fun GroupedRecordList(
+    groupedRecords: Map<String, List<UrlRecord>>,
+    onRecordClick: (UrlRecord) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(vertical = 8.dp)
+    ) {
+        groupedRecords.forEach { (dateGroup, records) ->
+            item(key = "header_$dateGroup") {
+                Text(
+                    text = dateGroup,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            items(records, key = { it.id }) { record ->
+                UrlRecordItem(
+                    record = record,
+                    onClick = { onRecordClick(record) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * URL记录列表项
+ */
+@Composable
+private fun UrlRecordItem(
+    record: UrlRecord,
+    onClick: () -> Unit
+) {
+    val dateFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -509,13 +706,12 @@ private fun UrlRecordItem(record: UrlRecord) {
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            // 第一行：方法 + 状态码 + 耗时 + 时间
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 MethodBadge(method = record.method)
-                Spacer(modifier = Modifier.width(8.dp))  // 水平间距
+                Spacer(modifier = Modifier.width(8.dp))
                 StatusBadge(
                     responseCode = record.responseCode,
                     errorMsg = record.errorMsg
@@ -526,9 +722,9 @@ private fun UrlRecordItem(record: UrlRecord) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.weight(1f))  // 占满剩余空间
+                Spacer(modifier = Modifier.weight(1f))
                 Text(
-                    text = dateFormat.format(Date(record.timestamp)),
+                    text = getRelativeTime(record.timestamp),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -536,26 +732,23 @@ private fun UrlRecordItem(record: UrlRecord) {
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // 第二行：域名
             Text(
                 text = record.domain,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF009688)  // 青色
+                color = Color(0xFF009688)
             )
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // 第三行：URL
             Text(
                 text = record.url,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,  // 最多2行
-                overflow = TextOverflow.Ellipsis  // 超出显示省略号
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
 
-            // 第四行：来源标签（可选）
             record.sourceName?.let { source ->
                 Spacer(modifier = Modifier.height(6.dp))
                 Surface(
@@ -575,48 +768,231 @@ private fun UrlRecordItem(record: UrlRecord) {
 }
 
 /**
- * HTTP方法标签组件
- * 
- * 显示GET/POST等HTTP方法，不同方法用不同颜色
- * 
- * @param method HTTP方法名
+ * 记录详情对话框
+ */
+@Composable
+private fun RecordDetailDialog(
+    record: UrlRecord,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text(
+                text = "请求详情",
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DetailSection(title = "基本信息") {
+                    DetailRow("方法", record.method)
+                    DetailRow("状态码", record.responseCode.toString())
+                    DetailRow("耗时", "${record.duration}ms")
+                    DetailRow("时间", dateFormat.format(Date(record.timestamp)))
+                    DetailRow("相对时间", getRelativeTime(record.timestamp))
+                }
+                
+                DetailSection(title = "URL信息") {
+                    DetailRow("域名", record.domain)
+                    SelectableText(
+                        text = record.url,
+                        label = "完整URL"
+                    )
+                }
+                
+                record.sourceName?.let { source ->
+                    DetailSection(title = "来源信息") {
+                        DetailRow("来源名称", source)
+                        record.sourceUrl?.let { url ->
+                            DetailRow("来源URL", url)
+                        }
+                    }
+                }
+                
+                record.requestBody?.let { body ->
+                    if (body.isNotBlank()) {
+                        DetailSection(title = "请求体") {
+                            SelectableText(
+                                text = body,
+                                label = "Body"
+                            )
+                        }
+                    }
+                }
+                
+                record.errorMsg?.let { error ->
+                    if (error.isNotBlank()) {
+                        DetailSection(title = "错误信息", isError = true) {
+                            Text(
+                                text = error,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) 
+                                    as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("URL", record.url)
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(context, "URL已复制", Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Text("复制URL")
+            }
+        }
+    )
+}
+
+/**
+ * 详情区域
+ */
+@Composable
+private fun DetailSection(
+    title: String,
+    isError: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = if (isError) MaterialTheme.colorScheme.error 
+                    else MaterialTheme.colorScheme.primary
+        )
+        HorizontalDivider(
+            color = if (isError) MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
+                   else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+        )
+        content()
+    }
+}
+
+/**
+ * 详情行
+ */
+@Composable
+private fun DetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(80.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.End
+        )
+    }
+}
+
+/**
+ * 可选择文本
+ */
+@Composable
+private fun SelectableText(text: String, label: String) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 100.dp),
+            shape = RoundedCornerShape(4.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ) {
+            androidx.compose.foundation.text.selection.SelectionContainer {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * HTTP方法标签
  */
 @Composable
 private fun MethodBadge(method: String) {
     val isPost = method.equals("POST", ignoreCase = true)
+    val isPut = method.equals("PUT", ignoreCase = true)
+    val isDelete = method.equals("DELETE", ignoreCase = true)
+    
+    val bgColor = when {
+        isPost -> Color(0xFF9C27B0).copy(alpha = 0.15f)
+        isPut -> Color(0xFFFF9800).copy(alpha = 0.15f)
+        isDelete -> Color(0xFFF44336).copy(alpha = 0.15f)
+        else -> Color(0xFF2196F3).copy(alpha = 0.15f)
+    }
+    
+    val textColor = when {
+        isPost -> Color(0xFF9C27B0)
+        isPut -> Color(0xFFFF9800)
+        isDelete -> Color(0xFFF44336)
+        else -> Color(0xFF2196F3)
+    }
+    
     Surface(
-        color = if (isPost) Color(0xFF9C27B0).copy(alpha = 0.15f)  // 紫色
-                else Color(0xFF2196F3).copy(alpha = 0.15f),        // 蓝色
+        color = bgColor,
         shape = RoundedCornerShape(4.dp)
     ) {
         Text(
             text = method.uppercase(),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = if (isPost) Color(0xFF9C27B0) else Color(0xFF2196F3),
+            color = textColor,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
     }
 }
 
 /**
- * HTTP状态码标签组件
- * 
- * 根据响应码显示不同颜色：
- * - 2xx: 绿色（成功）
- * - 其他: 橙色（异常）
- * - 错误: 红色
- * 
- * @param responseCode HTTP响应码
- * @param errorMsg 错误信息（可选）
+ * HTTP状态码标签
  */
 @Composable
 private fun StatusBadge(responseCode: Int, errorMsg: String?) {
-    // Kotlin的解构声明，同时获取颜色和文本
     val (color, text) = when {
-        errorMsg != null -> Color(0xFFF44336) to "错误"           // 红色
-        responseCode in 200..299 -> Color(0xFF4CAF50) to "$responseCode"  // 绿色
-        else -> Color(0xFFFF9800) to "$responseCode"              // 橙色
+        errorMsg != null -> Color(0xFFF44336) to "错误"
+        responseCode in 200..299 -> Color(0xFF4CAF50) to "$responseCode"
+        responseCode in 400..499 -> Color(0xFFFF9800) to "$responseCode"
+        responseCode in 500..599 -> Color(0xFFF44336) to "$responseCode"
+        else -> Color(0xFF9E9E9E) to "$responseCode"
     }
     Text(
         text = text,

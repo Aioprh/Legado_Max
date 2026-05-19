@@ -198,8 +198,16 @@ object DebugFloatingBallManager {
                         if (!activity.isFinishing && !activity.isDestroyed) {
                             hide()
                             activity.window.decorView.postDelayed(200) {
-                                if (!activity.isFinishing && !activity.isDestroyed) {
-                                    DebugLogPanelDialog.show(activity)
+                                try {
+                                    if (!activity.isFinishing && !activity.isDestroyed) {
+                                        DebugLogPanelDialog.show(activity)
+                                    }
+                                } catch (e: Exception) {
+                                    AppLog.put("DebugFloatingBall: 打开调试日志面板失败 - ${e.message}", e)
+                                    // 打开失败时恢复悬浮球显示
+                                    if (!activity.isFinishing && !activity.isDestroyed) {
+                                        show(activity)
+                                    }
                                 }
                             }
                         }

@@ -35,6 +35,7 @@ import io.legado.app.help.storage.BackupConfig
 import io.legado.app.help.storage.BackupFileValidator
 import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.help.storage.BackupSelectorConfig
+import io.legado.app.help.storage.BookCacheSelectorConfig
 import io.legado.app.help.storage.ImportOldData
 import io.legado.app.help.storage.Restore
 import io.legado.app.help.storage.ValidationResult
@@ -258,6 +259,7 @@ class BackupConfigFragment : PreferenceFragment(),
             PreferKey.backupPath -> selectBackupPath.launch()
             PreferKey.restoreIgnore -> backupIgnore()
             "backup_selector" -> showBackupSelector()
+            "book_cache_selector" -> showBookCacheSelector()
             "web_dav_backup" -> backup()
             "web_dav_restore" -> restore()
             "import_old" -> restoreOld.launch()
@@ -310,6 +312,44 @@ class BackupConfigFragment : PreferenceFragment(),
             }
             onDismiss {
                 BackupSelectorConfig.save()
+            }
+        }
+    }
+
+    /**
+     * 显示书籍缓存选择器
+     */
+    private fun showBookCacheSelector() {
+        val booksWithCache = BookCacheSelectorConfig.getBooksWithCache()
+        if (booksWithCache.isEmpty()) {
+            appCtx.toastOnUi(R.string.no_book_cache)
+            return
+        }
+        
+        val titles = booksWithCache.map { book ->
+            "${book.name}${if (book.author.isNullOrBlank()) "" else " - ${book.author}"}"
+        }.toTypedArray()
+        val checkedItems = BooleanArray(booksWithCache.size) { index ->
+            BookCacheSelectorConfig.isSelected(booksWithCache[index])
+        }
+        
+        alert(R.string.book_cache_selector) {
+            multiChoiceItems(titles, checkedItems) { _, which, isChecked ->
+                BookCacheSelectorConfig.setSelected(booksWithCache[which], isChecked)
+            }
+            positiveButton(R.string.select_all) {
+                BookCacheSelectorConfig.selectAll()
+                showBookCacheSelector()
+            }
+            negativeButton(R.string.un_select_all) {
+                BookCacheSelectorConfig.deselectAll()
+                showBookCacheSelector()
+            }
+            neutralButton(R.string.ok) {
+                BookCacheSelectorConfig.save()
+            }
+            onDismiss {
+                BookCacheSelectorConfig.save()
             }
         }
     }

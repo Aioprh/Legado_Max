@@ -109,6 +109,8 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
     private var snackBar: Snackbar? = null
     private var isGroupSourcesByDomain = false
     private val hostMap = hashMapOf<String, String>()
+    private var locateSourceUrl: String? = null
+    private var locateSourceName: String? = null
     private val qrResult = registerForActivityResult(QrCodeResult()) {
         it ?: return@registerForActivityResult
         showDialogFragment(ImportBookSourceDialog(it))
@@ -138,8 +140,14 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
+        locateSourceUrl = intent.getStringExtra("locateSourceUrl")
+        locateSourceName = intent.getStringExtra("locateSourceName")
+        AppLog.put("BookSourceActivity启动: locateSourceUrl=$locateSourceUrl, locateSourceName=$locateSourceName")
         initRecyclerView()
         initSearchView()
+        if (locateSourceUrl != null) {
+            searchView.setQuery("", false)
+        }
         upBookSource()
         initLiveDataGroup()
         initSelectActionBar()
@@ -383,6 +391,27 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
                 adapter.setItems(data, adapter.diffItemCallback, !Debug.isChecking)
                 itemTouchCallback.isCanDrag =
                     sort == BookSourceSort.Default && !isGroupSourcesByDomain
+                val urlToLocate = locateSourceUrl
+                val nameToLocate = locateSourceName
+                if (urlToLocate != null) {
+                    locateSourceUrl = null
+                    locateSourceName = null
+                    val index = data.indexOfFirst { 
+                        it.bookSourceUrl == urlToLocate || (nameToLocate != null && it.bookSourceName == nameToLocate)
+                    }
+                    AppLog.put("定位书源: url=$urlToLocate, name=$nameToLocate, index=$index, dataSize=${data.size}")
+                    if (index >= 0) {
+                        binding.recyclerView.postDelayed({
+                            val scrollPosition = (index - 3).coerceAtLeast(0)
+                            binding.recyclerView.scrollToPosition(scrollPosition)
+                            binding.recyclerView.post {
+                                binding.recyclerView.scrollToPosition(index)
+                                adapter.setSelection(index)
+                                AppLog.put("定位完成: index=$index")
+                            }
+                        }, 300)
+                    }
+                }
                 delay(500)
             }
         }

@@ -48,7 +48,33 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
 import io.legado.app.data.entities.Cache
+import io.legado.app.data.entities.BookChapter
+import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
+
+/**
+ * 章节缓存信息
+ * 用于记录单个章节的缓存文件信息
+ */
+data class ChapterCacheInfo(
+    val index: Int,           // 章节序号
+    val title: String,        // 章节标题
+    val titleMD5: String,     // 标题MD5
+    val fileName: String      // 原始文件名
+)
+
+/**
+ * 书籍缓存索引数据类
+ * 用于记录备份中每本书的缓存信息，恢复时用于匹配
+ */
+data class BookCacheIndex(
+    val bookUrl: String,
+    val bookName: String,
+    val author: String,
+    val folderName: String,
+    val chapters: List<ChapterCacheInfo> = emptyList()  // 章节信息列表
+)
 
 /**
  * 备份管理类
@@ -86,6 +112,8 @@ import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
  */
 object Backup {
     private const val runtimeSourceCacheFileName = "runtimeSourceCache.json"
+    private const val bookCacheFolderName = "book_cache"
+    private const val bookCacheIndexFileName = "bookCacheIndex.json"
 
     /** 备份临时目录路径，用于存放解压/压缩前的文件 */
     val backupPath: String by lazy {
@@ -512,6 +540,11 @@ object Backup {
         if (BackupConfig.fullBackup) {
             stageRuntimeSourceCaches(backupPath)
         }
+        if (selectedFiles.contains(bookCacheFolderName)) {
+            stageBookCache(backupPath)
+            // 备份书籍缓存时，同时备份对应书籍的章节目录
+            stageBookChapterForCache(backupPath)
+        }
 
         currentCoroutineContext().ensureActive()
 
@@ -624,6 +657,135 @@ object Backup {
             FileOutputStream(file).use { outputS ->
                 inputS.copyTo(outputS)
             }
+        }
+    }
+
+    /**
+     * 备份书籍缓存到临时目录
+     * 
+     * 流程：
+     * 1. 获取用户选择要备份的书籍列表
+     * 2. 为每本书创建索引信息（bookUrl、书名、作者、文件夹名、章节列表）
+     * 3. 复制缓存文件到备份目录
+     * 4. 保存索引文件
+     * 
+     * @param rootPath 备份临时目录路径
+     */
+    internal fun stageBookCache(rootPath: String) {
+        val selectedBooks = BookCacheSelectorConfig.getSelectedBooks()
+        if (selectedBooks.isEmpty()) {
+            LogUtils.d(TAG, "没有选中要备份缓存的书籍")
+            return
+        }
+        
+        val cacheDir = File(BookHelp.cachePath)
+        if (!cacheDir.exists() || !cacheDir.isDirectory) {
+            LogUtils.d(TAG, "书籍缓存目录不存在")
+            return
+        }
+        
+        val bookCacheIndexList = mutableListOf<BookCacheIndex>()
+        val targetCacheDir = File(rootPath, bookCacheFolderName).createFolderIfNotExist()
+        
+        selectedBooks.forEach { book ->
+            val folderName = book.getFolderNameNoCache()
+            val bookFolder = File(cacheDir, folderName)
+            
+            if (!bookFolder.exists() || !bookFolder.isDirectory) {
+                LogUtils.d(TAG, "书籍缓存文件夹不存在: ${book.name}")
+                return@forEach
+            }
+            
+            // 获取书籍的章节列表
+            val chapterList = appDb.bookChapterDao.getChapterList(book.bookUrl)
+            val chapterMap = chapterList.associateBy { it.index }
+            
+            // 收集章节缓存信息
+            val chapterCacheInfos = mutableListOf<ChapterCacheInfo>()
+            bookFolder.listFiles()?.forEach { file ->
+                if (file.isFile && file.name.endsWith(".nb")) {
+                    val chapterInfo = parseChapterFileName(file.name, chapterMap)
+                    if (chapterInfo != null) {
+                        chapterCacheInfos.add(chapterInfo)
+                    }
+                }
+            }
+            
+            bookCacheIndexList.add(BookCacheIndex(
+                bookUrl = book.bookUrl,
+                bookName = book.name,
+                author = book.author ?: "",
+                folderName = folderName,
+                chapters = chapterCacheInfos.sortedBy { it.index }
+            ))
+            
+            val targetBookDir = File(targetCacheDir, folderName).createFolderIfNotExist()
+            bookFolder.copyRecursively(targetBookDir, overwrite = true)
+            LogUtils.d(TAG, "备份书籍缓存: ${book.name} -> $folderName, 章节数: ${chapterCacheInfos.size}")
+        }
+        
+        if (bookCacheIndexList.isNotEmpty()) {
+            val indexFile = File(rootPath, bookCacheIndexFileName)
+            indexFile.writeText(GSON.toJson(bookCacheIndexList))
+            LogUtils.d(TAG, "书籍缓存索引已保存，共 ${bookCacheIndexList.size} 本书")
+        }
+    }
+    
+    /**
+     * 解析章节文件名，获取章节缓存信息
+     * 
+     * 文件名格式：{章节序号(5位)}-{标题MD5}.nb
+     * 例如：00001-abc123def456.nb
+     * 
+     * @param fileName 文件名
+     * @param chapterMap 章节序号 -> 章节对象 的映射
+     * @return 章节缓存信息，解析失败返回null
+     */
+    private fun parseChapterFileName(
+        fileName: String,
+        chapterMap: Map<Int, BookChapter>
+    ): ChapterCacheInfo? {
+        if (!fileName.endsWith(".nb")) return null
+        
+        val nameWithoutExt = fileName.removeSuffix(".nb")
+        val parts = nameWithoutExt.split("-")
+        if (parts.size != 2) return null
+        
+        val index = parts[0].toIntOrNull() ?: return null
+        val titleMD5 = parts[1]
+        
+        val chapter = chapterMap[index] ?: return null
+        
+        return ChapterCacheInfo(
+            index = index,
+            title = chapter.title,
+            titleMD5 = titleMD5,
+            fileName = fileName
+        )
+    }
+    
+    /**
+     * 备份选中书籍的章节目录
+     * 与书籍缓存一起备份，确保恢复后能直接阅读
+     * 
+     * @param rootPath 备份临时目录路径
+     */
+    internal suspend fun stageBookChapterForCache(rootPath: String) {
+        val selectedBooks = BookCacheSelectorConfig.getSelectedBooks()
+        if (selectedBooks.isEmpty()) {
+            return
+        }
+        
+        val allChapters = mutableListOf<BookChapter>()
+        selectedBooks.forEach { book ->
+            val chapters = appDb.bookChapterDao.getChapterList(book.bookUrl)
+            allChapters.addAll(chapters)
+        }
+        
+        if (allChapters.isNotEmpty()) {
+            val fileName = "bookChapterCache.json"
+            writeListToJson(allChapters, fileName, rootPath)
+            LogUtils.d(TAG, "章节目录已备份，共 ${allChapters.size} 章")
         }
     }
 

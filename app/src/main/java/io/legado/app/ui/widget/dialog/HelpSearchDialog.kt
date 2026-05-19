@@ -18,11 +18,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
+import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.databinding.DialogHelpSearchBinding
 import io.legado.app.databinding.ItemHelpSearchHeaderBinding
 import io.legado.app.databinding.ItemHelpSearchResultBinding
 import io.legado.app.help.HelpDocManager
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.model.debug.DebugCategory
+import io.legado.app.model.debug.DebugEvent
+import io.legado.app.model.debug.DebugLevel
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -35,6 +39,21 @@ import kotlinx.coroutines.withContext
 class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
 
     private val binding by viewBinding(DialogHelpSearchBinding::bind)
+    
+    private fun logDebug(msg: String, detail: String? = null) {
+        android.util.Log.d("HelpSearchDialog", msg)
+        lifecycleScope.launch {
+            DebugEventCenter.emit(
+                DebugEvent(
+                    level = DebugLevel.DEBUG,
+                    category = DebugCategory.APP,
+                    message = msg,
+                    detail = detail,
+                    dialogName = "HelpSearchDialog"
+                )
+            )
+        }
+    }
 
     private var searchJob: Job? = null
 
@@ -58,6 +77,7 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
         const val RESULT_CONTENT = "content"                   // 文档内容
         const val RESULT_LINE_NUMBER = "lineNumber"            // 要滚动到的行号
         const val RESULT_HIGHLIGHT_TERM = "highlightTerm"      // 要高亮的关键词
+        const val RESULT_LINE_CONTENT = "lineContent"          // 匹配行的完整内容，用于定位
     }
 
     override fun onStart() {
@@ -199,7 +219,8 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
                     matchedLines.add(SearchResultItem(
                         lineNumber = lineNum,
                         matchedText = contextText,
-                        searchTerm = query
+                        searchTerm = query,
+                        lineContent = line  // 保存匹配行的完整内容
                     ))
                 }
             }
@@ -371,6 +392,7 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
                 binding.matchedTextText.text = highlightText(searchItem.matchedText, searchItem.searchTerm)
 
                 binding.root.setOnClickListener {
+                    logDebug("Search result clicked", "docName: ${docResult.docName}, lineNumber: ${searchItem.lineNumber}, lineContent: \"${searchItem.lineContent}\"")
                     // 使用 Fragment Result API 返回搜索结果给父 Fragment (TextDialog)
                     // 这样可以避免创建新的 TextDialog，防止 Dialog 无限叠加
                     val result = Bundle().apply {
@@ -379,9 +401,12 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
                         putString(RESULT_CONTENT, allDocsContent[docResult.fileName])
                         putInt(RESULT_LINE_NUMBER, searchItem.lineNumber)
                         putString(RESULT_HIGHLIGHT_TERM, searchItem.searchTerm)
+                        putString(RESULT_LINE_CONTENT, searchItem.lineContent)
                     }
+                    logDebug("Calling setFragmentResult")
                     setFragmentResult(REQUEST_KEY, result)
                     // 关闭搜索对话框，返回到 TextDialog
+                    logDebug("Calling dismissAllowingStateLoss")
                     dismissAllowingStateLoss()
                 }
             }
@@ -403,5 +428,6 @@ private data class DocSearchResult(
 private data class SearchResultItem(
     val lineNumber: Int,
     val matchedText: String,
-    val searchTerm: String
+    val searchTerm: String,
+    val lineContent: String  // 匹配行的完整内容，用于在渲染后的文本中定位
 )

@@ -97,7 +97,17 @@ object DebugLogPanelDialog {
     
     fun onActivityDestroyed(activity: Activity) {
         if (currentActivity == activity) {
-            dismiss()
+            // 强制清理，不依赖 isShowing 状态
+            dialogView?.let { view ->
+                try {
+                    val parent = view.parent as? ViewGroup
+                    parent?.removeView(view)
+                } catch (_: Exception) {
+                }
+            }
+            dialogView = null
+            isShowing = false
+            currentActivity = null
         }
     }
     

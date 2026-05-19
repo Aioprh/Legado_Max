@@ -1,5 +1,6 @@
 package io.legado.app.help.storage
 
+import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.help.book.BookHelp
@@ -158,6 +159,7 @@ object StorageCalculator {
         val map = try {
             appDb.bookDao.all.associateBy { it.getFolderName() }
         } catch (e: Exception) {
+            AppLog.put("构建书籍文件夹映射失败\n${e.localizedMessage}", e)
             emptyMap()
         }
         bookFolderMap = map
@@ -166,7 +168,7 @@ object StorageCalculator {
     }
 
     private fun countCachedChapters(bookDir: File): Int {
-        return bookDir.listFiles()?.count { it.isFile && it.extension == "txt" } ?: 0
+        return bookDir.listFiles()?.count { it.isFile && it.extension == "nb" } ?: 0
     }
 
     private fun formatLastRead(book: Book): String {

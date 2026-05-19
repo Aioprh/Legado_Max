@@ -243,4 +243,6 @@ object PreferKey {
     const val highlightRuleItems = "highlightRuleItems"
     const val highlightRuleGroups = "highlightRuleGroups"
     const val highlightRuleCurrentGroup = "highlightRuleCurrentGroup"
+
+    const val backupBookCache = "backupBookCache"
 }

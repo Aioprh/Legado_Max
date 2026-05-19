@@ -87,6 +87,12 @@
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.Preference
+            android:key="book_cache_selector"
+            android:summary="@string/book_cache_selector_summary"
+            android:title="@string/book_cache_selector"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.Preference
             android:key="web_dav_restore"
             android:summary="@string/restore_summary"
             android:title="@string/restore"

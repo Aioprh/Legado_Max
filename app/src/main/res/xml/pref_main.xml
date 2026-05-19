@@ -113,7 +113,7 @@
             app:iconSpaceReserved="false" />
     
         <io.legado.app.lib.prefs.Preference
-            android:icon="@drawable/ic_history"
+            android:icon="@drawable/ic_link"
             android:key="urlRecord"
             android:summary="@string/record_url_switch"
             android:title="@string/url_record"

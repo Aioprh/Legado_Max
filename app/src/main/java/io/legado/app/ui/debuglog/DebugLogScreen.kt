@@ -349,7 +349,7 @@ private fun DebugLogList(
     ) {
         items(
             count = logs.size,
-            key = { index -> logs[index].id }
+            key = { index -> "${logs[index].id}-$index" }
         ) { index ->
             val log = logs[index]
             DebugLogItem(

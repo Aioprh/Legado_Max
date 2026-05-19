@@ -1020,7 +1020,7 @@ fun ResultList(
         ) {
             items(
                 items = results,
-                key = { it.sourceUrl }
+                key = { "${it.sourceUrl}_${it.sourceName}" }
             ) { result ->
                 AnimatedVisibility(
                     visible = true,
@@ -1364,7 +1364,7 @@ fun SourcePickerDialog(
                 LazyColumn {
                     items(
                         items = sources,
-                        key = { it.bookSourceUrl }
+                        key = { "${it.bookSourceUrl}_${it.bookSourceName}" }
                     ) { source ->
                         Row(
                             modifier = Modifier

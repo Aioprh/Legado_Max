@@ -387,6 +387,8 @@
     <string name="fattening_book">养肥书籍</string>
     <string name="finish_book">完结书籍</string>
     <string name="local_book">本地书籍</string>
+    <string name="book_cache">书籍缓存</string>
+    <string name="no_book_cache">没有已缓存的书籍</string>
     <string name="status_bar_immersion">状态栏颜色透明</string>
     <string name="imm_navigation_bar">沉浸式导航栏</string>
     <string name="imm_navigation_bar_s">导航栏颜色透明</string>
@@ -870,7 +872,7 @@
     <string name="storage_manage">存储管理</string>
     <string name="storage_manage_summary">管理应用缓存和存储空间</string>
     <string name="download_manage">下载管理</string>
-    <string name="download_manage_summary">管理书籍下载任务</string>
+    <string name="download_manage_summary">管理WebView下载的文件</string>
     <string name="local_tts">本地 TTS</string>
     <string name="thread_count">线程数</string>
     <string name="all_read_time">总阅读时间</string>
@@ -1246,6 +1248,8 @@
     <string name="full_backup_s">用户配置数据全部备份</string>
     <string name="backup_selector">备份选择器</string>
     <string name="backup_selector_summary">选择需要备份的内容</string>
+    <string name="book_cache_selector">书籍缓存选择</string>
+    <string name="book_cache_selector_summary">选择要备份缓存的书籍</string>
     <string name="view_backup_info_t">查看备份信息</string>
     <string name="view_backup_info_s">查看备份文件内容与大小</string>
     <string name="view_backup_info">备份信息</string>

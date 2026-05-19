@@ -121,7 +121,7 @@ const errorMsg = ref('')
 const expandedCategories = reactive<Record<string, boolean>>({})
 
 const categoryConfig = [
-  { name: '书籍相关', icon: '📚', keywords: ['bookshelf', 'bookmark', 'bookGroup', 'readRecord'] },
+  { name: '书籍相关', icon: '📚', keywords: ['bookshelf', 'bookmark', 'bookGroup', 'readRecord', 'bookCache', 'bookChapterCache'] },
   { name: '源相关', icon: '📡', keywords: ['bookSource', 'rssSource', 'rssStar', 'sourceSub'] },
   { name: '规则相关', icon: '🔧', keywords: ['replaceRule', 'txtTocRule', 'dictRule', 'keyboardAssist'] },
   { name: '语音相关', icon: '🔊', keywords: ['httpTTS'] },
@@ -184,6 +184,8 @@ const getFileIcon = (fileName: string): string => {
   if (fileName.includes('keyboardAssist')) return '⌨️'
   if (fileName.includes('dictRule')) return '📝'
   if (fileName.includes('servers')) return '🖥️'
+  if (fileName.includes('bookCache') || fileName.includes('book_cache')) return '💾'
+  if (fileName.includes('bookChapterCache')) return '📑'
   if (fileName.includes('config')) return '⚙️'
   return '📄'
 }

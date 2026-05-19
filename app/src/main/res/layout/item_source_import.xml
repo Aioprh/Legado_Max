@@ -31,8 +31,22 @@
         app:layout_constraintBottom_toTopOf="@+id/show_comment"
         app:layout_constraintHorizontal_chainStyle="packed"
         app:layout_constraintLeft_toRightOf="@id/cb_source_name"
-        app:layout_constraintRight_toLeftOf="@id/tv_open"
+        app:layout_constraintRight_toLeftOf="@id/iv_locate"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageView
+        android:id="@+id/iv_locate"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginEnd="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_locate"
+        android:visibility="gone"
+        android:contentDescription="@string/enable_locate"
+        app:layout_constraintBottom_toBottomOf="@id/tv_open"
+        app:layout_constraintTop_toTopOf="@id/tv_open"
+        app:layout_constraintRight_toLeftOf="@id/tv_open"
+        tools:ignore="TouchTargetSizeCheck" />
 
     <TextView
         android:id="@+id/tv_open"
