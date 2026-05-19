@@ -12,6 +12,8 @@ class RhinoContext(factory: ContextFactory) : Context(factory) {
     var allowScriptRun = false
     var recursiveCount = 0
     var currentRuleType: String? = null
+    /** Rhino 调试器追踪的当前执行行号，由 [RhinoDebugAdapter] 在 onLineChange 时更新，
+     *  供 toast/log 等 JS 扩展方法获取脚本行号。-1 表示未在执行或行号不可用。 */
     var currentScriptLine: Int = -1
 
     @Throws(RhinoInterruptError::class)

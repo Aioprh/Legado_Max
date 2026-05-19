@@ -42,6 +42,7 @@ fun FlowLogList(
     }
 
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Box 包裹 LazyColumn + 可拖拽垂直滚动条
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,

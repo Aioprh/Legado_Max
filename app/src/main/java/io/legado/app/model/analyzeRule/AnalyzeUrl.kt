@@ -453,6 +453,7 @@ class AnalyzeUrl(
             message = "发起网络请求",
             url = url,
             method = method.name,
+            // 传递请求头和 Cookie 用于调试日志展示，Cookie 单独提取便于独立显示
             requestHeaders = headerMap,
             cookies = headerMap["Cookie"]
         )

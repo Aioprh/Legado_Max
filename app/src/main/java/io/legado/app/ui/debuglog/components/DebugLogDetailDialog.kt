@@ -165,6 +165,7 @@ fun DebugLogDetailDialog(
                     }
                 }
 
+                // 内容区域：可滚动 Column + 可拖拽滚动条，替代原来的 verticalScroll 修饰符
                 Box(modifier = Modifier.weight(1f)) {
                     val scrollState = rememberScrollState()
                     Column(

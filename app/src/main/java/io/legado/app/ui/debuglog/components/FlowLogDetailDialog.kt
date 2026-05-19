@@ -158,6 +158,7 @@ fun FlowLogDetailDialog(
                     }
                 }
 
+                // 内容区域：可滚动 Column + 可拖拽滚动条，支持查看请求头、规则执行树等长内容
                 Box(modifier = Modifier.weight(1f)) {
                     val scrollState = rememberScrollState()
                     Column(
@@ -208,6 +209,7 @@ fun FlowLogDetailDialog(
                         }
                     }
 
+                    // 请求头区域：Cookie 单独置顶，其余请求头过滤掉 Cookie 和 User-Agent 避免重复
                     if (!log.requestHeaders.isNullOrEmpty() || log.cookies != null) {
                         Spacer(Modifier.height(12.dp))
                         DetailSection(title = "请求头", searchQuery = searchQuery) {
@@ -437,6 +439,7 @@ private fun RuleExecutionNodeView(
                 )
             }
 
+            // 正则捕获组：由 AnalyzeRule.getElement/getElements 在 endStep 时传入
             if (!node.regexGroups.isNullOrEmpty()) {
                 Text(
                     text = "捕获组: [${node.regexGroups.joinToString(", ") { "\"$it\"" }}]",

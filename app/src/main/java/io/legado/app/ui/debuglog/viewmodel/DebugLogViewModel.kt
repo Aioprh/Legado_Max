@@ -365,6 +365,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             log.statusCode?.let { appendLine("状态码: $it") }
             log.duration?.let { appendLine("耗时: ${it}ms") }
             log.cookies?.let { appendLine("Cookie: $it") }
+            // 导出请求头（Cookie 已单独展示，此处跳过避免重复）
             if (!log.requestHeaders.isNullOrEmpty()) {
                 appendLine("请求头:")
                 log.requestHeaders.forEach { (key, value) ->

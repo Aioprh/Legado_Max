@@ -1129,10 +1129,12 @@ interface JsExtensions : JsEncodeUtils {
     }
 
     /**
-     * 从调用堆栈中提取规则类型和行号
-     * @return Pair<规则类型, 行号>
+     * 从 ThreadLocal 和 Rhino 调试器中提取规则类型和行号。
+     * 规则类型来自 [AnalyzeRule.currentRuleTypeThreadLocal]（由 evalJS 设置），
+     * 行号来自 [extractJsLineNumber]（由 Rhino DebugFrame 追踪）。
      */
     private fun extractRuleInfo(): Pair<ToastRuleType?, Int?> {
+        // 从 ThreadLocal 获取规则类型字符串（SEARCH/EXPLORE/TOC/CONTENT 等）
         val ruleTypeStr = AnalyzeRule.currentRuleTypeThreadLocal.get()
         val ruleType = when (ruleTypeStr) {
             "SEARCH" -> ToastRuleType.SEARCH
@@ -1152,9 +1154,12 @@ interface JsExtensions : JsEncodeUtils {
     }
 
     /**
-     * 从 Rhino 调试器获取当前脚本行号
+     * 从 Rhino 调试器获取当前脚本执行行号。
+     * [RhinoDebugAdapter] 在每行执行时更新 [RhinoContext.currentScriptLine]，
+     * 替代了之前解析堆栈字符串的不可靠方案。
      */
     private fun extractJsLineNumber(): Int? {
+        // rhinoContextOrNull 在 Rhino 脚本执行期间非 null，currentScriptLine 由 DebugFrame.onLineChange 维护
         val line = rhinoContextOrNull?.currentScriptLine ?: return null
         return if (line > 0) line else null
     }

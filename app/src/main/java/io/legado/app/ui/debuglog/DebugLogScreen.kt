@@ -344,6 +344,7 @@ private fun DebugLogList(
     onCopyLog: (DebugEvent) -> Unit
 ) {
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Box 包裹 LazyColumn + 可拖拽滚动条，滚动条对齐右侧
     Box(modifier = Modifier.fillMaxSize()) {
         androidx.compose.foundation.lazy.LazyColumn(
             state = listState,
