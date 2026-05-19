@@ -41,6 +41,7 @@ import kotlin.text.trim
 @SuppressLint("StaticFieldLeak")
 @Suppress("unused")
 object AudioPlay : CoroutineScope by MainScope() {
+    private const val PROGRESS_SAVE_INTERVAL = 15_000L
     /**
      * 播放模式枚举
      */
@@ -81,6 +82,7 @@ object AudioPlay : CoroutineScope by MainScope() {
     private val readRecord = ReadRecord()
     private var sessionStartTime = 0L
     var readStartTime: Long = System.currentTimeMillis()
+    private var lastProgressSaveTime = 0L
     val executor = globalExecutor
 
     /**
@@ -128,6 +130,7 @@ object AudioPlay : CoroutineScope by MainScope() {
         readRecord.lastRead = System.currentTimeMillis()
         sessionStartTime = System.currentTimeMillis()
         readStartTime = System.currentTimeMillis()
+        lastProgressSaveTime = 0L
         chapterSize = appDb.bookChapterDao.getChapterCount(book.bookUrl)
         simulatedChapterSize = if (book.readSimulating()) {
             book.simulatedTotalChapterNum()
@@ -560,7 +563,11 @@ object AudioPlay : CoroutineScope by MainScope() {
      */
     fun playPositionChanged(position: Int) {
         durChapterPos = position
-        saveRead()
+        val now = System.currentTimeMillis()
+        if (now - lastProgressSaveTime >= PROGRESS_SAVE_INTERVAL) {
+            lastProgressSaveTime = now
+            saveRead()
+        }
     }
 
     /**

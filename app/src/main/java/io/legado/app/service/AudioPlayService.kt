@@ -124,6 +124,9 @@ class AudioPlayService : BaseService(),
     private var dsJob: Job? = null
     private var upNotificationJob: Coroutine<*>? = null
     private var upPlayProgressJob: Job? = null
+    private var lastBufferedPosition = -1
+    private var lastDuration = -1
+    private var lastMediaSessionUpdate = 0L
     private var cover: Bitmap =
         BitmapFactory.decodeResource(appCtx.resources, R.drawable.icon_read_book)
 
@@ -383,6 +386,7 @@ class AudioPlayService : BaseService(),
                     postEvent(EventBus.AUDIO_STATE, Status.PAUSE)
                 }
                 postEvent(EventBus.AUDIO_SIZE, exoPlayer.duration.toInt())
+                lastDuration = exoPlayer.duration.toInt()
                 upMediaMetadata()
                 upPlayProgress()
                 AudioPlay.saveDurChapter(exoPlayer.duration)
@@ -474,10 +478,22 @@ class AudioPlayService : BaseService(),
                 val durP = exoPlayer.currentPosition
                 //更新buffer位置
                 AudioPlay.playPositionChanged(durP.toInt())
-                postEvent(EventBus.AUDIO_BUFFER_PROGRESS, exoPlayer.bufferedPosition.toInt())
+                val bufferedPosition = exoPlayer.bufferedPosition.toInt()
+                if (bufferedPosition != lastBufferedPosition) {
+                    lastBufferedPosition = bufferedPosition
+                    postEvent(EventBus.AUDIO_BUFFER_PROGRESS, bufferedPosition)
+                }
                 postEvent(EventBus.AUDIO_PROGRESS, AudioPlay.durChapterPos)
-                postEvent(EventBus.AUDIO_SIZE, exoPlayer.duration.toInt())
-                upMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING)
+                val duration = exoPlayer.duration.toInt()
+                if (duration != lastDuration) {
+                    lastDuration = duration
+                    postEvent(EventBus.AUDIO_SIZE, duration)
+                }
+                val now = System.currentTimeMillis()
+                if (now - lastMediaSessionUpdate >= 1000L) {
+                    lastMediaSessionUpdate = now
+                    upMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING)
+                }
                 //更新歌词
                 AudioPlay.callback?.upLyricP(durP.toInt())
                 // === 添加片尾跳过检查 ===
@@ -494,7 +510,7 @@ class AudioPlayService : BaseService(),
                         }
                     }
                 }
-                delay(500)
+                delay(if (AudioPlay.callback != null) 500 else 1000)
             }
         }
     }
