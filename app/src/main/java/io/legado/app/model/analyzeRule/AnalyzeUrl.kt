@@ -433,6 +433,12 @@ class AnalyzeUrl(
         }
     }
 
+    fun isSimpleGetRequest(): Boolean {
+        return method == RequestMethod.GET &&
+            encodedForm.isNullOrEmpty() &&
+            body.isNullOrEmpty()
+    }
+
     private suspend fun executeStrRequest(
         jsStr: String? = null,
         sourceRegex: String? = null,
