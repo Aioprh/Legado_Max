@@ -41,24 +41,32 @@ fun FlowLogList(
             .map { it.key to it.value }
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(vertical = 8.dp)
-    ) {
-        items(
-            count = groupedLogs.size,
-            key = { index -> groupedLogs[index].first }
-        ) { index ->
-            val (requestId, items) = groupedLogs[index]
-            FlowLogCard(
-                requestId = requestId,
-                logs = items,
-                onLogClick = onLogClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            items(
+                count = groupedLogs.size,
+                key = { index -> groupedLogs[index].first }
+            ) { index ->
+                val (requestId, items) = groupedLogs[index]
+                FlowLogCard(
+                    requestId = requestId,
+                    logs = items,
+                    onLogClick = onLogClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
         }
+        io.legado.app.ui.widget.components.VerticalScrollbar(
+            state = listState,
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
     }
 }
 

@@ -343,24 +343,32 @@ private fun DebugLogList(
     onLogClick: (DebugEvent) -> Unit,
     onCopyLog: (DebugEvent) -> Unit
 ) {
-    androidx.compose.foundation.lazy.LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp)
-    ) {
-        items(
-            count = logs.size,
-            key = { index -> "${logs[index].id}-$index" }
-        ) { index ->
-            val log = logs[index]
-            DebugLogItem(
-                log = log,
-                onClick = onLogClick,
-                onLongClick = onCopyLog,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-            )
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    Box(modifier = Modifier.fillMaxSize()) {
+        androidx.compose.foundation.lazy.LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 8.dp)
+        ) {
+            items(
+                count = logs.size,
+                key = { index -> "${logs[index].id}-$index" }
+            ) { index ->
+                val log = logs[index]
+                DebugLogItem(
+                    log = log,
+                    onClick = onLogClick,
+                    onLongClick = onCopyLog,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
         }
+        io.legado.app.ui.widget.components.VerticalScrollbar(
+            state = listState,
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
     }
 }
 

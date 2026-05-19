@@ -2,10 +2,12 @@ package io.legado.app.ui.debuglog.components
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -156,12 +158,14 @@ fun FlowLogDetailDialog(
                     }
                 }
 
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
-                ) {
+                Box(modifier = Modifier.weight(1f)) {
+                    val scrollState = rememberScrollState()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .padding(16.dp)
+                    ) {
                     DetailSection(title = "基本信息", searchQuery = searchQuery) {
                         DetailRow("时间", formatFullTime(log.startTime), searchQuery)
                         DetailRow("阶段", log.stage.displayName, searchQuery)
@@ -295,6 +299,11 @@ fun FlowLogDetailDialog(
                             }
                         }
                     }
+                    }
+                    io.legado.app.ui.widget.components.VerticalScrollbar(
+                        state = scrollState,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
                 }
 
                 Surface(
