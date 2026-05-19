@@ -75,6 +75,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     /** 所有日志的内存缓存 */
+    @Volatile
     private var _allLogs = listOf<DebugEvent>()
 
     /** 当前选中的分类 */
@@ -259,10 +260,13 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      * 用于打开界面时或切换分类时加载最新数据。
      */
     fun refreshLogs() {
-        _allLogs = DebugEventCenter.getRecentLogs(DebugEventCenter.MAX_EVENTS)
+        val newLogs = DebugEventCenter.getRecentLogs(DebugEventCenter.MAX_EVENTS)
+        synchronized(this) {
+            _allLogs = newLogs
+        }
         _uiState.value = _uiState.value.copy(
-            logs = _allLogs,
-            isEmpty = _allLogs.isEmpty()
+            logs = newLogs,
+            isEmpty = newLogs.isEmpty()
         )
     }
 
@@ -396,7 +400,9 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     fun clearLogs() {
         execute {
             DebugEventCenter.clear()
-            _allLogs = emptyList()
+            synchronized(this) {
+                _allLogs = emptyList()
+            }
             _uiState.value = UiState(
                 logs = emptyList(),
                 isEmpty = true,
@@ -530,11 +536,14 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         _uiState.value = _uiState.value.copy(isLoading = true)
 
         execute {
-            _allLogs = DebugEventCenter.getRecentLogs(DebugEventCenter.MAX_EVENTS)
+            val loadedLogs = DebugEventCenter.getRecentLogs(DebugEventCenter.MAX_EVENTS)
+            synchronized(this) {
+                _allLogs = loadedLogs
+            }
 
             _uiState.value = UiState(
-                logs = _allLogs,
-                isEmpty = _allLogs.isEmpty(),
+                logs = loadedLogs,
+                isEmpty = loadedLogs.isEmpty(),
                 isLoading = false,
                 isPaused = _isPaused.value
             )
@@ -556,18 +565,22 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         DebugEventCenter.eventFlow
             .filter { !_isPaused.value }
             .onEach { event ->
-                val updatedLogs = mutableListOf(event)
-                updatedLogs.addAll(_allLogs)
+                val newLogs = synchronized(this) {
+                    val updatedLogs = mutableListOf(event)
+                    updatedLogs.addAll(_allLogs)
 
-                // 保持日志数量不超过上限
-                if (updatedLogs.size > DebugEventCenter.MAX_EVENTS) {
-                    updatedLogs.removeAt(updatedLogs.lastIndex)
+                    // 保持日志数量不超过上限
+                    if (updatedLogs.size > DebugEventCenter.MAX_EVENTS) {
+                        updatedLogs.removeAt(updatedLogs.lastIndex)
+                    }
+
+                    val result = updatedLogs.toList()
+                    _allLogs = result
+                    result
                 }
 
-                _allLogs = updatedLogs.toList()
-
                 _uiState.value = _uiState.value.copy(
-                    logs = _allLogs,
+                    logs = newLogs,
                     isEmpty = false,
                     isPaused = _isPaused.value
                 )
