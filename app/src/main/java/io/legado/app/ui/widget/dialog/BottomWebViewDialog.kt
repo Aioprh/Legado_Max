@@ -410,6 +410,13 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
             val sourceKey = args.getString("sourceKey") ?: return@launch
             val url = args.getString("url") ?: return@launch
             kotlin.runCatching {
+                source = appDb.bookSourceDao.getBookSource(sourceKey).also {
+                    if (it == null) {
+                        activity?.toastOnUi("no find bookSource")
+                        dismiss()
+                        return@launch
+                    }
+                }
                 args.getString("config")?.let { json ->
                     try {
                         GSON.fromJsonObject<Config>(json).getOrThrow().let { config ->
@@ -437,36 +444,33 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
                         }
                     }
                 }
+                preloadJs = args.getString("preloadJs")
                 val analyzeUrl =
                     AnalyzeUrl(url, source = source, coroutineContext = coroutineContext)
-                val html = args.getString("html") ?: analyzeUrl.getStrResponseAwait().body
-                if (html.isNullOrEmpty()) {
-                    throw NoStackTraceException("html is NullOrEmpty")
-                }
-                preloadJs = args.getString("preloadJs")
-                val spliceHtml = if (preloadJs.isNullOrEmpty()) {
-                    html
+                val htmlArg = args.getString("html")
+                val spliceHtml = if (htmlArg == null && analyzeUrl.isSimpleGetRequest()) {
+                    null
                 } else {
-                    val headIndex = html.indexOf("<head", ignoreCase = true)
-                    if (headIndex >= 0) {
-                        val closingHeadIndex = html.indexOf('>', startIndex = headIndex)
-                        if (closingHeadIndex >= 0) {
-                            val insertPos = closingHeadIndex + 1
-                            StringBuilder(html).insert(insertPos, JS_URL).toString()
+                    val html = htmlArg ?: analyzeUrl.getStrResponseAwait().body
+                    if (html.isNullOrEmpty()) {
+                        throw NoStackTraceException("html is NullOrEmpty")
+                    }
+                    if (preloadJs.isNullOrEmpty()) {
+                        html
+                    } else {
+                        val headIndex = html.indexOf("<head", ignoreCase = true)
+                        if (headIndex >= 0) {
+                            val closingHeadIndex = html.indexOf('>', startIndex = headIndex)
+                            if (closingHeadIndex >= 0) {
+                                val insertPos = closingHeadIndex + 1
+                                StringBuilder(html).insert(insertPos, JS_URL).toString()
+                            } else {
+                                JS_URL + html
+                            }
                         } else {
                             JS_URL + html
                         }
-                    } else {
-                        JS_URL + html
                     }
-                }
-                appDb.bookSourceDao.getBookSource(sourceKey).let {
-                    if (it == null) {
-                        activity?.toastOnUi("no find bookSource")
-                        dismiss()
-                        return@launch
-                    }
-                    source = it
                 }
                 val bookType = args.getInt("bookType", 0)
                 currentWebView.post {
@@ -538,7 +542,7 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
 
     private fun initWebView(
         url: String,
-        html: String,
+        html: String?,
         headerMap: HashMap<String, String>,
         bookType: Int
     ) {
@@ -555,7 +559,11 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
             currentWebView.addJavascriptInterface(source, nameSource)
             currentWebView.addJavascriptInterface(WebCacheManager, nameCache)
         }
-        currentWebView.loadDataWithBaseURL(url, html, "text/html", "utf-8", url)
+        if (html == null) {
+            currentWebView.loadUrl(url, headerMap)
+        } else {
+            currentWebView.loadDataWithBaseURL(url, html, "text/html", "utf-8", url)
+        }
     }
 
     private fun saveImage(webPic: String) {

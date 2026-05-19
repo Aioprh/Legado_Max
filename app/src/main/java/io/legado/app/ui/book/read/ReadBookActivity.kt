@@ -1454,7 +1454,12 @@ class ReadBookActivity : BaseReadBookActivity(),
      * 朗读按钮
      */
     override fun onClickReadAloud() {
-        toggleReadAloud(launchUi = false, allowPauseWhenRunning = false)
+        if (AppConfig.readAloudFloatingUi) {
+            toggleReadAloud(launchUi = false, allowPauseWhenRunning = false)
+        } else {
+            toggleReadAloud(launchUi = false, allowPauseWhenRunning = false)
+            showReadAloudDialog()
+        }
     }
 
     private fun toggleReadAloud(launchUi: Boolean, allowPauseWhenRunning: Boolean) {

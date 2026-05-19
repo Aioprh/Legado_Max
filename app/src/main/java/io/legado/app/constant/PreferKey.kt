@@ -192,6 +192,7 @@ object PreferKey {
     const val optimizeRender = "optimizeRender"
     const val updateToVariant = "updateToVariant"
     const val streamReadAloudAudio = "streamReadAloudAudio"
+    const val readAloudFloatingUi = "readAloudFloatingUi"
     const val pauseReadAloudWhilePhoneCalls = "pauseReadAloudWhilePhoneCalls"
     const val readAloudByMediaButton = "readAloudByMediaButton"
     const val showMangaUi = "showMangaUi"

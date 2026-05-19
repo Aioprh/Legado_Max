@@ -106,7 +106,7 @@ abstract class BaseActivity<VB : ViewBinding>(
             finish()
         }
         observeLiveBus()    // 模板方法：子类覆写 observeLiveBus() 注册事件订阅，自动在 onCreate 中调用
-        observeEvent<Int>(EventBus.ALOUD_STATE, EventBus.TTS_PROGRESS) {
+        observeEvent<Int>(EventBus.ALOUD_STATE) {
             refreshReadAloudMiniBar()
         }
         onActivityCreated(savedInstanceState)
@@ -255,7 +255,7 @@ abstract class BaseActivity<VB : ViewBinding>(
         readAloudMiniBarController?.hide()
     }
 
-    open fun showReadAloudMiniBar(): Boolean = true
+    open fun showReadAloudMiniBar(): Boolean = AppConfig.readAloudFloatingUi
 
     open fun lockReadAloudMiniBarPosition(): Boolean = false
 

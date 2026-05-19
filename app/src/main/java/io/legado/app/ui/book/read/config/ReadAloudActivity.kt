@@ -29,6 +29,8 @@ import io.legado.app.model.ReadBook
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
+import io.legado.app.utils.applyNavigationBarPadding
+import io.legado.app.utils.applyStatusBarPadding
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.observeEvent
@@ -53,6 +55,7 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     private var downY = 0f
     private var downX = 0f
     private var collapseHandled = false
+    private var lastCover: String? = null
 
     override fun showReadAloudMiniBar(): Boolean = false
 
@@ -72,6 +75,8 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     }
 
     private fun initData() = binding.run {
+        readAloudContent.applyStatusBarPadding(withInitialPadding = true)
+        readAloudContent.applyNavigationBarPadding(withInitialPadding = true)
         updateBookInfo()
         updatePreviewText()
         seekTimer.max = 180
@@ -160,10 +165,13 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         val activeBookName = BaseReadAloudService.activeBookName
         val activeChapterTitle = BaseReadAloudService.activeChapterTitle
         val activeCover = BaseReadAloudService.activeBookCover
-        if (activeCover != null) {
-            ivCover.load(activeCover, activeBookName, BaseReadAloudService.activeBookAuthor, false)
-        } else {
-            ReadBook.book?.let { ivCover.load(it, false) }
+        if (lastCover != activeCover) {
+            lastCover = activeCover
+            if (activeCover != null) {
+                ivCover.load(activeCover, activeBookName, BaseReadAloudService.activeBookAuthor, false)
+            } else {
+                ReadBook.book?.let { ivCover.load(it, false) }
+            }
         }
         tvBookName.text = activeBookName ?: ReadBook.book?.name ?: ""
         tvChapterName.text = activeChapterTitle ?: ReadBook.book?.durChapterTitle ?: ""
