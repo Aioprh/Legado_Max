@@ -91,35 +91,26 @@ class BatteryView @JvmOverloads constructor(
         layout.getLineBounds(0, outFrame)
         val batteryStart = layout
             .getPrimaryHorizontal(text.length - battery.toString().length)
-            .toInt() + 1.dpToPx()
-        val actualWidth = StaticLayout.getDesiredWidth(battery.toString(), paint).toInt()
-        val maxWidth = StaticLayout.getDesiredWidth("00", paint).toInt()
-        val batteryWidth = minOf(actualWidth, maxWidth)
-        val batteryEnd = batteryStart + batteryWidth + 6.dpToPx()
-        
-        val top = 2.dpToPx()
-        val bottom = height - 2.dpToPx()
-        val bodyHeight = bottom - top
-        val cornerRadius = 2.dpToPx().toFloat()
-        
+            .toInt() + 2.dpToPx()
+        val batteryEnd = batteryStart +
+                StaticLayout.getDesiredWidth(battery.toString(), paint).toInt() + 4.dpToPx()
         outFrame.set(
             batteryStart,
-            top,
+            2.dpToPx(),
             batteryEnd,
-            bottom
+            height - 2.dpToPx()
         )
-        
-        val polarHeight = bodyHeight * 0.4f
-        val polarTop = top + (bodyHeight - polarHeight) / 2
+        val dj = (outFrame.bottom - outFrame.top) / 3
         polar.set(
             batteryEnd,
-            polarTop.toInt(),
+            outFrame.top + dj,
             batteryEnd + 2.dpToPx(),
-            (polarTop + polarHeight).toInt()
+            outFrame.bottom - dj
         )
+        val cornerRadius = 2.dpToPx().toFloat()
+        val polarRadius = 1.dpToPx().toFloat()
         
         batteryPaint.style = Paint.Style.FILL
-        val polarRadius = 1.dpToPx().toFloat()
         canvas.drawRoundRect(
             polar.left.toFloat(),
             polar.top.toFloat(),
