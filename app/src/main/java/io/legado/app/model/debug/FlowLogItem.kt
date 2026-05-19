@@ -38,7 +38,9 @@ data class FlowLogItem(
     val matchCount: Int? = null,
     val inputPreview: String? = null,
     val outputPreview: String? = null,
-    val variableOperations: List<VariableOperation> = emptyList()
+    val variableOperations: List<VariableOperation> = emptyList(),
+    val requestHeaders: Map<String, String>? = null,
+    val cookies: String? = null
 ) {
     /**
      * 格式化显示时间

@@ -452,7 +452,9 @@ class AnalyzeUrl(
             source = source,
             message = "发起网络请求",
             url = url,
-            method = method.name
+            method = method.name,
+            requestHeaders = headerMap,
+            cookies = headerMap["Cookie"]
         )
         
         val strResponse: StrResponse

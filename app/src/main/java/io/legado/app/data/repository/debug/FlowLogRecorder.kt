@@ -133,7 +133,9 @@ object FlowLogRecorder {
         statusCode: Int? = null,
         duration: Long? = null,
         detail: String? = null,
-        error: Throwable? = null
+        error: Throwable? = null,
+        requestHeaders: Map<String, String>? = null,
+        cookies: String? = null
     ) {
         val sourceUrl = source?.getKey()
         log(
@@ -147,7 +149,9 @@ object FlowLogRecorder {
             method = method,
             statusCode = statusCode,
             duration = duration,
-            error = error
+            error = error,
+            requestHeaders = requestHeaders,
+            cookies = cookies
         )
     }
 
@@ -494,7 +498,9 @@ object FlowLogRecorder {
         ruleType: RuleType? = null,
         matchCount: Int? = null,
         inputPreview: String? = null,
-        outputPreview: String? = null
+        outputPreview: String? = null,
+        requestHeaders: Map<String, String>? = null,
+        cookies: String? = null
     ) {
         if (!isEnabled) return
         
@@ -525,7 +531,9 @@ object FlowLogRecorder {
                 ruleType = ruleType,
                 matchCount = matchCount,
                 inputPreview = inputPreview,
-                outputPreview = outputPreview
+                outputPreview = outputPreview,
+                requestHeaders = requestHeaders,
+                cookies = cookies
             )
 
             addLog(item)

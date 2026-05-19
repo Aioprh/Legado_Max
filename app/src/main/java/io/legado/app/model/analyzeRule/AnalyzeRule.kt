@@ -462,8 +462,11 @@ class AnalyzeRule(
                     Mode.XPath -> getAnalyzeByXPath(result).getElements(rule)
                     else -> getAnalyzeByJSoup(result).getElements(rule)
                 }
-                
-                tracker.endStep(result)
+
+                tracker.endStep(
+                    result,
+                    regexGroups = (result as? List<*>)?.filterIsInstance<String>()
+                )
                 
                 if (sourceRule.replaceRegex.isNotEmpty()) {
                     tracker.startStep(io.legado.app.model.debug.RuleType.REPLACE, "${sourceRule.replaceRegex} -> ${sourceRule.replacement}", result)
@@ -527,7 +530,9 @@ class AnalyzeRule(
                 }
                 
                 val matchCount = (result as? List<*>)?.size
-                tracker.endStep(result, matchCount = matchCount)
+                val firstMatchGroups = (result as? List<*>)?.firstOrNull()
+                    ?.let { it as? List<*> }?.filterIsInstance<String>()
+                tracker.endStep(result, matchCount = matchCount, regexGroups = firstMatchGroups)
             }
         }
         

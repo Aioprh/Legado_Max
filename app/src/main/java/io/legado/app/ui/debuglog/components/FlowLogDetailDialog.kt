@@ -204,6 +204,18 @@ fun FlowLogDetailDialog(
                         }
                     }
 
+                    if (!log.requestHeaders.isNullOrEmpty() || log.cookies != null) {
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "请求头", searchQuery = searchQuery) {
+                            log.cookies?.let { DetailRow("Cookie", it, searchQuery) }
+                            log.requestHeaders?.forEach { (key, value) ->
+                                if (key !in listOf("Cookie", "User-Agent")) {
+                                    DetailRow(key, value, searchQuery)
+                                }
+                            }
+                        }
+                    }
+
                     val hasRuleInfo = listOfNotNull(
                         log.rule, log.inputPreview, log.originalValue, log.outputPreview, log.result
                     ).any { it.isNotBlank() }
@@ -411,6 +423,15 @@ private fun RuleExecutionNodeView(
                 Text(
                     text = "匹配: $count 个",
                     style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+
+            if (!node.regexGroups.isNullOrEmpty()) {
+                Text(
+                    text = "捕获组: [${node.regexGroups.joinToString(", ") { "\"$it\"" }}]",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                     color = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.padding(top = 2.dp)
                 )
