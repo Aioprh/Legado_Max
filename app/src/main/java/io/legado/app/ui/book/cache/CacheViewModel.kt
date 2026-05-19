@@ -34,7 +34,8 @@ class CacheViewModel(application: Application) : BaseViewModel(application) {
      * 优化点：
      * 1. 使用booksKey检测相同列表，避免重复计算
      * 2. 使用isLoading防止并发加载
-     * 3. 批量获取章节信息，减少数据库查询次数
+     * 3. 只扫描当前列表书籍的缓存文件夹，避免全目录扫描
+     * 4. 批量获取章节信息，减少数据库查询次数
      */
     fun loadCacheFiles(books: List<Book>) {
         // 防止并发加载
@@ -71,10 +72,15 @@ class CacheViewModel(application: Application) : BaseViewModel(application) {
                     }
                 }
                 
-                // 处理每本书的缓存状态
+                val folderNames = newBooks.map { it.getFolderName() }.toSet()
+                val cacheFilesMap = withContext(Dispatchers.IO) {
+                    BookHelp.getCacheFiles(folderNames)
+                }
+                
                 newBooks.forEach { book ->
                     val chapterCaches = hashSetOf<String>()
-                    val cacheNames = BookHelp.getChapterFiles(book)
+                    val folderName = book.getFolderName()
+                    val cacheNames = cacheFilesMap[folderName] ?: hashSetOf()
                     if (cacheNames.isNotEmpty()) {
                         chaptersByBook[book.bookUrl]?.let { chapters ->
                             book.totalChapterNum = chapters.size

@@ -336,6 +336,33 @@ object BookHelp {
     }
 
     /**
+     * 批量获取指定书籍的缓存文件
+     * 只扫描指定的文件夹列表，避免扫描整个book_cache目录
+     * 用于优化离线缓存界面的加载速度
+     * @param folderNames 需要扫描的文件夹名列表
+     * @return Map<文件夹名, 文件列表>
+     */
+    fun getCacheFiles(folderNames: Set<String>): Map<String, HashSet<String>> {
+        val result = mutableMapOf<String, HashSet<String>>()
+        if (folderNames.isEmpty()) return result
+        
+        val cacheDir = File(downloadDir, cacheFolderName)
+        if (!cacheDir.exists() || !cacheDir.isDirectory) {
+            return result
+        }
+        
+        folderNames.forEach { folderName ->
+            val bookFolder = File(cacheDir, folderName)
+            if (bookFolder.exists() && bookFolder.isDirectory) {
+                val files = hashSetOf<String>()
+                bookFolder.list()?.let { files.addAll(it) }
+                result[folderName] = files
+            }
+        }
+        return result
+    }
+
+    /**
      * 检测该章节是否下载
      */
     fun hasContent(book: Book, bookChapter: BookChapter): Boolean {
