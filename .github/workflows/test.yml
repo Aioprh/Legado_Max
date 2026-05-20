@@ -512,6 +512,40 @@ jobs:
           done
           echo "✅ 所有APK上传完成"
 
+          # 删除最旧的Release，保留最近的10个版本
+          echo "🔄 开始清理旧版本..."
+          MAX_KEEP=10
+          RELEASES_JSON=$(curl -sS --tlsv1.2 --connect-timeout 10 \
+              "${API_BASE}/releases?access_token=${GITEE_TOKEN}&per_page=100")
+          
+          OLD_RELEASE_ID=$(echo "$RELEASES_JSON" | jq -r \
+              '[.[] | select(.id != '$RELEASE_ID')] | sort_by(.created_at) | .[0].id // empty')
+          
+          if [ -n "$OLD_RELEASE_ID" ] && [ "$OLD_RELEASE_ID" != "null" ]; then
+            RELEASE_COUNT=$(echo "$RELEASES_JSON" | jq -r 'length')
+            echo "📊 当前共有 $RELEASE_COUNT 个Release"
+            
+            if [ "$RELEASE_COUNT" -gt "$MAX_KEEP" ]; then
+              OLD_RELEASE_NAME=$(echo "$RELEASES_JSON" | jq -r \
+                  '.[] | select(.id == '$OLD_RELEASE_ID') | .name')
+              echo "🗑️ 删除最旧的Release: $OLD_RELEASE_NAME (ID: $OLD_RELEASE_ID)"
+              
+              set +e
+              curl -sS --fail --tlsv1.2 --connect-timeout 10 -X DELETE \
+                  "${API_BASE}/releases/${OLD_RELEASE_ID}?access_token=${GITEE_TOKEN}"
+              if [ $? -eq 0 ]; then
+                echo "✅ 成功删除旧Release"
+              else
+                echo "⚠️ 删除旧Release失败，可能没有权限或已被删除"
+              fi
+              set -e
+            else
+              echo "ℹ️ 当前Release数量($RELEASE_COUNT)未超过保留上限($MAX_KEEP)，跳过删除"
+            fi
+          else
+            echo "ℹ️ 没有可删除的旧Release"
+          fi
+
   update-storage:
     needs: [prepare, build]
     if: github.event_name != 'pull_request'&& needs.prepare.outputs.sgithub == 'yes' && needs.prepare.outputs.updateLog_updated == 'yes'
