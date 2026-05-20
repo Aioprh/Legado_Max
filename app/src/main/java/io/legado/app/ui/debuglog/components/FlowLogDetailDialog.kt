@@ -1,5 +1,6 @@
 package io.legado.app.ui.debuglog.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -654,9 +655,16 @@ private fun DetailRow(
     value: String,
     searchQuery: String
 ) {
+    var expanded by remember { mutableStateOf(false) }
+    val needsExpand = remember(value) { value.length > 80 || value.count { it == '\n' } > 2 }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(
+                if (needsExpand) Modifier.clickable { expanded = !expanded }
+                else Modifier
+            )
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.Top
     ) {
@@ -670,9 +678,14 @@ private fun DetailRow(
         Text(
             text = highlightText(value, searchQuery),
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-            overflow = TextOverflow.Ellipsis,
-            maxLines = 5
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (expanded) Modifier.horizontalScroll(rememberScrollState())
+                    else Modifier
+                ),
+            overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis,
+            maxLines = if (expanded) Int.MAX_VALUE else 5
         )
     }
 }
