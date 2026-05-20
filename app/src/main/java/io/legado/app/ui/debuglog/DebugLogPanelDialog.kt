@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.postDelayed
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import io.legado.app.constant.AppLog
+import io.legado.app.ui.theme.LegadoTheme
 
 object DebugLogPanelDialog {
     
@@ -115,7 +116,7 @@ object DebugLogPanelDialog {
         return ComposeView(activity).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent {
-                MaterialTheme {
+                LegadoTheme {
                     CompositionLocalProvider(
                         LocalViewModelStoreOwner provides activity as androidx.lifecycle.ViewModelStoreOwner
                     ) {

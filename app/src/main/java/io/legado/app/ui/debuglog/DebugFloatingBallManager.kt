@@ -18,6 +18,7 @@ import io.legado.app.constant.AppLog
 import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.debuglog.components.DebugFloatingBall
+import io.legado.app.ui.theme.LegadoTheme
 
 object DebugFloatingBallManager {
     private var isShowing = false
@@ -180,7 +181,7 @@ object DebugFloatingBallManager {
         return ComposeView(context).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent {
-                MaterialTheme {
+                LegadoTheme {
                     DebugFloatingBallContent()
                 }
             }
