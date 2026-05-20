@@ -240,6 +240,8 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
                 _uiState.value = _uiState.value.copy(flowLogs = logs)
             }
             .launchIn(viewModelScope)
+        // 订阅建立时立即加载当前数据，避免等待 SharedFlow 首次 emit
+        refreshFlowLogs()
     }
 
     /**
