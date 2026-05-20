@@ -42,7 +42,7 @@ object FlowLogRecorder {
 
      // 最大日志数量限制
     private const val MAX_LOG_COUNT = 500
-    private const val UPDATE_DEBOUNCE_MS = 500L
+    private const val UPDATE_DEBOUNCE_MS = 100L
     // 日志列表，使用MutableSharedFlow实现响应式更新，设置缓冲区避免丢失更新
     private val _logs = MutableSharedFlow<List<FlowLogItem>>(
         replay = 1, // 保留最新的1个值，新订阅者可以立即收到
