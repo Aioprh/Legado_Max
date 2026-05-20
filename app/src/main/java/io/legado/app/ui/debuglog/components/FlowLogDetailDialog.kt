@@ -416,28 +416,64 @@ private fun RuleExecutionNodeView(
             }
             
             if (node.ruleContent.isNotBlank()) {
+                var ruleExpanded by remember { mutableStateOf(false) }
+                val ruleNeedsExpand = remember(node.ruleContent) { node.ruleContent.length > 60 }
+                val ruleScrollState = rememberScrollState()
                 Text(
-                    text = "规则: ${node.ruleContent.take(100)}${if (node.ruleContent.length > 100) "..." else ""}",
+                    text = "规则: ${if (!ruleExpanded && ruleNeedsExpand) node.ruleContent.take(60) + "..." else node.ruleContent}",
                     style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .then(
+                            if (ruleNeedsExpand) Modifier.clickable { ruleExpanded = !ruleExpanded } else Modifier
+                        )
+                        .then(
+                            if (ruleExpanded) Modifier.horizontalScroll(ruleScrollState) else Modifier
+                        ),
+                    maxLines = if (ruleExpanded) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             
             node.input?.let { input ->
+                var inputExpanded by remember { mutableStateOf(false) }
+                val inputNeedsExpand = remember(input) { input.length > 50 }
+                val inputScrollState = rememberScrollState()
                 Text(
-                    text = "输入: ${input.take(50)}${if (input.length > 50) "..." else ""}",
+                    text = "输入: ${if (!inputExpanded && inputNeedsExpand) input.take(50) + "..." else input}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.padding(top = 2.dp)
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .then(
+                            if (inputNeedsExpand) Modifier.clickable { inputExpanded = !inputExpanded } else Modifier
+                        )
+                        .then(
+                            if (inputExpanded) Modifier.horizontalScroll(inputScrollState) else Modifier
+                        ),
+                    maxLines = if (inputExpanded) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             
             node.output?.let { output ->
+                var outputExpanded by remember { mutableStateOf(false) }
+                val outputNeedsExpand = remember(output) { output.length > 50 }
+                val outputScrollState = rememberScrollState()
                 Text(
-                    text = "输出: ${output.take(50)}${if (output.length > 50) "..." else ""}",
+                    text = "输出: ${if (!outputExpanded && outputNeedsExpand) output.take(50) + "..." else output}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(top = 2.dp)
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .then(
+                            if (outputNeedsExpand) Modifier.clickable { outputExpanded = !outputExpanded } else Modifier
+                        )
+                        .then(
+                            if (outputExpanded) Modifier.horizontalScroll(outputScrollState) else Modifier
+                        ),
+                    maxLines = if (outputExpanded) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             
@@ -615,10 +651,22 @@ private fun EnvVarRow(name: String, value: String) {
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.width(100.dp)
         )
+        var envExpanded by remember { mutableStateOf(false) }
+        val envNeedsExpand = remember(value) { value.length > 60 }
+        val envScrollState = rememberScrollState()
         Text(
-            text = value.take(100) + if (value.length > 100) "..." else "",
+            text = if (!envExpanded && envNeedsExpand) value.take(60) + "..." else value,
             style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (envNeedsExpand) Modifier.clickable { envExpanded = !envExpanded } else Modifier
+                )
+                .then(
+                    if (envExpanded) Modifier.horizontalScroll(envScrollState) else Modifier
+                ),
+            maxLines = if (envExpanded) Int.MAX_VALUE else 2,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -861,19 +909,43 @@ private fun VariableOperationItem(
             }
             
             operation.value?.let { value ->
+                var valExpanded by remember { mutableStateOf(false) }
+                val valNeedsExpand = remember(value) { value.length > 60 }
+                val valScrollState = rememberScrollState()
                 Text(
-                    text = "值: ${value.take(100)}${if (value.length > 100) "..." else ""}",
+                    text = "值: ${if (!valExpanded && valNeedsExpand) value.take(60) + "..." else value}",
                     style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .then(
+                            if (valNeedsExpand) Modifier.clickable { valExpanded = !valExpanded } else Modifier
+                        )
+                        .then(
+                            if (valExpanded) Modifier.horizontalScroll(valScrollState) else Modifier
+                        ),
+                    maxLines = if (valExpanded) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             
             operation.oldValue?.let { oldValue ->
+                var oldExpanded by remember { mutableStateOf(false) }
+                val oldNeedsExpand = remember(oldValue) { oldValue.length > 40 }
+                val oldScrollState = rememberScrollState()
                 Text(
-                    text = "原值: ${oldValue.take(50)}${if (oldValue.length > 50) "..." else ""}",
+                    text = "原值: ${if (!oldExpanded && oldNeedsExpand) oldValue.take(40) + "..." else oldValue}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.padding(top = 2.dp)
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .then(
+                            if (oldNeedsExpand) Modifier.clickable { oldExpanded = !oldExpanded } else Modifier
+                        )
+                        .then(
+                            if (oldExpanded) Modifier.horizontalScroll(oldScrollState) else Modifier
+                        ),
+                    maxLines = if (oldExpanded) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
