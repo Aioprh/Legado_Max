@@ -12,6 +12,9 @@ import io.legado.app.model.Debug
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
+import io.legado.app.model.debug.DataFlowStage
+import io.legado.app.model.debug.FieldFillRecord
+import io.legado.app.model.debug.recordField
 import io.legado.app.utils.DebugLog
 import io.legado.app.utils.HtmlFormatter
 import io.legado.app.utils.NetworkUtils
@@ -105,6 +108,8 @@ object BookInfo {
         }
         val mCanReName = canReName && !infoRule.canReName.isNullOrBlank()
         
+        val dataFlowFields = mutableListOf<FieldFillRecord>()
+        
         FlowLogRecorder.logExtract(
             source = bookSource,
             message = "开始提取书籍信息字段"
@@ -126,6 +131,13 @@ object BookInfo {
                 result = it,
                 originalValue = originalName.takeIf { it.isNotEmpty() }
             )
+            
+            dataFlowFields.recordField(
+                "name",
+                rule = infoRule.name,
+                result = it,
+                original = originalName
+            )
         }
         currentCoroutineContext().ensureActive()
         Debug.log(bookSource.bookSourceUrl, "┌获取作者")
@@ -142,6 +154,13 @@ object BookInfo {
                 rule = infoRule.author,
                 result = it,
                 originalValue = originalAuthor.takeIf { it.isNotEmpty() }
+            )
+            
+            dataFlowFields.recordField(
+                "author",
+                rule = infoRule.author,
+                result = it,
+                original = originalAuthor
             )
         }
         currentCoroutineContext().ensureActive()
@@ -161,6 +180,13 @@ object BookInfo {
                         result = it,
                         originalValue = originalKind
                     )
+                    
+                    dataFlowFields.recordField(
+                        "kind",
+                        rule = infoRule.kind,
+                        result = it,
+                        original = originalKind
+                    )
                 } ?: Debug.log(bookSource.bookSourceUrl, "└")
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
@@ -172,6 +198,13 @@ object BookInfo {
                 message = "提取分类",
                 rule = infoRule.kind,
                 error = e
+            )
+            
+            dataFlowFields.recordField(
+                "kind",
+                rule = infoRule.kind,
+                isError = true,
+                errorMessage = e.localizedMessage
             )
         }
         currentCoroutineContext().ensureActive()
@@ -189,6 +222,13 @@ object BookInfo {
                     result = it,
                     originalValue = originalWordCount?.takeIf { it.isNotEmpty() }
                 )
+                
+                dataFlowFields.recordField(
+                    "wordCount",
+                    rule = infoRule.wordCount,
+                    result = it,
+                    original = originalWordCount
+                )
             }
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
@@ -200,6 +240,13 @@ object BookInfo {
                 message = "提取字数",
                 rule = infoRule.wordCount,
                 error = e
+            )
+            
+            dataFlowFields.recordField(
+                "wordCount",
+                rule = infoRule.wordCount,
+                isError = true,
+                errorMessage = e.localizedMessage
             )
         }
         currentCoroutineContext().ensureActive()
@@ -217,6 +264,13 @@ object BookInfo {
                     result = it,
                     originalValue = originalLatestChapter?.takeIf { it.isNotEmpty() }
                 )
+                
+                dataFlowFields.recordField(
+                    "latestChapterTitle",
+                    rule = infoRule.lastChapter,
+                    result = it,
+                    original = originalLatestChapter
+                )
             }
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
@@ -228,6 +282,13 @@ object BookInfo {
                 message = "提取最新章节",
                 rule = infoRule.lastChapter,
                 error = e
+            )
+            
+            dataFlowFields.recordField(
+                "latestChapterTitle",
+                rule = infoRule.lastChapter,
+                isError = true,
+                errorMessage = e.localizedMessage
             )
         }
         currentCoroutineContext().ensureActive()
@@ -247,6 +308,14 @@ object BookInfo {
                     result = introTrimS,
                     originalValue = originalIntro
                 )
+                
+                dataFlowFields.recordField(
+                    "intro",
+                    rule = infoRule.intro,
+                    result = introTrimS,
+                    original = originalIntro,
+                    truncate = true
+                )
             } else {
                 HtmlFormatter.format(intro).let {
                     if (it.isNotEmpty()) book.intro = it
@@ -258,6 +327,14 @@ object BookInfo {
                         rule = infoRule.intro,
                         result = it,
                         originalValue = originalIntro
+                    )
+                    
+                    dataFlowFields.recordField(
+                        "intro",
+                        rule = infoRule.intro,
+                        result = it,
+                        original = originalIntro,
+                        truncate = true
                     )
                 }
             }
@@ -271,6 +348,13 @@ object BookInfo {
                 message = "提取简介",
                 rule = infoRule.intro,
                 error = e
+            )
+            
+            dataFlowFields.recordField(
+                "intro",
+                rule = infoRule.intro,
+                isError = true,
+                errorMessage = e.localizedMessage
             )
         }
         currentCoroutineContext().ensureActive()
@@ -291,6 +375,13 @@ object BookInfo {
                     result = book.coverUrl,
                     originalValue = originalCoverUrl
                 )
+                
+                dataFlowFields.recordField(
+                    "coverUrl",
+                    rule = infoRule.coverUrl,
+                    result = book.coverUrl,
+                    original = originalCoverUrl
+                )
             }
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
@@ -302,6 +393,13 @@ object BookInfo {
                 message = "提取封面链接",
                 rule = infoRule.coverUrl,
                 error = e
+            )
+            
+            dataFlowFields.recordField(
+                "coverUrl",
+                rule = infoRule.coverUrl,
+                isError = true,
+                errorMessage = e.localizedMessage
             )
         }
         currentCoroutineContext().ensureActive()
@@ -321,6 +419,13 @@ object BookInfo {
                 rule = infoRule.tocUrl,
                 result = book.tocUrl,
                 originalValue = originalTocUrl.takeIf { it.isNotEmpty() }
+            )
+            
+            dataFlowFields.recordField(
+                "tocUrl",
+                rule = infoRule.tocUrl,
+                result = book.tocUrl,
+                original = originalTocUrl
             )
         } else {
             Debug.log(bookSource.bookSourceUrl, "┌获取文件下载链接")
@@ -342,8 +447,25 @@ object BookInfo {
                     result = book.downloadUrls?.joinToString("\n"),
                     originalValue = originalDownloadUrls
                 )
+                
+                dataFlowFields.recordField(
+                    "downloadUrls",
+                    rule = infoRule.downloadUrls,
+                    result = book.downloadUrls?.joinToString("\n"),
+                    original = originalDownloadUrls
+                )
             }
         }
+        
+        FlowLogRecorder.logStageDataFlow(
+            source = bookSource,
+            stage = DataFlowStage.BOOK_INFO,
+            fields = dataFlowFields,
+            message = "详情阶段数据流转",
+            bookUrl = book.bookUrl,
+            bookName = book.name,
+            author = book.author
+        )
     }
 
 }

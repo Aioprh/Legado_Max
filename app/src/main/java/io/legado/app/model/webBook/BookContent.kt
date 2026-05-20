@@ -20,6 +20,9 @@ import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setNextChapterUrl
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.model.analyzeRule.AnalyzeUrl
+import io.legado.app.model.debug.DataFlowStage
+import io.legado.app.model.debug.FieldFillRecord
+import io.legado.app.model.debug.recordField
 import io.legado.app.utils.HtmlFormatter
 import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.mapAsync
@@ -357,6 +360,22 @@ object BookContent {
         if (!bookChapter.isVolume && contentStr.isBlank()) {
             throw ContentEmptyException("内容为空")
         }
+        
+        val dataFlowFields = mutableListOf<FieldFillRecord>()
+        dataFlowFields.recordField("chapterTitle", result = bookChapter.title)
+        dataFlowFields.recordField("content", rule = contentRule.content, result = contentStr, truncate = true)
+        dataFlowFields.recordField("contentLength", result = contentStr.length.toString())
+        
+        FlowLogRecorder.logStageDataFlow(
+            source = bookSource,
+            stage = DataFlowStage.CONTENT,
+            fields = dataFlowFields,
+            message = "正文阶段数据流转",
+            bookUrl = book.bookUrl,
+            bookName = book.name,
+            author = book.author
+        )
+        
         if (needSave) {
             BookHelp.saveContent(bookSource, book, bookChapter, contentStr)
         }

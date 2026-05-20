@@ -42,7 +42,9 @@ data class FlowLogItem(
     /** 网络请求时的请求头，由 AnalyzeUrl 在发起请求前传入，用于调试网络问题 */
     val requestHeaders: Map<String, String>? = null,
     /** 网络请求时的 Cookie 值，从 headerMap["Cookie"] 提取，便于独立展示 */
-    val cookies: String? = null
+    val cookies: String? = null,
+    /** 数据流转记录，记录Book对象在各阶段的填充过程 */
+    val dataFlow: BookDataFlow? = null
 ) {
     /**
      * 格式化显示时间
@@ -70,6 +72,8 @@ data class FlowLogItem(
     fun hasJsExecution(): Boolean = jsExecution != null
 
     fun hasVariableOperations(): Boolean = variableOperations.isNotEmpty()
+
+    fun hasDataFlow(): Boolean = dataFlow != null
 
     fun getVariableSummary(): String {
         if (variableOperations.isEmpty()) return ""

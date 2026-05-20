@@ -21,6 +21,9 @@ import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setChapter
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.model.analyzeRule.AnalyzeUrl
+import io.legado.app.model.debug.DataFlowStage
+import io.legado.app.model.debug.FieldFillRecord
+import io.legado.app.model.debug.recordField
 import io.legado.app.utils.isTrue
 import io.legado.app.utils.mapAsync
 import kotlinx.coroutines.ensureActive
@@ -218,6 +221,22 @@ object BookChapterList {
                 )
         currentCoroutineContext().ensureActive()
         upChapterInfo(list, book)
+        
+        val dataFlowFields = mutableListOf<FieldFillRecord>()
+        dataFlowFields.recordField("totalChapterNum", result = list.size.toString())
+        dataFlowFields.recordField("latestChapterTitle", result = book.latestChapterTitle)
+        dataFlowFields.recordField("durChapterTitle", result = book.durChapterTitle)
+
+        FlowLogRecorder.logStageDataFlow(
+            source = bookSource,
+            stage = DataFlowStage.TOC,
+            fields = dataFlowFields,
+            message = "目录阶段数据流转",
+            bookUrl = book.bookUrl,
+            bookName = book.name,
+            author = book.author
+        )
+
         return list
     }
 
@@ -278,7 +297,7 @@ object BookChapterList {
         when (chapterData.second.size) {
             0 -> {
                 // 单页目录，直接发射最终结果
-                val finalList = finalizeChapterList(sortedFirstPage, tocRule, book)
+                val finalList = finalizeChapterList(sortedFirstPage, tocRule, book, bookSource)
                 emit(PartialChapterList(finalList, isComplete = true))
             }
             1 -> {
@@ -305,7 +324,7 @@ object BookChapterList {
                         val isLast = nextUrl.isEmpty() || nextUrlList.contains(nextUrl)
                         if (isLast) {
                             // 最后一页，执行格式化JS等最终处理并发射完成结果
-                            val finalList = finalizeChapterList(sorted, tocRule, book)
+                            val finalList = finalizeChapterList(sorted, tocRule, book, bookSource)
                             emit(PartialChapterList(finalList, isComplete = true))
                         } else {
                             // 中间页，发射中间结果供调用方增量展示
@@ -344,7 +363,7 @@ object BookChapterList {
                     chapterList.addAll(it)
                 }
                 val sorted = sortAndIndex(chapterList, reverse, book)
-                val finalList = finalizeChapterList(sorted, tocRule, book)
+                val finalList = finalizeChapterList(sorted, tocRule, book, bookSource)
                 emit(PartialChapterList(finalList, isComplete = true))
             }
         }
@@ -394,12 +413,14 @@ object BookChapterList {
      * @param list 已排序编号的完整章节列表
      * @param tocRule 目录规则
      * @param book 书籍对象
+     * @param bookSource 书源对象
      * @return 处理后的章节列表
      */
     private fun finalizeChapterList(
         list: ArrayList<BookChapter>,
         tocRule: TocRule,
-        book: Book
+        book: Book,
+        bookSource: BookSource? = null
     ): ArrayList<BookChapter> {
         if (list.isEmpty()) return list
         val formatJs = tocRule.formatJs
@@ -443,6 +464,22 @@ object BookChapterList {
                     replaceBook = replaceBook
                 )
         upChapterInfo(list, book)
+        
+        val dataFlowFields = mutableListOf<FieldFillRecord>()
+        dataFlowFields.recordField("totalChapterNum", result = list.size.toString())
+        dataFlowFields.recordField("latestChapterTitle", result = book.latestChapterTitle)
+        dataFlowFields.recordField("durChapterTitle", result = book.durChapterTitle)
+
+        FlowLogRecorder.logStageDataFlow(
+            source = bookSource,
+            stage = DataFlowStage.TOC,
+            fields = dataFlowFields,
+            message = "目录阶段数据流转",
+            bookUrl = book.bookUrl,
+            bookName = book.name,
+            author = book.author
+        )
+
         return list
     }
 

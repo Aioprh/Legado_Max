@@ -8,6 +8,7 @@ import io.legado.app.model.debug.JsExecutionRecord
 import io.legado.app.model.debug.JsExecutionContext
 import io.legado.app.model.debug.RuleExecutionTree
 import io.legado.app.model.debug.RuleType
+import io.legado.app.model.debug.BookDataFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
@@ -460,6 +461,74 @@ object FlowLogRecorder {
             storage = storage
         )
         logVariable(source, listOf(operation), "写入变量 $key")
+    }
+
+    /**
+     * 记录阶段数据流转日志
+     * 
+     * 用于记录单个阶段的数据流转，支持增量更新
+     * 
+     * @param source 书源对象
+     * @param stage 数据流转阶段
+     * @param fields 字段填充记录列表
+     * @param message 日志消息
+     */
+    fun logStageDataFlow(
+        source: BaseSource?,
+        stage: io.legado.app.model.debug.DataFlowStage,
+        fields: List<io.legado.app.model.debug.FieldFillRecord>,
+        message: String = "${stage.displayName}数据流转",
+        bookUrl: String? = null,
+        bookName: String? = null,
+        author: String? = null
+    ) {
+        if (!isEnabled || fields.isEmpty()) return
+
+        val sourceUrl = source?.getKey()
+        val sourceName = source?.getTag()
+        val operation = getOperation(sourceUrl)
+
+        GlobalScope.launch(Dispatchers.IO) {
+            val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
+                ?: UUID.randomUUID().toString()
+
+            val stageDataFlow = io.legado.app.model.debug.StageDataFlow(
+                stage = stage,
+                fields = fields
+            )
+
+            val bookDataFlow = BookDataFlow(
+                bookUrl = bookUrl,
+                bookName = bookName,
+                author = author,
+                sourceUrl = sourceUrl,
+                sourceName = sourceName,
+                stages = listOf(stageDataFlow)
+            )
+
+            val summary = buildString {
+                append("${stage.icon}${stage.displayName}: ")
+                val changedCount = fields.count { it.hasChange() }
+                val errorCount = fields.count { it.isError }
+                append("${fields.size}个字段")
+                if (changedCount > 0) append("，${changedCount}个变更")
+                if (errorCount > 0) append("，${errorCount}个错误")
+            }
+
+            val item = FlowLogItem(
+                requestId = requestId,
+                sourceUrl = sourceUrl,
+                sourceName = sourceName,
+                stage = FlowStage.DATA_FLOW,
+                operation = operation,
+                message = message,
+                detail = summary,
+                duration = stageDataFlow.duration,
+                dataFlow = bookDataFlow
+            )
+
+            addLog(item)
+        }
     }
 
     /**

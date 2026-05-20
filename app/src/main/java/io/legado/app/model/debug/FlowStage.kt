@@ -22,5 +22,8 @@ enum class FlowStage(val displayName: String, val icon: String) {
     REPLACE("数据替换", "🔄"),
     
     /** 变量存取阶段 */
-    VARIABLE("变量存取", "📦")
+    VARIABLE("变量存取", "📦"),
+    
+    /** 数据流转阶段 */
+    DATA_FLOW("数据流转", "📊")
 }

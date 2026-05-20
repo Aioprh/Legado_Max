@@ -18,6 +18,9 @@ import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setRuleData
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.RuleData
+import io.legado.app.model.debug.DataFlowStage
+import io.legado.app.model.debug.FieldFillRecord
+import io.legado.app.model.debug.recordField
 import io.legado.app.utils.GSON
 import io.legado.app.utils.GSONStrict
 import io.legado.app.utils.HtmlFormatter
@@ -153,6 +156,7 @@ object BookList {
                     bookSource, analyzeRule, item, baseUrl, ruleData.getVariable(),
                     index == 0,
                     filter,
+                    isSearch = isSearch,
                     ruleName = ruleName,
                     ruleBookUrl = ruleBookUrl,
                     ruleAuthor = ruleAuthor,
@@ -273,6 +277,7 @@ object BookList {
         variable: String?,
         log: Boolean,
         filter: ((name: String, author: String, kind: String?) -> Boolean)?,
+        isSearch: Boolean = true,
         ruleName: List<AnalyzeRule.SourceRule>,
         ruleBookUrl: List<AnalyzeRule.SourceRule>,
         ruleAuthor: List<AnalyzeRule.SourceRule>,
@@ -289,6 +294,8 @@ object BookList {
         searchBook.originOrder = bookSource.customOrder
         analyzeRule.setRuleData(searchBook)
         analyzeRule.setContent(item)
+        
+        val dataFlowFields = mutableListOf<FieldFillRecord>()
         
         FlowLogRecorder.logExtract(
             source = bookSource,
@@ -309,6 +316,13 @@ object BookList {
             originalValue = originalName.takeIf { it.isNotEmpty() }
         )
         
+        dataFlowFields.recordField(
+            "name",
+            rule = ruleName.joinToString("&&") { it.rule },
+            result = searchBook.name,
+            original = originalName
+        )
+        
         if (searchBook.name.isNotEmpty()) {
             currentCoroutineContext().ensureActive()
             Debug.log(bookSource.bookSourceUrl, "┌获取作者", log)
@@ -322,6 +336,13 @@ object BookList {
                 rule = ruleAuthor.joinToString("&&") { it.rule },
                 result = searchBook.author,
                 originalValue = originalAuthor.takeIf { it.isNotEmpty() }
+            )
+            
+            dataFlowFields.recordField(
+                "author",
+                rule = ruleAuthor.joinToString("&&") { it.rule },
+                result = searchBook.author,
+                original = originalAuthor
             )
             
             currentCoroutineContext().ensureActive()
@@ -338,6 +359,13 @@ object BookList {
                     result = searchBook.kind,
                     originalValue = originalKind
                 )
+                
+                dataFlowFields.recordField(
+                    "kind",
+                    rule = ruleKind.joinToString("&&") { it.rule },
+                    result = searchBook.kind,
+                    original = originalKind
+                )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 Debug.log(bookSource.bookSourceUrl, "└${e.localizedMessage}", log)
@@ -347,6 +375,13 @@ object BookList {
                     message = "提取分类",
                     rule = ruleKind.joinToString("&&") { it.rule },
                     error = e
+                )
+                
+                dataFlowFields.recordField(
+                    "kind",
+                    rule = ruleKind.joinToString("&&") { it.rule },
+                    isError = true,
+                    errorMessage = e.localizedMessage
                 )
             }
             if (filter?.invoke(searchBook.name, searchBook.author, searchBook.kind) == false) {
@@ -366,6 +401,13 @@ object BookList {
                     result = searchBook.wordCount,
                     originalValue = originalWordCount?.takeIf { it.isNotEmpty() }
                 )
+                
+                dataFlowFields.recordField(
+                    "wordCount",
+                    rule = ruleWordCount.joinToString("&&") { it.rule },
+                    result = searchBook.wordCount,
+                    original = originalWordCount
+                )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 Debug.log(bookSource.bookSourceUrl, "└${e.localizedMessage}", log)
@@ -375,6 +417,13 @@ object BookList {
                     message = "提取字数",
                     rule = ruleWordCount.joinToString("&&") { it.rule },
                     error = e
+                )
+                
+                dataFlowFields.recordField(
+                    "wordCount",
+                    rule = ruleWordCount.joinToString("&&") { it.rule },
+                    isError = true,
+                    errorMessage = e.localizedMessage
                 )
             }
             currentCoroutineContext().ensureActive()
@@ -391,6 +440,13 @@ object BookList {
                     result = searchBook.latestChapterTitle,
                     originalValue = originalLatestChapter?.takeIf { it.isNotEmpty() }
                 )
+                
+                dataFlowFields.recordField(
+                    "latestChapterTitle",
+                    rule = ruleLastChapter.joinToString("&&") { it.rule },
+                    result = searchBook.latestChapterTitle,
+                    original = originalLatestChapter
+                )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 Debug.log(bookSource.bookSourceUrl, "└${e.localizedMessage}", log)
@@ -400,6 +456,13 @@ object BookList {
                     message = "提取最新章节",
                     rule = ruleLastChapter.joinToString("&&") { it.rule },
                     error = e
+                )
+                
+                dataFlowFields.recordField(
+                    "latestChapterTitle",
+                    rule = ruleLastChapter.joinToString("&&") { it.rule },
+                    isError = true,
+                    errorMessage = e.localizedMessage
                 )
             }
             currentCoroutineContext().ensureActive()
@@ -416,6 +479,14 @@ object BookList {
                     result = searchBook.intro,
                     originalValue = originalIntro
                 )
+                
+                dataFlowFields.recordField(
+                    "intro",
+                    rule = ruleIntro.joinToString("&&") { it.rule },
+                    result = searchBook.intro,
+                    original = originalIntro,
+                    truncate = true
+                )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 Debug.log(bookSource.bookSourceUrl, "└${e.localizedMessage}", log)
@@ -425,6 +496,13 @@ object BookList {
                     message = "提取简介",
                     rule = ruleIntro.joinToString("&&") { it.rule },
                     error = e
+                )
+                
+                dataFlowFields.recordField(
+                    "intro",
+                    rule = ruleIntro.joinToString("&&") { it.rule },
+                    isError = true,
+                    errorMessage = e.localizedMessage
                 )
             }
             currentCoroutineContext().ensureActive()
@@ -445,6 +523,13 @@ object BookList {
                     result = searchBook.coverUrl,
                     originalValue = originalCoverUrl
                 )
+                
+                dataFlowFields.recordField(
+                    "coverUrl",
+                    rule = ruleCoverUrl.joinToString("&&") { it.rule },
+                    result = searchBook.coverUrl,
+                    original = originalCoverUrl
+                )
             } catch (e: Exception) {
                 currentCoroutineContext().ensureActive()
                 Debug.log(bookSource.bookSourceUrl, "└${e.localizedMessage}", log)
@@ -454,6 +539,13 @@ object BookList {
                     message = "提取封面链接",
                     rule = ruleCoverUrl.joinToString("&&") { it.rule },
                     error = e
+                )
+                
+                dataFlowFields.recordField(
+                    "coverUrl",
+                    rule = ruleCoverUrl.joinToString("&&") { it.rule },
+                    isError = true,
+                    errorMessage = e.localizedMessage
                 )
             }
             currentCoroutineContext().ensureActive()
@@ -471,6 +563,23 @@ object BookList {
                 rule = ruleBookUrl.joinToString("&&") { it.rule },
                 result = searchBook.bookUrl,
                 originalValue = originalBookUrl.takeIf { it.isNotEmpty() }
+            )
+            
+            dataFlowFields.recordField(
+                "bookUrl",
+                rule = ruleBookUrl.joinToString("&&") { it.rule },
+                result = searchBook.bookUrl,
+                original = originalBookUrl
+            )
+            
+            FlowLogRecorder.logStageDataFlow(
+                source = bookSource,
+                stage = if (isSearch) DataFlowStage.SEARCH else DataFlowStage.EXPLORE,
+                fields = dataFlowFields,
+                message = if (isSearch) "搜索阶段数据流转" else "发现阶段数据流转",
+                bookUrl = searchBook.bookUrl,
+                bookName = searchBook.name,
+                author = searchBook.author
             )
             
             return searchBook

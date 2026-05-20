@@ -62,6 +62,9 @@ import io.legado.app.model.debug.JsExecutionRecord
 import io.legado.app.model.debug.RuleType
 import io.legado.app.model.debug.VariableOperation
 import io.legado.app.model.debug.VariableOperationType
+import io.legado.app.model.debug.BookDataFlow
+import io.legado.app.model.debug.DataFlowStage
+import io.legado.app.model.debug.FieldFillRecord
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -265,6 +268,13 @@ fun FlowLogDetailDialog(
                         Spacer(Modifier.height(12.dp))
                         DetailSection(title = "变量操作", searchQuery = searchQuery) {
                             VariableOperationsView(log.variableOperations, searchQuery)
+                        }
+                    }
+
+                    log.dataFlow?.let { dataFlow ->
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "数据流转", searchQuery = searchQuery) {
+                            DataFlowView(dataFlow, searchQuery)
                         }
                     }
 
@@ -674,6 +684,7 @@ private fun getStageColor(stage: FlowStage) = when (stage) {
     FlowStage.EXTRACT -> MaterialTheme.colorScheme.secondary
     FlowStage.REPLACE -> MaterialTheme.colorScheme.error
     FlowStage.VARIABLE -> MaterialTheme.colorScheme.tertiary
+    FlowStage.DATA_FLOW -> MaterialTheme.colorScheme.primary
 }
 
 @Composable
@@ -683,6 +694,7 @@ private fun getStageIcon(stage: FlowStage) = when (stage) {
     FlowStage.EXTRACT -> Icons.Default.DataObject
     FlowStage.REPLACE -> Icons.Default.SwapHoriz
     FlowStage.VARIABLE -> Icons.Default.Inventory
+    FlowStage.DATA_FLOW -> Icons.Default.DataObject
 }
 
 @Composable
@@ -849,6 +861,158 @@ private fun VariableOperationItem(
                     color = MaterialTheme.colorScheme.outline,
                     modifier = Modifier.padding(top = 2.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DataFlowView(
+    dataFlow: BookDataFlow,
+    searchQuery: String
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        dataFlow.bookName?.let {
+            DetailRow("书名", it, searchQuery)
+        }
+        dataFlow.author?.let {
+            DetailRow("作者", it, searchQuery)
+        }
+        dataFlow.bookUrl?.let {
+            DetailRow("书籍URL", it, searchQuery)
+        }
+        dataFlow.sourceName?.let {
+            DetailRow("书源名称", it, searchQuery)
+        }
+        
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "字段填充过程:",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
+        Spacer(Modifier.height(4.dp))
+        
+        if (dataFlow.stages.isEmpty()) {
+            Text(
+                text = "暂无数据流转记录",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+        } else {
+            dataFlow.stages.sortedBy { it.stage.order }.forEach { stageFlow ->
+                StageDataFlowView(stageFlow, searchQuery)
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+        
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = dataFlow.getSummary(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.outline
+        )
+    }
+}
+
+@Composable
+private fun StageDataFlowView(
+    stageFlow: io.legado.app.model.debug.StageDataFlow,
+    searchQuery: String
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${stageFlow.stage.icon} ${stageFlow.stage.displayName}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                stageFlow.duration?.let {
+                    Text(
+                        text = "${it}ms",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+            
+            if (stageFlow.fields.isEmpty()) {
+                Text(
+                    text = "无字段填充",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            } else {
+                stageFlow.fields.forEach { field ->
+                    FieldFillRecordView(field, searchQuery)
+                }
+            }
+            
+            if (stageFlow.hasAnyError()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "⚠️ 有 ${stageFlow.getErrorFields().size} 个错误",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FieldFillRecordView(
+    field: FieldFillRecord,
+    searchQuery: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        val changeIndicator = if (field.hasChange()) "←" else "="
+        val errorIndicator = if (field.isError) "❌" else ""
+        
+        Text(
+            text = "${field.fieldName}:",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (field.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.width(80.dp)
+        )
+        
+        Column(modifier = Modifier.weight(1f)) {
+            if (field.isError) {
+                Text(
+                    text = "错误: ${field.errorMessage ?: "未知错误"}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            } else {
+                Text(
+                    text = "\"${field.getResultPreview(50) ?: "(空)"}\" $changeIndicator $errorIndicator",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace)
+                )
+            }
+            
+            field.rule?.let { rule ->
+                if (rule.isNotBlank()) {
+                    Text(
+                        text = "rule: ${field.getRulePreview(30) ?: ""}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
             }
         }
     }
