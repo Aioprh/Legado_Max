@@ -413,7 +413,7 @@ private fun DetailRow(
     searchQuery: String
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val needsExpand = value.length > 80 || value.count { it == '\n' } > 2
+    val needsExpand = remember(value) { value.length > 80 || value.count { it == '\n' } > 2 }
 
     Row(
         modifier = Modifier
