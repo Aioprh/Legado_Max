@@ -6,8 +6,6 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.util.ArrayDeque
 
 /**
@@ -38,9 +36,6 @@ object DebugEventCenter {
     /** 内存环形缓冲区 */
     private val _events = ArrayDeque<DebugEvent>()
 
-    /** 互斥锁 */
-    private val mutex = Mutex()
-
     /** 内存中最大保留的事件数量 */
     const val MAX_EVENTS = 500
 
@@ -50,7 +45,7 @@ object DebugEventCenter {
     val isEnabled: Boolean get() = AppConfig.debugLogFloatingBall
 
     suspend fun emit(event: DebugEvent) {
-        mutex.withLock {
+        synchronized(_events) {
             _events.addFirst(event)
             while (_events.size > MAX_EVENTS) {
                 _events.removeLast()
@@ -123,7 +118,7 @@ object DebugEventCenter {
      * 清空所有日志
      */
     suspend fun clear() {
-        mutex.withLock {
+        synchronized(_events) {
             _events.clear()
         }
     }

@@ -74,36 +74,44 @@ object Debug {
             it.printLog(state, printMsg)
         }
 
-        // 新增：上报到调试事件中心（保持兼容性）
+        // 在锁外异步上报到调试事件中心，避免持锁期间启动协程
+        val capturedMsg = msg
+        val capturedSourceUrl = sourceUrl
+        val capturedState = state
+        val capturedIsHtml = isHtml
+        val capturedShowTime = showTime
+        val capturedStartTime = startTime
+        val capturedCategory = category
+
         GlobalScope.launch(Dispatchers.Default) {
-            var printMsg = msg
-            if (isHtml) {
-                printMsg = HtmlFormatter.format(msg)
+            var printMsg = capturedMsg
+            if (capturedIsHtml) {
+                printMsg = HtmlFormatter.format(capturedMsg)
             }
-            if (showTime) {
-                val time = debugTimeFormat.format(Date(System.currentTimeMillis() - startTime))
+            if (capturedShowTime) {
+                val time = debugTimeFormat.format(Date(System.currentTimeMillis() - capturedStartTime))
                 printMsg = "$time $printMsg"
             }
 
             // 根据category参数或sourceUrl判断分类
-            val eventCategory = category ?: when {
-                sourceUrl?.contains("rss", ignoreCase = true) == true -> DebugCategory.RSS
+            val eventCategory = capturedCategory ?: when {
+                capturedSourceUrl?.contains("rss", ignoreCase = true) == true -> DebugCategory.RSS
                 else -> DebugCategory.RULE  // 默认归为规则执行
             }
 
             DebugEventCenter.emit(
                 DebugEvent(
                     level = when {
-                        state < 0 -> DebugLevel.ERROR
-                        state == 0 -> DebugLevel.WARN
+                        capturedState < 0 -> DebugLevel.ERROR
+                        capturedState == 0 -> DebugLevel.WARN
                         else -> DebugLevel.DEBUG
                     },
                     category = eventCategory,
                     subCategory = if (eventCategory == DebugCategory.RULE) SourceSubCategory.RULE else null,
                     message = printMsg,
-                    detail = msg,
-                    sourceUrl = sourceUrl,
-                    tags = mapOf("state" to state.toString())
+                    detail = capturedMsg,
+                    sourceUrl = capturedSourceUrl,
+                    tags = mapOf("state" to capturedState.toString())
                 )
             )
         }

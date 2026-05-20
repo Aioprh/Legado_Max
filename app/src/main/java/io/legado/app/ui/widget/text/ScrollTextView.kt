@@ -48,6 +48,7 @@ class ScrollTextView(context: Context, attrs: AttributeSet?) :
         t * t * t * t * t + 1.0f
     }
 
+    // 滑动事件监听器
     private val gestureDetector = GestureDetector(context,
         object : GestureDetector.SimpleOnGestureListener() {
 
@@ -83,6 +84,7 @@ class ScrollTextView(context: Context, attrs: AttributeSet?) :
         movementMethod = LinkMovementMethod.getInstance()
     }
 
+    // 初始化滑动距离的最大边界
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         initOffsetHeight()
@@ -160,6 +162,24 @@ class ScrollTextView(context: Context, attrs: AttributeSet?) :
 
     override fun scrollTo(x: Int, y: Int) {
         super.scrollTo(x, min(y, mOffsetHeight))
+    }
+    
+    /**
+     * 检查是否可以滚动
+     * 
+     * @return true 如果内容高度超过视图高度，可以滚动
+     */
+    fun canScroll(): Boolean {
+        return mOffsetHeight > 0
+    }
+    
+    /**
+     * 获取可滚动的最大距离
+     * 
+     * @return 可滚动的最大距离（像素）
+     */
+    fun getMaxScrollOffset(): Int {
+        return mOffsetHeight
     }
 
     private fun initOffsetHeight() {

@@ -2,6 +2,8 @@ package io.legado.app.help.storage
 
 import io.legado.app.data.appDb
 import io.legado.app.help.DirectLinkUpload
+import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.model.BookCover
@@ -41,7 +43,7 @@ object BackupInfoHelper {
     )
 
     private val categoryConfig = listOf(
-        CategoryDef("书籍相关", "📚", listOf("bookshelf", "bookmark", "bookGroup", "readRecord")),
+        CategoryDef("书籍相关", "📚", listOf("bookshelf", "bookmark", "bookGroup", "readRecord", "bookCache", "bookChapterCache")),
         CategoryDef("源相关", "📡", listOf("bookSource", "rssSource", "rssStar", "sourceSub", "runtimeSourceCache")),
         CategoryDef("规则相关", "🔧", listOf("replaceRule", "txtTocRule", "dictRule", "keyboardAssist")),
         CategoryDef("语音相关", "🔊", listOf("httpTTS")),
@@ -65,6 +67,8 @@ object BackupInfoHelper {
         "dictRule.json" to "词典规则",
         "servers.json" to "服务器配置",
         "runtimeSourceCache.json" to "书源运行数据",
+        "bookCacheIndex.json" to "书籍缓存索引",
+        "bookChapterCache.json" to "书籍章节目录",
         ReadBookConfig.configFileName to "阅读样式配置",
         ReadBookConfig.shareConfigFileName to "共享阅读配置",
         ThemeConfig.configFileName to "主题配置",
@@ -121,6 +125,32 @@ object BackupInfoHelper {
             totalSize += estimatedSize
             if (selected) selectedSize += estimatedSize
             items.add(BackupFileInfo(fileName, displayName, estimatedSize, selected))
+        }
+
+        // 书籍缓存
+        run {
+            val selectedBooks = BookCacheSelectorConfig.getSelectedBooks()
+            val cacheDir = File(BookHelp.cachePath)
+            var bookCacheSize = 0L
+            var chapterCount = 0
+            if (cacheDir.exists()) {
+                selectedBooks.forEach { book ->
+                    val folderName = book.getFolderNameNoCache()
+                    val bookFolder = File(cacheDir, folderName)
+                    if (bookFolder.exists()) {
+                        bookCacheSize += bookFolder.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+                        chapterCount += appDb.bookChapterDao.getChapterList(book.bookUrl).size
+                    }
+                }
+            }
+            val bookCacheSelected = isFileSelected("book_cache")
+            val indexEstimatedSize = selectedBooks.size * 300L
+            val chapterEstimatedSize = chapterCount * 200L
+            totalSize += bookCacheSize + indexEstimatedSize + chapterEstimatedSize
+            if (bookCacheSelected) selectedSize += bookCacheSize + indexEstimatedSize + chapterEstimatedSize
+            items.add(BackupFileInfo("book_cache", "书籍缓存", bookCacheSize, bookCacheSelected))
+            items.add(BackupFileInfo("bookChapterCache.json", "书籍章节目录", chapterEstimatedSize, bookCacheSelected))
+            items.add(BackupFileInfo("bookCacheIndex.json", "书籍缓存索引", indexEstimatedSize, bookCacheSelected))
         }
 
         val configFiles = listOf(
