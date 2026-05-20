@@ -88,14 +88,9 @@ object BookCacheSelectorConfig {
 
     /**
      * 获取选中的书籍列表
-     * 如果没有选择过任何书籍，返回所有有缓存的书籍
      */
     fun getSelectedBooks(): List<Book> {
         val booksWithCache = getBooksWithCache()
-        // 如果没有选择过任何书籍，默认返回所有有缓存的书籍
-        if (selectedBookUrls.isEmpty()) {
-            return booksWithCache
-        }
         return booksWithCache.filter { isSelected(it) }
     }
 
@@ -103,10 +98,6 @@ object BookCacheSelectorConfig {
      * 是否有选中的书籍
      */
     fun hasSelection(): Boolean {
-        // 如果没有选择过，默认有缓存就可以备份
-        if (selectedBookUrls.isEmpty()) {
-            return getBooksWithCache().isNotEmpty()
-        }
         return selectedBookUrls.isNotEmpty()
     }
 
@@ -115,9 +106,6 @@ object BookCacheSelectorConfig {
      */
     fun isAllSelected(): Boolean {
         val booksWithCache = getBooksWithCache()
-        if (selectedBookUrls.isEmpty()) {
-            return booksWithCache.isNotEmpty()
-        }
         return booksWithCache.isNotEmpty() && booksWithCache.all { isSelected(it) }
     }
 
@@ -125,9 +113,8 @@ object BookCacheSelectorConfig {
      * 是否全不选
      */
     fun isNoneSelected(): Boolean {
-        // 如果没有选择过，不算全不选（默认全选）
         if (selectedBookUrls.isEmpty()) {
-            return false
+            return true
         }
         return getBooksWithCache().none { isSelected(it) }
     }
