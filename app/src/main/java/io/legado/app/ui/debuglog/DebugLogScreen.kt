@@ -292,6 +292,13 @@ fun DebugLogScreen(
                     onSubCategorySelected = viewModel::selectSubCategory
                 )
 
+                // 当切换到 FLOW 子分类时自动刷新流程日志
+                LaunchedEffect(selectedSubCategory) {
+                    if (selectedSubCategory == SourceSubCategory.FLOW) {
+                        viewModel.refreshFlowLogs()
+                    }
+                }
+
                 // 流程日志的阶段筛选器
                 if (selectedSubCategory == SourceSubCategory.FLOW) {
                     FlowStageFilter(
