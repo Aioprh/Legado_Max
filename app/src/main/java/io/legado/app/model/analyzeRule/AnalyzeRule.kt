@@ -88,6 +88,9 @@ class AnalyzeRule(
 
     private var loggedNonStandardJSON = false
     private var ruleName: String? = null
+    /** 当前规则类型标识（如 SEARCH/EXPLORE/TOC/CONTENT），由 setToastRuleType 设置，
+     *  在 evalJS 执行时写入 [currentRuleTypeThreadLocal]，供 JsExtensions.toast 提取使用 */
+    private var toastRuleType: String? = null
     fun setRuleName(name: String) {
         if (name.isNotBlank()) {
             ruleName = name
@@ -461,8 +464,12 @@ class AnalyzeRule(
                     Mode.XPath -> getAnalyzeByXPath(result).getElements(rule)
                     else -> getAnalyzeByJSoup(result).getElements(rule)
                 }
-                
-                tracker.endStep(result)
+
+                // 将正则捕获组传递给日志追踪器，用于调试时展示匹配的分组内容
+                tracker.endStep(
+                    result,
+                    regexGroups = (result as? List<*>)?.filterIsInstance<String>()
+                )
                 
                 if (sourceRule.replaceRegex.isNotEmpty()) {
                     tracker.startStep(io.legado.app.model.debug.RuleType.REPLACE, "${sourceRule.replaceRegex} -> ${sourceRule.replacement}", result)
@@ -526,7 +533,10 @@ class AnalyzeRule(
                 }
                 
                 val matchCount = (result as? List<*>)?.size
-                tracker.endStep(result, matchCount = matchCount)
+                // 提取第一条匹配的正则捕获组，供日志调试展示
+                val firstMatchGroups = (result as? List<*>)?.firstOrNull()
+                    ?.let { it as? List<*> }?.filterIsInstance<String>()
+                tracker.endStep(result, matchCount = matchCount, regexGroups = firstMatchGroups)
             }
         }
         
@@ -1046,7 +1056,16 @@ class AnalyzeRule(
         
         val jsResult = try {
             val script = compileScriptCache(jsStr)
-            script.eval(scope, coroutineContext)
+            // 保存并设置 ThreadLocal 规则类型，供 JS 中的 toast/log 方法提取规则来源
+            // 使用 ThreadLocal 是因为 rhinoContextOrNull 在 Context.enter() 之前为 null
+            val previousRuleType = currentRuleTypeThreadLocal.get()
+            try {
+                currentRuleTypeThreadLocal.set(toastRuleType)
+                script.eval(scope, coroutineContext)
+            } finally {
+                // 恢复之前的规则类型，避免嵌套调用时信息串扰
+                currentRuleTypeThreadLocal.set(previousRuleType)
+            }
         } catch (e: Exception) {
             val duration = System.currentTimeMillis() - startTime
             FlowLogRecorder.logJsContext(
@@ -1210,6 +1229,9 @@ class AnalyzeRule(
         private val evalPattern =
             Pattern.compile("@get:\\{[^}]+?\\}|\\{\\{[\\w\\W]*?\\}\\}", Pattern.CASE_INSENSITIVE)
         private val regexPattern = Pattern.compile("\\$\\d{1,2}")
+        /** 跨线程传递当前规则类型标识，供 JsExtensions.toast 提取规则来源显示。
+         *  ThreadLocal 方案：rhinoContextOrNull 在 Context.enter() 前为 null，无法直接写入。 */
+        val currentRuleTypeThreadLocal = ThreadLocal<String?>()
 
         fun AnalyzeRule.setCoroutineContext(context: CoroutineContext): AnalyzeRule {
             coroutineContext = context.minusKey(ContinuationInterceptor)
@@ -1228,6 +1250,13 @@ class AnalyzeRule(
 
         fun AnalyzeRule.setChapter(chapter: BookChapter?): AnalyzeRule {
             this.chapter = chapter
+            return this
+        }
+
+        /** 设置当前规则类型标识，用于 toast 显示和流程日志追踪。
+         *  在 WebBook 各阶段（搜索/发现/详情/目录/正文）调用。 */
+        fun AnalyzeRule.setToastRuleType(type: String): AnalyzeRule {
+            this.toastRuleType = type
             return this
         }
 

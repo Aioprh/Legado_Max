@@ -10,6 +10,7 @@ import io.legado.app.help.book.isVideo
 import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.HtmlFormatter
 import io.legado.app.model.analyzeRule.AnalyzeRule
+import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
@@ -96,6 +97,7 @@ class LazyContentManager(
         val analyzeRule = AnalyzeRule(book, bookSource)
         analyzeRule.setContent(initialBody, baseUrl)
         analyzeRule.setRedirectUrl(redirectUrl)
+        analyzeRule.setToastRuleType("CONTENT")
         
         val content = analyzeRule.getString(contentRule, unescape = false)
         val nextUrl = if (nextContentUrlRule.isNotBlank()) {
@@ -159,6 +161,7 @@ class LazyContentManager(
                     val analyzeRule = AnalyzeRule(book, bookSource)
                     analyzeRule.setContent(body, nextUrl)
                     val rUrl = analyzeRule.setRedirectUrl(res.url)
+                    analyzeRule.setToastRuleType("CONTENT")
                     
                     var content = analyzeRule.getString(contentRule, unescape = false)
                     
@@ -252,6 +255,7 @@ class LazyContentManager(
                 val analyzeRule = AnalyzeRule(book, bookSource)
                 analyzeRule.setContent(body, nextUrl)
                 analyzeRule.setRedirectUrl(res.url)
+                analyzeRule.setToastRuleType("CONTENT")
                 
                 val content = analyzeRule.getString(contentRule, unescape = false)
                 val nextNextUrl = if (nextContentUrlRule.isNotBlank()) {

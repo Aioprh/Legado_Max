@@ -3,10 +3,12 @@ package io.legado.app.ui.debuglog.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -163,12 +165,15 @@ fun DebugLogDetailDialog(
                     }
                 }
 
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
-                ) {
+                // 内容区域：可滚动 Column + 可拖拽滚动条，替代原来的 verticalScroll 修饰符
+                Box(modifier = Modifier.weight(1f)) {
+                    val scrollState = rememberScrollState()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .padding(16.dp)
+                    ) {
                     DetailSection(title = "基本信息", searchQuery = searchQuery) {
                         DetailRow("时间", formatFullTime(log.time), searchQuery)
                         DetailRow("级别", log.level.displayName, searchQuery)
@@ -338,6 +343,11 @@ fun DebugLogDetailDialog(
                             )
                         }
                     }
+                    }
+                    io.legado.app.ui.widget.components.VerticalScrollbar(
+                        state = scrollState,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
                 }
 
                 Surface(

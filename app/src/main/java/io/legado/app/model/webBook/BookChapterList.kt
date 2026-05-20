@@ -19,6 +19,7 @@ import io.legado.app.model.Debug
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setChapter
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
+import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.isTrue
 import io.legado.app.utils.mapAsync
@@ -476,6 +477,7 @@ object BookChapterList {
         analyzeRule.setContent(body).setBaseUrl(baseUrl)
         analyzeRule.setRedirectUrl(redirectUrl)
         analyzeRule.setCoroutineContext(currentCoroutineContext())
+        analyzeRule.setToastRuleType("TOC")
         //获取目录列表
         val chapterList = arrayListOf<BookChapter>()
         Debug.log(bookSource.bookSourceUrl, "┌获取目录列表", log)

@@ -11,6 +11,7 @@ import io.legado.app.help.book.isWebFile
 import io.legado.app.model.Debug
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
+import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.utils.DebugLog
 import io.legado.app.utils.HtmlFormatter
 import io.legado.app.utils.NetworkUtils
@@ -67,6 +68,7 @@ object BookInfo {
         analyzeRule.setContent(body).setBaseUrl(baseUrl)
         analyzeRule.setRedirectUrl(redirectUrl)
         analyzeRule.setCoroutineContext(currentCoroutineContext())
+        analyzeRule.setToastRuleType("BOOK_INFO")
         analyzeBookInfo(book, body, analyzeRule, bookSource, baseUrl, redirectUrl, canReName)
     }
 

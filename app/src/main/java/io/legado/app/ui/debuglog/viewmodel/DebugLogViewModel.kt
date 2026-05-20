@@ -364,6 +364,16 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             log.method?.let { appendLine("请求方法: $it") }
             log.statusCode?.let { appendLine("状态码: $it") }
             log.duration?.let { appendLine("耗时: ${it}ms") }
+            log.cookies?.let { appendLine("Cookie: $it") }
+            // 导出请求头（Cookie 已单独展示，此处跳过避免重复）
+            if (!log.requestHeaders.isNullOrEmpty()) {
+                appendLine("请求头:")
+                log.requestHeaders.forEach { (key, value) ->
+                    if (key != "Cookie") {
+                        appendLine("  $key: $value")
+                    }
+                }
+            }
             log.rule?.let { appendLine("规则: $it") }
             log.originalValue?.let { appendLine("原始数据: $it") }
             log.result?.let { appendLine("结果: $it") }

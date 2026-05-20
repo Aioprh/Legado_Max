@@ -2,10 +2,12 @@ package io.legado.app.ui.debuglog.components
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -156,12 +158,15 @@ fun FlowLogDetailDialog(
                     }
                 }
 
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
-                ) {
+                // 内容区域：可滚动 Column + 可拖拽滚动条，支持查看请求头、规则执行树等长内容
+                Box(modifier = Modifier.weight(1f)) {
+                    val scrollState = rememberScrollState()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .padding(16.dp)
+                    ) {
                     DetailSection(title = "基本信息", searchQuery = searchQuery) {
                         DetailRow("时间", formatFullTime(log.startTime), searchQuery)
                         DetailRow("阶段", log.stage.displayName, searchQuery)
@@ -201,6 +206,19 @@ fun FlowLogDetailDialog(
                             log.url?.let { DetailRow("URL", it, searchQuery) }
                             log.method?.let { DetailRow("方法", it, searchQuery) }
                             log.statusCode?.let { DetailRow("状态码", it.toString(), searchQuery) }
+                        }
+                    }
+
+                    // 请求头区域：Cookie 单独置顶，其余请求头过滤掉 Cookie 和 User-Agent 避免重复
+                    if (!log.requestHeaders.isNullOrEmpty() || log.cookies != null) {
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "请求头", searchQuery = searchQuery) {
+                            log.cookies?.let { DetailRow("Cookie", it, searchQuery) }
+                            log.requestHeaders?.forEach { (key, value) ->
+                                if (key !in listOf("Cookie", "User-Agent")) {
+                                    DetailRow(key, value, searchQuery)
+                                }
+                            }
                         }
                     }
 
@@ -283,6 +301,11 @@ fun FlowLogDetailDialog(
                             }
                         }
                     }
+                    }
+                    io.legado.app.ui.widget.components.VerticalScrollbar(
+                        state = scrollState,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    )
                 }
 
                 Surface(
@@ -411,6 +434,16 @@ private fun RuleExecutionNodeView(
                 Text(
                     text = "匹配: $count 个",
                     style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+
+            // 正则捕获组：由 AnalyzeRule.getElement/getElements 在 endStep 时传入
+            if (!node.regexGroups.isNullOrEmpty()) {
+                Text(
+                    text = "捕获组: [${node.regexGroups.joinToString(", ") { "\"$it\"" }}]",
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                     color = MaterialTheme.colorScheme.tertiary,
                     modifier = Modifier.padding(top = 2.dp)
                 )

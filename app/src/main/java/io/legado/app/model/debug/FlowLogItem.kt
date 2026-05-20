@@ -38,7 +38,11 @@ data class FlowLogItem(
     val matchCount: Int? = null,
     val inputPreview: String? = null,
     val outputPreview: String? = null,
-    val variableOperations: List<VariableOperation> = emptyList()
+    val variableOperations: List<VariableOperation> = emptyList(),
+    /** 网络请求时的请求头，由 AnalyzeUrl 在发起请求前传入，用于调试网络问题 */
+    val requestHeaders: Map<String, String>? = null,
+    /** 网络请求时的 Cookie 值，从 headerMap["Cookie"] 提取，便于独立展示 */
+    val cookies: String? = null
 ) {
     /**
      * 格式化显示时间

@@ -133,7 +133,11 @@ object FlowLogRecorder {
         statusCode: Int? = null,
         duration: Long? = null,
         detail: String? = null,
-        error: Throwable? = null
+        error: Throwable? = null,
+        /** 请求头，从 AnalyzeUrl.headerMap 传入 */
+        requestHeaders: Map<String, String>? = null,
+        /** Cookie 值，从 headerMap["Cookie"] 提取 */
+        cookies: String? = null
     ) {
         val sourceUrl = source?.getKey()
         log(
@@ -147,7 +151,9 @@ object FlowLogRecorder {
             method = method,
             statusCode = statusCode,
             duration = duration,
-            error = error
+            error = error,
+            requestHeaders = requestHeaders,
+            cookies = cookies
         )
     }
 
@@ -494,7 +500,11 @@ object FlowLogRecorder {
         ruleType: RuleType? = null,
         matchCount: Int? = null,
         inputPreview: String? = null,
-        outputPreview: String? = null
+        outputPreview: String? = null,
+        /** 网络请求头 */
+        requestHeaders: Map<String, String>? = null,
+        /** Cookie 值 */
+        cookies: String? = null
     ) {
         if (!isEnabled) return
         
@@ -525,7 +535,9 @@ object FlowLogRecorder {
                 ruleType = ruleType,
                 matchCount = matchCount,
                 inputPreview = inputPreview,
-                outputPreview = outputPreview
+                outputPreview = outputPreview,
+                requestHeaders = requestHeaders,
+                cookies = cookies
             )
 
             addLog(item)

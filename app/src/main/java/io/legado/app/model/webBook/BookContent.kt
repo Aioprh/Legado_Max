@@ -18,6 +18,7 @@ import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setChapter
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setNextChapterUrl
+import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.HtmlFormatter
 import io.legado.app.utils.NetworkUtils
@@ -93,6 +94,7 @@ object BookContent {
         analyzeRule.setCoroutineContext(currentCoroutineContext())
         analyzeRule.setChapter(bookChapter)
         analyzeRule.setNextChapterUrl(mNextChapterUrl)
+        analyzeRule.setToastRuleType("CONTENT")
         
         var content = analyzeRule.getString(contentRule.content, unescape = false)
         if (!book.isAudio && !book.isVideo) {
@@ -186,6 +188,7 @@ object BookContent {
         analyzeRule.setCoroutineContext(currentCoroutineContext())
         analyzeRule.setChapter(bookChapter)
         analyzeRule.setNextChapterUrl(mNextChapterUrl)
+        analyzeRule.setToastRuleType("CONTENT")
         
         FlowLogRecorder.logExtract(
             source = bookSource,
@@ -393,6 +396,7 @@ object BookContent {
         analyzeRule.setCoroutineContext(currentCoroutineContext())
         val rUrl = analyzeRule.setRedirectUrl(redirectUrl)
         analyzeRule.setNextChapterUrl(nextChapterUrl)
+        analyzeRule.setToastRuleType("CONTENT")
         val nextUrlList = arrayListOf<String>()
         analyzeRule.setChapter(chapter)
         //获取正文
