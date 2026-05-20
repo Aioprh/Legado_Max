@@ -414,6 +414,7 @@ private fun DetailRow(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val needsExpand = remember(value) { value.length > 80 || value.count { it == '\n' } > 2 }
+    val scrollState = rememberScrollState()
 
     Row(
         modifier = Modifier
@@ -438,7 +439,7 @@ private fun DetailRow(
             modifier = Modifier
                 .weight(1f)
                 .then(
-                    if (expanded) Modifier.horizontalScroll(rememberScrollState())
+                    if (expanded) Modifier.horizontalScroll(scrollState)
                     else Modifier
                 ),
             overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis,
