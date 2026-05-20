@@ -531,9 +531,13 @@ object ReadBook : CoroutineScope by MainScope() {
         index: Int,
         durChapterPos: Int = 0,
         upContent: Boolean = true,
+        fromReadAloudSync: Boolean = false,
         success: (() -> Unit)? = null
     ) {
         if (index < chapterSize) {
+            if (!fromReadAloudSync && BaseReadAloudService.isActiveBook(book?.bookUrl)) {
+                BaseReadAloudService.markPendingChapterSwitch(index)
+            }
             clearTextChapter()
             if (upContent) callBack?.upContent()
             durChapterIndex = index

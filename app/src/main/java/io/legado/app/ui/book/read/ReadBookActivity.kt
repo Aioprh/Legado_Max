@@ -406,10 +406,18 @@ class ReadBookActivity : BaseReadBookActivity(),
         if (!isCurrentBookReadAloudBook()) return
         val ttsChapterIndex = BaseReadAloudService.lastTtsChapterIndex
         val ttsProgress = BaseReadAloudService.lastTtsProgress
+        if (BaseReadAloudService.shouldIgnoreProgressSync(ReadBook.durChapterIndex, ttsChapterIndex)) {
+            return
+        }
         if (ttsProgress <= 0) return
         if (ttsChapterIndex != ReadBook.durChapterIndex) {
             if (ttsChapterIndex >= 0) {
-                ReadBook.openChapter(ttsChapterIndex, ttsProgress, upContent = true) {
+                ReadBook.openChapter(
+                    ttsChapterIndex,
+                    ttsProgress,
+                    upContent = true,
+                    fromReadAloudSync = true
+                ) {
                     applyReadAloudProgress(ttsProgress)
                 }
             } else if (allowChapterMismatch) {
@@ -1513,6 +1521,9 @@ class ReadBookActivity : BaseReadBookActivity(),
                         ReadBook.readAloud()
                         if (launchUi) openReadAloudActivity()
                     }
+                } else if (BaseReadAloudService.hasPendingChapterSwitch()) {
+                    ReadBook.readAloud()
+                    if (launchUi) openReadAloudActivity()
                 } else {
                     ReadAloud.resume(this)
                     if (launchUi) openReadAloudActivity()

@@ -191,7 +191,7 @@ class HttpReadAloudService : BaseReadAloudService(),
     }
 
     private suspend fun preDownloadAudios(httpTts: HttpTTS) {
-        val textChapter = ReadBook.nextTextChapter ?: return
+        val textChapter = getPreparedNextTextChapter() ?: return
         val contentList = textChapter.getNeedReadAloud(0, readAloudByPage, 0, 1)
             .splitToSequence("\n")
             .filter { it.isNotEmpty() }
@@ -260,7 +260,7 @@ class HttpReadAloudService : BaseReadAloudService(),
         httpTts: HttpTTS,
         downloaderChannel: Channel<Downloader>
     ) {
-        val textChapter = ReadBook.nextTextChapter ?: return
+        val textChapter = getPreparedNextTextChapter() ?: return
         val contentList = textChapter.getNeedReadAloud(0, readAloudByPage, 0, 1)
             .splitToSequence("\n")
             .filter { it.isNotEmpty() }
