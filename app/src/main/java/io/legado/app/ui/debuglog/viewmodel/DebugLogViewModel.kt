@@ -217,15 +217,12 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      * 在 ViewModel 创建时执行初始化操作：
      * 1. 加载历史日志
      * 2. 订阅实时日志事件流
-     * 3. 订阅流程日志流
-     * 4. 刷新流程日志
+     * 3. 订阅流程日志流（内部会立即刷新一次流程日志）
      */
     init {
         loadHistoryLogs()
         subscribeToEventFlow()
         subscribeToFlowLogs()
-        // 初始化时刷新一次流程日志，确保显示最新数据
-        refreshFlowLogs()
     }
 
     /**
