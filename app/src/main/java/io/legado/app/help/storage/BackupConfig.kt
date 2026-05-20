@@ -149,19 +149,16 @@ object BackupConfig {
 
     /**
      * 判断配置Key是否不应该被忽略
-     * 
+     *
      * 检查逻辑：
      * 1. 是否在自动忽略列表中（始终忽略）
-     * 2. 完全备份模式下，跳过用户忽略检查
-     * 3. 是否在用户忽略列表中（根据用户配置）
-     * 
+     * 2. 是否在用户忽略列表中（根据用户配置）
+     *
      * @param key SharedPreferences配置Key
      * @return true表示应该备份/恢复，false表示应该忽略
      */
     fun keyIsNotIgnore(key: String): Boolean {
         if (ignorePrefKeys.contains(key)) return false
-
-        if (fullBackup) return true
 
         return when {
             ignoreReadConfig && readPrefKeys.contains(key) -> false
@@ -212,10 +209,6 @@ object BackupConfig {
     /** 是否忽略书籍缓存备份 */
     val ignoreBookCache: Boolean
         get() = ignoreConfig[bookCacheKey] == true
-
-    /** 是否启用完全备份 */
-    val fullBackup: Boolean
-        get() = appCtx.defaultSharedPreferences.getBoolean("fullBackup", false)
 
     /**
      * 保存忽略配置到文件

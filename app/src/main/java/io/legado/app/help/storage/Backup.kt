@@ -245,7 +245,6 @@ object Backup {
     }
 
     private fun getRuntimeSourceCaches(): List<Cache> {
-        if (!BackupConfig.fullBackup) return emptyList()
         return appDb.cacheDao.getRuntimeSourceCaches(System.currentTimeMillis())
     }
 
@@ -537,7 +536,7 @@ object Backup {
         if (selectedFiles.contains("bg")) {
             stageBackgroundImageFiles(backupPath)
         }
-        if (BackupConfig.fullBackup) {
+        if (selectedFiles.contains(runtimeSourceCacheFileName)) {
             stageRuntimeSourceCaches(backupPath)
         }
         if (selectedFiles.contains(bookCacheFolderName)) {
