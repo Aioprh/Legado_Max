@@ -6,6 +6,7 @@ data class HighlightRule(
     var pattern: String = "",
     var sampleText: String = "",
     var group: String = HighlightRuleGroupStore.DEFAULT_GROUP,
+    var targetScope: Int = TARGET_ALL,
     var enabled: Boolean = true,
     var textColor: Int? = null,
     var underlineMode: Int = 0,
@@ -18,7 +19,8 @@ data class HighlightRule(
 ) {
 
     fun styleSummary(): String {
-        val parts = ArrayList<String>(3)
+        val parts = ArrayList<String>(4)
+        parts.add(targetScopeLabel())
         textColor?.let {
             parts.add("字色 ${it.toHexColor()}")
         }
@@ -49,6 +51,14 @@ data class HighlightRule(
         return parts.joinToString(" / ")
     }
 
+    fun targetScopeLabel(): String {
+        return when (targetScope) {
+            TARGET_TITLE -> "作用于标题"
+            TARGET_BODY -> "作用于正文"
+            else -> "作用于全部"
+        }
+    }
+
     fun displayPattern(): String {
         return pattern.ifBlank { ".*" }
     }
@@ -64,6 +74,10 @@ data class HighlightRule(
     }
 
     companion object {
+        const val TARGET_ALL = 0
+        const val TARGET_TITLE = 1
+        const val TARGET_BODY = 2
+
         fun Int.toHexColor(): String = String.format("#%08X", this)
     }
 }

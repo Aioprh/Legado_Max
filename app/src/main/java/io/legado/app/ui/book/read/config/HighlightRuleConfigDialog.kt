@@ -398,7 +398,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         ) {
             binding.tvTitle.text = item.name.ifBlank { getString(R.string.highlight_rule_unnamed) }
             binding.tvDesc.text = item.styleSummary()
-            binding.tvPattern.text = "${item.group} / ${item.displayPattern()}"
+            binding.tvPattern.text = "${item.group} / ${item.targetScopeLabel()} / ${item.displayPattern()}"
             binding.tvPreview.text = HighlightRulePreview.build(item)
 
             val density = binding.root.context.resources.displayMetrics.density
