@@ -307,6 +307,13 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
             updateTimerText(it)
         }
         observeEvent<Int>(EventBus.TTS_PROGRESS) {
+            if (BaseReadAloudService.shouldIgnoreProgressSync(
+                    ReadBook.durChapterIndex,
+                    BaseReadAloudService.lastTtsChapterIndex
+                )
+            ) {
+                return@observeEvent
+            }
             updateBookInfo()
             updatePreviewText()
         }

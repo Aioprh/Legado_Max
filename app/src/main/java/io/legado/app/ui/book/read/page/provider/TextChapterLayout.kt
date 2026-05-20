@@ -1277,8 +1277,12 @@ class TextChapterLayout(
         return spannable
     }
 
-    private fun applyHighlightRules(spannable: SpannableStringBuilder): SpannableStringBuilder {
+    private fun applyHighlightRules(
+        spannable: SpannableStringBuilder,
+        isTitle: Boolean = false
+    ): SpannableStringBuilder {
         compiledHighlightRules.forEach { compiled ->
+            if (!compiled.rule.appliesTo(isTitle)) return@forEach
             applyRuleSpans(spannable, compiled.rule, compiled.regex)
         }
         return spannable
@@ -1335,7 +1339,7 @@ class TextChapterLayout(
         srcList: LinkedList<String>? = null,
         clickList: LinkedList<String?>?
     ) {
-        val styledText = applyHighlightRules(SpannableStringBuilder(text))
+        val styledText = applyHighlightRules(SpannableStringBuilder(text), isTitle)
         val widthsArray = allocateFloatArray(text.length)
         textPaint.getTextWidthsCompat(text, widthsArray, reviewCharWidth)
         val layout = if (useZhLayout) {
@@ -1802,5 +1806,13 @@ class TextChapterLayout(
         val rule: HighlightRule,
         val regex: Regex,
     )
+
+    private fun HighlightRule.appliesTo(isTitle: Boolean): Boolean {
+        return when (targetScope) {
+            HighlightRule.TARGET_TITLE -> isTitle
+            HighlightRule.TARGET_BODY -> !isTitle
+            else -> true
+        }
+    }
 
 }

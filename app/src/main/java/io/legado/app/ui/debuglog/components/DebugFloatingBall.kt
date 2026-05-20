@@ -2,6 +2,7 @@ package io.legado.app.ui.debuglog.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -62,13 +66,19 @@ fun DebugFloatingBall(
         currentUnread = unreadCount
     }
 
+    val startColor = lerp(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary, 0.28f)
+    val endColor = lerp(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.tertiary, 0.22f)
+    val ringColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.28f)
+    val glowColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.18f)
+
     Box(
         modifier = modifier
             .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
             .size(ballSize)
-            .shadow(elevation = 8.dp, shape = CircleShape)
+            .shadow(elevation = 12.dp, shape = CircleShape, ambientColor = startColor, spotColor = endColor)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primary)
+            .background(Brush.linearGradient(colors = listOf(startColor, endColor)))
+            .border(1.5.dp, ringColor, CircleShape)
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { },
@@ -96,6 +106,12 @@ fun DebugFloatingBall(
             ),
         contentAlignment = Alignment.Center
     ) {
+        Surface(
+            modifier = Modifier.size(42.dp),
+            shape = CircleShape,
+            color = glowColor
+        ) {}
+
         Icon(
             imageVector = Icons.Default.Info,
             contentDescription = "调试日志",

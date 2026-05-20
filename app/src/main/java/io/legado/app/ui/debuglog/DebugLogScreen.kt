@@ -34,6 +34,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,6 +60,11 @@ import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
 import io.legado.app.ui.debuglog.components.FlowLogDetailDialog
 import io.legado.app.ui.debuglog.components.FlowLogList
 import io.legado.app.ui.debuglog.components.FlowStageFilter
+import io.legado.app.ui.theme.pageCardElevatedContainerColor
+import io.legado.app.ui.theme.pageHeaderContainerColor
+import io.legado.app.ui.theme.pageMutedIconTint
+import io.legado.app.ui.theme.pageSecondaryTextColor
+import io.legado.app.ui.theme.pageTopBarContainerColor
 import io.legado.app.ui.debuglog.viewmodel.DebugLogViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.utils.putPrefBoolean
@@ -100,6 +106,10 @@ fun DebugLogScreen(
     val filteredFlowLogs by viewModel.filteredFlowLogs.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val categoryCounts by viewModel.categoryCounts.collectAsState()
+    val topBarColor = pageTopBarContainerColor()
+    val cardColor = pageCardElevatedContainerColor()
+    val secondaryTextColor = pageSecondaryTextColor()
+    val mutedIconTint = pageMutedIconTint()
 
     // 搜索框显示状态
     var showSearch by remember { mutableStateOf(false) }
@@ -115,6 +125,13 @@ fun DebugLogScreen(
             Column {
                 // 顶部工具栏
                 TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = topBarColor,
+                        scrolledContainerColor = topBarColor,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
+                        titleContentColor = MaterialTheme.colorScheme.onSecondary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSecondary
+                    ),
                     title = { Text("调试日志") },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
@@ -234,6 +251,19 @@ fun DebugLogScreen(
                             onSearch = {
                                 viewModel.setSearchQuery(searchQuery)
                             }
+                        ),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = cardColor,
+                            unfocusedContainerColor = cardColor,
+                            disabledContainerColor = cardColor,
+                            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                            focusedPlaceholderColor = secondaryTextColor,
+                            unfocusedPlaceholderColor = secondaryTextColor,
+                            focusedLeadingIconColor = mutedIconTint,
+                            unfocusedLeadingIconColor = mutedIconTint,
+                            focusedTrailingIconColor = mutedIconTint,
+                            unfocusedTrailingIconColor = mutedIconTint
                         )
                     )
                 }
@@ -436,7 +466,7 @@ private fun SourceSubCategoryTabs(
 ) {
     androidx.compose.material3.Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        color = pageHeaderContainerColor(),
         tonalElevation = 2.dp
     ) {
         androidx.compose.foundation.layout.Row(

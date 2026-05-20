@@ -2,6 +2,7 @@ package io.legado.app.ui.config
 
 object ConfigTag {
 
+    const val SETTINGS_HOME = "settingsHome"
     const val OTHER_CONFIG = "otherConfig"
     const val THEME_CONFIG = "themeConfig"
     const val BACKUP_CONFIG = "backupConfig"

@@ -44,7 +44,10 @@ object HighlightRuleStore {
 
     fun save(context: Context, rules: List<HighlightRule>) {
         val normalized = rules.map {
-            it.copy(group = it.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP })
+            it.copy(
+                group = it.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP },
+                targetScope = normalizeTargetScope(it.targetScope)
+            )
         }
         cachedRules = normalized
         context.putPrefString(PreferKey.highlightRuleItems, GSON.toJson(normalized))
@@ -100,6 +103,7 @@ object HighlightRuleStore {
                 pattern = "(?m)^\\s{0,2}(?:第[0-9零〇一二两三四五六七八九十百千万IVXLCDMivxlcdm]{1,12}[章节卷回部篇集幕]|序章|楔子|引子|终章|尾声|后记|番外)[^\\n]{0,40}$",
                 sampleText = "第一章 雨夜来客",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
+                targetScope = HighlightRule.TARGET_TITLE,
                 enabled = true,
                 textColor = 0xFF333333.toInt(),
                 underlineMode = 4,
@@ -201,6 +205,7 @@ object HighlightRuleStore {
                 builtin.copy(
                     enabled = rule.enabled,
                     group = normalizedGroup,
+                    targetScope = normalizeTargetScope(rule.targetScope, builtin.targetScope),
                     textColor = rule.textColor ?: builtin.textColor,
                     underlineMode = rule.underlineMode.takeIf { it != 0 } ?: builtin.underlineMode,
                     underlineColor = rule.underlineColor ?: builtin.underlineColor,
@@ -211,9 +216,21 @@ object HighlightRuleStore {
                     bgImageScale = rule.bgImageScale.takeIf { it != 1f } ?: builtin.bgImageScale
                 )
             } else {
-                rule.copy(group = normalizedGroup)
+                rule.copy(
+                    group = normalizedGroup,
+                    targetScope = normalizeTargetScope(rule.targetScope)
+                )
             }
             migrateBgImage(base, internalDir, context)
+        }
+    }
+
+    private fun normalizeTargetScope(value: Int, fallback: Int = HighlightRule.TARGET_ALL): Int {
+        return when (value) {
+            HighlightRule.TARGET_ALL,
+            HighlightRule.TARGET_TITLE,
+            HighlightRule.TARGET_BODY -> value
+            else -> fallback
         }
     }
 

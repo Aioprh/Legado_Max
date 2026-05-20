@@ -140,12 +140,44 @@ abstract class BaseReadAloudService : BaseService(),
         var activePreviewText: String? = null
             private set
 
+        @Volatile
+        @JvmStatic
+        var pendingChapterSwitchIndex: Int? = null
+            private set
+
         fun isPlay(): Boolean {
             return isRun && !pause
         }
 
         fun isActiveBook(bookUrl: String?): Boolean {
             return isRun && !bookUrl.isNullOrEmpty() && activeBookUrl == bookUrl
+        }
+
+        fun markPendingChapterSwitch(chapterIndex: Int) {
+            if (isRun) {
+                pendingChapterSwitchIndex = chapterIndex
+            }
+        }
+
+        fun hasPendingChapterSwitch(): Boolean {
+            return pendingChapterSwitchIndex != null
+        }
+
+        fun shouldIgnoreProgressSync(currentChapterIndex: Int, ttsChapterIndex: Int): Boolean {
+            val pendingIndex = pendingChapterSwitchIndex ?: return false
+            return when {
+                ttsChapterIndex == pendingIndex -> {
+                    pendingChapterSwitchIndex = null
+                    false
+                }
+
+                currentChapterIndex == pendingIndex -> true
+
+                else -> {
+                    pendingChapterSwitchIndex = null
+                    false
+                }
+            }
         }
 
         private const val TAG = "BaseReadAloudService"
@@ -200,7 +232,43 @@ abstract class BaseReadAloudService : BaseService(),
         return appDb.bookChapterDao.getChapter(book.bookUrl, chapter.index + 1)?.url
     }
 
-    private suspend fun loadSessionTextChapter(chapterIndex: Int): TextChapter? {
+    private fun getCachedNextSessionTextChapter(chapterIndex: Int): TextChapter? {
+        return if (cachedNextTextChapterIndex == chapterIndex) {
+            cachedNextTextChapter
+        } else {
+            null
+        }
+    }
+
+    private fun cacheNextSessionTextChapter(chapterIndex: Int, textChapter: TextChapter?) {
+        cachedNextTextChapterIndex = if (textChapter != null) chapterIndex else null
+        cachedNextTextChapter = textChapter
+    }
+
+    private fun clearCachedNextSessionTextChapter() {
+        cachedNextTextChapterIndex = null
+        cachedNextTextChapter = null
+    }
+
+    private fun getForegroundCachedTextChapter(chapterIndex: Int): TextChapter? {
+        if (!isActiveBook(ReadBook.book?.bookUrl)) return null
+        val candidates = listOf(
+            ReadBook.curTextChapter,
+            ReadBook.nextTextChapter,
+            ReadBook.prevTextChapter
+        )
+        return candidates.firstOrNull {
+            it?.chapter?.index == chapterIndex && it.isCompleted
+        }
+    }
+
+    protected fun getPreparedNextTextChapter(): TextChapter? {
+        val nextChapterIndex = (textChapter?.chapter?.index ?: return null) + 1
+        return getForegroundCachedTextChapter(nextChapterIndex)
+            ?: getCachedNextSessionTextChapter(nextChapterIndex)
+    }
+
+    private suspend fun buildSessionTextChapter(chapterIndex: Int): TextChapter? {
         val book = sessionBook ?: return null
         val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, chapterIndex) ?: return null
         val rawContent = if (book.isLocal) {
@@ -230,13 +298,53 @@ abstract class BaseReadAloudService : BaseService(),
         for (page in textChapter.layoutChannel) {
             currentCoroutineContext().ensureActive()
         }
-        activeChapterTitle = textChapter.title
         return textChapter
     }
 
+    private suspend fun loadSessionTextChapter(chapterIndex: Int): TextChapter? {
+        getCachedNextSessionTextChapter(chapterIndex)?.let { cachedChapter ->
+            activeChapterTitle = cachedChapter.title
+            clearCachedNextSessionTextChapter()
+            return cachedChapter
+        }
+        getForegroundCachedTextChapter(chapterIndex)?.let { cachedChapter ->
+            activeChapterTitle = cachedChapter.title
+            return cachedChapter
+        }
+        return buildSessionTextChapter(chapterIndex)?.also {
+            activeChapterTitle = it.title
+        }
+    }
+
+    private fun preloadNextSessionTextChapter(currentChapterIndex: Int) {
+        preloadNextTextChapterJob?.cancel()
+        val nextChapterIndex = currentChapterIndex + 1
+        if (nextChapterIndex !in 0 until sessionChapterSize) {
+            clearCachedNextSessionTextChapter()
+            return
+        }
+        getForegroundCachedTextChapter(nextChapterIndex)?.let { cachedChapter ->
+            cacheNextSessionTextChapter(nextChapterIndex, cachedChapter)
+            return
+        }
+        if (cachedNextTextChapterIndex == nextChapterIndex && cachedNextTextChapter?.isCompleted == true) {
+            return
+        }
+        clearCachedNextSessionTextChapter()
+        preloadNextTextChapterJob = lifecycleScope.launch(IO) {
+            kotlin.runCatching {
+                buildSessionTextChapter(nextChapterIndex)
+            }.onSuccess { textChapter ->
+                if (textChapter != null) {
+                    cacheNextSessionTextChapter(nextChapterIndex, textChapter)
+                }
+            }
+        }
+    }
+
     private fun updateSessionProgress(progress: Int) {
+        val chapterIndex = textChapter?.chapter?.index ?: sessionBook?.durChapterIndex ?: -1
         sessionBook?.let { book ->
-            val chapterIndex = textChapter?.chapter?.index ?: book.durChapterIndex
             book.durChapterIndex = chapterIndex
             book.durChapterPos = progress
             book.durChapterTime = System.currentTimeMillis()
@@ -248,7 +356,16 @@ abstract class BaseReadAloudService : BaseService(),
         }
         updateActivePreviewText()
         lastTtsProgress = progress
-        postEvent(EventBus.TTS_PROGRESS, progress)
+        val now = System.currentTimeMillis()
+        val shouldDispatch = chapterIndex != lastDispatchTtsChapterIndex ||
+            now - lastDispatchTtsProgressTime >= 50L ||
+            kotlin.math.abs(progress - lastDispatchTtsProgress) >= 6
+        if (shouldDispatch) {
+            lastDispatchTtsChapterIndex = chapterIndex
+            lastDispatchTtsProgress = progress
+            lastDispatchTtsProgressTime = now
+            postEvent(EventBus.TTS_PROGRESS, progress)
+        }
     }
 
     private fun prepareReadAloud(play: Boolean, pageIndex: Int, startPos: Int) {
@@ -256,6 +373,9 @@ abstract class BaseReadAloudService : BaseService(),
         val textChapter = textChapter ?: return
         if (!textChapter.isCompleted) {
             return
+        }
+        if (textChapter.chapter.index == pendingChapterSwitchIndex) {
+            pendingChapterSwitchIndex = null
         }
         activeChapterTitle = textChapter.title
         readAloudNumber = textChapter.getReadLength(pageIndex) + startPos
@@ -288,6 +408,7 @@ abstract class BaseReadAloudService : BaseService(),
         }
         paragraphStartPos = pos
         updateActivePreviewText()
+        preloadNextSessionTextChapter(textChapter.chapter.index)
         lifecycleScope.launch(Main) {
             if (play) play() else pageChanged = true
         }
@@ -360,7 +481,13 @@ abstract class BaseReadAloudService : BaseService(),
     private var needResumeOnCallStateIdle = false
     private var registeredPhoneStateListener = false
     private var dsJob: Job? = null
+    private var preloadNextTextChapterJob: Job? = null
     private var upNotificationJob: Coroutine<*>? = null
+    private var cachedNextTextChapterIndex: Int? = null
+    private var cachedNextTextChapter: TextChapter? = null
+    private var lastDispatchTtsProgressTime = 0L
+    private var lastDispatchTtsProgress = -1
+    private var lastDispatchTtsChapterIndex = -1
     private var cover: Bitmap =
         BitmapFactory.decodeResource(appCtx.resources, R.drawable.icon_read_book)
     var pageChanged = false
@@ -413,6 +540,7 @@ abstract class BaseReadAloudService : BaseService(),
 
     override fun onDestroy() {
         super.onDestroy()
+        preloadNextTextChapterJob?.cancel()
         if (useWakeLock) {
             wakeLock.release()
             wifiLock?.release()
@@ -427,6 +555,11 @@ abstract class BaseReadAloudService : BaseService(),
         activeBookAuthor = null
         activeBookCover = null
         activeChapterTitle = null
+        pendingChapterSwitchIndex = null
+        clearCachedNextSessionTextChapter()
+        lastDispatchTtsProgressTime = 0L
+        lastDispatchTtsProgress = -1
+        lastDispatchTtsChapterIndex = -1
         abandonFocus()
         unregisterReceiver(broadcastReceiver)
         postEvent(EventBus.ALOUD_STATE, Status.STOP)

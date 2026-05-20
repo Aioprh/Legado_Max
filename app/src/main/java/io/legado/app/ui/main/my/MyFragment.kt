@@ -27,7 +27,6 @@ import io.legado.app.ui.config.ConfigActivity
 import io.legado.app.ui.config.ConfigTag
 import io.legado.app.ui.debug.DebugToolsActivity
 import io.legado.app.ui.dict.rule.DictRuleActivity
-import io.legado.app.ui.urlRecord.UrlRecordActivity
 import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.ui.download.DownloadManageActivity
 import io.legado.app.ui.main.MainFragmentInterface
@@ -165,18 +164,9 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
                 "dictRuleManage" -> startActivity<DictRuleActivity>()
                 "txtTocRuleManage" -> startActivity<TxtTocRuleActivity>()
                 "debugTools" -> startActivity<DebugToolsActivity>()
-                "urlRecord" -> startActivity<UrlRecordActivity>()
                 "bookmark" -> startActivity<AllBookmarkActivity>()
-                "setting" -> startActivity<ConfigActivity> {
-                    putExtra("configTag", ConfigTag.OTHER_CONFIG)
-                }
-
-                "web_dav_setting" -> startActivity<ConfigActivity> {
-                    putExtra("configTag", ConfigTag.BACKUP_CONFIG)
-                }
-
-                "theme_setting" -> startActivity<ConfigActivity> {
-                    putExtra("configTag", ConfigTag.THEME_CONFIG)
+                "settingsHome" -> startActivity<ConfigActivity> {
+                    putExtra("configTag", ConfigTag.SETTINGS_HOME)
                 }
 
                 "fileManage" -> startActivity<FileManageActivity>()

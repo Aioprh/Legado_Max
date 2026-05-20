@@ -82,6 +82,13 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         ).apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
+        binding.spTarget.adapter = ArrayAdapter(
+            requireContext(),
+            R.layout.item_text_common,
+            listOf("作用于全部", "作用于标题", "作用于正文")
+        ).apply {
+            setDropDownViewResource(R.layout.item_spinner_dropdown)
+        }
         binding.spUnderlineMode.adapter = ArrayAdapter(
             requireContext(),
             R.layout.item_text_common,
@@ -195,6 +202,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etPattern.background = inputBg
         binding.etName.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.spGroup.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.spTarget.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etTextColor.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.spUnderlineMode.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etUnderlineColor.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
@@ -243,6 +251,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.spUnderlineMode.setSelection(editingRule.underlineMode.coerceIn(0, 5))
         val groupIndex = groupItems.indexOf(editingRule.group).takeIf { it >= 0 } ?: 0
         binding.spGroup.setSelection(groupIndex)
+        binding.spTarget.setSelection(editingRule.targetScope.coerceIn(0, 2))
         
         updateColorPreview(binding.viewTextColorPreview, editingRule.textColor)
         updateColorPreview(binding.viewUnderlineColorPreview, editingRule.underlineColor)
@@ -368,6 +377,20 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 
                 override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
             }
+        binding.spTarget.onItemSelectedListener =
+            object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: android.widget.AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    editingRule.targetScope = position.coerceIn(0, 2)
+                    updatePreview()
+                }
+
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+            }
     }
 
     private fun updateRegexToggle() {
@@ -464,6 +487,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             group = groupItems.getOrElse(binding.spGroup.selectedItemPosition) {
                 HighlightRuleGroupStore.DEFAULT_GROUP
             },
+            targetScope = binding.spTarget.selectedItemPosition.coerceIn(0, 2),
             enabled = binding.switchEnable.isChecked,
             textColor = parseColorOrNull(binding.etTextColor.text?.toString().orEmpty()),
             underlineMode = binding.spUnderlineMode.selectedItemPosition,
@@ -494,6 +518,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
                 group = groupItems.getOrElse(binding.spGroup.selectedItemPosition) {
                     HighlightRuleGroupStore.DEFAULT_GROUP
                 },
+                targetScope = binding.spTarget.selectedItemPosition.coerceIn(0, 2),
                 textColor = parseColorOrNull(binding.etTextColor.text?.toString().orEmpty()),
                 underlineMode = binding.spUnderlineMode.selectedItemPosition,
                 underlineColor = parseColorOrNull(binding.etUnderlineColor.text?.toString().orEmpty()),
