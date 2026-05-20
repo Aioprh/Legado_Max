@@ -473,14 +473,27 @@ class BackupConfigFragment : PreferenceFragment(),
     }
 
     private fun restoreWebDav(name: String) {
-        waitDialog.setText("恢复中…")
+        waitDialog.setText("下载备份文件...")
         waitDialog.show()
         val task = Coroutine.async {
-            AppWebDav.restoreWebDav(name)
+            AppWebDav.downloadAndUnzipBackup(name)
+        }.onSuccess {
+            if (AppConfig.restoreShowSelector) {
+                showRestoreSelectorFromPath(Backup.backupPath)
+            } else {
+                waitDialog.setText("恢复中…")
+                val restoreTask = Coroutine.async {
+                    Restore.restoreLocked(Backup.backupPath)
+                }.onFinally {
+                    waitDialog.dismiss()
+                }
+                waitDialog.setOnCancelListener {
+                    restoreTask.cancel()
+                }
+            }
         }.onError {
             AppLog.put("WebDav恢复出错\n${it.localizedMessage}", it)
             appCtx.toastOnUi("WebDav恢复出错\n${it.localizedMessage}")
-        }.onFinally {
             waitDialog.dismiss()
         }
         waitDialog.setOnCancelListener {
@@ -503,13 +516,13 @@ class BackupConfigFragment : PreferenceFragment(),
     private fun showRestoreFileSelector(uri: android.net.Uri) {
         waitDialog.setText("读取备份文件...")
         waitDialog.show()
-        
+
         lifecycleScope.launch {
             try {
                 // 解压到临时目录
                 val tempPath = Backup.backupPath
                 FileUtils.delete(tempPath)
-                
+
                 withContext(IO) {
                     val contentResolver = requireContext().contentResolver
                     val inputStream = contentResolver.openInputStream(uri)
@@ -517,31 +530,50 @@ class BackupConfigFragment : PreferenceFragment(),
                         ZipUtils.unZipToPath(it, tempPath)
                     }
                 }
-                
-                // 获取文件列表
+
+                showRestoreSelectorFromPath(tempPath)
+            } catch (e: Exception) {
+                waitDialog.dismiss()
+                AppLog.put("读取备份文件出错\n${e.localizedMessage}", e)
+                appCtx.toastOnUi("读取备份文件出错\n${e.localizedMessage}")
+            }
+        }
+    }
+
+    /**
+     * 从已解压的目录显示恢复文件选择器
+     */
+    private fun showRestoreSelectorFromPath(tempPath: String) {
+        lifecycleScope.launch {
+            try {
+                // 获取文件和目录列表
                 val files = withContext(IO) {
                     java.io.File(tempPath).listFiles()
-                        ?.filter { it.isFile && (it.name.endsWith(".json") || it.name.endsWith(".xml")) }
-                        ?.map { file ->
+                        ?.filter { it.isFile && (it.name.endsWith(".json") || it.name.endsWith(".xml")) || it.isDirectory }
+                        ?.map { entry ->
+                            val size = if (entry.isDirectory) {
+                                entry.walkTopDown().filter { f -> f.isFile }.sumOf { f -> f.length() }
+                            } else {
+                                entry.length()
+                            }
                             BackupInfoHelper.BackupFileInfo(
-                                fileName = file.name,
-                                displayName = BackupInfoHelper.displayNameMap[file.name] ?: file.name,
-                                size = file.length(),
+                                fileName = entry.name,
+                                displayName = BackupInfoHelper.displayNameMap[entry.name] ?: entry.name,
+                                size = size,
                                 selected = true
                             )
                         } ?: emptyList()
                 }
-                
+
                 waitDialog.dismiss()
-                
+
                 if (files.isEmpty()) {
                     appCtx.toastOnUi("备份文件中没有可恢复的内容")
                     return@launch
                 }
-                
+
                 // 显示选择对话框
                 showFileSelectionDialog(files, tempPath)
-                
             } catch (e: Exception) {
                 waitDialog.dismiss()
                 AppLog.put("读取备份文件出错\n${e.localizedMessage}", e)

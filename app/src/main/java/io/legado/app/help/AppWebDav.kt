@@ -180,25 +180,36 @@ object AppWebDav {
     }
 
     /**
-     * 从WebDav恢复备份
-     * 
-     * 执行步骤：
-     * 1. 下载备份文件
-     * 2. 解压到临时目录
-     * 3. 执行恢复逻辑
-     * 
+     * 从WebDav下载并解压备份文件
+     *
      * @param name 备份文件名
-     * @throws WebDavException 下载或恢复失败时抛出异常
+     * @throws WebDavException 下载失败时抛出异常
      */
     @Throws(WebDavException::class)
-    suspend fun restoreWebDav(name: String) {
+    suspend fun downloadAndUnzipBackup(name: String) {
         authorization?.let {
             val webDav = WebDav(rootWebDavUrl + name, it)
             webDav.downloadTo(Backup.zipFilePath, true)
             FileUtils.delete(Backup.backupPath)
             ZipUtils.unZipToPath(File(Backup.zipFilePath), Backup.backupPath)
-            Restore.restoreLocked(Backup.backupPath)
         }
+    }
+
+    /**
+     * 从WebDav恢复备份
+     *
+     * 执行步骤：
+     * 1. 下载备份文件
+     * 2. 解压到临时目录
+     * 3. 执行恢复逻辑
+     *
+     * @param name 备份文件名
+     * @throws WebDavException 下载或恢复失败时抛出异常
+     */
+    @Throws(WebDavException::class)
+    suspend fun restoreWebDav(name: String) {
+        downloadAndUnzipBackup(name)
+        Restore.restoreLocked(Backup.backupPath)
     }
 
     /**

@@ -82,7 +82,7 @@ fun FileValidationDialog(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
-                    contentPadding = PaddingValues(vertical = 8.dp)
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 56.dp)
                 ) {
                     items(files, key = { it.fileName }) { file ->
                         val result = validationResults[file.fileName]
