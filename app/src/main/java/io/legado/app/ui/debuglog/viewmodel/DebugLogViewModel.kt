@@ -11,12 +11,14 @@ import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.RssSource
 import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.data.repository.debug.FlowLogRecorder
+import io.legado.app.data.repository.debug.RssExecutionRecorder
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
 import io.legado.app.model.debug.DebugLogUtils
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
+import io.legado.app.model.debug.RssExecutionRecord
 import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.model.debug.ToastContext
 import io.legado.app.utils.toastOnUi
@@ -125,6 +127,10 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     /** 搜索关键词 */
     private val _searchQuery = MutableStateFlow<String?>(null)
     val searchQuery: StateFlow<String?> = _searchQuery.asStateFlow()
+
+    /** 订阅源执行记录 */
+    private val _rssExecutionRecords = MutableStateFlow<List<RssExecutionRecord>>(emptyList())
+    val rssExecutionRecords: StateFlow<List<RssExecutionRecord>> = _rssExecutionRecords.asStateFlow()
 
     /**
      * 筛选后的日志列表
@@ -258,6 +264,20 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         loadHistoryLogs()
         subscribeToEventFlow()
         subscribeToFlowLogs()
+        subscribeToRssExecutionRecords()
+    }
+
+    private fun subscribeToRssExecutionRecords() {
+        RssExecutionRecorder.recordsFlow
+            .onEach { records ->
+                _rssExecutionRecords.value = records
+            }
+            .launchIn(viewModelScope)
+        refreshRssExecutionRecords()
+    }
+
+    fun refreshRssExecutionRecords() {
+        _rssExecutionRecords.value = RssExecutionRecorder.getCurrentRecords()
     }
 
     /**
@@ -510,6 +530,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     fun clearLogs() {
         execute {
             DebugEventCenter.clear()
+            RssExecutionRecorder.clear()
             synchronized(this) {
                 _allLogs = emptyList()
             }

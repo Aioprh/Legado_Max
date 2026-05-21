@@ -4,6 +4,7 @@ import androidx.annotation.Keep
 import io.legado.app.R
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.RssSource
+import io.legado.app.data.repository.debug.RssExecutionRecorder
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.model.Debug
 import io.legado.app.model.analyzeRule.AnalyzeRule
@@ -11,6 +12,7 @@ import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setRuleData
 import io.legado.app.model.analyzeRule.RuleData
 import io.legado.app.model.debug.DebugCategory
+import io.legado.app.model.debug.RssExecutionStep
 import io.legado.app.utils.NetworkUtils
 import kotlinx.coroutines.currentCoroutineContext
 import splitties.init.appCtx
@@ -55,8 +57,10 @@ object RssParserByRule {
         ruleData: RuleData
     ): Pair<MutableList<RssArticle>, String?> {
         val sourceUrl = rssSource.sourceUrl
+        val recorder = RssExecutionRecorder
         var nextUrl: String? = null
         if (body.isNullOrBlank()) {
+            recorder.failed(RssExecutionStep.PARSE_LIST, "响应内容为空")
             throw NoStackTraceException(
                 appCtx.getString(R.string.error_get_web_content, rssSource.sourceUrl)
             )
@@ -65,7 +69,14 @@ object RssParserByRule {
         var ruleArticles = rssSource.ruleArticles
         if (ruleArticles.isNullOrBlank()) {
             Debug.log(sourceUrl, "⇒列表规则为空, 使用默认规则解析", category = DebugCategory.RSS)
-            return RssParserDefault.parseXML(sortName, body, sourceUrl)
+            val result = RssParserDefault.parseXML(sortName, body, sourceUrl)
+            if (result.first.isNotEmpty()) {
+                recorder.success(RssExecutionStep.PARSE_LIST,
+                    detail = "默认XML解析获取${result.first.size}条")
+            } else {
+                recorder.failed(RssExecutionStep.PARSE_LIST, "默认XML解析未获取到文章")
+            }
+            return result
         } else {
             val articleList = mutableListOf<RssArticle>()
             val analyzeRule = AnalyzeRule(ruleData, rssSource)
@@ -78,8 +89,16 @@ object RssParserByRule {
                 ruleArticles = ruleArticles.substring(1)
             }
             Debug.log(sourceUrl, "┌获取列表", category = DebugCategory.RSS)
+            val parseStart = System.currentTimeMillis()
             val collections = analyzeRule.getElements(ruleArticles)
             Debug.log(sourceUrl, "└列表大小:${collections.size}", category = DebugCategory.RSS)
+            if (collections.isNotEmpty()) {
+                recorder.success(RssExecutionStep.PARSE_LIST,
+                    detail = "获取${collections.size}条", duration = System.currentTimeMillis() - parseStart)
+            } else {
+                recorder.failed(RssExecutionStep.PARSE_LIST, "列表为空",
+                    duration = System.currentTimeMillis() - parseStart)
+            }
             if (!rssSource.ruleNextPage.isNullOrEmpty()) {
                 Debug.log(sourceUrl, "┌获取下一页链接", category = DebugCategory.RSS)
                 if (rssSource.ruleNextPage!!.uppercase(Locale.getDefault()) == "PAGE") {
@@ -149,22 +168,45 @@ object RssParserByRule {
         ruleImage: List<AnalyzeRule.SourceRule>,
         ruleLink: List<AnalyzeRule.SourceRule>
     ): RssArticle? {
+        val recorder = RssExecutionRecorder
         val rssArticle = RssArticle(variable = variable)
         analyzeRule.setRuleData(rssArticle)
         analyzeRule.setContent(item)
         Debug.log(sourceUrl, "┌获取标题", log, category = DebugCategory.RSS)
         rssArticle.title = analyzeRule.getString(ruleTitle)
         Debug.log(sourceUrl, "└${rssArticle.title}", log, category = DebugCategory.RSS)
+        if (log) {
+            if (rssArticle.title.isNotBlank()) {
+                recorder.success(RssExecutionStep.EXTRACT_TITLE, detail = rssArticle.title.take(50))
+            } else {
+                recorder.failed(RssExecutionStep.EXTRACT_TITLE, "标题为空")
+            }
+        }
         Debug.log(sourceUrl, "┌获取时间", log, category = DebugCategory.RSS)
         rssArticle.pubDate = analyzeRule.getString(rulePubDate)
         Debug.log(sourceUrl, "└${rssArticle.pubDate}", log, category = DebugCategory.RSS)
+        if (log) {
+            if (!rssArticle.pubDate.isNullOrBlank()) {
+                recorder.success(RssExecutionStep.EXTRACT_PUB_DATE, detail = rssArticle.pubDate?.take(50))
+            } else {
+                recorder.failed(RssExecutionStep.EXTRACT_PUB_DATE, "未提取到发布日期")
+            }
+        }
         Debug.log(sourceUrl, "┌获取描述", log, category = DebugCategory.RSS)
         if (ruleDescription.isEmpty()) {
             rssArticle.description = null
             Debug.log(sourceUrl, "└描述规则为空，将会解析内容页", log, category = DebugCategory.RSS)
+            if (log) recorder.success(RssExecutionStep.EXTRACT_DESCRIPTION, detail = "规则为空，将解析内容页")
         } else {
             rssArticle.description = analyzeRule.getString(ruleDescription)
             Debug.log(sourceUrl, "└${rssArticle.description}", log, category = DebugCategory.RSS)
+            if (log) {
+                if (!rssArticle.description.isNullOrBlank()) {
+                    recorder.success(RssExecutionStep.EXTRACT_DESCRIPTION, detail = rssArticle.description!!.take(50))
+                } else {
+                    recorder.failed(RssExecutionStep.EXTRACT_DESCRIPTION, "未提取到描述")
+                }
+            }
         }
         Debug.log(sourceUrl, "┌获取图片url", log, category = DebugCategory.RSS)
         try {
@@ -174,12 +216,27 @@ object RssParserByRule {
                 }
             }
             Debug.log(sourceUrl, "└${rssArticle.image ?: ""}", log, category = DebugCategory.RSS)
+            if (log) {
+                if (!rssArticle.image.isNullOrBlank()) {
+                    recorder.success(RssExecutionStep.EXTRACT_IMAGE, detail = rssArticle.image!!.take(80))
+                } else {
+                    recorder.failed(RssExecutionStep.EXTRACT_IMAGE, "未提取到图片")
+                }
+            }
         } catch (e: Exception) {
             Debug.log(sourceUrl, "└${e.localizedMessage}", log, category = DebugCategory.RSS)
+            if (log) recorder.failed(RssExecutionStep.EXTRACT_IMAGE, e.message ?: "提取图片异常")
         }
         Debug.log(sourceUrl, "┌获取文章链接", log, category = DebugCategory.RSS)
         rssArticle.link = analyzeRule.getString(ruleLink, isUrl = true)
         Debug.log(sourceUrl, "└${rssArticle.link}", log, category = DebugCategory.RSS)
+        if (log) {
+            if (rssArticle.link.isNotBlank()) {
+                recorder.success(RssExecutionStep.EXTRACT_LINK, detail = rssArticle.link.take(80))
+            } else {
+                recorder.failed(RssExecutionStep.EXTRACT_LINK, "未提取到链接")
+            }
+        }
         rssArticle.type = type
         if (rssArticle.title.isBlank()) {
             return null

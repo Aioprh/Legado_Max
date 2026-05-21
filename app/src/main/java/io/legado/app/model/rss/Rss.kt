@@ -2,6 +2,7 @@ package io.legado.app.model.rss
 
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.RssSource
+import io.legado.app.data.repository.debug.RssExecutionRecorder
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.http.StrResponse
 import io.legado.app.model.Debug
@@ -11,6 +12,7 @@ import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setToastRuleType
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.RuleData
 import io.legado.app.model.debug.DebugCategory
+import io.legado.app.model.debug.RssExecutionStep
 import io.legado.app.utils.NetworkUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,6 +83,26 @@ object Rss {
         page: Int,
         key: String? = null
     ): Pair<MutableList<RssArticle>, String?> {
+        val recorder = RssExecutionRecorder
+
+        // 配置检查阶段
+        recorder.check(RssExecutionStep.SOURCE_NAME, rssSource.sourceName)
+        recorder.check(RssExecutionStep.SOURCE_URL, rssSource.sourceUrl)
+        recorder.check(RssExecutionStep.SOURCE_ICON, rssSource.sourceIcon)
+        recorder.check(RssExecutionStep.SOURCE_GROUP, rssSource.sourceGroup)
+        recorder.check(RssExecutionStep.SORT_URL, rssSource.sortUrl)
+        recorder.check(RssExecutionStep.RULE_ARTICLES, rssSource.ruleArticles)
+        recorder.check(RssExecutionStep.RULE_NEXT_PAGE, rssSource.ruleNextPage)
+        recorder.check(RssExecutionStep.RULE_TITLE, rssSource.ruleTitle)
+        recorder.check(RssExecutionStep.RULE_PUB_DATE, rssSource.rulePubDate)
+        recorder.check(RssExecutionStep.RULE_DESCRIPTION, rssSource.ruleDescription)
+        recorder.check(RssExecutionStep.RULE_IMAGE, rssSource.ruleImage)
+        recorder.check(RssExecutionStep.RULE_LINK, rssSource.ruleLink)
+        recorder.check(RssExecutionStep.RULE_CONTENT, rssSource.ruleContent)
+        recorder.check(RssExecutionStep.SHOULD_OVERRIDE_URL, rssSource.shouldOverrideUrlLoading)
+
+        // 网络请求阶段
+        val netStart = System.currentTimeMillis()
         val ruleData = RuleData()
         val analyzeUrl = AnalyzeUrl(
             sortUrl,
@@ -107,18 +129,31 @@ object Rss {
                 try {
                     (analyzeUrl.evalJS(checkJs, errResponse) as StrResponse).also {
                         if (it.code() == 500) {
+                            recorder.failed(RssExecutionStep.NETWORK_REQUEST, throwable.message ?: "网络请求失败",
+                                System.currentTimeMillis() - netStart)
                             throw throwable
                         }
                     }
-                } catch (_: Throwable) {
+                } catch (e: Throwable) {
+                    recorder.failed(RssExecutionStep.NETWORK_REQUEST, e.message ?: "登录检测异常",
+                        System.currentTimeMillis() - netStart)
                     throw throwable
                 }
             } else {
+                recorder.failed(RssExecutionStep.NETWORK_REQUEST, throwable.message ?: "网络请求失败",
+                    System.currentTimeMillis() - netStart)
                 throw throwable
             }
         }
+        recorder.success(RssExecutionStep.NETWORK_REQUEST,
+            detail = analyzeUrl.ruleUrl, duration = System.currentTimeMillis() - netStart)
         checkRedirect(rssSource, res)
         Debug.log(rssSource.sourceUrl, "≡获取成功:${analyzeUrl.ruleUrl}", category = DebugCategory.RSS)
+        if (!res.body.isNullOrBlank()) {
+            recorder.success(RssExecutionStep.RESPONSE_BODY, detail = "内容长度: ${res.body!!.length}")
+        } else {
+            recorder.failed(RssExecutionStep.RESPONSE_BODY, "响应内容为空")
+        }
         return RssParserByRule.parseXML(sortName, sortUrl, res.url, res.body, rssSource, ruleData)
     }
 
