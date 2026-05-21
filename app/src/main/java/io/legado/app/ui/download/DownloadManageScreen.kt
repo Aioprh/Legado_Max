@@ -1,5 +1,6 @@
 package io.legado.app.ui.download
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,9 +18,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -28,7 +32,10 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -42,6 +49,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -198,7 +208,10 @@ fun DownloadManageScreen(
                         DownloadTaskCard(
                             task = task,
                             onCancelClick = { viewModel.cancelDownload(task.id) },
-                            onRetryClick = { viewModel.retryDownload(context, task.id) }
+                            onRetryClick = { viewModel.retryDownload(context, task.id) },
+                            onOpenFileClick = { viewModel.openFile(context, task.id) },
+                            onOpenFolderClick = { viewModel.openFolder(context) },
+                            onCopyPathClick = { viewModel.copyPath(context, task.id) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -216,12 +229,24 @@ fun DownloadManageScreen(
 fun DownloadTaskCard(
     task: DownloadTask,
     onCancelClick: () -> Unit,
-    onRetryClick: () -> Unit
+    onRetryClick: () -> Unit,
+    onOpenFileClick: () -> Unit = {},
+    onOpenFolderClick: () -> Unit = {},
+    onCopyPathClick: () -> Unit = {}
 ) {
     val containerColor = pageCardContainerColor()
-    
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (task.status == DownloadStatus.SUCCESSFUL) {
+                    Modifier.clickable { showMenu = true }
+                } else {
+                    Modifier
+                }
+            ),
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -311,14 +336,7 @@ fun DownloadTaskCard(
                         }
                     }
                     DownloadStatus.SUCCESSFUL -> {
-                        // 删除按钮
-                        IconButton(onClick = onCancelClick) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "删除",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        // 删除按钮移至 PopupMenu
                     }
                 }
             }
@@ -380,6 +398,34 @@ fun DownloadTaskCard(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
+            }
+
+            // 操作菜单（仅已完成状态）
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("打开文件") },
+                    onClick = { showMenu = false; onOpenFileClick() },
+                    leadingIcon = { Icon(Icons.Default.OpenInNew, contentDescription = null) }
+                )
+                DropdownMenuItem(
+                    text = { Text("打开文件所在文件夹") },
+                    onClick = { showMenu = false; onOpenFolderClick() },
+                    leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) }
+                )
+                DropdownMenuItem(
+                    text = { Text("复制路径") },
+                    onClick = { showMenu = false; onCopyPathClick() },
+                    leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) }
+                )
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                    onClick = { showMenu = false; onCancelClick() },
+                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
+                )
             }
         }
     }
