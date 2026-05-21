@@ -46,6 +46,7 @@ class PageView(context: Context) : FrameLayout(context) {
     private var tvTitle: BatteryView? = null
     private var tvTime: BatteryView? = null
     private var tvBattery: BatteryView? = null
+    private var tvBatteryInside: BatteryView? = null
     private var tvBatteryP: BatteryView? = null
     private var tvPage: BatteryView? = null
     private var tvTotalProgress: BatteryView? = null
@@ -53,6 +54,7 @@ class PageView(context: Context) : FrameLayout(context) {
     private var tvPageAndTotal: BatteryView? = null
     private var tvBookName: BatteryView? = null
     private var tvTimeBattery: BatteryView? = null
+    private var tvTimeBatteryIconOnly: BatteryView? = null
     private var tvTimeBatteryP: BatteryView? = null
     private var isMainView = false
     var isScroll = false
@@ -204,7 +206,16 @@ class PageView(context: Context) : FrameLayout(context) {
         tvBattery = getTipView(ReadTipConfig.battery)?.apply {
             tag = ReadTipConfig.battery
             isBattery = true
+            batteryInnerOnly = false
+            batteryTextWithIconOnly = false
             textSize = getTipFontSize(ReadTipConfig.battery, headerFontSize, footerFontSize)
+        }
+        tvBatteryInside = getTipView(ReadTipConfig.batteryInside)?.apply {
+            tag = ReadTipConfig.batteryInside
+            isBattery = true
+            batteryInnerOnly = true
+            batteryTextWithIconOnly = false
+            textSize = getTipFontSize(ReadTipConfig.batteryInside, headerFontSize, footerFontSize)
         }
         tvPage = getTipView(ReadTipConfig.page)?.apply {
             tag = ReadTipConfig.page
@@ -239,18 +250,32 @@ class PageView(context: Context) : FrameLayout(context) {
         tvTimeBattery = getTipView(ReadTipConfig.timeBattery)?.apply {
             tag = ReadTipConfig.timeBattery
             isBattery = true
+            batteryInnerOnly = false
+            batteryTextWithIconOnly = false
             typeface = ChapterProvider.typeface
             textSize = getTipFontSize(ReadTipConfig.timeBattery, headerFontSize, footerFontSize)
+        }
+        tvTimeBatteryIconOnly = getTipView(ReadTipConfig.timeBatteryIconOnly)?.apply {
+            tag = ReadTipConfig.timeBatteryIconOnly
+            isBattery = true
+            batteryInnerOnly = false
+            batteryTextWithIconOnly = true
+            typeface = ChapterProvider.typeface
+            textSize = getTipFontSize(ReadTipConfig.timeBatteryIconOnly, headerFontSize, footerFontSize)
         }
         tvBatteryP = getTipView(ReadTipConfig.batteryPercentage)?.apply {
             tag = ReadTipConfig.batteryPercentage
             isBattery = false
+            batteryInnerOnly = false
+            batteryTextWithIconOnly = false
             typeface = ChapterProvider.typeface
             textSize = getTipFontSize(ReadTipConfig.batteryPercentage, headerFontSize, footerFontSize)
         }
         tvTimeBatteryP = getTipView(ReadTipConfig.timeBatteryPercentage)?.apply {
             tag = ReadTipConfig.timeBatteryPercentage
             isBattery = false
+            batteryInnerOnly = false
+            batteryTextWithIconOnly = false
             typeface = ChapterProvider.typeface
             textSize = getTipFontSize(ReadTipConfig.timeBatteryPercentage, headerFontSize, footerFontSize)
         }
@@ -325,6 +350,7 @@ class PageView(context: Context) : FrameLayout(context) {
     fun upBattery(battery: Int) {
         this.battery = battery
         tvBattery?.setBattery(battery)
+        tvBatteryInside?.setBattery(battery)
         tvBatteryP?.text = "$battery%"
         upTimeBattery()
     }
@@ -336,6 +362,7 @@ class PageView(context: Context) : FrameLayout(context) {
     private fun upTimeBattery() {
         val time = timeFormat.format(Date(System.currentTimeMillis()))
         tvTimeBattery?.setBattery(battery, time)
+        tvTimeBatteryIconOnly?.setBattery(battery, time)
         tvTimeBatteryP?.text = "$time $battery%"
     }
 

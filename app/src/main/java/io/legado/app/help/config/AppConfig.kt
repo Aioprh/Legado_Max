@@ -540,9 +540,9 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         }
 
     var enableReadRecord: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.enableReadRecord, true)
+        get() = true
         set(value) {
-            appCtx.putPrefBoolean(PreferKey.enableReadRecord, value)
+            appCtx.removePref(PreferKey.enableReadRecord)
         }
 
     val autoChangeSource: Boolean

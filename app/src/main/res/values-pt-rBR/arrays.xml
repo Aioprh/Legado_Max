@@ -2,7 +2,7 @@
 <resources>
 	<string-array name="book_type">
 		<item>Texto</item>
-		<item>Áudio</item>
+		<item>脕udio</item>
 		<item>Image</item>
 		<item>File</item>
 	</string-array>
@@ -47,7 +47,7 @@
 	</string-array>
 
 	<string-array name="screen_time_out">
-		<item>Padrão</item>
+		<item>Padr茫o</item>
 		<item>1 min</item>
 		<item>5 min</item>
 		<item>10 min</item>
@@ -64,15 +64,15 @@
 	</string-array>
 
 	<string-array name="icon_names">
-		<item>íconePrincipal</item>
-		<item>ícone1</item>
-		<item>ícone2</item>
-		<item>ícone3</item>
-		<item>ícone4</item>
-		<item>ícone5</item>
-		<item>ícone6</item>
-        <item>ícone7</item>
-		<item>ícone8</item>
+		<item>铆conePrincipal</item>
+		<item>铆cone1</item>
+		<item>铆cone2</item>
+		<item>铆cone3</item>
+		<item>铆cone4</item>
+		<item>铆cone5</item>
+		<item>铆cone6</item>
+        <item>铆cone7</item>
+		<item>铆cone8</item>
 	</string-array>
 
 	<string-array name="chinese_mode">
@@ -82,7 +82,7 @@
 	</string-array>
 
 	<string-array name="system_typefaces">
-		<item>Fonte padrão</item>
+		<item>Fonte padr茫o</item>
 		<item>Fonte Serif</item>
 		<item>Fonte Monospaced</item>
 	</string-array>
@@ -90,15 +90,17 @@
 	<string-array name="read_tip">
 		<item>Em branco</item>
 		<item>Nome do livro</item>
-		<item>Título</item>
+		<item>T铆tulo</item>
 		<item>Tempo</item>
-		<item>Bateria</item>
+		<item>Somente 铆cone da bateria</item>
+		<item>Bateria interna</item>
 		<item>Bateria%</item>
-		<item>Páginas</item>
+		<item>P谩ginas</item>
 		<item>Progresso(%)</item>
 		<item>Progresso(xx/yyy)</item>
-		<item>Páginas e progresso</item>
-		<item>Tempo e Bateria</item>
+		<item>P谩ginas e progresso</item>
+		<item>Tempo e bateria interna</item>
+		<item>Tempo e somente 铆cone da bateria</item>
 		<item>Tempo e Bateria%</item>
 	</string-array>
 
@@ -110,9 +112,9 @@
 
 	<string-array name="language">
 		<item>Autom.</item>
-		<item>Chinês simplificado</item>
-		<item>Chinês tradicional</item>
-		<item>Inglês</item>
+		<item>Chin锚s simplificado</item>
+		<item>Chin锚s tradicional</item>
+		<item>Ingl锚s</item>
 	</string-array>
 
 	<string-array name="rule_type">
