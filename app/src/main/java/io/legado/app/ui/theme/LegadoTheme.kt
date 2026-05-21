@@ -34,7 +34,7 @@ fun LegadoTheme(
     val surface = lerp(background, if (isLight) Color.White else Color.Black, if (isLight) 0.04f else 0.10f)
     val surfaceVariant = lerp(background, onBackground, if (isLight) 0.05f else 0.14f)
     val outline = lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
-    val onSurfaceVariant = lerp(onBackground, if (isLight) Color.Black else Color.White, if (isLight) 0.2f else 0.2f)
+    val onSurfaceVariant = onBackgroundVariant
 
     val colorScheme = if (isLight) {
         lightColorScheme(
