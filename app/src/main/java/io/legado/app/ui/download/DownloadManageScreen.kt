@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,6 +34,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -65,17 +68,17 @@ fun DownloadManageScreen(
     viewModel: DownloadManageViewModel = viewModel(),
     onBackClick: () -> Unit
 ) {
-    val tasks by viewModel.tasks.collectAsState()
+    val allTasks by viewModel.tasks.collectAsState()
+    val filteredTasks by viewModel.filteredTasks.collectAsState()
+    val selectedTab by viewModel.selectedTab.collectAsState()
     val context = LocalContext.current
-    
-    val containerColor = pageCardContainerColor()
+
     val topBarColor = pageTopBarContainerColor()
-    
-    // 统计各状态任务数量
-    val activeCount = tasks.count { it.status == DownloadStatus.RUNNING || it.status == DownloadStatus.PENDING }
-    val completedCount = tasks.count { it.status == DownloadStatus.SUCCESSFUL }
-    val failedCount = tasks.count { it.status == DownloadStatus.FAILED }
-    
+
+    val activeCount = allTasks.count { it.status == DownloadStatus.RUNNING || it.status == DownloadStatus.PENDING }
+    val completedCount = allTasks.count { it.status == DownloadStatus.SUCCESSFUL }
+    val failedCount = allTasks.count { it.status == DownloadStatus.FAILED }
+
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -96,8 +99,7 @@ fun DownloadManageScreen(
                                 fontWeight = FontWeight.Medium
                             )
                         )
-                        // 显示任务统计信息
-                        if (tasks.isNotEmpty()) {
+                        if (allTasks.isNotEmpty()) {
                             Text(
                                 text = "下载中: $activeCount  已完成: $completedCount  失败: $failedCount",
                                 style = MaterialTheme.typography.bodySmall,
@@ -112,7 +114,6 @@ fun DownloadManageScreen(
                     }
                 },
                 actions = {
-                    // 清除已完成任务按钮
                     IconButton(onClick = { viewModel.clearCompletedTasks() }) {
                         Icon(Icons.Default.DeleteSweep, contentDescription = "清除已完成")
                     }
@@ -120,52 +121,80 @@ fun DownloadManageScreen(
             )
         }
     ) { paddingValues ->
-        if (tasks.isEmpty()) {
-            // 空状态提示
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
+        Column(modifier = Modifier.padding(paddingValues)) {
+            // TabRow
+            val tabs = DownloadTab.values()
+            TabRow(
+                selectedTabIndex = tabs.indexOf(selectedTab),
+                containerColor = topBarColor,
+                contentColor = MaterialTheme.colorScheme.onSecondary
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "暂无下载任务",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "在浏览器中下载的文件会显示在这里",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                tabs.forEach { tab ->
+                    val count = when (tab) {
+                        DownloadTab.ALL -> allTasks.size
+                        DownloadTab.DOWNLOADING -> activeCount
+                        DownloadTab.PAUSED -> allTasks.count { it.status == DownloadStatus.PAUSED }
+                        DownloadTab.COMPLETED -> completedCount
+                        DownloadTab.FAILED -> failedCount
+                    }
+                    Tab(
+                        selected = selectedTab == tab,
+                        onClick = { viewModel.selectTab(tab) },
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = tab.label, style = MaterialTheme.typography.bodySmall)
+                                if (count > 0) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Badge(containerColor = MaterialTheme.colorScheme.primary) {
+                                        Text(text = count.toString(), style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            }
+                        }
                     )
                 }
             }
-        } else {
-            // 任务列表
-            LazyColumn(
-                modifier = Modifier.padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(tasks, key = { it.id }) { task ->
-                    DownloadTaskCard(
-                        task = task,
-                        onCancelClick = { viewModel.cancelDownload(task.id) },
-                        onRetryClick = { viewModel.retryDownload(context, task.id) }
-                    )
+
+            // 任务列表或空状态
+            if (filteredTasks.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "暂无下载任务",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "在浏览器中下载的文件会显示在这里",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
                 }
-                
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredTasks, key = { it.id }) { task ->
+                        DownloadTaskCard(
+                            task = task,
+                            onCancelClick = { viewModel.cancelDownload(task.id) },
+                            onRetryClick = { viewModel.retryDownload(context, task.id) }
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
         }
@@ -298,22 +327,50 @@ fun DownloadTaskCard(
                 )
             }
             
-            // 下载中显示已下载/总大小
-            if (task.downloadedSize > 0 && task.totalSize > 0 && task.status == DownloadStatus.RUNNING) {
+            // 下载中显示速度 + 已下载/总大小
+            if (task.status == DownloadStatus.RUNNING && task.downloadedSize > 0 && task.totalSize > 0) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = ConvertUtils.formatFileSize(task.downloadedSize.toLong()),
+                        text = "${ConvertUtils.formatFileSize(task.downloadedSize.toLong())} / ${ConvertUtils.formatFileSize(task.totalSize.toLong())}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (task.speed > 0) {
+                        Text(
+                            text = "${formatSpeed(task.speed)}/s",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // 来源信息
+            if (task.sourceUrl.isNotEmpty() || task.downloadUrl.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                if (task.sourceUrl.isNotEmpty()) {
                     Text(
-                        text = ConvertUtils.formatFileSize(task.totalSize.toLong()),
+                        text = "来源: ${task.sourceUrl}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (task.downloadUrl.isNotEmpty()) {
+                    Text(
+                        text = "链接: ${task.downloadUrl}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
@@ -368,5 +425,16 @@ fun getStatusColor(status: DownloadStatus): Color {
         DownloadStatus.PAUSED -> MaterialTheme.colorScheme.onSurfaceVariant
         DownloadStatus.SUCCESSFUL -> Color(0xFF4CAF50)
         DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
+    }
+}
+
+/**
+ * 格式化下载速度
+ */
+private fun formatSpeed(bytesPerSec: Long): String {
+    return when {
+        bytesPerSec >= 1_048_576 -> String.format("%.1f MB", bytesPerSec / 1_048_576.0)
+        bytesPerSec >= 1024 -> String.format("%.1f KB", bytesPerSec / 1024.0)
+        else -> "$bytesPerSec B"
     }
 }
