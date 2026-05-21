@@ -45,6 +45,9 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import android.webkit.JavascriptInterface
 import android.webkit.URLUtil
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.text.InputType
 import io.legado.app.constant.AppLog
 import io.legado.app.help.webView.WebJsExtensions
 import io.legado.app.help.webView.WebJsExtensions.Companion.basicJs
@@ -235,6 +238,7 @@ class WebViewActivity : VMBaseActivity<ActivityWebViewBinding, WebViewModel>() {
                     }
                 }
             }
+            R.id.menu_query_content -> showQueryContentDialog()
         }
         return super.onCompatOptionsItemSelected(item)
     }
@@ -251,6 +255,98 @@ class WebViewActivity : VMBaseActivity<ActivityWebViewBinding, WebViewModel>() {
             supportActionBar?.hide()
         } else {
             supportActionBar?.show()
+        }
+    }
+
+    private fun showQueryContentDialog() {
+        val editText = EditText(this).apply {
+            hint = getString(R.string.query_hint)
+            inputType = InputType.TYPE_CLASS_TEXT
+            setTextAppearance(android.R.style.TextAppearance_Medium)
+        }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 16, 48, 0)
+            addView(editText, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.query_content)
+            .setView(container)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                val queryText = editText.text.toString().trim()
+                if (queryText.isNotEmpty()) {
+                    searchInPage(queryText)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun searchInPage(query: String) {
+        val escapedQuery = query
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("$", "\\$")
+        val jsCode = """
+            (function() {
+                var count = 0;
+                var searchText = '$escapedQuery';
+                
+                // 移除之前的高亮
+                var prevHighlight = document.querySelectorAll('.legado-search-highlight');
+                prevHighlight.forEach(function(el) {
+                    el.outerHTML = el.innerHTML;
+                });
+                
+                if (window.find && window.getSelection) {
+                    // 使用浏览器原生搜索
+                    window.find(searchText, false, false, true, false, true, false);
+                    count = 1;
+                } else {
+                    // 手动高亮搜索
+                    var regex = new RegExp(searchText.replace(/[.*+?^${'$'}{}()|[\\]\\\\]/g, '\\\\$&'), 'gi');
+                    function highlight(node) {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            var text = node.textContent;
+                            if (regex.test(text)) {
+                                var span = document.createElement('span');
+                                span.className = 'legado-search-highlight';
+                                span.style.backgroundColor = '#ffff00';
+                                span.style.color = '#000';
+                                span.innerHTML = text.replace(regex, '<mark style="background-color: #ffff00; color: #000;">$&</mark>');
+                                node.parentNode.replaceChild(span, node);
+                                count++;
+                            }
+                            regex.lastIndex = 0;
+                        } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName !== 'SCRIPT' && node.nodeName !== 'STYLE') {
+                            var children = Array.from(node.childNodes);
+                            children.forEach(highlight);
+                        }
+                    }
+                    highlight(document.body);
+                }
+                
+                // 返回匹配数量
+                if (count === 0) {
+                    // 重新计数
+                    var marks = document.querySelectorAll('mark');
+                    count = marks.length;
+                }
+                return count;
+            })()
+        """.trimIndent()
+        currentWebView.evaluateJavascript(jsCode) { result ->
+            val matchCount = result.toIntOrNull() ?: 0
+            if (matchCount > 0) {
+                toastOnUi(getString(R.string.query_result, matchCount))
+            } else {
+                toastOnUi(R.string.query_no_result)
+            }
         }
     }
 

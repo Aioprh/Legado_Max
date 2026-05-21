@@ -1,6 +1,7 @@
 package io.legado.app.ui.rss.read
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -10,12 +11,15 @@ import android.net.Uri
 import android.net.http.SslError
 import android.os.Bundle
 import android.os.SystemClock
+import android.text.InputType
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.widget.EditText
+import android.widget.LinearLayout
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.webkit.SslErrorHandler
@@ -151,6 +155,94 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
             binding.progressBar.setDurProgress(30)
         }
     }
+
+    private fun showQueryContentDialog() {
+        val editText = EditText(this).apply {
+            hint = getString(R.string.query_hint)
+            inputType = InputType.TYPE_CLASS_TEXT
+            setTextAppearance(android.R.style.TextAppearance_Medium)
+        }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 16, 48, 0)
+            addView(editText, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.query_content)
+            .setView(container)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                val queryText = editText.text.toString().trim()
+                if (queryText.isNotEmpty()) {
+                    searchInPage(queryText)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun searchInPage(query: String) {
+        val escapedQuery = query
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("$", "\\$")
+        val jsCode = """
+            (function() {
+                var count = 0;
+                var searchText = '$escapedQuery';
+                
+                var prevHighlight = document.querySelectorAll('.legado-search-highlight');
+                prevHighlight.forEach(function(el) {
+                    el.outerHTML = el.innerHTML;
+                });
+                
+                if (window.find && window.getSelection) {
+                    window.find(searchText, false, false, true, false, true, false);
+                    count = 1;
+                } else {
+                    var regex = new RegExp(searchText.replace(/[.*+?^${'$'}{}()|[\\]\\\\]/g, '\\\\$&'), 'gi');
+                    function highlight(node) {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            var text = node.textContent;
+                            if (regex.test(text)) {
+                                var span = document.createElement('span');
+                                span.className = 'legado-search-highlight';
+                                span.style.backgroundColor = '#ffff00';
+                                span.style.color = '#000';
+                                span.innerHTML = text.replace(regex, '<mark style="background-color: #ffff00; color: #000;">$&</mark>');
+                                node.parentNode.replaceChild(span, node);
+                                count++;
+                            }
+                            regex.lastIndex = 0;
+                        } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName !== 'SCRIPT' && node.nodeName !== 'STYLE') {
+                            var children = Array.from(node.childNodes);
+                            children.forEach(highlight);
+                        }
+                    }
+                    highlight(document.body);
+                }
+                
+                if (count === 0) {
+                    var marks = document.querySelectorAll('mark');
+                    count = marks.length;
+                }
+                return count;
+            })()
+        """.trimIndent()
+        currentWebView.evaluateJavascript(jsCode) { result ->
+            val matchCount = result.toIntOrNull() ?: 0
+            if (matchCount > 0) {
+                toastOnUi(getString(R.string.query_result, matchCount))
+            } else {
+                toastOnUi(R.string.query_no_result)
+            }
+        }
+    }
+
     private val editSourceResult = registerForActivityResult(
         StartActivityContract(RssSourceEditActivity::class.java)
     ) {
@@ -267,6 +359,8 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_rss_refresh -> refresh()
+
+            R.id.menu_rss_search -> showQueryContentDialog()
 
             R.id.menu_rss_star -> {
                 viewModel.addFavorite()
