@@ -50,5 +50,10 @@ data class RssExecutionRecord(
     val detail: String? = null,
     val error: String? = null,
     val duration: Long? = null,
-    val time: Long = System.currentTimeMillis()
+    val time: Long = System.currentTimeMillis(),
+    val sourceUrl: String = "",
+    val sourceName: String = "",
+    val executionId: String = "",
+    val isSessionStart: Boolean = false,
+    val isSessionEnd: Boolean = false
 )
