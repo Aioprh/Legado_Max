@@ -58,6 +58,7 @@ import io.legado.app.ui.debuglog.components.DebugCategoryTabs
 import io.legado.app.ui.debuglog.components.DebugLogItem
 import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
 import io.legado.app.ui.debuglog.components.FlowLogDetailDialog
+import io.legado.app.ui.debuglog.components.EntityDisplay
 import io.legado.app.ui.debuglog.components.FlowLogList
 import io.legado.app.ui.debuglog.components.FlowStageFilter
 import io.legado.app.ui.theme.pageCardElevatedContainerColor
@@ -106,6 +107,9 @@ fun DebugLogScreen(
     val filteredFlowLogs by viewModel.filteredFlowLogs.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val categoryCounts by viewModel.categoryCounts.collectAsState()
+    val bookSources by viewModel.bookSources.collectAsState()
+    val selectedBookSource by viewModel.selectedBookSource.collectAsState()
+    val selectedBookSourceUrl by viewModel.selectedBookSourceUrl.collectAsState()
     val topBarColor = pageTopBarContainerColor()
     val cardColor = pageCardElevatedContainerColor()
     val secondaryTextColor = pageSecondaryTextColor()
@@ -316,6 +320,15 @@ fun DebugLogScreen(
                     // 加载中状态
                     uiState.isLoading -> {
                         LoadingIndicator()
+                    }
+                    // 书源实体显示视图
+                    selectedCategory == DebugCategory.SOURCE && selectedSubCategory == SourceSubCategory.ENTITY -> {
+                        EntityDisplay(
+                            bookSources = bookSources,
+                            selectedBookSource = selectedBookSource,
+                            selectedBookSourceUrl = selectedBookSourceUrl,
+                            onBookSourceSelected = viewModel::selectBookSource
+                        )
                     }
                     // 书源流程日志视图
                     selectedCategory == DebugCategory.SOURCE && selectedSubCategory == SourceSubCategory.FLOW -> {
