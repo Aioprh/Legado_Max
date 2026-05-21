@@ -14,12 +14,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -37,14 +44,15 @@ import io.legado.app.model.debug.RssExecutionRecord
 import io.legado.app.model.debug.RssExecutionStatus
 import io.legado.app.model.debug.RssExecutionStep
 import io.legado.app.ui.widget.components.VerticalScrollbar
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * 订阅源执行情况组件
  *
- * 按顺序展示订阅源每个配置字段和执行步骤的状态，
- * 格式如：✔ 源名称执行正确（legado源）
- *        ⊘ 源分组为空跳过执行
- *        ✘ 网络请求执行失败（连接超时）
+ * 按源分组展示每个执行会话的步骤状态，
+ * 每个源可展开/收缩查看详细步骤。
  */
 @Composable
 fun RssExecutionStatus(
@@ -65,23 +73,14 @@ fun RssExecutionStatus(
         return
     }
 
-    // 按步骤定义的顺序重新排列（最新的执行记录在前，但显示时按步骤顺序）
-    val orderedRecords = remember(records) {
-        // 取每个步骤最新的一条记录，按步骤定义顺序排列
-        val latestByStep = mutableMapOf<RssExecutionStep, RssExecutionRecord>()
-        for (record in records) {
-            if (!latestByStep.containsKey(record.step)) {
-                latestByStep[record.step] = record
-            }
-        }
-        RssExecutionStep.entries.mapNotNull { latestByStep[it] }
-    }
-
-    // 统计
-    val successCount = orderedRecords.count { it.status == RssExecutionStatus.SUCCESS }
-    val failedCount = orderedRecords.count { it.status == RssExecutionStatus.FAILED }
-    val skippedCount = orderedRecords.count {
-        it.status == RssExecutionStatus.SKIPPED || it.status == RssExecutionStatus.EMPTY_SKIP
+    // 按 executionId 分组，每个 executionId 代表一次源执行
+    val groupedSessions = remember(records) {
+        records
+            .filter { !it.isSessionEnd }
+            .groupBy { it.executionId }
+            .entries
+            .sortedByDescending { (_, items) -> items.maxOfOrNull { it.time } ?: 0L }
+            .map { it.key to it.value }
     }
 
     val listState = rememberLazyListState()
@@ -90,41 +89,24 @@ fun RssExecutionStatus(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            // 汇总卡片
-            item {
-                ExecutionSummaryCard(
-                    totalCount = orderedRecords.size,
-                    successCount = successCount,
-                    failedCount = failedCount,
-                    skippedCount = skippedCount
+            items(
+                count = groupedSessions.size,
+                key = { index -> groupedSessions[index].first }
+            ) { index ->
+                val (executionId, sessionRecords) = groupedSessions[index]
+                // 找到对应的 isSessionEnd 记录来获取总耗时
+                val sessionEndRecord = records.find {
+                    it.executionId == executionId && it.isSessionEnd
+                }
+                ExecutionSessionCard(
+                    records = sessionRecords,
+                    totalDuration = sessionEndRecord?.duration,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // 配置检查分组
-            val configRecords = orderedRecords.filter { it.step.isConfigCheck }
-            if (configRecords.isNotEmpty()) {
-                item {
-                    SectionHeader("配置检查")
-                }
-                items(configRecords.size) { index ->
-                    ExecutionStepRow(record = configRecords[index])
-                }
-            }
-
-            // 执行步骤分组
-            val executionRecords = orderedRecords.filter { !it.step.isConfigCheck }
-            if (executionRecords.isNotEmpty()) {
-                item {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    SectionHeader("执行步骤")
-                }
-                items(executionRecords.size) { index ->
-                    ExecutionStepRow(record = executionRecords[index])
-                }
             }
         }
         VerticalScrollbar(
@@ -134,66 +116,150 @@ fun RssExecutionStatus(
     }
 }
 
+/**
+ * 单次执行会话卡片
+ */
 @Composable
-private fun ExecutionSummaryCard(
-    totalCount: Int,
-    successCount: Int,
-    failedCount: Int,
-    skippedCount: Int
+private fun ExecutionSessionCard(
+    records: List<RssExecutionRecord>,
+    totalDuration: Long?,
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(true) }
 
+    val firstRecord = records.firstOrNull() ?: return
+    val sourceName = firstRecord.sourceName.ifBlank { "未知源" }
+    val startTime = records.minOfOrNull { it.time } ?: 0L
+
+    // 取每个步骤最新的一条记录
+    val stepRecords = remember(records) {
+        val latestByStep = mutableMapOf<RssExecutionStep, RssExecutionRecord>()
+        for (record in records) {
+            if (!latestByStep.containsKey(record.step)) {
+                latestByStep[record.step] = record
+            }
+        }
+        RssExecutionStep.entries.mapNotNull { latestByStep[it] }
+    }
+
+    val successCount = stepRecords.count { it.status == RssExecutionStatus.SUCCESS }
+    val failedCount = stepRecords.count { it.status == RssExecutionStatus.FAILED }
+    val skippedCount = stepRecords.count {
+        it.status == RssExecutionStatus.SKIPPED || it.status == RssExecutionStatus.EMPTY_SKIP
+    }
+
+    val timeFormatter = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (failedCount > 0)
-                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
+            else MaterialTheme.colorScheme.surface
         )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .padding(12.dp)
+                .padding(16.dp)
         ) {
+            // 卡片头部
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (failedCount > 0) "执行存在异常" else "执行正常",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (failedCount > 0)
-                        MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "$totalCount 步骤",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = sourceName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (failedCount > 0) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (expanded) "收缩" else "展开",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    if (firstRecord.sourceUrl.isNotBlank()) {
+                        Text(
+                            text = firstRecord.sourceUrl,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    if (startTime > 0) {
+                        Text(
+                            text = timeFormatter.format(Date(startTime)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${stepRecords.size}步骤",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        totalDuration?.let {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = formatTotalDuration(it),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = if (failedCount > 0) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
             }
 
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically(),
-                exit = shrinkVertically()
-            ) {
+            // 展开内容
+            if (expanded) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    SummaryChip("✔ $successCount 成功", MaterialTheme.colorScheme.primary)
+                    StatChip("✔ $successCount 成功", MaterialTheme.colorScheme.primary)
                     if (failedCount > 0) {
-                        SummaryChip("✘ $failedCount 失败", MaterialTheme.colorScheme.error)
+                        StatChip("✘ $failedCount 失败", MaterialTheme.colorScheme.error)
                     }
                     if (skippedCount > 0) {
-                        SummaryChip("⊘ $skippedCount 跳过", MaterialTheme.colorScheme.onSurfaceVariant)
+                        StatChip("⊘ $skippedCount 跳过", MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val configRecords = stepRecords.filter { it.step.isConfigCheck }
+                if (configRecords.isNotEmpty()) {
+                    SectionHeader("配置检查")
+                    configRecords.forEach { record ->
+                        ExecutionStepRow(record = record)
+                    }
+                }
+
+                val executionRecords = stepRecords.filter { !it.step.isConfigCheck }
+                if (executionRecords.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    SectionHeader("执行步骤")
+                    executionRecords.forEach { record ->
+                        ExecutionStepRow(record = record)
                     }
                 }
             }
@@ -202,7 +268,7 @@ private fun ExecutionSummaryCard(
 }
 
 @Composable
-private fun SummaryChip(text: String, color: androidx.compose.ui.graphics.Color) {
+private fun StatChip(text: String, color: androidx.compose.ui.graphics.Color) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodySmall,
@@ -310,4 +376,10 @@ private fun ExecutionStepRow(record: RssExecutionRecord) {
         modifier = Modifier.padding(horizontal = 12.dp),
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
     )
+}
+
+private fun formatTotalDuration(ms: Long): String = when {
+    ms < 1000 -> "${ms}ms"
+    ms < 60_000 -> String.format("%.1fs", ms / 1000.0)
+    else -> "${ms / 60_000}m${(ms % 60_000) / 1000}s"
 }
