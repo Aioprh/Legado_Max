@@ -198,7 +198,8 @@ object BookContent {
             message = "开始提取正文内容",
             rule = contentRule.content,
             book = book,
-            bookChapter = bookChapter
+            bookChapter = bookChapter,
+            bookSource = bookSource
         )
         
         currentCoroutineContext().ensureActive()
@@ -213,7 +214,8 @@ object BookContent {
             result = contentData.first.take(100),
             originalValue = body?.take(100),
             book = book,
-            bookChapter = bookChapter
+            bookChapter = bookChapter,
+            bookSource = bookSource
         )
         
         contentList.add(contentData.first)
@@ -320,7 +322,8 @@ object BookContent {
                 message = "开始正文全文替换",
                 rule = replaceRegex,
                 book = book,
-                bookChapter = bookChapter
+                bookChapter = bookChapter,
+                bookSource = bookSource
             )
             contentStr = contentStr.split(AppPattern.LFRegex).joinToString("\n") { it.trim() }
             contentStr = analyzeRule.getString(replaceRegex, contentStr)
@@ -334,7 +337,8 @@ object BookContent {
                 result = contentStr.take(100),
                 originalValue = originalContent,
                 book = book,
-                bookChapter = bookChapter
+                bookChapter = bookChapter,
+                bookSource = bookSource
             )
         }
         val titleRule = contentRule.title //先正文再章节名称
@@ -383,7 +387,8 @@ object BookContent {
             bookName = book.name,
             author = book.author,
             book = book,
-            bookChapter = bookChapter
+            bookChapter = bookChapter,
+            bookSource = bookSource
         )
         
         if (needSave) {

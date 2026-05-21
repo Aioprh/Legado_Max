@@ -399,7 +399,8 @@ class AnalyzeRule(
                     message = "规则解析失败: ${e.localizedMessage}",
                     error = e,
                     book = book as? Book,
-                    bookChapter = chapter
+                    bookChapter = chapter,
+                    bookSource = source as? BookSource
                 )
             }
             throw e
@@ -413,7 +414,8 @@ class AnalyzeRule(
                 executionTree = tree,
                 message = "规则解析成功",
                 book = book as? Book,
-                bookChapter = chapter
+                bookChapter = chapter,
+                bookSource = source as? BookSource
             )
         }
         
@@ -490,7 +492,8 @@ class AnalyzeRule(
                 executionTree = tree,
                 message = "获取Element完成",
                 book = book as? Book,
-                bookChapter = chapter
+                bookChapter = chapter,
+                bookSource = source as? BookSource
             )
         }
         
@@ -555,7 +558,8 @@ class AnalyzeRule(
                 executionTree = tree,
                 message = "获取列表完成，共${resultList.size}个元素",
                 book = book as? Book,
-                bookChapter = chapter
+                bookChapter = chapter,
+                bookSource = source as? BookSource
             )
         }
         
@@ -614,7 +618,8 @@ class AnalyzeRule(
             message = "开始数据替换",
             rule = "$replaceRegex -> $replacement",
             book = book as? Book,
-            bookChapter = chapter
+            bookChapter = chapter,
+            bookSource = source as? BookSource
         )
         
         val regex = compileRegexCache(replaceRegex)
@@ -645,7 +650,8 @@ class AnalyzeRule(
             originalValue = result.take(100),  // 只记录前100个字符
             duration = duration,
             book = book as? Book,
-            bookChapter = chapter
+            bookChapter = chapter,
+            bookSource = source as? BookSource
         )
         
         return replacedResult
@@ -1032,7 +1038,8 @@ class AnalyzeRule(
                 message = "执行JS替换",
                 rule = jsStr.take(200),
                 book = book as? Book,
-                bookChapter = chapter
+                bookChapter = chapter,
+                bookSource = source as? BookSource
             )
         }
         
@@ -1090,7 +1097,8 @@ class AnalyzeRule(
                 duration = duration,
                 error = e,
                 book = book as? Book,
-                bookChapter = chapter
+                bookChapter = chapter,
+                bookSource = source as? BookSource
             )
             throw e
         }
@@ -1103,7 +1111,8 @@ class AnalyzeRule(
             result = jsResult?.toString()?.take(200),
             duration = duration,
             book = book as? Book,
-            bookChapter = chapter
+            bookChapter = chapter,
+            bookSource = source as? BookSource
         )
         
         if (containsReplace) {
@@ -1115,7 +1124,8 @@ class AnalyzeRule(
                 originalValue = result?.toString()?.take(100),
                 duration = duration,
                 book = book as? Book,
-                bookChapter = chapter
+                bookChapter = chapter,
+                bookSource = source as? BookSource
             )
         }
         

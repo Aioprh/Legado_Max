@@ -68,6 +68,7 @@ import io.legado.app.model.debug.DataFlowStage
 import io.legado.app.model.debug.FieldFillRecord
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookSource
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -281,9 +282,22 @@ fun FlowLogDetailDialog(
                         }
                     }
 
-                    if (log.book != null || log.bookChapter != null) {
+                    if (log.book != null || log.bookChapter != null || log.bookSource != null) {
                         Spacer(Modifier.height(12.dp))
                         DetailSection(title = "实体显示", searchQuery = searchQuery) {
+                            log.bookSource?.let { source ->
+                                Text(
+                                    text = "BookSource（书源）",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                BookSourceEntityView(source, searchQuery)
+                                if (log.book != null || log.bookChapter != null) {
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                            }
                             log.book?.let { book ->
                                 Text(
                                     text = "Book（书籍）",
@@ -1140,12 +1154,17 @@ private fun BookEntityView(book: Book, searchQuery: String) {
     DetailRow("书名", book.name, searchQuery)
     DetailRow("作者", book.author, searchQuery)
     DetailRow("bookUrl", book.bookUrl, searchQuery)
+    DetailRow("tocUrl", book.tocUrl, searchQuery)
     DetailRow("origin", book.origin, searchQuery)
-    book.originName.takeIf { it.isNotBlank() }?.let {
-        DetailRow("originName", it, searchQuery)
-    }
+    DetailRow("originName", book.originName, searchQuery)
     book.coverUrl.takeIf { !it.isNullOrBlank() }?.let {
         DetailRow("coverUrl", it, searchQuery)
+    }
+    book.customCoverUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("customCoverUrl", it, searchQuery)
+    }
+    book.customTag.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("customTag", it, searchQuery)
     }
     book.kind.takeIf { !it.isNullOrBlank() }?.let {
         DetailRow("kind", it, searchQuery)
@@ -1153,25 +1172,51 @@ private fun BookEntityView(book: Book, searchQuery: String) {
     book.intro.takeIf { !it.isNullOrBlank() }?.let {
         DetailRow("intro", it, searchQuery)
     }
+    book.customIntro.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("customIntro", it, searchQuery)
+    }
+    book.charset.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("charset", it, searchQuery)
+    }
     DetailRow("type", book.type.toString(), searchQuery)
     DetailRow("group", book.group.toString(), searchQuery)
     book.durChapterTitle.takeIf { !it.isNullOrBlank() }?.let {
         DetailRow("durChapterTitle", it, searchQuery)
     }
     DetailRow("durChapterIndex", book.durChapterIndex.toString(), searchQuery)
+    DetailRow("durChapterPos", book.durChapterPos.toString(), searchQuery)
+    DetailRow("durChapterTime", book.durChapterTime.toString(), searchQuery)
+    DetailRow("durVolumeIndex", book.durVolumeIndex.toString(), searchQuery)
+    DetailRow("chapterInVolumeIndex", book.chapterInVolumeIndex.toString(), searchQuery)
     DetailRow("totalChapterNum", book.totalChapterNum.toString(), searchQuery)
     book.latestChapterTitle.takeIf { !it.isNullOrBlank() }?.let {
         DetailRow("latestChapterTitle", it, searchQuery)
     }
+    DetailRow("latestChapterTime", book.latestChapterTime.toString(), searchQuery)
+    DetailRow("lastCheckTime", book.lastCheckTime.toString(), searchQuery)
+    DetailRow("lastCheckCount", book.lastCheckCount.toString(), searchQuery)
     book.wordCount.takeIf { !it.isNullOrBlank() }?.let {
         DetailRow("wordCount", it, searchQuery)
     }
+    DetailRow("canUpdate", book.canUpdate.toString(), searchQuery)
+    DetailRow("order", book.order.toString(), searchQuery)
+    DetailRow("originOrder", book.originOrder.toString(), searchQuery)
+    book.variable.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("variable", it, searchQuery)
+    }
+    book.readConfig?.let { rc ->
+        DetailRow("readConfig.reverseToc", rc.reverseToc.toString(), searchQuery)
+        DetailRow("readConfig.reSegment", rc.reSegment.toString(), searchQuery)
+        DetailRow("readConfig.useReplaceRule", rc.useReplaceRule.toString(), searchQuery)
+    }
+    DetailRow("syncTime", book.syncTime.toString(), searchQuery)
 }
 
 @Composable
 private fun BookChapterEntityView(chapter: BookChapter, searchQuery: String) {
     DetailRow("title", chapter.title, searchQuery)
     DetailRow("url", chapter.url, searchQuery)
+    DetailRow("baseUrl", chapter.baseUrl, searchQuery)
     DetailRow("index", chapter.index.toString(), searchQuery)
     DetailRow("bookUrl", chapter.bookUrl, searchQuery)
     DetailRow("isVolume", chapter.isVolume.toString(), searchQuery)
@@ -1188,5 +1233,46 @@ private fun BookChapterEntityView(chapter: BookChapter, searchQuery: String) {
     }
     chapter.imgUrl.takeIf { !it.isNullOrBlank() }?.let {
         DetailRow("imgUrl", it, searchQuery)
+    }
+    chapter.start?.let {
+        DetailRow("start", it.toString(), searchQuery)
+    }
+    chapter.end?.let {
+        DetailRow("end", it.toString(), searchQuery)
+    }
+    chapter.startFragmentId.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("startFragmentId", it, searchQuery)
+    }
+    chapter.endFragmentId.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("endFragmentId", it, searchQuery)
+    }
+    chapter.variable.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("variable", it, searchQuery)
+    }
+}
+
+@Composable
+private fun BookSourceEntityView(source: BookSource, searchQuery: String) {
+    DetailRow("bookSourceName", source.bookSourceName, searchQuery)
+    DetailRow("bookSourceUrl", source.bookSourceUrl, searchQuery)
+    source.bookSourceGroup.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("bookSourceGroup", it, searchQuery)
+    }
+    DetailRow("bookSourceType", source.bookSourceType.toString(), searchQuery)
+    DetailRow("enabled", source.enabled.toString(), searchQuery)
+    DetailRow("enabledExplore", source.enabledExplore.toString(), searchQuery)
+    DetailRow("customOrder", source.customOrder.toString(), searchQuery)
+    DetailRow("weight", source.weight.toString(), searchQuery)
+    source.searchUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("searchUrl", it, searchQuery)
+    }
+    source.exploreUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("exploreUrl", it, searchQuery)
+    }
+    source.header.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("header", it, searchQuery)
+    }
+    source.loginUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("loginUrl", it, searchQuery)
     }
 }

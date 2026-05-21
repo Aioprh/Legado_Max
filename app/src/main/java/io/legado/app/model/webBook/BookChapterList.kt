@@ -235,7 +235,8 @@ object BookChapterList {
             bookUrl = book.bookUrl,
             bookName = book.name,
             author = book.author,
-            book = book
+            book = book,
+            bookSource = bookSource
         )
 
         return list
@@ -479,7 +480,8 @@ object BookChapterList {
             bookUrl = book.bookUrl,
             bookName = book.name,
             author = book.author,
-            book = book
+            book = book,
+            bookSource = bookSource
         )
 
         return list
@@ -547,7 +549,8 @@ object BookChapterList {
             FlowLogRecorder.logExtract(
                 source = bookSource,
                 message = "开始提取章节列表字段",
-                book = book
+                book = book,
+                bookSource = bookSource
             )
             
             val nameRule = analyzeRule.splitSourceRule(tocRule.chapterName)
@@ -571,7 +574,8 @@ object BookChapterList {
                         message = "提取章节标题",
                         rule = tocRule.chapterName,
                         result = bookChapter.title,
-                        book = book
+                        book = book,
+                        bookSource = bookSource
                     )
 
                     FlowLogRecorder.logExtract(
@@ -579,7 +583,8 @@ object BookChapterList {
                         message = "提取章节URL",
                         rule = tocRule.chapterUrl,
                         result = bookChapter.url,
-                        book = book
+                        book = book,
+                        bookSource = bookSource
                     )
                 }
                 
