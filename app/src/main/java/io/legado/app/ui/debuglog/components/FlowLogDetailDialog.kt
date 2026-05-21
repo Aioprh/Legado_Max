@@ -66,6 +66,8 @@ import io.legado.app.model.debug.VariableOperationType
 import io.legado.app.model.debug.BookDataFlow
 import io.legado.app.model.debug.DataFlowStage
 import io.legado.app.model.debug.FieldFillRecord
+import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookChapter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -276,6 +278,35 @@ fun FlowLogDetailDialog(
                         Spacer(Modifier.height(12.dp))
                         DetailSection(title = "数据流转", searchQuery = searchQuery) {
                             DataFlowView(dataFlow, searchQuery)
+                        }
+                    }
+
+                    if (log.book != null || log.bookChapter != null) {
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "实体显示", searchQuery = searchQuery) {
+                            log.book?.let { book ->
+                                Text(
+                                    text = "Book（书籍）",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                BookEntityView(book, searchQuery)
+                                if (log.bookChapter != null) {
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                            }
+                            log.bookChapter?.let { chapter ->
+                                Text(
+                                    text = "BookChapter（章节）",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                BookChapterEntityView(chapter, searchQuery)
+                            }
                         }
                     }
 
@@ -1101,5 +1132,61 @@ private fun FieldFillRecordView(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun BookEntityView(book: Book, searchQuery: String) {
+    DetailRow("书名", book.name, searchQuery)
+    DetailRow("作者", book.author, searchQuery)
+    DetailRow("bookUrl", book.bookUrl, searchQuery)
+    DetailRow("origin", book.origin, searchQuery)
+    book.originName.takeIf { it.isNotBlank() }?.let {
+        DetailRow("originName", it, searchQuery)
+    }
+    book.coverUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("coverUrl", it, searchQuery)
+    }
+    book.kind.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("kind", it, searchQuery)
+    }
+    book.intro.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("intro", it, searchQuery)
+    }
+    DetailRow("type", book.type.toString(), searchQuery)
+    DetailRow("group", book.group.toString(), searchQuery)
+    book.durChapterTitle.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("durChapterTitle", it, searchQuery)
+    }
+    DetailRow("durChapterIndex", book.durChapterIndex.toString(), searchQuery)
+    DetailRow("totalChapterNum", book.totalChapterNum.toString(), searchQuery)
+    book.latestChapterTitle.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("latestChapterTitle", it, searchQuery)
+    }
+    book.wordCount.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("wordCount", it, searchQuery)
+    }
+}
+
+@Composable
+private fun BookChapterEntityView(chapter: BookChapter, searchQuery: String) {
+    DetailRow("title", chapter.title, searchQuery)
+    DetailRow("url", chapter.url, searchQuery)
+    DetailRow("index", chapter.index.toString(), searchQuery)
+    DetailRow("bookUrl", chapter.bookUrl, searchQuery)
+    DetailRow("isVolume", chapter.isVolume.toString(), searchQuery)
+    DetailRow("isVip", chapter.isVip.toString(), searchQuery)
+    DetailRow("isPay", chapter.isPay.toString(), searchQuery)
+    chapter.tag.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("tag", it, searchQuery)
+    }
+    chapter.wordCount.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("wordCount", it, searchQuery)
+    }
+    chapter.resourceUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("resourceUrl", it, searchQuery)
+    }
+    chapter.imgUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("imgUrl", it, searchQuery)
     }
 }
