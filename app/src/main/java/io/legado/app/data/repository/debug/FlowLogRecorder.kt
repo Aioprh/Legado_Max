@@ -1,6 +1,8 @@
 package io.legado.app.data.repository.debug
 
 import io.legado.app.data.entities.BaseSource
+import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
@@ -194,7 +196,9 @@ object FlowLogRecorder {
         source: BaseSource?,
         executionTree: RuleExecutionTree,
         message: String = "规则执行完成",
-        error: Throwable? = null
+        error: Throwable? = null,
+        book: Book? = null,
+        bookChapter: BookChapter? = null
     ) {
         if (!isEnabled) return
         
@@ -221,7 +225,9 @@ object FlowLogRecorder {
                 matchCount = executionTree.root.matchCount,
                 inputPreview = executionTree.root.input?.take(100),
                 outputPreview = executionTree.root.output?.take(100),
-                error = error
+                error = error,
+                book = book,
+                bookChapter = bookChapter
             )
 
             addLog(item)
@@ -240,7 +246,9 @@ object FlowLogRecorder {
         source: BaseSource?,
         jsExecution: JsExecutionRecord,
         message: String = "JS执行完成",
-        error: Throwable? = null
+        error: Throwable? = null,
+        book: Book? = null,
+        bookChapter: BookChapter? = null
     ) {
         if (!isEnabled) return
         
@@ -264,7 +272,9 @@ object FlowLogRecorder {
                 duration = jsExecution.duration,
                 jsExecution = jsExecution,
                 ruleType = RuleType.JS,
-                error = error ?: jsExecution.error
+                error = error ?: jsExecution.error,
+                book = book,
+                bookChapter = bookChapter
             )
 
             addLog(item)
@@ -287,7 +297,9 @@ object FlowLogRecorder {
         context: JsExecutionContext,
         result: String? = null,
         duration: Long? = null,
-        error: Throwable? = null
+        error: Throwable? = null,
+        book: Book? = null,
+        bookChapter: BookChapter? = null
     ) {
         val jsExecution = JsExecutionRecord(
             jsCode = jsCode,
@@ -300,7 +312,9 @@ object FlowLogRecorder {
             source = source,
             jsExecution = jsExecution,
             message = if (error != null) "JS执行失败" else "JS执行完成",
-            error = error
+            error = error,
+            book = book,
+            bookChapter = bookChapter
         )
     }
 
@@ -312,7 +326,9 @@ object FlowLogRecorder {
         originalValue: String? = null,
         duration: Long? = null,
         detail: String? = null,
-        error: Throwable? = null
+        error: Throwable? = null,
+        book: Book? = null,
+        bookChapter: BookChapter? = null
     ) {
         val sourceUrl = source?.getKey()
         log(
@@ -326,7 +342,9 @@ object FlowLogRecorder {
             result = result,
             originalValue = originalValue,
             duration = duration,
-            error = error
+            error = error,
+            book = book,
+            bookChapter = bookChapter
         )
     }
 
@@ -350,7 +368,9 @@ object FlowLogRecorder {
         originalValue: String? = null,
         duration: Long? = null,
         detail: String? = null,
-        error: Throwable? = null
+        error: Throwable? = null,
+        book: Book? = null,
+        bookChapter: BookChapter? = null
     ) {
         val sourceUrl = source?.getKey()
         log(
@@ -364,7 +384,9 @@ object FlowLogRecorder {
             result = result,
             originalValue = originalValue,
             duration = duration,
-            error = error
+            error = error,
+            book = book,
+            bookChapter = bookChapter
         )
     }
 
@@ -480,7 +502,9 @@ object FlowLogRecorder {
         message: String = "${stage.displayName}数据流转",
         bookUrl: String? = null,
         bookName: String? = null,
-        author: String? = null
+        author: String? = null,
+        book: Book? = null,
+        bookChapter: BookChapter? = null
     ) {
         if (!isEnabled || fields.isEmpty()) return
 
@@ -524,7 +548,9 @@ object FlowLogRecorder {
                 message = message,
                 detail = summary,
                 duration = stageDataFlow.duration,
-                dataFlow = bookDataFlow
+                dataFlow = bookDataFlow,
+                book = book,
+                bookChapter = bookChapter
             )
 
             addLog(item)
@@ -573,7 +599,11 @@ object FlowLogRecorder {
         /** 网络请求头 */
         requestHeaders: Map<String, String>? = null,
         /** Cookie 值 */
-        cookies: String? = null
+        cookies: String? = null,
+        /** 当前处理的书籍 */
+        book: Book? = null,
+        /** 当前处理的章节 */
+        bookChapter: BookChapter? = null
     ) {
         if (!isEnabled) return
         
@@ -606,7 +636,9 @@ object FlowLogRecorder {
                 inputPreview = inputPreview,
                 outputPreview = outputPreview,
                 requestHeaders = requestHeaders,
-                cookies = cookies
+                cookies = cookies,
+                book = book,
+                bookChapter = bookChapter
             )
 
             addLog(item)
