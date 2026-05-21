@@ -112,6 +112,10 @@ object RssExecutionRecorder {
             duration = totalDuration,
             isSessionEnd = true
         ))
+        currentSourceUrl = ""
+        currentSourceName = ""
+        currentExecutionId = ""
+        currentStartTime = 0L
     }
 
     /**
