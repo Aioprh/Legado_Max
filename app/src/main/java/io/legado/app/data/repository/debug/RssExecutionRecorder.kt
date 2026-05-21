@@ -9,6 +9,14 @@ import kotlinx.coroutines.flow.asSharedFlow
 import java.util.ArrayDeque
 import java.util.UUID
 
+/**
+ * 订阅源执行记录器
+ *
+ * 记录订阅源执行过程中每一步的状态（成功/失败/跳过），
+ * 用于在调试日志面板的"执行情况"区域展示。
+ *
+ * 按 sourceUrl 分组存储，支持同时调试多个订阅源。
+ */
 object RssExecutionRecorder {
 
     private const val MAX_RECORDS = 500
