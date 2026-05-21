@@ -59,9 +59,6 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
         _selectedTab.value = tab
     }
 
-    // 各状态计数
-    fun getPausedCount(): Int = _tasks.value.count { it.status == DownloadStatus.PAUSED }
-
     // 轮询任务Job
     private var pollJob: Job? = null
 
@@ -133,24 +130,4 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
         DownloadService.clearAllTasks()
     }
 
-    /**
-     * 获取正在下载的任务数量
-     */
-    fun getActiveCount(): Int = _tasks.value.count { 
-        it.status == DownloadStatus.RUNNING || it.status == DownloadStatus.PENDING 
-    }
-
-    /**
-     * 获取已完成的任务数量
-     */
-    fun getCompletedCount(): Int = _tasks.value.count { 
-        it.status == DownloadStatus.SUCCESSFUL 
-    }
-
-    /**
-     * 获取失败的任务数量
-     */
-    fun getFailedCount(): Int = _tasks.value.count { 
-        it.status == DownloadStatus.FAILED 
-    }
 }

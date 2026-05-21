@@ -169,14 +169,21 @@ fun DownloadManageScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
+                        val (emptyTitle, emptySubtitle) = when (selectedTab) {
+                            DownloadTab.ALL -> "暂无下载任务" to "在浏览器中下载的文件会显示在这里"
+                            DownloadTab.DOWNLOADING -> "暂无正在下载的任务" to "当前没有下载中的任务"
+                            DownloadTab.PAUSED -> "暂无已暂停的任务" to "没有被暂停的下载任务"
+                            DownloadTab.COMPLETED -> "暂无已完成的任务" to "没有已完成的下载任务"
+                            DownloadTab.FAILED -> "暂无下载失败的任务" to "所有下载任务均正常"
+                        }
                         Text(
-                            text = "暂无下载任务",
+                            text = emptyTitle,
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "在浏览器中下载的文件会显示在这里",
+                            text = emptySubtitle,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
