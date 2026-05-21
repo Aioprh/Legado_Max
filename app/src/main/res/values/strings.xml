@@ -77,6 +77,8 @@
     <string name="theme_setting_s">Some settings related to interface or color</string>
     <string name="other_setting">Other settings</string>
     <string name="other_setting_s">Some function-related settings</string>
+    <string name="precise_manage">Precise Management</string>
+    <string name="precise_manage_summary">URL records, storage, downloads, and files</string>
     <string name="about">About</string>
     <string name="donate">Donations</string>
     <string name="exit">Exit</string>
