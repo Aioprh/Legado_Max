@@ -83,6 +83,11 @@ fun RssExecutionStatus(
             .map { it.key to it.value }
     }
 
+    // 预构建 sessionEndMap，避免 LazyColumn 每个 item 都做 O(n) 查找
+    val sessionEndMap = remember(records) {
+        records.filter { it.isSessionEnd }.associateBy { it.executionId }
+    }
+
     val listState = rememberLazyListState()
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -96,13 +101,9 @@ fun RssExecutionStatus(
                 key = { index -> groupedSessions[index].first }
             ) { index ->
                 val (executionId, sessionRecords) = groupedSessions[index]
-                // 找到对应的 isSessionEnd 记录来获取总耗时
-                val sessionEndRecord = records.find {
-                    it.executionId == executionId && it.isSessionEnd
-                }
                 ExecutionSessionCard(
                     records = sessionRecords,
-                    totalDuration = sessionEndRecord?.duration,
+                    totalDuration = sessionEndMap[executionId]?.duration,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
