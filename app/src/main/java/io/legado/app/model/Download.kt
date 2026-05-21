@@ -14,11 +14,12 @@ object Download {
      * @param url 下载URL
      * @param fileName 文件名
      */
-    fun start(context: Context, url: String, fileName: String) {
+    fun start(context: Context, url: String, fileName: String, sourceUrl: String? = null) {
         context.startService<DownloadService> {
             action = IntentAction.start
             putExtra("url", url)
             putExtra("fileName", fileName)
+            putExtra("sourceUrl", sourceUrl)
         }
     }
 
