@@ -366,7 +366,7 @@ private fun RuleExecutionTreeView(
         Text(
             text = "执行步骤:",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
         
@@ -410,7 +410,7 @@ private fun RuleExecutionNodeView(
                     Text(
                         text = "${it}ms",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -442,7 +442,7 @@ private fun RuleExecutionNodeView(
                 Text(
                     text = "输入: ${if (!inputExpanded && inputNeedsExpand) input.take(50) + "..." else input}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .padding(top = 2.dp)
                         .then(
@@ -528,7 +528,7 @@ private fun JsExecutionView(
         Text(
             text = "JS代码:",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
         Surface(
@@ -549,7 +549,7 @@ private fun JsExecutionView(
         Text(
             text = "执行环境:",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
         
@@ -595,7 +595,7 @@ private fun JsExecutionView(
             Text(
                 text = "执行结果:",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(4.dp))
             Surface(
@@ -720,7 +720,7 @@ private fun DetailRow(
         Text(
             text = highlightText(label, searchQuery),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(80.dp)
         )
 
@@ -812,12 +812,12 @@ private fun VariableOperationsView(
             Text(
                 text = "统计: 读${readOps.size}次, 写${writeOps.size}次, 删${deleteOps.size}次",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "涉及${operations.map { it.key }.toSet().size}个变量",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         
@@ -904,7 +904,7 @@ private fun VariableOperationItem(
                 Text(
                     text = operation.storage.displayName,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
@@ -935,7 +935,7 @@ private fun VariableOperationItem(
                 Text(
                     text = "原值: ${if (!oldExpanded && oldNeedsExpand) oldValue.take(40) + "..." else oldValue}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .padding(top = 2.dp)
                         .then(
@@ -975,7 +975,7 @@ private fun DataFlowView(
         Text(
             text = "字段填充过程:",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
         
@@ -983,7 +983,7 @@ private fun DataFlowView(
             Text(
                 text = "暂无数据流转记录",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             dataFlow.stages.sortedBy { it.stage.order }.forEach { stageFlow ->
@@ -996,7 +996,7 @@ private fun DataFlowView(
         Text(
             text = dataFlow.getSummary(),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -1026,7 +1026,7 @@ private fun StageDataFlowView(
                     Text(
                         text = "${it}ms",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -1035,7 +1035,7 @@ private fun StageDataFlowView(
                 Text(
                     text = "无字段填充",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             } else {
@@ -1096,7 +1096,7 @@ private fun FieldFillRecordView(
                     Text(
                         text = "rule: ${field.getRulePreview(30) ?: ""}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

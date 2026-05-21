@@ -84,7 +84,7 @@ fun DebugLogItem(
                     Text(
                         text = formatRelativeTime(log.time),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     if (log.category != io.legado.app.model.debug.DebugCategory.APP) {
@@ -152,7 +152,7 @@ private fun getContentColorByLevel(level: DebugLevel) = when (level) {
 private fun getDurationColor(durationMs: Long) = when {
     durationMs > 1000 -> MaterialTheme.colorScheme.error
     durationMs > 500 -> MaterialTheme.colorScheme.tertiary
-    else -> MaterialTheme.colorScheme.outline
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 private fun formatRelativeTime(timestamp: Long): String {
