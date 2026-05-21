@@ -14,6 +14,7 @@ import io.legado.app.model.analyzeRule.RuleData
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.RssExecutionStep
 import io.legado.app.utils.NetworkUtils
+import io.legado.app.utils.isAbsUrl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -85,9 +86,17 @@ object Rss {
     ): Pair<MutableList<RssArticle>, String?> {
         val recorder = RssExecutionRecorder
 
+        // 开始执行会话
+        recorder.startSession(rssSource.sourceUrl, rssSource.sourceName)
+
         // 配置检查阶段
         recorder.check(RssExecutionStep.SOURCE_NAME, rssSource.sourceName)
-        recorder.check(RssExecutionStep.SOURCE_URL, rssSource.sourceUrl)
+        recorder.checkWithValidation(
+            RssExecutionStep.SOURCE_URL,
+            rssSource.sourceUrl,
+            if (rssSource.sourceUrl.isAbsUrl()) true to ""
+            else false to "不是合法的 URL（缺少 http:// 或 https://）"
+        )
         recorder.check(RssExecutionStep.SOURCE_ICON, rssSource.sourceIcon)
         recorder.check(RssExecutionStep.SOURCE_GROUP, rssSource.sourceGroup)
         recorder.check(RssExecutionStep.SORT_URL, rssSource.sortUrl)
@@ -131,17 +140,20 @@ object Rss {
                         if (it.code() == 500) {
                             recorder.failed(RssExecutionStep.NETWORK_REQUEST, throwable.message ?: "网络请求失败",
                                 System.currentTimeMillis() - netStart)
+                            recorder.endSession()
                             throw throwable
                         }
                     }
                 } catch (e: Throwable) {
                     recorder.failed(RssExecutionStep.NETWORK_REQUEST, e.message ?: "登录检测异常",
                         System.currentTimeMillis() - netStart)
+                    recorder.endSession()
                     throw throwable
                 }
             } else {
                 recorder.failed(RssExecutionStep.NETWORK_REQUEST, throwable.message ?: "网络请求失败",
                     System.currentTimeMillis() - netStart)
+                recorder.endSession()
                 throw throwable
             }
         }
@@ -154,6 +166,8 @@ object Rss {
         } else {
             recorder.failed(RssExecutionStep.RESPONSE_BODY, "响应内容为空")
         }
+        // 结束执行会话
+        recorder.endSession()
         return RssParserByRule.parseXML(sortName, sortUrl, res.url, res.body, rssSource, ruleData)
     }
 
