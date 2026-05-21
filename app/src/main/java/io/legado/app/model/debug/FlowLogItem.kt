@@ -7,6 +7,14 @@ import io.legado.app.data.entities.BookSource
 import java.util.UUID
 
 /**
+ * 源类型，用于区分流程日志来自书源还是订阅源
+ */
+enum class SourceType(val displayName: String) {
+    BOOK("书源"),
+    RSS("订阅源")
+}
+
+/**
  * 流程日志项
  *
  * 记录源规则执行的每个步骤，包括：
@@ -22,6 +30,7 @@ data class FlowLogItem(
     val requestId: String,
     val sourceUrl: String?,
     val sourceName: String?,
+    val sourceType: SourceType = SourceType.BOOK,
     val stage: FlowStage,
     val operation: String?,
     val message: String,

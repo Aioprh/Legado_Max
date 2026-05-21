@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.rule.BookInfoRule
 import io.legado.app.data.entities.rule.ContentRule
 import io.legado.app.data.entities.rule.ExploreRule
@@ -425,6 +426,237 @@ private fun EntityFieldRow(label: String, value: String) {
             overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis,
             maxLines = if (expanded) Int.MAX_VALUE else 3
         )
+    }
+}
+
+// ========== 订阅源实体显示 ==========
+
+/**
+ * 订阅源实体显示主组件
+ *
+ * 包含订阅源选择器和实体卡片列表。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RssSourceEntityDisplay(
+    rssSources: List<RssSource>,
+    selectedRssSource: RssSource?,
+    selectedRssSourceUrl: String?,
+    onRssSourceSelected: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // 订阅源选择器
+        var expanded by remember { mutableStateOf(false) }
+        val currentSource = remember(rssSources, selectedRssSourceUrl) {
+            rssSources.firstOrNull { it.sourceUrl == selectedRssSourceUrl }
+        }
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            OutlinedTextField(
+                value = currentSource?.getDisplayNameGroup() ?: "请选择订阅源",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("订阅源") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    .fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                rssSources.forEach { source ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = source.getDisplayNameGroup(),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        },
+                        onClick = {
+                            onRssSourceSelected(source.sourceUrl)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // 实体卡片列表
+        if (selectedRssSource == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "请选择一个订阅源查看实体",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            val listState = rememberLazyListState()
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        horizontal = 16.dp,
+                        vertical = 8.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // RssSource 基础字段
+                    item {
+                        RssSourceEntityCard(selectedRssSource)
+                    }
+                    // 列表规则
+                    item {
+                        val fields = remember(selectedRssSource) {
+                            buildList {
+                                selectedRssSource.ruleArticles?.let { add("ruleArticles" to it) }
+                                selectedRssSource.ruleNextPage?.let { add("ruleNextPage" to it) }
+                                selectedRssSource.ruleTitle?.let { add("ruleTitle" to it) }
+                                selectedRssSource.rulePubDate?.let { add("rulePubDate" to it) }
+                                selectedRssSource.ruleDescription?.let { add("ruleDescription" to it) }
+                                selectedRssSource.ruleImage?.let { add("ruleImage" to it) }
+                                selectedRssSource.ruleLink?.let { add("ruleLink" to it) }
+                            }
+                        }
+                        RuleEntityCard(
+                            title = "列表规则",
+                            isNull = fields.isEmpty(),
+                            fields = fields
+                        )
+                    }
+                    // 正文规则
+                    item {
+                        val fields = remember(selectedRssSource) {
+                            buildList {
+                                selectedRssSource.ruleContent?.let { add("ruleContent" to it) }
+                                selectedRssSource.contentWhitelist?.let { add("contentWhitelist" to it) }
+                                selectedRssSource.contentBlacklist?.let { add("contentBlacklist" to it) }
+                            }
+                        }
+                        RuleEntityCard(
+                            title = "正文规则",
+                            isNull = fields.isEmpty(),
+                            fields = fields
+                        )
+                    }
+                    // WebView 规则
+                    item {
+                        val fields = remember(selectedRssSource) {
+                            buildList {
+                                selectedRssSource.shouldOverrideUrlLoading?.let { add("shouldOverrideUrlLoading" to it) }
+                                selectedRssSource.style?.let { add("style" to it) }
+                                add("enableJs" to selectedRssSource.enableJs.toString())
+                                add("loadWithBaseUrl" to selectedRssSource.loadWithBaseUrl.toString())
+                                selectedRssSource.injectJs?.let { add("injectJs" to it) }
+                                selectedRssSource.preloadJs?.let { add("preloadJs" to it) }
+                                selectedRssSource.startHtml?.let { add("startHtml" to it) }
+                                selectedRssSource.startStyle?.let { add("startStyle" to it) }
+                                selectedRssSource.startJs?.let { add("startJs" to it) }
+                            }
+                        }
+                        RuleEntityCard(
+                            title = "WebView 规则",
+                            isNull = fields.isEmpty(),
+                            fields = fields
+                        )
+                    }
+                }
+                VerticalScrollbar(
+                    state = listState,
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * RssSource 实体卡片
+ */
+@Composable
+private fun RssSourceEntityCard(rssSource: RssSource) {
+    var expanded by remember { mutableStateOf(true) }
+
+    val fields = remember(rssSource) {
+        buildList {
+            add("sourceName" to rssSource.sourceName)
+            add("sourceUrl" to rssSource.sourceUrl)
+            rssSource.sourceIcon.takeIf { it.isNotBlank() }?.let {
+                add("sourceIcon" to it)
+            }
+            rssSource.sourceGroup.takeIf { !it.isNullOrBlank() }?.let {
+                add("sourceGroup" to it)
+            }
+            rssSource.sourceComment.takeIf { !it.isNullOrBlank() }?.let {
+                add("sourceComment" to it)
+            }
+            add("enabled" to rssSource.enabled.toString())
+            rssSource.variableComment.takeIf { !it.isNullOrBlank() }?.let {
+                add("variableComment" to it)
+            }
+            rssSource.jsLib.takeIf { !it.isNullOrBlank() }?.let {
+                add("jsLib" to it)
+            }
+            rssSource.enabledCookieJar?.let {
+                add("enabledCookieJar" to it.toString())
+            }
+            rssSource.concurrentRate.takeIf { !it.isNullOrBlank() }?.let {
+                add("concurrentRate" to it)
+            }
+            rssSource.header.takeIf { !it.isNullOrBlank() }?.let {
+                add("header" to it)
+            }
+            rssSource.loginUrl.takeIf { !it.isNullOrBlank() }?.let {
+                add("loginUrl" to it)
+            }
+            rssSource.loginUi.takeIf { !it.isNullOrBlank() }?.let {
+                add("loginUi" to it)
+            }
+            rssSource.loginCheckJs.takeIf { !it.isNullOrBlank() }?.let {
+                add("loginCheckJs" to it)
+            }
+            rssSource.coverDecodeJs.takeIf { !it.isNullOrBlank() }?.let {
+                add("coverDecodeJs" to it)
+            }
+            rssSource.sortUrl.takeIf { !it.isNullOrBlank() }?.let {
+                add("sortUrl" to it)
+            }
+            add("singleUrl" to rssSource.singleUrl.toString())
+            add("articleStyle" to rssSource.articleStyle.toString())
+            add("lastUpdateTime" to rssSource.lastUpdateTime.toString())
+            add("customOrder" to rssSource.customOrder.toString())
+            add("type" to rssSource.type.toString())
+            add("preload" to rssSource.preload.toString())
+            add("cacheFirst" to rssSource.cacheFirst.toString())
+            rssSource.searchUrl.takeIf { !it.isNullOrBlank() }?.let {
+                add("searchUrl" to it)
+            }
+            add("showWebLog" to rssSource.showWebLog.toString())
+        }
+    }
+
+    EntityCard(
+        title = "RssSource（订阅源）",
+        fieldCount = fields.size,
+        expanded = expanded,
+        onToggle = { expanded = !expanded }
+    ) {
+        fields.forEach { (label, value) ->
+            EntityFieldRow(label, value)
+        }
     }
 }
 

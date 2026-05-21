@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.RssSource
 import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.model.debug.DebugCategory
@@ -101,6 +102,18 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     private val _selectedBookSource = MutableStateFlow<BookSource?>(null)
     val selectedBookSource: StateFlow<BookSource?> = _selectedBookSource.asStateFlow()
 
+    /** 可用订阅源列表（用于实体显示的订阅源选择器） */
+    private val _rssSources = MutableStateFlow<List<RssSource>>(emptyList())
+    val rssSources: StateFlow<List<RssSource>> = _rssSources.asStateFlow()
+
+    /** 当前选中查看的订阅源 URL */
+    private val _selectedRssSourceUrl = MutableStateFlow<String?>(null)
+    val selectedRssSourceUrl: StateFlow<String?> = _selectedRssSourceUrl.asStateFlow()
+
+    /** 当前选中的完整订阅源对象 */
+    private val _selectedRssSource = MutableStateFlow<RssSource?>(null)
+    val selectedRssSource: StateFlow<RssSource?> = _selectedRssSource.asStateFlow()
+
     /** 当前选中的流程阶段 */
     private val _selectedFlowStage = MutableStateFlow<FlowStage?>(null)
     val selectedFlowStage: StateFlow<FlowStage?> = _selectedFlowStage.asStateFlow()
@@ -137,8 +150,8 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             }
         }
 
-        // 按子分类过滤（仅 SOURCE 分类支持）
-        if (subCategory != null && category == DebugCategory.SOURCE) {
+        // 按子分类过滤（SOURCE 和 RSS 分类支持）
+        if (subCategory != null && (category == DebugCategory.SOURCE || category == DebugCategory.RSS)) {
             result = result.filter { it.subCategory == subCategory }
         }
 
@@ -193,8 +206,15 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      * 1. 按流程阶段过滤
      * 2. 按搜索关键词过滤（匹配消息、详情、URL、书源名、规则、结果）
      */
-    val filteredFlowLogs = combine(_uiState, _selectedFlowStage, _searchQuery) { uiState, stage, query ->
+    val filteredFlowLogs = combine(_uiState, _selectedFlowStage, _searchQuery, _selectedCategory) { uiState, stage, query, category ->
         var result = uiState.flowLogs
+
+        // 按源类型过滤（书源只看书源流程日志，订阅源只看订阅源流程日志）
+        result = when (category) {
+            DebugCategory.SOURCE -> result.filter { it.sourceType == io.legado.app.model.debug.SourceType.BOOK }
+            DebugCategory.RSS -> result.filter { it.sourceType == io.legado.app.model.debug.SourceType.RSS }
+            else -> result
+        }
 
         // 按流程阶段过滤
         if (stage != null) {
@@ -293,7 +313,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      */
     fun selectCategory(category: DebugCategory) {
         _selectedCategory.value = category
-        if (category != DebugCategory.SOURCE) {
+        if (category != DebugCategory.SOURCE && category != DebugCategory.RSS) {
             _selectedSubCategory.value = null
         }
     }
@@ -306,8 +326,10 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     fun selectSubCategory(subCategory: SourceSubCategory?) {
         _selectedSubCategory.value = subCategory
         if (subCategory == SourceSubCategory.ENTITY) {
-            if (_bookSources.value.isEmpty()) {
-                loadBookSources()
+            when (_selectedCategory.value) {
+                DebugCategory.SOURCE -> if (_bookSources.value.isEmpty()) loadBookSources()
+                DebugCategory.RSS -> if (_rssSources.value.isEmpty()) loadRssSources()
+                else -> {}
             }
         }
     }
@@ -340,6 +362,35 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         val source = _bookSources.value.firstOrNull { it.bookSourceUrl == bookSourceUrl }
         _selectedBookSourceUrl.value = if (source != null) bookSourceUrl else null
         _selectedBookSource.value = source
+    }
+
+    /**
+     * 加载订阅源列表
+     *
+     * 从数据库获取所有已启用的订阅源，按自定义排序排列。
+     */
+    fun loadRssSources() {
+        execute {
+            appDb.rssSourceDao.all
+                .filter { it.enabled }
+                .sortedBy { it.customOrder }
+        }.onSuccess { sources ->
+            _rssSources.value = sources
+        }.onError { e ->
+            e.printStackTrace()
+            showToast("加载订阅源列表失败：${e.message}")
+        }
+    }
+
+    /**
+     * 选择要查看的订阅源
+     *
+     * @param sourceUrl 订阅源 URL
+     */
+    fun selectRssSource(sourceUrl: String) {
+        val source = _rssSources.value.firstOrNull { it.sourceUrl == sourceUrl }
+        _selectedRssSourceUrl.value = if (source != null) sourceUrl else null
+        _selectedRssSource.value = source
     }
 
     /**

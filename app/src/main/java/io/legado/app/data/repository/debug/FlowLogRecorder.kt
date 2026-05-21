@@ -4,9 +4,11 @@ import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.RssSource
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.debug.DebugLogScope
 import io.legado.app.model.debug.FlowLogItem
+import io.legado.app.model.debug.SourceType
 import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.JsExecutionRecord
 import io.legado.app.model.debug.JsExecutionContext
@@ -61,6 +63,10 @@ object FlowLogRecorder {
     private val operationMap = ConcurrentHashMap<String, String>()
 
     val isEnabled: Boolean get() = AppConfig.debugLogFloatingBall
+
+    private fun sourceTypeOf(source: BaseSource?): SourceType {
+        return if (source is RssSource) SourceType.RSS else SourceType.BOOK
+    }
 
     /**
      * 设置当前书源的操作类型
@@ -144,6 +150,7 @@ object FlowLogRecorder {
         log(
             sourceUrl = sourceUrl,
             sourceName = source?.getTag(),
+            sourceType = sourceTypeOf(source),
             stage = FlowStage.NETWORK,
             operation = getOperation(sourceUrl),
             message = message,
@@ -171,6 +178,7 @@ object FlowLogRecorder {
         log(
             sourceUrl = sourceUrl,
             sourceName = source?.getTag(),
+            sourceType = sourceTypeOf(source),
             stage = FlowStage.PARSE,
             operation = getOperation(sourceUrl),
             message = message,
@@ -213,6 +221,7 @@ object FlowLogRecorder {
                 requestId = requestId,
                 sourceUrl = sourceUrl,
                 sourceName = sourceName,
+                sourceType = sourceTypeOf(source),
                 stage = FlowStage.PARSE,
                 operation = operation,
                 message = message,
@@ -265,6 +274,7 @@ object FlowLogRecorder {
                 requestId = requestId,
                 sourceUrl = sourceUrl,
                 sourceName = sourceName,
+                sourceType = sourceTypeOf(source),
                 stage = FlowStage.PARSE,
                 operation = operation,
                 message = message,
@@ -339,6 +349,7 @@ object FlowLogRecorder {
         log(
             sourceUrl = sourceUrl,
             sourceName = source?.getTag(),
+            sourceType = sourceTypeOf(source),
             stage = FlowStage.EXTRACT,
             operation = getOperation(sourceUrl),
             message = message,
@@ -383,6 +394,7 @@ object FlowLogRecorder {
         log(
             sourceUrl = sourceUrl,
             sourceName = source?.getTag(),
+            sourceType = sourceTypeOf(source),
             stage = FlowStage.REPLACE,
             operation = getOperation(sourceUrl),
             message = message,
@@ -433,6 +445,7 @@ object FlowLogRecorder {
                 requestId = requestId,
                 sourceUrl = sourceUrl,
                 sourceName = sourceName,
+                sourceType = sourceTypeOf(source),
                 stage = FlowStage.VARIABLE,
                 operation = operation,
                 message = message,
@@ -552,6 +565,7 @@ object FlowLogRecorder {
                 requestId = requestId,
                 sourceUrl = sourceUrl,
                 sourceName = sourceName,
+                sourceType = sourceTypeOf(source),
                 stage = FlowStage.DATA_FLOW,
                 operation = operation,
                 message = message,
@@ -588,6 +602,7 @@ object FlowLogRecorder {
     fun log(
         sourceUrl: String?,
         sourceName: String? = null,
+        sourceType: SourceType = SourceType.BOOK,
         stage: FlowStage,
         operation: String? = null,
         message: String,
@@ -617,7 +632,7 @@ object FlowLogRecorder {
         bookSource: BookSource? = null
     ) {
         if (!isEnabled) return
-        
+
         DebugLogScope.launch {
             // 获取或创建请求ID，用于分组
             val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
@@ -628,6 +643,7 @@ object FlowLogRecorder {
                 requestId = requestId,
                 sourceUrl = sourceUrl,
                 sourceName = sourceName,
+                sourceType = sourceType,
                 stage = stage,
                 operation = operation,
                 message = message,

@@ -59,6 +59,7 @@ import io.legado.app.ui.debuglog.components.DebugLogItem
 import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
 import io.legado.app.ui.debuglog.components.FlowLogDetailDialog
 import io.legado.app.ui.debuglog.components.EntityDisplay
+import io.legado.app.ui.debuglog.components.RssSourceEntityDisplay
 import io.legado.app.ui.debuglog.components.FlowLogList
 import io.legado.app.ui.debuglog.components.FlowStageFilter
 import io.legado.app.ui.theme.pageCardElevatedContainerColor
@@ -110,6 +111,9 @@ fun DebugLogScreen(
     val bookSources by viewModel.bookSources.collectAsState()
     val selectedBookSource by viewModel.selectedBookSource.collectAsState()
     val selectedBookSourceUrl by viewModel.selectedBookSourceUrl.collectAsState()
+    val rssSources by viewModel.rssSources.collectAsState()
+    val selectedRssSource by viewModel.selectedRssSource.collectAsState()
+    val selectedRssSourceUrl by viewModel.selectedRssSourceUrl.collectAsState()
     val topBarColor = pageTopBarContainerColor()
     val cardColor = pageCardElevatedContainerColor()
     val secondaryTextColor = pageSecondaryTextColor()
@@ -289,8 +293,8 @@ fun DebugLogScreen(
                 onCategorySelected = viewModel::selectCategory
             )
 
-            // 书源分类的子分类选择器
-            if (selectedCategory == DebugCategory.SOURCE) {
+            // 书源/订阅源分类的子分类选择器
+            if (selectedCategory == DebugCategory.SOURCE || selectedCategory == DebugCategory.RSS) {
                 SourceSubCategoryTabs(
                     selectedSubCategory = selectedSubCategory,
                     onSubCategorySelected = viewModel::selectSubCategory
@@ -332,6 +336,30 @@ fun DebugLogScreen(
                     }
                     // 书源流程日志视图
                     selectedCategory == DebugCategory.SOURCE && selectedSubCategory == SourceSubCategory.FLOW -> {
+                        if (filteredFlowLogs.isEmpty()) {
+                            EmptyState(
+                                message = if (searchQuery.isNullOrBlank()) "暂无流程日志"
+                                         else "未找到匹配的日志"
+                            )
+                        } else {
+                            FlowLogList(
+                                logs = filteredFlowLogs,
+                                onLogClick = viewModel::selectFlowLog,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                    // 订阅源实体显示视图
+                    selectedCategory == DebugCategory.RSS && selectedSubCategory == SourceSubCategory.ENTITY -> {
+                        RssSourceEntityDisplay(
+                            rssSources = rssSources,
+                            selectedRssSource = selectedRssSource,
+                            selectedRssSourceUrl = selectedRssSourceUrl,
+                            onRssSourceSelected = viewModel::selectRssSource
+                        )
+                    }
+                    // 订阅源流程日志视图
+                    selectedCategory == DebugCategory.RSS && selectedSubCategory == SourceSubCategory.FLOW -> {
                         if (filteredFlowLogs.isEmpty()) {
                             EmptyState(
                                 message = if (searchQuery.isNullOrBlank()) "暂无流程日志"
