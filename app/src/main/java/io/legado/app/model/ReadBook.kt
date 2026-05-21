@@ -663,12 +663,9 @@ object ReadBook : CoroutineScope by MainScope() {
         Coroutine.async {
             val book = book!!
             val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, index) ?: return@async
-            AppLog.put("懒加载: loadContent 开始 章节${chapter.index}")
             if (addLoading(index)) {
                 val cachedContent = BookHelp.getContent(book, chapter)
-                AppLog.put("懒加载: 缓存内容=$cachedContent, bookSource=$bookSource, nextPageLazyLoad=${bookSource?.nextPageLazyLoad}")
                 cachedContent?.let {
-                    AppLog.put("懒加载: 走缓存分支")
                     contentLoadFinish(
                         book,
                         chapter,
@@ -680,10 +677,9 @@ object ReadBook : CoroutineScope by MainScope() {
                 } ?: let {
                     val bookSource = bookSource
                     if (bookSource != null && bookSource.nextPageLazyLoad) {
-                        AppLog.put("懒加载: 走懒加载分支")
+                        AppLog.put("懒加载: 走懒加载分支 章节${chapter.index}")
                         loadContentLazy(book, chapter, upContent, resetPageOffset, success)
                     } else {
-                        AppLog.put("懒加载: 走下载分支")
                         download(
                             downloadScope,
                             chapter,
@@ -1068,13 +1064,10 @@ object ReadBook : CoroutineScope by MainScope() {
             val textChapter = ChapterProvider.getTextChapterAsync(
                 this, book, chapter, displayTitle, contents, simulatedChapterSize
             )
-            AppLog.put("懒加载: contentLoadFinishLazy lazyContent=$lazyContent")
             if (lazyContent != null) {
                 textChapter.lazyContent = lazyContent
                 textChapter.useLazyLoading = true
-                AppLog.put("懒加载: 已设置 lazyContent 到 TextChapter, 章节${chapter.index}, useLazyLoading=${textChapter.useLazyLoading}")
-            } else {
-                AppLog.put("懒加载: lazyContent 为 null，未启用懒加载")
+                AppLog.put("懒加载: 已设置 lazyContent 到 TextChapter, 章节${chapter.index}")
             }
             when (val offset = chapter.index - durChapterIndex) {
                 0 -> {
