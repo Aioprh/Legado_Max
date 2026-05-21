@@ -8,6 +8,12 @@
         app:showAsAction="always" />
 
     <item
+        android:id="@+id/menu_rss_search"
+        android:title="@string/query_content"
+        android:icon="@drawable/ic_search"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/menu_rss_star"
         android:title="@string/favorite"
         android:icon="@drawable/ic_star_border"

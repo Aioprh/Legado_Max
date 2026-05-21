@@ -40,6 +40,12 @@
         android:checkable="true" />
 
     <item
+        android:id="@+id/menu_query_content"
+        android:title="@string/query_content"
+        android:icon="@drawable/ic_search"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/menu_disable_source"
         android:title="@string/disable_source"
         android:visible="false"

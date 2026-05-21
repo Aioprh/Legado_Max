@@ -429,7 +429,7 @@ private fun DetailRow(
         Text(
             text = highlightText(label, searchQuery),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(80.dp)
         )
 

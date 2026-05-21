@@ -428,48 +428,54 @@ object DatabaseMigrations {
     )
     class Migration_90_91 : AutoMigrationSpec {
         override fun onPostMigrate(db: SupportSQLiteDatabase) {
-            db.execSQL("""
-                CREATE TABLE IF NOT EXISTS readRecord_new (
-                    deviceId TEXT NOT NULL,
-                    bookName TEXT NOT NULL,
-                    bookAuthor TEXT NOT NULL DEFAULT '',
-                    readTime INTEGER NOT NULL DEFAULT 0,
-                    lastRead INTEGER NOT NULL DEFAULT 0,
-                    PRIMARY KEY(deviceId, bookName, bookAuthor)
-                )
-            """.trimIndent())
-            db.execSQL("""
-                INSERT OR IGNORE INTO readRecord_new (deviceId, bookName, bookAuthor, readTime, lastRead)
-                SELECT deviceId, bookName, '', SUM(readTime), MAX(COALESCE(lastRead, 0)) 
-                FROM readRecord 
-                GROUP BY deviceId, bookName
-            """.trimIndent())
-            db.execSQL("DROP TABLE IF EXISTS readRecord")
-            db.execSQL("ALTER TABLE readRecord_new RENAME TO readRecord")
-            db.execSQL("""
-                CREATE TABLE IF NOT EXISTS readRecordDetail (
-                    deviceId TEXT NOT NULL,
-                    bookName TEXT NOT NULL,
-                    bookAuthor TEXT NOT NULL DEFAULT '',
-                    date TEXT NOT NULL,
-                    readTime INTEGER NOT NULL DEFAULT 0,
-                    readWords INTEGER NOT NULL DEFAULT 0,
-                    firstReadTime INTEGER NOT NULL DEFAULT 0,
-                    lastReadTime INTEGER NOT NULL DEFAULT 0,
-                    PRIMARY KEY(deviceId, bookName, bookAuthor, date)
-                )
-            """.trimIndent())
-            db.execSQL("""
-                CREATE TABLE IF NOT EXISTS readRecordSession (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    deviceId TEXT NOT NULL,
-                    bookName TEXT NOT NULL,
-                    bookAuthor TEXT NOT NULL DEFAULT '',
-                    startTime INTEGER NOT NULL,
-                    endTime INTEGER NOT NULL,
-                    words INTEGER NOT NULL DEFAULT 0
-                )
-            """.trimIndent())
+            db.beginTransaction()
+            try {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS readRecord_new (
+                        deviceId TEXT NOT NULL,
+                        bookName TEXT NOT NULL,
+                        bookAuthor TEXT NOT NULL DEFAULT '',
+                        readTime INTEGER NOT NULL DEFAULT 0,
+                        lastRead INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(deviceId, bookName, bookAuthor)
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT OR IGNORE INTO readRecord_new (deviceId, bookName, bookAuthor, readTime, lastRead)
+                    SELECT deviceId, bookName, '', SUM(readTime), MAX(COALESCE(lastRead, 0))
+                    FROM readRecord
+                    GROUP BY deviceId, bookName
+                """.trimIndent())
+                db.execSQL("DROP TABLE IF EXISTS readRecord")
+                db.execSQL("ALTER TABLE readRecord_new RENAME TO readRecord")
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS readRecordDetail (
+                        deviceId TEXT NOT NULL,
+                        bookName TEXT NOT NULL,
+                        bookAuthor TEXT NOT NULL DEFAULT '',
+                        date TEXT NOT NULL,
+                        readTime INTEGER NOT NULL DEFAULT 0,
+                        readWords INTEGER NOT NULL DEFAULT 0,
+                        firstReadTime INTEGER NOT NULL DEFAULT 0,
+                        lastReadTime INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(deviceId, bookName, bookAuthor, date)
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS readRecordSession (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        deviceId TEXT NOT NULL,
+                        bookName TEXT NOT NULL,
+                        bookAuthor TEXT NOT NULL DEFAULT '',
+                        startTime INTEGER NOT NULL,
+                        endTime INTEGER NOT NULL,
+                        words INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
         }
     }
 
@@ -489,33 +495,39 @@ object DatabaseMigrations {
                     db.execSQL("ALTER TABLE book_sources ADD COLUMN nextPageLazyLoad INTEGER NOT NULL DEFAULT 0")
                 }
                 hasNextPagePreload && !hasNextPageLazyLoad -> {
-                    db.execSQL("""
-                        CREATE TABLE IF NOT EXISTS `book_sources_new` (
-                            `bookSourceUrl` TEXT NOT NULL, `bookSourceName` TEXT NOT NULL, `bookSourceGroup` TEXT,
-                            `bookSourceType` INTEGER NOT NULL, `bookUrlPattern` TEXT, `customOrder` INTEGER NOT NULL DEFAULT 0,
-                            `enabled` INTEGER NOT NULL DEFAULT 1, `enabledExplore` INTEGER NOT NULL DEFAULT 1, `jsLib` TEXT,
-                            `enabledCookieJar` INTEGER DEFAULT 0, `concurrentRate` TEXT, `header` TEXT, `loginUrl` TEXT,
-                            `loginUi` TEXT, `loginCheckJs` TEXT, `coverDecodeJs` TEXT, `bookSourceComment` TEXT,
-                            `variableComment` TEXT, `lastUpdateTime` INTEGER NOT NULL, `respondTime` INTEGER NOT NULL,
-                            `weight` INTEGER NOT NULL, `exploreUrl` TEXT, `exploreScreen` TEXT, `ruleExplore` TEXT,
-                            `searchUrl` TEXT, `ruleSearch` TEXT, `ruleBookInfo` TEXT, `ruleToc` TEXT, `ruleContent` TEXT,
-                            `ruleReview` TEXT, `eventListener` INTEGER NOT NULL DEFAULT 0, `customButton` INTEGER NOT NULL DEFAULT 0,
-                            `nextPageLazyLoad` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`bookSourceUrl`)
-                        )
-                    """.trimIndent())
-                    db.execSQL("""
-                        INSERT INTO `book_sources_new` SELECT
-                            `bookSourceUrl`, `bookSourceName`, `bookSourceGroup`, `bookSourceType`, `bookUrlPattern`,
-                            `customOrder`, `enabled`, `enabledExplore`, `jsLib`, `enabledCookieJar`, `concurrentRate`,
-                            `header`, `loginUrl`, `loginUi`, `loginCheckJs`, `coverDecodeJs`, `bookSourceComment`,
-                            `variableComment`, `lastUpdateTime`, `respondTime`, `weight`, `exploreUrl`, `exploreScreen`,
-                            `ruleExplore`, `searchUrl`, `ruleSearch`, `ruleBookInfo`, `ruleToc`, `ruleContent`,
-                            `ruleReview`, `eventListener`, `customButton`, `nextPagePreload`
-                        FROM `book_sources`
-                    """.trimIndent())
-                    db.execSQL("DROP TABLE `book_sources`")
-                    db.execSQL("ALTER TABLE `book_sources_new` RENAME TO `book_sources`")
-                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_book_sources_bookSourceUrl` ON `book_sources` (`bookSourceUrl`)")
+                    db.beginTransaction()
+                    try {
+                        db.execSQL("""
+                            CREATE TABLE IF NOT EXISTS `book_sources_new` (
+                                `bookSourceUrl` TEXT NOT NULL, `bookSourceName` TEXT NOT NULL, `bookSourceGroup` TEXT,
+                                `bookSourceType` INTEGER NOT NULL, `bookUrlPattern` TEXT, `customOrder` INTEGER NOT NULL DEFAULT 0,
+                                `enabled` INTEGER NOT NULL DEFAULT 1, `enabledExplore` INTEGER NOT NULL DEFAULT 1, `jsLib` TEXT,
+                                `enabledCookieJar` INTEGER DEFAULT 0, `concurrentRate` TEXT, `header` TEXT, `loginUrl` TEXT,
+                                `loginUi` TEXT, `loginCheckJs` TEXT, `coverDecodeJs` TEXT, `bookSourceComment` TEXT,
+                                `variableComment` TEXT, `lastUpdateTime` INTEGER NOT NULL, `respondTime` INTEGER NOT NULL,
+                                `weight` INTEGER NOT NULL, `exploreUrl` TEXT, `exploreScreen` TEXT, `ruleExplore` TEXT,
+                                `searchUrl` TEXT, `ruleSearch` TEXT, `ruleBookInfo` TEXT, `ruleToc` TEXT, `ruleContent` TEXT,
+                                `ruleReview` TEXT, `eventListener` INTEGER NOT NULL DEFAULT 0, `customButton` INTEGER NOT NULL DEFAULT 0,
+                                `nextPageLazyLoad` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`bookSourceUrl`)
+                            )
+                        """.trimIndent())
+                        db.execSQL("""
+                            INSERT INTO `book_sources_new` SELECT
+                                `bookSourceUrl`, `bookSourceName`, `bookSourceGroup`, `bookSourceType`, `bookUrlPattern`,
+                                `customOrder`, `enabled`, `enabledExplore`, `jsLib`, `enabledCookieJar`, `concurrentRate`,
+                                `header`, `loginUrl`, `loginUi`, `loginCheckJs`, `coverDecodeJs`, `bookSourceComment`,
+                                `variableComment`, `lastUpdateTime`, `respondTime`, `weight`, `exploreUrl`, `exploreScreen`,
+                                `ruleExplore`, `searchUrl`, `ruleSearch`, `ruleBookInfo`, `ruleToc`, `ruleContent`,
+                                `ruleReview`, `eventListener`, `customButton`, `nextPagePreload`
+                            FROM `book_sources`
+                        """.trimIndent())
+                        db.execSQL("DROP TABLE `book_sources`")
+                        db.execSQL("ALTER TABLE `book_sources_new` RENAME TO `book_sources`")
+                        db.execSQL("CREATE INDEX IF NOT EXISTS `index_book_sources_bookSourceUrl` ON `book_sources` (`bookSourceUrl`)")
+                        db.setTransactionSuccessful()
+                    } finally {
+                        db.endTransaction()
+                    }
                 }
             }
         }

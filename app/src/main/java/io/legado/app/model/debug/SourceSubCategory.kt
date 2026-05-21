@@ -16,5 +16,8 @@ enum class SourceSubCategory(val displayName: String) {
     RULE("规则"),
 
     /** 流程追踪：源规则执行的完整生命周期 */
-    FLOW("流程")
+    FLOW("流程"),
+
+    /** 实体显示：查看书源的规则实体配置 */
+    ENTITY("实体")
 }

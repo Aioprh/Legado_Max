@@ -1,6 +1,9 @@
 package io.legado.app.model.debug
 
 import androidx.compose.runtime.Immutable
+import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookSource
 import java.util.UUID
 
 /**
@@ -44,7 +47,13 @@ data class FlowLogItem(
     /** 网络请求时的 Cookie 值，从 headerMap["Cookie"] 提取，便于独立展示 */
     val cookies: String? = null,
     /** 数据流转记录，记录Book对象在各阶段的填充过程 */
-    val dataFlow: BookDataFlow? = null
+    val dataFlow: BookDataFlow? = null,
+    /** 当前处理的书籍对象 */
+    val book: Book? = null,
+    /** 当前处理的章节对象 */
+    val bookChapter: BookChapter? = null,
+    /** 当前处理的书源对象 */
+    val bookSource: BookSource? = null
 ) {
     /**
      * 格式化显示时间

@@ -6,6 +6,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
+import io.legado.app.data.appDb
+import io.legado.app.data.entities.BookSource
 import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.model.debug.DebugCategory
@@ -85,6 +87,18 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     /** 当前选中的子分类（用于书源分类的细分） */
     private val _selectedSubCategory = MutableStateFlow<SourceSubCategory?>(null)
     val selectedSubCategory: StateFlow<SourceSubCategory?> = _selectedSubCategory.asStateFlow()
+
+    /** 可用书源列表（用于实体显示的书源选择器） */
+    private val _bookSources = MutableStateFlow<List<BookSource>>(emptyList())
+    val bookSources: StateFlow<List<BookSource>> = _bookSources.asStateFlow()
+
+    /** 当前选中查看的书源 URL */
+    private val _selectedBookSourceUrl = MutableStateFlow<String?>(null)
+    val selectedBookSourceUrl: StateFlow<String?> = _selectedBookSourceUrl.asStateFlow()
+
+    /** 当前选中的完整书源对象（含嵌套规则实体） */
+    private val _selectedBookSource = MutableStateFlow<BookSource?>(null)
+    val selectedBookSource: StateFlow<BookSource?> = _selectedBookSource.asStateFlow()
 
     /** 当前选中的流程阶段 */
     private val _selectedFlowStage = MutableStateFlow<FlowStage?>(null)
@@ -290,6 +304,41 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      */
     fun selectSubCategory(subCategory: SourceSubCategory?) {
         _selectedSubCategory.value = subCategory
+        if (subCategory == SourceSubCategory.ENTITY) {
+            if (_bookSources.value.isEmpty()) {
+                loadBookSources()
+            }
+        }
+    }
+
+    /**
+     * 加载书源列表
+     *
+     * 从数据库获取所有已启用的书源，按自定义排序排列。
+     * 仅在首次切换到 ENTITY 子分类时加载。
+     */
+    fun loadBookSources() {
+        execute {
+            appDb.bookSourceDao.all
+                .filter { it.enabled }
+                .sortedBy { it.customOrder }
+        }.onSuccess { sources ->
+            _bookSources.value = sources
+        }.onError { e ->
+            e.printStackTrace()
+            showToast("加载书源列表失败：${e.message}")
+        }
+    }
+
+    /**
+     * 选择要查看的书源
+     *
+     * @param bookSourceUrl 书源 URL
+     */
+    fun selectBookSource(bookSourceUrl: String) {
+        val source = _bookSources.value.firstOrNull { it.bookSourceUrl == bookSourceUrl }
+        _selectedBookSourceUrl.value = if (source != null) bookSourceUrl else null
+        _selectedBookSource.value = source
     }
 
     /**

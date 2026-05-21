@@ -66,6 +66,9 @@ import io.legado.app.model.debug.VariableOperationType
 import io.legado.app.model.debug.BookDataFlow
 import io.legado.app.model.debug.DataFlowStage
 import io.legado.app.model.debug.FieldFillRecord
+import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookSource
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -279,6 +282,48 @@ fun FlowLogDetailDialog(
                         }
                     }
 
+                    if (log.book != null || log.bookChapter != null || log.bookSource != null) {
+                        Spacer(Modifier.height(12.dp))
+                        DetailSection(title = "实体显示", searchQuery = searchQuery) {
+                            log.bookSource?.let { source ->
+                                Text(
+                                    text = "BookSource（书源）",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                BookSourceEntityView(source, searchQuery)
+                                if (log.book != null || log.bookChapter != null) {
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                            }
+                            log.book?.let { book ->
+                                Text(
+                                    text = "Book（书籍）",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                BookEntityView(book, searchQuery)
+                                if (log.bookChapter != null) {
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                            }
+                            log.bookChapter?.let { chapter ->
+                                Text(
+                                    text = "BookChapter（章节）",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                                BookChapterEntityView(chapter, searchQuery)
+                            }
+                        }
+                    }
+
                     if (!log.detail.isNullOrBlank()) {
                         Spacer(Modifier.height(12.dp))
                         DetailSection(title = "详细内容", searchQuery = searchQuery) {
@@ -366,7 +411,7 @@ private fun RuleExecutionTreeView(
         Text(
             text = "执行步骤:",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
         
@@ -410,7 +455,7 @@ private fun RuleExecutionNodeView(
                     Text(
                         text = "${it}ms",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -442,7 +487,7 @@ private fun RuleExecutionNodeView(
                 Text(
                     text = "输入: ${if (!inputExpanded && inputNeedsExpand) input.take(50) + "..." else input}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .padding(top = 2.dp)
                         .then(
@@ -528,7 +573,7 @@ private fun JsExecutionView(
         Text(
             text = "JS代码:",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
         Surface(
@@ -549,7 +594,7 @@ private fun JsExecutionView(
         Text(
             text = "执行环境:",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
         
@@ -595,7 +640,7 @@ private fun JsExecutionView(
             Text(
                 text = "执行结果:",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(4.dp))
             Surface(
@@ -720,7 +765,7 @@ private fun DetailRow(
         Text(
             text = highlightText(label, searchQuery),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(80.dp)
         )
 
@@ -812,12 +857,12 @@ private fun VariableOperationsView(
             Text(
                 text = "统计: 读${readOps.size}次, 写${writeOps.size}次, 删${deleteOps.size}次",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "涉及${operations.map { it.key }.toSet().size}个变量",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         
@@ -904,7 +949,7 @@ private fun VariableOperationItem(
                 Text(
                     text = operation.storage.displayName,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
@@ -935,7 +980,7 @@ private fun VariableOperationItem(
                 Text(
                     text = "原值: ${if (!oldExpanded && oldNeedsExpand) oldValue.take(40) + "..." else oldValue}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .padding(top = 2.dp)
                         .then(
@@ -975,7 +1020,7 @@ private fun DataFlowView(
         Text(
             text = "字段填充过程:",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(4.dp))
         
@@ -983,7 +1028,7 @@ private fun DataFlowView(
             Text(
                 text = "暂无数据流转记录",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             dataFlow.stages.sortedBy { it.stage.order }.forEach { stageFlow ->
@@ -996,7 +1041,7 @@ private fun DataFlowView(
         Text(
             text = dataFlow.getSummary(),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.outline
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -1026,7 +1071,7 @@ private fun StageDataFlowView(
                     Text(
                         text = "${it}ms",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -1035,7 +1080,7 @@ private fun StageDataFlowView(
                 Text(
                     text = "无字段填充",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             } else {
@@ -1096,10 +1141,138 @@ private fun FieldFillRecordView(
                     Text(
                         text = "rule: ${field.getRulePreview(30) ?: ""}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun BookEntityView(book: Book, searchQuery: String) {
+    DetailRow("书名", book.name, searchQuery)
+    DetailRow("作者", book.author, searchQuery)
+    DetailRow("bookUrl", book.bookUrl, searchQuery)
+    DetailRow("tocUrl", book.tocUrl, searchQuery)
+    DetailRow("origin", book.origin, searchQuery)
+    DetailRow("originName", book.originName, searchQuery)
+    book.coverUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("coverUrl", it, searchQuery)
+    }
+    book.customCoverUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("customCoverUrl", it, searchQuery)
+    }
+    book.customTag.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("customTag", it, searchQuery)
+    }
+    book.kind.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("kind", it, searchQuery)
+    }
+    book.intro.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("intro", it, searchQuery)
+    }
+    book.customIntro.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("customIntro", it, searchQuery)
+    }
+    book.charset.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("charset", it, searchQuery)
+    }
+    DetailRow("type", book.type.toString(), searchQuery)
+    DetailRow("group", book.group.toString(), searchQuery)
+    book.durChapterTitle.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("durChapterTitle", it, searchQuery)
+    }
+    DetailRow("durChapterIndex", book.durChapterIndex.toString(), searchQuery)
+    DetailRow("durChapterPos", book.durChapterPos.toString(), searchQuery)
+    DetailRow("durChapterTime", book.durChapterTime.toString(), searchQuery)
+    DetailRow("durVolumeIndex", book.durVolumeIndex.toString(), searchQuery)
+    DetailRow("chapterInVolumeIndex", book.chapterInVolumeIndex.toString(), searchQuery)
+    DetailRow("totalChapterNum", book.totalChapterNum.toString(), searchQuery)
+    book.latestChapterTitle.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("latestChapterTitle", it, searchQuery)
+    }
+    DetailRow("latestChapterTime", book.latestChapterTime.toString(), searchQuery)
+    DetailRow("lastCheckTime", book.lastCheckTime.toString(), searchQuery)
+    DetailRow("lastCheckCount", book.lastCheckCount.toString(), searchQuery)
+    book.wordCount.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("wordCount", it, searchQuery)
+    }
+    DetailRow("canUpdate", book.canUpdate.toString(), searchQuery)
+    DetailRow("order", book.order.toString(), searchQuery)
+    DetailRow("originOrder", book.originOrder.toString(), searchQuery)
+    book.variable.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("variable", it, searchQuery)
+    }
+    book.readConfig?.let { rc ->
+        DetailRow("readConfig.reverseToc", rc.reverseToc.toString(), searchQuery)
+        DetailRow("readConfig.reSegment", rc.reSegment.toString(), searchQuery)
+        DetailRow("readConfig.useReplaceRule", rc.useReplaceRule.toString(), searchQuery)
+    }
+    DetailRow("syncTime", book.syncTime.toString(), searchQuery)
+}
+
+@Composable
+private fun BookChapterEntityView(chapter: BookChapter, searchQuery: String) {
+    DetailRow("title", chapter.title, searchQuery)
+    DetailRow("url", chapter.url, searchQuery)
+    DetailRow("baseUrl", chapter.baseUrl, searchQuery)
+    DetailRow("index", chapter.index.toString(), searchQuery)
+    DetailRow("bookUrl", chapter.bookUrl, searchQuery)
+    DetailRow("isVolume", chapter.isVolume.toString(), searchQuery)
+    DetailRow("isVip", chapter.isVip.toString(), searchQuery)
+    DetailRow("isPay", chapter.isPay.toString(), searchQuery)
+    chapter.tag.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("tag", it, searchQuery)
+    }
+    chapter.wordCount.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("wordCount", it, searchQuery)
+    }
+    chapter.resourceUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("resourceUrl", it, searchQuery)
+    }
+    chapter.imgUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("imgUrl", it, searchQuery)
+    }
+    chapter.start?.let {
+        DetailRow("start", it.toString(), searchQuery)
+    }
+    chapter.end?.let {
+        DetailRow("end", it.toString(), searchQuery)
+    }
+    chapter.startFragmentId.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("startFragmentId", it, searchQuery)
+    }
+    chapter.endFragmentId.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("endFragmentId", it, searchQuery)
+    }
+    chapter.variable.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("variable", it, searchQuery)
+    }
+}
+
+@Composable
+private fun BookSourceEntityView(source: BookSource, searchQuery: String) {
+    DetailRow("bookSourceName", source.bookSourceName, searchQuery)
+    DetailRow("bookSourceUrl", source.bookSourceUrl, searchQuery)
+    source.bookSourceGroup.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("bookSourceGroup", it, searchQuery)
+    }
+    DetailRow("bookSourceType", source.bookSourceType.toString(), searchQuery)
+    DetailRow("enabled", source.enabled.toString(), searchQuery)
+    DetailRow("enabledExplore", source.enabledExplore.toString(), searchQuery)
+    DetailRow("customOrder", source.customOrder.toString(), searchQuery)
+    DetailRow("weight", source.weight.toString(), searchQuery)
+    source.searchUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("searchUrl", it, searchQuery)
+    }
+    source.exploreUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("exploreUrl", it, searchQuery)
+    }
+    source.header.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("header", it, searchQuery)
+    }
+    source.loginUrl.takeIf { !it.isNullOrBlank() }?.let {
+        DetailRow("loginUrl", it, searchQuery)
     }
 }

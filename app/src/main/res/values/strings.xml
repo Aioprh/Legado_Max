@@ -1410,6 +1410,12 @@
     <string name="update_interval">间隔：</string>
     <string name="silent_update">静默更新</string>
     <string name="show_web_log">输出日志</string>
+    <string name="query_content">查询网页内容</string>
+    <string name="query_hint">输入要查询的内容</string>
+    <string name="find_prev_match">上一个匹配</string>
+    <string name="find_next_match">下一个匹配</string>
+    <string name="query_result">找到 %1$d 个匹配项</string>
+    <string name="query_no_result">未找到匹配内容</string>
     <string name="please_focus_cursor_on_textbox">请将光标聚焦在文本框</string>
     <string name="focus_lost_on_textbox">在文本框丢失光标焦点</string>
     <string name="edit_code">编辑代码</string>

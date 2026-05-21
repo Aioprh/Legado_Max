@@ -196,7 +196,10 @@ object BookContent {
         FlowLogRecorder.logExtract(
             source = bookSource,
             message = "开始提取正文内容",
-            rule = contentRule.content
+            rule = contentRule.content,
+            book = book,
+            bookChapter = bookChapter,
+            bookSource = bookSource
         )
         
         currentCoroutineContext().ensureActive()
@@ -209,7 +212,10 @@ object BookContent {
             message = "正文内容提取完成",
             rule = contentRule.content,
             result = contentData.first.take(100),
-            originalValue = body?.take(100)
+            originalValue = body?.take(100),
+            book = book,
+            bookChapter = bookChapter,
+            bookSource = bookSource
         )
         
         contentList.add(contentData.first)
@@ -314,7 +320,10 @@ object BookContent {
             FlowLogRecorder.logReplace(
                 source = bookSource,
                 message = "开始正文全文替换",
-                rule = replaceRegex
+                rule = replaceRegex,
+                book = book,
+                bookChapter = bookChapter,
+                bookSource = bookSource
             )
             contentStr = contentStr.split(AppPattern.LFRegex).joinToString("\n") { it.trim() }
             contentStr = analyzeRule.getString(replaceRegex, contentStr)
@@ -326,7 +335,10 @@ object BookContent {
                 message = "正文全文替换完成",
                 rule = replaceRegex,
                 result = contentStr.take(100),
-                originalValue = originalContent
+                originalValue = originalContent,
+                book = book,
+                bookChapter = bookChapter,
+                bookSource = bookSource
             )
         }
         val titleRule = contentRule.title //先正文再章节名称
@@ -373,7 +385,10 @@ object BookContent {
             message = "正文阶段数据流转",
             bookUrl = book.bookUrl,
             bookName = book.name,
-            author = book.author
+            author = book.author,
+            book = book,
+            bookChapter = bookChapter,
+            bookSource = bookSource
         )
         
         if (needSave) {

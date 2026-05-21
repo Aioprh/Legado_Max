@@ -112,7 +112,9 @@ object BookInfo {
         
         FlowLogRecorder.logExtract(
             source = bookSource,
-            message = "开始提取书籍信息字段"
+            message = "开始提取书籍信息字段",
+            book = book,
+            bookSource = bookSource
         )
         
         currentCoroutineContext().ensureActive()
@@ -129,7 +131,9 @@ object BookInfo {
                 message = "提取书名",
                 rule = infoRule.name,
                 result = it,
-                originalValue = originalName.takeIf { it.isNotEmpty() }
+                originalValue = originalName.takeIf { it.isNotEmpty() },
+                book = book,
+                bookSource = bookSource
             )
             
             dataFlowFields.recordField(
@@ -153,7 +157,9 @@ object BookInfo {
                 message = "提取作者",
                 rule = infoRule.author,
                 result = it,
-                originalValue = originalAuthor.takeIf { it.isNotEmpty() }
+                originalValue = originalAuthor.takeIf { it.isNotEmpty() },
+                book = book,
+                bookSource = bookSource
             )
             
             dataFlowFields.recordField(
@@ -178,7 +184,9 @@ object BookInfo {
                         message = "提取分类",
                         rule = infoRule.kind,
                         result = it,
-                        originalValue = originalKind
+                        originalValue = originalKind,
+                        book = book,
+                        bookSource = bookSource
                     )
                     
                     dataFlowFields.recordField(
@@ -197,7 +205,9 @@ object BookInfo {
                 source = bookSource,
                 message = "提取分类",
                 rule = infoRule.kind,
-                error = e
+                error = e,
+                book = book,
+                bookSource = bookSource
             )
             
             dataFlowFields.recordField(
@@ -220,7 +230,9 @@ object BookInfo {
                     message = "提取字数",
                     rule = infoRule.wordCount,
                     result = it,
-                    originalValue = originalWordCount?.takeIf { it.isNotEmpty() }
+                    originalValue = originalWordCount?.takeIf { it.isNotEmpty() },
+                    book = book,
+                    bookSource = bookSource
                 )
                 
                 dataFlowFields.recordField(
@@ -239,7 +251,9 @@ object BookInfo {
                 source = bookSource,
                 message = "提取字数",
                 rule = infoRule.wordCount,
-                error = e
+                error = e,
+                book = book,
+                bookSource = bookSource
             )
             
             dataFlowFields.recordField(
@@ -262,7 +276,9 @@ object BookInfo {
                     message = "提取最新章节",
                     rule = infoRule.lastChapter,
                     result = it,
-                    originalValue = originalLatestChapter?.takeIf { it.isNotEmpty() }
+                    originalValue = originalLatestChapter?.takeIf { it.isNotEmpty() },
+                    book = book,
+                    bookSource = bookSource
                 )
                 
                 dataFlowFields.recordField(
@@ -281,7 +297,9 @@ object BookInfo {
                 source = bookSource,
                 message = "提取最新章节",
                 rule = infoRule.lastChapter,
-                error = e
+                error = e,
+                book = book,
+                bookSource = bookSource
             )
             
             dataFlowFields.recordField(
@@ -306,7 +324,9 @@ object BookInfo {
                     message = "提取简介",
                     rule = infoRule.intro,
                     result = introTrimS,
-                    originalValue = originalIntro
+                    originalValue = originalIntro,
+                    book = book,
+                    bookSource = bookSource
                 )
                 
                 dataFlowFields.recordField(
@@ -326,7 +346,9 @@ object BookInfo {
                         message = "提取简介",
                         rule = infoRule.intro,
                         result = it,
-                        originalValue = originalIntro
+                        originalValue = originalIntro,
+                        book = book,
+                        bookSource = bookSource
                     )
                     
                     dataFlowFields.recordField(
@@ -347,7 +369,9 @@ object BookInfo {
                 source = bookSource,
                 message = "提取简介",
                 rule = infoRule.intro,
-                error = e
+                error = e,
+                book = book,
+                bookSource = bookSource
             )
             
             dataFlowFields.recordField(
@@ -373,7 +397,9 @@ object BookInfo {
                     message = "提取封面链接",
                     rule = infoRule.coverUrl,
                     result = book.coverUrl,
-                    originalValue = originalCoverUrl
+                    originalValue = originalCoverUrl,
+                    book = book,
+                    bookSource = bookSource
                 )
                 
                 dataFlowFields.recordField(
@@ -392,7 +418,9 @@ object BookInfo {
                 source = bookSource,
                 message = "提取封面链接",
                 rule = infoRule.coverUrl,
-                error = e
+                error = e,
+                book = book,
+                bookSource = bookSource
             )
             
             dataFlowFields.recordField(
@@ -418,7 +446,9 @@ object BookInfo {
                 message = "提取目录链接",
                 rule = infoRule.tocUrl,
                 result = book.tocUrl,
-                originalValue = originalTocUrl.takeIf { it.isNotEmpty() }
+                originalValue = originalTocUrl.takeIf { it.isNotEmpty() },
+                book = book,
+                bookSource = bookSource
             )
             
             dataFlowFields.recordField(
@@ -445,7 +475,9 @@ object BookInfo {
                     message = "提取文件下载链接",
                     rule = infoRule.downloadUrls,
                     result = book.downloadUrls?.joinToString("\n"),
-                    originalValue = originalDownloadUrls
+                    originalValue = originalDownloadUrls,
+                    book = book,
+                    bookSource = bookSource
                 )
                 
                 dataFlowFields.recordField(
@@ -464,7 +496,9 @@ object BookInfo {
             message = "详情阶段数据流转",
             bookUrl = book.bookUrl,
             bookName = book.name,
-            author = book.author
+            author = book.author,
+            book = book,
+            bookSource = bookSource
         )
     }
 

@@ -39,4 +39,79 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- 底部查找栏 -->
+    <LinearLayout
+        android:id="@+id/find_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:elevation="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@color/background_menu"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
+
+            <EditText
+                android:id="@+id/et_find_input"
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_edit"
+                android:hint="@string/query_hint"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:maxLines="1"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tv_find_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="4dp"
+                android:minWidth="40dp"
+                android:gravity="center"
+                android:textColor="@color/primaryText"
+                android:textSize="13sp" />
+
+            <ImageButton
+                android:id="@+id/btn_find_prev"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/find_prev_match"
+                android:src="@drawable/ic_arrow_drop_up"
+                app:tint="@color/primaryText" />
+
+            <ImageButton
+                android:id="@+id/btn_find_next"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/find_next_match"
+                android:src="@drawable/ic_arrow_drop_down"
+                app:tint="@color/primaryText" />
+
+            <ImageButton
+                android:id="@+id/btn_find_close"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/close"
+                android:src="@drawable/ic_clear"
+                app:tint="@color/primaryText" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
 </FrameLayout>

@@ -1,6 +1,7 @@
 package io.legado.app.ui.rss.read
 
 import android.annotation.SuppressLint
+
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -10,12 +11,14 @@ import android.net.Uri
 import android.net.http.SslError
 import android.os.Bundle
 import android.os.SystemClock
+
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
 import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.webkit.SslErrorHandler
@@ -29,6 +32,7 @@ import android.webkit.WebViewClient
 import androidx.activity.addCallback
 import androidx.activity.viewModels
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
 import androidx.core.view.size
 import com.script.rhino.runScriptWithContext
 import io.legado.app.R
@@ -138,6 +142,8 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
     private var perfTracker: RssWebViewPerfTracker? = null
 
     private val refreshNameList: MutableList<String> by lazy { mutableListOf() }
+    private var findCurrentIndex = 0
+    private var findTotalCount = 0
     private fun refresh() {
         if (viewModel.rssSource?.singleUrl == true) {
             currentWebView.reload()
@@ -151,6 +157,92 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
             binding.progressBar.setDurProgress(30)
         }
     }
+
+    private fun showFindBar() {
+        binding.findBar.visible()
+        binding.etFindInput.requestFocus()
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        imm.showSoftInput(binding.etFindInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    private val clearHighlightJs = "(function(){var e=document.querySelectorAll('.legado-hl');e.forEach(function(n){n.outerHTML=n.innerHTML});return 0})()"
+
+    private fun performSearch(query: String) {
+        if (query.isEmpty()) return
+        val escaped = query
+            .replace("\\", "\\\\")
+            .replace("'", "\\'")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("$", "\\$")
+        val js = """
+            (function(){
+                document.querySelectorAll('.legado-hl').forEach(function(e){e.outerHTML=e.innerHTML});
+                var q='$escaped', count=0;
+                var re=new RegExp(q.replace(/[.*+?^${'$'}{}()|[\]\\]/g,'\\$&'),'gi');
+                function walk(n){
+                    if(n.nodeType===3){
+                        var t=n.textContent;
+                        if(re.test(t)){
+                            var s=document.createElement('span');
+                            s.className='legado-hl';
+                            s.innerHTML=t.replace(re,'<mark style="background:#ffeb3b;color:#000">$&</mark>');
+                            n.parentNode.replaceChild(s,n);
+                            count++;
+                        }
+                        re.lastIndex=0;
+                    }else if(n.nodeType===1&&n.nodeName!=='SCRIPT'&&n.nodeName!=='STYLE'&&n.nodeName!=='MARK'){
+                        for(var i=0;i<n.childNodes.length;i++) walk(n.childNodes[i]);
+                    }
+                }
+                walk(document.body);
+                var marks=document.querySelectorAll('.legado-hl mark');
+                return marks.length;
+            })()
+        """.trimIndent()
+        currentWebView.evaluateJavascript(js) { result ->
+            val count = result.toIntOrNull() ?: 0
+            findTotalCount = count
+            findCurrentIndex = if (count > 0) 1 else 0
+            if (count > 0) {
+                binding.tvFindCount.text = "$findCurrentIndex / $count"
+                navigateHighlight(0)
+            } else {
+                binding.tvFindCount.text = getString(R.string.query_no_result)
+            }
+        }
+    }
+
+    private fun navigateHighlight(index: Int) {
+        val js = """
+            (function(){
+                var marks=document.querySelectorAll('.legado-hl mark');
+                if(marks.length===0) return 0;
+                var i=$index % marks.length;
+                if(i<0) i=marks.length+i;
+                marks[i].scrollIntoView({block:'center'});
+                marks.forEach(function(m){m.style.outline=''});
+                marks[i].style.outline='2px solid #1976D2';
+                return i+1;
+            })()
+        """.trimIndent()
+        currentWebView.evaluateJavascript(js) { result ->
+            val current = result.toIntOrNull() ?: 0
+            if (current > 0) {
+                findCurrentIndex = current
+                binding.tvFindCount.text = "$findCurrentIndex / $findTotalCount"
+            }
+        }
+    }
+
+    private fun hideFindBar() {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        imm.hideSoftInputFromWindow(binding.etFindInput.windowToken, 0)
+        binding.findBar.gone()
+        binding.etFindInput.setText("")
+        currentWebView.evaluateJavascript(clearHighlightJs, null)
+    }
+
     private val editSourceResult = registerForActivityResult(
         StartActivityContract(RssSourceEditActivity::class.java)
     ) {
@@ -171,7 +263,27 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
         initLiveData()
         viewModel.initData(intent)
         currentWebView.clearHistory()
+        binding.etFindInput.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                val query = binding.etFindInput.text.toString().trim()
+                if (query.isNotEmpty()) {
+                    performSearch(query)
+                }
+                true
+            } else false
+        }
+        binding.btnFindPrev.setOnClickListener {
+            if (findTotalCount > 0) navigateHighlight(findCurrentIndex - 2)
+        }
+        binding.btnFindNext.setOnClickListener {
+            if (findTotalCount > 0) navigateHighlight(findCurrentIndex)
+        }
+        binding.btnFindClose.setOnClickListener { hideFindBar() }
         onBackPressedDispatcher.addCallback(this) {
+            if (binding.findBar.isVisible) {
+                hideFindBar()
+                return@addCallback
+            }
             if (binding.customWebView.size > 0) { //关闭全屏
                 customWebViewCallback?.onCustomViewHidden()
                 return@addCallback
@@ -267,6 +379,8 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_rss_refresh -> refresh()
+
+            R.id.menu_rss_search -> showFindBar()
 
             R.id.menu_rss_star -> {
                 viewModel.addFavorite()
