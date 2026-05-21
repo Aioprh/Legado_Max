@@ -68,7 +68,9 @@ fun EntityDisplay(
     Column(modifier = Modifier.fillMaxSize()) {
         // 书源选择器
         var expanded by remember { mutableStateOf(false) }
-        val currentSource = bookSources.firstOrNull { it.bookSourceUrl == selectedBookSourceUrl }
+        val currentSource = remember(bookSources, selectedBookSourceUrl) {
+            bookSources.firstOrNull { it.bookSourceUrl == selectedBookSourceUrl }
+        }
 
         ExposedDropdownMenuBox(
             expanded = expanded,
@@ -122,6 +124,23 @@ fun EntityDisplay(
             }
         } else {
             val listState = rememberLazyListState()
+
+            val searchFields = remember(selectedBookSource) {
+                selectedBookSource.ruleSearch?.toFieldList() ?: emptyList()
+            }
+            val exploreFields = remember(selectedBookSource) {
+                selectedBookSource.ruleExplore?.toFieldList() ?: emptyList()
+            }
+            val bookInfoFields = remember(selectedBookSource) {
+                selectedBookSource.ruleBookInfo?.toFieldList() ?: emptyList()
+            }
+            val tocFields = remember(selectedBookSource) {
+                selectedBookSource.ruleToc?.toFieldList() ?: emptyList()
+            }
+            val contentFields = remember(selectedBookSource) {
+                selectedBookSource.ruleContent?.toFieldList() ?: emptyList()
+            }
+
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = listState,
@@ -140,40 +159,40 @@ fun EntityDisplay(
                     item {
                         RuleEntityCard(
                             title = "SearchRule（搜索规则）",
-                            rule = selectedBookSource.ruleSearch,
-                            fields = selectedBookSource.ruleSearch?.toFieldList() ?: emptyList()
+                            isNull = selectedBookSource.ruleSearch == null,
+                            fields = searchFields
                         )
                     }
                     // ExploreRule
                     item {
                         RuleEntityCard(
                             title = "ExploreRule（发现规则）",
-                            rule = selectedBookSource.ruleExplore,
-                            fields = selectedBookSource.ruleExplore?.toFieldList() ?: emptyList()
+                            isNull = selectedBookSource.ruleExplore == null,
+                            fields = exploreFields
                         )
                     }
                     // BookInfoRule
                     item {
                         RuleEntityCard(
                             title = "BookInfoRule（书籍信息规则）",
-                            rule = selectedBookSource.ruleBookInfo,
-                            fields = selectedBookSource.ruleBookInfo?.toFieldList() ?: emptyList()
+                            isNull = selectedBookSource.ruleBookInfo == null,
+                            fields = bookInfoFields
                         )
                     }
                     // TocRule
                     item {
                         RuleEntityCard(
                             title = "TocRule（目录规则）",
-                            rule = selectedBookSource.ruleToc,
-                            fields = selectedBookSource.ruleToc?.toFieldList() ?: emptyList()
+                            isNull = selectedBookSource.ruleToc == null,
+                            fields = tocFields
                         )
                     }
                     // ContentRule
                     item {
                         RuleEntityCard(
                             title = "ContentRule（正文规则）",
-                            rule = selectedBookSource.ruleContent,
-                            fields = selectedBookSource.ruleContent?.toFieldList() ?: emptyList()
+                            isNull = selectedBookSource.ruleContent == null,
+                            fields = contentFields
                         )
                     }
                 }
@@ -271,14 +290,14 @@ private fun BookSourceEntityCard(bookSource: BookSource) {
  * 规则实体卡片（SearchRule / ExploreRule / BookInfoRule / TocRule / ContentRule）
  */
 @Composable
-private fun <T> RuleEntityCard(
+private fun RuleEntityCard(
     title: String,
-    rule: T?,
+    isNull: Boolean,
     fields: List<Pair<String, String>>
 ) {
     var expanded by remember { mutableStateOf(true) }
 
-    if (rule == null) {
+    if (isNull) {
         EntityCard(
             title = title,
             fieldCount = 0,
