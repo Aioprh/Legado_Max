@@ -59,21 +59,7 @@ data class FlowLogItem(
      * 格式化显示时间
      */
     fun formatTime(): String {
-        val sdf = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault())
-        return sdf.format(java.util.Date(startTime))
-    }
-    
-    /**
-     * 格式化显示耗时
-     */
-    fun formatDuration(): String? {
-        return duration?.let {
-            when {
-                it < 1000 -> "${it}ms"
-                it < 60000 -> "${it / 1000.0}s"
-                else -> "${it / 60000}m ${it % 60000 / 1000}s"
-            }
-        }
+        return DebugLogUtils.formatShortTime(startTime)
     }
 
     fun hasExecutionTree(): Boolean = executionTree != null
@@ -100,53 +86,7 @@ data class FlowLogItem(
         val parts = mutableListOf<String>()
         ruleType?.let { parts.add("${it.icon}${it.displayName}") }
         matchCount?.let { parts.add("匹配${it}个") }
-        duration?.let { parts.add(formatDuration() ?: "") }
+        DebugLogUtils.formatDuration(duration)?.let { parts.add(it) }
         return parts.filter { it.isNotBlank() }.joinToString(" | ")
-    }
-}
-
-/**
- * 流程日志分组
- *
- * 按请求ID分组的流程日志
- */
-@Immutable
-data class FlowLogGroup(
-    val requestId: String,
-    val sourceUrl: String?,
-    val sourceName: String?,
-    val operation: String?,
-    val startTime: Long,
-    val items: List<FlowLogItem>,
-    val totalDuration: Long = items.lastOrNull()?.let { end ->
-        end.startTime + (end.duration ?: 0) - items.firstOrNull()!!.startTime
-    } ?: 0,
-    val isSuccess: Boolean = items.none { it.error != null }
-) {
-    /**
-     * 格式化显示时间
-     */
-    fun formatTime(): String {
-        val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-        return sdf.format(java.util.Date(startTime))
-    }
-    
-    /**
-     * 格式化显示总耗时
-     */
-    fun formatTotalDuration(): String {
-        return when {
-            totalDuration < 1000 -> "${totalDuration}ms"
-            totalDuration < 60000 -> "${totalDuration / 1000.0}s"
-            else -> "${totalDuration / 60000}m ${totalDuration % 60000 / 1000}s"
-        }
-    }
-
-    fun getRuleExecutionTrees(): List<RuleExecutionTree> {
-        return items.mapNotNull { it.executionTree }
-    }
-
-    fun getJsExecutions(): List<JsExecutionRecord> {
-        return items.mapNotNull { it.jsExecution }
     }
 }

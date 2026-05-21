@@ -363,20 +363,20 @@ fun DebugLogScreen(
                 }
 
                 // 日志详情弹窗
-                if (uiState.selectedLog != null) {
+                uiState.selectedLog?.let { log ->
                     DebugLogDetailDialog(
-                        log = uiState.selectedLog!!,
+                        log = log,
                         onDismiss = { viewModel.clearSelection() },
-                        onCopy = { viewModel.copyLogDetail(uiState.selectedLog!!) }
+                        onCopy = { viewModel.copyLogDetail(log) }
                     )
                 }
 
                 // 流程日志详情弹窗
-                if (uiState.selectedFlowLog != null) {
+                uiState.selectedFlowLog?.let { flowLog ->
                     FlowLogDetailDialog(
-                        log = uiState.selectedFlowLog!!,
+                        log = flowLog,
                         onDismiss = { viewModel.clearSelection() },
-                        onCopy = { viewModel.copyFlowLogDetail(uiState.selectedFlowLog!!) }
+                        onCopy = { viewModel.copyFlowLogDetail(flowLog) }
                     )
                 }
             }
@@ -445,7 +445,7 @@ private fun DebugLogList(
         ) {
             items(
                 count = logs.size,
-                key = { index -> "${logs[index].id}-$index" }
+                key = { index -> logs[index].id }
             ) { index ->
                 val log = logs[index]
                 DebugLogItem(

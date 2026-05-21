@@ -1,5 +1,6 @@
 package io.legado.app.data.repository.debug
 
+import com.google.gson.Gson
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.debug.DebugEvent
 import kotlinx.coroutines.channels.BufferOverflow
@@ -40,7 +41,7 @@ object DebugEventCenter {
     const val MAX_EVENTS = 500
 
     /** 当前内存中的事件总数 */
-    val eventCount: Int get() = _events.size
+    val eventCount: Int get() = synchronized(_events) { _events.size }
 
     val isEnabled: Boolean get() = AppConfig.debugLogFloatingBall
 
@@ -134,40 +135,21 @@ object DebugEventCenter {
      * 导出为JSON格式
      */
     fun exportToJson(): String {
+        val gson = Gson()
         return synchronized(_events) {
-            buildString {
-                append("[\n")
-                _events.forEachIndexed { index, event ->
-                    append("  {\n")
-                    append("    \"id\": \"${event.id}\",\n")
-                    append("    \"time\": ${event.time},\n")
-                    append("    \"level\": \"${event.level.name}\",\n")
-                    append("    \"category\": \"${event.category.name}\",\n")
-
-                    val message = event.message.replace("\"", "\\\"")
-                    append("    \"message\": \"$message\",\n")
-
-                    val detailStr = if (event.detail != null) {
-                        "\"${event.detail!!.replace("\"", "\\\"")}\""
-                    } else {
-                        "null"
-                    }
-                    append("    \"detail\": $detailStr,\n")
-
-                    val urlStr = if (event.url != null) "\"${event.url}\"" else "null"
-                    append("    \"url\": $urlStr,\n")
-
-                    append("    \"statusCode\": ${event.statusCode},\n")
-                    append("    \"duration\": ${event.duration}\n")
-                    append("  }")
-
-                    if (index < _events.size - 1) {
-                        append(",")
-                    }
-                    append("\n")
-                }
-                append("]")
-            }
+            gson.toJson(_events.map { event ->
+                mapOf(
+                    "id" to event.id,
+                    "time" to event.time,
+                    "level" to event.level.name,
+                    "category" to event.category.name,
+                    "message" to event.message,
+                    "detail" to event.detail,
+                    "url" to event.url,
+                    "statusCode" to event.statusCode,
+                    "duration" to event.duration
+                )
+            })
         }
     }
 

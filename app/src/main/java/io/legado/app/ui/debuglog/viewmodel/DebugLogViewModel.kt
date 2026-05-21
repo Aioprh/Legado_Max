@@ -13,6 +13,7 @@ import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
+import io.legado.app.model.debug.DebugLogUtils
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.SourceSubCategory
@@ -595,13 +596,18 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
 
         execute {
             val loadedLogs = DebugEventCenter.getRecentLogs(DebugEventCenter.MAX_EVENTS)
-            synchronized(this) {
-                _allLogs = loadedLogs
+            val deduplicated = synchronized(this) {
+                // 去重：移除已被事件流接收的重复事件
+                val existingIds = _allLogs.mapTo(mutableSetOf()) { it.id }
+                val filtered = if (existingIds.isEmpty()) loadedLogs else loadedLogs.filter { it.id !in existingIds }
+                val merged = filtered + _allLogs
+                _allLogs = merged
+                merged
             }
 
             _uiState.value = UiState(
-                logs = loadedLogs,
-                isEmpty = loadedLogs.isEmpty(),
+                logs = deduplicated,
+                isEmpty = deduplicated.isEmpty(),
                 isLoading = false,
                 isPaused = _isPaused.value
             )
@@ -624,6 +630,11 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             .filter { !_isPaused.value }
             .onEach { event ->
                 val newLogs = synchronized(this) {
+                    // 去重：如果事件已存在于历史日志中则跳过
+                    if (_allLogs.any { it.id == event.id }) {
+                        return@synchronized null
+                    }
+
                     val updatedLogs = mutableListOf(event)
                     updatedLogs.addAll(_allLogs)
 
@@ -636,6 +647,9 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
                     _allLogs = result
                     result
                 }
+
+                // 去重返回 null 时不更新 UI
+                newLogs ?: return@onEach
 
                 _uiState.value = _uiState.value.copy(
                     logs = newLogs,
@@ -677,8 +691,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      * @return 格式化的日期时间字符串 yyyy-MM-dd HH:mm:ss.SSS
      */
     private fun formatTime(timestamp: Long): String {
-        return java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", java.util.Locale.getDefault())
-            .format(java.util.Date(timestamp))
+        return DebugLogUtils.formatFullTime(timestamp)
     }
 
     companion object {

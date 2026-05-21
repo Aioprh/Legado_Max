@@ -130,18 +130,7 @@ data class JsExecutionRecord(
     val startTime: Long = System.currentTimeMillis()
 ) {
     fun formatTime(): String {
-        val sdf = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault())
-        return sdf.format(java.util.Date(startTime))
-    }
-
-    fun formatDuration(): String? {
-        return duration?.let {
-            when {
-                it < 1000 -> "${it}ms"
-                it < 60000 -> "${it / 1000.0}s"
-                else -> "${it / 60000}m ${it % 60000 / 1000}s"
-            }
-        }
+        return DebugLogUtils.formatShortTime(startTime)
     }
 
     fun isSuccess(): Boolean = error == null
@@ -152,7 +141,7 @@ data class JsExecutionRecord(
         sb.append("├── 代码: ${jsCode.take(100)}${if (jsCode.length > 100) "..." else ""}\n")
         sb.append("├── 环境: ${context.toSummaryString()}\n")
         result?.let { sb.append("├── 结果: ${it.take(100)}${if (it.length > 100) "..." else ""}\n") }
-        duration?.let { sb.append("├── 耗时: ${formatDuration()}\n") }
+        DebugLogUtils.formatDuration(duration)?.let { sb.append("├── 耗时: ${it}\n") }
         error?.let { sb.append("└── 错误: ${it.localizedMessage}\n") }
         return sb.toString().trimEnd('\n')
     }
