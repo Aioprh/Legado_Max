@@ -11,9 +11,20 @@ import io.legado.app.service.DownloadService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+enum class DownloadTab(val label: String) {
+    ALL("全部"),
+    DOWNLOADING("下载中"),
+    PAUSED("已暂停"),
+    COMPLETED("已完成"),
+    FAILED("失败")
+}
 
 /**
  * 下载管理ViewModel
@@ -24,6 +35,32 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
     // 任务列表StateFlow，供UI订阅
     private val _tasks = MutableStateFlow<List<DownloadTask>>(emptyList())
     val tasks: StateFlow<List<DownloadTask>> = _tasks.asStateFlow()
+
+    // 当前选中的 Tab
+    private val _selectedTab = MutableStateFlow(DownloadTab.ALL)
+    val selectedTab: StateFlow<DownloadTab> = _selectedTab.asStateFlow()
+
+    // 过滤后的任务列表
+    val filteredTasks: StateFlow<List<DownloadTask>> = combine(
+        _tasks, _selectedTab
+    ) { tasks, tab ->
+        when (tab) {
+            DownloadTab.ALL -> tasks
+            DownloadTab.DOWNLOADING -> tasks.filter {
+                it.status == DownloadStatus.RUNNING || it.status == DownloadStatus.PENDING
+            }
+            DownloadTab.PAUSED -> tasks.filter { it.status == DownloadStatus.PAUSED }
+            DownloadTab.COMPLETED -> tasks.filter { it.status == DownloadStatus.SUCCESSFUL }
+            DownloadTab.FAILED -> tasks.filter { it.status == DownloadStatus.FAILED }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    fun selectTab(tab: DownloadTab) {
+        _selectedTab.value = tab
+    }
+
+    // 各状态计数
+    fun getPausedCount(): Int = _tasks.value.count { it.status == DownloadStatus.PAUSED }
 
     // 轮询任务Job
     private var pollJob: Job? = null
