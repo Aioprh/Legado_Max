@@ -3,6 +3,7 @@ package io.legado.app.data.repository.debug
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookSource
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
@@ -198,7 +199,8 @@ object FlowLogRecorder {
         message: String = "规则执行完成",
         error: Throwable? = null,
         book: Book? = null,
-        bookChapter: BookChapter? = null
+        bookChapter: BookChapter? = null,
+        bookSource: BookSource? = null
     ) {
         if (!isEnabled) return
         
@@ -227,7 +229,8 @@ object FlowLogRecorder {
                 outputPreview = executionTree.root.output?.take(100),
                 error = error,
                 book = book,
-                bookChapter = bookChapter
+                bookChapter = bookChapter,
+                bookSource = bookSource
             )
 
             addLog(item)
@@ -248,7 +251,8 @@ object FlowLogRecorder {
         message: String = "JS执行完成",
         error: Throwable? = null,
         book: Book? = null,
-        bookChapter: BookChapter? = null
+        bookChapter: BookChapter? = null,
+        bookSource: BookSource? = null
     ) {
         if (!isEnabled) return
         
@@ -274,7 +278,8 @@ object FlowLogRecorder {
                 ruleType = RuleType.JS,
                 error = error ?: jsExecution.error,
                 book = book,
-                bookChapter = bookChapter
+                bookChapter = bookChapter,
+                bookSource = bookSource
             )
 
             addLog(item)
@@ -299,7 +304,8 @@ object FlowLogRecorder {
         duration: Long? = null,
         error: Throwable? = null,
         book: Book? = null,
-        bookChapter: BookChapter? = null
+        bookChapter: BookChapter? = null,
+        bookSource: BookSource? = null
     ) {
         val jsExecution = JsExecutionRecord(
             jsCode = jsCode,
@@ -314,7 +320,8 @@ object FlowLogRecorder {
             message = if (error != null) "JS执行失败" else "JS执行完成",
             error = error,
             book = book,
-            bookChapter = bookChapter
+            bookChapter = bookChapter,
+            bookSource = bookSource
         )
     }
 
@@ -328,7 +335,8 @@ object FlowLogRecorder {
         detail: String? = null,
         error: Throwable? = null,
         book: Book? = null,
-        bookChapter: BookChapter? = null
+        bookChapter: BookChapter? = null,
+        bookSource: BookSource? = null
     ) {
         val sourceUrl = source?.getKey()
         log(
@@ -344,7 +352,8 @@ object FlowLogRecorder {
             duration = duration,
             error = error,
             book = book,
-            bookChapter = bookChapter
+            bookChapter = bookChapter,
+            bookSource = bookSource
         )
     }
 
@@ -370,7 +379,8 @@ object FlowLogRecorder {
         detail: String? = null,
         error: Throwable? = null,
         book: Book? = null,
-        bookChapter: BookChapter? = null
+        bookChapter: BookChapter? = null,
+        bookSource: BookSource? = null
     ) {
         val sourceUrl = source?.getKey()
         log(
@@ -386,7 +396,8 @@ object FlowLogRecorder {
             duration = duration,
             error = error,
             book = book,
-            bookChapter = bookChapter
+            bookChapter = bookChapter,
+            bookSource = bookSource
         )
     }
 
@@ -504,7 +515,8 @@ object FlowLogRecorder {
         bookName: String? = null,
         author: String? = null,
         book: Book? = null,
-        bookChapter: BookChapter? = null
+        bookChapter: BookChapter? = null,
+        bookSource: BookSource? = null
     ) {
         if (!isEnabled || fields.isEmpty()) return
 
@@ -550,7 +562,8 @@ object FlowLogRecorder {
                 duration = stageDataFlow.duration,
                 dataFlow = bookDataFlow,
                 book = book,
-                bookChapter = bookChapter
+                bookChapter = bookChapter,
+                bookSource = bookSource
             )
 
             addLog(item)
@@ -603,7 +616,8 @@ object FlowLogRecorder {
         /** 当前处理的书籍 */
         book: Book? = null,
         /** 当前处理的章节 */
-        bookChapter: BookChapter? = null
+        bookChapter: BookChapter? = null,
+        bookSource: BookSource? = null
     ) {
         if (!isEnabled) return
         
@@ -638,7 +652,8 @@ object FlowLogRecorder {
                 requestHeaders = requestHeaders,
                 cookies = cookies,
                 book = book,
-                bookChapter = bookChapter
+                bookChapter = bookChapter,
+                bookSource = bookSource
             )
 
             addLog(item)

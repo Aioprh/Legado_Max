@@ -3,6 +3,7 @@ package io.legado.app.model.debug
 import androidx.compose.runtime.Immutable
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookSource
 import java.util.UUID
 
 /**
@@ -50,7 +51,9 @@ data class FlowLogItem(
     /** 当前处理的书籍对象 */
     val book: Book? = null,
     /** 当前处理的章节对象 */
-    val bookChapter: BookChapter? = null
+    val bookChapter: BookChapter? = null,
+    /** 当前处理的书源对象 */
+    val bookSource: BookSource? = null
 ) {
     /**
      * 格式化显示时间
