@@ -397,7 +397,9 @@ class AnalyzeRule(
                     source = source,
                     executionTree = tree,
                     message = "规则解析失败: ${e.localizedMessage}",
-                    error = e
+                    error = e,
+                    book = book as? Book,
+                    bookChapter = chapter
                 )
             }
             throw e
@@ -409,7 +411,9 @@ class AnalyzeRule(
             FlowLogRecorder.logRuleExecution(
                 source = source,
                 executionTree = tree,
-                message = "规则解析成功"
+                message = "规则解析成功",
+                book = book as? Book,
+                bookChapter = chapter
             )
         }
         
@@ -484,7 +488,9 @@ class AnalyzeRule(
             FlowLogRecorder.logRuleExecution(
                 source = source,
                 executionTree = tree,
-                message = "获取Element完成"
+                message = "获取Element完成",
+                book = book as? Book,
+                bookChapter = chapter
             )
         }
         
@@ -547,7 +553,9 @@ class AnalyzeRule(
             FlowLogRecorder.logRuleExecution(
                 source = source,
                 executionTree = tree,
-                message = "获取列表完成，共${resultList.size}个元素"
+                message = "获取列表完成，共${resultList.size}个元素",
+                book = book as? Book,
+                bookChapter = chapter
             )
         }
         
@@ -604,7 +612,9 @@ class AnalyzeRule(
         FlowLogRecorder.logReplace(
             source = source,
             message = "开始数据替换",
-            rule = "$replaceRegex -> $replacement"
+            rule = "$replaceRegex -> $replacement",
+            book = book as? Book,
+            bookChapter = chapter
         )
         
         val regex = compileRegexCache(replaceRegex)
@@ -633,7 +643,9 @@ class AnalyzeRule(
             rule = "$replaceRegex -> $replacement",
             result = replacedResult.take(100),  // 只记录前100个字符
             originalValue = result.take(100),  // 只记录前100个字符
-            duration = duration
+            duration = duration,
+            book = book as? Book,
+            bookChapter = chapter
         )
         
         return replacedResult
@@ -1018,7 +1030,9 @@ class AnalyzeRule(
             FlowLogRecorder.logReplace(
                 source = source,
                 message = "执行JS替换",
-                rule = jsStr.take(200)
+                rule = jsStr.take(200),
+                book = book as? Book,
+                bookChapter = chapter
             )
         }
         
@@ -1074,7 +1088,9 @@ class AnalyzeRule(
                 context = jsContext,
                 result = null,
                 duration = duration,
-                error = e
+                error = e,
+                book = book as? Book,
+                bookChapter = chapter
             )
             throw e
         }
@@ -1085,7 +1101,9 @@ class AnalyzeRule(
             jsCode = jsStr,
             context = jsContext,
             result = jsResult?.toString()?.take(200),
-            duration = duration
+            duration = duration,
+            book = book as? Book,
+            bookChapter = chapter
         )
         
         if (containsReplace) {
@@ -1095,7 +1113,9 @@ class AnalyzeRule(
                 rule = jsStr.take(200),
                 result = jsResult?.toString()?.take(100),
                 originalValue = result?.toString()?.take(100),
-                duration = duration
+                duration = duration,
+                book = book as? Book,
+                bookChapter = chapter
             )
         }
         
