@@ -180,7 +180,7 @@ object DownloadState {
         val task = taskMap[id] ?: return
         downloadManager.remove(id)
         removeTask(id)
-        Download.start(context, task.url, task.fileName)
+        Download.start(context, task.url, task.fileName, task.sourceUrl.ifEmpty { null })
     }
 
     /**

@@ -392,7 +392,7 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
             var fileName = URLUtil.guessFileName(url, contentDisposition, null)
             fileName = URLDecoder.decode(fileName, "UTF-8")
             currentWebView.longSnackbar(fileName, getString(R.string.action_download)) {
-                Download.start(requireContext(), url, fileName)
+                Download.start(requireContext(), url, fileName, currentWebView.url)
             }
         }
     }
