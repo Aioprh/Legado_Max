@@ -28,7 +28,10 @@ data class DownloadTask(
     val status: DownloadStatus = DownloadStatus.PENDING,
     val progress: Int = 0,
     val totalSize: Int = 0,
-    val downloadedSize: Int = 0
+    val downloadedSize: Int = 0,
+    val speed: Long = 0,              // 下载速度 bytes/s
+    val sourceUrl: String = "",       // 来源页面 URL
+    val downloadUrl: String = ""      // 文件直链 URL
 )
 
 /**
@@ -56,37 +59,65 @@ object DownloadState {
     // 任务Map，key为downloadId，value为DownloadTask
     private val taskMap = mutableMapOf<Long, DownloadTask>()
 
+    // 用于计算瞬时速度：记录上一次轮询的已下载字节数
+    private val lastDownloadedMap = mutableMapOf<Long, Int>()
+
     /**
      * 添加新下载任务
      */
-    fun addTask(id: Long, url: String, fileName: String, notificationId: Int) {
+    fun addTask(
+        id: Long,
+        url: String,
+        fileName: String,
+        notificationId: Int,
+        sourceUrl: String = "",
+        downloadUrl: String = ""
+    ) {
         val task = DownloadTask(
             id = id,
             url = url,
             fileName = fileName,
             notificationId = notificationId,
-            startTime = System.currentTimeMillis()
+            startTime = System.currentTimeMillis(),
+            sourceUrl = sourceUrl,
+            downloadUrl = downloadUrl
         )
         taskMap[id] = task
         updateFlow()
     }
 
     /**
-     * 更新任务状态和进度
+     * 更新任务状态和进度，附带速度计算
      */
     fun updateTask(
         id: Long,
         status: DownloadStatus,
         progress: Int = 0,
         totalSize: Int = 0,
-        downloadedSize: Int = 0
+        downloadedSize: Int = 0,
+        sourceUrl: String? = null,
+        downloadUrl: String? = null
     ) {
         taskMap[id]?.let { existing ->
+            // 计算瞬时速度: 与上一次的差值 / 轮询间隔(1s)
+            val lastDownloaded = lastDownloadedMap[id] ?: 0
+            val speed = if (status == DownloadStatus.RUNNING && downloadedSize > lastDownloaded) {
+                (downloadedSize - lastDownloaded).toLong()
+            } else if (status == DownloadStatus.RUNNING) {
+                existing.speed // 保持上次速度（防止瞬间为0跳动）
+            } else {
+                0L
+            }
+            lastDownloadedMap[id] = downloadedSize
+
             taskMap[id] = existing.copy(
                 status = status,
                 progress = progress,
                 totalSize = totalSize,
-                downloadedSize = downloadedSize
+                downloadedSize = downloadedSize,
+                speed = speed,
+                sourceUrl = sourceUrl ?: existing.sourceUrl,
+                downloadUrl = downloadUrl ?: existing.downloadUrl
             )
             updateFlow()
         }
@@ -97,6 +128,7 @@ object DownloadState {
      */
     fun removeTask(id: Long) {
         taskMap.remove(id)
+        lastDownloadedMap.remove(id)
         updateFlow()
     }
 
@@ -120,6 +152,7 @@ object DownloadState {
      */
     fun clear() {
         taskMap.clear()
+        lastDownloadedMap.clear()
         updateFlow()
     }
 
