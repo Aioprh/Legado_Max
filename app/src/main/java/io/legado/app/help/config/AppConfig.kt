@@ -539,6 +539,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.tocCountWords, value)
         }
 
+    var tocCollapseVolumeName: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.tocCollapseVolumeName)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.tocCollapseVolumeName, value)
+        }
+
     var enableReadRecord: Boolean
         get() = true
         set(value) {

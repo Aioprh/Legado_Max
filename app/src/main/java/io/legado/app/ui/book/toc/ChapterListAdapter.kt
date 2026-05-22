@@ -81,10 +81,21 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
     fun setChapterItems(items: List<BookChapter>, applyCollapse: Boolean = true) {
         fullItems = items
         if (applyCollapse) {
+            resetCollapsedVolumes()
             autoExpandVolumeForChapter(callback.durChapterIndex())
             applyFilter()
         } else {
             setItems(items)
+        }
+    }
+
+    private fun resetCollapsedVolumes() {
+        collapsedVolumes.clear()
+        if (!AppConfig.tocCollapseVolumeName) return
+        fullItems.forEachIndexed { index, item ->
+            if (item.isVolume && index < fullItems.lastIndex && !fullItems[index + 1].isVolume) {
+                collapsedVolumes.add(item.index)
+            }
         }
     }
 
