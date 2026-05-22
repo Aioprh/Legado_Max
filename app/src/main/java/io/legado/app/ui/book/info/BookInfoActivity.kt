@@ -374,12 +374,14 @@ class BookInfoActivity :
                 }
             }
 
+            // 是否禁止更新
             R.id.menu_can_update -> {
                 viewModel.getBook()?.let {
                     it.canUpdate = !it.canUpdate
                     if (viewModel.inBookshelf) {
                         if (!it.canUpdate) {
                             it.removeType(BookType.updateError)
+                            toastOnUi("已禁止更新，书架刷新时将不再检查此书的新章节")
                         }
                         viewModel.saveBook(it)
                     }
