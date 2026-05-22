@@ -295,6 +295,10 @@ class ReadRecordViewModel : ViewModel() {
         return bookRepository.getBookCoverByNameAndAuthor(bookName, bookAuthor)
     }
 
+    fun getConfiguredDefaultCover(): String? {
+        return bookRepository.getConfiguredDefaultCover()
+    }
+
     suspend fun getMergeCandidates(targetRecord: ReadRecord): List<ReadRecord> {
         return repository.getMergeCandidates(targetRecord)
     }
