@@ -87,6 +87,14 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         binding.toolBar.menu.applyTint(requireContext())
         binding.toolBar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
+                R.id.menu_expand_all -> {
+                    adapter.expandAll()
+                    true
+                }
+                R.id.menu_collapse_all -> {
+                    adapter.collapseAll()
+                    true
+                }
                 R.id.menu_close -> {
                     dismissAllowingStateLoss()
                     true
@@ -423,6 +431,24 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
 
         fun setData(grouped: Map<String, List<SourceFieldItem>>) {
             groupedResults = grouped
+            rebuildItems()
+            notifyDataSetChanged()
+        }
+
+        /**
+         * 展开所有分组
+         */
+        fun expandAll() {
+            expandedGroups.addAll(groupedResults.keys)
+            rebuildItems()
+            notifyDataSetChanged()
+        }
+
+        /**
+         * 收起所有分组
+         */
+        fun collapseAll() {
+            expandedGroups.clear()
             rebuildItems()
             notifyDataSetChanged()
         }
