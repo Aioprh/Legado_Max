@@ -1023,6 +1023,9 @@
     <string name="double_page_horizontal">平板/横屏双页</string>
     <string name="open_in_browser">浏览器打开</string>
     <string name="view_cookie">查看Cookie</string>
+    <string name="web_debug">网页调试</string>
+    <string name="eruda_enabled">网页控制台已开启</string>
+    <string name="eruda_disabled">网页控制台已关闭</string>
     <string name="copy_url">拷贝 URL</string>
     <string name="full_screen">全屏</string>
     <string name="open_fun">打开方式</string>

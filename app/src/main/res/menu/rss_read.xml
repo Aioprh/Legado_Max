@@ -62,4 +62,9 @@
         android:title="@string/log"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/menu_web_debug"
+        android:title="@string/web_debug"
+        app:showAsAction="never" />
+
 </menu>

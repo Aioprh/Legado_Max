@@ -126,6 +126,7 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
     private var customWebViewCallback: WebChromeClient.CustomViewCallback? = null
     private var interfaceInjected: String? = null
     private var needClearHistory = true
+    private var erudaEnabled = false
     private val selectImageDir = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             ACache.get().put(imagePathKey, uri.toString())
@@ -416,6 +417,7 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                 showDialogFragment(CookieViewerDialog(it))
             } ?: toastOnUi("url null")
             R.id.menu_log -> showDialogFragment<AppLogDialog>()
+            R.id.menu_web_debug -> toggleEruda()
             R.id.menu_read_record -> showDialogFragment(ReadRecordDialog(viewModel.rssSource?.sourceUrl))
         }
         return super.onCompatOptionsItemSelected(item)
@@ -632,6 +634,36 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                 ttsMenuItem?.setTitle(R.string.read_aloud)
             }
             ttsMenuItem?.icon?.setTintMutate(primaryTextColor)
+        }
+    }
+
+    private fun toggleEruda() {
+        erudaEnabled = !erudaEnabled
+        val erudaScript = if (erudaEnabled) {
+            """
+            (function() {
+                var script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/eruda@3.0.1/eruda.min.js';
+                document.body.appendChild(script);
+                script.onload = function() { eruda.init(); }
+            })();
+            """.trimIndent()
+        } else {
+            """
+            (function() {
+                var el = document.querySelector('div[data-eruda]');
+                if (el) el.parentNode.removeChild(el);
+                var el2 = document.querySelector('script[src*="eruda"]');
+                if (el2) el2.parentNode.removeChild(el2);
+                if (window.eruda) { eruda.destroy(); delete window.eruda; }
+            })();
+            """.trimIndent()
+        }
+        currentWebView.evaluateJavascript(erudaScript, null)
+        if (erudaEnabled) {
+            toastOnUi(R.string.eruda_enabled)
+        } else {
+            toastOnUi(R.string.eruda_disabled)
         }
     }
 
