@@ -14,6 +14,7 @@ import io.legado.app.help.source.sortUrls
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.ui.widget.dialog.BottomWebViewDialog
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.setEdgeEffectColor
@@ -60,8 +61,32 @@ class RssSourceDebugActivity : VMBaseActivity<ActivityRssSourceDebugBinding, Rss
         when (item.itemId) {
             R.id.menu_list_src -> showDialogFragment(TextDialog("Html", viewModel.listSrc))
             R.id.menu_content_src -> showDialogFragment(TextDialog("Html", viewModel.contentSrc))
+            R.id.menu_preview_content -> showContentPreview()
         }
         return super.onCompatOptionsItemSelected(item)
+    }
+
+    /**
+     * 显示书源内容预览
+     *
+     * 如果书源内容为空，提示用户；否则，使用 BottomWebViewDialog 展示书源内容
+     */
+    private fun showContentPreview() {
+        val contentSrc = viewModel.contentSrc
+        val rssSource = viewModel.rssSource
+        if (contentSrc.isNullOrBlank()) {
+            toastOnUi(R.string.content_src_empty)
+            return
+        }
+        val sourceUrl = rssSource?.sourceUrl ?: return
+        showDialogFragment(
+            BottomWebViewDialog(
+                sourceKey = sourceUrl,
+                bookType = 0,
+                url = sourceUrl,
+                html = contentSrc
+            )
+        )
     }
 
     private fun initRecyclerView() {

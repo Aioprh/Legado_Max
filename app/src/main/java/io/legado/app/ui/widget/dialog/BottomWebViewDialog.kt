@@ -410,12 +410,12 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
             val sourceKey = args.getString("sourceKey") ?: return@launch
             val url = args.getString("url") ?: return@launch
             kotlin.runCatching {
-                source = appDb.bookSourceDao.getBookSource(sourceKey).also {
-                    if (it == null) {
-                        activity?.toastOnUi("no find bookSource")
-                        dismiss()
-                        return@launch
-                    }
+                source = appDb.bookSourceDao.getBookSource(sourceKey)
+                    ?: appDb.rssSourceDao.getByKey(sourceKey)
+                if (source == null) {
+                    activity?.toastOnUi("no find source")
+                    dismiss()
+                    return@launch
                 }
                 args.getString("config")?.let { json ->
                     try {

@@ -978,6 +978,8 @@
     <string name="toc_src">Chapters source code</string>
     <string name="content_src">Content source code</string>
     <string name="list_src">List source code</string>
+    <string name="preview_content">Preview content page</string>
+    <string name="content_src_empty">Content source is empty, please debug first</string>
     <string name="title_font_size">Font size</string>
     <string name="title_margin_top">Margin top</string>
     <string name="title_margin_bottom">Margin bottom</string>
