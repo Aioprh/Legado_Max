@@ -286,6 +286,12 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         _rssExecutionRecords.value = RssExecutionRecorder.getCurrentRecords()
     }
 
+    /**
+     * 订阅规则执行记录流
+     *
+     * 监听 RssExecutionRecorder.ruleRecordsFlow，
+     * 实时接收规则执行记录更新并同步到 UI 状态
+     */
     private fun subscribeToRssRuleRecords() {
         RssExecutionRecorder.ruleRecordsFlow
             .onEach { records ->
@@ -295,6 +301,11 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         refreshRssRuleRecords()
     }
 
+    /**
+     * 刷新规则执行记录
+     *
+     * 从 RssExecutionRecorder 获取当前所有规则执行记录
+     */
     fun refreshRssRuleRecords() {
         _rssRuleRecords.value = RssExecutionRecorder.getCurrentRuleRecords()
     }

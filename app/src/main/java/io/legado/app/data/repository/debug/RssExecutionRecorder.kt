@@ -37,6 +37,10 @@ object RssExecutionRecorder {
         replay = 1,
         extraBufferCapacity = 16
     )
+    /**
+     * 规则执行记录的响应式流
+     * 用于 UI 层实时订阅最新记录
+     */
     val ruleRecordsFlow: SharedFlow<List<RssRuleExecutionRecord>> = _ruleRecordsFlow.asSharedFlow()
 
     val isEnabled: Boolean get() = io.legado.app.help.config.AppConfig.debugLogFloatingBall
@@ -159,6 +163,11 @@ object RssExecutionRecorder {
         emitRuleRecordsUpdate()
     }
 
+    /**
+     * 记录规则执行
+     *
+     * @param record 规则执行记录，包含执行树、输入输出等信息
+     */
     fun recordRuleExecution(record: RssRuleExecutionRecord) {
         if (!isEnabled) return
         synchronized(ruleRecords) {
@@ -170,12 +179,26 @@ object RssExecutionRecorder {
         }
     }
 
+    /**
+     * 获取当前所有规则执行记录
+     */
     fun getCurrentRuleRecords(): List<RssRuleExecutionRecord> {
         synchronized(ruleRecords) {
             return ruleRecords.toList()
         }
     }
 
+    /**
+     * 记录规则执行成功
+     *
+     * @param step 执行步骤类型
+     * @param ruleContent 规则内容
+     * @param executionTree 规则执行树（包含嵌套规则执行详情）
+     * @param input 输入数据
+     * @param output 输出数据
+     * @param matchCount 匹配数量
+     * @param duration 执行耗时
+     */
     fun ruleSuccess(
         step: RssExecutionStep,
         ruleContent: String? = null,
@@ -199,6 +222,14 @@ object RssExecutionRecorder {
         ))
     }
 
+    /**
+     * 记录规则执行失败
+     *
+     * @param step 执行步骤类型
+     * @param ruleContent 规则内容
+     * @param error 错误信息
+     * @param duration 执行耗时
+     */
     fun ruleFailed(
         step: RssExecutionStep,
         ruleContent: String? = null,
@@ -216,6 +247,11 @@ object RssExecutionRecorder {
         ))
     }
 
+    /**
+     * 发射规则执行记录更新
+     *
+     * 将当前规则执行记录列表通过 Flow 发射给订阅者
+     */
     private fun emitRuleRecordsUpdate() {
         try {
             _ruleRecordsFlow.tryEmit(getCurrentRuleRecords())

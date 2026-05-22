@@ -90,6 +90,7 @@ object RssParserByRule {
                 reverse = true
                 ruleArticles = ruleArticles.substring(1)
             }
+            // 追踪列表规则执行，构建执行树用于调试展示
             Debug.log(sourceUrl, "┌获取列表", category = DebugCategory.RSS)
             val parseStart = System.currentTimeMillis()
             val listTracker = RuleExecutionTracker(rssSource, ruleArticles, "列表规则")
@@ -102,6 +103,7 @@ object RssParserByRule {
             if (collections.isNotEmpty()) {
                 recorder.success(RssExecutionStep.PARSE_LIST,
                     detail = "获取${collections.size}条", duration = listDuration)
+                // 记录列表规则执行的详细信息（规则内容、执行树、输入输出、匹配数量、耗时）
                 recorder.ruleSuccess(
                     step = RssExecutionStep.PARSE_RULE_ARTICLES,
                     ruleContent = ruleArticles,
@@ -115,6 +117,7 @@ object RssParserByRule {
                 recorder.failed(RssExecutionStep.PARSE_LIST, "列表为空",
                     duration = listDuration)
             }
+            // 追踪下一页规则执行
             if (!rssSource.ruleNextPage.isNullOrEmpty()) {
                 Debug.log(sourceUrl, "┌获取下一页链接", category = DebugCategory.RSS)
                 val nextStart = System.currentTimeMillis()
@@ -204,6 +207,7 @@ object RssParserByRule {
         analyzeRule.setRuleData(rssArticle)
         analyzeRule.setContent(item)
         
+        // 追踪标题规则执行
         val titleRuleStr = ruleTitle.joinToString("&&") { it.rule }
         val titleStart = System.currentTimeMillis()
         Debug.log(sourceUrl, "┌获取标题", log, category = DebugCategory.RSS)
@@ -226,6 +230,7 @@ object RssParserByRule {
             }
         }
         
+        // 追踪发布日期规则执行
         val pubDateRuleStr = rulePubDate.joinToString("&&") { it.rule }
         val pubDateStart = System.currentTimeMillis()
         Debug.log(sourceUrl, "┌获取时间", log, category = DebugCategory.RSS)
@@ -254,6 +259,7 @@ object RssParserByRule {
             Debug.log(sourceUrl, "└描述规则为空，将会解析内容页", log, category = DebugCategory.RSS)
             if (log) recorder.success(RssExecutionStep.EXTRACT_DESCRIPTION, detail = "规则为空，将解析内容页")
         } else {
+            // 追踪描述规则执行
             val descRuleStr = ruleDescription.joinToString("&&") { it.rule }
             val descStart = System.currentTimeMillis()
             rssArticle.description = analyzeRule.getString(ruleDescription)
@@ -278,6 +284,7 @@ object RssParserByRule {
         
         Debug.log(sourceUrl, "┌获取图片url", log, category = DebugCategory.RSS)
         try {
+            // 追踪图片规则执行
             val imageRuleStr = ruleImage.joinToString("&&") { it.rule }
             val imageStart = System.currentTimeMillis()
             analyzeRule.getString(ruleImage).let {
@@ -307,6 +314,7 @@ object RssParserByRule {
             if (log) recorder.failed(RssExecutionStep.EXTRACT_IMAGE, e.message ?: "提取图片异常")
         }
         
+        // 追踪链接规则执行
         val linkRuleStr = ruleLink.joinToString("&&") { it.rule }
         val linkStart = System.currentTimeMillis()
         Debug.log(sourceUrl, "┌获取文章链接", log, category = DebugCategory.RSS)

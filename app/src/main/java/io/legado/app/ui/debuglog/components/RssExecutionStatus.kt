@@ -400,6 +400,17 @@ private fun formatTotalDuration(ms: Long): String = when {
 }
 
 @Composable
+/**
+ * 规则执行行组件
+ *
+ * 展示单条规则执行记录，包含：
+ * - 执行步骤名称
+ * - 规则内容
+ * - 输出结果
+ * - 可展开查看执行树
+ *
+ * @param record 规则执行记录数据
+ */
 private fun RuleExecutionRow(record: RssRuleExecutionRecord) {
     var expanded by remember { mutableStateOf(false) }
     val hasTree = record.executionTree != null && record.executionTree!!.root.children.isNotEmpty()
@@ -482,6 +493,19 @@ private fun RuleExecutionRow(record: RssRuleExecutionRecord) {
 }
 
 @Composable
+/**
+ * 规则执行节点视图组件
+ *
+ * 递归展示规则执行树的节点，包含：
+ * - 步骤序号和类型图标
+ * - 规则内容
+ * - 执行耗时
+ * - 输出结果
+ * - 子节点（嵌套规则）
+ *
+ * @param node 规则执行节点
+ * @param indent 缩进层级，用于展示嵌套关系
+ */
 private fun RuleExecutionNodeView(node: RuleExecutionNode, indent: Int) {
     val indentStr = "  ".repeat(indent)
     

@@ -65,6 +65,25 @@ data class RssExecutionRecord(
     val isSessionEnd: Boolean = false
 )
 
+/**
+ * 订阅源规则执行记录
+ *
+ * 记录规则解析的详细信息，包含执行树、输入输出、匹配数量等，
+ * 用于调试界面展示规则执行的完整路径。
+ *
+ * @param step 执行步骤类型
+ * @param ruleContent 规则内容（如 @css:.title@text）
+ * @param executionTree 规则执行树，包含每一步的详细信息
+ * @param input 输入数据（截取前200字符避免日志过大）
+ * @param output 输出数据（截取前200字符）
+ * @param matchCount 匹配数量（用于选择器类规则）
+ * @param duration 执行耗时（毫秒）
+ * @param error 错误信息（如果有）
+ * @param time 执行时间戳
+ * @param sourceUrl 订阅源URL
+ * @param sourceName 订阅源名称
+ * @param executionId 执行会话ID，用于关联同一次请求的所有记录
+ */
 data class RssRuleExecutionRecord(
     val step: RssExecutionStep,
     val ruleContent: String? = null,

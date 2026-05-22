@@ -161,6 +161,7 @@ object Rss {
         recorder.success(RssExecutionStep.NETWORK_REQUEST,
             detail = analyzeUrl.ruleUrl, duration = System.currentTimeMillis() - netStart)
         val netDuration = System.currentTimeMillis() - netStart
+        // 记录网络请求详情到 FlowLogRecorder，用于调试日志展示
         FlowLogRecorder.logNetwork(
             source = rssSource,
             message = "获取文章列表成功",
@@ -241,6 +242,7 @@ object Rss {
             }
         }.getOrElse { throwable ->
             val netDuration = System.currentTimeMillis() - netStart
+            // 记录网络请求失败详情到 FlowLogRecorder
             FlowLogRecorder.logNetwork(
                 source = rssSource,
                 message = "获取文章正文失败",
@@ -267,6 +269,7 @@ object Rss {
             }
         }
         val netDuration = System.currentTimeMillis() - netStart
+        // 记录网络请求成功详情到 FlowLogRecorder
         FlowLogRecorder.logNetwork(
             source = rssSource,
             message = "获取文章正文成功",
