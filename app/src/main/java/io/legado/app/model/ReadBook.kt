@@ -79,6 +79,7 @@ object ReadBook : CoroutineScope by MainScope() {
     var nextTextChapter: TextChapter? = null
     var bookSource: BookSource? = null
     var msg: String? = null
+    private var suppressReadAloudRestartChapterIndex: Int? = null
     private val loadingChapters = arrayListOf<Int>()
     private val readRecord = ReadRecord()
     private var sessionStartTime = 0L
@@ -538,6 +539,7 @@ object ReadBook : CoroutineScope by MainScope() {
             if (!fromReadAloudSync && BaseReadAloudService.isActiveBook(book?.bookUrl)) {
                 BaseReadAloudService.markPendingChapterSwitch(index)
             }
+            suppressReadAloudRestartChapterIndex = if (fromReadAloudSync) index else null
             clearTextChapter()
             if (upContent) callBack?.upContent()
             durChapterIndex = index
@@ -557,7 +559,11 @@ object ReadBook : CoroutineScope by MainScope() {
         curTextChapter?.maybePrefetchNextPage(durPageIndex)
         curTextChapter?.let {
             if (BaseReadAloudService.isActiveBook(book?.bookUrl) && it.isCompleted) {
-                readAloud(!BaseReadAloudService.pause)
+                if (suppressReadAloudRestartChapterIndex == it.chapter.index) {
+                    suppressReadAloudRestartChapterIndex = null
+                } else {
+                    readAloud(!BaseReadAloudService.pause)
+                }
             }
         }
         upReadTime()
