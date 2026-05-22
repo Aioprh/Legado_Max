@@ -43,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import io.legado.app.model.debug.RssExecutionRecord
 import io.legado.app.model.debug.RssExecutionStatus
 import io.legado.app.model.debug.RssExecutionStep
+import io.legado.app.model.debug.RssRuleExecutionRecord
+import io.legado.app.model.debug.RuleExecutionNode
 import io.legado.app.ui.widget.components.VerticalScrollbar
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -57,6 +59,7 @@ import java.util.Locale
 @Composable
 fun RssExecutionStatus(
     records: List<RssExecutionRecord>,
+    ruleRecords: List<RssRuleExecutionRecord> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     if (records.isEmpty()) {
@@ -101,8 +104,10 @@ fun RssExecutionStatus(
                 key = { index -> groupedSessions[index].first }
             ) { index ->
                 val (executionId, sessionRecords) = groupedSessions[index]
+                val sessionRuleRecords = ruleRecords.filter { it.executionId == executionId }
                 ExecutionSessionCard(
                     records = sessionRecords,
+                    ruleRecords = sessionRuleRecords,
                     totalDuration = sessionEndMap[executionId]?.duration,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -123,6 +128,7 @@ fun RssExecutionStatus(
 @Composable
 private fun ExecutionSessionCard(
     records: List<RssExecutionRecord>,
+    ruleRecords: List<RssRuleExecutionRecord> = emptyList(),
     totalDuration: Long?,
     modifier: Modifier = Modifier
 ) {
@@ -263,6 +269,14 @@ private fun ExecutionSessionCard(
                         ExecutionStepRow(record = record)
                     }
                 }
+                
+                if (ruleRecords.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    SectionHeader("规则执行路径")
+                    ruleRecords.forEach { ruleRecord ->
+                        RuleExecutionRow(record = ruleRecord)
+                    }
+                }
             }
         }
     }
@@ -383,4 +397,135 @@ private fun formatTotalDuration(ms: Long): String = when {
     ms < 1000 -> "${ms}ms"
     ms < 60_000 -> String.format("%.1fs", ms / 1000.0)
     else -> "${ms / 60_000}m${(ms % 60_000) / 1000}s"
+}
+
+@Composable
+private fun RuleExecutionRow(record: RssRuleExecutionRecord) {
+    var expanded by remember { mutableStateOf(false) }
+    val hasTree = record.executionTree != null && record.executionTree!!.root.children.isNotEmpty()
+    
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (hasTree) Modifier.clickable { expanded = !expanded }
+                else Modifier
+            ),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "🌳",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.width(24.dp)
+                )
+                Text(
+                    text = record.step.displayName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f)
+                )
+                record.duration?.let {
+                    Text(
+                        text = "${it}ms",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            record.ruleContent?.let { rule ->
+                Text(
+                    text = rule,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 24.dp, top = 2.dp)
+                )
+            }
+            
+            record.output?.let { output ->
+                Text(
+                    text = "→ $output",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 24.dp, top = 2.dp)
+                )
+            }
+            
+            AnimatedVisibility(
+                visible = expanded && hasTree,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                record.executionTree?.let { tree ->
+                    Column(modifier = Modifier.padding(start = 24.dp, top = 8.dp)) {
+                        tree.root.children.forEach { node ->
+                            RuleExecutionNodeView(node, indent = 0)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 12.dp),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+    )
+}
+
+@Composable
+private fun RuleExecutionNodeView(node: RuleExecutionNode, indent: Int) {
+    val indentStr = "  ".repeat(indent)
+    
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$indentStr[${node.stepIndex}] ${node.ruleType.icon}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.width(60.dp + 16.dp * indent)
+            )
+            Text(
+                text = node.ruleContent.take(50),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
+            node.duration?.let {
+                Text(
+                    text = "${it}ms",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        node.output?.let { output ->
+            Text(
+                text = "$indentStr    → ${output.take(80)}",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace
+                ),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = (60 + indent * 16).dp)
+            )
+        }
+        
+        node.children.forEach { child ->
+            RuleExecutionNodeView(child, indent + 1)
+        }
+    }
 }

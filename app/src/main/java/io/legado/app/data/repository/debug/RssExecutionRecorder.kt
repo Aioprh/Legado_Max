@@ -3,6 +3,8 @@ package io.legado.app.data.repository.debug
 import io.legado.app.model.debug.RssExecutionRecord
 import io.legado.app.model.debug.RssExecutionStatus
 import io.legado.app.model.debug.RssExecutionStep
+import io.legado.app.model.debug.RssRuleExecutionRecord
+import io.legado.app.model.debug.RuleExecutionTree
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -20,14 +22,22 @@ import java.util.UUID
 object RssExecutionRecorder {
 
     private const val MAX_RECORDS = 500
+    private const val MAX_RULE_RECORDS = 200
 
     private val records = ArrayDeque<RssExecutionRecord>()
+    private val ruleRecords = ArrayDeque<RssRuleExecutionRecord>()
 
     private val _recordsFlow = MutableSharedFlow<List<RssExecutionRecord>>(
         replay = 1,
         extraBufferCapacity = 16
     )
     val recordsFlow: SharedFlow<List<RssExecutionRecord>> = _recordsFlow.asSharedFlow()
+
+    private val _ruleRecordsFlow = MutableSharedFlow<List<RssRuleExecutionRecord>>(
+        replay = 1,
+        extraBufferCapacity = 16
+    )
+    val ruleRecordsFlow: SharedFlow<List<RssRuleExecutionRecord>> = _ruleRecordsFlow.asSharedFlow()
 
     val isEnabled: Boolean get() = io.legado.app.help.config.AppConfig.debugLogFloatingBall
 
@@ -142,7 +152,76 @@ object RssExecutionRecorder {
         synchronized(records) {
             records.clear()
         }
+        synchronized(ruleRecords) {
+            ruleRecords.clear()
+        }
         emitUpdate()
+        emitRuleRecordsUpdate()
+    }
+
+    fun recordRuleExecution(record: RssRuleExecutionRecord) {
+        if (!isEnabled) return
+        synchronized(ruleRecords) {
+            ruleRecords.addFirst(record)
+            while (ruleRecords.size > MAX_RULE_RECORDS) {
+                ruleRecords.removeLast()
+            }
+            emitRuleRecordsUpdate()
+        }
+    }
+
+    fun getCurrentRuleRecords(): List<RssRuleExecutionRecord> {
+        synchronized(ruleRecords) {
+            return ruleRecords.toList()
+        }
+    }
+
+    fun ruleSuccess(
+        step: RssExecutionStep,
+        ruleContent: String? = null,
+        executionTree: RuleExecutionTree? = null,
+        input: String? = null,
+        output: String? = null,
+        matchCount: Int? = null,
+        duration: Long? = null
+    ) {
+        recordRuleExecution(RssRuleExecutionRecord(
+            step = step,
+            ruleContent = ruleContent,
+            executionTree = executionTree,
+            input = input?.take(200),
+            output = output?.take(200),
+            matchCount = matchCount,
+            duration = duration,
+            sourceUrl = currentSourceUrl,
+            sourceName = currentSourceName,
+            executionId = currentExecutionId
+        ))
+    }
+
+    fun ruleFailed(
+        step: RssExecutionStep,
+        ruleContent: String? = null,
+        error: Throwable,
+        duration: Long? = null
+    ) {
+        recordRuleExecution(RssRuleExecutionRecord(
+            step = step,
+            ruleContent = ruleContent,
+            error = error,
+            duration = duration,
+            sourceUrl = currentSourceUrl,
+            sourceName = currentSourceName,
+            executionId = currentExecutionId
+        ))
+    }
+
+    private fun emitRuleRecordsUpdate() {
+        try {
+            _ruleRecordsFlow.tryEmit(getCurrentRuleRecords())
+        } catch (e: Exception) {
+            io.legado.app.model.Debug.log("RssExecutionRecorder", "emitRuleRecordsUpdate失败: ${e.message}")
+        }
     }
 
     private fun makeRecord(

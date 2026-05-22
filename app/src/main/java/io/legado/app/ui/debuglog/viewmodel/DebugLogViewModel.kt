@@ -19,6 +19,7 @@ import io.legado.app.model.debug.DebugLogUtils
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.RssExecutionRecord
+import io.legado.app.model.debug.RssRuleExecutionRecord
 import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.model.debug.ToastContext
 import io.legado.app.utils.toastOnUi
@@ -131,6 +132,10 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     /** 订阅源执行记录 */
     private val _rssExecutionRecords = MutableStateFlow<List<RssExecutionRecord>>(emptyList())
     val rssExecutionRecords: StateFlow<List<RssExecutionRecord>> = _rssExecutionRecords.asStateFlow()
+
+    /** 订阅源规则执行记录 */
+    private val _rssRuleRecords = MutableStateFlow<List<RssRuleExecutionRecord>>(emptyList())
+    val rssRuleRecords: StateFlow<List<RssRuleExecutionRecord>> = _rssRuleRecords.asStateFlow()
 
     /**
      * 筛选后的日志列表
@@ -265,6 +270,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         subscribeToEventFlow()
         subscribeToFlowLogs()
         subscribeToRssExecutionRecords()
+        subscribeToRssRuleRecords()
     }
 
     private fun subscribeToRssExecutionRecords() {
@@ -278,6 +284,19 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
 
     fun refreshRssExecutionRecords() {
         _rssExecutionRecords.value = RssExecutionRecorder.getCurrentRecords()
+    }
+
+    private fun subscribeToRssRuleRecords() {
+        RssExecutionRecorder.ruleRecordsFlow
+            .onEach { records ->
+                _rssRuleRecords.value = records
+            }
+            .launchIn(viewModelScope)
+        refreshRssRuleRecords()
+    }
+
+    fun refreshRssRuleRecords() {
+        _rssRuleRecords.value = RssExecutionRecorder.getCurrentRuleRecords()
     }
 
     /**

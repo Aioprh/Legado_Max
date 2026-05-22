@@ -3,6 +3,7 @@ package io.legado.app.model.rss
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.RssSource
 import io.legado.app.data.repository.debug.RssExecutionRecorder
+import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.http.StrResponse
 import io.legado.app.model.Debug
@@ -159,6 +160,18 @@ object Rss {
         }
         recorder.success(RssExecutionStep.NETWORK_REQUEST,
             detail = analyzeUrl.ruleUrl, duration = System.currentTimeMillis() - netStart)
+        val netDuration = System.currentTimeMillis() - netStart
+        FlowLogRecorder.logNetwork(
+            source = rssSource,
+            message = "获取文章列表成功",
+            url = res.url,
+            method = "GET",
+            statusCode = res.code(),
+            duration = netDuration,
+            detail = "响应大小: ${res.body?.length ?: 0} 字节",
+            requestHeaders = analyzeUrl.headerMap,
+            cookies = analyzeUrl.headerMap["Cookie"]
+        )
         checkRedirect(rssSource, res)
         Debug.log(rssSource.sourceUrl, "≡获取成功:${analyzeUrl.ruleUrl}", category = DebugCategory.RSS)
         if (!res.body.isNullOrBlank()) {
@@ -208,6 +221,7 @@ object Rss {
         ruleContent: String,
         rssSource: RssSource,
     ): String {
+        val netStart = System.currentTimeMillis()
         val analyzeUrl = AnalyzeUrl(
             rssArticle.link,
             baseUrl = rssArticle.origin,
@@ -219,13 +233,24 @@ object Rss {
         val checkJs = rssSource.loginCheckJs
         val res = kotlin.runCatching {
             analyzeUrl.getStrResponseAwait().let {
-                if (!checkJs.isNullOrBlank()) { //检测源是否已登录
+                if (!checkJs.isNullOrBlank()) {
                     analyzeUrl.evalJS(checkJs, it) as StrResponse
                 } else {
                     it
                 }
             }
         }.getOrElse { throwable ->
+            val netDuration = System.currentTimeMillis() - netStart
+            FlowLogRecorder.logNetwork(
+                source = rssSource,
+                message = "获取文章正文失败",
+                url = rssArticle.link,
+                method = "GET",
+                duration = netDuration,
+                error = throwable,
+                requestHeaders = analyzeUrl.headerMap,
+                cookies = analyzeUrl.headerMap["Cookie"]
+            )
             if (!checkJs.isNullOrBlank()) {
                 val errResponse = analyzeUrl.getErrStrResponse(throwable)
                 try {
@@ -241,6 +266,18 @@ object Rss {
                 throw throwable
             }
         }
+        val netDuration = System.currentTimeMillis() - netStart
+        FlowLogRecorder.logNetwork(
+            source = rssSource,
+            message = "获取文章正文成功",
+            url = res.url,
+            method = "GET",
+            statusCode = res.code(),
+            duration = netDuration,
+            detail = "响应大小: ${res.body?.length ?: 0} 字节",
+            requestHeaders = analyzeUrl.headerMap,
+            cookies = analyzeUrl.headerMap["Cookie"]
+        )
         checkRedirect(rssSource, res)
         Debug.log(rssSource.sourceUrl, "≡获取成功:${rssSource.sourceUrl}", category = DebugCategory.RSS)
         Debug.log(rssSource.sourceUrl, res.body ?: "", state = 20, category = DebugCategory.RSS)

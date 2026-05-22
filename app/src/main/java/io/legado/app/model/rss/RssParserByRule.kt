@@ -13,6 +13,8 @@ import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setRuleData
 import io.legado.app.model.analyzeRule.RuleData
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.RssExecutionStep
+import io.legado.app.model.debug.RuleExecutionTracker
+import io.legado.app.model.debug.RuleType
 import io.legado.app.utils.NetworkUtils
 import kotlinx.coroutines.currentCoroutineContext
 import splitties.init.appCtx
@@ -90,17 +92,34 @@ object RssParserByRule {
             }
             Debug.log(sourceUrl, "┌获取列表", category = DebugCategory.RSS)
             val parseStart = System.currentTimeMillis()
+            val listTracker = RuleExecutionTracker(rssSource, ruleArticles, "列表规则")
+            listTracker.startStep(RuleType.DEFAULT, ruleArticles, body)
             val collections = analyzeRule.getElements(ruleArticles)
+            val listDuration = System.currentTimeMillis() - parseStart
+            listTracker.endStep("${collections.size}个元素", matchCount = collections.size)
+            val listTree = listTracker.buildTree()
             Debug.log(sourceUrl, "└列表大小:${collections.size}", category = DebugCategory.RSS)
             if (collections.isNotEmpty()) {
                 recorder.success(RssExecutionStep.PARSE_LIST,
-                    detail = "获取${collections.size}条", duration = System.currentTimeMillis() - parseStart)
+                    detail = "获取${collections.size}条", duration = listDuration)
+                recorder.ruleSuccess(
+                    step = RssExecutionStep.PARSE_RULE_ARTICLES,
+                    ruleContent = ruleArticles,
+                    executionTree = listTree,
+                    input = body.take(200),
+                    output = "${collections.size}个元素",
+                    matchCount = collections.size,
+                    duration = listDuration
+                )
             } else {
                 recorder.failed(RssExecutionStep.PARSE_LIST, "列表为空",
-                    duration = System.currentTimeMillis() - parseStart)
+                    duration = listDuration)
             }
             if (!rssSource.ruleNextPage.isNullOrEmpty()) {
                 Debug.log(sourceUrl, "┌获取下一页链接", category = DebugCategory.RSS)
+                val nextStart = System.currentTimeMillis()
+                val nextTracker = RuleExecutionTracker(rssSource, rssSource.ruleNextPage!!, "下一页规则")
+                nextTracker.startStep(RuleType.DEFAULT, rssSource.ruleNextPage!!, null)
                 if (rssSource.ruleNextPage!!.uppercase(Locale.getDefault()) == "PAGE") {
                     nextUrl = sortUrl
                 } else {
@@ -109,7 +128,17 @@ object RssParserByRule {
                         nextUrl = NetworkUtils.getAbsoluteURL(sortUrl, nextUrl)
                     }
                 }
+                val nextDuration = System.currentTimeMillis() - nextStart
+                nextTracker.endStep(nextUrl)
+                val nextTree = nextTracker.buildTree()
                 Debug.log(sourceUrl, "└$nextUrl", category = DebugCategory.RSS)
+                recorder.ruleSuccess(
+                    step = RssExecutionStep.PARSE_RULE_NEXT_PAGE,
+                    ruleContent = rssSource.ruleNextPage,
+                    executionTree = nextTree,
+                    output = nextUrl,
+                    duration = nextDuration
+                )
             }
             val ruleTitle = analyzeRule.splitSourceRule(rssSource.ruleTitle)
             val rulePubDate = analyzeRule.splitSourceRule(rssSource.rulePubDate)
@@ -119,8 +148,9 @@ object RssParserByRule {
             val variable = ruleData.getVariable()
             for ((index, item) in collections.withIndex()) {
                 getItem(
-                    sourceUrl, item, analyzeRule, variable,rssSource.type, index == 0,
-                    ruleTitle, rulePubDate, ruleDescription, ruleImage, ruleLink
+                    sourceUrl, item, analyzeRule, variable, rssSource.type, index == 0,
+                    ruleTitle, rulePubDate, ruleDescription, ruleImage, ruleLink,
+                    rssSource, recorder
                 )?.let {
                     it.sort = sortName
                     it.origin = sourceUrl
@@ -166,59 +196,108 @@ object RssParserByRule {
         rulePubDate: List<AnalyzeRule.SourceRule>,
         ruleDescription: List<AnalyzeRule.SourceRule>,
         ruleImage: List<AnalyzeRule.SourceRule>,
-        ruleLink: List<AnalyzeRule.SourceRule>
+        ruleLink: List<AnalyzeRule.SourceRule>,
+        rssSource: RssSource,
+        recorder: RssExecutionRecorder
     ): RssArticle? {
-        val recorder = RssExecutionRecorder
         val rssArticle = RssArticle(variable = variable)
         analyzeRule.setRuleData(rssArticle)
         analyzeRule.setContent(item)
+        
+        val titleRuleStr = ruleTitle.joinToString("&&") { it.rule }
+        val titleStart = System.currentTimeMillis()
         Debug.log(sourceUrl, "┌获取标题", log, category = DebugCategory.RSS)
         rssArticle.title = analyzeRule.getString(ruleTitle)
+        val titleDuration = System.currentTimeMillis() - titleStart
         Debug.log(sourceUrl, "└${rssArticle.title}", log, category = DebugCategory.RSS)
         if (log) {
             if (rssArticle.title.isNotBlank()) {
                 recorder.success(RssExecutionStep.EXTRACT_TITLE, detail = rssArticle.title.take(50))
+                if (titleRuleStr.isNotBlank()) {
+                    recorder.ruleSuccess(
+                        step = RssExecutionStep.PARSE_RULE_TITLE,
+                        ruleContent = titleRuleStr,
+                        output = rssArticle.title,
+                        duration = titleDuration
+                    )
+                }
             } else {
                 recorder.failed(RssExecutionStep.EXTRACT_TITLE, "标题为空")
             }
         }
+        
+        val pubDateRuleStr = rulePubDate.joinToString("&&") { it.rule }
+        val pubDateStart = System.currentTimeMillis()
         Debug.log(sourceUrl, "┌获取时间", log, category = DebugCategory.RSS)
         rssArticle.pubDate = analyzeRule.getString(rulePubDate)
+        val pubDateDuration = System.currentTimeMillis() - pubDateStart
         Debug.log(sourceUrl, "└${rssArticle.pubDate}", log, category = DebugCategory.RSS)
         if (log) {
             if (!rssArticle.pubDate.isNullOrBlank()) {
                 recorder.success(RssExecutionStep.EXTRACT_PUB_DATE, detail = rssArticle.pubDate?.take(50))
+                if (pubDateRuleStr.isNotBlank()) {
+                    recorder.ruleSuccess(
+                        step = RssExecutionStep.PARSE_RULE_PUB_DATE,
+                        ruleContent = pubDateRuleStr,
+                        output = rssArticle.pubDate,
+                        duration = pubDateDuration
+                    )
+                }
             } else {
                 recorder.failed(RssExecutionStep.EXTRACT_PUB_DATE, "未提取到发布日期")
             }
         }
+        
         Debug.log(sourceUrl, "┌获取描述", log, category = DebugCategory.RSS)
         if (ruleDescription.isEmpty()) {
             rssArticle.description = null
             Debug.log(sourceUrl, "└描述规则为空，将会解析内容页", log, category = DebugCategory.RSS)
             if (log) recorder.success(RssExecutionStep.EXTRACT_DESCRIPTION, detail = "规则为空，将解析内容页")
         } else {
+            val descRuleStr = ruleDescription.joinToString("&&") { it.rule }
+            val descStart = System.currentTimeMillis()
             rssArticle.description = analyzeRule.getString(ruleDescription)
+            val descDuration = System.currentTimeMillis() - descStart
             Debug.log(sourceUrl, "└${rssArticle.description}", log, category = DebugCategory.RSS)
             if (log) {
                 if (!rssArticle.description.isNullOrBlank()) {
                     recorder.success(RssExecutionStep.EXTRACT_DESCRIPTION, detail = rssArticle.description!!.take(50))
+                    if (descRuleStr.isNotBlank()) {
+                        recorder.ruleSuccess(
+                            step = RssExecutionStep.PARSE_RULE_DESCRIPTION,
+                            ruleContent = descRuleStr,
+                            output = rssArticle.description,
+                            duration = descDuration
+                        )
+                    }
                 } else {
                     recorder.failed(RssExecutionStep.EXTRACT_DESCRIPTION, "未提取到描述")
                 }
             }
         }
+        
         Debug.log(sourceUrl, "┌获取图片url", log, category = DebugCategory.RSS)
         try {
+            val imageRuleStr = ruleImage.joinToString("&&") { it.rule }
+            val imageStart = System.currentTimeMillis()
             analyzeRule.getString(ruleImage).let {
                 if (it.isNotEmpty()) {
                     rssArticle.image = NetworkUtils.getAbsoluteURL(sourceUrl, it)
                 }
             }
+            val imageDuration = System.currentTimeMillis() - imageStart
             Debug.log(sourceUrl, "└${rssArticle.image ?: ""}", log, category = DebugCategory.RSS)
             if (log) {
                 if (!rssArticle.image.isNullOrBlank()) {
                     recorder.success(RssExecutionStep.EXTRACT_IMAGE, detail = rssArticle.image!!.take(80))
+                    if (imageRuleStr.isNotBlank()) {
+                        recorder.ruleSuccess(
+                            step = RssExecutionStep.PARSE_RULE_IMAGE,
+                            ruleContent = imageRuleStr,
+                            output = rssArticle.image,
+                            duration = imageDuration
+                        )
+                    }
                 } else {
                     recorder.failed(RssExecutionStep.EXTRACT_IMAGE, "未提取到图片")
                 }
@@ -227,12 +306,24 @@ object RssParserByRule {
             Debug.log(sourceUrl, "└${e.localizedMessage}", log, category = DebugCategory.RSS)
             if (log) recorder.failed(RssExecutionStep.EXTRACT_IMAGE, e.message ?: "提取图片异常")
         }
+        
+        val linkRuleStr = ruleLink.joinToString("&&") { it.rule }
+        val linkStart = System.currentTimeMillis()
         Debug.log(sourceUrl, "┌获取文章链接", log, category = DebugCategory.RSS)
         rssArticle.link = analyzeRule.getString(ruleLink, isUrl = true)
+        val linkDuration = System.currentTimeMillis() - linkStart
         Debug.log(sourceUrl, "└${rssArticle.link}", log, category = DebugCategory.RSS)
         if (log) {
             if (rssArticle.link.isNotBlank()) {
                 recorder.success(RssExecutionStep.EXTRACT_LINK, detail = rssArticle.link.take(80))
+                if (linkRuleStr.isNotBlank()) {
+                    recorder.ruleSuccess(
+                        step = RssExecutionStep.PARSE_RULE_LINK,
+                        ruleContent = linkRuleStr,
+                        output = rssArticle.link,
+                        duration = linkDuration
+                    )
+                }
             } else {
                 recorder.failed(RssExecutionStep.EXTRACT_LINK, "未提取到链接")
             }

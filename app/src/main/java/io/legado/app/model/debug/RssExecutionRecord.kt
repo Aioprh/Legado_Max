@@ -24,6 +24,13 @@ enum class RssExecutionStep(val displayName: String, val isConfigCheck: Boolean)
     NETWORK_REQUEST("网络请求", false),
     RESPONSE_BODY("响应内容", false),
     PARSE_LIST("列表解析", false),
+    PARSE_RULE_ARTICLES("列表规则解析", false),
+    PARSE_RULE_NEXT_PAGE("下一页规则解析", false),
+    PARSE_RULE_TITLE("标题规则解析", false),
+    PARSE_RULE_PUB_DATE("发布日期规则解析", false),
+    PARSE_RULE_DESCRIPTION("描述规则解析", false),
+    PARSE_RULE_IMAGE("图片规则解析", false),
+    PARSE_RULE_LINK("链接规则解析", false),
     EXTRACT_TITLE("提取标题", false),
     EXTRACT_PUB_DATE("提取发布日期", false),
     EXTRACT_DESCRIPTION("提取描述", false),
@@ -56,4 +63,19 @@ data class RssExecutionRecord(
     val executionId: String = "",
     val isSessionStart: Boolean = false,
     val isSessionEnd: Boolean = false
+)
+
+data class RssRuleExecutionRecord(
+    val step: RssExecutionStep,
+    val ruleContent: String? = null,
+    val executionTree: RuleExecutionTree? = null,
+    val input: String? = null,
+    val output: String? = null,
+    val matchCount: Int? = null,
+    val duration: Long? = null,
+    val error: Throwable? = null,
+    val time: Long = System.currentTimeMillis(),
+    val sourceUrl: String = "",
+    val sourceName: String = "",
+    val executionId: String = ""
 )

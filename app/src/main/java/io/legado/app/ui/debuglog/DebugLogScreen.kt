@@ -117,6 +117,7 @@ fun DebugLogScreen(
     val selectedRssSource by viewModel.selectedRssSource.collectAsState()
     val selectedRssSourceUrl by viewModel.selectedRssSourceUrl.collectAsState()
     val rssExecutionRecords by viewModel.rssExecutionRecords.collectAsState()
+    val rssRuleRecords by viewModel.rssRuleRecords.collectAsState()
     val topBarColor = pageTopBarContainerColor()
     val cardColor = pageCardElevatedContainerColor()
     val secondaryTextColor = pageSecondaryTextColor()
@@ -132,6 +133,7 @@ fun DebugLogScreen(
         viewModel.refreshLogs()
         viewModel.refreshFlowLogs()
         viewModel.refreshRssExecutionRecords()
+        viewModel.refreshRssRuleRecords()
     }
 
     Scaffold(
@@ -374,6 +376,7 @@ fun DebugLogScreen(
                         if (showExecutionStatus) {
                             RssExecutionStatus(
                                 records = rssExecutionRecords,
+                                ruleRecords = rssRuleRecords,
                                 modifier = Modifier.fillMaxSize()
                             )
                         } else if (filteredFlowLogs.isEmpty()) {
