@@ -980,6 +980,14 @@
     <string name="list_src">List source code</string>
     <string name="preview_content">Preview content page</string>
     <string name="content_src_empty">Content source is empty, please debug first</string>
+    <string name="preview_source_url">Preview source URL</string>
+    <string name="preview_start_page">Preview start page</string>
+    <string name="preview_description">Preview description rule</string>
+    <string name="preview_title_source_url">Source URL</string>
+    <string name="preview_title_start_page">Start page</string>
+    <string name="preview_title_description">Description rule</string>
+    <string name="preview_title_content">Content page</string>
+    <string name="preview_title_format">Preview: %s</string>
     <string name="title_font_size">Font size</string>
     <string name="title_margin_top">Margin top</string>
     <string name="title_margin_bottom">Margin bottom</string>

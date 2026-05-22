@@ -61,30 +61,32 @@ class RssSourceDebugActivity : VMBaseActivity<ActivityRssSourceDebugBinding, Rss
         when (item.itemId) {
             R.id.menu_list_src -> showDialogFragment(TextDialog("Html", viewModel.listSrc))
             R.id.menu_content_src -> showDialogFragment(TextDialog("Html", viewModel.contentSrc))
-            R.id.menu_preview_content -> showContentPreview()
+            R.id.menu_preview_source_url -> showPreview(R.string.preview_title_source_url, null)
+            R.id.menu_preview_start_page -> showPreview(
+                R.string.preview_title_start_page,
+                viewModel.listSrc
+            )
+            R.id.menu_preview_description -> showPreview(
+                R.string.preview_title_description,
+                viewModel.listSrc
+            )
+            R.id.menu_preview_content -> showPreview(
+                R.string.preview_title_content,
+                viewModel.contentSrc
+            )
         }
         return super.onCompatOptionsItemSelected(item)
     }
 
-    /**
-     * 显示书源内容预览
-     *
-     * 如果书源内容为空，提示用户；否则，使用 BottomWebViewDialog 展示书源内容
-     */
-    private fun showContentPreview() {
-        val contentSrc = viewModel.contentSrc
-        val rssSource = viewModel.rssSource
-        if (contentSrc.isNullOrBlank()) {
-            toastOnUi(R.string.content_src_empty)
-            return
-        }
-        val sourceUrl = rssSource?.sourceUrl ?: return
+    private fun showPreview(titleResId: Int, html: String?) {
+        val sourceUrl = viewModel.rssSource?.sourceUrl ?: return
         showDialogFragment(
             BottomWebViewDialog(
                 sourceKey = sourceUrl,
                 bookType = 0,
                 url = sourceUrl,
-                html = contentSrc
+                html = html,
+                title = getString(R.string.preview_title_format, getString(titleResId))
             )
         )
     }
