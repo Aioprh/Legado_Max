@@ -78,6 +78,9 @@ class RssSourceDebugActivity : VMBaseActivity<ActivityRssSourceDebugBinding, Rss
         return super.onCompatOptionsItemSelected(item)
     }
 
+    // 显示预览(url、启动页、描述规则、内容页)
+    // @param titleResId 标题资源ID
+    // @param html 内容HTML
     private fun showPreview(titleResId: Int, html: String?) {
         val sourceUrl = viewModel.rssSource?.sourceUrl ?: return
         showDialogFragment(
