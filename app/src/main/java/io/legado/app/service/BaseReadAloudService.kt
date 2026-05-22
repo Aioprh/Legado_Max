@@ -590,9 +590,21 @@ abstract class BaseReadAloudService : BaseService(),
             IntentAction.next -> nextChapter()
             IntentAction.addTimer -> addTimer()
             IntentAction.setTimer -> setTimer(intent.getIntExtra("minute", 0))
-            IntentAction.stop -> stopSelf()
+            IntentAction.stop -> stopReadAloud()
         }
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun stopReadAloud() {
+        pause = true
+        needResumeOnAudioFocusGain = false
+        needResumeOnCallStateIdle = false
+        lastTtsProgress = 0
+        lastTtsChapterIndex = -1
+        pendingChapterSwitchIndex = null
+        playStop()
+        postEvent(EventBus.ALOUD_STATE, Status.STOP)
+        stopSelf()
     }
 
     private fun newReadAloud(play: Boolean, pageIndex: Int, startPos: Int) {
