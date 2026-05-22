@@ -43,6 +43,7 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
     private val mLayoutManager by lazy { UpLinearLayoutManager(requireContext()) }
     private val adapter by lazy { ChapterListAdapter(requireContext(), this) }
     private var durChapterIndex = 0
+    private var shouldAutoScrollToCurrent = false
     private val viewScope get() = viewLifecycleOwner.lifecycleScope
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) = binding.run {
@@ -87,6 +88,7 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
     @SuppressLint("SetTextI18n")
     private fun initBook(book: Book) {
         viewScope.launch {
+            shouldAutoScrollToCurrent = true
             upChapterList(null)
             durChapterIndex = book.durChapterIndex
             binding.tvCurrentChapterInfo.text =
@@ -135,17 +137,23 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
 
     override fun onListChanged() {
         viewScope.launch {
-            var scrollPos = 0
-            withContext(Default) {
-                adapter.getItems().forEachIndexed { index, bookChapter ->
-                    if (bookChapter.index >= durChapterIndex) {
-                        return@withContext
+            val shouldAutoScroll = shouldAutoScrollToCurrent
+            var targetPos = mLayoutManager.findFirstVisibleItemPosition().coerceAtLeast(0)
+            if (shouldAutoScroll) {
+                withContext(Default) {
+                    adapter.getItems().forEachIndexed { index, bookChapter ->
+                        if (bookChapter.index >= durChapterIndex) {
+                            return@withContext
+                        }
+                        targetPos = index
                     }
-                    scrollPos = index
                 }
             }
-            mLayoutManager.scrollToPositionWithOffset(scrollPos, 0)
-            adapter.upDisplayTitles(scrollPos)
+            if (shouldAutoScroll) {
+                mLayoutManager.scrollToPositionWithOffset(targetPos, 0)
+                shouldAutoScrollToCurrent = false
+            }
+            adapter.upDisplayTitles(targetPos)
         }
     }
 
