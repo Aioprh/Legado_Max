@@ -101,6 +101,7 @@ import io.legado.app.help.webView.WebViewPool
 import io.legado.app.help.webView.WebViewPool.BLANK_HTML
 import io.legado.app.help.webView.WebViewPool.DATA_HTML
 import io.legado.app.model.Download
+import io.legado.app.model.VideoPlay
 import kotlinx.coroutines.Dispatchers.IO
 import java.lang.ref.WeakReference
 import splitties.systemservices.powerManager
@@ -1025,6 +1026,27 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                 if (it.isNotBlank()) {
                     view.evaluateJavascript(it, null)
                 }
+            }
+            // 网页h5的video标签播放器静音播放视频
+            // @param mutePlay 是否静音播放视频
+            if (VideoPlay.mutePlay) {
+                toastOnUi(R.string.mute_play_enabled)
+                val muteJs = """
+                    (function(){
+                        document.querySelectorAll('video,audio').forEach(function(el){el.muted=true});
+                        new MutationObserver(function(ms){
+                            ms.forEach(function(m){
+                                m.addedNodes.forEach(function(n){
+                                    if(n.nodeType===1){
+                                        if(n.tagName==='VIDEO'||n.tagName==='AUDIO') n.muted=true;
+                                        if(n.querySelectorAll) n.querySelectorAll('video,audio').forEach(function(e){e.muted=true});
+                                    }
+                                });
+                            });
+                        }).observe(document.body,{childList:true,subtree:true});
+                    })();
+                """.trimIndent()
+                view.evaluateJavascript(muteJs, null)
             }
         }
 

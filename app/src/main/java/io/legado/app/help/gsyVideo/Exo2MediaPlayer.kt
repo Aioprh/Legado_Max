@@ -30,6 +30,21 @@ class Exo2MediaPlayer(context: Context) : IjkExo2MediaPlayer(context) {
         private const val MAX_POSITION_FOR_SEEK_TO_PREVIOUS: Long = 3000
     }
     private val window = Timeline.Window()
+    private var storedLeftVolume = 1f
+    private var storedRightVolume = 1f
+
+    override fun setVolume(left: Float, right: Float) {
+        storedLeftVolume = left
+        storedRightVolume = right
+        super.setVolume(left, right)
+    }
+
+    override fun onPlaybackStateChanged(playbackState: Int) {
+        super.onPlaybackStateChanged(playbackState)
+        if (playbackState == Player.STATE_READY) {
+            mInternalPlayer?.setVolume((storedLeftVolume + storedRightVolume) / 2f)
+        }
+    }
 
     /**
      * 上一集
@@ -84,6 +99,7 @@ class Exo2MediaPlayer(context: Context) : IjkExo2MediaPlayer(context) {
                     )
                     .build()
             mInternalPlayer.addListener(this@Exo2MediaPlayer)
+            mInternalPlayer.setVolume((storedLeftVolume + storedRightVolume) / 2f)
             mInternalPlayer.addAnalyticsListener(this@Exo2MediaPlayer)
             mInternalPlayer.addListener(mEventLogger)
             if (mSpeedPlaybackParameters != null) {

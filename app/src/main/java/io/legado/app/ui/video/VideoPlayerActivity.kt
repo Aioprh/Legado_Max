@@ -212,6 +212,10 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         }
         setupPlayerView()
         initView()
+        // 静音播放视频toast提示
+        if (VideoPlay.mutePlay) {
+            toastOnUi(R.string.mute_play_enabled)
+        }
         upView()
         onBackPressedDispatcher.addCallback(this) {
             if (isFullScreen) {
