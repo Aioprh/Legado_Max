@@ -8,13 +8,18 @@ import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.RssSource
 import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.data.repository.debug.FlowLogRecorder
+import io.legado.app.data.repository.debug.RssExecutionRecorder
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
+import io.legado.app.model.debug.DebugLogUtils
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
+import io.legado.app.model.debug.RssExecutionRecord
+import io.legado.app.model.debug.RssRuleExecutionRecord
 import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.model.debug.ToastContext
 import io.legado.app.utils.toastOnUi
@@ -100,6 +105,18 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     private val _selectedBookSource = MutableStateFlow<BookSource?>(null)
     val selectedBookSource: StateFlow<BookSource?> = _selectedBookSource.asStateFlow()
 
+    /** 可用订阅源列表（用于实体显示的订阅源选择器） */
+    private val _rssSources = MutableStateFlow<List<RssSource>>(emptyList())
+    val rssSources: StateFlow<List<RssSource>> = _rssSources.asStateFlow()
+
+    /** 当前选中查看的订阅源 URL */
+    private val _selectedRssSourceUrl = MutableStateFlow<String?>(null)
+    val selectedRssSourceUrl: StateFlow<String?> = _selectedRssSourceUrl.asStateFlow()
+
+    /** 当前选中的完整订阅源对象 */
+    private val _selectedRssSource = MutableStateFlow<RssSource?>(null)
+    val selectedRssSource: StateFlow<RssSource?> = _selectedRssSource.asStateFlow()
+
     /** 当前选中的流程阶段 */
     private val _selectedFlowStage = MutableStateFlow<FlowStage?>(null)
     val selectedFlowStage: StateFlow<FlowStage?> = _selectedFlowStage.asStateFlow()
@@ -111,6 +128,14 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     /** 搜索关键词 */
     private val _searchQuery = MutableStateFlow<String?>(null)
     val searchQuery: StateFlow<String?> = _searchQuery.asStateFlow()
+
+    /** 订阅源执行记录 */
+    private val _rssExecutionRecords = MutableStateFlow<List<RssExecutionRecord>>(emptyList())
+    val rssExecutionRecords: StateFlow<List<RssExecutionRecord>> = _rssExecutionRecords.asStateFlow()
+
+    /** 订阅源规则执行记录 */
+    private val _rssRuleRecords = MutableStateFlow<List<RssRuleExecutionRecord>>(emptyList())
+    val rssRuleRecords: StateFlow<List<RssRuleExecutionRecord>> = _rssRuleRecords.asStateFlow()
 
     /**
      * 筛选后的日志列表
@@ -136,8 +161,8 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             }
         }
 
-        // 按子分类过滤（仅 SOURCE 分类支持）
-        if (subCategory != null && category == DebugCategory.SOURCE) {
+        // 按子分类过滤（SOURCE 和 RSS 分类支持）
+        if (subCategory != null && (category == DebugCategory.SOURCE || category == DebugCategory.RSS)) {
             result = result.filter { it.subCategory == subCategory }
         }
 
@@ -192,8 +217,15 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      * 1. 按流程阶段过滤
      * 2. 按搜索关键词过滤（匹配消息、详情、URL、书源名、规则、结果）
      */
-    val filteredFlowLogs = combine(_uiState, _selectedFlowStage, _searchQuery) { uiState, stage, query ->
+    val filteredFlowLogs = combine(_uiState, _selectedFlowStage, _searchQuery, _selectedCategory) { uiState, stage, query, category ->
         var result = uiState.flowLogs
+
+        // 按源类型过滤（书源只看书源流程日志，订阅源只看订阅源流程日志）
+        result = when (category) {
+            DebugCategory.SOURCE -> result.filter { it.sourceType == io.legado.app.model.debug.SourceType.BOOK }
+            DebugCategory.RSS -> result.filter { it.sourceType == io.legado.app.model.debug.SourceType.RSS }
+            else -> result
+        }
 
         // 按流程阶段过滤
         if (stage != null) {
@@ -237,6 +269,45 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         loadHistoryLogs()
         subscribeToEventFlow()
         subscribeToFlowLogs()
+        subscribeToRssExecutionRecords()
+        subscribeToRssRuleRecords()
+    }
+
+    private fun subscribeToRssExecutionRecords() {
+        RssExecutionRecorder.recordsFlow
+            .onEach { records ->
+                _rssExecutionRecords.value = records
+            }
+            .launchIn(viewModelScope)
+        refreshRssExecutionRecords()
+    }
+
+    fun refreshRssExecutionRecords() {
+        _rssExecutionRecords.value = RssExecutionRecorder.getCurrentRecords()
+    }
+
+    /**
+     * 订阅规则执行记录流
+     *
+     * 监听 RssExecutionRecorder.ruleRecordsFlow，
+     * 实时接收规则执行记录更新并同步到 UI 状态
+     */
+    private fun subscribeToRssRuleRecords() {
+        RssExecutionRecorder.ruleRecordsFlow
+            .onEach { records ->
+                _rssRuleRecords.value = records
+            }
+            .launchIn(viewModelScope)
+        refreshRssRuleRecords()
+    }
+
+    /**
+     * 刷新规则执行记录
+     *
+     * 从 RssExecutionRecorder 获取当前所有规则执行记录
+     */
+    fun refreshRssRuleRecords() {
+        _rssRuleRecords.value = RssExecutionRecorder.getCurrentRuleRecords()
     }
 
     /**
@@ -292,7 +363,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      */
     fun selectCategory(category: DebugCategory) {
         _selectedCategory.value = category
-        if (category != DebugCategory.SOURCE) {
+        if (category != DebugCategory.SOURCE && category != DebugCategory.RSS) {
             _selectedSubCategory.value = null
         }
     }
@@ -305,8 +376,10 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     fun selectSubCategory(subCategory: SourceSubCategory?) {
         _selectedSubCategory.value = subCategory
         if (subCategory == SourceSubCategory.ENTITY) {
-            if (_bookSources.value.isEmpty()) {
-                loadBookSources()
+            when (_selectedCategory.value) {
+                DebugCategory.SOURCE -> if (_bookSources.value.isEmpty()) loadBookSources()
+                DebugCategory.RSS -> if (_rssSources.value.isEmpty()) loadRssSources()
+                else -> {}
             }
         }
     }
@@ -339,6 +412,35 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
         val source = _bookSources.value.firstOrNull { it.bookSourceUrl == bookSourceUrl }
         _selectedBookSourceUrl.value = if (source != null) bookSourceUrl else null
         _selectedBookSource.value = source
+    }
+
+    /**
+     * 加载订阅源列表
+     *
+     * 从数据库获取所有已启用的订阅源，按自定义排序排列。
+     */
+    fun loadRssSources() {
+        execute {
+            appDb.rssSourceDao.all
+                .filter { it.enabled }
+                .sortedBy { it.customOrder }
+        }.onSuccess { sources ->
+            _rssSources.value = sources
+        }.onError { e ->
+            e.printStackTrace()
+            showToast("加载订阅源列表失败：${e.message}")
+        }
+    }
+
+    /**
+     * 选择要查看的订阅源
+     *
+     * @param sourceUrl 订阅源 URL
+     */
+    fun selectRssSource(sourceUrl: String) {
+        val source = _rssSources.value.firstOrNull { it.sourceUrl == sourceUrl }
+        _selectedRssSourceUrl.value = if (source != null) sourceUrl else null
+        _selectedRssSource.value = source
     }
 
     /**
@@ -458,6 +560,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
     fun clearLogs() {
         execute {
             DebugEventCenter.clear()
+            RssExecutionRecorder.clear()
             synchronized(this) {
                 _allLogs = emptyList()
             }
@@ -595,13 +698,18 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
 
         execute {
             val loadedLogs = DebugEventCenter.getRecentLogs(DebugEventCenter.MAX_EVENTS)
-            synchronized(this) {
-                _allLogs = loadedLogs
+            val deduplicated = synchronized(this) {
+                // 去重：移除已被事件流接收的重复事件
+                val existingIds = _allLogs.mapTo(mutableSetOf()) { it.id }
+                val filtered = if (existingIds.isEmpty()) loadedLogs else loadedLogs.filter { it.id !in existingIds }
+                val merged = filtered + _allLogs
+                _allLogs = merged
+                merged
             }
 
             _uiState.value = UiState(
-                logs = loadedLogs,
-                isEmpty = loadedLogs.isEmpty(),
+                logs = deduplicated,
+                isEmpty = deduplicated.isEmpty(),
                 isLoading = false,
                 isPaused = _isPaused.value
             )
@@ -624,6 +732,11 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             .filter { !_isPaused.value }
             .onEach { event ->
                 val newLogs = synchronized(this) {
+                    // 去重：如果事件已存在于历史日志中则跳过
+                    if (_allLogs.any { it.id == event.id }) {
+                        return@synchronized null
+                    }
+
                     val updatedLogs = mutableListOf(event)
                     updatedLogs.addAll(_allLogs)
 
@@ -636,6 +749,9 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
                     _allLogs = result
                     result
                 }
+
+                // 去重返回 null 时不更新 UI
+                newLogs ?: return@onEach
 
                 _uiState.value = _uiState.value.copy(
                     logs = newLogs,
@@ -677,8 +793,7 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
      * @return 格式化的日期时间字符串 yyyy-MM-dd HH:mm:ss.SSS
      */
     private fun formatTime(timestamp: Long): String {
-        return java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", java.util.Locale.getDefault())
-            .format(java.util.Date(timestamp))
+        return DebugLogUtils.formatFullTime(timestamp)
     }
 
     companion object {

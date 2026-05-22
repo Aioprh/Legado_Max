@@ -243,6 +243,10 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
                 searchView.setQuery(getString(R.string.no_group), true)
             }
 
+            R.id.menu_content_query -> {
+                showDialogFragment(RssSourceContentSearchDialog())
+            }
+
             R.id.menu_help -> showHelp("SourceMRssHelp")
             else -> if (item.groupId == R.id.source_group) {
                 searchView.setQuery("group:${item.title}", true)

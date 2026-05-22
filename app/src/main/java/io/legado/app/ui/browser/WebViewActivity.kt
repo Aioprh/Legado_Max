@@ -396,7 +396,7 @@ class WebViewActivity : VMBaseActivity<ActivityWebViewBinding, WebViewModel>() {
             var fileName = URLUtil.guessFileName(url, contentDisposition, null)
             fileName = URLDecoder.decode(fileName, "UTF-8")
             currentWebView.longSnackbar(fileName, getString(R.string.action_download)) {
-                Download.start(this, url, fileName)
+                Download.start(this, url, fileName, currentWebView.url)
             }
         }
     }

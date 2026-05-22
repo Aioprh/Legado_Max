@@ -107,7 +107,12 @@ object Debug {
                         else -> DebugLevel.DEBUG
                     },
                     category = eventCategory,
-                    subCategory = if (eventCategory == DebugCategory.RULE) SourceSubCategory.RULE else null,
+                    subCategory = when (eventCategory) {
+                        DebugCategory.RULE -> SourceSubCategory.RULE
+                        DebugCategory.SOURCE -> SourceSubCategory.RULE
+                        DebugCategory.RSS -> SourceSubCategory.RULE
+                        else -> null
+                    },
                     message = printMsg,
                     detail = capturedMsg,
                     sourceUrl = capturedSourceUrl,

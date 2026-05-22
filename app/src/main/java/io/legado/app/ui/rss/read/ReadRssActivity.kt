@@ -101,6 +101,7 @@ import io.legado.app.help.webView.WebViewPool
 import io.legado.app.help.webView.WebViewPool.BLANK_HTML
 import io.legado.app.help.webView.WebViewPool.DATA_HTML
 import io.legado.app.model.Download
+import io.legado.app.model.VideoPlay
 import kotlinx.coroutines.Dispatchers.IO
 import java.lang.ref.WeakReference
 import splitties.systemservices.powerManager
@@ -126,6 +127,7 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
     private var customWebViewCallback: WebChromeClient.CustomViewCallback? = null
     private var interfaceInjected: String? = null
     private var needClearHistory = true
+    private var erudaEnabled = false
     private val selectImageDir = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             ACache.get().put(imagePathKey, uri.toString())
@@ -416,6 +418,7 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                 showDialogFragment(CookieViewerDialog(it))
             } ?: toastOnUi("url null")
             R.id.menu_log -> showDialogFragment<AppLogDialog>()
+            R.id.menu_web_debug -> toggleEruda()
             R.id.menu_read_record -> showDialogFragment(ReadRecordDialog(viewModel.rssSource?.sourceUrl))
         }
         return super.onCompatOptionsItemSelected(item)
@@ -478,7 +481,7 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
             var fileName = URLUtil.guessFileName(url, contentDisposition, null)
             fileName = URLDecoder.decode(fileName, "UTF-8")
             currentWebView.longSnackbar(fileName, getString(R.string.action_download)) {
-                Download.start(this, url, fileName)
+                Download.start(this, url, fileName, currentWebView.url)
             }
         }
     }
@@ -632,6 +635,36 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                 ttsMenuItem?.setTitle(R.string.read_aloud)
             }
             ttsMenuItem?.icon?.setTintMutate(primaryTextColor)
+        }
+    }
+
+    private fun toggleEruda() {
+        erudaEnabled = !erudaEnabled
+        val erudaScript = if (erudaEnabled) {
+            """
+            (function() {
+                var script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/eruda@3.0.1/eruda.min.js';
+                document.body.appendChild(script);
+                script.onload = function() { eruda.init(); }
+            })();
+            """.trimIndent()
+        } else {
+            """
+            (function() {
+                var el = document.querySelector('div[data-eruda]');
+                if (el) el.parentNode.removeChild(el);
+                var el2 = document.querySelector('script[src*="eruda"]');
+                if (el2) el2.parentNode.removeChild(el2);
+                if (window.eruda) { eruda.destroy(); delete window.eruda; }
+            })();
+            """.trimIndent()
+        }
+        currentWebView.evaluateJavascript(erudaScript, null)
+        if (erudaEnabled) {
+            toastOnUi(R.string.eruda_enabled)
+        } else {
+            toastOnUi(R.string.eruda_disabled)
         }
     }
 
@@ -993,6 +1026,27 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                 if (it.isNotBlank()) {
                     view.evaluateJavascript(it, null)
                 }
+            }
+            // 网页h5的video标签播放器静音播放视频
+            // @param mutePlay 是否静音播放视频
+            if (VideoPlay.mutePlay) {
+                toastOnUi(R.string.mute_play_enabled)
+                val muteJs = """
+                    (function(){
+                        document.querySelectorAll('video,audio').forEach(function(el){el.muted=true});
+                        new MutationObserver(function(ms){
+                            ms.forEach(function(m){
+                                m.addedNodes.forEach(function(n){
+                                    if(n.nodeType===1){
+                                        if(n.tagName==='VIDEO'||n.tagName==='AUDIO') n.muted=true;
+                                        if(n.querySelectorAll) n.querySelectorAll('video,audio').forEach(function(e){e.muted=true});
+                                    }
+                                });
+                            });
+                        }).observe(document.body,{childList:true,subtree:true});
+                    })();
+                """.trimIndent()
+                view.evaluateJavascript(muteJs, null)
             }
         }
 

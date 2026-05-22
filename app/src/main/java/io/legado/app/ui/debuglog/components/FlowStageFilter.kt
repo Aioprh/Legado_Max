@@ -29,12 +29,16 @@ import io.legado.app.model.debug.FlowStage
  *
  * @param selectedStage 当前选中的阶段
  * @param onStageSelected 阶段选择回调
+ * @param showExecutionStatus 是否显示执行情况（订阅源专用）
+ * @param onToggleExecutionStatus 执行情况切换回调（订阅源专用）
  * @param modifier 修饰符
  */
 @Composable
 fun FlowStageFilter(
     selectedStage: FlowStage?,
     onStageSelected: (FlowStage?) -> Unit,
+    showExecutionStatus: Boolean = false,
+    onToggleExecutionStatus: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -51,17 +55,30 @@ fun FlowStageFilter(
         ) {
             // "全部"选项
             FilterChip(
-                selected = selectedStage == null,
-                onClick = { onStageSelected(null) },
+                selected = selectedStage == null && !showExecutionStatus,
+                onClick = { 
+                    onStageSelected(null)
+                },
                 label = { Text("全部") }
             )
 
             // 各阶段选项
             FlowStage.entries.forEach { stage ->
                 FilterChip(
-                    selected = selectedStage == stage,
-                    onClick = { onStageSelected(stage) },
+                    selected = selectedStage == stage && !showExecutionStatus,
+                    onClick = { 
+                        onStageSelected(stage)
+                    },
                     label = { Text("${stage.icon} ${stage.displayName}") }
+                )
+            }
+
+            // 执行情况选项（订阅源专用）
+            if (onToggleExecutionStatus != null) {
+                FilterChip(
+                    selected = showExecutionStatus,
+                    onClick = onToggleExecutionStatus,
+                    label = { Text("📋 执行情况") }
                 )
             }
         }

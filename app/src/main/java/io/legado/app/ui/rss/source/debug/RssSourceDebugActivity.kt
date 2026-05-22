@@ -14,6 +14,7 @@ import io.legado.app.help.source.sortUrls
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.ui.widget.dialog.BottomWebViewDialog
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.setEdgeEffectColor
@@ -60,8 +61,37 @@ class RssSourceDebugActivity : VMBaseActivity<ActivityRssSourceDebugBinding, Rss
         when (item.itemId) {
             R.id.menu_list_src -> showDialogFragment(TextDialog("Html", viewModel.listSrc))
             R.id.menu_content_src -> showDialogFragment(TextDialog("Html", viewModel.contentSrc))
+            R.id.menu_preview_source_url -> showPreview(R.string.preview_title_source_url, null)
+            R.id.menu_preview_start_page -> showPreview(
+                R.string.preview_title_start_page,
+                viewModel.listSrc
+            )
+            R.id.menu_preview_description -> showPreview(
+                R.string.preview_title_description,
+                viewModel.listSrc
+            )
+            R.id.menu_preview_content -> showPreview(
+                R.string.preview_title_content,
+                viewModel.contentSrc
+            )
         }
         return super.onCompatOptionsItemSelected(item)
+    }
+
+    // 显示预览(url、启动页、描述规则、内容页)
+    // @param titleResId 标题资源ID
+    // @param html 内容HTML
+    private fun showPreview(titleResId: Int, html: String?) {
+        val sourceUrl = viewModel.rssSource?.sourceUrl ?: return
+        showDialogFragment(
+            BottomWebViewDialog(
+                sourceKey = sourceUrl,
+                bookType = 0,
+                url = sourceUrl,
+                html = html,
+                title = getString(R.string.preview_title_format, getString(titleResId))
+            )
+        )
     }
 
     private fun initRecyclerView() {

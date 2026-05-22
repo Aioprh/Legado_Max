@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.legado.app.model.debug.DebugLogUtils
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
 
@@ -68,14 +69,6 @@ fun FlowLogList(
             state = listState,
             modifier = Modifier.align(Alignment.CenterEnd)
         )
-    }
-}
-
-private fun formatDuration(ms: Long): String {
-    return when {
-        ms < 1000 -> "${ms}ms"
-        ms < 60000 -> "${ms / 1000.0}s"
-        else -> "${ms / 60000}m ${ms % 60000 / 1000}s"
     }
 }
 
@@ -156,7 +149,7 @@ private fun FlowLogCard(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = formatDuration(totalDuration),
+                            text = DebugLogUtils.formatDuration(totalDuration) ?: "",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (isSuccess) MaterialTheme.colorScheme.primary 
                                     else MaterialTheme.colorScheme.error

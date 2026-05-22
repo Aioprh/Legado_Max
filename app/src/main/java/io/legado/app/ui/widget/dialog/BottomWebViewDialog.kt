@@ -100,7 +100,8 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
         url: String,
         html: String? = null,
         preloadJs: String? = null,
-        config: String? = null
+        config: String? = null,
+        title: String? = null
     ) : this() {
         arguments = Bundle().apply {
             putString("sourceKey", sourceKey)
@@ -109,6 +110,7 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
             putString("html", html)
             putString("preloadJs", preloadJs)
             putString("config", config)
+            putString("title", title)
         }
     }
 
@@ -392,7 +394,7 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
             var fileName = URLUtil.guessFileName(url, contentDisposition, null)
             fileName = URLDecoder.decode(fileName, "UTF-8")
             currentWebView.longSnackbar(fileName, getString(R.string.action_download)) {
-                Download.start(requireContext(), url, fileName)
+                Download.start(requireContext(), url, fileName, currentWebView.url)
             }
         }
     }
@@ -400,6 +402,10 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         view.setBackgroundColor(0)
+        arguments?.getString("title")?.takeIf { it.isNotBlank() }?.let { title ->
+            binding.tvTitle.text = title
+            binding.tvTitle.visible()
+        }
         binding.webViewContainer.addView(currentWebView)
         lifecycleScope.launch(IO) {
             val args = arguments
@@ -410,12 +416,12 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
             val sourceKey = args.getString("sourceKey") ?: return@launch
             val url = args.getString("url") ?: return@launch
             kotlin.runCatching {
-                source = appDb.bookSourceDao.getBookSource(sourceKey).also {
-                    if (it == null) {
-                        activity?.toastOnUi("no find bookSource")
-                        dismiss()
-                        return@launch
-                    }
+                source = appDb.bookSourceDao.getBookSource(sourceKey)
+                    ?: appDb.rssSourceDao.getByKey(sourceKey)
+                if (source == null) {
+                    activity?.toastOnUi("no find source")
+                    dismiss()
+                    return@launch
                 }
                 args.getString("config")?.let { json ->
                     try {

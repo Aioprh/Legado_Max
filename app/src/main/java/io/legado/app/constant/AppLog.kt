@@ -7,11 +7,10 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
+import io.legado.app.model.debug.DebugLogScope
 import io.legado.app.model.debug.SourceSubCategory
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.toastOnUi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import splitties.init.appCtx
 
@@ -43,7 +42,7 @@ object AppLog {
             Log.e(stackTrace[3].className, message, throwable)
         }
 
-        GlobalScope.launch(Dispatchers.IO) {
+        DebugLogScope.launch {
             DebugEventCenter.emit(
                 DebugEvent(
                     level = if (throwable != null) DebugLevel.ERROR else DebugLevel.INFO,
@@ -74,7 +73,7 @@ object AppLog {
             Log.e(stackTrace[3].className, message, throwable)
         }
 
-        GlobalScope.launch(Dispatchers.IO) {
+        DebugLogScope.launch {
             DebugEventCenter.emit(
                 DebugEvent(
                     level = if (throwable != null) DebugLevel.ERROR else DebugLevel.INFO,
@@ -105,7 +104,7 @@ object AppLog {
         }
 
         // 新增：上报到调试事件中心（异步）
-        GlobalScope.launch(Dispatchers.IO) {
+        DebugLogScope.launch {
             DebugEventCenter.emit(
                 DebugEvent(
                     level = if (throwable != null) DebugLevel.ERROR else DebugLevel.INFO,
@@ -131,7 +130,7 @@ object AppLog {
         }
 
         // 新增：即使recordLog为false也上报调试级别日志到事件中心
-        GlobalScope.launch(Dispatchers.IO) {
+        DebugLogScope.launch {
             DebugEventCenter.emit(
                 DebugEvent(
                     level = DebugLevel.DEBUG,

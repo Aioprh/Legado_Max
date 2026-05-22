@@ -692,7 +692,7 @@
     <string name="header_font_size">页眉字体大小</string>
     <string name="main_body">正文</string>
     <string name="footer">页脚</string>
-    <string name="footer_font_size">页脚字体大小</string>
+    <string name="footer_font_size">页脚字体</string>
     <string name="select_end">文本选择结束位置</string>
     <string name="select_start">文本选择开始位置</string>
     <string name="share_layout">共用布局</string>
@@ -955,6 +955,16 @@
     <string name="toc_src">目录源码</string>
     <string name="content_src">正文源码</string>
     <string name="list_src">列表源码</string>
+    <string name="preview_content">预览内容页</string>
+    <string name="content_src_empty">内容源码为空，请先进行调试</string>
+    <string name="preview_source_url">预览源URL</string>
+    <string name="preview_start_page">预览启动页</string>
+    <string name="preview_description">预览描述规则</string>
+    <string name="preview_title_source_url">源URL</string>
+    <string name="preview_title_start_page">启动页</string>
+    <string name="preview_title_description">描述规则</string>
+    <string name="preview_title_content">内容页</string>
+    <string name="preview_title_format">预览: %s</string>
     <string name="url_already">此 URL 已订阅</string>
     <string name="high_brush_title">高刷新率</string>
     <string name="high_brush_summary">使用屏幕最高刷新率</string>
@@ -1023,6 +1033,9 @@
     <string name="double_page_horizontal">平板/横屏双页</string>
     <string name="open_in_browser">浏览器打开</string>
     <string name="view_cookie">查看Cookie</string>
+    <string name="web_debug">网页调试</string>
+    <string name="eruda_enabled">网页控制台已开启</string>
+    <string name="eruda_disabled">网页控制台已关闭</string>
     <string name="copy_url">拷贝 URL</string>
     <string name="full_screen">全屏</string>
     <string name="open_fun">打开方式</string>

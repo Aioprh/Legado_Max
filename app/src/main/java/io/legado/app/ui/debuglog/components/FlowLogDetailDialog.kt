@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import io.legado.app.model.debug.DebugLogUtils
 import io.legado.app.model.debug.FlowLogItem
 import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.RuleExecutionTree
@@ -66,12 +67,10 @@ import io.legado.app.model.debug.VariableOperationType
 import io.legado.app.model.debug.BookDataFlow
 import io.legado.app.model.debug.DataFlowStage
 import io.legado.app.model.debug.FieldFillRecord
+import io.legado.app.model.debug.highlightText
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun FlowLogDetailDialog(
@@ -175,7 +174,7 @@ fun FlowLogDetailDialog(
                             .padding(16.dp)
                     ) {
                     DetailSection(title = "基本信息", searchQuery = searchQuery) {
-                        DetailRow("时间", formatFullTime(log.startTime), searchQuery)
+                        DetailRow("时间", DebugLogUtils.formatFullTime(log.startTime), searchQuery)
                         DetailRow("阶段", log.stage.displayName, searchQuery)
                         log.operation?.let { DetailRow("操作", it, searchQuery) }
                         log.sourceName?.let { DetailRow("书源", it, searchQuery) }
@@ -565,8 +564,8 @@ private fun JsExecutionView(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         DetailRow("执行状态", if (jsExec.isSuccess()) "✅ 成功" else "❌ 失败", searchQuery)
-        jsExec.duration?.let {
-            DetailRow("执行耗时", jsExec.formatDuration() ?: "${it}ms", searchQuery)
+        DebugLogUtils.formatDuration(jsExec.duration)?.let {
+            DetailRow("执行耗时", it, searchQuery)
         }
         
         Spacer(Modifier.height(8.dp))
@@ -802,42 +801,6 @@ private fun getStageIcon(stage: FlowStage) = when (stage) {
     FlowStage.REPLACE -> Icons.Default.SwapHoriz
     FlowStage.VARIABLE -> Icons.Default.Inventory
     FlowStage.DATA_FLOW -> Icons.Default.DataObject
-}
-
-@Composable
-private fun highlightText(text: String, query: String): androidx.compose.ui.text.AnnotatedString {
-    if (query.isBlank() || !text.contains(query, ignoreCase = true)) {
-        return buildAnnotatedString { append(text) }
-    }
-
-    return buildAnnotatedString {
-        var startIndex = 0
-        var foundIndex = text.indexOf(query, ignoreCase = true)
-
-        while (foundIndex >= 0) {
-            append(text.substring(startIndex, foundIndex))
-
-            withStyle(
-                SpanStyle(
-                    background = Color.Yellow.copy(alpha = 0.3f),
-                    fontWeight = FontWeight.Bold
-                )
-            ) {
-                append(text.substring(foundIndex, foundIndex + query.length))
-            }
-
-            startIndex = foundIndex + query.length
-            foundIndex = text.indexOf(query, startIndex, ignoreCase = true)
-        }
-
-        if (startIndex < text.length) {
-            append(text.substring(startIndex))
-        }
-    }
-}
-
-private fun formatFullTime(timestamp: Long): String {
-    return SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date(timestamp))
 }
 
 @Composable

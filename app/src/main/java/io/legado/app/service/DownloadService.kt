@@ -72,7 +72,8 @@ class DownloadService : BaseService() {
         when (intent?.action) {
             IntentAction.start -> startDownload(
                 intent.getStringExtra("url"),
-                intent.getStringExtra("fileName")
+                intent.getStringExtra("fileName"),
+                intent.getStringExtra("sourceUrl")
             )
 
             IntentAction.play -> {
@@ -96,7 +97,7 @@ class DownloadService : BaseService() {
      * 开始下载
      */
     @Synchronized
-    private fun startDownload(url: String?, fileName: String?) {
+    private fun startDownload(url: String?, fileName: String?, sourceUrl: String?) {
         if (url == null || fileName == null) {
             if (downloads.isEmpty()) {
                 stopSelf()
@@ -118,7 +119,11 @@ class DownloadService : BaseService() {
             val downloadId = downloadManager.enqueue(request)
             val notificationId = NotificationId.Download + downloads.size
             downloads[downloadId] = DownloadInfo(url, fileName, notificationId)
-            DownloadState.addTask(downloadId, url, fileName, notificationId)
+            DownloadState.addTask(
+                downloadId, url, fileName, notificationId,
+                sourceUrl = sourceUrl ?: "",
+                downloadUrl = url
+            )
             AppLog.put("📥开始下载: $fileName\nURL: $url")
             queryState()
             if (upStateJob == null) {

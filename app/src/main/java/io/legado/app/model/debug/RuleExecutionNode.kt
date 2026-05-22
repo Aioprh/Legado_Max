@@ -54,18 +54,7 @@ data class RuleExecutionNode(
     val startTime: Long = System.currentTimeMillis()
 ) {
     fun formatTime(): String {
-        val sdf = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault())
-        return sdf.format(java.util.Date(startTime))
-    }
-
-    fun formatDuration(): String? {
-        return duration?.let {
-            when {
-                it < 1000 -> "${it}ms"
-                it < 60000 -> "${it / 1000.0}s"
-                else -> "${it / 60000}m ${it % 60000 / 1000}s"
-            }
-        }
+        return DebugLogUtils.formatShortTime(startTime)
     }
 
     fun isSuccess(): Boolean = error == null && children.all { it.isSuccess() }

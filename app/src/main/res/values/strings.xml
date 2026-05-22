@@ -702,7 +702,7 @@
     <string name="enhanced_features">Enhanced Features</string>
     <string name="selectText">Long Tap to select text</string>
     <string name="header">Header</string>
-    <string name="header_font_size">Header Font Size</string>
+    <string name="header_font_size">Header Font</string>
     <string name="main_body">Content</string>
     <string name="footer">Footer</string>
     <string name="footer_font_size">Footer Font Size</string>
@@ -978,6 +978,16 @@
     <string name="toc_src">Chapters source code</string>
     <string name="content_src">Content source code</string>
     <string name="list_src">List source code</string>
+    <string name="preview_content">Preview content page</string>
+    <string name="content_src_empty">Content source is empty, please debug first</string>
+    <string name="preview_source_url">Preview source URL</string>
+    <string name="preview_start_page">Preview start page</string>
+    <string name="preview_description">Preview description rule</string>
+    <string name="preview_title_source_url">Source URL</string>
+    <string name="preview_title_start_page">Start page</string>
+    <string name="preview_title_description">Description rule</string>
+    <string name="preview_title_content">Content page</string>
+    <string name="preview_title_format">Preview: %s</string>
     <string name="title_font_size">Font size</string>
     <string name="title_margin_top">Margin top</string>
     <string name="title_margin_bottom">Margin bottom</string>
@@ -1037,6 +1047,9 @@
     <string name="double_page_horizontal">Tablet/Landscape Dual Page</string>
     <string name="open_in_browser">open in browser</string>
     <string name="view_cookie">View Cookie</string>
+    <string name="web_debug">Web Debug</string>
+    <string name="eruda_enabled">Web console enabled</string>
+    <string name="eruda_disabled">Web console disabled</string>
     <string name="copy_url">copy url</string>
     <string name="full_screen">full screen</string>
     <string name="open_fun">open function</string>
@@ -1483,6 +1496,7 @@
     <string name="press_speed_summary">长按倍速 %.1f</string>
     <string name="full_bottom_progress">全屏时显示底部进度条</string>
     <string name="mute_play">静音播放</string>
+    <string name="mute_play_enabled">当前开启静音播放</string>
     <string name="json_format">json格式</string>
     <string name="open_other_video_player">其它播放器打开</string>
     <string name="show_source_comment">显示源注释</string>

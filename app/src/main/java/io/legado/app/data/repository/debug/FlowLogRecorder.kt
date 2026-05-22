@@ -4,16 +4,17 @@ import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.RssSource
 import io.legado.app.help.config.AppConfig
+import io.legado.app.model.debug.DebugLogScope
 import io.legado.app.model.debug.FlowLogItem
+import io.legado.app.model.debug.SourceType
 import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.JsExecutionRecord
 import io.legado.app.model.debug.JsExecutionContext
 import io.legado.app.model.debug.RuleExecutionTree
 import io.legado.app.model.debug.RuleType
 import io.legado.app.model.debug.BookDataFlow
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -23,7 +24,6 @@ import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * 流程日志记录器
@@ -55,7 +55,6 @@ object FlowLogRecorder {
     
      // 请求会话映射：书源URL -> 请求ID
     private val logDeque = ArrayDeque<FlowLogItem>()
-    private val logSize = AtomicInteger(0)
     private val pendingUpdate = AtomicBoolean(false)
 
     private val requestSessions = ConcurrentHashMap<String, String>()
@@ -64,6 +63,10 @@ object FlowLogRecorder {
     private val operationMap = ConcurrentHashMap<String, String>()
 
     val isEnabled: Boolean get() = AppConfig.debugLogFloatingBall
+
+    private fun sourceTypeOf(source: BaseSource?): SourceType {
+        return if (source is RssSource) SourceType.RSS else SourceType.BOOK
+    }
 
     /**
      * 设置当前书源的操作类型
@@ -147,6 +150,7 @@ object FlowLogRecorder {
         log(
             sourceUrl = sourceUrl,
             sourceName = source?.getTag(),
+            sourceType = sourceTypeOf(source),
             stage = FlowStage.NETWORK,
             operation = getOperation(sourceUrl),
             message = message,
@@ -174,6 +178,7 @@ object FlowLogRecorder {
         log(
             sourceUrl = sourceUrl,
             sourceName = source?.getTag(),
+            sourceType = sourceTypeOf(source),
             stage = FlowStage.PARSE,
             operation = getOperation(sourceUrl),
             message = message,
@@ -208,7 +213,7 @@ object FlowLogRecorder {
         val sourceName = source?.getTag()
         val operation = getOperation(sourceUrl)
         
-        GlobalScope.launch(Dispatchers.IO) {
+        DebugLogScope.launch {
             val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
                 ?: UUID.randomUUID().toString()
 
@@ -216,6 +221,7 @@ object FlowLogRecorder {
                 requestId = requestId,
                 sourceUrl = sourceUrl,
                 sourceName = sourceName,
+                sourceType = sourceTypeOf(source),
                 stage = FlowStage.PARSE,
                 operation = operation,
                 message = message,
@@ -260,7 +266,7 @@ object FlowLogRecorder {
         val sourceName = source?.getTag()
         val operation = getOperation(sourceUrl)
         
-        GlobalScope.launch(Dispatchers.IO) {
+        DebugLogScope.launch {
             val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
                 ?: UUID.randomUUID().toString()
 
@@ -268,6 +274,7 @@ object FlowLogRecorder {
                 requestId = requestId,
                 sourceUrl = sourceUrl,
                 sourceName = sourceName,
+                sourceType = sourceTypeOf(source),
                 stage = FlowStage.PARSE,
                 operation = operation,
                 message = message,
@@ -342,6 +349,7 @@ object FlowLogRecorder {
         log(
             sourceUrl = sourceUrl,
             sourceName = source?.getTag(),
+            sourceType = sourceTypeOf(source),
             stage = FlowStage.EXTRACT,
             operation = getOperation(sourceUrl),
             message = message,
@@ -386,6 +394,7 @@ object FlowLogRecorder {
         log(
             sourceUrl = sourceUrl,
             sourceName = source?.getTag(),
+            sourceType = sourceTypeOf(source),
             stage = FlowStage.REPLACE,
             operation = getOperation(sourceUrl),
             message = message,
@@ -419,7 +428,7 @@ object FlowLogRecorder {
         val sourceName = source?.getTag()
         val operation = getOperation(sourceUrl)
         
-        GlobalScope.launch(Dispatchers.IO) {
+        DebugLogScope.launch {
             val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
                 ?: UUID.randomUUID().toString()
 
@@ -436,6 +445,7 @@ object FlowLogRecorder {
                 requestId = requestId,
                 sourceUrl = sourceUrl,
                 sourceName = sourceName,
+                sourceType = sourceTypeOf(source),
                 stage = FlowStage.VARIABLE,
                 operation = operation,
                 message = message,
@@ -524,7 +534,7 @@ object FlowLogRecorder {
         val sourceName = source?.getTag()
         val operation = getOperation(sourceUrl)
 
-        GlobalScope.launch(Dispatchers.IO) {
+        DebugLogScope.launch {
             val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
                 ?: UUID.randomUUID().toString()
 
@@ -555,6 +565,7 @@ object FlowLogRecorder {
                 requestId = requestId,
                 sourceUrl = sourceUrl,
                 sourceName = sourceName,
+                sourceType = sourceTypeOf(source),
                 stage = FlowStage.DATA_FLOW,
                 operation = operation,
                 message = message,
@@ -591,6 +602,7 @@ object FlowLogRecorder {
     fun log(
         sourceUrl: String?,
         sourceName: String? = null,
+        sourceType: SourceType = SourceType.BOOK,
         stage: FlowStage,
         operation: String? = null,
         message: String,
@@ -620,8 +632,8 @@ object FlowLogRecorder {
         bookSource: BookSource? = null
     ) {
         if (!isEnabled) return
-        
-        GlobalScope.launch(Dispatchers.IO) {
+
+        DebugLogScope.launch {
             // 获取或创建请求ID，用于分组
             val requestId = sourceUrl?.let { getOrCreateRequestId(it) }
                 ?: UUID.randomUUID().toString()
@@ -631,6 +643,7 @@ object FlowLogRecorder {
                 requestId = requestId,
                 sourceUrl = sourceUrl,
                 sourceName = sourceName,
+                sourceType = sourceType,
                 stage = stage,
                 operation = operation,
                 message = message,
@@ -665,22 +678,19 @@ object FlowLogRecorder {
      * 
      * @param item 日志项
      */
-    @Synchronized
     private fun addLog(item: FlowLogItem) {
-        logDeque.addFirst(item)
-        logSize.incrementAndGet()
-        
-        while (logSize.get() > MAX_LOG_COUNT) {
-            logDeque.removeLast()
-            logSize.decrementAndGet()
+        synchronized(logDeque) {
+            logDeque.addFirst(item)
+            while (logDeque.size > MAX_LOG_COUNT) {
+                logDeque.removeLast()
+            }
         }
-        
         scheduleUpdate()
     }
     
     private fun scheduleUpdate() {
         if (pendingUpdate.compareAndSet(false, true)) {
-            GlobalScope.launch(Dispatchers.IO) {
+            DebugLogScope.launch {
                 delay(UPDATE_DEBOUNCE_MS)
                 pendingUpdate.set(false)
                 _logs.emit(getCurrentLogs())
@@ -705,13 +715,12 @@ object FlowLogRecorder {
     fun clear() {
         synchronized(logDeque) {
             logDeque.clear()
-            logSize.set(0)
         }
         requestSessions.clear()
         operationMap.clear()
         
         // 发送空列表到Flow
-        GlobalScope.launch(Dispatchers.IO) {
+        DebugLogScope.launch {
             _logs.emit(emptyList())
         }
     }

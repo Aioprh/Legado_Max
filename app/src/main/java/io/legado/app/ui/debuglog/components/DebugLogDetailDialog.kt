@@ -58,12 +58,11 @@ import androidx.compose.ui.window.Dialog
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
+import io.legado.app.model.debug.DebugLogUtils
 import io.legado.app.model.debug.ToastContext
 import io.legado.app.model.debug.ToastRuleType
 import io.legado.app.model.debug.ToastSourceType
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import io.legado.app.model.debug.highlightText
 
 @Composable
 fun DebugLogDetailDialog(
@@ -176,7 +175,7 @@ fun DebugLogDetailDialog(
                             .padding(16.dp)
                     ) {
                     DetailSection(title = "基本信息", searchQuery = searchQuery) {
-                        DetailRow("时间", formatFullTime(log.time), searchQuery)
+                        DetailRow("时间", DebugLogUtils.formatFullTime(log.time), searchQuery)
                         DetailRow("级别", log.level.displayName, searchQuery)
                         DetailRow("分类", log.category.displayName, searchQuery)
 
@@ -446,40 +445,4 @@ private fun DetailRow(
             maxLines = if (expanded) Int.MAX_VALUE else 3
         )
     }
-}
-
-@Composable
-private fun highlightText(text: String, query: String): androidx.compose.ui.text.AnnotatedString {
-    if (query.isBlank() || !text.contains(query, ignoreCase = true)) {
-        return buildAnnotatedString { append(text) }
-    }
-    
-    return buildAnnotatedString {
-        var startIndex = 0
-        var foundIndex = text.indexOf(query, ignoreCase = true)
-        
-        while (foundIndex >= 0) {
-            append(text.substring(startIndex, foundIndex))
-            
-            withStyle(
-                SpanStyle(
-                    background = Color.Yellow.copy(alpha = 0.3f),
-                    fontWeight = FontWeight.Bold
-                )
-            ) {
-                append(text.substring(foundIndex, foundIndex + query.length))
-            }
-            
-            startIndex = foundIndex + query.length
-            foundIndex = text.indexOf(query, startIndex, ignoreCase = true)
-        }
-        
-        if (startIndex < text.length) {
-            append(text.substring(startIndex))
-        }
-    }
-}
-
-private fun formatFullTime(timestamp: Long): String {
-    return SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date(timestamp))
 }

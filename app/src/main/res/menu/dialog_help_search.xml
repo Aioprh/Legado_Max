@@ -3,6 +3,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/menu_expand_all"
+        android:title="全部展开"
+        app:showAsAction="never"/>
+
+    <item
+        android:id="@+id/menu_collapse_all"
+        android:title="全部收缩"
+        app:showAsAction="never"/>
+
+    <item
         android:id="@+id/menu_close"
         android:title="@string/close"
         app:showAsAction="always"/>

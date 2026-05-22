@@ -14,4 +14,24 @@
         android:title="@string/content_src"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/menu_preview_source_url"
+        android:title="@string/preview_source_url"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_preview_start_page"
+        android:title="@string/preview_start_page"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_preview_description"
+        android:title="@string/preview_description"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_preview_content"
+        android:title="@string/preview_content"
+        app:showAsAction="never" />
+
 </menu>

@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -59,6 +60,8 @@ import io.legado.app.ui.debuglog.components.DebugLogItem
 import io.legado.app.ui.debuglog.components.DebugLogDetailDialog
 import io.legado.app.ui.debuglog.components.FlowLogDetailDialog
 import io.legado.app.ui.debuglog.components.EntityDisplay
+import io.legado.app.ui.debuglog.components.RssSourceEntityDisplay
+import io.legado.app.ui.debuglog.components.RssExecutionStatus
 import io.legado.app.ui.debuglog.components.FlowLogList
 import io.legado.app.ui.debuglog.components.FlowStageFilter
 import io.legado.app.ui.theme.pageCardElevatedContainerColor
@@ -110,6 +113,11 @@ fun DebugLogScreen(
     val bookSources by viewModel.bookSources.collectAsState()
     val selectedBookSource by viewModel.selectedBookSource.collectAsState()
     val selectedBookSourceUrl by viewModel.selectedBookSourceUrl.collectAsState()
+    val rssSources by viewModel.rssSources.collectAsState()
+    val selectedRssSource by viewModel.selectedRssSource.collectAsState()
+    val selectedRssSourceUrl by viewModel.selectedRssSourceUrl.collectAsState()
+    val rssExecutionRecords by viewModel.rssExecutionRecords.collectAsState()
+    val rssRuleRecords by viewModel.rssRuleRecords.collectAsState()
     val topBarColor = pageTopBarContainerColor()
     val cardColor = pageCardElevatedContainerColor()
     val secondaryTextColor = pageSecondaryTextColor()
@@ -117,11 +125,15 @@ fun DebugLogScreen(
 
     // 搜索框显示状态
     var showSearch by remember { mutableStateOf(false) }
+    // 订阅源执行情况显示状态
+    var showExecutionStatus by remember { mutableStateOf(false) }
 
     // 进入界面时刷新日志，确保显示最新数据
     LaunchedEffect(Unit) {
         viewModel.refreshLogs()
         viewModel.refreshFlowLogs()
+        viewModel.refreshRssExecutionRecords()
+        viewModel.refreshRssRuleRecords()
     }
 
     Scaffold(
@@ -150,6 +162,7 @@ fun DebugLogScreen(
                         IconButton(onClick = {
                             viewModel.refreshLogs()
                             viewModel.refreshFlowLogs()
+                            viewModel.refreshRssExecutionRecords()
                         }) {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
@@ -289,8 +302,8 @@ fun DebugLogScreen(
                 onCategorySelected = viewModel::selectCategory
             )
 
-            // 书源分类的子分类选择器
-            if (selectedCategory == DebugCategory.SOURCE) {
+            // 书源/订阅源分类的子分类选择器
+            if (selectedCategory == DebugCategory.SOURCE || selectedCategory == DebugCategory.RSS) {
                 SourceSubCategoryTabs(
                     selectedSubCategory = selectedSubCategory,
                     onSubCategorySelected = viewModel::selectSubCategory
@@ -307,7 +320,11 @@ fun DebugLogScreen(
                 if (selectedSubCategory == SourceSubCategory.FLOW) {
                     FlowStageFilter(
                         selectedStage = selectedFlowStage,
-                        onStageSelected = viewModel::selectFlowStage
+                        onStageSelected = viewModel::selectFlowStage,
+                        showExecutionStatus = if (selectedCategory == DebugCategory.RSS) showExecutionStatus else false,
+                        onToggleExecutionStatus = if (selectedCategory == DebugCategory.RSS) {
+                            { showExecutionStatus = !showExecutionStatus }
+                        } else null
                     )
                 }
             }
@@ -345,6 +362,36 @@ fun DebugLogScreen(
                             )
                         }
                     }
+                    // 订阅源实体显示视图
+                    selectedCategory == DebugCategory.RSS && selectedSubCategory == SourceSubCategory.ENTITY -> {
+                        RssSourceEntityDisplay(
+                            rssSources = rssSources,
+                            selectedRssSource = selectedRssSource,
+                            selectedRssSourceUrl = selectedRssSourceUrl,
+                            onRssSourceSelected = viewModel::selectRssSource
+                        )
+                    }
+                    // 订阅源流程日志视图
+                    selectedCategory == DebugCategory.RSS && selectedSubCategory == SourceSubCategory.FLOW -> {
+                        if (showExecutionStatus) {
+                            RssExecutionStatus(
+                                records = rssExecutionRecords,
+                                ruleRecords = rssRuleRecords,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else if (filteredFlowLogs.isEmpty()) {
+                            EmptyState(
+                                message = if (searchQuery.isNullOrBlank()) "暂无流程日志"
+                                         else "未找到匹配的日志"
+                            )
+                        } else {
+                            FlowLogList(
+                                logs = filteredFlowLogs,
+                                onLogClick = viewModel::selectFlowLog,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
                     // 空状态
                     uiState.isEmpty || filteredLogs.isEmpty() -> {
                         EmptyState(
@@ -363,20 +410,20 @@ fun DebugLogScreen(
                 }
 
                 // 日志详情弹窗
-                if (uiState.selectedLog != null) {
+                uiState.selectedLog?.let { log ->
                     DebugLogDetailDialog(
-                        log = uiState.selectedLog!!,
+                        log = log,
                         onDismiss = { viewModel.clearSelection() },
-                        onCopy = { viewModel.copyLogDetail(uiState.selectedLog!!) }
+                        onCopy = { viewModel.copyLogDetail(log) }
                     )
                 }
 
                 // 流程日志详情弹窗
-                if (uiState.selectedFlowLog != null) {
+                uiState.selectedFlowLog?.let { flowLog ->
                     FlowLogDetailDialog(
-                        log = uiState.selectedFlowLog!!,
+                        log = flowLog,
                         onDismiss = { viewModel.clearSelection() },
-                        onCopy = { viewModel.copyFlowLogDetail(uiState.selectedFlowLog!!) }
+                        onCopy = { viewModel.copyFlowLogDetail(flowLog) }
                     )
                 }
             }
@@ -445,7 +492,7 @@ private fun DebugLogList(
         ) {
             items(
                 count = logs.size,
-                key = { index -> "${logs[index].id}-$index" }
+                key = { index -> logs[index].id }
             ) { index ->
                 val log = logs[index]
                 DebugLogItem(
@@ -492,7 +539,7 @@ private fun SourceSubCategoryTabs(
         androidx.compose.foundation.layout.Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())//添加水平滚动支持
+                .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
         ) {
