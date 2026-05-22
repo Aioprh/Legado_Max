@@ -388,17 +388,10 @@ private fun BookCoverImage(
     var coverBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(bookName, bookAuthor) {
-        withContext(Dispatchers.IO) {
+        coverBitmap = withContext(Dispatchers.IO) {
             val coverPath = viewModel.getBookCover(bookName, bookAuthor)
-            if (coverPath != null) {
-                try {
-                    coverBitmap = ImageLoader.loadBitmap(context, coverPath)
-                        .submit()
-                        .get()
-                } catch (e: Exception) {
-                    coverBitmap = null
-                }
-            }
+            loadReadRecordCoverBitmap(context, coverPath)
+                ?: loadReadRecordCoverBitmap(context, viewModel.getConfiguredDefaultCover())
         }
     }
 
@@ -428,6 +421,15 @@ private fun BookCoverImage(
             }
         }
     }
+}
+
+private fun loadReadRecordCoverBitmap(context: android.content.Context, coverPath: String?): Bitmap? {
+    if (coverPath.isNullOrBlank()) return null
+    return runCatching {
+        ImageLoader.loadBitmap(context, coverPath)
+            .submit()
+            .get()
+    }.getOrNull()
 }
 
 @Suppress("UNUSED_PARAMETER")

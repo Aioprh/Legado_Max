@@ -153,17 +153,8 @@ private fun BookStackView(
             val bitmaps = mutableMapOf<Int, Bitmap?>()
             records.forEachIndexed { index, record ->
                 val coverPath = viewModel.getBookCover(record.bookName, record.bookAuthor)
-                if (coverPath != null) {
-                    try {
-                        bitmaps[index] = ImageLoader.loadBitmap(context, coverPath)
-                            .submit()
-                            .get()
-                    } catch (e: Exception) {
-                        bitmaps[index] = null
-                    }
-                } else {
-                    bitmaps[index] = null
-                }
+                bitmaps[index] = loadSummaryCoverBitmap(context, coverPath)
+                    ?: loadSummaryCoverBitmap(context, viewModel.getConfiguredDefaultCover())
             }
             coverBitmaps.value = bitmaps
         }
@@ -214,4 +205,16 @@ private fun BookStackView(
             }
         }
     }
+}
+
+private fun loadSummaryCoverBitmap(
+    context: android.content.Context,
+    coverPath: String?
+): Bitmap? {
+    if (coverPath.isNullOrBlank()) return null
+    return runCatching {
+        ImageLoader.loadBitmap(context, coverPath)
+            .submit()
+            .get()
+    }.getOrNull()
 }

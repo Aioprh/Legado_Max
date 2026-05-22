@@ -1,7 +1,11 @@
 package io.legado.app.data.repository
 
+import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
+import io.legado.app.help.config.AppConfig
 import io.legado.app.model.BookCover
+import io.legado.app.utils.getPrefString
+import splitties.init.appCtx
 
 class BookRepository {
 
@@ -12,14 +16,20 @@ class BookRepository {
     }
 
     suspend fun getBookCoverByNameAndAuthor(bookName: String, bookAuthor: String): String? {
-        val book = appDb.bookDao.getBook(bookName, bookAuthor) ?: return null
-        book.getDisplayCover()?.let { return it }
+        val book = appDb.bookDao.getBook(bookName, bookAuthor)
+        if (book == null) {
+            return getConfiguredDefaultCover()
+        }
+        book.getDisplayCover()?.takeIf { it.isNotBlank() }?.let { return it }
         val coverUrl = runCatching {
             BookCover.searchCover(book)
-        }.getOrNull() ?: return null
+        }.getOrNull()
+        if (coverUrl.isNullOrBlank()) {
+            return getConfiguredDefaultCover()
+        }
         book.customCoverUrl = coverUrl
         book.save()
-        return book.getDisplayCover()
+        return book.getDisplayCover()?.takeIf { it.isNotBlank() } ?: getConfiguredDefaultCover()
     }
 
     suspend fun getBookDurChapterTitle(bookName: String, bookAuthor: String): String? {
@@ -30,5 +40,14 @@ class BookRepository {
     suspend fun getAuthorByBookName(bookName: String): String? {
         val book = appDb.bookDao.getBookByName(bookName) ?: return null
         return book.author.ifBlank { null }
+    }
+
+    fun getConfiguredDefaultCover(): String? {
+        val preferenceKey = if (AppConfig.isNightTheme) {
+            PreferKey.defaultCoverDark
+        } else {
+            PreferKey.defaultCover
+        }
+        return appCtx.getPrefString(preferenceKey)?.takeIf { it.isNotBlank() }
     }
 }

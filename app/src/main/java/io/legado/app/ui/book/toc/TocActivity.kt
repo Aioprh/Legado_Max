@@ -125,6 +125,8 @@ class TocActivity : VMBaseActivity<ActivityChapterListBinding, TocViewModel>(),
             AppConfig.tocUiUseReplace
         menu.findItem(R.id.menu_load_word_count)?.isChecked =
             AppConfig.tocCountWords
+        menu.findItem(R.id.menu_collapse_volume_name)?.isChecked =
+            AppConfig.tocCollapseVolumeName
         menu.findItem(R.id.menu_split_long_chapter)?.isChecked =
             viewModel.bookData.value?.getSplitLongChapter() == true
         return super.onMenuOpened(featureId, menu)
@@ -161,6 +163,11 @@ class TocActivity : VMBaseActivity<ActivityChapterListBinding, TocViewModel>(),
             R.id.menu_load_word_count -> {
                 AppConfig.tocCountWords = !item.isChecked
                 viewModel.upChapterListAdapter()
+            }
+
+            R.id.menu_collapse_volume_name -> {
+                AppConfig.tocCollapseVolumeName = !item.isChecked
+                viewModel.chapterListCallBack?.upChapterList(searchView?.query?.toString())
             }
 
             R.id.menu_export_bookmark -> exportDir.launch {
