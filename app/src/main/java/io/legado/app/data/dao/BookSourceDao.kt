@@ -21,6 +21,9 @@ import kotlinx.coroutines.flow.map
 @Dao
 interface BookSourceDao {
 
+    @Query("select * from book_sources order by customOrder asc")
+    fun getAllSources(): List<BookSource>
+
     @Query("select * from book_sources_part order by customOrder asc")
     fun flowAll(): Flow<List<BookSourcePart>>
 

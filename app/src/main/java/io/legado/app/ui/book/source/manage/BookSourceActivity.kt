@@ -263,6 +263,10 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
             }
 
             R.id.menu_help -> showHelp("SourceMBookHelp")
+
+            R.id.menu_content_query -> {
+                showDialogFragment(SourceContentSearchDialog())
+            }
         }
         if (item.groupId == R.id.source_group) {
             searchView.setQuery("group:${item.title}", true)
