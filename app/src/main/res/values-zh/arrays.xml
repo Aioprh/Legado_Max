@@ -77,13 +77,15 @@
         <item>书名</item>
         <item>标题</item>
         <item>时间</item>
-        <item>电量</item>
+        <item>仅电量图标</item>
+        <item>电量内显</item>
         <item>电量%</item>
         <item>页数</item>
         <item>进度(%)</item>
         <item>进度(xx/yyy)</item>
         <item>页数及进度</item>
-        <item>时间及电量</item>
+        <item>时间及电量内显</item>
+        <item>时间和仅电量图标</item>
         <item>时间及电量%</item>
     </string-array>
 

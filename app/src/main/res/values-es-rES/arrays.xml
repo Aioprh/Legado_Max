@@ -8,7 +8,7 @@
 	</string-array>
 
 	<string-array name="group_style">
-		<item>Pestaña</item>
+		<item>Pesta帽a</item>
 		<item>Carpeta</item>
 	</string-array>
 
@@ -64,15 +64,15 @@
 	</string-array>
 
 	<string-array name="icon_names">
-		<item>íconePrincipal</item>
-		<item>ícone1</item>
-		<item>ícone2</item>
-		<item>ícone3</item>
-		<item>ícone4</item>
-		<item>ícone5</item>
-		<item>ícone6</item>
-        <item>ícone7</item>
-		<item>ícone8</item>
+		<item>铆conePrincipal</item>
+		<item>铆cone1</item>
+		<item>铆cone2</item>
+		<item>铆cone3</item>
+		<item>铆cone4</item>
+		<item>铆cone5</item>
+		<item>铆cone6</item>
+        <item>铆cone7</item>
+		<item>铆cone8</item>
 	</string-array>
 
 	<string-array name="chinese_mode">
@@ -90,16 +90,18 @@
 	<string-array name="read_tip">
 		<item>En blanco</item>
 		<item>Nombre del libro</item>
-		<item>Título</item>
+		<item>T铆tulo</item>
 		<item>Tiempo</item>
-		<item>Batería</item>
-		<item>Batería%</item>
-		<item>Páginas</item>
+		<item>Solo icono de bater铆a</item>
+		<item>Bater铆a interna</item>
+		<item>Bater铆a%</item>
+		<item>P谩ginas</item>
 		<item>Avance(%)</item>
 		<item>Avance(xx/yyy)</item>
-		<item>Páginas y avance</item>
-		<item>Tiempo y Batería</item>
-		<item>Tiempo y Batería%</item>
+		<item>P谩ginas y avance</item>
+		<item>Tiempo y bater铆a interna</item>
+		<item>Tiempo y solo icono de bater铆a</item>
+		<item>Tiempo y Bater铆a%</item>
 	</string-array>
 
 	<string-array name="text_font_weight">
@@ -112,7 +114,7 @@
 		<item>Autom.</item>
 		<item>Chino simplificado</item>
 		<item>Chino tradicional</item>
-		<item>Inglés</item>
+		<item>Ingl茅s</item>
 	</string-array>
 
 	<string-array name="rule_type">

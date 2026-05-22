@@ -1,142 +1,260 @@
 package io.legado.app.ui.widget
 
-import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Rect
+import android.graphics.PorterDuff
 import android.graphics.Typeface
-import android.os.Build
-import android.text.StaticLayout
 import android.util.AttributeSet
+import android.util.TypedValue
+import android.view.LayoutInflater
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.annotation.ColorInt
-import androidx.appcompat.widget.AppCompatTextView
-import io.legado.app.help.config.AppConfig
-import io.legado.app.utils.canvasrecorder.CanvasRecorderFactory
-import io.legado.app.utils.canvasrecorder.recordIfNeededThenDraw
+import androidx.cardview.widget.CardView
+import io.legado.app.R
 import io.legado.app.utils.dpToPx
 
 class BatteryView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
-) : AppCompatTextView(context, attrs) {
-    private val batteryTypeface by lazy {
-        Typeface.createFromAsset(context.assets, "font/number.ttf")
-    }
-    private val batteryPaint = Paint()
-    private val outFrame = Rect()
-    private val polar = Rect()
-    private val canvasRecorder = CanvasRecorderFactory.create()
-    var isBattery = false
+) : LinearLayout(context, attrs) {
+
+    private val batteryTextView: TextView
+    private val batteryTextInnerView: TextView
+    private val batteryTextEndView: TextView
+    private val batteryFillView: CardView
+    private val batteryIconView: ImageView
+    private val arrowIconView: ImageView
+    private val batteryClassicView: BatteryViewOrgin
+
+    private var battery: Int = 0
+    private var batteryText: String? = null
+    private var textSizePxValue = 11f * resources.displayMetrics.scaledDensity
+    var batteryInnerOnly: Boolean = false
         set(value) {
             field = value
-            if (value && !isInEditMode) {
-                super.setTypeface(batteryTypeface)
-                postInvalidate()
-            }
+            updateMode()
+            updateFill()
         }
-    private var battery: Int = 0
+    var batteryTextWithIconOnly: Boolean = false
+        set(value) {
+            field = value
+            updateMode()
+            updateFill()
+        }
 
-    init {
-        setPadding(4.dpToPx(), 3.dpToPx(), 6.dpToPx(), 3.dpToPx())
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            isFallbackLineSpacing = false
+    var isBattery: Boolean = false
+        set(value) {
+            field = value
+            updateMode()
         }
-        batteryPaint.strokeWidth = 2f.dpToPx()
-        batteryPaint.isAntiAlias = true
-        batteryPaint.color = paint.color
+
+    var text: CharSequence?
+        get() = batteryTextView.text
+        set(value) {
+            batteryTextView.text = value
+            batteryTextInnerView.text = value
+            batteryTextEndView.text = value
+        }
+
+    var typeface: Typeface?
+        get() = batteryTextView.typeface
+        set(value) {
+            batteryTextView.typeface = value ?: Typeface.DEFAULT
+            batteryTextInnerView.typeface = value ?: Typeface.DEFAULT
+            batteryTextEndView.typeface = value ?: Typeface.DEFAULT
+            batteryClassicView.typeface = value
+        }
+
+    var textSize: Float
+        get() = textSizePxValue
+        set(value) {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, value)
+        }
+
+    fun syncTag(tag: Any?) {
+        super.setTag(tag)
+        batteryTextView.tag = tag
+        batteryTextInnerView.tag = tag
+        batteryTextEndView.tag = tag
     }
 
-    override fun setTypeface(tf: Typeface?) {
-        if (!isBattery) {
-            super.setTypeface(tf)
-        }
+    fun setTextSize(unit: Int, size: Float) {
+        textSizePxValue = TypedValue.applyDimension(
+            unit,
+            size,
+            resources.displayMetrics
+        )
+        batteryTextView.setTextSize(unit, size)
+        batteryTextEndView.setTextSize(unit, size)
+        batteryClassicView.setTextSize(unit, size)
+        batteryTextInnerView.setTextSize(TypedValue.COMPLEX_UNIT_PX, batteryTextView.textSize * 0.73f)
+        updateScaledLayout()
+    }
+
+    init {
+        orientation = HORIZONTAL
+        gravity = android.view.Gravity.CENTER_VERTICAL
+        setPadding(0, 3.dpToPx(), 0, 3.dpToPx())
+        LayoutInflater.from(context).inflate(R.layout.view_battery, this, true)
+        batteryTextView = findViewById(R.id.battery_text)
+        batteryTextInnerView = findViewById(R.id.battery_text_inner)
+        batteryTextEndView = findViewById(R.id.battery_text_end)
+        batteryFillView = findViewById(R.id.battery_fill)
+        batteryIconView = findViewById(R.id.battery_icon)
+        arrowIconView = findViewById(R.id.arrow_icon)
+        batteryClassicView = findViewById(R.id.battery_classic)
+        syncTag(tag)
+        updateScaledLayout()
+        updateMode()
     }
 
     fun setColor(@ColorInt color: Int) {
-        setTextColor(color)
-        batteryPaint.color = color
-        invalidate()
+        batteryTextView.setTextColor(color)
+        batteryTextInnerView.setTextColor(color)
+        batteryTextEndView.setTextColor(color)
+        batteryFillView.setCardBackgroundColor(color)
+        batteryClassicView.setColor(color)
+        batteryIconView.setColorFilter(color, PorterDuff.Mode.SRC_IN)
+        arrowIconView.setColorFilter(color, PorterDuff.Mode.SRC_IN)
+        batteryIconView.alpha = 0.76f
+        arrowIconView.alpha = 0.76f
     }
 
-    @SuppressLint("SetTextI18n")
+    fun setTextIfNotEqual(newText: String?) {
+        if (text?.toString() != newText) {
+            text = newText
+        }
+    }
+
     fun setBattery(battery: Int, text: String? = null) {
-        this.battery = battery
-        if (text.isNullOrEmpty()) {
-            setText(battery.toString())
+        this.battery = battery.coerceIn(0, 100)
+        this.batteryText = text
+
+        if (!isBattery) {
+            this.text = text.orEmpty()
+            return
+        }
+
+        if (batteryInnerOnly) {
+            this.text = ""
+            batteryTextInnerView.text = battery.toString()
+        } else if (batteryTextWithIconOnly) {
+            this.text = text.orEmpty()
+            batteryTextInnerView.text = ""
+        } else if (text.isNullOrEmpty()) {
+            this.text = ""
         } else {
-            setText("$text  $battery")
+            batteryTextView.text = text
+            batteryTextEndView.text = text
+            batteryTextInnerView.text = battery.toString()
+            batteryClassicView.text = "$text $battery%"
+        }
+        batteryClassicView.setBattery(this.battery, text)
+        updateMode()
+        updateFill()
+    }
+
+    private fun updateMode() {
+        if (!isBattery) {
+            batteryFillView.visibility = GONE
+            batteryIconView.visibility = GONE
+            batteryTextView.visibility = VISIBLE
+            batteryTextEndView.visibility = GONE
+            batteryTextInnerView.visibility = GONE
+            arrowIconView.visibility = GONE
+            batteryClassicView.visibility = GONE
+            return
+        }
+
+        if (batteryInnerOnly) {
+            batteryTextView.visibility = GONE
+            batteryTextEndView.visibility = GONE
+            batteryTextInnerView.visibility = VISIBLE
+            batteryFillView.visibility = GONE
+            batteryIconView.visibility = VISIBLE
+            arrowIconView.visibility = GONE
+            batteryClassicView.visibility = GONE
+        } else if (batteryTextWithIconOnly) {
+            batteryTextView.visibility = VISIBLE
+            batteryTextEndView.visibility = GONE
+            batteryTextInnerView.visibility = GONE
+            batteryFillView.visibility = VISIBLE
+            batteryIconView.visibility = VISIBLE
+            arrowIconView.visibility = GONE
+            batteryClassicView.visibility = GONE
+        } else if (batteryText.isNullOrEmpty()) {
+            batteryTextView.visibility = GONE
+            batteryTextEndView.visibility = GONE
+            batteryTextInnerView.visibility = GONE
+            batteryFillView.visibility = VISIBLE
+            batteryIconView.visibility = VISIBLE
+            arrowIconView.visibility = GONE
+            batteryClassicView.visibility = GONE
+        } else {
+            batteryTextView.visibility = VISIBLE
+            batteryTextEndView.visibility = GONE
+            batteryTextInnerView.visibility = VISIBLE
+            batteryFillView.visibility = GONE
+            batteryIconView.visibility = VISIBLE
+            arrowIconView.visibility = GONE
+            batteryClassicView.visibility = GONE
         }
     }
 
-    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-        super.onLayout(changed, left, top, right, bottom)
-        canvasRecorder.invalidate()
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        if (AppConfig.optimizeRender) {
-            canvasRecorder.recordIfNeededThenDraw(canvas, width, height) {
-                super.onDraw(this)
-                drawBattery(this)
-            }
-        } else {
-            super.onDraw(canvas)
-            drawBattery(canvas)
+    private fun updateFill() {
+        post {
+            val params = batteryFillView.layoutParams
+            params.width = (((17.dpToPx() * scaleFactor()) * battery) / 100f).toInt().coerceAtLeast(0)
+            batteryFillView.layoutParams = params
         }
     }
 
-    private fun drawBattery(canvas: Canvas) {
-        if (!isBattery) return
-        layout.getLineBounds(0, outFrame)
-        val batteryStart = layout
-            .getPrimaryHorizontal(text.length - battery.toString().length)
-            .toInt() + 2.dpToPx()
-        val batteryEnd = batteryStart +
-                StaticLayout.getDesiredWidth(battery.toString(), paint).toInt() + 4.dpToPx()
-        outFrame.set(
-            batteryStart,
-            2.dpToPx(),
-            batteryEnd,
-            height - 2.dpToPx()
+    private fun updateScaledLayout() {
+        val scale = scaleFactor()
+        batteryTextInnerView.setTextSize(
+            TypedValue.COMPLEX_UNIT_PX,
+            batteryTextView.textSize * 0.73f
         )
-        val dj = (outFrame.bottom - outFrame.top) / 3
-        polar.set(
-            batteryEnd,
-            outFrame.top + dj,
-            batteryEnd + 2.dpToPx(),
-            outFrame.bottom - dj
-        )
-        val cornerRadius = 2.dpToPx().toFloat()
-        val polarRadius = 1.dpToPx().toFloat()
-        
-        batteryPaint.style = Paint.Style.FILL
-        canvas.drawRoundRect(
-            polar.left.toFloat(),
-            polar.top.toFloat(),
-            polar.right.toFloat(),
-            polar.bottom.toFloat(),
-            polarRadius,
-            polarRadius,
-            batteryPaint
-        )
-        
-        batteryPaint.style = Paint.Style.STROKE
-        canvas.drawRoundRect(
-            outFrame.left.toFloat(),
-            outFrame.top.toFloat(),
-            outFrame.right.toFloat(),
-            outFrame.bottom.toFloat(),
-            cornerRadius,
-            cornerRadius,
-            batteryPaint
-        )
+        updateLayoutSize(batteryIconView, (28.dpToPx() * scale).toInt(), (12.dpToPx() * scale).toInt())
+        updateLayoutSize(arrowIconView, (12.dpToPx() * scale).toInt(), (12.dpToPx() * scale).toInt())
+        updateMarginStart(batteryIconView, (4.dpToPx() * scale).toInt())
+        updateMarginEnd(arrowIconView, (8.dpToPx() * scale).toInt())
+        updateMarginEnd(batteryTextInnerView, (2.4f.dpToPx() * scale).toInt())
+        updateMarginBottom(batteryTextInnerView, (0.8f.dpToPx() * scale).toInt())
+        updateMarginStart(batteryFillView, (4.2f.dpToPx() * scale).toInt())
+        updateLayoutSize(batteryFillView, (17.dpToPx() * scale).toInt(), (8.dpToPx() * scale).toInt())
+        batteryFillView.radius = 1f.dpToPx() * scale
     }
 
-    @Suppress("UNNECESSARY_SAFE_CALL")
-    override fun invalidate() {
-        super.invalidate()
-        canvasRecorder?.invalidate()
+    private fun scaleFactor(): Float {
+        val base = 11f * resources.displayMetrics.scaledDensity
+        return ((textSizePxValue / base) * 0.95f).coerceIn(0.66f, 1.9f)
     }
 
+    private fun updateLayoutSize(view: android.view.View, width: Int, height: Int) {
+        val params = view.layoutParams
+        params.width = width
+        params.height = height
+        view.layoutParams = params
+    }
+
+    private fun updateMarginStart(view: android.view.View, marginStart: Int) {
+        val params = view.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        params.marginStart = marginStart
+        view.layoutParams = params
+    }
+
+    private fun updateMarginEnd(view: android.view.View, marginEnd: Int) {
+        val params = view.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        params.marginEnd = marginEnd
+        view.layoutParams = params
+    }
+
+    private fun updateMarginBottom(view: android.view.View, marginBottom: Int) {
+        val params = view.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        params.bottomMargin = marginBottom
+        view.layoutParams = params
+    }
 }
