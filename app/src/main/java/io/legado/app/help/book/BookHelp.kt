@@ -3,6 +3,7 @@ package io.legado.app.help.book
 import android.graphics.BitmapFactory
 import android.os.ParcelFileDescriptor
 import androidx.documentfile.provider.DocumentFile
+import com.script.rhino.RhinoInterruptError
 import com.script.rhino.runScriptWithContext
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
@@ -29,6 +30,7 @@ import io.legado.app.utils.getFile
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.onEachParallel
 import io.legado.app.utils.postEvent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
@@ -167,7 +169,7 @@ object BookHelp {
             saveText(book, bookChapter, content)
             //saveImages(bookSource, book, bookChapter, content)
             postEvent(EventBus.SAVE_CONTENT, Pair(book, bookChapter))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             e.printStackTrace()
             AppLog.put("保存正文失败 ${book.name} ${bookChapter.title}", e)
         }
@@ -251,7 +253,13 @@ object BookHelp {
                 }
                 writeImage(book, src, it)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            if (e is CancellationException) {
+                throw e
+            }
+            if (e is RhinoInterruptError && e.cause is CancellationException) {
+                return
+            }
             currentCoroutineContext().ensureActive()
             val msg = "${book.name} ${chapter?.title} 图片 $src 下载失败\n${e.localizedMessage}"
             AppLog.put(msg, e)
