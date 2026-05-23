@@ -134,6 +134,15 @@ interface ReadRecordDao {
     @Query("SELECT * FROM readRecord WHERE bookAuthor = ''")
     suspend fun getRecordsWithEmptyAuthor(): List<ReadRecord>
 
+    @Query("DELETE FROM readRecord WHERE trim(bookName) = ''")
+    suspend fun deleteRecordsWithBlankBookName()
+
+    @Query("DELETE FROM readRecordDetail WHERE trim(bookName) = ''")
+    suspend fun deleteDetailsWithBlankBookName()
+
+    @Query("DELETE FROM readRecordSession WHERE trim(bookName) = ''")
+    suspend fun deleteSessionsWithBlankBookName()
+
     @Query("UPDATE readRecord SET bookAuthor = :author WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = ''")
     suspend fun updateAuthorByBookName(deviceId: String, bookName: String, author: String)
 

@@ -23,7 +23,7 @@ class ReadRecordRepository(
     private val currentDeviceIdProvider: () -> String = { AppConst.androidId }
 ) {
     companion object {
-        const val CURRENT_REPAIR_VERSION = 3
+        const val CURRENT_REPAIR_VERSION = 4
     }
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
@@ -61,6 +61,22 @@ class ReadRecordRepository(
             bookName = normalizeBookName(session.bookName),
             bookAuthor = normalizeBookAuthor(session.bookAuthor)
         )
+    }
+
+    private fun hasValidIdentity(deviceId: String, bookName: String): Boolean {
+        return deviceId.isNotBlank() && bookName.isNotBlank()
+    }
+
+    private fun isValidRecord(record: ReadRecord): Boolean {
+        return hasValidIdentity(record.deviceId, record.bookName)
+    }
+
+    private fun isValidDetail(detail: ReadRecordDetail): Boolean {
+        return hasValidIdentity(detail.deviceId, detail.bookName)
+    }
+
+    private fun isValidSession(session: ReadRecordSession): Boolean {
+        return hasValidIdentity(session.deviceId, session.bookName)
     }
 
     fun getTotalReadTime(): Flow<Long> {
@@ -154,6 +170,7 @@ class ReadRecordRepository(
 
     suspend fun saveReadSession(newSession: ReadRecordSession) {
         val session = normalizeSession(newSession)
+        if (!isValidSession(session)) return
         splitSessionByDay(session).forEach { sessionSegment ->
             val segmentDuration = sessionSegment.endTime - sessionSegment.startTime
             if (segmentDuration <= 0L && sessionSegment.words <= 0L) return@forEach
@@ -492,9 +509,16 @@ class ReadRecordRepository(
     }
 
     suspend fun repairRecords(getAuthorByBookName: suspend (String) -> String?) {
+        cleanupBlankBookNameData()
         fixEmptyAuthors(getAuthorByBookName)
         normalizeDuplicateDeviceRecords()
         rebuildAggregateRecordsFromHistory()
+    }
+
+    suspend fun cleanupBlankBookNameData() {
+        dao.deleteRecordsWithBlankBookName()
+        dao.deleteDetailsWithBlankBookName()
+        dao.deleteSessionsWithBlankBookName()
     }
 
     suspend fun rebuildAggregateRecordsFromHistory() {
@@ -626,6 +650,7 @@ class ReadRecordRepository(
 
     private suspend fun importSingleRecord(record: ReadRecord) {
         val normalized = normalizeRecord(record).copy(deviceId = getCurrentDeviceId())
+        if (!isValidRecord(normalized)) return
         val existing = dao.getReadRecord(
             normalized.deviceId,
             normalized.bookName,
@@ -638,6 +663,7 @@ class ReadRecordRepository(
 
     private suspend fun importSingleDetail(detail: ReadRecordDetail) {
         val normalized = normalizeDetail(detail).copy(deviceId = getCurrentDeviceId())
+        if (!isValidDetail(normalized)) return
         val existing = dao.getDetail(
             normalized.deviceId,
             normalized.bookName,
@@ -651,6 +677,7 @@ class ReadRecordRepository(
 
     private suspend fun importSingleSession(session: ReadRecordSession) {
         val normalized = normalizeSession(session).copy(id = 0, deviceId = getCurrentDeviceId())
+        if (!isValidSession(normalized)) return
         val existing = dao.getSessionExact(
             normalized.deviceId,
             normalized.bookName,
