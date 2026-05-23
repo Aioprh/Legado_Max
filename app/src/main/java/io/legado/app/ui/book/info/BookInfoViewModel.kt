@@ -20,6 +20,7 @@ import io.legado.app.data.entities.BookSource
 import io.legado.app.exception.NoBooksDirException
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.AppWebDav
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.getExportFileName
 import io.legado.app.help.book.getRemoteUrl
@@ -58,6 +59,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
     private var changeSourceCoroutine: Coroutine<*>? = null
     val waitDialogData = MutableLiveData<Boolean>()
     val actionLive = MutableLiveData<String>()
+    val tocLoading = MutableLiveData<Boolean>()
 
     fun initData(intent: Intent) {
         execute {
@@ -244,40 +246,65 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                 return
             }
             val oldBook = book.copy()
-            execute(scope) {
-                WebBook.getChapterListFlow(bookSource, book, runPreUpdateJs, isFromBookInfo = isFromBookInfo)
-                    .collect { partial ->
-                        val chapters = partial.chapters
-                        if (chapters.isEmpty()) return@collect
-                        if (partial.isComplete) {
-                            // 目录全部加载完成：完整更新数据库和书籍信息
-                            if (inBookshelf) {
-                                book.removeType(BookType.updateError)
-                                if (oldBook.bookUrl == book.bookUrl) {
-                                    appDb.bookDao.update(book)
-                                } else {
-                                    appDb.bookDao.replace(oldBook, book)
-                                    BookHelp.updateCacheFolder(oldBook, book)
+            if (AppConfig.isTocPartialLoad) {
+                tocLoading.postValue(true)
+                execute(scope) {
+                    WebBook.getChapterListFlow(bookSource, book, runPreUpdateJs, isFromBookInfo = isFromBookInfo)
+                        .collect { partial ->
+                            val chapters = partial.chapters
+                            if (chapters.isEmpty()) return@collect
+                            if (partial.isComplete) {
+                                // 目录全部加载完成
+                                if (inBookshelf) {
+                                    book.removeType(BookType.updateError)
+                                    if (oldBook.bookUrl == book.bookUrl) {
+                                        appDb.bookDao.update(book)
+                                    } else {
+                                        appDb.bookDao.replace(oldBook, book)
+                                        BookHelp.updateCacheFolder(oldBook, book)
+                                    }
+                                    appDb.bookChapterDao.delByBook(oldBook.bookUrl)
+                                    appDb.bookChapterDao.insert(*chapters.toTypedArray())
+                                    ReadBook.onChapterListUpdated(book)
                                 }
+                                chapterListData.postValue(chapters)
+                            } else {
+                                // 中间过程：增量保存到数据库，通知目录视图刷新
                                 appDb.bookChapterDao.delByBook(oldBook.bookUrl)
                                 appDb.bookChapterDao.insert(*chapters.toTypedArray())
-                                ReadBook.onChapterListUpdated(book)
+                                book.totalChapterNum = chapters.size
+                                chapterListData.postValue(chapters)
+                                ReadBook.onChapterListUpdated(book, loadContent = false, isIncremental = true)
                             }
-                            chapterListData.postValue(chapters)
-                        } else {
-                            // 中间过程：增量保存到数据库，通知目录视图刷新
-                            appDb.bookChapterDao.delByBook(oldBook.bookUrl)
-                            appDb.bookChapterDao.insert(*chapters.toTypedArray())
-                            book.totalChapterNum = chapters.size
-                            chapterListData.postValue(chapters)
-                            ReadBook.onChapterListUpdated(book, loadContent = false, isIncremental = true)
                             postEvent(EventBus.TOC_PARTIAL_LOADED, book.bookUrl)
                         }
+                }.onError {
+                    chapterListData.postValue(emptyList())
+                    AppLog.put("获取目录失败\n${it.localizedMessage}", it)
+                    context.toastOnUi(R.string.error_get_chapter_list)
+                }.onFinally {
+                    tocLoading.postValue(false)
+                    postEvent(EventBus.TOC_LOAD_COMPLETE, book.bookUrl)
+                }
+            } else {
+                WebBook.getChapterList(scope, bookSource, book, runPreUpdateJs, isFromBookInfo = isFromBookInfo)
+                    .onSuccess(IO) {
+                        if (inBookshelf) {
+                            book.removeType(BookType.updateError)
+                            appDb.bookDao.replace(oldBook, book)
+                            if (oldBook.bookUrl != book.bookUrl) {
+                                BookHelp.updateCacheFolder(oldBook, book)
+                            }
+                            appDb.bookChapterDao.delByBook(oldBook.bookUrl)
+                            appDb.bookChapterDao.insert(*it.toTypedArray())
+                            ReadBook.onChapterListUpdated(book)
+                        }
+                        chapterListData.postValue(it)
+                    }.onError {
+                        chapterListData.postValue(emptyList())
+                        AppLog.put("获取目录失败\n${it.localizedMessage}", it)
+                        context.toastOnUi(R.string.error_get_chapter_list)
                     }
-            }.onError {
-                chapterListData.postValue(emptyList())
-                AppLog.put("获取目录失败\n${it.localizedMessage}", it)
-                context.toastOnUi(R.string.error_get_chapter_list)
             }
         }
     }

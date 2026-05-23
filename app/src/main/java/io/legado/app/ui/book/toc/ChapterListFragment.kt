@@ -26,8 +26,10 @@ import io.legado.app.ui.widget.recycler.UpLinearLayoutManager
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyNavigationBarPadding
+import io.legado.app.utils.gone
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.utils.visible
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
@@ -117,7 +119,13 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
         }
         observeEvent<String>(EventBus.TOC_PARTIAL_LOADED) { bookUrl ->
             if (viewModel.bookUrl == bookUrl) {
+                binding.tvTocLoading.visible()
                 upChapterList(null)
+            }
+        }
+        observeEvent<String>(EventBus.TOC_LOAD_COMPLETE) { bookUrl ->
+            if (viewModel.bookUrl == bookUrl) {
+                binding.tvTocLoading.gone()
             }
         }
     }
