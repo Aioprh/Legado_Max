@@ -97,9 +97,8 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
         AppLog.put("[TOC-Frag] initBook: bookUrl=${book.bookUrl}, totalChapterNum=${book.totalChapterNum}, isLocal=${book.isLocal}")
         viewScope.launch {
             shouldAutoScrollToCurrent = true
-            upChapterList(null)
             durChapterIndex = book.durChapterIndex
-            upCurrentChapterInfo(emptyList())
+            upChapterList(null)
             initCacheFileNames(book)
             AppLog.put("[TOC-Frag] initBook after upChapterList: adapter.itemCount=${adapter.itemCount}")
             // 如果数据库为空且不是本地书，可能正在渐进加载中，延迟重试
@@ -208,11 +207,12 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                     else -> appDb.bookChapterDao.search(viewModel.bookUrl, searchKey, 0, end)
                 }
             }.let {
+                adapter.setChapterItems(it, applyCollapse = searchKey.isNullOrBlank())
                 if (searchKey.isNullOrBlank()) {
                     book?.let(::updateCurrentChapterInfo)
+                } else {
+                    upCurrentChapterInfo(it)
                 }
-                adapter.setChapterItems(it, applyCollapse = searchKey.isNullOrBlank())
-                upCurrentChapterInfo(it)
             }
         }
     }
