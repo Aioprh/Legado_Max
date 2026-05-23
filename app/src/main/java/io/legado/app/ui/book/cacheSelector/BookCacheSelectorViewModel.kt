@@ -12,12 +12,10 @@ import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.help.storage.BookCacheSelectorConfig
 import io.legado.app.utils.ConvertUtils
-import io.legado.app.utils.DocumentUtils
 import io.legado.app.utils.GSON
+import io.legado.app.utils.compress.ZipUtils
 import io.legado.app.utils.createFolderIfNotExist
-import io.legado.app.utils.inputStream
 import io.legado.app.utils.isContentScheme
-import io.legado.app.utils.outputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -25,7 +23,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import splitties.init.appCtx
 import java.io.File
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 data class BookCacheItem(
     val book: Book,
@@ -158,121 +159,109 @@ class BookCacheSelectorViewModel(application: Application) : BaseViewModel(appli
                 return@execute
             }
 
-            val isContent = targetUri.isContentScheme()
-            val bookCacheIndexList = mutableListOf<BookCacheIndex>()
-            val allChapters = mutableListOf<BookChapter>()
-            var exportedCount = 0
+            val timestamp = LocalDateTime.now().format(
+                DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+            )
+            val zipName = "书籍缓存${timestamp}.zip"
 
-            selectedBooks.forEachIndexed { index, book ->
-                _uiState.value = BookCacheSelectorUiState.Exporting(
-                    "导出中 (${index + 1}/${selectedBooks.size}): ${book.name}"
-                )
+            // 临时目录：先拷贝缓存文件 + 索引，再打包
+            val tempDir = File(appCtx.cacheDir, "book_cache_export")
+                .createFolderIfNotExist()
 
-                try {
-                    val folderName = book.getFolderNameNoCache()
-                    val bookFolder = File(cacheDir, folderName)
+            try {
+                val bookCacheIndexList = mutableListOf<BookCacheIndex>()
+                val allChapters = mutableListOf<BookChapter>()
+                val zipSources = mutableListOf<File>()
 
-                    if (!bookFolder.exists() || !bookFolder.isDirectory) return@forEachIndexed
+                // book_cache 子目录
+                val tempCacheDir = File(tempDir, "book_cache").createFolderIfNotExist()
 
-                    val chapterList = appDb.bookChapterDao.getChapterList(book.bookUrl)
-                    val chapterMap = chapterList.associateBy { it.index }
-                    allChapters.addAll(chapterList)
+                selectedBooks.forEachIndexed { index, book ->
+                    _uiState.value = BookCacheSelectorUiState.Exporting(
+                        "导出中 (${index + 1}/${selectedBooks.size}): ${book.name}"
+                    )
 
-                    val chapterCacheInfos = mutableListOf<ChapterCacheInfo>()
-                    bookFolder.listFiles()?.forEach { file ->
-                        if (file.isFile && file.name.endsWith(".nb")) {
-                            parseChapterFileName(file.name, chapterMap)?.let {
-                                chapterCacheInfos.add(it)
+                    try {
+                        val folderName = book.getFolderNameNoCache()
+                        val bookFolder = File(cacheDir, folderName)
+                        if (!bookFolder.exists() || !bookFolder.isDirectory) return@forEachIndexed
+
+                        val chapterList = appDb.bookChapterDao.getChapterList(book.bookUrl)
+                        val chapterMap = chapterList.associateBy { it.index }
+                        allChapters.addAll(chapterList)
+
+                        val chapterCacheInfos = mutableListOf<ChapterCacheInfo>()
+                        bookFolder.listFiles()?.forEach { file ->
+                            if (file.isFile && file.name.endsWith(".nb")) {
+                                parseChapterFileName(file.name, chapterMap)?.let {
+                                    chapterCacheInfos.add(it)
+                                }
                             }
                         }
-                    }
 
-                    bookCacheIndexList.add(
-                        BookCacheIndex(
-                            bookUrl = book.bookUrl,
-                            bookName = book.name,
-                            author = book.author,
-                            folderName = folderName,
-                            chapters = chapterCacheInfos.sortedBy { it.index }
+                        bookCacheIndexList.add(
+                            BookCacheIndex(
+                                bookUrl = book.bookUrl,
+                                bookName = book.name,
+                                author = book.author,
+                                folderName = folderName,
+                                chapters = chapterCacheInfos.sortedBy { it.index }
+                            )
                         )
-                    )
 
-                    if (isContent) {
-                        copyBookFolderToContent(
-                            context, bookFolder, targetUri, "book_cache/$folderName"
-                        )
-                    } else {
-                        val targetBookDir = File(
-                            File(targetUri.path!!, "book_cache"), folderName
-                        ).createFolderIfNotExist()
+                        // 拷贝到临时目录
+                        val targetBookDir = File(tempCacheDir, folderName)
+                            .createFolderIfNotExist()
                         bookFolder.copyRecursively(targetBookDir, overwrite = true)
+                        zipSources.add(targetBookDir)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
-
-                    exportedCount++
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
-            }
 
-            // 写索引文件
-            if (isContent) {
-                val targetDoc = DocumentFile.fromTreeUri(context, targetUri)!!
+                // 写索引文件到临时目录
                 if (bookCacheIndexList.isNotEmpty()) {
-                    writeFileToContent(
-                        context, targetDoc, "bookCacheIndex.json",
-                        GSON.toJson(bookCacheIndexList)
-                    )
+                    val indexFile = File(tempDir, "bookCacheIndex.json")
+                    indexFile.writeText(GSON.toJson(bookCacheIndexList))
+                    zipSources.add(indexFile)
                 }
                 if (allChapters.isNotEmpty()) {
-                    writeFileToContent(
-                        context, targetDoc, "bookChapterCache.json",
-                        GSON.toJson(allChapters)
-                    )
+                    val chapterFile = File(tempDir, "bookChapterCache.json")
+                    chapterFile.writeText(GSON.toJson(allChapters))
+                    zipSources.add(chapterFile)
                 }
-            } else {
-                val targetDir = File(targetUri.path!!)
-                if (bookCacheIndexList.isNotEmpty()) {
-                    File(targetDir, "bookCacheIndex.json")
-                        .writeText(GSON.toJson(bookCacheIndexList))
-                }
-                if (allChapters.isNotEmpty()) {
-                    File(targetDir, "bookChapterCache.json")
-                        .writeText(GSON.toJson(allChapters))
-                }
+
+                // 打包为 zip
+                _uiState.value = BookCacheSelectorUiState.Exporting("正在打包...")
+                val tempZip = File(tempDir, zipName)
+                ZipUtils.zipFiles(zipSources, tempZip)
+
+                // 写入目标位置
+                _uiState.value = BookCacheSelectorUiState.Exporting("正在写入文件...")
+                writeZipToTarget(context, targetUri, tempZip, zipName)
+            } finally {
+                tempDir.deleteRecursively()
             }
 
             _uiState.value = BookCacheSelectorUiState.Idle
         }
     }
 
-    private fun copyBookFolderToContent(
-        context: Context, sourceDir: File, targetUri: Uri, targetSubPath: String
+    private fun writeZipToTarget(
+        context: Context, targetUri: Uri, zipFile: File, zipName: String
     ) {
-        val targetDoc = DocumentFile.fromTreeUri(context, targetUri)!!
-        val targetBookDir = DocumentUtils.createFolderIfNotExist(targetDoc, *targetSubPath.split("/").toTypedArray())
-            ?: return
-
-        sourceDir.listFiles()?.forEach { file ->
-            if (!file.isFile) return@forEach
-            val docFile = targetBookDir.findFile(file.name)
-                ?: targetBookDir.createFile("application/octet-stream", file.name)
-                ?: return@forEach
-            file.inputStream().use { input ->
-                context.contentResolver.openOutputStream(docFile.uri)!!.use { output ->
+        if (targetUri.isContentScheme()) {
+            val targetDir = DocumentFile.fromTreeUri(context, targetUri)!!
+            val docFile = targetDir.findFile(zipName)
+                ?: targetDir.createFile("application/zip", zipName)
+                ?: return
+            context.contentResolver.openOutputStream(docFile.uri)!!.use { output ->
+                zipFile.inputStream().use { input ->
                     input.copyTo(output)
                 }
             }
-        }
-    }
-
-    private fun writeFileToContent(
-        context: Context, targetDir: DocumentFile, fileName: String, content: String
-    ) {
-        val docFile = targetDir.findFile(fileName)
-            ?: targetDir.createFile("application/json", fileName)
-            ?: return
-        context.contentResolver.openOutputStream(docFile.uri)?.use {
-            it.write(content.toByteArray())
+        } else {
+            zipFile.copyTo(File(targetUri.path!!, zipName), overwrite = true)
         }
     }
 
