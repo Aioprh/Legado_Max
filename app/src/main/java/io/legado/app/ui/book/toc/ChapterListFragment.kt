@@ -99,8 +99,7 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             shouldAutoScrollToCurrent = true
             upChapterList(null)
             durChapterIndex = book.durChapterIndex
-            binding.tvCurrentChapterInfo.text =
-                "${book.durChapterTitle}(${book.durChapterIndex + 1}/${book.simulatedTotalChapterNum()})"
+            upCurrentChapterInfo(emptyList())
             initCacheFileNames(book)
             AppLog.put("[TOC-Frag] initBook after upChapterList: adapter.itemCount=${adapter.itemCount}")
             // 如果数据库为空且不是本地书，可能正在渐进加载中，延迟重试
@@ -171,8 +170,24 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 }
             }.let {
                 adapter.setChapterItems(it, applyCollapse = searchKey.isNullOrBlank())
+                upCurrentChapterInfo(it)
             }
         }
+    }
+
+    private fun upCurrentChapterInfo(chapters: List<BookChapter>) {
+        val book = book ?: return
+        val title = book.durChapterTitle
+            ?.takeIf { it.isNotBlank() }
+            ?: chapters.getOrNull(book.durChapterIndex)?.title
+            ?: chapters.firstOrNull()?.title
+            ?: getString(R.string.loading)
+        val total = if (AppConfig.isTocPartialLoad && !book.isLocal && !book.readSimulating()) {
+            chapters.size.takeIf { it > 0 } ?: book.simulatedTotalChapterNum()
+        } else {
+            book.simulatedTotalChapterNum()
+        }
+        binding.tvCurrentChapterInfo.text = "$title(${book.durChapterIndex + 1}/$total)"
     }
 
     override fun onListChanged() {

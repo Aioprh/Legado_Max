@@ -7,6 +7,7 @@ import io.legado.app.constant.AppPattern
 import io.legado.app.data.entities.*
 import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.help.book.isWebFile
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.CompositeCoroutine
 import io.legado.app.help.source.sortUrls
 import io.legado.app.model.debug.DebugCategory
@@ -504,7 +505,11 @@ object Debug {
         log(debugSource, "︾开始解析目录页")
         val chapterList = WebBook.getChapterList(scope, bookSource, book)
             .onSuccess { chapters ->
-                log(debugSource, "︽目录页解析完成")
+                if (AppConfig.isTocPartialLoad) {
+                    log(debugSource, "︽目录页解析完成,已开启目录不完全加载，只加载一页目录")
+                } else {
+                    log(debugSource, "︽目录页解析完成")
+                }
                 log(debugSource, showTime = false)
                 val toc = chapters.filter { !(it.isVolume && it.url.startsWith(it.title)) }
                 if (toc.isEmpty()) {

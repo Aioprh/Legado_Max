@@ -300,6 +300,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                                 chapterListData.postValue(chapters)
                             } else {
                                 // 中间过程：增量保存到数据库，通知目录视图刷新
+                                updatePartialBookChapterSummary(book, chapters)
                                 book.totalChapterNum = chapters.size
                                 if (!inBookshelf) {
                                     book.addType(BookType.notShelf)
@@ -341,6 +342,15 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                     }
             }
         }
+    }
+
+    private fun updatePartialBookChapterSummary(book: Book, chapters: List<BookChapter>) {
+        val currentChapter = chapters.getOrNull(book.durChapterIndex) ?: chapters.firstOrNull()
+        if (book.durChapterTitle.isNullOrBlank()) {
+            book.durChapterTitle = currentChapter?.title
+        }
+        book.latestChapterTitle = chapters.lastOrNull { !it.isVolume }?.title
+            ?: chapters.lastOrNull()?.title
     }
 
 
