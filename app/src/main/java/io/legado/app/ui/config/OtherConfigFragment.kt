@@ -80,6 +80,7 @@ class OtherConfigFragment : PreferenceFragment(),
         upPreferenceSummary(PreferKey.userAgent, AppConfig.userAgent)
         upPreferenceSummary(PreferKey.preDownloadNum, AppConfig.preDownloadNum.toString())
         upPreferenceSummary(PreferKey.backwardPreDownloadNum, AppConfig.backwardPreDownloadNum.toString())
+        upPreferenceSummary(PreferKey.tocPartialLoadInterval, AppConfig.tocPartialLoadInterval.toString())
         upPreferenceSummary(PreferKey.threadCount, AppConfig.threadCount.toString())
         upPreferenceSummary(PreferKey.webPort, AppConfig.webPort.toString())
         upWebServiceTokenSummary()
@@ -134,6 +135,15 @@ class OtherConfigFragment : PreferenceFragment(),
                 .setValue(AppConfig.backwardPreDownloadNum)
                 .show {
                     AppConfig.backwardPreDownloadNum = it
+                }
+
+            PreferKey.tocPartialLoadInterval -> NumberPickerDialog(requireContext())
+                .setTitle(getString(R.string.pt_toc_partial_load_interval))
+                .setMaxValue(60)
+                .setMinValue(0)
+                .setValue(AppConfig.tocPartialLoadInterval)
+                .show {
+                    AppConfig.tocPartialLoadInterval = it
                 }
 
             PreferKey.threadCount -> NumberPickerDialog(requireContext())
@@ -205,6 +215,10 @@ class OtherConfigFragment : PreferenceFragment(),
 
             PreferKey.backwardPreDownloadNum -> {
                 upPreferenceSummary(key, AppConfig.backwardPreDownloadNum.toString())
+            }
+
+            PreferKey.tocPartialLoadInterval -> {
+                upPreferenceSummary(key, AppConfig.tocPartialLoadInterval.toString())
             }
 
             PreferKey.threadCount -> {
@@ -308,6 +322,9 @@ class OtherConfigFragment : PreferenceFragment(),
 
             PreferKey.backwardPreDownloadNum -> preference.summary =
                 getString(R.string.backward_pre_download_s, value)
+
+            PreferKey.tocPartialLoadInterval -> preference.summary =
+                getString(R.string.ps_toc_partial_load_interval, value)
 
             PreferKey.threadCount -> preference.summary = getString(R.string.threads_num, value)
             PreferKey.webPort -> preference.summary = getString(R.string.web_port_summary, value)

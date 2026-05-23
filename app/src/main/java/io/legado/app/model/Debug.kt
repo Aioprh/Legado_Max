@@ -7,7 +7,9 @@ import io.legado.app.constant.AppPattern
 import io.legado.app.data.entities.*
 import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.help.book.isWebFile
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.CompositeCoroutine
+import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.source.sortUrls
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
@@ -22,6 +24,7 @@ import io.legado.app.utils.stackTraceStr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -75,23 +78,24 @@ object Debug {
         }
 
         // 在锁外异步上报到调试事件中心，避免持锁期间启动协程
-        val capturedMsg = msg
-        val capturedSourceUrl = sourceUrl
-        val capturedState = state
-        val capturedIsHtml = isHtml
-        val capturedShowTime = showTime
-        val capturedStartTime = startTime
-        val capturedCategory = category
+        if (DebugEventCenter.isEnabled) {
+            val capturedMsg = msg
+            val capturedSourceUrl = sourceUrl
+            val capturedState = state
+            val capturedIsHtml = isHtml
+            val capturedShowTime = showTime
+            val capturedStartTime = startTime
+            val capturedCategory = category
 
-        GlobalScope.launch(Dispatchers.Default) {
-            var printMsg = capturedMsg
-            if (capturedIsHtml) {
-                printMsg = HtmlFormatter.format(capturedMsg)
-            }
-            if (capturedShowTime) {
-                val time = debugTimeFormat.format(Date(System.currentTimeMillis() - capturedStartTime))
-                printMsg = "$time $printMsg"
-            }
+            GlobalScope.launch(Dispatchers.Default) {
+                var printMsg = capturedMsg
+                if (capturedIsHtml) {
+                    printMsg = HtmlFormatter.format(capturedMsg)
+                }
+                if (capturedShowTime) {
+                    val time = debugTimeFormat.format(Date(System.currentTimeMillis() - capturedStartTime))
+                    printMsg = "$time $printMsg"
+                }
 
             // 根据category参数或sourceUrl判断分类
             val eventCategory = capturedCategory ?: when {
@@ -119,6 +123,7 @@ object Debug {
                     tags = mapOf("state" to capturedState.toString())
                 )
             )
+        }
         }
 
         if (isChecking && sourceUrl != null && (msg).length < 30) {
@@ -502,9 +507,21 @@ object Debug {
      */
     private fun tocDebug(scope: CoroutineScope, bookSource: BookSource, book: Book) {
         log(debugSource, "︾开始解析目录页")
-        val chapterList = WebBook.getChapterList(scope, bookSource, book)
+        val chapterList = if (AppConfig.isTocPartialLoad) {
+            Coroutine.async(scope) {
+                WebBook.getChapterListFlow(bookSource, book)
+                    .first { it.chapters.isNotEmpty() }
+                    .chapters
+            }
+        } else {
+            WebBook.getChapterList(scope, bookSource, book)
+        }
             .onSuccess { chapters ->
-                log(debugSource, "︽目录页解析完成")
+                if (AppConfig.isTocPartialLoad) {
+                    log(debugSource, "︽目录页解析完成,已开启目录不完全加载，只加载一页目录")
+                } else {
+                    log(debugSource, "︽目录页解析完成")
+                }
                 log(debugSource, showTime = false)
                 val toc = chapters.filter { !(it.isVolume && it.url.startsWith(it.title)) }
                 if (toc.isEmpty()) {

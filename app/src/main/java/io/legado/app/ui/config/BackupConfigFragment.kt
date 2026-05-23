@@ -325,33 +325,7 @@ class BackupConfigFragment : PreferenceFragment(),
             appCtx.toastOnUi(R.string.no_book_cache)
             return
         }
-        
-        val titles = booksWithCache.map { book ->
-            "${book.name}${if (book.author.isNullOrBlank()) "" else " - ${book.author}"}"
-        }.toTypedArray()
-        val checkedItems = BooleanArray(booksWithCache.size) { index ->
-            BookCacheSelectorConfig.isSelected(booksWithCache[index])
-        }
-        
-        alert(R.string.book_cache_selector) {
-            multiChoiceItems(titles, checkedItems) { _, which, isChecked ->
-                BookCacheSelectorConfig.setSelected(booksWithCache[which], isChecked)
-            }
-            positiveButton(R.string.select_all) {
-                BookCacheSelectorConfig.selectAll()
-                showBookCacheSelector()
-            }
-            negativeButton(R.string.un_select_all) {
-                BookCacheSelectorConfig.deselectAll()
-                showBookCacheSelector()
-            }
-            neutralButton(R.string.ok) {
-                BookCacheSelectorConfig.save()
-            }
-            onDismiss {
-                BookCacheSelectorConfig.save()
-            }
-        }
+        io.legado.app.ui.book.cacheSelector.BookCacheSelectorActivity.start(requireContext())
     }
 
     /**

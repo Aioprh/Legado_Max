@@ -25,6 +25,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.request.RequestOptions
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
+import io.legado.app.constant.AppLog
 import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.Theme
@@ -834,11 +835,8 @@ class BookInfoActivity :
             }
         }
         tvTocView.setOnClickListener {
-            if (viewModel.chapterListData.value.isNullOrEmpty()) {
-                toastOnUi(R.string.chapter_list_empty)
-                return@setOnClickListener
-            }
             viewModel.getBook()?.let { book ->
+                AppLog.put("[TOC] 点击查看目录: bookUrl=${book.bookUrl}, inBookshelf=${viewModel.inBookshelf}, chapterListData.size=${viewModel.chapterListData.value?.size}")
                 if (!viewModel.inBookshelf) {
                     viewModel.saveBook(book) { //点击目录会保存book
                         viewModel.saveChapterList {

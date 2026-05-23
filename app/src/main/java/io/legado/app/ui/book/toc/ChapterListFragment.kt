@@ -11,6 +11,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.base.VMBaseFragment
+import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
@@ -18,20 +19,26 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.databinding.FragmentChapterListBinding
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.isLocal
+import io.legado.app.help.book.readSimulating
 import io.legado.app.help.book.isVideo
 import io.legado.app.help.book.simulatedTotalChapterNum
+import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.ui.widget.recycler.UpLinearLayoutManager
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyNavigationBarPadding
+import io.legado.app.utils.gone
 import io.legado.app.utils.observeEvent
+import io.legado.app.utils.observeEventSticky
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.utils.visible
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -87,12 +94,23 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
 
     @SuppressLint("SetTextI18n")
     private fun initBook(book: Book) {
+        AppLog.put("[TOC-Frag] initBook: bookUrl=${book.bookUrl}, totalChapterNum=${book.totalChapterNum}, isLocal=${book.isLocal}")
         viewScope.launch {
             shouldAutoScrollToCurrent = true
             upChapterList(null)
             durChapterIndex = book.durChapterIndex
-            updateCurrentChapterInfo(book)
+            upCurrentChapterInfo(emptyList())
             initCacheFileNames(book)
+            AppLog.put("[TOC-Frag] initBook after upChapterList: adapter.itemCount=${adapter.itemCount}")
+            // 如果数据库为空且不是本地书，可能正在渐进加载中，延迟重试
+            if (adapter.itemCount == 0 && !book.isLocal) {
+                delay(2000)
+                AppLog.put("[TOC-Frag] 延迟重试: adapter.itemCount=${adapter.itemCount}")
+                if (adapter.itemCount == 0) {
+                    upChapterList(null)
+                    AppLog.put("[TOC-Frag] 重试后: adapter.itemCount=${adapter.itemCount}")
+                }
+            }
         }
     }
 
@@ -153,16 +171,38 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 }
             }
         }
+        observeEventSticky<String>(EventBus.TOC_PARTIAL_LOADED) { bookUrl ->
+            AppLog.put("[TOC-Frag] 收到TOC_PARTIAL_LOADED事件: bookUrl=$bookUrl")
+            if (viewModel.bookUrl == bookUrl) {
+                binding.tvTocLoading.visible()
+                upChapterList(null)
+            }
+        }
+        observeEventSticky<String>(EventBus.TOC_LOAD_COMPLETE) { bookUrl ->
+            if (viewModel.bookUrl == bookUrl) {
+                binding.tvTocLoading.gone()
+            }
+        }
     }
 
     override fun upChapterList(searchKey: String?) {
         viewScope.launch {
             withContext(IO) {
-                val end = (book?.simulatedTotalChapterNum() ?: Int.MAX_VALUE) - 1
+                val currentBook = book
+                val isPartialLoadingBook = AppConfig.isTocPartialLoad &&
+                        currentBook?.isLocal == false &&
+                        !currentBook.readSimulating()
+                val end = if (isPartialLoadingBook) {
+                    Int.MAX_VALUE
+                } else {
+                    (currentBook?.simulatedTotalChapterNum() ?: Int.MAX_VALUE) - 1
+                }
+                AppLog.put("[TOC-Frag] upChapterList: bookUrl=${viewModel.bookUrl}, totalChapterNum=${book?.totalChapterNum}, end=$end")
                 when {
                     searchKey.isNullOrBlank() ->
                         appDb.bookChapterDao.getChapterList(viewModel.bookUrl, 0, end).also {
                             chapterList = it
+                            AppLog.put("[TOC-Frag] DB查询结果: count=${it.size}")
                         }
 
                     else -> appDb.bookChapterDao.search(viewModel.bookUrl, searchKey, 0, end)
@@ -172,8 +212,24 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                     book?.let(::updateCurrentChapterInfo)
                 }
                 adapter.setChapterItems(it, applyCollapse = searchKey.isNullOrBlank())
+                upCurrentChapterInfo(it)
             }
         }
+    }
+
+    private fun upCurrentChapterInfo(chapters: List<BookChapter>) {
+        val book = book ?: return
+        val title = book.durChapterTitle
+            ?.takeIf { it.isNotBlank() }
+            ?: chapters.getOrNull(book.durChapterIndex)?.title
+            ?: chapters.firstOrNull()?.title
+            ?: getString(R.string.loading)
+        val total = if (AppConfig.isTocPartialLoad && !book.isLocal && !book.readSimulating()) {
+            chapters.size.takeIf { it > 0 } ?: book.simulatedTotalChapterNum()
+        } else {
+            book.simulatedTotalChapterNum()
+        }
+        binding.tvCurrentChapterInfo.text = "$title(${book.durChapterIndex + 1}/$total)"
     }
 
     override fun onListChanged() {

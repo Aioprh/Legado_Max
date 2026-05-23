@@ -349,6 +349,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     val isTocPartialLoad: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.tocPartialLoad)
 
+    var tocPartialLoadInterval: Int
+        get() = appCtx.getPrefInt(PreferKey.tocPartialLoadInterval, 0)
+        set(value) {
+            appCtx.putPrefInt(PreferKey.tocPartialLoadInterval, value)
+        }
+
     var enableReview: Boolean
         get() = BuildConfig.DEBUG && appCtx.getPrefBoolean(PreferKey.enableReview, false)
         set(value) {

@@ -14,8 +14,22 @@
         app:fadeScrollbar="false"
         app:showBubble="false"
         app:showTrack="true"
-        app:layout_constraintBottom_toTopOf="@+id/ll_chapter_base_info"
+        app:layout_constraintBottom_toTopOf="@+id/tv_toc_loading"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_toc_loading"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:text="@string/loading"
+        android:textColor="@color/secondaryText"
+        android:textSize="13sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/ll_chapter_base_info"
+        app:layout_constraintTop_toBottomOf="@+id/recycler_view" />
 
     <LinearLayout
         android:id="@+id/ll_chapter_base_info"

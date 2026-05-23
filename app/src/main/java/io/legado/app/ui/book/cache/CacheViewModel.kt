@@ -11,6 +11,8 @@ import io.legado.app.help.book.isLocal
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.utils.sendValue
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlin.collections.set
@@ -34,68 +36,54 @@ class CacheViewModel(application: Application) : BaseViewModel(application) {
      * 优化点：
      * 1. 使用booksKey检测相同列表，避免重复计算
      * 2. 使用isLoading防止并发加载
-     * 3. 只扫描当前列表书籍的缓存文件夹，避免全目录扫描
-     * 4. 批量获取章节信息，减少数据库查询次数
+     * 3. 每本书独立async并行：DB查询 + 文件扫描 + UI刷新，先完成的先显示
+     * 4. 并行DB查询替代串行forEach
      */
     fun loadCacheFiles(books: List<Book>) {
-        // 防止并发加载
         if (isLoading) return
-        
-        // 检测是否是相同的书籍列表
+
         val booksKey = books.map { it.bookUrl }.sorted().joinToString(",")
-        if (booksKey == lastLoadedBooksKey) {
-            return
-        }
-        
+        if (booksKey == lastLoadedBooksKey) return
+
         loadChapterCoroutine?.cancel()
         loadChapterCoroutine = execute {
             isLoading = true
             try {
-                // 过滤出需要加载的新书籍（非本地书籍且未缓存）
                 val newBooks = books.filter { !it.isLocal && !cacheChapters.contains(it.bookUrl) }
                 if (newBooks.isEmpty()) {
                     lastLoadedBooksKey = booksKey
                     return@execute
                 }
-                
-                // 批量获取所有新书籍的章节信息，减少数据库查询次数
-                val bookUrls = newBooks.map { it.bookUrl }
-                val chaptersByBook = withContext(Dispatchers.IO) {
-                    try {
-                        val result = mutableMapOf<String, MutableList<io.legado.app.data.entities.BookChapter>>()
-                        bookUrls.forEach { bookUrl ->
-                            result[bookUrl] = appDb.bookChapterDao.getChapterList(bookUrl).toMutableList()
-                        }
-                        result
-                    } catch (e: Exception) {
-                        emptyMap()
-                    }
-                }
-                
-                val folderNames = newBooks.map { it.getFolderName() }.toSet()
-                val cacheFilesMap = withContext(Dispatchers.IO) {
-                    BookHelp.getCacheFiles(folderNames)
-                }
-                
-                newBooks.forEach { book ->
-                    val chapterCaches = hashSetOf<String>()
-                    val folderName = book.getFolderName()
-                    val cacheNames = cacheFilesMap[folderName] ?: hashSetOf()
-                    if (cacheNames.isNotEmpty()) {
-                        chaptersByBook[book.bookUrl]?.let { chapters ->
-                            book.totalChapterNum = chapters.size
-                            chapters.forEach { chapter ->
-                                if (cacheNames.contains(chapter.getFileName()) || chapter.isVolume) {
-                                    chapterCaches.add(chapter.url)
+
+                // 每本书独立async并行处理，先完成的先刷新UI
+                newBooks.map { book ->
+                    async(Dispatchers.IO) {
+                        try {
+                            // 查询该书章节
+                            val chapters = appDb.bookChapterDao.getChapterList(book.bookUrl)
+                            // 扫描该书缓存文件
+                            val cacheNames = BookHelp.getCacheFiles(setOf(book.getFolderName()))[book.getFolderName()]
+                                ?: hashSetOf()
+                            // 匹配已缓存章节
+                            val chapterCaches = hashSetOf<String>()
+                            if (cacheNames.isNotEmpty()) {
+                                book.totalChapterNum = chapters.size
+                                chapters.forEach { chapter ->
+                                    if (cacheNames.contains(chapter.getFileName()) || chapter.isVolume) {
+                                        chapterCaches.add(chapter.url)
+                                    }
                                 }
                             }
+                            book.bookUrl to chapterCaches
+                        } catch (e: Exception) {
+                            book.bookUrl to hashSetOf<String>()
                         }
                     }
-                    cacheChapters[book.bookUrl] = chapterCaches
-                    upAdapterLiveData.sendValue(book.bookUrl)
-                    ensureActive()
+                }.awaitAll().forEach { (bookUrl, chapterCaches) ->
+                    cacheChapters[bookUrl] = chapterCaches
+                    upAdapterLiveData.sendValue(bookUrl)
                 }
-                
+
                 lastLoadedBooksKey = booksKey
             } finally {
                 isLoading = false

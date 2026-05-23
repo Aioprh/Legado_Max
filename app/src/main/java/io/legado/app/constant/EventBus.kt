@@ -26,6 +26,8 @@ object EventBus {
     const val REFRESH_BOOK_INFO = "refreshBookInfo"         // 刷新书籍信息
     const val REFRESH_BOOK_CONTENT = "refreshBookContent"   // 刷新书籍内容
     const val REFRESH_BOOK_TOC = "refreshBookToc"           // 刷新书籍目录
+    const val TOC_PARTIAL_LOADED = "tocPartialLoaded"       // 目录渐进加载部分完成
+    const val TOC_LOAD_COMPLETE = "tocLoadComplete"         // 目录渐进加载全部完成
 
     // ── 阅读�?──
     const val UP_CONFIG = "upConfig"                        // 阅读配置变更（字�?背景/排版等）

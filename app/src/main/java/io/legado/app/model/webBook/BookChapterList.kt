@@ -26,6 +26,7 @@ import io.legado.app.model.debug.FieldFillRecord
 import io.legado.app.model.debug.recordField
 import io.legado.app.utils.isTrue
 import io.legado.app.utils.mapAsync
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -113,6 +114,7 @@ object BookChapterList {
             1 -> {
                 var nextUrl = chapterData.second[0]
                 while (nextUrl.isNotEmpty() && !nextUrlList.contains(nextUrl)) {
+                    delayBeforeNextTocPage(bookSource)
                     nextUrlList.add(nextUrl)
                     val analyzeUrl = AnalyzeUrl(
                         mUrl = nextUrl,
@@ -141,9 +143,10 @@ object BookChapterList {
                 )
                 flow {
                     for (urlStr in chapterData.second) {
+                        delayBeforeNextTocPage(bookSource)
                         emit(urlStr)
                     }
-                }.mapAsync(AppConfig.threadCount) { urlStr ->
+                }.mapAsync(if (AppConfig.isTocPartialLoad) 1 else AppConfig.threadCount) { urlStr ->
                     val analyzeUrl = AnalyzeUrl(
                         mUrl = urlStr,
                         source = bookSource,
@@ -306,6 +309,7 @@ object BookChapterList {
                 // 串行多页目录，每加载完一页就发射一次
                 var nextUrl = chapterData.second[0]
                 while (nextUrl.isNotEmpty() && !nextUrlList.contains(nextUrl)) {
+                    delayBeforeNextTocPage(bookSource)
                     nextUrlList.add(nextUrl)
                     val analyzeUrl = AnalyzeUrl(
                         mUrl = nextUrl,
@@ -346,9 +350,10 @@ object BookChapterList {
                 )
                 flow {
                     for (urlStr in chapterData.second) {
+                        delayBeforeNextTocPage(bookSource)
                         emit(urlStr)
                     }
-                }.mapAsync(AppConfig.threadCount) { urlStr ->
+                }.mapAsync(if (AppConfig.isTocPartialLoad) 1 else AppConfig.threadCount) { urlStr ->
                     val analyzeUrl = AnalyzeUrl(
                         mUrl = urlStr,
                         source = bookSource,
@@ -363,6 +368,8 @@ object BookChapterList {
                     ).first
                 }.collect {
                     chapterList.addAll(it)
+                    val sorted = sortAndIndex(chapterList, reverse, book)
+                    emit(PartialChapterList(sorted, isComplete = false))
                 }
                 val sorted = sortAndIndex(chapterList, reverse, book)
                 val finalList = finalizeChapterList(sorted, tocRule, book, bookSource)
@@ -382,6 +389,29 @@ object BookChapterList {
      * @param book 书籍对象
      * @return 排序编号后的章节列表
      */
+    private suspend fun delayBeforeNextTocPage(bookSource: BookSource) {
+        if (!AppConfig.isTocPartialLoad) {
+            return
+        }
+        val interval = AppConfig.tocPartialLoadInterval.coerceIn(0, 60) * 1000L +
+                parseConcurrentRateInterval(bookSource.concurrentRate)
+        if (interval > 0) {
+            delay(interval)
+        }
+    }
+
+    private fun parseConcurrentRateInterval(concurrentRate: String?): Long {
+        if (concurrentRate.isNullOrBlank() || concurrentRate == "0") {
+            return 0L
+        }
+        val rateIndex = concurrentRate.indexOf("/")
+        return if (rateIndex > 0) {
+            concurrentRate.substring(rateIndex + 1).toLongOrNull() ?: 0L
+        } else {
+            concurrentRate.toLongOrNull() ?: 0L
+        }.coerceAtLeast(0L)
+    }
+
     private fun sortAndIndex(
         chapterList: ArrayList<BookChapter>,
         reverse: Boolean,
