@@ -112,10 +112,7 @@ fun BookCacheSelectorScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
-                        onClick = {
-                            viewModel.saveSelection()
-                            onSaveClick()
-                        },
+                        onClick = onSaveClick,
                         modifier = Modifier.weight(1f),
                         enabled = selectedCount > 0
                     ) {
@@ -171,6 +168,38 @@ fun BookCacheSelectorScreen(
                     item {
                         Spacer(Modifier.height(16.dp))
                     }
+                }
+            }
+            is BookCacheSelectorUiState.Exporting -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = (uiState as BookCacheSelectorUiState.Exporting).message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            is BookCacheSelectorUiState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = (uiState as BookCacheSelectorUiState.Error).message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }

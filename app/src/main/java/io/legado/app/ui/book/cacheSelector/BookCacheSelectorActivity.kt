@@ -23,11 +23,13 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.ViewModelProvider
 import io.legado.app.constant.Theme
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.fullScreen
 import io.legado.app.utils.setNavigationBarColorAuto
@@ -42,6 +44,13 @@ class BookCacheSelectorActivity : AppCompatActivity() {
     }
 
     private var bgDrawable: Drawable? = null
+    private lateinit var viewModel: BookCacheSelectorViewModel
+
+    private val selectExportDir = registerForActivityResult(HandleFileContract()) { result ->
+        result.uri?.let { uri ->
+            viewModel.exportSelectedBooks(this, uri)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         initTheme()
@@ -50,12 +59,17 @@ class BookCacheSelectorActivity : AppCompatActivity() {
         loadBackgroundImage()
         enableEdgeToEdge()
 
+        viewModel = ViewModelProvider(this)[BookCacheSelectorViewModel::class.java]
+
         setContent {
             BookCacheSelectorContent(
                 bgDrawable = bgDrawable,
                 onBackClick = { finish() },
-                onSaveClick = { finish() },
-                onExportClick = { finish() }
+                onSaveClick = {
+                    viewModel.saveSelection()
+                    finish()
+                },
+                onExportClick = { selectExportDir.launch { mode = HandleFileContract.DIR } }
             )
         }
     }
