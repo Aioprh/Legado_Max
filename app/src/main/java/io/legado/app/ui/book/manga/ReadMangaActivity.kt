@@ -25,6 +25,7 @@ import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
+import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookProgress
@@ -40,6 +41,7 @@ import io.legado.app.model.ReadManga
 import io.legado.app.receiver.NetworkChangedListener
 import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
 import io.legado.app.ui.book.info.BookInfoActivity
+import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.manga.config.MangaColorFilterConfig
 import io.legado.app.ui.book.manga.config.MangaColorFilterDialog
 import io.legado.app.ui.book.manga.config.MangaEpaperDialog
@@ -142,6 +144,11 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
                 ReadManga.loadOrUpContent()
             }
         }
+    private val sourceEditActivity =
+        registerForActivityResult(StartActivityContract(BookSourceEditActivity::class.java)) {
+            ReadManga.book?.let(ReadManga::upWebBook)
+            binding.mangaMenu.upBookView()
+        }
     override val binding by viewBinding(ActivityMangaBinding::inflate)
     override val viewModel by viewModels<ReadMangaViewModel>()
     private val loadingViewVisible get() = binding.flLoading.isVisible
@@ -219,6 +226,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
                         }
                         if (item is MangaPage) {
                             binding.mangaMenu.upSeekBar(item.index, item.imageCount)
+                            binding.mangaMenu.upBookView()
                             upInfoBar(item)
                         }
                     }
@@ -266,6 +274,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
                     mLayoutManager.scrollToPositionWithOffset(pos, 0)
                     binding.flLoading.isGone = true
                     loadMoreView.visible()
+                    binding.mangaMenu.upBookView()
                     binding.mangaMenu.upSeekBar(
                         ReadManga.durChapterPos, ReadManga.curMangaChapter!!.imageCount
                     )
@@ -631,6 +640,23 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
             bookInfoActivity.launch {
                 putExtra("name", it.name)
                 putExtra("author", it.author)
+            }
+        }
+    }
+
+    override fun openSourceEditActivity() {
+        ReadManga.bookSource?.let {
+            sourceEditActivity.launch {
+                putExtra("sourceUrl", it.bookSourceUrl)
+            }
+        }
+    }
+
+    override fun disableSource() {
+        lifecycleScope.launch(IO) {
+            ReadManga.bookSource?.let {
+                it.enabled = false
+                appDb.bookSourceDao.update(it)
             }
         }
     }

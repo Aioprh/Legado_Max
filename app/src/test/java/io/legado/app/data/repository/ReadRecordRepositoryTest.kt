@@ -158,6 +158,27 @@ class ReadRecordRepositoryTest {
     }
 
     @Test
+    fun saveReadSessionIgnoresBlankBookName() = runBlocking {
+        val dao = FakeReadRecordDao()
+        val repository = ReadRecordRepository(dao) { CURRENT_DEVICE_ID }
+
+        repository.saveReadSession(
+            ReadRecordSession(
+                deviceId = CURRENT_DEVICE_ID,
+                bookName = "   ",
+                bookAuthor = "",
+                startTime = 100L,
+                endTime = 200L,
+                words = 0L
+            )
+        )
+
+        assertEquals(emptyList<ReadRecord>(), dao.all)
+        assertEquals(0, dao.getDetailsCount())
+        assertEquals(0, dao.getSessionsCount())
+    }
+
+    @Test
     fun deleteReadRecordByDateRemovesOnlySelectedDayHistory() = runBlocking {
         val dao = FakeReadRecordDao()
         val repository = ReadRecordRepository(dao) { CURRENT_DEVICE_ID }
@@ -234,6 +255,21 @@ class ReadRecordRepositoryTest {
         assertNotNull(record)
         assertEquals(3_600_000L, record?.readTime)
         assertEquals(500L, record?.lastRead)
+    }
+
+    @Test
+    fun repairRecordsRemovesBlankBookNameHistory() = runBlocking {
+        val dao = FakeReadRecordDao()
+        val repository = ReadRecordRepository(dao) { CURRENT_DEVICE_ID }
+        dao.insert(ReadRecord(CURRENT_DEVICE_ID, "", "", 86_400_000L, 300L))
+        dao.insertDetail(ReadRecordDetail(CURRENT_DEVICE_ID, "", "", "2026-05-03", 86_400_000L, 0L, 100L, 300L))
+        dao.insertSession(ReadRecordSession(deviceId = CURRENT_DEVICE_ID, bookName = "", bookAuthor = "", startTime = 100L, endTime = 300L, words = 0L))
+
+        repository.repairRecords { null }
+
+        assertEquals(emptyList<ReadRecord>(), dao.all)
+        assertEquals(0, dao.getDetailsCount())
+        assertEquals(0, dao.getSessionsCount())
     }
 
     @Test
@@ -325,6 +361,14 @@ class ReadRecordRepositoryTest {
 
         override suspend fun clear() {
             records.clear()
+        }
+
+        override suspend fun clearDetails() {
+            details.clear()
+        }
+
+        override suspend fun clearSessions() {
+            sessions.clear()
         }
 
         override suspend fun deleteByNameAndAuthor(bookName: String, bookAuthor: String) {
@@ -505,6 +549,18 @@ class ReadRecordRepositoryTest {
 
         override suspend fun getRecordsWithEmptyAuthor(): List<ReadRecord> {
             return records.filter { it.bookAuthor.isEmpty() }.map { it.copy() }
+        }
+
+        override suspend fun deleteRecordsWithBlankBookName() {
+            records.removeAll { it.bookName.isBlank() }
+        }
+
+        override suspend fun deleteDetailsWithBlankBookName() {
+            details.removeAll { it.bookName.isBlank() }
+        }
+
+        override suspend fun deleteSessionsWithBlankBookName() {
+            sessions.removeAll { it.bookName.isBlank() }
         }
 
         override suspend fun updateAuthorByBookName(deviceId: String, bookName: String, author: String) {

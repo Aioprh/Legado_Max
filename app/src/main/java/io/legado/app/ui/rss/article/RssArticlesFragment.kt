@@ -24,6 +24,7 @@ import io.legado.app.databinding.ViewLoadMoreBinding
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.rss.read.ReadRss
+import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.recycler.LoadMoreView
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.applyNavigationBarPadding
@@ -47,6 +48,7 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
             putString("searchKey", searchKey)
         }
     }
+
     private var isResumed = false
 
     private val binding by viewBinding(FragmentRssArticlesBinding::bind)
@@ -96,24 +98,27 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
                         parent: RecyclerView,
                         state: RecyclerView.State
                     ) {
-                        outRect.set(20,30,20,30)
+                        outRect.set(20, 30, 20, 30)
                     }
                 })
                 recyclerView.itemAnimator = null
-                if (orientation == Configuration.ORIENTATION_LANDSCAPE) { //横屏三列
+                if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
                     StaggeredGridLayoutManager(3, StaggeredGridLayoutManager.VERTICAL)
                 } else {
                     StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
                 }
             }
+
             2 -> {
                 recyclerView.setPadding(8, 0, 8, 0)
                 GridLayoutManager(requireContext(), 2)
             }
+
             4 -> {
                 recyclerView.setPadding(4, 0, 4, 0)
                 GridLayoutManager(requireContext(), 3)
             }
+
             else -> {
                 recyclerView.addItemDecoration(VerticalDivider(requireContext()))
                 LinearLayoutManager(requireContext())
@@ -139,7 +144,7 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
                     val totalItemCount = layoutManager.itemCount
                     val firstVisibleItemPositions = layoutManager.findFirstVisibleItemPositions(null)
                     val firstVisibleItemPosition = firstVisibleItemPositions?.minOrNull() ?: 0
-                    if (isPreload  && (visibleItemCount + firstVisibleItemPosition) >= (totalItemCount - 5)) {
+                    if (isPreload && (visibleItemCount + firstVisibleItemPosition) >= (totalItemCount - 5)) {
                         scrollToBottom()
                     }
                 }
@@ -158,7 +163,7 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
                 loadArticles()
                 this@launch.cancel()
             }
-        } //只刷新可见页面,非预加载时使用
+        }
     }
 
     private fun initData() {
@@ -172,31 +177,29 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
                     if (!isResumed || fullRefresh || newList.isEmpty()) {
                         adapter.setItems(newList)
                     } else {
-                        //用DiffUtil只对差异数据进行更新
-                        //注意RecyclerView的复用机制,切换标签时采用差异化更新会报ViewHolder的状态管理混乱
                         adapter.setItems(newList, object : DiffUtil.ItemCallback<RssArticle>() {
-                            override fun areItemsTheSame(
-                                oldItem: RssArticle, newItem: RssArticle
-                            ): Boolean {
+                            override fun areItemsTheSame(oldItem: RssArticle, newItem: RssArticle): Boolean {
                                 return oldItem.link == newItem.link
                             }
 
-                            override fun areContentsTheSame(
-                                oldItem: RssArticle, newItem: RssArticle
-                            ): Boolean {
-                                return oldItem.title == newItem.title && oldItem.image == newItem.image && oldItem.read == newItem.read
+                            override fun areContentsTheSame(oldItem: RssArticle, newItem: RssArticle): Boolean {
+                                return oldItem.title == newItem.title &&
+                                    oldItem.image == newItem.image &&
+                                    oldItem.read == newItem.read
                             }
 
-                            override fun getChangePayload(
-                                oldItem: RssArticle, newItem: RssArticle
-                            ): Any? {
-                                return if (oldItem.read != newItem.read) { "read" }
-                                else if (oldItem.title != newItem.title) { "title" }
-                                else { null }
+                            override fun getChangePayload(oldItem: RssArticle, newItem: RssArticle): Any? {
+                                return if (oldItem.read != newItem.read) {
+                                    "read"
+                                } else if (oldItem.title != newItem.title) {
+                                    "title"
+                                } else {
+                                    null
+                                }
                             }
                         }, true)
                     }
-                    delay(200) // 200毫秒防抖
+                    delay(200)
                 }
         }
     }
@@ -220,6 +223,13 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
         }
     }
 
+    private fun loadArticles(targetPage: Int) {
+        fullRefresh = true
+        activityViewModel.rssSource?.let {
+            viewModel.loadArticles(it, targetPage)
+        }
+    }
+
     private fun scrollToBottom(forceLoad: Boolean = false) {
         if (viewModel.isLoading) return
         fullRefresh = false
@@ -235,6 +245,9 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
         viewModel.loadErrorLiveData.observe(viewLifecycleOwner) {
             loadMoreView.error(it)
         }
+        viewModel.pageLiveData.observe(viewLifecycleOwner) { page ->
+            (activity as? RssSortActivity)?.updatePageMenu(page, showPageMenu())
+        }
         viewModel.loadFinallyLiveData.observe(viewLifecycleOwner) { hasMore ->
             binding.refreshLayout.isRefreshing = false
             if (!hasMore) {
@@ -243,8 +256,34 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
         }
     }
 
+    fun getCurrentPage(): Int {
+        return viewModel.pageLiveData.value ?: viewModel.page
+    }
+
+    fun showPageMenu(): Boolean {
+        return !activityViewModel.rssSource?.ruleNextPage.isNullOrEmpty()
+    }
+
+    fun showPagePicker() {
+        if (!showPageMenu()) return
+        val currentPage = getCurrentPage()
+        NumberPickerDialog(requireContext())
+            .setTitle(getString(R.string.change_page))
+            .setMinValue(1)
+            .setMaxValue(999)
+            .setValue(currentPage)
+            .show { targetPage ->
+                if (targetPage != currentPage) {
+                    fullRefresh = true
+                    viewModel.skipPage(targetPage)
+                    loadArticles(targetPage)
+                    binding.recyclerView.scrollToPosition(0)
+                }
+            }
+    }
+
     override fun readRss(rssArticle: RssArticle) {
-        fullRefresh = false //read会触发数据库更新,此时进行差异化更新
+        fullRefresh = false
         ReadRss.readRss(this, rssArticle, activityViewModel.rssSource)
     }
 }

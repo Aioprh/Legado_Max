@@ -50,6 +50,7 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
     private val sortList = mutableListOf<Pair<String, String>>()
     private val fragmentMap = hashMapOf<String, Fragment>()
     private val orientation by lazy { resources.configuration.orientation }
+    private var menuPage: MenuItem? = null
     private val editSourceResult = registerForActivityResult(
         StartActivityContract(RssSourceEditActivity::class.java)
     ) {
@@ -217,6 +218,9 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
         binding.viewPager.addOnPageChangeListener(object : ViewPager.SimpleOnPageChangeListener() {
             override fun onPageSelected(position: Int) {
                 updateTabSelection(position)
+                currentArticlesFragment()?.let {
+                    updatePageMenu(it.getCurrentPage(), it.showPageMenu())
+                }
             }
         })
         viewModel.initData(intent) {
@@ -268,6 +272,7 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.rss_articles, menu)
+        menuPage = menu.findItem(R.id.menu_page)
         menu.findItem(R.id.menu_search)?.apply {
             val source = viewModel.rssSource
             val searchUrl = source?.searchUrl ?: return@apply
@@ -299,6 +304,9 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
     }
 
     override fun onMenuOpened(featureId: Int, menu: Menu): Boolean {
+        currentArticlesFragment()?.let {
+            updatePageMenu(it.getCurrentPage(), it.showPageMenu())
+        }
         menu.findItem(R.id.menu_login)?.isVisible =
             !viewModel.rssSource?.loginUrl.isNullOrBlank()
         return super.onMenuOpened(featureId, menu)
@@ -306,6 +314,7 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
 
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
+            R.id.menu_page -> currentArticlesFragment()?.showPagePicker()
             R.id.menu_login -> startActivity<SourceLoginActivity> {
                 putExtra("type", "rssSource")
                 putExtra("key", viewModel.rssSource?.sourceUrl)
@@ -336,6 +345,13 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
             R.id.menu_read_record -> showDialogFragment(ReadRecordDialog(viewModel.rssSource?.sourceUrl))
         }
         return super.onCompatOptionsItemSelected(item)
+    }
+
+    fun updatePageMenu(page: Int, visible: Boolean) {
+        menuPage?.isVisible = visible
+        if (visible) {
+            menuPage?.title = getString(R.string.menu_page, page)
+        }
     }
 
     private fun upFragments() {
@@ -423,6 +439,12 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
 
     override fun setVariable(key: String, variable: String?) {
         viewModel.rssSource?.setVariable(variable)
+    }
+
+    private fun currentArticlesFragment(): RssArticlesFragment? {
+        val position = binding.viewPager.currentItem
+        val sortName = sortList.getOrNull(position)?.first ?: return null
+        return fragmentMap[sortName] as? RssArticlesFragment
     }
 
     private inner class TabFragmentPageAdapter :

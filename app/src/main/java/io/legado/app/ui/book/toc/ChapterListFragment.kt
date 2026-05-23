@@ -97,9 +97,8 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
         AppLog.put("[TOC-Frag] initBook: bookUrl=${book.bookUrl}, totalChapterNum=${book.totalChapterNum}, isLocal=${book.isLocal}")
         viewScope.launch {
             shouldAutoScrollToCurrent = true
-            upChapterList(null)
             durChapterIndex = book.durChapterIndex
-            upCurrentChapterInfo(emptyList())
+            upChapterList(null)
             initCacheFileNames(book)
             AppLog.put("[TOC-Frag] initBook after upChapterList: adapter.itemCount=${adapter.itemCount}")
             // 如果数据库为空且不是本地书，可能正在渐进加载中，延迟重试
@@ -112,6 +111,45 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 }
             }
         }
+    }
+
+    private fun updateCurrentChapterInfo(book: Book) {
+        val chapters = chapterList
+        if (chapters.isNullOrEmpty()) {
+            binding.tvCurrentChapterInfo.text =
+                "${book.durChapterTitle}(${book.durChapterIndex + 1}/${book.simulatedTotalChapterNum()})"
+            return
+        }
+        val chapterPosition = chapters.indexOfFirst { it.index == book.durChapterIndex }
+        if (chapterPosition < 0) {
+            binding.tvCurrentChapterInfo.text =
+                "${book.durChapterTitle}(${book.durChapterIndex + 1}/${book.simulatedTotalChapterNum()})"
+            return
+        }
+        val volumes = chapters.withIndex().filter { it.value.isVolume }
+        val currentVolume = volumes.lastOrNull { it.index <= chapterPosition }
+        if (currentVolume == null) {
+            binding.tvCurrentChapterInfo.text =
+                "${book.durChapterTitle}(${book.durChapterIndex + 1}/${book.simulatedTotalChapterNum()})"
+            return
+        }
+        val nextVolumePosition = volumes.firstOrNull { it.index > currentVolume.index }?.index ?: chapters.size
+        val chapterInVolumeIndex = chapters
+            .subList(currentVolume.index + 1, chapterPosition + 1)
+            .count { !it.isVolume }
+            .coerceAtLeast(1)
+        val chapterCountInVolume = chapters
+            .subList(currentVolume.index + 1, nextVolumePosition)
+            .count { !it.isVolume }
+        val volumeTitle = currentVolume.value.title
+        val totalProgress = "${book.durChapterIndex + 1}/${book.simulatedTotalChapterNum()}"
+        val chapterTitle = book.durChapterTitle
+        binding.tvCurrentChapterInfo.text =
+            if (chapterTitle == currentVolume.value.title) {
+                "$volumeTitle·$totalProgress"
+            } else {
+                "$volumeTitle·$chapterTitle·$totalProgress"
+            }
     }
 
     private fun initCacheFileNames(book: Book) {
@@ -170,7 +208,11 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 }
             }.let {
                 adapter.setChapterItems(it, applyCollapse = searchKey.isNullOrBlank())
-                upCurrentChapterInfo(it)
+                if (searchKey.isNullOrBlank()) {
+                    book?.let(::updateCurrentChapterInfo)
+                } else {
+                    upCurrentChapterInfo(it)
+                }
             }
         }
     }
@@ -246,16 +288,31 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 }
                 var chapterInVolumeIndex = 0
                 var durVolumeIndex = 0
-                if (volumes.isNotEmpty()) {
-                    for ((index, volume) in volumes.reversed().withIndex()) {
-                        val first = bookChapter.index
-                        if (volume.index < first) {
-                            chapterInVolumeIndex = first - volume.index - 1
-                            durVolumeIndex = volumes.size - index - 1
-                            break
-                        } else if (volume.index == first) {
-                            chapterInVolumeIndex = 0
-                            durVolumeIndex = volumes.size - index - 1
+                val chapters = chapterList
+                val chapterPosition = chapters?.indexOfFirst { it.index == bookChapter.index } ?: -1
+                if (volumes.isNotEmpty() && chapters != null && chapterPosition >= 0) {
+                    for ((index, volume) in volumes.withIndex()) {
+                        val volumePosition =
+                            chapters.indexOfFirst { it.isVolume && it.index == volume.index }
+                        if (volumePosition < 0 || volumePosition > chapterPosition) {
+                            continue
+                        }
+                        val nextVolumePosition = volumes.getOrNull(index + 1)
+                            ?.let { nextVolume ->
+                                chapters.indexOfFirst {
+                                    it.isVolume && it.index == nextVolume.index
+                                }
+                            }
+                            ?.takeIf { it > volumePosition }
+                            ?: chapters.size
+                        if (chapterPosition < nextVolumePosition) {
+                            durVolumeIndex = index
+                            chapterInVolumeIndex = chapters
+                                .subList(volumePosition + 1, chapterPosition + 1)
+                                .count { !it.isVolume } - 1
+                            if (chapterInVolumeIndex < 0) {
+                                chapterInVolumeIndex = 0
+                            }
                             break
                         }
                     }

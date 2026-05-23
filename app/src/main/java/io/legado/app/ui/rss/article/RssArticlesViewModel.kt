@@ -13,13 +13,14 @@ import io.legado.app.model.rss.Rss
 import io.legado.app.utils.stackTraceStr
 import kotlinx.coroutines.Dispatchers.IO
 
-
 class RssArticlesViewModel(application: Application) : BaseViewModel(application) {
     val loadFinallyLiveData = MutableLiveData<Boolean>()
     val loadErrorLiveData = MutableLiveData<String>()
+    val pageLiveData = MutableLiveData<Int>()
     var isLoading = true
     var order = System.currentTimeMillis()
     private var nextPageUrl: String? = null
+    private var initialSortUrl: String = ""
     var sortName: String = ""
     var sortUrl: String = ""
     var searchKey: String? = null
@@ -29,15 +30,18 @@ class RssArticlesViewModel(application: Application) : BaseViewModel(application
         bundle?.let {
             sortName = it.getString("sortName") ?: ""
             sortUrl = it.getString("sortUrl") ?: ""
+            initialSortUrl = sortUrl
             searchKey = it.getString("searchKey")
         }
+        pageLiveData.value = page
     }
 
-    fun loadArticles(rssSource: RssSource) {
+    fun loadArticles(rssSource: RssSource, targetPage: Int = 1) {
         isLoading = true
-        page = 1
+        page = targetPage.coerceAtLeast(1)
         order = System.currentTimeMillis()
-        Rss.getArticles(viewModelScope, sortName, sortUrl, rssSource, page, searchKey).onSuccess(IO) {
+        nextPageUrl = null
+        Rss.getArticles(viewModelScope, sortName, initialSortUrl, rssSource, page, searchKey).onSuccess(IO) {
             nextPageUrl = it.second
             val articles = it.first
             articles.forEach { rssArticle ->
@@ -48,6 +52,7 @@ class RssArticlesViewModel(application: Application) : BaseViewModel(application
                 appDb.rssArticleDao.clearOld(rssSource.sourceUrl, sortName, order)
             }
             val hasMore = articles.isNotEmpty() && !rssSource.ruleNextPage.isNullOrEmpty()
+            pageLiveData.postValue(page)
             loadFinallyLiveData.postValue(hasMore)
             isLoading = false
         }.onError {
@@ -67,6 +72,7 @@ class RssArticlesViewModel(application: Application) : BaseViewModel(application
         }
         Rss.getArticles(viewModelScope, sortName, pageUrl, rssSource, page, searchKey).onSuccess(IO) {
             nextPageUrl = it.second
+            pageLiveData.postValue(page)
             loadMoreSuccess(it.first)
             isLoading = false
         }.onError {
@@ -74,6 +80,12 @@ class RssArticlesViewModel(application: Application) : BaseViewModel(application
             AppLog.put("rss获取内容失败", it)
             loadErrorLiveData.postValue(it.stackTraceStr)
         }
+    }
+
+    fun skipPage(targetPage: Int) {
+        page = targetPage.coerceAtLeast(1)
+        nextPageUrl = null
+        pageLiveData.postValue(page)
     }
 
     private fun loadMoreSuccess(articles: MutableList<RssArticle>) {
@@ -94,5 +106,4 @@ class RssArticlesViewModel(application: Application) : BaseViewModel(application
             appDb.rssArticleDao.append(*articles.toTypedArray())
         }
     }
-
 }

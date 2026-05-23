@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.manga.recyclerview
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
@@ -90,12 +91,17 @@ open class MangaVH<VB : ViewBinding>(val binding: VB, private val context: Conte
                     // 缓存未命中，先下载到 BookHelp 缓存再加载，确保切换文本模式时无需重新下载
                     imageLoadJob?.cancel()
                     imageLoadJob = CoroutineScope(Dispatchers.Main).launch {
+                        if (context is Activity && (context.isDestroyed || context.isFinishing)) {
+                            return@launch
+                        }
                         ImageProvider.cacheImage(book, imageUrl, ReadManga.bookSource)
+                        if (context is Activity && (context.isDestroyed || context.isFinishing)) {
+                            return@launch
+                        }
                         val cachedFile = BookHelp.getImage(book, imageUrl)
                         if (cachedFile.exists()) {
                             loadImageFromUri(cachedFile.absolutePath, isHorizontal, isLastImage, transformation)
                         } else {
-                            // 下载失败回退到原始 URL，由 Glide 自行处理
                             loadImageFromUri(imageUrl, isHorizontal, isLastImage, transformation)
                         }
                     }
@@ -117,6 +123,11 @@ open class MangaVH<VB : ViewBinding>(val binding: VB, private val context: Conte
         isLastImage: Boolean,
         transformation: Transformation<Bitmap>?
     ) {
+        if (context is Activity) {
+            if (context.isDestroyed || context.isFinishing) {
+                return
+            }
+        }
         BookCover.loadManga(
             context,
             uri,
