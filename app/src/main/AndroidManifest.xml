@@ -342,6 +342,11 @@
             android:name=".ui.book.storage.StorageManageActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
+        <!-- 书籍缓存选择 -->
+        <activity
+            android:name=".ui.book.cacheSelector.BookCacheSelectorActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
         <!-- 下载管理 -->
         <activity
             android:name=".ui.download.DownloadManageActivity"
