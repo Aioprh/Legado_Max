@@ -1121,6 +1121,8 @@
     <string name="sys_tts_config_summary">打开系统 TTS 设置界面</string>
     <string name="cannot_timed_non_playback">非播放状态无法定时</string>
     <string name="all_bookmark">所有书签</string>
+    <string name="collapse_all">全部折叠</string>
+    <string name="expand_all">全部展开</string>
     <string name="bookmark_search_chapter_name">章节名称</string>
     <string name="bookmark_search_book_text">原文</string>
     <string name="bookmark_search_content">笔记/摘要</string>

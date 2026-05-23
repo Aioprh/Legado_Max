@@ -94,6 +94,33 @@ class BookmarkAdapter(context: Context, val callback: Callback) :
         }
     }
 
+    fun getAllGroupKeys(): Set<String> {
+        return allItems.map { getGroupKey(it) }.toSet()
+    }
+
+    fun collapseAll(): Boolean {
+        val allKeys = getAllGroupKeys()
+        if (collapsedGroups.size == allKeys.size) {
+            return false
+        }
+        collapsedGroups.clear()
+        collapsedGroups.addAll(allKeys)
+        return true
+    }
+
+    fun expandAll(): Boolean {
+        if (collapsedGroups.isEmpty()) {
+            return false
+        }
+        collapsedGroups.clear()
+        return true
+    }
+
+    fun isAllCollapsed(): Boolean {
+        val allKeys = getAllGroupKeys()
+        return allKeys.isNotEmpty() && collapsedGroups.size == allKeys.size
+    }
+
     fun setItemsWithCollapse(items: List<Bookmark>) {
         allItems = items
         val filteredItems = mutableListOf<Bookmark>()

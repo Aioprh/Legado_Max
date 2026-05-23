@@ -50,6 +50,7 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
     }
     private var searchJob: Job? = null
     private var searchView: SearchView? = null
+    private var collapseMenuItem: MenuItem? = null
     private var allBookmarks: List<Bookmark> = emptyList()
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -85,6 +86,7 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.bookmark, menu)
+        collapseMenuItem = menu.findItem(R.id.menu_collapse_all)
         val searchItem = menu.findItem(R.id.menu_search)
         searchView = searchItem?.actionView as? SearchView
         searchView?.apply {
@@ -129,12 +131,26 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
             }.flowOn(IO).collect {
                 allBookmarks = it
                 adapter.setItemsWithCollapse(it)
+                updateCollapseIcon()
             }
         }
     }
 
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
+            R.id.menu_collapse_all -> {
+                val changed = if (adapter.isAllCollapsed()) {
+                    adapter.expandAll()
+                } else {
+                    adapter.collapseAll()
+                }
+                if (changed) {
+                    adapter.setItemsWithCollapse(allBookmarks)
+                    binding.recyclerView.post { binding.recyclerView.requestLayout() }
+                    updateCollapseIcon()
+                }
+            }
+
             R.id.menu_export -> exportDir.launch {
                 requestCode = 1
             }
@@ -144,6 +160,18 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
             }
         }
         return super.onCompatOptionsItemSelected(item)
+    }
+
+    private fun updateCollapseIcon() {
+        collapseMenuItem?.let { item ->
+            if (adapter.isAllCollapsed()) {
+                item.setIcon(R.drawable.ic_expand_less)
+                item.setTitle(R.string.expand_all)
+            } else {
+                item.setIcon(R.drawable.ic_expand_more)
+                item.setTitle(R.string.collapse_all)
+            }
+        }
     }
 
     override fun onItemClick(bookmark: Bookmark, position: Int) {

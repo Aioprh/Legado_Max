@@ -1138,6 +1138,8 @@
     <string name="sys_tts_config_summary">Open the system tts settings interface</string>
     <string name="cannot_timed_non_playback">When the non-playback state is not legal</string>
     <string name="all_bookmark">All bookmarks</string>
+    <string name="collapse_all">Collapse all</string>
+    <string name="expand_all">Expand all</string>
     <string name="bookmark_search_chapter_name">Chapter name</string>
     <string name="bookmark_search_book_text">Original text</string>
     <string name="bookmark_search_content">Note/Summary</string>

@@ -3,6 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/menu_collapse_all"
+        android:icon="@drawable/ic_expand_more"
+        android:title="@string/collapse_all"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/menu_search"
         android:title="@string/search"
         app:actionViewClass="androidx.appcompat.widget.SearchView"
