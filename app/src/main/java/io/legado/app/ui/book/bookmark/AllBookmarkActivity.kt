@@ -50,6 +50,8 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
     }
     private var searchJob: Job? = null
     private var searchView: SearchView? = null
+    // 折叠/展开全部按钮的菜单项引用，用于动态更新图标和标题
+    private var collapseMenuItem: MenuItem? = null
     private var allBookmarks: List<Bookmark> = emptyList()
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -57,6 +59,9 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
         searchData("")
     }
 
+    /**
+     * 初始化视图：设置RecyclerView适配器、分组装饰器和触摸监听
+     */
     private fun initView() {
         decoration = BookmarkDecoration(adapter)
         binding.recyclerView.addItemDecoration(decoration)
@@ -85,6 +90,8 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.bookmark, menu)
+        // 获取折叠/展开按钮的引用
+        collapseMenuItem = menu.findItem(R.id.menu_collapse_all)
         val searchItem = menu.findItem(R.id.menu_search)
         searchView = searchItem?.actionView as? SearchView
         searchView?.apply {
@@ -129,12 +136,27 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
             }.flowOn(IO).collect {
                 allBookmarks = it
                 adapter.setItemsWithCollapse(it)
+                updateCollapseIcon()
             }
         }
     }
 
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
+            R.id.menu_collapse_all -> {
+                // 切换全部折叠/展开状态：当前已全部折叠则展开，否则折叠全部
+                val changed = if (adapter.isAllCollapsed()) {
+                    adapter.expandAll()
+                } else {
+                    adapter.collapseAll()
+                }
+                if (changed) {
+                    adapter.setItemsWithCollapse(allBookmarks)
+                    binding.recyclerView.post { binding.recyclerView.requestLayout() }
+                    updateCollapseIcon()
+                }
+            }
+
             R.id.menu_export -> exportDir.launch {
                 requestCode = 1
             }
@@ -144,6 +166,22 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
             }
         }
         return super.onCompatOptionsItemSelected(item)
+    }
+
+    /**
+     * 根据当前折叠状态更新菜单按钮的图标和标题
+     * 全部折叠时显示展开图标，否则显示折叠图标
+     */
+    private fun updateCollapseIcon() {
+        collapseMenuItem?.let { item ->
+            if (adapter.isAllCollapsed()) {
+                item.setIcon(R.drawable.ic_expand_less)
+                item.setTitle(R.string.expand_all)
+            } else {
+                item.setIcon(R.drawable.ic_expand_more)
+                item.setTitle(R.string.collapse_all)
+            }
+        }
     }
 
     override fun onItemClick(bookmark: Bookmark, position: Int) {
@@ -162,6 +200,9 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
         }
     }
 
+    /**
+     * 书签项长按事件：显示书签编辑对话框
+     */
     override fun onItemLongClick(bookmark: Bookmark, position: Int): Boolean {
         showDialogFragment(BookmarkDialog(bookmark, position))
         return true

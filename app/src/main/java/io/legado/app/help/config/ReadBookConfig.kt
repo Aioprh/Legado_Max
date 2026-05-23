@@ -399,6 +399,12 @@ object ReadBookConfig {
             config.underlineMode = value
         }
 
+    var underlineOffset: Float
+        get() = config.underlineOffset
+        set(value) {
+            config.underlineOffset = value
+        }
+
     var paddingBottom: Int
         get() = config.paddingBottom
         set(value) {
@@ -651,6 +657,7 @@ object ReadBookConfig {
         var underlineMode: Int = 0, //下划线
         var underlineWidth: Float = 2f, //下划线粗细(dp)
         var underlineColor: String = "#FF63C37D", //下划线颜色
+        var underlineOffset: Float = 6f, //下划线距离(dp)
         var paddingBottom: Int = 6,
         var paddingLeft: Int = 16,
         var paddingRight: Int = 16,
@@ -947,6 +954,7 @@ object ReadBookConfig {
             "underlineMode" to underlineMode,
             "underlineWidth" to underlineWidth,
             "underlineColor" to underlineColor,
+            "underlineOffset" to underlineOffset,
             "paddingBottom" to paddingBottom,
             "paddingLeft" to paddingLeft,
             "paddingRight" to paddingRight,

@@ -5,14 +5,23 @@ import android.graphics.Paint
 import android.text.style.ReplacementSpan
 import io.legado.app.utils.dpToPx
 
+/**
+ * 双线下划线 Span
+ * @param textColor 文字颜色
+ * @param underlineColor 下划线颜色
+ * @param underlineWidth 下划线粗细(dp)
+ * @param underlineOffset 下划线与文字的距离(dp)
+ */
 class DoubleUnderlineSpan(
     private val textColor: Int,
     private val underlineColor: Int,
     private val underlineWidth: Float = 1f,
+    private val underlineOffset: Float = 6f,
 ) : ReplacementSpan() {
 
-    private val underlineOffset = 6.dpToPx()
-    private val lineGap = 3.dpToPx()
+    private val offsetPx = underlineOffset.toInt().dpToPx()  // 距离转换为像素
+    private val lineGap = 3.dpToPx()  // 双线间距
+    private val widthPx = underlineWidth.toInt().dpToPx()  // 粗细转换为像素
 
     override fun getSize(
         paint: Paint,
@@ -25,8 +34,8 @@ class DoubleUnderlineSpan(
             val metrics = paint.fontMetricsInt
             fm.top = metrics.top
             fm.ascent = metrics.ascent
-            fm.descent = metrics.descent + underlineOffset + lineGap + underlineWidth.dpToPx().toInt()
-            fm.bottom = metrics.bottom + underlineOffset + lineGap + underlineWidth.dpToPx().toInt()
+            fm.descent = metrics.descent + offsetPx + lineGap + widthPx
+            fm.bottom = metrics.bottom + offsetPx + lineGap + widthPx
         }
         return paint.measureText(text, start, end).toInt()
     }
@@ -47,8 +56,8 @@ class DoubleUnderlineSpan(
         canvas.drawText(textStr, x, y.toFloat(), paint)
 
         val width = paint.measureText(text, start, end)
-        val line1Y = y + underlineOffset
-        val line2Y = line1Y + lineGap + underlineWidth.dpToPx().toInt()
+        val line1Y = y + offsetPx
+        val line2Y = line1Y + lineGap + widthPx
         val linePaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE

@@ -283,8 +283,8 @@ data class TextLine(
         paint.strokeWidth = underlineWidth.dpToPx().toFloat()
         paint.style = android.graphics.Paint.Style.STROKE
         paint.isAntiAlias = true
-        val distance = (ChapterProvider.lineSpacingExtra * 10 - 11).coerceIn(-1f, 10f)
-        val lineY = height + distance.dpToPx()
+        val underlineOffset = ReadBookConfig.durConfig.underlineOffset
+        val lineY = height + underlineOffset.dpToPx()
         val startX = lineStart + indentWidth
         val endX = lineEnd
         when (underlineMode) {
@@ -538,8 +538,8 @@ data class TextLine(
         paint.color = underlineColor
         paint.strokeWidth = underlineWidth.dpToPx()
         paint.style = android.graphics.Paint.Style.STROKE
-        val distance = (ChapterProvider.lineSpacingExtra * 10 - 11).coerceIn(-1f, 10f)
-        val lineY = height + distance.dpToPx()
+        val underlineOffset = ReadBookConfig.durConfig.underlineOffset
+        val lineY = height + underlineOffset.dpToPx()
         when (underlineMode) {
             1 -> canvas.drawLine(startX, lineY, endX, lineY, paint)
             2 -> drawDashedLine(canvas, paint, startX, lineY, endX, underlineWidth)

@@ -59,6 +59,9 @@ class BookmarkAdapter(context: Context, val callback: Callback) :
         }
     }
 
+    /**
+     * 获取指定位置的分组标题文本（书籍名+作者）
+     */
     fun getHeaderText(position: Int): String {
         return with(getItem(position)) {
             "${this?.bookName ?: ""}(${this?.bookAuthor ?: ""})"
@@ -73,6 +76,9 @@ class BookmarkAdapter(context: Context, val callback: Callback) :
                 && lastItem?.bookAuthor == curItem?.bookAuthor)
     }
 
+    /**
+     * 获取书签所属分组的关键字（书籍名_作者）
+     */
     fun getGroupKey(bookmark: Bookmark): String {
         return "${bookmark.bookName}_${bookmark.bookAuthor}"
     }
@@ -92,6 +98,47 @@ class BookmarkAdapter(context: Context, val callback: Callback) :
             collapsedGroups.add(groupKey)
             true
         }
+    }
+
+    /**
+     * 获取所有书籍分组的关键字集合
+     */
+    fun getAllGroupKeys(): Set<String> {
+        return allItems.map { getGroupKey(it) }.toSet()
+    }
+
+    /**
+     * 折叠所有分组
+     * @return 状态是否发生变化（已有分组数与当前折叠数不同时返回true）
+     */
+    fun collapseAll(): Boolean {
+        val allKeys = getAllGroupKeys()
+        if (collapsedGroups.size == allKeys.size) {
+            return false
+        }
+        collapsedGroups.clear()
+        collapsedGroups.addAll(allKeys)
+        return true
+    }
+
+    /**
+     * 展开所有分组
+     * @return 状态是否发生变化（有折叠分组时返回true）
+     */
+    fun expandAll(): Boolean {
+        if (collapsedGroups.isEmpty()) {
+            return false
+        }
+        collapsedGroups.clear()
+        return true
+    }
+
+    /**
+     * 判断是否全部折叠
+     */
+    fun isAllCollapsed(): Boolean {
+        val allKeys = getAllGroupKeys()
+        return allKeys.isNotEmpty() && collapsedGroups.size == allKeys.size
     }
 
     fun setItemsWithCollapse(items: List<Bookmark>) {
@@ -128,9 +175,20 @@ class BookmarkAdapter(context: Context, val callback: Callback) :
         return groupCount - 1
     }
 
+    /**
+     * 书签适配器回调接口
+     */
     interface Callback {
 
+        /**
+         * 书签项点击回调
+         */
         fun onItemClick(bookmark: Bookmark, position: Int)
+
+        /**
+         * 书签项长按回调
+         * @return 是否消费长按事件
+         */
         fun onItemLongClick(bookmark: Bookmark, position: Int): Boolean
 
     }

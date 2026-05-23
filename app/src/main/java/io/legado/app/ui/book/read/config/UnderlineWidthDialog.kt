@@ -61,17 +61,26 @@ class UnderlineWidthDialog : BaseDialogFragment(R.layout.dialog_underline_width)
         binding.rootView.setBackgroundColor(bg)
         binding.tvTitle.setTextColor(textColor)
         binding.tvValue.setTextColor(textColor)
+        binding.tvOffsetValue.setTextColor(textColor)
 
+        // 下划线粗细：范围 0.5~5.0dp，共10档
         val currentWidth = ReadBookConfig.durConfig.underlineWidth
         binding.tvValue.text = currentWidth.toString()
         binding.seekBar.progress = ((currentWidth / 0.5f) - 1).toInt().coerceIn(0, 9)
 
+        // 下划线距离：范围 0~20dp，共21档
+        val currentOffset = ReadBookConfig.durConfig.underlineOffset
+        binding.tvOffsetValue.text = currentOffset.toString()
+        binding.seekBarOffset.progress = currentOffset.toInt().coerceIn(0, 20)
+
         val previewView = UnderlinePreviewView(context)
+        previewView.setUnderlineOffset(currentOffset)
         (binding.previewView as? ViewGroup)?.addView(previewView, ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         ))
 
+        // 粗细 SeekBar：progress 0-9 对应 0.5-5.0dp
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 val width = (progress + 1) * 0.5f
@@ -84,10 +93,28 @@ class UnderlineWidthDialog : BaseDialogFragment(R.layout.dialog_underline_width)
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+
+        // 距离 SeekBar：progress 0-20 对应 0-20dp
+        binding.seekBarOffset.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val offset = progress.toFloat()
+                binding.tvOffsetValue.text = offset.toString()
+                previewView.setUnderlineOffset(offset)
+                previewView.invalidate()
+                ReadBookConfig.durConfig.underlineOffset = offset
+                postEvent(EventBus.UP_CONFIG, arrayListOf(6, 9, 11))
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
     }
 
+    /**
+     * 下划线预览视图，实时显示粗细和距离效果
+     */
     private class UnderlinePreviewView(context: android.content.Context) : View(context) {
-        private var underlineWidth = 2f
+        private var underlineWidth = 2f   // 下划线粗细(dp)
+        private var underlineOffset = 6f  // 下划线距离(dp)
         private val paint = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.STROKE
@@ -95,6 +122,10 @@ class UnderlineWidthDialog : BaseDialogFragment(R.layout.dialog_underline_width)
 
         fun setUnderlineWidth(width: Float) {
             underlineWidth = width
+        }
+
+        fun setUnderlineOffset(offset: Float) {
+            underlineOffset = offset
         }
 
         override fun onDraw(canvas: Canvas) {
@@ -114,7 +145,7 @@ class UnderlineWidthDialog : BaseDialogFragment(R.layout.dialog_underline_width)
                 style = Paint.Style.STROKE
             }
             val textWidth = textPaint.measureText(text)
-            val lineY = y + 8.dpToPx()
+            val lineY = y + underlineOffset.dpToPx()
             canvas.drawLine(20f, lineY, 20f + textWidth, lineY, underlinePaint)
         }
     }
