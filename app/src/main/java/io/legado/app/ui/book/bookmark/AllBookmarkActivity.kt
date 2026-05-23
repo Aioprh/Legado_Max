@@ -59,6 +59,9 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
         searchData("")
     }
 
+    /**
+     * 初始化视图：设置RecyclerView适配器、分组装饰器和触摸监听
+     */
     private fun initView() {
         decoration = BookmarkDecoration(adapter)
         binding.recyclerView.addItemDecoration(decoration)
@@ -197,6 +200,9 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
         }
     }
 
+    /**
+     * 书签项长按事件：显示书签编辑对话框
+     */
     override fun onItemLongClick(bookmark: Bookmark, position: Int): Boolean {
         showDialogFragment(BookmarkDialog(bookmark, position))
         return true
