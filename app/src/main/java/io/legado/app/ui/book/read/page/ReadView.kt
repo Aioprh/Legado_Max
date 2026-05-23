@@ -494,7 +494,13 @@ class ReadView(context: Context, attrs: AttributeSet) :
         when (action) {
             0 -> {
                 pageDelegate?.dismissSnackBar()
-                callBack.showActionMenu()
+                if (!AppConfig.readAloudFloatingUi &&
+                    BaseReadAloudService.isActiveBook(ReadBook.book?.bookUrl)
+                ) {
+                    callBack.showReadAloudDialog()
+                } else {
+                    callBack.showActionMenu()
+                }
             }
 
             1 -> pageDelegate?.nextPageByAnim(defaultAnimationSpeed)
@@ -820,6 +826,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
     interface CallBack {
         val isInitFinish: Boolean
         fun showActionMenu()
+        fun showReadAloudDialog()
         fun screenOffTimerStart()
         fun showTextActionMenu()
         fun autoPageStop()
