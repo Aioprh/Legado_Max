@@ -181,6 +181,7 @@ class MangaAdapter(private val context: Context) :
         super.onViewRecycled(vh)
         when (vh) {
             is PageViewHolder -> {
+                // 取消正在下载到 BookHelp 缓存的协程，防止 ViewHolder 复用后回调到错误的 ImageView
                 vh.imageLoadJob?.cancel()
                 vh.itemView.updateLayoutParams<ViewGroup.LayoutParams> {
                     height = MATCH_PARENT

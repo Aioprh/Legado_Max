@@ -44,6 +44,7 @@ open class MangaVH<VB : ViewBinding>(val binding: VB, private val context: Conte
     protected var mRetry: Button? = null
 
     private val minHeight = context.resources.displayMetrics.heightPixels * 2 / 3
+    // 图片下载到 BookHelp 缓存的协程任务，ViewHolder 回收时需取消
     var imageLoadJob: Job? = null
 
     fun initComponent(
@@ -80,10 +81,13 @@ open class MangaVH<VB : ViewBinding>(val binding: VB, private val context: Conte
             mImage.tag = imageUrl
             val book = ReadManga.book
             if (book != null && !book.isLocal) {
+                // 优先从 BookHelp 文件缓存加载，与文本模式 (ReadBook) 共享同一份图片缓存
                 val vFile = BookHelp.getImage(book, imageUrl)
                 if (vFile.exists()) {
+                    // 缓存命中，直接从本地文件加载
                     loadImageFromUri(vFile.absolutePath, isHorizontal, isLastImage, transformation)
                 } else {
+                    // 缓存未命中，先下载到 BookHelp 缓存再加载，确保切换文本模式时无需重新下载
                     imageLoadJob?.cancel()
                     imageLoadJob = CoroutineScope(Dispatchers.Main).launch {
                         ImageProvider.cacheImage(book, imageUrl, ReadManga.bookSource)
@@ -91,11 +95,13 @@ open class MangaVH<VB : ViewBinding>(val binding: VB, private val context: Conte
                         if (cachedFile.exists()) {
                             loadImageFromUri(cachedFile.absolutePath, isHorizontal, isLastImage, transformation)
                         } else {
+                            // 下载失败回退到原始 URL，由 Glide 自行处理
                             loadImageFromUri(imageUrl, isHorizontal, isLastImage, transformation)
                         }
                     }
                 }
             } else {
+                // 本地书籍直接从原始路径加载
                 loadImageFromUri(imageUrl, isHorizontal, isLastImage, transformation)
             }
         } catch (e: Exception) {
@@ -103,6 +109,7 @@ open class MangaVH<VB : ViewBinding>(val binding: VB, private val context: Conte
         }
     }
 
+    // 统一的 Glide 图片加载入口，支持文件路径和网络 URL 两种来源
     @SuppressLint("CheckResult")
     private fun loadImageFromUri(
         uri: String,
