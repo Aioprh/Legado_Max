@@ -39,6 +39,8 @@ object DebugEventCenter {
 
     /** 内存中最大保留的事件数量 */
     const val MAX_EVENTS = 500
+    private const val MAX_MESSAGE_CHARS = 4096
+    private const val MAX_DETAIL_CHARS = 4096
 
     /** 当前内存中的事件总数 */
     val eventCount: Int get() = synchronized(_events) { _events.size }
@@ -46,13 +48,22 @@ object DebugEventCenter {
     val isEnabled: Boolean get() = AppConfig.debugLogFloatingBall
 
     suspend fun emit(event: DebugEvent) {
+        val boundedEvent = event.copy(
+            message = event.message.limitForEvent(MAX_MESSAGE_CHARS),
+            detail = event.detail?.limitForEvent(MAX_DETAIL_CHARS)
+        )
         synchronized(_events) {
-            _events.addFirst(event)
+            _events.addFirst(boundedEvent)
             while (_events.size > MAX_EVENTS) {
                 _events.removeLast()
             }
         }
-        _eventFlow.emit(event)
+        _eventFlow.emit(boundedEvent)
+    }
+
+    private fun String.limitForEvent(maxChars: Int): String {
+        if (length <= maxChars) return this
+        return take(maxChars) + "\n...[truncated ${length - maxChars} chars]"
     }
 
     /**

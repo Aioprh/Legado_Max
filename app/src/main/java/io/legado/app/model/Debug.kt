@@ -78,23 +78,24 @@ object Debug {
         }
 
         // 在锁外异步上报到调试事件中心，避免持锁期间启动协程
-        val capturedMsg = msg
-        val capturedSourceUrl = sourceUrl
-        val capturedState = state
-        val capturedIsHtml = isHtml
-        val capturedShowTime = showTime
-        val capturedStartTime = startTime
-        val capturedCategory = category
+        if (DebugEventCenter.isEnabled) {
+            val capturedMsg = msg
+            val capturedSourceUrl = sourceUrl
+            val capturedState = state
+            val capturedIsHtml = isHtml
+            val capturedShowTime = showTime
+            val capturedStartTime = startTime
+            val capturedCategory = category
 
-        GlobalScope.launch(Dispatchers.Default) {
-            var printMsg = capturedMsg
-            if (capturedIsHtml) {
-                printMsg = HtmlFormatter.format(capturedMsg)
-            }
-            if (capturedShowTime) {
-                val time = debugTimeFormat.format(Date(System.currentTimeMillis() - capturedStartTime))
-                printMsg = "$time $printMsg"
-            }
+            GlobalScope.launch(Dispatchers.Default) {
+                var printMsg = capturedMsg
+                if (capturedIsHtml) {
+                    printMsg = HtmlFormatter.format(capturedMsg)
+                }
+                if (capturedShowTime) {
+                    val time = debugTimeFormat.format(Date(System.currentTimeMillis() - capturedStartTime))
+                    printMsg = "$time $printMsg"
+                }
 
             // 根据category参数或sourceUrl判断分类
             val eventCategory = capturedCategory ?: when {
@@ -122,6 +123,7 @@ object Debug {
                     tags = mapOf("state" to capturedState.toString())
                 )
             )
+        }
         }
 
         if (isChecking && sourceUrl != null && (msg).length < 30) {

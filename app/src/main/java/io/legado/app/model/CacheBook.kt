@@ -455,7 +455,7 @@ object CacheBook {
             waitDownloadSet.remove(chapterIndex)
             onDownloadSet.add(chapterIndex)
             if (BookHelp.hasContent(book, chapter)) {
-                Coroutine.async(scope, context, executeContext = context) {
+                val task = Coroutine.async(scope, context, executeContext = context) {
                     BookHelp.getContent(book, chapter)?.let {
                         BookHelp.saveImages(bookSource, book, chapter, it, 1)
                     }
@@ -470,12 +470,14 @@ object CacheBook {
                     onCancel(chapterIndex)
                 }.onFinally {
                     onFinally()
-                }.let {
-                    tasks.add(it)
                 }
+                task.invokeOnCompletion {
+                    tasks.delete(task)
+                }
+                tasks.add(task)
                 return
             }
-            WebBook.getContent(
+            val task = WebBook.getContent(
                 scope,
                 bookSource,
                 book,
@@ -496,9 +498,12 @@ object CacheBook {
                 onCancel(chapterIndex)
             }.onFinally {
                 onFinally()
-            }.apply {
-                tasks.add(this)
-            }.start()
+            }
+            task.invokeOnCompletion {
+                tasks.delete(task)
+            }
+            tasks.add(task)
+            task.start()
         }
 
         /**
