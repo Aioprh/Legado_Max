@@ -126,6 +126,7 @@ object PreferKey {
     const val onlyUpdateRead = "onlyUpdateRead"
     const val defaultToRead = "defaultToRead"
     const val tocPartialLoad = "tocPartialLoad"
+    const val tocPartialLoadInterval = "tocPartialLoadInterval"
     const val exportCharset = "exportCharset"
     const val exportUseReplace = "exportUseReplace"
     const val useZhLayout = "useZhLayout"

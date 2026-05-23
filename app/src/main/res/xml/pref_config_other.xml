@@ -77,6 +77,11 @@
             app:iconSpaceReserved="false" />
 
         <!-- 调试模式：开启后"我的"页面显示调试工具入口 -->
+        <io.legado.app.lib.prefs.Preference
+            android:key="tocPartialLoadInterval"
+            android:title="@string/pt_toc_partial_load_interval"
+            app:iconSpaceReserved="false" />
+
         <io.legado.app.lib.prefs.SwitchPreference
             android:defaultValue="false"
             android:key="debugMode"

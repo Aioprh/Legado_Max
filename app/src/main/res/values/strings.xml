@@ -353,6 +353,8 @@
     <string name="pt_default_read">Auto jump to Recent list</string>
     <string name="pt_toc_partial_load">Incomplete TOC loading</string>
     <string name="ps_toc_partial_load">Allow entering content before TOC is fully loaded</string>
+    <string name="pt_toc_partial_load_interval">Incomplete TOC loading interval</string>
+    <string name="ps_toc_partial_load_interval">%s seconds + source concurrency rate</string>
     <string name="replace_scope">Replacement object. Book name or source url is available</string>
     <string name="menu_action_group">Groups</string>
     <string name="download_path">Cache path</string>
