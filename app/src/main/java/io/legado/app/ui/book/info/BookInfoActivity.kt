@@ -834,10 +834,6 @@ class BookInfoActivity :
             }
         }
         tvTocView.setOnClickListener {
-            if (viewModel.chapterListData.value.isNullOrEmpty()) {
-                toastOnUi(R.string.chapter_list_empty)
-                return@setOnClickListener
-            }
             viewModel.getBook()?.let { book ->
                 if (!viewModel.inBookshelf) {
                     viewModel.saveBook(book) { //点击目录会保存book

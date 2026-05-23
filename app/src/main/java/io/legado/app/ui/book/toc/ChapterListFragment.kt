@@ -115,6 +115,11 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 }
             }
         }
+        observeEvent<String>(EventBus.TOC_PARTIAL_LOADED) { bookUrl ->
+            if (viewModel.bookUrl == bookUrl) {
+                upChapterList(null)
+            }
+        }
     }
 
     override fun upChapterList(searchKey: String?) {

@@ -244,27 +244,41 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                 return
             }
             val oldBook = book.copy()
-            WebBook.getChapterList(scope, bookSource, book, runPreUpdateJs, isFromBookInfo = isFromBookInfo)
-                .onSuccess(IO) {
-                    if (inBookshelf) {
-                        book.removeType(BookType.updateError)
-                        appDb.bookDao.replace(oldBook, book)
-                        /**
-                         * runPreUpdateJs 有可能会修改 book 的 bookUrl
-                         */
-                        if (oldBook.bookUrl != book.bookUrl) {
-                            BookHelp.updateCacheFolder(oldBook, book)
+            execute(scope) {
+                WebBook.getChapterListFlow(bookSource, book, runPreUpdateJs, isFromBookInfo = isFromBookInfo)
+                    .collect { partial ->
+                        val chapters = partial.chapters
+                        if (chapters.isEmpty()) return@collect
+                        if (partial.isComplete) {
+                            // 目录全部加载完成：完整更新数据库和书籍信息
+                            if (inBookshelf) {
+                                book.removeType(BookType.updateError)
+                                if (oldBook.bookUrl == book.bookUrl) {
+                                    appDb.bookDao.update(book)
+                                } else {
+                                    appDb.bookDao.replace(oldBook, book)
+                                    BookHelp.updateCacheFolder(oldBook, book)
+                                }
+                                appDb.bookChapterDao.delByBook(oldBook.bookUrl)
+                                appDb.bookChapterDao.insert(*chapters.toTypedArray())
+                                ReadBook.onChapterListUpdated(book)
+                            }
+                            chapterListData.postValue(chapters)
+                        } else {
+                            // 中间过程：增量保存到数据库，通知目录视图刷新
+                            appDb.bookChapterDao.delByBook(oldBook.bookUrl)
+                            appDb.bookChapterDao.insert(*chapters.toTypedArray())
+                            book.totalChapterNum = chapters.size
+                            chapterListData.postValue(chapters)
+                            ReadBook.onChapterListUpdated(book, loadContent = false, isIncremental = true)
+                            postEvent(EventBus.TOC_PARTIAL_LOADED, book.bookUrl)
                         }
-                        appDb.bookChapterDao.delByBook(oldBook.bookUrl)
-                        appDb.bookChapterDao.insert(*it.toTypedArray())
-                        ReadBook.onChapterListUpdated(book)
                     }
-                    chapterListData.postValue(it)
-                }.onError {
-                    chapterListData.postValue(emptyList())
-                    AppLog.put("获取目录失败\n${it.localizedMessage}", it)
-                    context.toastOnUi(R.string.error_get_chapter_list)
-                }
+            }.onError {
+                chapterListData.postValue(emptyList())
+                AppLog.put("获取目录失败\n${it.localizedMessage}", it)
+                context.toastOnUi(R.string.error_get_chapter_list)
+            }
         }
     }
 
