@@ -186,7 +186,8 @@ class MangaAdapter(private val context: Context) :
                 vh.itemView.updateLayoutParams<ViewGroup.LayoutParams> {
                     height = MATCH_PARENT
                 }
-                Glide.with(context).clear(vh.binding.image)
+                // 回收时 Activity 可能已经销毁，用 applicationContext 只清理目标 View 的请求。
+                Glide.with(context.applicationContext).clear(vh.binding.image)
                 if (vh.binding.image.tag is String) {
                     ProgressManager.removeListener(vh.binding.image.tag as String)
                 }

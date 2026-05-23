@@ -407,6 +407,12 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
 
     override fun onDestroy() {
         ReadManga.unregister(this)
+        // 关闭页面时停止预加载监听，避免销毁后滚动/预加载回调继续访问 Activity。
+        mRecyclerViewPreloader?.let {
+            binding.recyclerView.removeOnScrollListener(it)
+            mRecyclerViewPreloader = null
+        }
+        binding.recyclerView.adapter = null
         super.onDestroy()
     }
 
@@ -694,7 +700,8 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
             binding.recyclerView.removeOnScrollListener(mRecyclerViewPreloader!!)
         }
         mRecyclerViewPreloader = RecyclerViewPreloader(
-            Glide.with(this), mAdapter, mSizeProvider, maxPreload
+            // 预加载不需要 Activity 生命周期，避免退出页面后 Glide 拒绝启动请求。
+            Glide.with(applicationContext), mAdapter, mSizeProvider, maxPreload
         )
         binding.recyclerView.addOnScrollListener(mRecyclerViewPreloader!!)
     }

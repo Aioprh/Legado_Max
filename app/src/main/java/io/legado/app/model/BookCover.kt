@@ -179,7 +179,8 @@ object BookCover {
         if (sourceOrigin != null) {
             options = options.set(OkHttpModelLoader.sourceOriginOption, sourceOrigin)
         }
-        return ImageLoader.load(context, path)
+        // 漫画页可能在 Activity 销毁后的回调中继续触发加载，使用 appCtx 避免 Glide 绑定已销毁的 Activity。
+        return ImageLoader.load(appCtx, path)
             .apply(options)
             .override(context.resources.displayMetrics.widthPixels, SIZE_ORIGINAL)
             .diskCacheStrategy(DiskCacheStrategy.ALL)
@@ -215,7 +216,8 @@ object BookCover {
         if (sourceOrigin != null) {
             options = options.set(OkHttpModelLoader.sourceOriginOption, sourceOrigin)
         }
-        return Glide.with(context)
+        // 预加载不依赖界面生命周期，避免 Activity 销毁后 RecyclerViewPreloader 继续触发 Glide.with(activity)。
+        return Glide.with(appCtx)
             .downloadOnly()
             .apply(options)
             .load(path)
