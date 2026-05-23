@@ -1461,4 +1461,6 @@
     <string name="underline_width">粗细</string>
     <string name="underline_width_thin">细</string>
     <string name="underline_width_thick">粗</string>
+    <string name="underline_offset_near">近</string>
+    <string name="underline_offset_far">远</string>
 </resources>

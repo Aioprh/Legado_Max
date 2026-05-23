@@ -5,13 +5,21 @@ import android.graphics.Paint
 import android.text.style.ReplacementSpan
 import io.legado.app.utils.dpToPx
 
+/**
+ * 实线下划线 Span
+ * @param textColor 文字颜色
+ * @param underlineColor 下划线颜色
+ * @param underlineWidth 下划线粗细(dp)
+ * @param underlineOffset 下划线与文字的距离(dp)
+ */
 class SolidUnderlineSpan(
     private val textColor: Int,
     private val underlineColor: Int,
     private val underlineWidth: Float = 1f,
+    private val underlineOffset: Float = 6f,
 ) : ReplacementSpan() {
 
-    private val underlineOffset = 6.dpToPx()
+    private val offsetPx = underlineOffset.toInt().dpToPx()  // 距离转换为像素
 
     override fun getSize(
         paint: Paint,
@@ -24,8 +32,8 @@ class SolidUnderlineSpan(
             val metrics = paint.fontMetricsInt
             fm.top = metrics.top
             fm.ascent = metrics.ascent
-            fm.descent = metrics.descent + underlineOffset
-            fm.bottom = metrics.bottom + underlineOffset
+            fm.descent = metrics.descent + offsetPx
+            fm.bottom = metrics.bottom + offsetPx
         }
         return paint.measureText(text, start, end).toInt()
     }
@@ -46,7 +54,7 @@ class SolidUnderlineSpan(
         canvas.drawText(textStr, x, y.toFloat(), paint)
 
         val width = paint.measureText(text, start, end)
-        val lineY = y + underlineOffset
+        val lineY = y + offsetPx
         val linePaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE

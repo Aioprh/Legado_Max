@@ -1284,6 +1284,8 @@
     <string name="underline_width">Width</string>
     <string name="underline_width_thin">Thin</string>
     <string name="underline_width_thick">Thick</string>
+    <string name="underline_offset_near">Near</string>
+    <string name="underline_offset_far">Far</string>
     <string name="select_new_source">Select new source</string>
     <string name="select_update_source">Select update source</string>
     <string name="set_local_password">Setting the local password</string>

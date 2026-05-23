@@ -4,6 +4,7 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
+import io.legado.app.help.config.ReadBookConfig
 
 object HighlightRulePreview {
 
@@ -17,6 +18,7 @@ object HighlightRulePreview {
             val textColor = rule.textColor ?: 0xFF111111.toInt()
             val accentColor = rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt()
             val underlineWidth = rule.underlineWidth
+            val underlineOffset = ReadBookConfig.durConfig.underlineOffset
             val hasBgImage = !rule.bgImage.isNullOrBlank()
 
             if (hasBgImage) {
@@ -29,7 +31,8 @@ object HighlightRulePreview {
                         rule.underlineMode,
                         accentColor,
                         underlineWidth,
-                        rule.underlineSvgPath.orEmpty()
+                        rule.underlineSvgPath.orEmpty(),
+                        underlineOffset
                     ),
                     start,
                     end,
@@ -39,7 +42,7 @@ object HighlightRulePreview {
                 when (rule.underlineMode) {
                     4 -> {
                         spannable.setSpan(
-                            DoubleUnderlineSpan(textColor, accentColor, underlineWidth),
+                            DoubleUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
                             start,
                             end,
                             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -67,7 +70,7 @@ object HighlightRulePreview {
                         when (rule.underlineMode) {
                             1 -> {
                                 spannable.setSpan(
-                                    SolidUnderlineSpan(textColor, accentColor, underlineWidth),
+                                    SolidUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
                                     start,
                                     end,
                                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -75,7 +78,7 @@ object HighlightRulePreview {
                             }
                             2 -> {
                                 spannable.setSpan(
-                                    DashUnderlineSpan(textColor, accentColor, underlineWidth),
+                                    DashUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
                                     start,
                                     end,
                                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -83,7 +86,7 @@ object HighlightRulePreview {
                             }
                             3 -> {
                                 spannable.setSpan(
-                                    WaveUnderlineSpan(textColor, accentColor, underlineWidth),
+                                    WaveUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
                                     start,
                                     end,
                                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE

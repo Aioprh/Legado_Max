@@ -11,6 +11,18 @@ import android.text.style.ReplacementSpan
 import io.legado.app.ui.book.read.page.entities.TextLine
 import io.legado.app.utils.dpToPx
 
+/**
+ * 背景图+下划线 Span，用于高亮规则匹配区域
+ * @param textColor 文字颜色
+ * @param bgImagePath 背景图路径
+ * @param bgImageFit 背景图适配方式：0=平铺, 1=拉伸, 2=裁剪
+ * @param bgImageScale 背景图缩放比例
+ * @param underlineMode 下划线样式：0=无, 1=实线, 2=虚线, 3=波浪, 4=双线
+ * @param underlineColor 下划线颜色
+ * @param underlineWidth 下划线粗细(dp)
+ * @param underlineSvgPath SVG路径（用于自定义下划线）
+ * @param underlineOffset 下划线与文字的距离(dp)
+ */
 class BgImageSpan(
     private val textColor: Int,
     private val bgImagePath: String,
@@ -20,9 +32,10 @@ class BgImageSpan(
     private val underlineColor: Int = 0,
     private val underlineWidth: Float = 1f,
     private val underlineSvgPath: String = "",
+    private val underlineOffset: Float = 6f,
 ) : ReplacementSpan() {
 
-    private val underlineOffset = 6.dpToPx()
+    private val offsetPx = underlineOffset.toInt().dpToPx()  // 距离转换为像素
 
     override fun getSize(
         paint: Paint,
@@ -35,8 +48,8 @@ class BgImageSpan(
             val metrics = paint.fontMetricsInt
             fm.top = metrics.top
             fm.ascent = metrics.ascent
-            fm.descent = metrics.descent + if (underlineMode != 0) underlineOffset else 0
-            fm.bottom = metrics.bottom + if (underlineMode != 0) underlineOffset else 0
+            fm.descent = metrics.descent + if (underlineMode != 0) offsetPx else 0
+            fm.bottom = metrics.bottom + if (underlineMode != 0) offsetPx else 0
         }
         return paint.measureText(text, start, end).toInt()
     }
@@ -111,7 +124,7 @@ class BgImageSpan(
         canvas.drawText(text, start, end, x, y.toFloat(), paint)
 
         if (underlineMode != 0) {
-            drawUnderline(canvas, x, x + width, y + underlineOffset, paint)
+            drawUnderline(canvas, x, x + width, y + offsetPx, paint)
         }
     }
 
@@ -150,10 +163,10 @@ class BgImageSpan(
                 canvas.drawPath(path, ulPaint)
             }
             4 -> {
-                val lineGap = 3.dpToPx().toFloat()
+                val lineGap = 3.dpToPx()
                 val line2Y = lineY + lineGap + underlineWidth.dpToPx()
                 canvas.drawLine(startX, lineY.toFloat(), endX, lineY.toFloat(), ulPaint)
-                canvas.drawLine(startX, line2Y, endX, line2Y, ulPaint)
+                canvas.drawLine(startX, line2Y.toFloat(), endX, line2Y.toFloat(), ulPaint)
             }
         }
     }
