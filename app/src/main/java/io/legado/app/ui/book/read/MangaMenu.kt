@@ -8,10 +8,12 @@ import android.view.LayoutInflater
 import android.view.animation.Animation
 import android.widget.FrameLayout
 import android.widget.SeekBar
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import io.legado.app.R
 import io.legado.app.databinding.ViewMangaMenuBinding
+import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.source.getSourceType
 import io.legado.app.lib.dialogs.alert
@@ -54,6 +56,20 @@ class MangaMenu @JvmOverloads constructor(
     }
     private var isMenuOutAnimating = false
     private var bgColor = context.bottomBackground
+    private val sourceMenu by lazy {
+        PopupMenu(context, binding.tvSourceAction).apply {
+            inflate(R.menu.book_read_source)
+            menu.findItem(R.id.menu_login)?.isVisible = false
+            menu.findItem(R.id.menu_chapter_pay)?.isVisible = false
+            setOnMenuItemClickListener {
+                when (it.itemId) {
+                    R.id.menu_edit_source -> callBack.openSourceEditActivity()
+                    R.id.menu_disable_source -> callBack.disableSource()
+                }
+                true
+            }
+        }
+    }
 
     private val menuOutListener = object : Animation.AnimationListener {
         override fun onAnimationStart(animation: Animation) {
@@ -74,10 +90,8 @@ class MangaMenu @JvmOverloads constructor(
     }
     private val menuInListener = object : Animation.AnimationListener {
         override fun onAnimationStart(animation: Animation) {
-            binding.tvSourceAction.text =
-                ReadManga.bookSource?.bookSourceName ?: context.getString(R.string.book_source)
+            upBookView()
             callBack.upSystemUiVisibility(true)
-            binding.tvSourceAction.isGone = false
         }
 
         @SuppressLint("RtlHardcoded")
@@ -172,12 +186,15 @@ class MangaMenu @JvmOverloads constructor(
             callBack.openBookInfoActivity()
         }
         val chapterViewClickListener = OnClickListener {
+            if (ReadManga.book?.isLocal == true) {
+                return@OnClickListener
+            }
             if (AppConfig.readUrlInBrowser) {
                 context.openUrl(tvChapterUrl.text.toString().substringBefore(",{"))
             } else {
                 context.startActivity<WebViewActivity> {
                     val url = tvChapterUrl.text.toString()
-                    val bookSource = ReadBook.bookSource
+                    val bookSource = ReadManga.bookSource
                     putExtra("title", tvChapterName.text)
                     putExtra("url", url)
                     putExtra("sourceOrigin", bookSource?.bookSourceUrl)
@@ -187,6 +204,9 @@ class MangaMenu @JvmOverloads constructor(
             }
         }
         val chapterViewLongClickListener = OnLongClickListener {
+            if (ReadManga.book?.isLocal == true) {
+                return@OnLongClickListener true
+            }
             context.alert(R.string.open_fun) {
                 setMessage(R.string.use_browser_open)
                 okButton {
@@ -202,6 +222,10 @@ class MangaMenu @JvmOverloads constructor(
         tvChapterName.setOnLongClickListener(chapterViewLongClickListener)
         tvChapterUrl.setOnClickListener(chapterViewClickListener)
         tvChapterUrl.setOnLongClickListener(chapterViewLongClickListener)
+        tvSourceAction.setOnClickListener {
+            if (ReadManga.book?.isLocal == true) return@setOnClickListener
+            sourceMenu.show()
+        }
 
         tvNext.setOnClickListener {
             ReadManga.moveToNextChapter(true)
@@ -234,10 +258,51 @@ class MangaMenu @JvmOverloads constructor(
         }
     }
 
+    fun upBookView() {
+        binding.titleBar.title = ReadManga.book?.name
+        binding.tvSourceAction.text =
+            ReadManga.bookSource?.bookSourceName ?: context.getString(R.string.book_source)
+        binding.tvSourceAction.isGone = ReadManga.book?.isLocal == true
+
+        ReadManga.curMangaChapter?.let {
+            binding.tvChapterName.text = it.chapter.title
+            binding.tvChapterName.visible()
+            if (ReadManga.book?.isLocal == true) {
+                binding.tvChapterUrl.gone()
+            } else {
+                binding.tvChapterUrl.text = it.chapter.getAbsoluteURL()
+                binding.tvChapterUrl.visible()
+            }
+            binding.tvPre.isEnabled = ReadManga.durChapterIndex != 0
+            binding.tvNext.isEnabled =
+                ReadManga.durChapterIndex != ReadManga.simulatedChapterSize - 1
+        } ?: run {
+            binding.tvChapterName.gone()
+            binding.tvChapterUrl.gone()
+            binding.tvPre.isEnabled = false
+            binding.tvNext.isEnabled = false
+        }
+        refreshTitleBarAdditionLayout()
+    }
+
+    private fun refreshTitleBarAdditionLayout() {
+        binding.titleBarAddition.isVisible = AppConfig.showReadTitleBarAddition
+        binding.titleBarAddition.requestLayout()
+        binding.titleBar.requestLayout()
+        binding.titleBar.invalidate()
+        binding.titleBarAddition.post {
+            binding.titleBarAddition.requestLayout()
+            binding.titleBar.requestLayout()
+            binding.titleBar.invalidate()
+        }
+    }
+
     interface CallBack {
+        fun openSourceEditActivity()
         fun openBookInfoActivity()
         fun upSystemUiVisibility(menuIsVisible: Boolean)
         fun skipToPage(index: Int)
+        fun disableSource()
     }
 
 }
