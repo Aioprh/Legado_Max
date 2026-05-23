@@ -94,10 +94,17 @@ class BookmarkAdapter(context: Context, val callback: Callback) :
         }
     }
 
+    /**
+     * 获取所有书籍分组的关键字集合
+     */
     fun getAllGroupKeys(): Set<String> {
         return allItems.map { getGroupKey(it) }.toSet()
     }
 
+    /**
+     * 折叠所有分组
+     * @return 状态是否发生变化（已有分组数与当前折叠数不同时返回true）
+     */
     fun collapseAll(): Boolean {
         val allKeys = getAllGroupKeys()
         if (collapsedGroups.size == allKeys.size) {
@@ -108,6 +115,10 @@ class BookmarkAdapter(context: Context, val callback: Callback) :
         return true
     }
 
+    /**
+     * 展开所有分组
+     * @return 状态是否发生变化（有折叠分组时返回true）
+     */
     fun expandAll(): Boolean {
         if (collapsedGroups.isEmpty()) {
             return false
@@ -116,6 +127,9 @@ class BookmarkAdapter(context: Context, val callback: Callback) :
         return true
     }
 
+    /**
+     * 判断是否全部折叠
+     */
     fun isAllCollapsed(): Boolean {
         val allKeys = getAllGroupKeys()
         return allKeys.isNotEmpty() && collapsedGroups.size == allKeys.size

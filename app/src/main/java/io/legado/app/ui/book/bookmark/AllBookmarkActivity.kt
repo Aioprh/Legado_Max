@@ -50,6 +50,7 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
     }
     private var searchJob: Job? = null
     private var searchView: SearchView? = null
+    // 折叠/展开全部按钮的菜单项引用，用于动态更新图标和标题
     private var collapseMenuItem: MenuItem? = null
     private var allBookmarks: List<Bookmark> = emptyList()
 
@@ -86,6 +87,7 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.bookmark, menu)
+        // 获取折叠/展开按钮的引用
         collapseMenuItem = menu.findItem(R.id.menu_collapse_all)
         val searchItem = menu.findItem(R.id.menu_search)
         searchView = searchItem?.actionView as? SearchView
@@ -139,6 +141,7 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_collapse_all -> {
+                // 切换全部折叠/展开状态：当前已全部折叠则展开，否则折叠全部
                 val changed = if (adapter.isAllCollapsed()) {
                     adapter.expandAll()
                 } else {
@@ -162,6 +165,10 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
         return super.onCompatOptionsItemSelected(item)
     }
 
+    /**
+     * 根据当前折叠状态更新菜单按钮的图标和标题
+     * 全部折叠时显示展开图标，否则显示折叠图标
+     */
     private fun updateCollapseIcon() {
         collapseMenuItem?.let { item ->
             if (adapter.isAllCollapsed()) {
