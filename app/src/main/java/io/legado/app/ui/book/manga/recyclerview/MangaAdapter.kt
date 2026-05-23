@@ -181,6 +181,7 @@ class MangaAdapter(private val context: Context) :
         super.onViewRecycled(vh)
         when (vh) {
             is PageViewHolder -> {
+                vh.imageLoadJob?.cancel()
                 vh.itemView.updateLayoutParams<ViewGroup.LayoutParams> {
                     height = MATCH_PARENT
                 }
