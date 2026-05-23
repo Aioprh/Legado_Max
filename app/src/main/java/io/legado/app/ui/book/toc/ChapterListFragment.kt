@@ -28,12 +28,14 @@ import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.gone
 import io.legado.app.utils.observeEvent
+import io.legado.app.utils.observeEventSticky
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -96,6 +98,13 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             binding.tvCurrentChapterInfo.text =
                 "${book.durChapterTitle}(${book.durChapterIndex + 1}/${book.simulatedTotalChapterNum()})"
             initCacheFileNames(book)
+            // 如果数据库为空且不是本地书，可能正在渐进加载中，延迟重试
+            if (adapter.itemCount == 0 && !book.isLocal) {
+                delay(2000)
+                if (adapter.itemCount == 0) {
+                    upChapterList(null)
+                }
+            }
         }
     }
 
@@ -117,13 +126,13 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 }
             }
         }
-        observeEvent<String>(EventBus.TOC_PARTIAL_LOADED) { bookUrl ->
+        observeEventSticky<String>(EventBus.TOC_PARTIAL_LOADED) { bookUrl ->
             if (viewModel.bookUrl == bookUrl) {
                 binding.tvTocLoading.visible()
                 upChapterList(null)
             }
         }
-        observeEvent<String>(EventBus.TOC_LOAD_COMPLETE) { bookUrl ->
+        observeEventSticky<String>(EventBus.TOC_LOAD_COMPLETE) { bookUrl ->
             if (viewModel.bookUrl == bookUrl) {
                 binding.tvTocLoading.gone()
             }
