@@ -363,6 +363,8 @@ object BookChapterList {
                     ).first
                 }.collect {
                     chapterList.addAll(it)
+                    val sorted = sortAndIndex(chapterList, reverse, book)
+                    emit(PartialChapterList(sorted, isComplete = false))
                 }
                 val sorted = sortAndIndex(chapterList, reverse, book)
                 val finalList = finalizeChapterList(sorted, tocRule, book, bookSource)

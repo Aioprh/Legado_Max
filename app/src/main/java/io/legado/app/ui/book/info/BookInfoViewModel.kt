@@ -22,6 +22,7 @@ import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.addType
 import io.legado.app.help.book.getExportFileName
 import io.legado.app.help.book.getRemoteUrl
 import io.legado.app.help.book.isLocal
@@ -112,9 +113,11 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
             bookData.postValue(book)
             upCoverByRule(book)
             if (book.tocUrl.isEmpty() && !book.isLocal) {
+                AppLog.put("[TOC] upBook: tocUrl为空, 走loadBookInfo分支")
                 loadBookInfo(book, runPreUpdateJs = inBookshelf)
             } else {
                 val chapterList = appDb.bookChapterDao.getChapterList(book.bookUrl)
+                AppLog.put("[TOC] upBook: DB已有${chapterList.size}章, isTocPartialLoad=${AppConfig.isTocPartialLoad}")
                 if (chapterList.isNotEmpty()) {
                     chapterListData.postValue(chapterList)
                 } else {
@@ -193,15 +196,13 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                 context.toastOnUi(R.string.error_no_source)
                 return
             }
+            AppLog.put("[TOC] loadBookInfo开始: bookUrl=${book.bookUrl}")
             WebBook.getBookInfo(scope, bookSource, book, canReName = canReName)
                 .onSuccess(IO) {
+                    try {
+                    AppLog.put("[TOC] loadBookInfo成功: bookUrl=${book.bookUrl}, isWebFile=${it.isWebFile}, tocUrl=${it.tocUrl}")
                     val dbBook = appDb.bookDao.getBook(book.name, book.author)
                     if (!inBookshelf && dbBook != null && !dbBook.isNotShelf && dbBook.origin == book.origin) {
-                        /**
-                         * book 来自搜索时(inBookshelf == false)，搜索的书名不存在于书架，但是加载详情后，书名更新，存在同名书籍
-                         * 此时 book 的数据会与数据库中的不同，需要更新 #3652 #4619
-                         * book 加载详情后虽然书名作者相同，但是又可能不是数据库中(书源不同)的那本书 #3149
-                         */
                         dbBook.updateTo(it)
                         inBookshelf = true
                     }
@@ -210,12 +211,22 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                         it.save()
                     }
                     if (it.isWebFile) {
+                        AppLog.put("[TOC] loadBookInfo: isWebFile=true, 走loadWebFile分支")
                         loadWebFile(it)
                     } else {
-                        loadChapter(it, runPreUpdateJs, isFromBookInfo = true)
+                        AppLog.put("[TOC] loadBookInfo: 即将调用loadChapter, isLocal=${it.isLocal}, bookSource=${bookSource != null}")
+                        try {
+                            loadChapter(it, runPreUpdateJs, isFromBookInfo = true)
+                            AppLog.put("[TOC] loadChapter调用完成")
+                        } catch (e: Throwable) {
+                            AppLog.put("[TOC] loadChapter调用异常: ${e.localizedMessage}", e)
+                        }
+                    }
+                    } catch (e: Throwable) {
+                        AppLog.put("[TOC] loadBookInfo onSuccess异常: ${e.localizedMessage}", e)
                     }
                 }.onError {
-                    AppLog.put("获取书籍信息失败\n${it.localizedMessage}", it)
+                    AppLog.put("[TOC] loadBookInfo失败: bookUrl=${book.bookUrl}, error=${it.localizedMessage}", it)
                     context.toastOnUi(R.string.error_get_book_info)
                 }
         }
@@ -227,6 +238,9 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         scope: CoroutineScope = viewModelScope,
         isFromBookInfo: Boolean = false
     ) {
+        AppLog.put("[TOC] loadChapter入口A")
+        AppLog.put("[TOC] loadChapter入口B: bookUrl=" + book.bookUrl)
+        AppLog.put("[TOC] loadChapter入口C: isLocal=" + book.isLocal)
         if (book.isLocal) {
             execute(scope) {
                 LocalBook.getChapterList(book).let {
@@ -248,11 +262,22 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
             val oldBook = book.copy()
             if (AppConfig.isTocPartialLoad) {
                 tocLoading.postValue(true)
+                AppLog.put("[TOC] 部分加载开始, bookUrl=${book.bookUrl}")
                 execute(scope) {
+                    var firstEmitChapterSize: Int? = null
+                    var hasShownNextTocLazyLoadToast = false
                     WebBook.getChapterListFlow(bookSource, book, runPreUpdateJs, isFromBookInfo = isFromBookInfo)
                         .collect { partial ->
                             val chapters = partial.chapters
+                            AppLog.put("[TOC] Flow emit: count=${chapters.size}, isComplete=${partial.isComplete}, bookUrl=${book.bookUrl}")
                             if (chapters.isEmpty()) return@collect
+                            val firstSize = firstEmitChapterSize
+                            if (firstSize == null) {
+                                firstEmitChapterSize = chapters.size
+                            } else if (!hasShownNextTocLazyLoadToast && chapters.size > firstSize) {
+                                hasShownNextTocLazyLoadToast = true
+                                context.toastOnUi("下一页目录懒加载已成功执行")
+                            }
                             if (partial.isComplete) {
                                 // 目录全部加载完成
                                 if (inBookshelf) {
@@ -263,16 +288,25 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                                         appDb.bookDao.replace(oldBook, book)
                                         BookHelp.updateCacheFolder(oldBook, book)
                                     }
-                                    appDb.bookChapterDao.delByBook(oldBook.bookUrl)
-                                    appDb.bookChapterDao.insert(*chapters.toTypedArray())
+                                } else {
+                                    book.addType(BookType.notShelf)
+                                    book.save()
+                                }
+                                appDb.bookChapterDao.delByBook(oldBook.bookUrl)
+                                appDb.bookChapterDao.insert(*chapters.toTypedArray())
+                                if (inBookshelf) {
                                     ReadBook.onChapterListUpdated(book)
                                 }
                                 chapterListData.postValue(chapters)
                             } else {
                                 // 中间过程：增量保存到数据库，通知目录视图刷新
+                                book.totalChapterNum = chapters.size
+                                if (!inBookshelf) {
+                                    book.addType(BookType.notShelf)
+                                }
+                                book.save()
                                 appDb.bookChapterDao.delByBook(oldBook.bookUrl)
                                 appDb.bookChapterDao.insert(*chapters.toTypedArray())
-                                book.totalChapterNum = chapters.size
                                 chapterListData.postValue(chapters)
                                 ReadBook.onChapterListUpdated(book, loadContent = false, isIncremental = true)
                             }
