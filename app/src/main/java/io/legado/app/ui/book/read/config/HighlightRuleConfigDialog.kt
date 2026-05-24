@@ -325,11 +325,10 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }
         val targetGroup = currentGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP
         imported.forEach { rule ->
-            val normalized = rule.copy(
-                id = if (rules.none { it.id == rule.id }) rule.id else rule.copyWithNewId().id,
-                group = targetGroup,
-                underlineWidth = rule.underlineWidth.coerceIn(0.1f, 10f)
-            )
+            var normalized = HighlightRuleStore.sanitizeRule(rule, targetGroup)
+            if (rules.any { it.id == normalized.id }) {
+                normalized = normalized.copyWithNewId()
+            }
             rules.add(normalized)
         }
         syncRules()

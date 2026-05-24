@@ -184,6 +184,8 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etUnderlineColor.setTextColor(primaryTextColor)
         binding.etUnderlineColor.setHintTextColor(secondaryTextColor)
         binding.etUnderlineWidth.setTextColor(primaryTextColor)
+        binding.etUnderlineOffset.setHintTextColor(secondaryTextColor)
+        binding.etUnderlineOffset.setTextColor(primaryTextColor)
         binding.etSvgPath.setTextColor(primaryTextColor)
         binding.etSvgPath.setHintTextColor(secondaryTextColor)
         binding.etBgImage.setTextColor(primaryTextColor)
@@ -196,6 +198,8 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.tvRegexToggle.background?.mutate()?.setTint(bg)
         binding.tvWidthMinus.setTextColor(primaryTextColor)
         binding.tvWidthPlus.setTextColor(primaryTextColor)
+        binding.tvOffsetMinus.setTextColor(primaryTextColor)
+        binding.tvOffsetPlus.setTextColor(primaryTextColor)
 
         val inputBg = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         val previewBg = makeInputDrawable(inputBgColor, inputStrokeColor, 16f, density)
@@ -215,6 +219,9 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.tvWidthMinus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvWidthPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etUnderlineWidth.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.tvOffsetMinus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.tvOffsetPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.etUnderlineOffset.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
     }
 
     private fun makeCardDrawable(
@@ -242,6 +249,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etTextColor.setText(editingRule.textColor?.toHexColor().orEmpty())
         binding.etUnderlineColor.setText(editingRule.underlineColor?.toHexColor().orEmpty())
         binding.etUnderlineWidth.setText(editingRule.underlineWidth.toString())
+        binding.etUnderlineOffset.setText(editingRule.underlineOffset.formatDistance())
         binding.etSvgPath.setText(editingRule.underlineSvgPath.orEmpty())
         binding.etBgImage.setText(editingRule.bgImage.orEmpty())
         binding.etSampleText.setText(editingRule.sampleText.ifBlank { editingRule.normalizedSampleText() })
@@ -283,6 +291,12 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.tvWidthPlus.setOnClickListener {
             adjustWidth(0.5f)
         }
+        binding.tvOffsetMinus.setOnClickListener {
+            adjustOffset(-1f)
+        }
+        binding.tvOffsetPlus.setOnClickListener {
+            adjustOffset(1f)
+        }
         binding.switchEnable.setOnCheckedChangeListener { _, isChecked ->
             editingRule.enabled = isChecked
         }
@@ -305,6 +319,10 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         }
         binding.etUnderlineWidth.doAfterTextChanged {
             editingRule.underlineWidth = it?.toString()?.toFloatOrNull()?.coerceIn(0.1f, 10f) ?: 1f
+            updatePreview()
+        }
+        binding.etUnderlineOffset.doAfterTextChanged {
+            editingRule.underlineOffset = it?.toString()?.toFloatOrNull()?.coerceIn(0f, 20f) ?: 2f
             updatePreview()
         }
         binding.etSvgPath.doAfterTextChanged {
@@ -407,6 +425,12 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etUnderlineWidth.setText(String.format("%.1f", newValue))
     }
 
+    private fun adjustOffset(delta: Float) {
+        val current = binding.etUnderlineOffset.text?.toString()?.toFloatOrNull() ?: 2f
+        val newValue = (current + delta).coerceIn(0f, 20f)
+        binding.etUnderlineOffset.setText(newValue.formatDistance())
+    }
+
     private fun updateColorPreview(view: View, color: Int?) {
         val drawable = android.graphics.drawable.GradientDrawable().apply {
             shape = android.graphics.drawable.GradientDrawable.RECTANGLE
@@ -493,6 +517,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             underlineMode = binding.spUnderlineMode.selectedItemPosition,
             underlineColor = parseColorOrNull(binding.etUnderlineColor.text?.toString().orEmpty()),
             underlineWidth = binding.etUnderlineWidth.text?.toString()?.toFloatOrNull()?.coerceIn(0.1f, 10f) ?: 1f,
+            underlineOffset = binding.etUnderlineOffset.text?.toString()?.toFloatOrNull()?.coerceIn(0f, 20f) ?: 2f,
             underlineSvgPath = binding.etSvgPath.text?.toString().orEmpty().takeIf { binding.spUnderlineMode.selectedItemPosition == 5 }.orEmpty(),
             bgImage = binding.etBgImage.text?.toString().orEmpty().takeIf { it.isNotBlank() },
             bgImageFit = binding.spBgImageFit.selectedItemPosition,
@@ -523,6 +548,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
                 underlineMode = binding.spUnderlineMode.selectedItemPosition,
                 underlineColor = parseColorOrNull(binding.etUnderlineColor.text?.toString().orEmpty()),
                 underlineWidth = binding.etUnderlineWidth.text?.toString()?.toFloatOrNull()?.coerceIn(0.1f, 10f) ?: 1f,
+                underlineOffset = binding.etUnderlineOffset.text?.toString()?.toFloatOrNull()?.coerceIn(0f, 20f) ?: 2f,
                 underlineSvgPath = binding.etSvgPath.text?.toString().orEmpty(),
                 bgImage = binding.etBgImage.text?.toString().orEmpty().takeIf { it.isNotBlank() },
                 bgImageFit = binding.spBgImageFit.selectedItemPosition,
@@ -537,6 +563,14 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
     }
 
     private fun Float.formatScale(): String {
+        return if (this == this.toInt().toFloat()) {
+            this.toInt().toString()
+        } else {
+            String.format("%.1f", this)
+        }
+    }
+
+    private fun Float.formatDistance(): String {
         return if (this == this.toInt().toFloat()) {
             this.toInt().toString()
         } else {

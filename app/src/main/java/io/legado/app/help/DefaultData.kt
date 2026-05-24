@@ -62,6 +62,13 @@ object DefaultData {
                 .readBytes()
         )
         GSON.fromJsonArray<ReadBookConfig.Config>(json).getOrNull()
+            ?.map { config ->
+                if (config.underlineOffset == 6f) {
+                    config.copy(underlineOffset = 2f)
+                } else {
+                    config
+                }
+            }
             ?: emptyList()
     }
 

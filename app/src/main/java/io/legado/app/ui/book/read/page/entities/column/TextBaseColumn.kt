@@ -11,6 +11,7 @@ interface TextBaseColumn : BaseColumn {
     val underlineMode: Int
     val underlineColor: Int?
     val underlineWidth: Float
+    val underlineOffset: Float
     val underlineSvgPath: String
     val bgImage: String
     val bgImageFit: Int
