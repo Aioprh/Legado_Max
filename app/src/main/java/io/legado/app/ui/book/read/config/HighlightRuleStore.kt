@@ -286,13 +286,13 @@ object HighlightRuleStore {
         rule: HighlightRule,
         fallbackGroup: String = HighlightRuleGroupStore.DEFAULT_GROUP,
     ): HighlightRule {
-        val id = runCatching { rule.id }.getOrNull().orEmpty().ifBlank {
-            "${System.currentTimeMillis()}_${rule.hashCode()}"
-        }
         val name = runCatching { rule.name }.getOrNull().orEmpty()
         val pattern = runCatching { rule.pattern }.getOrNull().orEmpty()
         val sampleText = runCatching { rule.sampleText }.getOrNull().orEmpty()
         val group = runCatching { rule.group }.getOrNull().orEmpty().ifBlank { fallbackGroup }
+        val id = runCatching { rule.id }.getOrNull().orEmpty().ifBlank {
+            buildSanitizedRuleId(name, pattern, sampleText, group)
+        }
         val underlineSvgPath = runCatching { rule.underlineSvgPath }.getOrNull()
         val bgImage = runCatching { rule.bgImage }.getOrNull()?.takeIf { it.isNotBlank() }
         return HighlightRule(
@@ -313,6 +313,16 @@ object HighlightRuleStore {
             bgImageFit = runCatching { rule.bgImageFit }.getOrDefault(0).coerceIn(0, 2),
             bgImageScale = runCatching { rule.bgImageScale }.getOrDefault(1f).coerceIn(0.1f, 5f),
         )
+    }
+
+    private fun buildSanitizedRuleId(
+        name: String,
+        pattern: String,
+        sampleText: String,
+        group: String,
+    ): String {
+        val seed = listOf(name, pattern, sampleText, group).joinToString("|")
+        return "${System.currentTimeMillis()}_${seed.hashCode().toUInt().toString(16)}"
     }
 
     private fun normalizeTargetScope(value: Int, fallback: Int = HighlightRule.TARGET_ALL): Int {
