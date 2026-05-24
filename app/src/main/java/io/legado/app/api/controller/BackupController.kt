@@ -14,6 +14,7 @@ import io.legado.app.help.storage.BackupAES
 import io.legado.app.help.storage.BookCacheSelectorConfig
 import io.legado.app.model.BookCover
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
+import io.legado.app.ui.book.read.config.HighlightRuleStore
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.compress.ZipUtils
@@ -180,6 +181,8 @@ object BackupController {
             writeListToJson(appDb.rssSourceDao.all, "rssSources.json", webBackupPath)
             writeListToJson(appDb.rssStarDao.all, "rssStar.json", webBackupPath)
             writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", webBackupPath)
+            FileUtils.createFileIfNotExist(webBackupPath + File.separator + HighlightRuleStore.backupFileName)
+                .writeText(GSON.toJson(HighlightRuleStore.createBackupData(appCtx)))
             writeListToJson(appDb.readRecordDao.all, "readRecord.json", webBackupPath)
             writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", webBackupPath)
             writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", webBackupPath)
@@ -264,6 +267,7 @@ object BackupController {
             }
 
             Backup.stageBackgroundImageFiles(webBackupPath)
+            Backup.stageHighlightRuleBackgroundFiles(webBackupPath)
             Backup.stageBookCache(webBackupPath)
             Backup.stageBookChapterForCache(webBackupPath)
         }
@@ -306,6 +310,9 @@ object BackupController {
         var totalSize = 0L
 
         val backupItems = listOf(
+            BackupItemDef(HighlightRuleStore.backupFileName, "高亮规则", "阅读高亮规则和分组配置") {
+                HighlightRuleStore.load(appCtx).size
+            },
             BackupItemDef("bookshelf.json", "书架书籍", "书架上的所有书籍信息") {
                 appDb.bookDao.all.size
             },
@@ -448,6 +455,21 @@ object BackupController {
                     description = "阅读背景使用的自定义图片文件",
                     count = bgFiles.size,
                     size = bgSize
+                )
+            )
+        }
+
+        val highlightRuleBgFiles = HighlightRuleStore.getUsedBgImageFiles(appCtx)
+        val highlightRuleBgSize = highlightRuleBgFiles.sumOf { it.length() }
+        if (highlightRuleBgFiles.isNotEmpty()) {
+            totalSize += highlightRuleBgSize
+            items.add(
+                BackupItemInfo(
+                    fileName = HighlightRuleStore.backupBgDirName,
+                    displayName = "楂樹寒鑳屾櫙鍥剧墖",
+                    description = "楂樹寒瑙勫垯浣跨敤鐨勮嚜瀹氫箟鑳屾櫙鍥剧墖",
+                    count = highlightRuleBgFiles.size,
+                    size = highlightRuleBgSize
                 )
             )
         }

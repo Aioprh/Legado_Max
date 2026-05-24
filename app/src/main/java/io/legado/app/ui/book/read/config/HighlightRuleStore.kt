@@ -6,10 +6,24 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
+import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.putPrefString
 import io.legado.app.ui.book.read.page.entities.TextLine
+import java.io.File
 
 object HighlightRuleStore {
+
+    const val backupFileName = "highlightRule.json"
+    const val backupBgDirName = "highlightRuleBg"
+
+    data class BackupData(
+        val rules: List<HighlightRule> = emptyList(),
+        val groups: List<String> = emptyList(),
+        val currentGroup: String = "",
+        val dialogEnabled: Boolean = true,
+        val bookTitleEnabled: Boolean = true,
+        val bracketNoteEnabled: Boolean = true,
+    )
 
     @Volatile
     private var cachedRules: List<HighlightRule>? = null
@@ -60,6 +74,50 @@ object HighlightRuleStore {
         val defaults = createDefaultRules(context)
         save(context, defaults)
         return defaults.toMutableList()
+    }
+
+    fun createBackupData(context: Context): BackupData {
+        return BackupData(
+            rules = load(context),
+            groups = HighlightRuleGroupStore.load(context),
+            currentGroup = context.getPrefString(PreferKey.highlightRuleCurrentGroup).orEmpty(),
+            dialogEnabled = context.getPrefBoolean(PreferKey.highlightRuleDialog, true),
+            bookTitleEnabled = context.getPrefBoolean(PreferKey.highlightRuleBookTitle, true),
+            bracketNoteEnabled = context.getPrefBoolean(PreferKey.highlightRuleBracketNote, true),
+        )
+    }
+
+    fun restoreBackupData(
+        context: Context,
+        backupData: BackupData,
+        backupRootPath: String? = null,
+    ) {
+        HighlightRuleGroupStore.save(context, backupData.groups)
+        val rules = backupData.rules.map { rule ->
+            val safeRule = sanitizeRule(rule)
+            val restoredBgImage = restoreRuleBgImage(context, backupRootPath, safeRule.bgImage)
+            safeRule.copy(bgImage = restoredBgImage)
+        }
+        save(context, rules)
+        context.putPrefBoolean(PreferKey.highlightRuleDialog, backupData.dialogEnabled)
+        context.putPrefBoolean(PreferKey.highlightRuleBookTitle, backupData.bookTitleEnabled)
+        context.putPrefBoolean(PreferKey.highlightRuleBracketNote, backupData.bracketNoteEnabled)
+        val groups = HighlightRuleGroupStore.load(context)
+        context.putPrefString(
+            PreferKey.highlightRuleCurrentGroup,
+            backupData.currentGroup.takeIf { groups.contains(it) }.orEmpty()
+        )
+    }
+
+    fun getUsedBgImageFiles(context: Context): List<File> {
+        return load(context)
+            .mapNotNull { it.bgImage }
+            .asSequence()
+            .filter { it.isNotBlank() && !it.startsWith("assets://") }
+            .map(::File)
+            .filter { it.exists() && it.isFile }
+            .distinctBy { it.absolutePath }
+            .toList()
     }
 
     private fun createDefaultRules(context: Context): List<HighlightRule> {
@@ -277,6 +335,28 @@ object HighlightRuleStore {
         val migrated = TextLine.copyBgImageToInternal(context, path) ?: return rule
         if (migrated == path) return rule
         return rule.copy(bgImage = migrated)
+    }
+
+    private fun restoreRuleBgImage(
+        context: Context,
+        backupRootPath: String?,
+        bgImage: String?,
+    ): String? {
+        val path = bgImage ?: return null
+        if (path.isBlank() || path.startsWith("assets://")) return path
+        val rootPath = backupRootPath ?: return path
+        val backupFile = File(rootPath, "$backupBgDirName${File.separator}${File(path).name}")
+            .takeIf { it.exists() && it.isFile }
+            ?: return path
+        val dir = File(context.filesDir, "bg_images")
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        val targetFile = File(dir, backupFile.name)
+        if (!targetFile.exists() || targetFile.length() != backupFile.length()) {
+            backupFile.copyTo(targetFile, overwrite = true)
+        }
+        return targetFile.absolutePath
     }
 
     private fun shouldRefreshBuiltin(rule: HighlightRule): Boolean {
