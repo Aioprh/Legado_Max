@@ -4,8 +4,6 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
-import io.legado.app.help.config.ReadBookConfig
-
 object HighlightRulePreview {
 
     fun build(rule: HighlightRule): CharSequence {
@@ -18,7 +16,7 @@ object HighlightRulePreview {
             val textColor = rule.textColor ?: 0xFF111111.toInt()
             val accentColor = rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt()
             val underlineWidth = rule.underlineWidth
-            val underlineOffset = ReadBookConfig.durConfig.underlineOffset
+            val underlineOffset = rule.underlineOffset
             val hasBgImage = !rule.bgImage.isNullOrBlank()
 
             if (hasBgImage) {

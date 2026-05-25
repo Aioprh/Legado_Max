@@ -426,6 +426,7 @@ data class TextLine(
         var mode = 0
         var color = 0
         var width = 1f
+        var offset = 2f
         var svgPath = ""
         var active = false
         columns.forEachIndexed { index, column ->
@@ -435,11 +436,17 @@ data class TextLine(
                 ?: textColumn?.textColor
                 ?: ReadBookConfig.textColor
             val currentWidth = textColumn?.underlineWidth ?: 1f
+            val currentOffset = textColumn?.underlineOffset ?: 2f
             val currentSvgPath = textColumn?.underlineSvgPath ?: ""
-            val shouldContinue = active && currentMode == mode && currentColor == color && currentWidth == width && currentSvgPath == svgPath
+            val shouldContinue = active &&
+                currentMode == mode &&
+                currentColor == color &&
+                currentWidth == width &&
+                currentOffset == offset &&
+                currentSvgPath == svgPath
             when {
                 currentMode == 0 && active -> {
-                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, width, svgPath)
+                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, width, offset, svgPath)
                     active = false
                 }
                 currentMode != 0 && !active -> {
@@ -448,6 +455,7 @@ data class TextLine(
                     mode = currentMode
                     color = currentColor
                     width = currentWidth
+                    offset = currentOffset
                     svgPath = currentSvgPath
                     active = true
                 }
@@ -455,17 +463,18 @@ data class TextLine(
                     rangeEnd = textColumn!!.end
                 }
                 currentMode != 0 -> {
-                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, width, svgPath)
+                    drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, width, offset, svgPath)
                     rangeStart = textColumn!!.start
                     rangeEnd = textColumn.end
                     mode = currentMode
                     color = currentColor
                     width = currentWidth
+                    offset = currentOffset
                     svgPath = currentSvgPath
                 }
             }
             if (active && index == columns.lastIndex) {
-                drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, width, svgPath)
+                drawUnderlineSegment(canvas, rangeStart, rangeEnd, mode, color, width, offset, svgPath)
             }
         }
     }
@@ -531,6 +540,7 @@ data class TextLine(
         underlineMode: Int,
         underlineColor: Int,
         underlineWidth: Float = 1f,
+        underlineOffset: Float = 2f,
         svgPathStr: String = "",
     ) {
         val paint = PaintPool.obtain()
@@ -538,7 +548,6 @@ data class TextLine(
         paint.color = underlineColor
         paint.strokeWidth = underlineWidth.dpToPx()
         paint.style = android.graphics.Paint.Style.STROKE
-        val underlineOffset = ReadBookConfig.durConfig.underlineOffset
         val lineY = height + underlineOffset.dpToPx()
         when (underlineMode) {
             1 -> canvas.drawLine(startX, lineY, endX, lineY, paint)

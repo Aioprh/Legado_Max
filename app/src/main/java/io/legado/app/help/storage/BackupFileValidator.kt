@@ -16,6 +16,7 @@ import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
+import io.legado.app.ui.book.read.config.HighlightRuleStore
 import io.legado.app.utils.GSON
 import io.legado.app.utils.isJsonArray
 import kotlinx.coroutines.Dispatchers
@@ -146,7 +147,11 @@ object BackupFileValidator {
     private fun validateJsonFile(file: File, fileName: String): ValidationResult {
         return try {
             val jsonText = file.readText()
-            
+
+            if (fileName == HighlightRuleStore.backupFileName) {
+                return validateJsonObjectFile(fileName, jsonText)
+            }
+
             if (!jsonText.isJsonArray()) {
                 return ValidationResult(
                     fileName = fileName,
@@ -172,6 +177,33 @@ object BackupFileValidator {
                 state = ValidationState.ERROR,
                 message = "JSON 解析失败",
                 details = "解析 $fileName 时出错: ${e.message}",
+                exception = e
+            )
+        }
+    }
+
+    private fun validateJsonObjectFile(fileName: String, jsonText: String): ValidationResult {
+        return try {
+            val jsonObject = JSONObject(jsonText)
+            if (!jsonObject.has("rules")) {
+                return ValidationResult(
+                    fileName = fileName,
+                    state = ValidationState.WARNING,
+                    message = "缂哄皯蹇呴渶瀛楁",
+                    details = "$fileName 缂哄皯 rules 瀛楁"
+                )
+            }
+            ValidationResult(
+                fileName = fileName,
+                state = ValidationState.VALID,
+                message = "鏍煎紡姝ｇ‘"
+            )
+        } catch (e: Exception) {
+            ValidationResult(
+                fileName = fileName,
+                state = ValidationState.ERROR,
+                message = "JSON 瑙ｆ瀽澶辫触",
+                details = "瑙ｆ瀽 $fileName 鏃跺嚭閿? ${e.message}",
                 exception = e
             )
         }

@@ -223,7 +223,7 @@ class WebtoonRecyclerView @JvmOverloads constructor(
     }
 
     fun onScaleEnd() {
-        if (currentScale <= REBOUND_RATE) {
+        if (currentScale < DEFAULT_RATE) {
             zoom(currentScale, DEFAULT_RATE, x, 0f, y, 0f)
             return
         }
@@ -372,6 +372,5 @@ class WebtoonRecyclerView @JvmOverloads constructor(
 
 private const val ANIMATOR_DURATION_TIME = 320
 private const val MIN_RATE = 0.5f
-private const val REBOUND_RATE = 0.8f
 private const val DEFAULT_RATE = 1f
 private const val MAX_SCALE_RATE = 3f

@@ -6,10 +6,24 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
+import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.putPrefString
 import io.legado.app.ui.book.read.page.entities.TextLine
+import java.io.File
 
 object HighlightRuleStore {
+
+    const val backupFileName = "highlightRule.json"
+    const val backupBgDirName = "highlightRuleBg"
+
+    data class BackupData(
+        val rules: List<HighlightRule> = emptyList(),
+        val groups: List<String> = emptyList(),
+        val currentGroup: String = "",
+        val dialogEnabled: Boolean = true,
+        val bookTitleEnabled: Boolean = true,
+        val bracketNoteEnabled: Boolean = true,
+    )
 
     @Volatile
     private var cachedRules: List<HighlightRule>? = null
@@ -44,8 +58,7 @@ object HighlightRuleStore {
 
     fun save(context: Context, rules: List<HighlightRule>) {
         val normalized = rules.map {
-            it.copy(
-                group = it.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP },
+            sanitizeRule(it).copy(
                 targetScope = normalizeTargetScope(it.targetScope)
             )
         }
@@ -61,6 +74,50 @@ object HighlightRuleStore {
         val defaults = createDefaultRules(context)
         save(context, defaults)
         return defaults.toMutableList()
+    }
+
+    fun createBackupData(context: Context): BackupData {
+        return BackupData(
+            rules = load(context),
+            groups = HighlightRuleGroupStore.load(context),
+            currentGroup = context.getPrefString(PreferKey.highlightRuleCurrentGroup).orEmpty(),
+            dialogEnabled = context.getPrefBoolean(PreferKey.highlightRuleDialog, true),
+            bookTitleEnabled = context.getPrefBoolean(PreferKey.highlightRuleBookTitle, true),
+            bracketNoteEnabled = context.getPrefBoolean(PreferKey.highlightRuleBracketNote, true),
+        )
+    }
+
+    fun restoreBackupData(
+        context: Context,
+        backupData: BackupData,
+        backupRootPath: String? = null,
+    ) {
+        HighlightRuleGroupStore.save(context, backupData.groups)
+        val rules = backupData.rules.map { rule ->
+            val safeRule = sanitizeRule(rule)
+            val restoredBgImage = restoreRuleBgImage(context, backupRootPath, safeRule.bgImage)
+            safeRule.copy(bgImage = restoredBgImage)
+        }
+        save(context, rules)
+        context.putPrefBoolean(PreferKey.highlightRuleDialog, backupData.dialogEnabled)
+        context.putPrefBoolean(PreferKey.highlightRuleBookTitle, backupData.bookTitleEnabled)
+        context.putPrefBoolean(PreferKey.highlightRuleBracketNote, backupData.bracketNoteEnabled)
+        val groups = HighlightRuleGroupStore.load(context)
+        context.putPrefString(
+            PreferKey.highlightRuleCurrentGroup,
+            backupData.currentGroup.takeIf { groups.contains(it) }.orEmpty()
+        )
+    }
+
+    fun getUsedBgImageFiles(context: Context): List<File> {
+        return load(context)
+            .mapNotNull { it.bgImage }
+            .asSequence()
+            .filter { it.isNotBlank() && !it.startsWith("assets://") }
+            .map(::File)
+            .filter { it.exists() && it.isFile }
+            .distinctBy { it.absolutePath }
+            .toList()
     }
 
     private fun createDefaultRules(context: Context): List<HighlightRule> {
@@ -199,30 +256,73 @@ object HighlightRuleStore {
         val builtins = createDefaultRules(context).associateBy { it.id }
         val internalDir = context.filesDir.absolutePath
         return rules.map { rule ->
-            val normalizedGroup = rule.group.ifBlank { HighlightRuleGroupStore.DEFAULT_GROUP }
-            val builtin = builtins[rule.id]
-            val base = if (builtin != null && shouldRefreshBuiltin(rule)) {
+            val safeRule = sanitizeRule(rule)
+            val normalizedGroup = safeRule.group
+            val builtin = builtins[safeRule.id]
+            val base = if (builtin != null && shouldRefreshBuiltin(safeRule)) {
                 builtin.copy(
-                    enabled = rule.enabled,
+                    enabled = safeRule.enabled,
                     group = normalizedGroup,
-                    targetScope = normalizeTargetScope(rule.targetScope, builtin.targetScope),
-                    textColor = rule.textColor ?: builtin.textColor,
-                    underlineMode = rule.underlineMode.takeIf { it != 0 } ?: builtin.underlineMode,
-                    underlineColor = rule.underlineColor ?: builtin.underlineColor,
-                    underlineWidth = rule.underlineWidth.takeIf { it != 1f } ?: builtin.underlineWidth,
-                    underlineSvgPath = rule.underlineSvgPath ?: builtin.underlineSvgPath,
-                    bgImage = rule.bgImage ?: builtin.bgImage,
-                    bgImageFit = rule.bgImageFit.takeIf { it != 0 } ?: builtin.bgImageFit,
-                    bgImageScale = rule.bgImageScale.takeIf { it != 1f } ?: builtin.bgImageScale
+                    targetScope = normalizeTargetScope(safeRule.targetScope, builtin.targetScope),
+                    textColor = safeRule.textColor ?: builtin.textColor,
+                    underlineMode = safeRule.underlineMode.takeIf { it != 0 } ?: builtin.underlineMode,
+                    underlineColor = safeRule.underlineColor ?: builtin.underlineColor,
+                    underlineWidth = safeRule.underlineWidth.takeIf { it != 1f } ?: builtin.underlineWidth,
+                    underlineSvgPath = safeRule.underlineSvgPath ?: builtin.underlineSvgPath,
+                    bgImage = safeRule.bgImage ?: builtin.bgImage,
+                    bgImageFit = safeRule.bgImageFit.takeIf { it != 0 } ?: builtin.bgImageFit,
+                    bgImageScale = safeRule.bgImageScale.takeIf { it != 1f } ?: builtin.bgImageScale
                 )
             } else {
-                rule.copy(
-                    group = normalizedGroup,
-                    targetScope = normalizeTargetScope(rule.targetScope)
+                safeRule.copy(
+                    targetScope = normalizeTargetScope(safeRule.targetScope)
                 )
             }
             migrateBgImage(base, internalDir, context)
         }
+    }
+
+    fun sanitizeRule(
+        rule: HighlightRule,
+        fallbackGroup: String = HighlightRuleGroupStore.DEFAULT_GROUP,
+    ): HighlightRule {
+        val name = runCatching { rule.name }.getOrNull().orEmpty()
+        val pattern = runCatching { rule.pattern }.getOrNull().orEmpty()
+        val sampleText = runCatching { rule.sampleText }.getOrNull().orEmpty()
+        val group = runCatching { rule.group }.getOrNull().orEmpty().ifBlank { fallbackGroup }
+        val id = runCatching { rule.id }.getOrNull().orEmpty().ifBlank {
+            buildSanitizedRuleId(name, pattern, sampleText, group)
+        }
+        val underlineSvgPath = runCatching { rule.underlineSvgPath }.getOrNull()
+        val bgImage = runCatching { rule.bgImage }.getOrNull()?.takeIf { it.isNotBlank() }
+        return HighlightRule(
+            id = id,
+            name = name,
+            pattern = pattern,
+            sampleText = sampleText,
+            group = group,
+            targetScope = normalizeTargetScope(runCatching { rule.targetScope }.getOrDefault(HighlightRule.TARGET_ALL)),
+            enabled = runCatching { rule.enabled }.getOrDefault(true),
+            textColor = runCatching { rule.textColor }.getOrNull(),
+            underlineMode = runCatching { rule.underlineMode }.getOrDefault(0).coerceIn(0, 5),
+            underlineColor = runCatching { rule.underlineColor }.getOrNull(),
+            underlineWidth = runCatching { rule.underlineWidth }.getOrDefault(1f).coerceIn(0.1f, 10f),
+            underlineOffset = runCatching { rule.underlineOffset }.getOrDefault(2f).coerceIn(0f, 20f),
+            underlineSvgPath = underlineSvgPath,
+            bgImage = bgImage,
+            bgImageFit = runCatching { rule.bgImageFit }.getOrDefault(0).coerceIn(0, 2),
+            bgImageScale = runCatching { rule.bgImageScale }.getOrDefault(1f).coerceIn(0.1f, 5f),
+        )
+    }
+
+    private fun buildSanitizedRuleId(
+        name: String,
+        pattern: String,
+        sampleText: String,
+        group: String,
+    ): String {
+        val seed = listOf(name, pattern, sampleText, group).joinToString("|")
+        return "${System.currentTimeMillis()}_${seed.hashCode().toUInt().toString(16)}"
     }
 
     private fun normalizeTargetScope(value: Int, fallback: Int = HighlightRule.TARGET_ALL): Int {
@@ -245,6 +345,28 @@ object HighlightRuleStore {
         val migrated = TextLine.copyBgImageToInternal(context, path) ?: return rule
         if (migrated == path) return rule
         return rule.copy(bgImage = migrated)
+    }
+
+    private fun restoreRuleBgImage(
+        context: Context,
+        backupRootPath: String?,
+        bgImage: String?,
+    ): String? {
+        val path = bgImage ?: return null
+        if (path.isBlank() || path.startsWith("assets://")) return path
+        val rootPath = backupRootPath ?: return path
+        val backupFile = File(rootPath, "$backupBgDirName${File.separator}${File(path).name}")
+            .takeIf { it.exists() && it.isFile }
+            ?: return path
+        val dir = File(context.filesDir, "bg_images")
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        val targetFile = File(dir, backupFile.name)
+        if (!targetFile.exists() || targetFile.length() != backupFile.length()) {
+            backupFile.copyTo(targetFile, overwrite = true)
+        }
+        return targetFile.absolutePath
     }
 
     private fun shouldRefreshBuiltin(rule: HighlightRule): Boolean {

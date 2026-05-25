@@ -1166,6 +1166,7 @@ class TextChapterLayout(
         var underlineMode = 0
         var underlineColor = 0xFF63C37D.toInt()
         var underlineWidth = 1f
+        var underlineOffset = 2f
         var underlineSvgPath = ""
         var bgImage = ""
         var bgImageFit = 0
@@ -1177,6 +1178,7 @@ class TextChapterLayout(
                 underlineMode = span.underlineMode
                 underlineColor = span.underlineColor
                 underlineWidth = span.underlineWidth
+                underlineOffset = span.underlineOffset
                 underlineSvgPath = span.underlineSvgPath
                 hasUnderline = true
             }
@@ -1192,6 +1194,7 @@ class TextChapterLayout(
             underlineMode = if (hasUnderline) underlineMode else 0,
             underlineColor = underlineColor,
             underlineWidth = underlineWidth,
+            underlineOffset = underlineOffset,
             underlineSvgPath = if (hasUnderline) underlineSvgPath else "",
             bgImage = if (hasBgImage) bgImage else "",
             bgImageFit = if (hasBgImage) bgImageFit else 0,
@@ -1261,7 +1264,7 @@ class TextChapterLayout(
     ) {
         regex.findAll(spannable).forEach { match ->
             spannable.setSpan(
-                HighlightStyleSpan(mode, color, 0.5f),
+                HighlightStyleSpan(mode, color, 0.5f, 2f),
                 match.range.first,
                 match.range.last + 1,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -1308,13 +1311,14 @@ class TextChapterLayout(
             if (rule.underlineMode != 0 || !rule.bgImage.isNullOrBlank()) {
                 spannable.setSpan(
                     HighlightStyleSpan(
-                        rule.underlineMode,
-                        rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt(),
-                        rule.underlineWidth,
-                        rule.underlineSvgPath.orEmpty(),
-                        rule.bgImage.orEmpty(),
-                        rule.bgImageFit,
-                        rule.bgImageScale
+                        underlineMode = rule.underlineMode,
+                        underlineColor = rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt(),
+                        underlineWidth = rule.underlineWidth,
+                        underlineOffset = rule.underlineOffset,
+                        underlineSvgPath = rule.underlineSvgPath.orEmpty(),
+                        bgImage = rule.bgImage.orEmpty(),
+                        bgImageFit = rule.bgImageFit,
+                        bgImageScale = rule.bgImageScale
                     ),
                     start,
                     end,
@@ -1665,6 +1669,7 @@ class TextChapterLayout(
         val underlineMode = highlightStyle?.underlineMode ?: 0
         val underlineColor = highlightStyle?.underlineColor
         val underlineWidth = highlightStyle?.underlineWidth ?: 1f
+        val underlineOffset = highlightStyle?.underlineOffset ?: 2f
         val underlineSvgPath = highlightStyle?.underlineSvgPath ?: ""
         val bgImage = highlightStyle?.bgImage ?: ""
         val bgImageFit = highlightStyle?.bgImageFit ?: 0
@@ -1698,6 +1703,7 @@ class TextChapterLayout(
                     underlineMode = underlineMode,
                     underlineColor = underlineColor,
                     underlineWidth = underlineWidth,
+                    underlineOffset = underlineOffset,
                     underlineSvgPath = underlineSvgPath,
                     bgImage = bgImage,
                     bgImageFit = bgImageFit,

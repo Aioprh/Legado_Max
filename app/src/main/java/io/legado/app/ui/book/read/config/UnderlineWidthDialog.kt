@@ -114,7 +114,7 @@ class UnderlineWidthDialog : BaseDialogFragment(R.layout.dialog_underline_width)
      */
     private class UnderlinePreviewView(context: android.content.Context) : View(context) {
         private var underlineWidth = 2f   // 下划线粗细(dp)
-        private var underlineOffset = 6f  // 下划线距离(dp)
+        private var underlineOffset = 2f  // 下划线距离(dp)
         private val paint = Paint().apply {
             isAntiAlias = true
             style = Paint.Style.STROKE

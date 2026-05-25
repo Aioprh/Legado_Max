@@ -52,6 +52,7 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
+import io.legado.app.ui.book.read.config.HighlightRuleStore
 
 /**
  * 章节缓存信息
@@ -139,6 +140,7 @@ object Backup {
             "rssSources.json",
             "rssStar.json",
             "replaceRule.json",
+            HighlightRuleStore.backupFileName,
             "readRecord.json",
             "readRecordDetail.json",
             "searchHistory.json",
@@ -268,6 +270,13 @@ object Backup {
         }
         getThemeConfigBackgroundFiles().forEach { (prefKey, bgFile) ->
             val targetDir = File(rootPath, prefKey).createFolderIfNotExist()
+            bgFile.copyTo(File(targetDir, bgFile.name), overwrite = true)
+        }
+    }
+
+    fun stageHighlightRuleBackgroundFiles(rootPath: String) {
+        val targetDir = File(rootPath, HighlightRuleStore.backupBgDirName).createFolderIfNotExist()
+        HighlightRuleStore.getUsedBgImageFiles(appCtx).forEach { bgFile ->
             bgFile.copyTo(File(targetDir, bgFile.name), overwrite = true)
         }
     }
@@ -405,6 +414,10 @@ object Backup {
         if (selectedFiles.contains("replaceRule.json")) {
             writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", backupPath)
         }
+        if (selectedFiles.contains(HighlightRuleStore.backupFileName)) {
+            FileUtils.createFileIfNotExist(backupPath + File.separator + HighlightRuleStore.backupFileName)
+                .writeText(GSON.toJson(HighlightRuleStore.createBackupData(appCtx)))
+        }
         if (selectedFiles.contains("readRecord.json")) {
             writeListToJson(appDb.readRecordDao.all, "readRecord.json", backupPath)
         }
@@ -535,6 +548,9 @@ object Backup {
         // 打包成ZIP文件
         if (selectedFiles.contains("bg")) {
             stageBackgroundImageFiles(backupPath)
+        }
+        if (selectedFiles.contains(HighlightRuleStore.backupFileName)) {
+            stageHighlightRuleBackgroundFiles(backupPath)
         }
         if (selectedFiles.contains(runtimeSourceCacheFileName)) {
             stageRuntimeSourceCaches(backupPath)

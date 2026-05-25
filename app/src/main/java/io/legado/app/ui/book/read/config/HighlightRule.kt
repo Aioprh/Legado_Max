@@ -12,6 +12,7 @@ data class HighlightRule(
     var underlineMode: Int = 0,
     var underlineColor: Int? = null,
     var underlineWidth: Float = 1f,
+    var underlineOffset: Float = 2f,
     var underlineSvgPath: String? = null,
     var bgImage: String? = null,
     var bgImageFit: Int = 0,

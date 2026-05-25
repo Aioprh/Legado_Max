@@ -42,6 +42,7 @@ import io.legado.app.help.config.ThemeConfig
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
 import io.legado.app.model.BookCover
 import io.legado.app.model.localBook.LocalBook
+import io.legado.app.ui.book.read.config.HighlightRuleStore
 import io.legado.app.utils.ACache
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
@@ -262,6 +263,15 @@ object Restore {
         }
 
         // 恢复搜索历史
+        if (HighlightRuleStore.backupFileName in selectedSet) {
+            File(path, HighlightRuleStore.backupFileName).takeIf { it.exists() }?.runCatching {
+                GSON.fromJsonObject<HighlightRuleStore.BackupData>(readText()).getOrNull()?.let {
+                    HighlightRuleStore.restoreBackupData(appCtx, it, path)
+                }
+            }?.onFailure {
+                AppLog.put("鎭㈠楂樹寒瑙勫垯鍑洪敊\n${it.localizedMessage}", it)
+            }
+        }
         if ("searchHistory.json" in selectedSet) {
             appDb.searchKeywordDao.deleteAll()
             fileToListT<SearchKeyword>(path, "searchHistory.json")?.let {
@@ -537,6 +547,13 @@ object Restore {
         }
 
         // 恢复搜索历史
+        File(path, HighlightRuleStore.backupFileName).takeIf { it.exists() }?.runCatching {
+            GSON.fromJsonObject<HighlightRuleStore.BackupData>(readText()).getOrNull()?.let {
+                HighlightRuleStore.restoreBackupData(appCtx, it, path)
+            }
+        }?.onFailure {
+            AppLog.put("鎭㈠楂樹寒瑙勫垯鍑洪敊\n${it.localizedMessage}", it)
+        }
         appDb.searchKeywordDao.deleteAll()
         fileToListT<SearchKeyword>(path, "searchHistory.json")?.let {
             appDb.searchKeywordDao.insert(*it.toTypedArray())
