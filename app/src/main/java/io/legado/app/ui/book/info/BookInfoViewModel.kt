@@ -22,6 +22,7 @@ import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.book.addType
 import io.legado.app.help.book.getExportFileName
 import io.legado.app.help.book.getRemoteUrl
@@ -30,6 +31,7 @@ import io.legado.app.help.book.isNotShelf
 import io.legado.app.help.book.isSameNameAuthor
 import io.legado.app.help.book.isWebFile
 import io.legado.app.help.book.removeType
+import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.book.updateTo
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.webdav.ObjectNotFoundException
@@ -279,6 +281,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                                 context.toastOnUi("下一页目录懒加载已成功执行")
                             }
                             if (partial.isComplete) {
+                                updatePartialBookChapterSummary(book, chapters, oldBook.totalChapterNum)
                                 // 目录全部加载完成
                                 if (inBookshelf) {
                                     book.removeType(BookType.updateError)
@@ -300,8 +303,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                                 chapterListData.postValue(chapters)
                             } else {
                                 // 中间过程：增量保存到数据库，通知目录视图刷新
-                                updatePartialBookChapterSummary(book, chapters)
-                                book.totalChapterNum = chapters.size
+                                updatePartialBookChapterSummary(book, chapters, oldBook.totalChapterNum)
                                 if (!inBookshelf) {
                                     book.addType(BookType.notShelf)
                                 }
@@ -344,13 +346,33 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
-    private fun updatePartialBookChapterSummary(book: Book, chapters: List<BookChapter>) {
+    private fun updatePartialBookChapterSummary(
+        book: Book,
+        chapters: List<BookChapter>,
+        baseTotalChapterNum: Int
+    ) {
+        val replaceRules = ContentProcessor.get(book).getTitleReplaceRules()
+        val replaceBook = book.toReplaceBook()
         val currentChapter = chapters.getOrNull(book.durChapterIndex) ?: chapters.firstOrNull()
         if (book.durChapterTitle.isNullOrBlank()) {
-            book.durChapterTitle = currentChapter?.title
+            book.durChapterTitle = currentChapter?.getDisplayTitle(
+                replaceRules,
+                book.getUseReplaceRule(),
+                replaceBook = replaceBook
+            )
         }
-        book.latestChapterTitle = chapters.lastOrNull { !it.isVolume }?.title
-            ?: chapters.lastOrNull()?.title
+        if (baseTotalChapterNum < chapters.size) {
+            book.lastCheckCount = chapters.size - baseTotalChapterNum
+            book.latestChapterTime = System.currentTimeMillis()
+        }
+        book.lastCheckTime = System.currentTimeMillis()
+        book.totalChapterNum = chapters.size
+        book.latestChapterTitle = chapters.getOrElse(book.simulatedTotalChapterNum() - 1) { chapters.last() }
+            .getDisplayTitle(
+                replaceRules,
+                book.getUseReplaceRule(),
+                replaceBook = replaceBook
+            )
     }
 
 
