@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Size
 import androidx.collection.LruCache
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.gif.GifDrawable
 import io.legado.app.R
 import io.legado.app.constant.AppLog.putDebug
 import io.legado.app.data.entities.Book
@@ -25,7 +27,9 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
 import splitties.init.appCtx
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
 
 object ImageProvider {
@@ -33,6 +37,8 @@ object ImageProvider {
     private val errorBitmap: Bitmap by lazy {
         BitmapFactory.decodeResource(appCtx.resources, R.drawable.image_loading_error)
     }
+
+    private val gifFileCache = ConcurrentHashMap<String, Boolean>()
 
     /**
      * 缓存bitmap LruCache实现
@@ -195,6 +201,54 @@ object ImageProvider {
             return Size(errorBitmap.width, errorBitmap.height)
         }
         return Size(op.outWidth, op.outHeight)
+    }
+
+    suspend fun isGif(
+        book: Book,
+        src: String,
+        bookSource: BookSource?
+    ): Boolean {
+        val file = cacheImage(book, src, bookSource)
+        return isGifFile(file)
+    }
+
+    fun isGifFile(file: File): Boolean {
+        return gifFileCache.getOrPut(file.absolutePath) {
+            if (!file.exists() || file.length() < 6) {
+                return@getOrPut false
+            }
+            kotlin.runCatching {
+                FileInputStream(file).use { input ->
+                    val header = ByteArray(6)
+                    if (input.read(header) != header.size) {
+                        false
+                    } else {
+                        val signature = String(header, Charsets.US_ASCII)
+                        signature == "GIF87a" || signature == "GIF89a"
+                    }
+                }
+            }.getOrDefault(false)
+        }
+    }
+
+    suspend fun getGifDrawable(
+        book: Book,
+        src: String,
+        width: Int,
+        height: Int,
+        bookSource: BookSource?
+    ): GifDrawable? = withContext(IO) {
+        val vFile = cacheImage(book, src, bookSource)
+        if (!isGifFile(vFile)) {
+            return@withContext null
+        }
+        kotlin.runCatching {
+            Glide.with(appCtx)
+                .asGif()
+                .load(vFile)
+                .submit(width.coerceAtLeast(1), height.coerceAtLeast(1))
+                .get()
+        }.getOrNull()
     }
 
     /**

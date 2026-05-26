@@ -32,6 +32,8 @@ import io.legado.app.utils.getCompatColor
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
+import java.util.Collections
+import java.util.IdentityHashMap
 import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
@@ -68,6 +70,8 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
     private val renderRunnable by lazy { Runnable { preRenderPage() } }
     private var lastClickTime = 0L
     private var doubleClick = false
+    private val activeAnimatedColumns = Collections.newSetFromMap(IdentityHashMap<ImageColumn, Boolean>())
+    private val drawingAnimatedColumns = Collections.newSetFromMap(IdentityHashMap<ImageColumn, Boolean>())
 
     //绘制图片的paint
     val imagePaint by lazy {
@@ -102,6 +106,7 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        drawingAnimatedColumns.clear()
         autoPager?.onDraw(canvas)
         if (longScreenshot) {
             canvas.translate(0f, scrollY.toFloat())
@@ -109,6 +114,7 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
         check(!visibleRect.isEmpty) { "visibleRect 为空" }
         canvas.clipRect(visibleRect)
         drawPage(canvas)
+        syncAnimatedColumns()
     }
 
     /**
@@ -211,6 +217,33 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
      */
     fun resetPageOffset() {
         pageOffset = 0
+    }
+
+    internal fun registerAnimatedColumn(column: ImageColumn) {
+        drawingAnimatedColumns.add(column)
+    }
+
+    private fun syncAnimatedColumns() {
+        val iterator = activeAnimatedColumns.iterator()
+        while (iterator.hasNext()) {
+            val column = iterator.next()
+            if (!drawingAnimatedColumns.contains(column)) {
+                column.detachAnimatedView()
+                iterator.remove()
+            }
+        }
+        drawingAnimatedColumns.forEach { column ->
+            if (activeAnimatedColumns.add(column)) {
+                column.attachAnimatedView(this)
+            }
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        activeAnimatedColumns.forEach { it.detachAnimatedView() }
+        activeAnimatedColumns.clear()
+        drawingAnimatedColumns.clear()
+        super.onDetachedFromWindow()
     }
 
     /**
