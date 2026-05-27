@@ -67,6 +67,11 @@ class ReaderInfoBarView @JvmOverloads constructor(
             updateTextSize()
             invalidate()
         }
+    var showBattery: Boolean = true
+        set(value) {
+            field = value
+            invalidate()
+        }
     private var timeText = timeFormat.format(Date())
     private var battery = context.sysBattery.coerceIn(0, 100)
     private var text: String = ""
@@ -123,13 +128,18 @@ class ReaderInfoBarView @JvmOverloads constructor(
             paddingTop + insetTop + ty,
         )
 
-        val batteryRight = (width - paddingRight - insetRight - cutoutInsetRight).toFloat()
-        val batterySize = drawBatteryIcon(canvas, batteryRight, paddingTop + insetTop + ty)
+        val infoRight = (width - paddingRight - insetRight - cutoutInsetRight).toFloat()
+        val timeX = if (showBattery) {
+            val batterySize = drawBatteryIcon(canvas, infoRight, paddingTop + insetTop + ty)
+            infoRight - batterySize - 6f.dpToPx()
+        } else {
+            infoRight
+        }
 
         paint.textAlign = Paint.Align.RIGHT
         canvas.drawTextOutline(
             timeText,
-            batteryRight - batterySize - 6f.dpToPx(),
+            timeX,
             paddingTop + insetTop + ty,
         )
     }
@@ -216,13 +226,18 @@ class ReaderInfoBarView @JvmOverloads constructor(
             top + iconHeight * 0.68f
         )
 
+        val foregroundStrokeWidth = 1f.dpToPx()
+        val outlineStrokeWidth = foregroundStrokeWidth + 1f.dpToPx()
+
         batteryPaint.color = colorOutline
         batteryPaint.style = Paint.Style.STROKE
+        batteryPaint.strokeWidth = outlineStrokeWidth
         canvas.drawRoundRect(batteryRect, corner, corner, batteryPaint)
         canvas.drawRoundRect(batteryCapRect, corner, corner, batteryPaint)
 
         batteryPaint.color = colorText
         batteryPaint.style = Paint.Style.STROKE
+        batteryPaint.strokeWidth = foregroundStrokeWidth
         canvas.drawRoundRect(batteryRect, corner, corner, batteryPaint)
         canvas.drawRoundRect(batteryCapRect, corner, corner, batteryPaint)
 
@@ -235,6 +250,7 @@ class ReaderInfoBarView @JvmOverloads constructor(
                 left + fillPadding + fillWidth,
                 top + iconHeight - fillPadding
             )
+            batteryPaint.color = colorText
             batteryPaint.style = Paint.Style.FILL
             canvas.drawRoundRect(batteryFillRect, corner * 0.7f, corner * 0.7f, batteryPaint)
         }
