@@ -17,7 +17,6 @@ import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.CacheManager
-import io.legado.app.help.JsCacheManager
 import io.legado.app.help.JsExtensions
 import io.legado.app.help.http.BackstageWebView
 import io.legado.app.help.http.CookieStore
@@ -1045,12 +1044,10 @@ class AnalyzeRule(
         
         val jsContext = buildJsExecutionContext(result)
         
-        val jsCacheManager = JsCacheManager(source)
-        
         val bindings = buildScriptBindings { bindings ->
             bindings["java"] = this
             bindings["cookie"] = CookieStore
-            bindings["cache"] = jsCacheManager
+            bindings["cache"] = CacheManager
             bindings["source"] = source
             bindings["book"] = book
             bindings["result"] = result

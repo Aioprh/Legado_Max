@@ -233,7 +233,7 @@ class MangaMenu @JvmOverloads constructor(
         tvPre.setOnClickListener {
             ReadManga.moveToPrevChapter(true)
         }
-youyou
+
         llCatalog.setOnClickListener {
             runMenuOut()
             callBack.openChapterList()
