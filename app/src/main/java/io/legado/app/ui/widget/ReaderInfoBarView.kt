@@ -38,6 +38,7 @@ class ReaderInfoBarView @JvmOverloads constructor(
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val batteryPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textBounds = Rect()
+    private val textFontMetrics = Paint.FontMetrics()
     private val batteryRect = RectF()
     private val batteryFillRect = RectF()
     private val batteryCapRect = RectF()
@@ -214,7 +215,9 @@ class ReaderInfoBarView @JvmOverloads constructor(
         val iconWidth = iconHeight * 28f / 12f
         val capWidth = iconHeight * 0.12f
         val bodyWidth = iconWidth - capWidth
-        val top = textBaseline - iconHeight * 0.78f
+        paint.getFontMetrics(textFontMetrics)
+        val textCenterY = textBaseline + (textFontMetrics.ascent + textFontMetrics.descent) / 2f
+        val top = textCenterY - iconHeight / 2f
         val left = right - iconWidth
         val corner = iconHeight * 0.12f
 
