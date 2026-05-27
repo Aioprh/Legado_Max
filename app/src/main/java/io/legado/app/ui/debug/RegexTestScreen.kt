@@ -392,9 +392,10 @@ fun RegexTestScreen(
                     if (useRegex) {
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             // 忽略大小写
                             Row(verticalAlignment = Alignment.CenterVertically) {

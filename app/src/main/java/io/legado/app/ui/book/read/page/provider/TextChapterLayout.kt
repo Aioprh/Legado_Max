@@ -275,6 +275,7 @@ class TextChapterLayout(
                         var style: String? = null
                         var click: String? = null
                         var imgSize = ImageProvider.getImageSize(book, imgSrc, ReadBook.bookSource)
+                        val isAnimated = ImageProvider.isGif(book, imgSrc, ReadBook.bookSource)
                         val urlMatcher = paramPattern.matcher(imgSrc)
                         if (urlMatcher.find()) {
                             var width: String? = null
@@ -348,7 +349,8 @@ class TextChapterLayout(
                                     contentPaintTextHeight,
                                     style,
                                     imgSize,
-                                    click
+                                    click,
+                                    isAnimated
                                 )
                                 isSetTypedImage = true
                             }
@@ -484,6 +486,7 @@ class TextChapterLayout(
                     var click: String? = null
                     var style: String? = null
                     var imgSize = ImageProvider.getImageSize(book, titleImg, ReadBook.bookSource)
+                    val isAnimated = ImageProvider.isGif(book, titleImg, ReadBook.bookSource)
                     if (urlMatcher.find()) {
                         var width: String? = null
                         val urlOptionStr = titleImg.substring(urlMatcher.end())
@@ -537,7 +540,8 @@ class TextChapterLayout(
                                 contentPaintTextHeight,
                                 style,
                                 imgSize,
-                                click
+                                click,
+                                isAnimated
                             )
                             null
                         }
@@ -630,6 +634,7 @@ class TextChapterLayout(
                         var style: String? = null
                         var click: String? = null
                         var imgSize = ImageProvider.getImageSize(book, imgSrc, ReadBook.bookSource)
+                        val isAnimated = ImageProvider.isGif(book, imgSrc, ReadBook.bookSource)
                         val urlMatcher = paramPattern.matcher(imgSrc)
                         if (urlMatcher.find()) {
                             var width: String? = null
@@ -703,7 +708,8 @@ class TextChapterLayout(
                                     contentPaintTextHeight,
                                     style,
                                     imgSize,
-                                    click
+                                    click,
+                                    isAnimated
                                 )
                                 isSetTypedImage = true
                             }
@@ -768,7 +774,8 @@ class TextChapterLayout(
         textHeight: Float,
         imageStyle: String?,
         size: Size,
-        click: String?
+        click: String?,
+        isAnimated: Boolean = false
     ) {
         if (size.width > 0 && size.height > 0) {
             prepareNextPageIfNeed(durY)
@@ -835,7 +842,13 @@ class TextChapterLayout(
                 Pair(0f, width)
             }
             textLine.addColumn(
-                ImageColumn(start = absStartX + start.toFloat(), end = absStartX + end.toFloat(), src = src, click = click)
+                ImageColumn(
+                    start = absStartX + start.toFloat(),
+                    end = absStartX + end.toFloat(),
+                    src = src,
+                    click = click,
+                    isAnimated = isAnimated
+                )
             )
             calcTextLinePosition(textPages, textLine, stringBuilder.length)
             stringBuilder.append(" ") // 确保翻页时索引计算正确
@@ -940,6 +953,7 @@ class TextChapterLayout(
                         val width = urlOption["width"]
                         val click = urlOption["click"]
                         var imgSize = ImageProvider.getImageSize(book, source, ReadBook.bookSource)
+                        val isAnimated = ImageProvider.isGif(book, source, ReadBook.bookSource)
                         width?.let {
                             if (width.endsWith("%")) {
                                 width.dropLast(1).toIntOrNull()?.let { percentage ->
@@ -969,7 +983,8 @@ class TextChapterLayout(
                                         start = absStartX + charX,
                                         end = absStartX + charRight,
                                         src = source,
-                                        click = click
+                                        click = click,
+                                        isAnimated = isAnimated
                                     )
                                 )
                             }
@@ -980,19 +995,22 @@ class TextChapterLayout(
                                     contentPaintTextHeight,
                                     iStyle,
                                     imgSize,
-                                    click
+                                    click,
+                                    isAnimated
                                 )
                             }
                         }
                     } else {
                         val imgSize = ImageProvider.getImageSize(book, source, ReadBook.bookSource)
+                        val isAnimated = ImageProvider.isGif(book, source, ReadBook.bookSource)
                         setTypeImage(
                             book,
                             source,
                             contentPaintTextHeight,
                             imageStyle,
                             imgSize,
-                            null
+                            null,
+                            isAnimated
                         )
                     }
                     needAddText = false
@@ -1679,11 +1697,13 @@ class TextChapterLayout(
                 val src = srcList.removeFirst()
                 val click = clickList?.removeFirst()
                 ImageProvider.cacheImage(book, src, ReadBook.bookSource)
+                val isAnimated = ImageProvider.isGif(book, src, ReadBook.bookSource)
                 ImageColumn(
                     start = absStartX + xStart,
                     end = absStartX + xEnd,
                     src = src,
-                    click = click
+                    click = click,
+                    isAnimated = isAnimated
                 )
             }
 //            isLineEnd && char == ChapterProvider.reviewChar -> {

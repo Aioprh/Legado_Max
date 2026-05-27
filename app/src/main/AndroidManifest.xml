@@ -391,6 +391,14 @@
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
         <activity
+            android:name=".ui.debug.CurlTestActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
+        <activity
+            android:name=".ui.debug.PingTestActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
+        <activity
             android:name=".ui.debug.RegexTestActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />

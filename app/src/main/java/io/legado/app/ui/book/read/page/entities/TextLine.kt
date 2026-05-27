@@ -20,6 +20,7 @@ import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.page.ContentTextView
 import io.legado.app.ui.book.read.page.entities.TextPage.Companion.emptyTextPage
 import io.legado.app.ui.book.read.page.entities.column.BaseColumn
+import io.legado.app.ui.book.read.page.entities.column.ImageColumn
 import io.legado.app.ui.book.read.page.entities.column.TextBaseColumn
 import io.legado.app.ui.book.read.page.entities.column.TextColumn
 import io.legado.app.ui.book.read.page.provider.ChapterProvider
@@ -64,6 +65,7 @@ data class TextLine(
     val height: Float inline get() = lineBottom - lineTop
     val canvasRecorder = CanvasRecorderFactory.create()
     var searchResultColumnCount = 0
+    var hasAnimatedColumn = false
     var isReadAloud: Boolean = false
         set(value) {
             if (field != value) {
@@ -84,6 +86,9 @@ data class TextLine(
         if (column !is TextColumn) {
             onlyTextColumn = false
         }
+        if (column is ImageColumn && column.isAnimated) {
+            hasAnimatedColumn = true
+        }
         column.textLine = this
         textColumns.add(column)
     }
@@ -94,6 +99,9 @@ data class TextLine(
     fun addColumns(columns: Collection<BaseColumn>) {
         onlyTextColumn = false
         columns.forEach { column ->
+            if (column is ImageColumn && column.isAnimated) {
+                hasAnimatedColumn = true
+            }
             column.textLine = this
         }
         textColumns.addAll(columns)
@@ -190,7 +198,7 @@ data class TextLine(
      * 绘制整行内容，包含优化渲染和普通渲染两种模式
      */
     fun draw(view: ContentTextView, canvas: Canvas) {
-        if (AppConfig.optimizeRender) {
+        if (AppConfig.optimizeRender && !hasAnimatedColumn) {
             canvasRecorder.recordIfNeededThenDraw(canvas, view.width, height.toInt()) {
                 drawTextLine(view, this)
             }

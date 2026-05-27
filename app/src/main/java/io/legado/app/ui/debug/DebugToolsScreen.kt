@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Http
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -52,6 +54,18 @@ fun DebugToolsScreen(
             descRes = R.string.debug_http_request_desc,
             icon = Icons.Default.Http,
             activityClass = HttpDebugActivity::class.java
+        ),
+        DebugTool(
+            titleRes = R.string.debug_curl_test,
+            descRes = R.string.debug_curl_test_desc,
+            icon = Icons.Default.Terminal,
+            activityClass = CurlTestActivity::class.java
+        ),
+        DebugTool(
+            titleRes = R.string.debug_ping_test,
+            descRes = R.string.debug_ping_test_desc,
+            icon = Icons.Default.Wifi,
+            activityClass = PingTestActivity::class.java
         ),
         DebugTool(
             titleRes = R.string.debug_regex_test,

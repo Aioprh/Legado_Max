@@ -1351,6 +1351,13 @@
     <string name="disable_manga_click_scroll">禁用点击翻页</string>
     <string name="enable_auto_page_scroll">开启自动翻页</string>
     <string name="manga_auto_page_speed">翻页速度 %s</string>
+    <string name="manga_menu_auto">自动</string>
+    <string name="manga_read_mode">阅读模式</string>
+    <string name="manga_mode_scroll">卷轴模式</string>
+    <string name="manga_mode_normal">普通模式</string>
+    <string name="manga_mode_japanese">日漫模式</string>
+    <string name="manga_disable_page_anim">禁用翻页动画</string>
+    <string name="manga_hide_footer_info">隐藏右下角状态信息</string>
     <string name="enable_auto_scroll">开启滚动</string>
     <string name="manga_footer_config">页脚配置</string>
     <string name="setting_manga_auto_page_speed">设置自动翻页速度</string>
@@ -1434,6 +1441,62 @@
     <string name="input_is_empty">输入不能为空</string>
     <string name="debug_request_src">请求体源码</string>
     <string name="debug_response_src">响应体源码</string>
+    
+    <!-- CURL Test -->
+    <string name="debug_curl_test">CURL测试</string>
+    <string name="debug_curl_test_desc">解析执行CURL命令</string>
+    <string name="debug_curl_input">CURL命令</string>
+    <string name="debug_curl_hint">粘贴curl命令，支持浏览器复制的完整命令</string>
+    <string name="debug_curl_empty">CURL命令不能为空</string>
+    <string name="debug_curl_parse_error">解析失败，未找到URL</string>
+    <string name="debug_curl_parsed">解析结果</string>
+    <string name="debug_curl_warnings">警告</string>
+    <string name="debug_curl_method">请求方法</string>
+    <string name="debug_curl_url">URL</string>
+    <string name="debug_curl_preview">预览</string>
+    <string name="debug_execute">执行</string>
+    <string name="debug_status_code">状态码</string>
+    <string name="debug_message">消息</string>
+    <string name="debug_duration">耗时</string>
+    <string name="debug_error">错误</string>
+    
+    <!-- Ping Test -->
+    <string name="debug_ping_test">Ping测试</string>
+    <string name="debug_ping_test_desc">测试域名或IP连通性</string>
+    <string name="debug_ping_host">目标主机</string>
+    <string name="debug_ping_host_hint">域名或IP地址</string>
+    <string name="debug_ping_host_empty">请输入域名或IP地址</string>
+    <string name="debug_ping_count">次数</string>
+    <string name="debug_ping_count_invalid">次数需在1-100之间</string>
+    <string name="debug_ping_timeout">超时(ms)</string>
+    <string name="debug_ping_start">开始测试</string>
+    <string name="debug_ping_stop">停止</string>
+    <string name="debug_ping_running">测试中...</string>
+    <string name="debug_ping_resolved">解析IP</string>
+    <string name="debug_ping_statistics">统计信息</string>
+    <string name="debug_ping_sent">发送</string>
+    <string name="debug_ping_received">接收</string>
+    <string name="debug_ping_lost">丢失</string>
+    <string name="debug_ping_loss_rate">丢包率</string>
+    <string name="debug_ping_avg_time">平均延迟</string>
+    <string name="debug_ping_min_time">最小延迟</string>
+    <string name="debug_ping_max_time">最大延迟</string>
+    <string name="debug_ping_output">输出日志</string>
+    <string name="debug_ping_reply_from">来自</string>
+    <string name="debug_ping_timeout_msg">请求超时</string>
+    <string name="debug_ping_packets">数据包</string>
+    <string name="debug_ping_resolve_failed">域名解析失败</string>
+    <string name="debug_clipboard_empty">剪贴板为空</string>
+    <string name="debug_response_info">响应信息</string>
+    <string name="debug_size">大小</string>
+    <string name="debug_copy">复制</string>
+    <string name="debug_format_json">格式化JSON</string>
+    <string name="debug_view_source">查看源码</string>
+    <string name="debug_ping_results">测试结果</string>
+    <string name="debug_ping_show_all">显示全部</string>
+    <string name="debug_ping_hide">收起</string>
+    <string name="debug_ping_success">成功</string>
+    <string name="debug_ping_failed">失败</string>
     
     <!-- Regex Test Dialog -->
     <string name="test_input">测试输入</string>

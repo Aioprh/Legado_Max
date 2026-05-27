@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.View
@@ -17,6 +18,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowInsetsCompat
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
+import io.legado.app.utils.sysBattery
 import java.text.SimpleDateFormat
 import java.util.Date
 import kotlin.math.min
@@ -34,7 +36,11 @@ class ReaderInfoBarView @JvmOverloads constructor(
     }
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val batteryPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textBounds = Rect()
+    private val batteryRect = RectF()
+    private val batteryFillRect = RectF()
+    private val batteryCapRect = RectF()
     private val timeFormat = SimpleDateFormat.getTimeInstance(SimpleDateFormat.SHORT)
     private val timeReceiver = TimeReceiver()
     private var insetLeft: Int = 0
@@ -62,6 +68,7 @@ class ReaderInfoBarView @JvmOverloads constructor(
             invalidate()
         }
     private var timeText = timeFormat.format(Date())
+    private var battery = context.sysBattery.coerceIn(0, 100)
     private var text: String = ""
     private val innerHeight
         get() = height - paddingTop - paddingBottom - insetTop
@@ -73,6 +80,8 @@ class ReaderInfoBarView @JvmOverloads constructor(
         val insetEnd = 10.dpToPx()
         paint.strokeWidth = 2f.dpToPx()
         paint.setShadowLayer(2f, 1f, 1f, Color.GRAY)
+        batteryPaint.strokeWidth = 1f.dpToPx()
+        batteryPaint.setShadowLayer(2f, 1f, 1f, Color.GRAY)
         insetLeft = insetStart
         insetRight = insetEnd
         insetTop = minOf(insetLeft, insetRight)
@@ -114,10 +123,13 @@ class ReaderInfoBarView @JvmOverloads constructor(
             paddingTop + insetTop + ty,
         )
 
+        val batteryRight = (width - paddingRight - insetRight - cutoutInsetRight).toFloat()
+        val batterySize = drawBatteryIcon(canvas, batteryRight, paddingTop + insetTop + ty)
+
         paint.textAlign = Paint.Align.RIGHT
         canvas.drawTextOutline(
             timeText,
-            (width - paddingRight - insetRight - cutoutInsetRight).toFloat(),
+            batteryRight - batterySize - 6f.dpToPx(),
             paddingTop + insetTop + ty,
         )
     }
@@ -132,7 +144,10 @@ class ReaderInfoBarView @JvmOverloads constructor(
         ContextCompat.registerReceiver(
             context,
             timeReceiver,
-            IntentFilter(Intent.ACTION_TIME_TICK),
+            IntentFilter().apply {
+                addAction(Intent.ACTION_TIME_TICK)
+                addAction(Intent.ACTION_BATTERY_CHANGED)
+            },
             ContextCompat.RECEIVER_EXPORTED,
         )
     }
@@ -184,10 +199,60 @@ class ReaderInfoBarView @JvmOverloads constructor(
         drawText(text, x, y, paint)
     }
 
+    private fun drawBatteryIcon(canvas: Canvas, right: Float, textBaseline: Float): Float {
+        val iconHeight = min(innerHeight * 0.62f, 12f.dpToPx()).coerceAtLeast(7f.dpToPx())
+        val iconWidth = iconHeight * 28f / 12f
+        val capWidth = iconHeight * 0.12f
+        val bodyWidth = iconWidth - capWidth
+        val top = textBaseline - iconHeight * 0.78f
+        val left = right - iconWidth
+        val corner = iconHeight * 0.12f
+
+        batteryRect.set(left, top, left + bodyWidth, top + iconHeight)
+        batteryCapRect.set(
+            left + bodyWidth,
+            top + iconHeight * 0.32f,
+            right,
+            top + iconHeight * 0.68f
+        )
+
+        batteryPaint.color = colorOutline
+        batteryPaint.style = Paint.Style.STROKE
+        canvas.drawRoundRect(batteryRect, corner, corner, batteryPaint)
+        canvas.drawRoundRect(batteryCapRect, corner, corner, batteryPaint)
+
+        batteryPaint.color = colorText
+        batteryPaint.style = Paint.Style.STROKE
+        canvas.drawRoundRect(batteryRect, corner, corner, batteryPaint)
+        canvas.drawRoundRect(batteryCapRect, corner, corner, batteryPaint)
+
+        val fillPadding = iconHeight * 0.18f
+        val fillWidth = (bodyWidth - fillPadding * 2f) * battery / 100f
+        if (fillWidth > 0f) {
+            batteryFillRect.set(
+                left + fillPadding,
+                top + fillPadding,
+                left + fillPadding + fillWidth,
+                top + iconHeight - fillPadding
+            )
+            batteryPaint.style = Paint.Style.FILL
+            canvas.drawRoundRect(batteryFillRect, corner * 0.7f, corner * 0.7f, batteryPaint)
+        }
+
+        return iconWidth
+    }
+
     private inner class TimeReceiver : BroadcastReceiver() {
 
         override fun onReceive(context: Context?, intent: Intent?) {
-            timeText = timeFormat.format(Date())
+            when (intent?.action) {
+                Intent.ACTION_BATTERY_CHANGED -> {
+                    battery = intent.getIntExtra("level", battery).coerceIn(0, 100)
+                }
+                else -> {
+                    timeText = timeFormat.format(Date())
+                }
+            }
             invalidate()
         }
     }

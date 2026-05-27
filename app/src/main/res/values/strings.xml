@@ -1384,6 +1384,13 @@
     <string name="disable_manga_click_scroll">禁用点击翻页</string>
     <string name="enable_auto_page_scroll">开启自动翻页</string>
     <string name="manga_auto_page_speed">翻页速度 %s</string>
+    <string name="manga_menu_auto">自动</string>
+    <string name="manga_read_mode">阅读模式</string>
+    <string name="manga_mode_scroll">卷轴模式</string>
+    <string name="manga_mode_normal">普通模式</string>
+    <string name="manga_mode_japanese">日漫模式</string>
+    <string name="manga_disable_page_anim">禁用翻页动画</string>
+    <string name="manga_hide_footer_info">隐藏右下角状态信息</string>
     <string name="enable_auto_scroll">开启滚动</string>
     <string name="manga_footer_config">页脚配置</string>
     <string name="setting_manga_auto_page_speed">设置自动翻页速度</string>
@@ -1586,6 +1593,62 @@
     <string name="debug_ua_safari_ios">Safari iOS</string>
     <string name="debug_ua_firefox">Firefox</string>
     <string name="debug_ua_custom">自定义</string>
+    
+    <!-- CURL Test -->
+    <string name="debug_curl_test">CURL Test</string>
+    <string name="debug_curl_test_desc">Parse and execute CURL commands</string>
+    <string name="debug_curl_input">CURL Command</string>
+    <string name="debug_curl_hint">Paste curl command, supports full commands from browser</string>
+    <string name="debug_curl_empty">CURL command cannot be empty</string>
+    <string name="debug_curl_parse_error">Parse failed, URL not found</string>
+    <string name="debug_curl_parsed">Parsed Result</string>
+    <string name="debug_curl_warnings">Warnings</string>
+    <string name="debug_curl_method">Method</string>
+    <string name="debug_curl_url">URL</string>
+    <string name="debug_curl_preview">Preview</string>
+    <string name="debug_execute">Execute</string>
+    <string name="debug_status_code">Status Code</string>
+    <string name="debug_message">Message</string>
+    <string name="debug_duration">Duration</string>
+    <string name="debug_error">Error</string>
+    
+    <!-- Ping Test -->
+    <string name="debug_ping_test">Ping Test</string>
+    <string name="debug_ping_test_desc">Test domain or IP connectivity</string>
+    <string name="debug_ping_host">Target Host</string>
+    <string name="debug_ping_host_hint">Domain or IP address</string>
+    <string name="debug_ping_host_empty">Please enter domain or IP address</string>
+    <string name="debug_ping_count">Count</string>
+    <string name="debug_ping_count_invalid">Count must be between 1-100</string>
+    <string name="debug_ping_timeout">Timeout(ms)</string>
+    <string name="debug_ping_start">Start Test</string>
+    <string name="debug_ping_stop">Stop</string>
+    <string name="debug_ping_running">Testing...</string>
+    <string name="debug_ping_resolved">Resolved IP</string>
+    <string name="debug_ping_statistics">Statistics</string>
+    <string name="debug_ping_sent">Sent</string>
+    <string name="debug_ping_received">Received</string>
+    <string name="debug_ping_lost">Lost</string>
+    <string name="debug_ping_loss_rate">Loss Rate</string>
+    <string name="debug_ping_avg_time">Avg Latency</string>
+    <string name="debug_ping_min_time">Min Latency</string>
+    <string name="debug_ping_max_time">Max Latency</string>
+    <string name="debug_ping_output">Output Log</string>
+    <string name="debug_ping_reply_from">Reply from</string>
+    <string name="debug_ping_timeout_msg">Request timeout</string>
+    <string name="debug_ping_packets">Packets</string>
+    <string name="debug_ping_resolve_failed">Domain resolution failed</string>
+    <string name="debug_clipboard_empty">Clipboard is empty</string>
+    <string name="debug_response_info">Response Info</string>
+    <string name="debug_size">Size</string>
+    <string name="debug_copy">Copy</string>
+    <string name="debug_format_json">Format JSON</string>
+    <string name="debug_view_source">View Source</string>
+    <string name="debug_ping_results">Test Results</string>
+    <string name="debug_ping_show_all">Show All</string>
+    <string name="debug_ping_hide">Hide</string>
+    <string name="debug_ping_success">Success</string>
+    <string name="debug_ping_failed">Failed</string>
     
     <!-- Regex Test Dialog -->
     <string name="test_input">测试输入</string>
