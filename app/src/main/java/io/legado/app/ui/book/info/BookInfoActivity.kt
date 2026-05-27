@@ -10,6 +10,7 @@ import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.MotionEvent
+import android.view.ViewGroup
 import io.legado.app.ui.widget.text.ScrollTextView
 import android.view.textclassifier.TextClassifier
 import android.webkit.WebResourceRequest
@@ -588,8 +589,9 @@ class BookInfoActivity :
                 initIntroView = false
                 this.pooledWebView = pooledWebView
                 binding.tvIntroContainer.removeAllViews()
-                binding.tvIntroContainer.addView(webView)
             }
+            (webView.parent as? ViewGroup)?.removeView(webView)
+            binding.tvIntroContainer.addView(webView)
             val bookUrl = viewModel.getBook()?.bookUrl
                 ?.takeIf { it.startsWith("http", true) }
                 ?.substringBefore(",")

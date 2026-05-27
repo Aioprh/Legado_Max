@@ -295,9 +295,8 @@ object BookChapterList {
             isFromBookInfo = isFromBookInfo
         )
         chapterList.addAll(chapterData.first)
-        // 第一页解析完成后立即排序编号并发射，让调用方可以尽早展示目录
+        // 第一页解析完成后先排序编号；只有多页目录才发射中间结果
         val sortedFirstPage = sortAndIndex(chapterList, reverse, book)
-        emit(PartialChapterList(sortedFirstPage, isComplete = false))
 
         when (chapterData.second.size) {
             0 -> {
@@ -307,7 +306,9 @@ object BookChapterList {
             }
             1 -> {
                 // 串行多页目录，每加载完一页就发射一次
+                emit(PartialChapterList(sortedFirstPage, isComplete = false))
                 var nextUrl = chapterData.second[0]
+                var emittedComplete = false
                 while (nextUrl.isNotEmpty() && !nextUrlList.contains(nextUrl)) {
                     delayBeforeNextTocPage(bookSource)
                     nextUrlList.add(nextUrl)
@@ -332,17 +333,26 @@ object BookChapterList {
                             // 最后一页，执行格式化JS等最终处理并发射完成结果
                             val finalList = finalizeChapterList(sorted, tocRule, book, bookSource)
                             emit(PartialChapterList(finalList, isComplete = true))
+                            emittedComplete = true
                         } else {
                             // 中间页，发射中间结果供调用方增量展示
                             emit(PartialChapterList(sorted, isComplete = false))
                         }
                     } ?: run {
-                        nextUrl = ""
+                        throw NoStackTraceException(
+                            appCtx.getString(R.string.error_get_web_content, nextUrl)
+                        )
                     }
                 }
                 Debug.log(bookSource.bookSourceUrl, "◇目录总页数:${nextUrlList.size}")
+                if (!emittedComplete) {
+                    val sorted = sortAndIndex(chapterList, reverse, book)
+                    val finalList = finalizeChapterList(sorted, tocRule, book, bookSource)
+                    emit(PartialChapterList(finalList, isComplete = true))
+                }
             }
             else -> {
+                emit(PartialChapterList(sortedFirstPage, isComplete = false))
                 // 并发多页目录，无法逐页发射，全部加载完后发射最终结果
                 Debug.log(
                     bookSource.bookSourceUrl,

@@ -32,6 +32,7 @@ import io.legado.app.help.book.isSameNameAuthor
 import io.legado.app.help.book.isWebFile
 import io.legado.app.help.book.removeType
 import io.legado.app.help.book.simulatedTotalChapterNum
+import io.legado.app.help.book.sync
 import io.legado.app.help.book.updateTo
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.webdav.ObjectNotFoundException
@@ -284,19 +285,12 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                                 updatePartialBookChapterSummary(book, chapters, oldBook.totalChapterNum)
                                 // 目录全部加载完成
                                 if (inBookshelf) {
-                                    book.removeType(BookType.updateError)
-                                    if (oldBook.bookUrl == book.bookUrl) {
-                                        appDb.bookDao.update(book)
-                                    } else {
-                                        appDb.bookDao.replace(oldBook, book)
-                                        BookHelp.updateCacheFolder(oldBook, book)
-                                    }
+                                    saveShelfBook(oldBook, book, removeUpdateError = true)
                                 } else {
                                     book.addType(BookType.notShelf)
                                     book.save()
                                 }
-                                appDb.bookChapterDao.delByBook(oldBook.bookUrl)
-                                appDb.bookChapterDao.insert(*chapters.toTypedArray())
+                                replaceBookChapters(oldBook, chapters)
                                 if (inBookshelf) {
                                     ReadBook.onChapterListUpdated(book)
                                 }
@@ -304,12 +298,13 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                             } else {
                                 // 中间过程：增量保存到数据库，通知目录视图刷新
                                 updatePartialBookChapterSummary(book, chapters, oldBook.totalChapterNum)
-                                if (!inBookshelf) {
+                                if (inBookshelf) {
+                                    saveShelfBook(oldBook, book)
+                                } else {
                                     book.addType(BookType.notShelf)
+                                    book.save()
                                 }
-                                book.save()
-                                appDb.bookChapterDao.delByBook(oldBook.bookUrl)
-                                appDb.bookChapterDao.insert(*chapters.toTypedArray())
+                                savePartialBookChapters(chapters)
                                 chapterListData.postValue(chapters)
                                 ReadBook.onChapterListUpdated(book, loadContent = false, isIncremental = true)
                             }
@@ -327,13 +322,8 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                 WebBook.getChapterList(scope, bookSource, book, runPreUpdateJs, isFromBookInfo = isFromBookInfo)
                     .onSuccess(IO) {
                         if (inBookshelf) {
-                            book.removeType(BookType.updateError)
-                            appDb.bookDao.replace(oldBook, book)
-                            if (oldBook.bookUrl != book.bookUrl) {
-                                BookHelp.updateCacheFolder(oldBook, book)
-                            }
-                            appDb.bookChapterDao.delByBook(oldBook.bookUrl)
-                            appDb.bookChapterDao.insert(*it.toTypedArray())
+                            saveShelfBook(oldBook, book, removeUpdateError = true)
+                            replaceBookChapters(oldBook, it)
                             ReadBook.onChapterListUpdated(book)
                         }
                         chapterListData.postValue(it)
@@ -373,6 +363,32 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                 book.getUseReplaceRule(),
                 replaceBook = replaceBook
             )
+    }
+
+    private fun saveShelfBook(
+        oldBook: Book,
+        book: Book,
+        removeUpdateError: Boolean = false
+    ) {
+        book.sync(oldBook)
+        if (removeUpdateError) {
+            book.removeType(BookType.updateError)
+        }
+        if (oldBook.bookUrl == book.bookUrl) {
+            appDb.bookDao.update(book)
+        } else {
+            appDb.bookDao.replace(oldBook, book)
+            BookHelp.updateCacheFolder(oldBook, book)
+        }
+    }
+
+    private fun replaceBookChapters(oldBook: Book, chapters: List<BookChapter>) {
+        appDb.bookChapterDao.delByBook(oldBook.bookUrl)
+        appDb.bookChapterDao.insert(*chapters.toTypedArray())
+    }
+
+    private fun savePartialBookChapters(chapters: List<BookChapter>) {
+        appDb.bookChapterDao.insert(*chapters.toTypedArray())
     }
 
 
