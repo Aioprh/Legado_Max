@@ -233,6 +233,22 @@ class MangaMenu @JvmOverloads constructor(
         tvPre.setOnClickListener {
             ReadManga.moveToPrevChapter(true)
         }
+youyou
+        llCatalog.setOnClickListener {
+            runMenuOut()
+            callBack.openChapterList()
+        }
+        llAutoPage.setOnClickListener {
+            runMenuOut()
+            callBack.toggleAutoPage()
+        }
+        llBrightness.setOnClickListener {
+            runMenuOut()
+            callBack.showBrightness()
+        }
+        llSetting.setOnClickListener {
+            callBack.showMangaSetting(it)
+        }
 
         seekReadPage.setOnSeekBarChangeListener(object : SeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
@@ -303,6 +319,10 @@ class MangaMenu @JvmOverloads constructor(
         fun upSystemUiVisibility(menuIsVisible: Boolean)
         fun skipToPage(index: Int)
         fun disableSource()
+        fun openChapterList()
+        fun toggleAutoPage()
+        fun showBrightness()
+        fun showMangaSetting(anchor: android.view.View)
     }
 
 }

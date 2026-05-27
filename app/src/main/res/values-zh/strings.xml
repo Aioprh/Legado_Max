@@ -1351,6 +1351,13 @@
     <string name="disable_manga_click_scroll">禁用点击翻页</string>
     <string name="enable_auto_page_scroll">开启自动翻页</string>
     <string name="manga_auto_page_speed">翻页速度 %s</string>
+    <string name="manga_menu_auto">自动</string>
+    <string name="manga_read_mode">阅读模式</string>
+    <string name="manga_mode_scroll">卷轴模式</string>
+    <string name="manga_mode_normal">普通模式</string>
+    <string name="manga_mode_japanese">日漫模式</string>
+    <string name="manga_disable_page_anim">禁用翻页动画</string>
+    <string name="manga_hide_footer_info">隐藏右下角状态信息</string>
     <string name="enable_auto_scroll">开启滚动</string>
     <string name="manga_footer_config">页脚配置</string>
     <string name="setting_manga_auto_page_speed">设置自动翻页速度</string>

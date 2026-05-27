@@ -128,6 +128,193 @@
                 android:textSize="14sp"
                 tools:ignore="TouchTargetSizeCheck" />
         </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:importantForAccessibility="no"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:importantForAccessibility="no" />
+
+            <LinearLayout
+                android:id="@+id/ll_catalog"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/chapter_list"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:paddingBottom="7dp"
+                tools:ignore="VisualLintBounds">
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/iv_catalog"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="@string/chapter_list"
+                    android:maxHeight="20dp"
+                    android:src="@drawable/ic_toc"
+                    app:tint="@color/primaryText"
+                    tools:ignore="NestedWeights" />
+
+                <TextView
+                    android:id="@+id/tv_catalog"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="middle"
+                    android:singleLine="true"
+                    android:text="@string/chapter_list"
+                    android:textColor="@color/primaryText"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="2"
+                android:importantForAccessibility="no" />
+
+            <LinearLayout
+                android:id="@+id/ll_auto_page"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/manga_menu_auto"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:paddingBottom="7dp"
+                tools:ignore="VisualLintBounds">
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/iv_auto_page"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="@string/manga_menu_auto"
+                    android:maxHeight="20dp"
+                    android:src="@drawable/ic_auto_page"
+                    app:tint="@color/primaryText"
+                    tools:ignore="NestedWeights" />
+
+                <TextView
+                    android:id="@+id/tv_auto_page"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="middle"
+                    android:singleLine="true"
+                    android:text="@string/manga_menu_auto"
+                    android:textColor="@color/primaryText"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="2"
+                android:importantForAccessibility="no" />
+
+            <LinearLayout
+                android:id="@+id/ll_brightness"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/brightness"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:paddingBottom="7dp"
+                tools:ignore="VisualLintBounds">
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/iv_brightness"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="@string/brightness"
+                    android:maxHeight="20dp"
+                    android:src="@drawable/ic_brightness"
+                    app:tint="@color/primaryText"
+                    tools:ignore="NestedWeights" />
+
+                <TextView
+                    android:id="@+id/tv_brightness"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="middle"
+                    android:singleLine="true"
+                    android:text="@string/brightness"
+                    android:textColor="@color/primaryText"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="2"
+                android:importantForAccessibility="no" />
+
+            <LinearLayout
+                android:id="@+id/ll_setting"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/setting"
+                android:focusable="true"
+                android:orientation="vertical"
+                android:paddingBottom="7dp"
+                tools:ignore="VisualLintBounds">
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/iv_setting"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="@string/setting"
+                    android:maxHeight="20dp"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/primaryText"
+                    tools:ignore="NestedWeights" />
+
+                <TextView
+                    android:id="@+id/tv_setting"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="middle"
+                    android:singleLine="true"
+                    android:text="@string/setting"
+                    android:textColor="@color/primaryText"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:importantForAccessibility="no" />
+
+        </LinearLayout>
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

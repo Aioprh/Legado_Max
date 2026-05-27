@@ -57,6 +57,11 @@
         <item>chapter</item>
     </string-array>
 
+    <string-array name="manga_read_mode_value">
+        <item>scroll</item>
+        <item>normal</item>
+    </string-array>
+
     <string-array name="language_value">
         <item>auto</item>
         <item>zh</item>
