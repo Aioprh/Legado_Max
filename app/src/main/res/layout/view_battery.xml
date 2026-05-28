@@ -67,6 +67,8 @@
             android:layout_marginStart="4.2dp"
             android:visibility="visible"
             app:cardBackgroundColor="?attr/colorControlNormal"
+            app:cardElevation="0dp"
+            app:cardMaxElevation="0dp"
             app:cardCornerRadius="1dp"
             app:cardUseCompatPadding="false"
             app:layout_constraintBottom_toBottomOf="@id/battery_icon"
