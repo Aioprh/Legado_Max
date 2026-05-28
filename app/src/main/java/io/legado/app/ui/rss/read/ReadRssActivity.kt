@@ -128,6 +128,7 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
     private var interfaceInjected: String? = null
     private var needClearHistory = true
     private var erudaEnabled = false
+    private var mutePlayToastShown = false
     private val selectImageDir = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             ACache.get().put(imagePathKey, uri.toString())
@@ -167,7 +168,15 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
         imm.showSoftInput(binding.etFindInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
     }
 
-    private val clearHighlightJs = "(function(){var e=document.querySelectorAll('.legado-hl');e.forEach(function(n){n.outerHTML=n.innerHTML});return 0})()"
+    private val clearHighlightJs = """
+        (function(){
+            document.querySelectorAll('.legado-hl').forEach(function(e){
+                e.replaceWith(document.createTextNode(e.textContent || ''));
+            });
+            if(document.body) document.body.normalize();
+            return 0;
+        })()
+    """.trimIndent()
 
     private fun performSearch(query: String) {
         if (query.isEmpty()) return
@@ -179,13 +188,18 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
             .replace("$", "\\$")
         val js = """
             (function(){
-                document.querySelectorAll('.legado-hl').forEach(function(e){e.outerHTML=e.innerHTML});
+                document.querySelectorAll('.legado-hl').forEach(function(e){
+                    e.replaceWith(document.createTextNode(e.textContent || ''));
+                });
+                if(document.body) document.body.normalize();
                 var q='$escaped', count=0;
                 var re=new RegExp(q.replace(/[.*+?^${'$'}{}()|[\]\\]/g,'\\$&'),'gi');
                 function walk(n){
                     if(n.nodeType===3){
                         var t=n.textContent;
+                        re.lastIndex=0;
                         if(re.test(t)){
+                            re.lastIndex=0;
                             var s=document.createElement('span');
                             s.className='legado-hl';
                             s.innerHTML=t.replace(re,'<mark style="background:#ffeb3b;color:#000">$&</mark>');
@@ -1030,7 +1044,15 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
             // 网页h5的video标签播放器静音播放视频
             // @param mutePlay 是否静音播放视频
             if (VideoPlay.mutePlay) {
-                toastOnUi(R.string.mute_play_enabled)
+                view.evaluateJavascript(
+                    "(function(){return document.querySelectorAll('video,audio').length;})()"
+                ) { result ->
+                    val mediaCount = result.toIntOrNull() ?: 0
+                    if (mediaCount > 0 && !mutePlayToastShown) {
+                        mutePlayToastShown = true
+                        toastOnUi(R.string.mute_play_enabled)
+                    }
+                }
                 val muteJs = """
                     (function(){
                         document.querySelectorAll('video,audio').forEach(function(el){el.muted=true});

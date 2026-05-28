@@ -311,6 +311,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
             mLabelBuilder.clear()
             binding.infobar.isGone = hideFooter
             binding.infobar.textInfoAlignment = footerOrientation
+            binding.infobar.showBattery = !hideBattery
 
             if (!hideChapterName) {
                 mLabelBuilder.append(chapterName).append(" ")

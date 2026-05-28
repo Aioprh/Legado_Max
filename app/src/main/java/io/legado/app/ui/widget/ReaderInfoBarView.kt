@@ -38,6 +38,7 @@ class ReaderInfoBarView @JvmOverloads constructor(
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val batteryPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textBounds = Rect()
+    private val textFontMetrics = Paint.FontMetrics()
     private val batteryRect = RectF()
     private val batteryFillRect = RectF()
     private val batteryCapRect = RectF()
@@ -65,6 +66,11 @@ class ReaderInfoBarView @JvmOverloads constructor(
         set(value) {
             field = value
             updateTextSize()
+            invalidate()
+        }
+    var showBattery: Boolean = true
+        set(value) {
+            field = value
             invalidate()
         }
     private var timeText = timeFormat.format(Date())
@@ -123,13 +129,18 @@ class ReaderInfoBarView @JvmOverloads constructor(
             paddingTop + insetTop + ty,
         )
 
-        val batteryRight = (width - paddingRight - insetRight - cutoutInsetRight).toFloat()
-        val batterySize = drawBatteryIcon(canvas, batteryRight, paddingTop + insetTop + ty)
+        val infoRight = (width - paddingRight - insetRight - cutoutInsetRight).toFloat()
+        val timeX = if (showBattery) {
+            val batterySize = drawBatteryIcon(canvas, infoRight, paddingTop + insetTop + ty)
+            infoRight - batterySize - 6f.dpToPx()
+        } else {
+            infoRight
+        }
 
         paint.textAlign = Paint.Align.RIGHT
         canvas.drawTextOutline(
             timeText,
-            batteryRight - batterySize - 6f.dpToPx(),
+            timeX,
             paddingTop + insetTop + ty,
         )
     }
@@ -204,7 +215,9 @@ class ReaderInfoBarView @JvmOverloads constructor(
         val iconWidth = iconHeight * 28f / 12f
         val capWidth = iconHeight * 0.12f
         val bodyWidth = iconWidth - capWidth
-        val top = textBaseline - iconHeight * 0.78f
+        paint.getFontMetrics(textFontMetrics)
+        val textCenterY = textBaseline + (textFontMetrics.ascent + textFontMetrics.descent) / 2f
+        val top = textCenterY - iconHeight / 2f
         val left = right - iconWidth
         val corner = iconHeight * 0.12f
 
@@ -216,13 +229,18 @@ class ReaderInfoBarView @JvmOverloads constructor(
             top + iconHeight * 0.68f
         )
 
+        val foregroundStrokeWidth = 1f.dpToPx()
+        val outlineStrokeWidth = foregroundStrokeWidth + 1f.dpToPx()
+
         batteryPaint.color = colorOutline
         batteryPaint.style = Paint.Style.STROKE
+        batteryPaint.strokeWidth = outlineStrokeWidth
         canvas.drawRoundRect(batteryRect, corner, corner, batteryPaint)
         canvas.drawRoundRect(batteryCapRect, corner, corner, batteryPaint)
 
         batteryPaint.color = colorText
         batteryPaint.style = Paint.Style.STROKE
+        batteryPaint.strokeWidth = foregroundStrokeWidth
         canvas.drawRoundRect(batteryRect, corner, corner, batteryPaint)
         canvas.drawRoundRect(batteryCapRect, corner, corner, batteryPaint)
 
@@ -235,6 +253,7 @@ class ReaderInfoBarView @JvmOverloads constructor(
                 left + fillPadding + fillWidth,
                 top + iconHeight - fillPadding
             )
+            batteryPaint.color = colorText
             batteryPaint.style = Paint.Style.FILL
             canvas.drawRoundRect(batteryFillRect, corner * 0.7f, corner * 0.7f, batteryPaint)
         }
