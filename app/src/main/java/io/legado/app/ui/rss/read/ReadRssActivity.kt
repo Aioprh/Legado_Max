@@ -128,6 +128,7 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
     private var interfaceInjected: String? = null
     private var needClearHistory = true
     private var erudaEnabled = false
+    private var mutePlayToastShown = false
     private val selectImageDir = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             ACache.get().put(imagePathKey, uri.toString())
@@ -1030,7 +1031,15 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
             // 网页h5的video标签播放器静音播放视频
             // @param mutePlay 是否静音播放视频
             if (VideoPlay.mutePlay) {
-                toastOnUi(R.string.mute_play_enabled)
+                view.evaluateJavascript(
+                    "(function(){return document.querySelectorAll('video,audio').length;})()"
+                ) { result ->
+                    val mediaCount = result.toIntOrNull() ?: 0
+                    if (mediaCount > 0 && !mutePlayToastShown) {
+                        mutePlayToastShown = true
+                        toastOnUi(R.string.mute_play_enabled)
+                    }
+                }
                 val muteJs = """
                     (function(){
                         document.querySelectorAll('video,audio').forEach(function(el){el.muted=true});
