@@ -18,6 +18,7 @@ import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.setTintMutate
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivityForBook
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -181,6 +182,7 @@ class AllBookmarkActivity : VMBaseActivity<ActivityAllBookmarkBinding, AllBookma
                 item.setIcon(R.drawable.ic_expand_more)
                 item.setTitle(R.string.collapse_all)
             }
+            item.icon?.setTintMutate(primaryTextColor)
         }
     }
 
