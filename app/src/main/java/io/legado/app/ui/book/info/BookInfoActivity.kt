@@ -86,6 +86,7 @@ import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.association.OnLineImportActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
+import io.legado.app.data.entities.readRecord.ReadRecordSession
 import io.legado.app.ui.book.readRecord.BookReadRecordActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.file.HandleFileContract
@@ -983,6 +984,23 @@ class BookInfoActivity :
             val lastSessions = sessions
                 .asSequence()
                 .filter { it.endTime > it.startTime || it.words > 0 }
+                .sortedBy { it.startTime }
+                .fold(mutableListOf<ReadRecordSession>()) { merged, session ->
+                    if (merged.isEmpty()) {
+                        merged.add(session)
+                    } else {
+                        val last = merged.last()
+                        if (session.startTime - last.endTime <= 60_000L) {
+                            merged[merged.lastIndex] = last.copy(
+                                endTime = maxOf(last.endTime, session.endTime),
+                                words = last.words + session.words
+                            )
+                        } else {
+                            merged.add(session)
+                        }
+                    }
+                    merged
+                }
                 .sortedByDescending { it.startTime }
                 .take(3)
                 .toList()

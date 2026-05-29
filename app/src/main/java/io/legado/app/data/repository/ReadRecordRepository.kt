@@ -114,7 +114,8 @@ class ReadRecordRepository(
 
     fun getBookTimelineDays(bookName: String, bookAuthor: String): Flow<List<ReadRecordTimelineDay>> {
         return getBookSessions(bookName, bookAuthor).map { sessions ->
-            sessions.groupBy { dateFormat.format(Date(it.startTime)) }
+            val merged = mergeCloseSessions(sessions)
+            merged.groupBy { dateFormat.format(Date(it.startTime)) }
                 .toSortedMap(compareByDescending { it })
                 .map { (date, daySessions) ->
                     ReadRecordTimelineDay(
@@ -123,6 +124,27 @@ class ReadRecordRepository(
                     )
                 }
         }
+    }
+
+    private fun mergeCloseSessions(sessions: List<ReadRecordSession>): List<ReadRecordSession> {
+        if (sessions.isEmpty()) return emptyList()
+        val sorted = sessions.sortedBy { it.startTime }
+        val merged = mutableListOf<ReadRecordSession>()
+        merged.add(sorted.first().copy())
+        val gapLimit = 5 * 60 * 1000L
+        for (i in 1 until sorted.size) {
+            val current = sorted[i]
+            val last = merged.last()
+            if ((current.startTime - last.endTime) <= gapLimit) {
+                merged[merged.lastIndex] = last.copy(
+                    endTime = max(current.endTime, last.endTime),
+                    words = last.words + current.words
+                )
+            } else {
+                merged.add(current.copy())
+            }
+        }
+        return merged
     }
 
     fun getBookReadTime(bookName: String, bookAuthor: String): Flow<Long> {
