@@ -18,6 +18,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.source.getSourceType
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadBook
 import io.legado.app.model.ReadManga
 import io.legado.app.ui.browser.WebViewActivity
@@ -125,11 +126,26 @@ class MangaMenu @JvmOverloads constructor(
         } else {
             titleBarAddition.gone()
         }
+        upBottomMenuTextColor()
         upBrightnessVwPos()
         /**
          * 确保视图不被导航栏遮挡
          */
         bottomMenu.applyNavigationBarPadding()
+    }
+
+    private fun upBottomMenuTextColor() = binding.run {
+        val textColor = context.getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
+        tvPre.setTextColor(textColor)
+        tvNext.setTextColor(textColor)
+        tvCatalog.setTextColor(textColor)
+        tvAutoPage.setTextColor(textColor)
+        tvBrightness.setTextColor(textColor)
+        tvSetting.setTextColor(textColor)
+        ivCatalog.setColorFilter(textColor)
+        ivAutoPage.setColorFilter(textColor)
+        ivBrightness.setColorFilter(textColor)
+        ivSetting.setColorFilter(textColor)
     }
 
     private fun upBrightnessVwPos() {
