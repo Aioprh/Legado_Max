@@ -8,13 +8,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -43,8 +43,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,28 +52,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.legado.app.constant.AppConst
 import io.legado.app.data.appDb
+import io.legado.app.data.entities.readRecord.ReadRecordSession
 import io.legado.app.data.entities.readRecord.ReadRecordTimelineDay
 import io.legado.app.data.repository.ReadRecordRepository
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
+import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
-import io.legado.app.lib.theme.ThemeStore
+import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.formatReadDuration
 import io.legado.app.utils.fullScreen
@@ -105,12 +99,14 @@ class BookReadRecordActivity : AppCompatActivity() {
         val bookAuthor = intent.getStringExtra(EXTRA_BOOK_AUTHOR).orEmpty()
 
         setContent {
-            BookReadRecordContent(
-                bgDrawable = bgDrawable,
-                bookName = bookName,
-                bookAuthor = bookAuthor,
-                onBackClick = { finish() }
-            )
+            LegadoTheme {
+                BookReadRecordScreen(
+                    bgDrawable = bgDrawable,
+                    bookName = bookName,
+                    bookAuthor = bookAuthor,
+                    onBackClick = { finish() }
+                )
+            }
         }
     }
 
@@ -167,121 +163,10 @@ class BookReadRecordActivity : AppCompatActivity() {
     }
 }
 
-@Composable
-fun BookReadRecordContent(
-    bgDrawable: Drawable?,
-    bookName: String,
-    bookAuthor: String,
-    onBackClick: () -> Unit
-) {
-    val context = LocalContext.current
-
-    val isNightTheme = AppConfig.isNightTheme
-    val primaryColor = remember { ThemeStore.primaryColor(context) }
-    val accentColor = remember { ThemeStore.accentColor(context) }
-    val bgColor = remember { ThemeStore.backgroundColor(context) }
-    val textPrimaryColor = remember { ThemeStore.textColorPrimary(context) }
-    val textSecondaryColor = remember { ThemeStore.textColorSecondary(context) }
-
-    val isLight = !isNightTheme && ColorUtils.isColorLight(bgColor)
-    val background = remember(bgColor) { Color(bgColor) }
-    val primary = remember(accentColor) { Color(accentColor) }
-    val secondary = remember(primaryColor) { Color(primaryColor) }
-    val onBackground = remember(textPrimaryColor) { Color(textPrimaryColor) }
-    val onBackgroundVariant = remember(textSecondaryColor) { Color(textSecondaryColor) }
-
-    val surface = remember(background, isLight) {
-        lerp(background, Color.White, if (isLight) 0.04f else 0.10f)
-    }
-    val surfaceVariant = remember(background, onBackground, isLight) {
-        lerp(background, onBackground, if (isLight) 0.05f else 0.14f)
-    }
-    val outline = remember(background, onBackground, isLight) {
-        lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
-    }
-    val pagePrimary = remember(primary, isLight) {
-        if (isLight) primary else lerp(primary, Color.White, 0.20f)
-    }
-    val pageOnBackgroundVariant = remember(onBackgroundVariant, onBackground, isLight) {
-        if (isLight) onBackgroundVariant else lerp(onBackgroundVariant, onBackground, 0.32f)
-    }
-    val pageSurfaceVariant = remember(surfaceVariant, onBackground, isLight) {
-        if (isLight) surfaceVariant else lerp(surfaceVariant, onBackground, 0.08f)
-    }
-
-    val colorScheme = remember(
-        isLight,
-        pagePrimary,
-        secondary,
-        background,
-        onBackground,
-        pageOnBackgroundVariant,
-        surface,
-        pageSurfaceVariant,
-        outline,
-        accentColor,
-        primaryColor
-    ) {
-        if (isLight) {
-            lightColorScheme(
-                primary = pagePrimary,
-                secondary = secondary,
-                tertiary = secondary,
-                background = background,
-                surface = surface,
-                surfaceVariant = pageSurfaceVariant,
-                secondaryContainer = pageSurfaceVariant,
-                tertiaryContainer = pageSurfaceVariant,
-                outline = outline,
-                outlineVariant = outline.copy(alpha = 0.75f),
-                onPrimary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
-                onSecondary = if (ColorUtils.isColorLight(primaryColor)) Color.Black else Color.White,
-                onBackground = onBackground,
-                onSurface = onBackground,
-                onSurfaceVariant = pageOnBackgroundVariant,
-                error = Color(0xFFE53935),
-                onError = Color.White
-            )
-        } else {
-            darkColorScheme(
-                primary = pagePrimary,
-                secondary = secondary,
-                tertiary = secondary,
-                background = background,
-                surface = surface,
-                surfaceVariant = pageSurfaceVariant,
-                secondaryContainer = pageSurfaceVariant,
-                tertiaryContainer = pageSurfaceVariant,
-                outline = outline,
-                outlineVariant = outline.copy(alpha = 0.8f),
-                onPrimary = if (ColorUtils.isColorLight(accentColor)) Color.Black else Color.White,
-                onSecondary = if (ColorUtils.isColorLight(primaryColor)) Color.Black else Color.White,
-                onBackground = onBackground,
-                onSurface = onBackground,
-                onSurfaceVariant = pageOnBackgroundVariant,
-                error = Color(0xFFFF5252),
-                onError = Color.Black
-            )
-        }
-    }
-
-    MaterialTheme(colorScheme = colorScheme) {
-        BoxWithBackground(
-            bgDrawable = bgDrawable,
-            bgColor = background
-        ) {
-            BookReadRecordScreen(
-                bookName = bookName,
-                bookAuthor = bookAuthor,
-                onBackClick = onBackClick
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookReadRecordScreen(
+    bgDrawable: Drawable?,
     bookName: String,
     bookAuthor: String,
     onBackClick: () -> Unit
@@ -296,7 +181,7 @@ fun BookReadRecordScreen(
     val timelineDays = remember(rawSessions) {
         rawSessions
             .sortedBy { it.startTime }
-            .fold(mutableListOf<io.legado.app.data.entities.readRecord.ReadRecordSession>()) { merged, session ->
+            .fold(mutableListOf<ReadRecordSession>()) { merged, session ->
                 if (merged.isEmpty()) {
                     merged.add(session)
                 } else {
@@ -403,13 +288,11 @@ fun BookReadRecordScreen(
                                 )
                             }
                         },
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                    contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item(key = "summary") {
                         SummaryHeader(
-                            bookName = bookName,
-                            bookAuthor = bookAuthor,
                             totalReadTime = totalReadTime,
                             dayCount = timelineDays.size,
                             sessionCount = timelineDays.sumOf { it.sessions.size }
@@ -430,80 +313,67 @@ fun BookReadRecordScreen(
 
 @Composable
 private fun SummaryHeader(
-    bookName: String,
-    bookAuthor: String,
     totalReadTime: Long,
     dayCount: Int,
     sessionCount: Int
 ) {
-    val surfaceColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(16.dp)
-
-    Surface(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(4.dp, shape, clip = false),
-        shape = shape,
-        color = surfaceColor
+            .padding(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = primaryColor.copy(alpha = 0.12f),
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Filled.Timer,
-                            contentDescription = null,
-                            tint = primaryColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = bookName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (bookAuthor.isNotBlank()) {
-                        Text(
-                            text = bookAuthor,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
+        StatChip(
+            icon = Icons.Filled.Timer,
+            label = formatReadDuration(totalReadTime),
+            suffix = "阅读"
+        )
+        StatChip(
+            label = sessionCount.toString(),
+            suffix = "次"
+        )
+        StatChip(
+            label = dayCount.toString(),
+            suffix = "天"
+        )
+    }
+}
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "累计阅读 ${formatReadDuration(totalReadTime)} · $sessionCount 次 · 共 $dayCount 天",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+@Composable
+private fun StatChip(
+    icon: ImageVector? = null,
+    label: String,
+    suffix: String
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
+            Spacer(modifier = Modifier.width(4.dp))
         }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.width(2.dp))
+        Text(
+            text = suffix,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @Composable
 private fun DaySection(
     date: String,
-    sessions: List<io.legado.app.data.entities.readRecord.ReadRecordSession>
+    sessions: List<ReadRecordSession>
 ) {
     var expanded by remember { mutableStateOf(false) }
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
@@ -511,132 +381,108 @@ private fun DaySection(
         sessions.sumOf { (it.endTime - it.startTime).coerceAtLeast(0L) }
     }
 
-    val surfaceColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val shape = RoundedCornerShape(14.dp)
-
-    Surface(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(2.dp, shape, clip = false),
-        shape = shape,
-        color = surfaceColor
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+            .clickable { expanded = !expanded }
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .padding(14.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        shape = CircleShape,
-                        color = primaryColor,
-                        modifier = Modifier.size(8.dp)
-                    ) {}
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = date,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "${sessions.size}次",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = formatReadDuration(dayTotal),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = if (expanded) "收起" else "展开",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            Text(
+                text = date,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${sessions.size}次",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = formatReadDuration(dayTotal),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
             }
+        }
 
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically(),
-                exit = shrinkVertically()
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column(
+                modifier = Modifier.padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(top = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    sessions.sortedByDescending { it.startTime }.forEach { session ->
-                        val start = remember(session.startTime) { Date(session.startTime) }
-                        val duration = remember(session.startTime, session.endTime) {
-                            (session.endTime - session.startTime).coerceAtLeast(0L)
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = timeFormat.format(start),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "·",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = formatReadDuration(duration),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
-                            session.durChapterTitle.takeIf { it.isNotBlank() }?.let { title ->
-                                Text(
-                                    text = "·",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Row(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .horizontalScroll(rememberScrollState())
-                                ) {
-                                    Text(
-                                        text = title,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        softWrap = false
-                                    )
-                                }
-                            }
-                        }
-                    }
+                sessions.sortedByDescending { it.startTime }.forEach { session ->
+                    SessionRow(session, timeFormat)
                 }
             }
         }
     }
 }
 
+@Composable
+private fun SessionRow(session: ReadRecordSession, timeFormat: SimpleDateFormat) {
+    val start = remember(session.startTime) { Date(session.startTime) }
+    val duration = remember(session.startTime, session.endTime) {
+        (session.endTime - session.startTime).coerceAtLeast(0L)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.45f))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = timeFormat.format(start),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = formatReadDuration(duration),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Medium
+        )
+        session.durChapterTitle.takeIf { it.isNotBlank() }?.let { title ->
+            Spacer(modifier = Modifier.width(8.dp))
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+        }
+    }
+}
