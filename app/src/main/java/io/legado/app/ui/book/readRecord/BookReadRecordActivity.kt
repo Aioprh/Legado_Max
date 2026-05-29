@@ -46,7 +46,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,7 +71,6 @@ import io.legado.app.constant.AppConst
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.readRecord.ReadRecordTimelineDay
 import io.legado.app.data.repository.ReadRecordRepository
-import io.legado.app.data.repository.BookRepository
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.theme.backgroundColor
@@ -289,7 +287,6 @@ fun BookReadRecordScreen(
     onBackClick: () -> Unit
 ) {
     val repository = remember { ReadRecordRepository(appDb.readRecordDao) }
-    val bookRepository = remember { BookRepository() }
 
     val rawSessions = repository.getBookSessions(bookName, bookAuthor)
         .collectAsStateWithLifecycle(emptyList())
@@ -307,7 +304,8 @@ fun BookReadRecordScreen(
                     if (session.startTime - last.endTime <= 60_000L) {
                         merged[merged.lastIndex] = last.copy(
                             endTime = maxOf(last.endTime, session.endTime),
-                            words = last.words + session.words
+                            words = last.words + session.words,
+                            durChapterTitle = session.durChapterTitle.ifBlank { last.durChapterTitle }
                         )
                     } else {
                         merged.add(session)
@@ -328,11 +326,6 @@ fun BookReadRecordScreen(
     val totalReadTime = repository.getBookReadTime(bookName, bookAuthor)
         .collectAsStateWithLifecycle(0L)
         .value
-
-    var chapterTitle by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(bookName, bookAuthor) {
-        chapterTitle = bookRepository.getBookDurChapterTitle(bookName, bookAuthor)
-    }
 
     Scaffold(
         topBar = {
@@ -427,7 +420,7 @@ fun BookReadRecordScreen(
                         items = timelineDays,
                         key = { it.date }
                     ) { day ->
-                        DaySection(day.date, day.sessions, chapterTitle)
+                        DaySection(day.date, day.sessions)
                     }
                 }
             }
@@ -510,8 +503,7 @@ private fun SummaryHeader(
 @Composable
 private fun DaySection(
     date: String,
-    sessions: List<io.legado.app.data.entities.readRecord.ReadRecordSession>,
-    chapterTitle: String?
+    sessions: List<io.legado.app.data.entities.readRecord.ReadRecordSession>
 ) {
     var expanded by remember { mutableStateOf(false) }
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
@@ -620,7 +612,7 @@ private fun DaySection(
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium
                             )
-                            chapterTitle?.let { title ->
+                            session.durChapterTitle.takeIf { it.isNotBlank() }?.let { title ->
                                 Text(
                                     text = "·",
                                     style = MaterialTheme.typography.bodyMedium,

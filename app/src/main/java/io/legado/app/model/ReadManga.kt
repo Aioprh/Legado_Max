@@ -146,14 +146,16 @@ object ReadManga : CoroutineScope by MainScope() {
             readRecord.readTime = readRecord.readTime + now - readStartTime
             readStartTime = now
             readRecord.lastRead = now
-            
+            readRecord.durChapterTitle = book?.durChapterTitle.orEmpty()
+
             val session = ReadRecordSession(
                 deviceId = readRecord.deviceId,
                 bookName = readRecord.bookName,
                 bookAuthor = readRecord.bookAuthor,
                 startTime = sessionStartTime,
                 endTime = now,
-                words = 0
+                words = 0,
+                durChapterTitle = readRecord.durChapterTitle
             )
             
             val repository = ReadRecordRepository(appDb.readRecordDao)
