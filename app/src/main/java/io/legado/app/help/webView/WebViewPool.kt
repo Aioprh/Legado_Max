@@ -57,14 +57,23 @@ object WebViewPool {
         (function() {
             var doc = document.documentElement;
             var body = document.body;
-            return Math.max(
+            var contentBottom = 0;
+            if (body) {
+                Array.prototype.forEach.call(body.children || [], function(el) {
+                    var style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+                    if (style && (style.display === 'none' || style.visibility === 'hidden')) return;
+                    var rect = el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+                    if (!rect) return;
+                    contentBottom = Math.max(contentBottom, rect.bottom + window.pageYOffset);
+                });
+            }
+            var documentHeight = Math.max(
                 doc ? doc.scrollHeight : 0,
                 doc ? doc.offsetHeight : 0,
-                doc ? doc.clientHeight : 0,
                 body ? body.scrollHeight : 0,
-                body ? body.offsetHeight : 0,
-                body ? body.clientHeight : 0
+                body ? body.offsetHeight : 0
             );
+            return contentBottom > 1 ? contentBottom : documentHeight;
         })();
     """.trimIndent()
     
@@ -316,8 +325,9 @@ object WebViewPool {
                     ?.roundToInt()
                     ?: 0
                 // 取 JS 高度和备用高度的最大值
-                val targetHeight = max(jsHeight, fallbackHeight)
+                val targetHeight = jsHeight
                     .takeIf { it > 1 }
+                    ?: fallbackHeight.takeIf { it > 1 }
                     ?: ViewGroup.LayoutParams.WRAP_CONTENT
                 // 更新布局参数
                 val layoutParams = (webView.layoutParams ?: ViewGroup.LayoutParams(
@@ -375,7 +385,10 @@ object WebViewPool {
                     ?.roundToInt()
                     ?: 0
                 // 取 JS 高度和备用高度的最大值作为目标高度
-                val targetHeight = max(jsHeight, fallbackHeight)
+                val targetHeight = jsHeight
+                    .takeIf { it > 1 }
+                    ?: fallbackHeight.takeIf { it > 1 }
+                    ?: ViewGroup.LayoutParams.WRAP_CONTENT
                 // 目标高度无效时使用 WRAP_CONTENT
                 val finalHeight = if (targetHeight <= 1) {
                     ViewGroup.LayoutParams.WRAP_CONTENT
