@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:697663952276:android:c82ebb87ea51ffb03a2b81",
         "android_client_info": {
-          "package_name": "io.legado.app.yuedu.debug"
+          "package_name": "io.legado.app.debug"
         }
       },
       "oauth_client": [],
