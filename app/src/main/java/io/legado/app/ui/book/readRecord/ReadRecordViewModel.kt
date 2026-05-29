@@ -297,19 +297,17 @@ class ReadRecordViewModel : ViewModel() {
     suspend fun getBookDurChapterTitle(bookName: String, bookAuthor: String): String? {
         val key = cacheKey(bookName, bookAuthor)
         chapterTitleCache[key]?.let { return it }
-        if (chapterTitleCache.containsKey(key)) return null
-        return bookRepository.getBookDurChapterTitle(bookName, bookAuthor).also {
-            chapterTitleCache[key] = it
-        }
+        val result = bookRepository.getBookDurChapterTitle(bookName, bookAuthor)
+        result?.let { chapterTitleCache[key] = it }
+        return result
     }
 
     suspend fun getBookCover(bookName: String, bookAuthor: String): String? {
         val key = cacheKey(bookName, bookAuthor)
         coverPathCache[key]?.let { return it }
-        if (coverPathCache.containsKey(key)) return null
-        return bookRepository.getBookCoverByNameAndAuthor(bookName, bookAuthor).also {
-            coverPathCache[key] = it
-        }
+        val result = bookRepository.getBookCoverByNameAndAuthor(bookName, bookAuthor)
+        result?.let { coverPathCache[key] = it }
+        return result
     }
 
     fun getConfiguredDefaultCover(): String? {
