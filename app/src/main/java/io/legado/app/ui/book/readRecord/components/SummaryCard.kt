@@ -148,7 +148,7 @@ private fun BookStackView(
 
     val coverBitmaps = remember { mutableStateOf<Map<Int, Bitmap?>>(emptyMap()) }
 
-    LaunchedEffect(records) {
+    LaunchedEffect(records.map { "${it.bookName}|${it.bookAuthor}" }) {
         withContext(Dispatchers.IO) {
             val bitmaps = mutableMapOf<Int, Bitmap?>()
             records.forEachIndexed { index, record ->

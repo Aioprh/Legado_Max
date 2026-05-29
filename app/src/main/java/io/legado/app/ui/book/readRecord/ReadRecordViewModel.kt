@@ -12,6 +12,7 @@ import io.legado.app.data.repository.BookRepository
 import io.legado.app.data.repository.ReadRecordRepository
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.putPrefInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -28,6 +30,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.concurrent.ConcurrentHashMap
 import splitties.init.appCtx
 
 private typealias RecordIdentity = Triple<String, String, String>
@@ -61,6 +64,9 @@ class ReadRecordViewModel : ViewModel() {
 
     private val repository = ReadRecordRepository(appDb.readRecordDao)
     private val bookRepository = BookRepository()
+
+    private val coverPathCache = ConcurrentHashMap<String, String?>()
+    private val chapterTitleCache = ConcurrentHashMap<String, String?>()
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
         timeZone = TimeZone.getDefault()
@@ -222,7 +228,8 @@ class ReadRecordViewModel : ViewModel() {
             isSelectionMode = isSelectionMode,
             selectedRecords = selectedRecords
         )
-    }.stateIn(
+    }.flowOn(Dispatchers.Default)
+        .stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = ReadRecordUiState(isLoading = true)
@@ -288,11 +295,21 @@ class ReadRecordViewModel : ViewModel() {
     }
 
     suspend fun getBookDurChapterTitle(bookName: String, bookAuthor: String): String? {
-        return bookRepository.getBookDurChapterTitle(bookName, bookAuthor)
+        val key = cacheKey(bookName, bookAuthor)
+        chapterTitleCache[key]?.let { return it }
+        if (chapterTitleCache.containsKey(key)) return null
+        return bookRepository.getBookDurChapterTitle(bookName, bookAuthor).also {
+            chapterTitleCache[key] = it
+        }
     }
 
     suspend fun getBookCover(bookName: String, bookAuthor: String): String? {
-        return bookRepository.getBookCoverByNameAndAuthor(bookName, bookAuthor)
+        val key = cacheKey(bookName, bookAuthor)
+        coverPathCache[key]?.let { return it }
+        if (coverPathCache.containsKey(key)) return null
+        return bookRepository.getBookCoverByNameAndAuthor(bookName, bookAuthor).also {
+            coverPathCache[key] = it
+        }
     }
 
     fun getConfiguredDefaultCover(): String? {
@@ -443,6 +460,8 @@ class ReadRecordViewModel : ViewModel() {
         val latestRecords: List<ReadRecord>,
         val sessions: List<ReadRecordSession>
     )
+
+    private fun cacheKey(bookName: String, bookAuthor: String) = "$bookName|$bookAuthor"
 }
 
 private fun Long.toLocalDateString(): String {

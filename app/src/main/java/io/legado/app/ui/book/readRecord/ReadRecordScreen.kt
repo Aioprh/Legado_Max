@@ -452,9 +452,7 @@ private fun LazyListScope.RecordListContent(
                         detail = detail,
                         viewModel = viewModel,
                         isSelectionMode = state.isSelectionMode,
-                        isSelected = state.selectedRecords.contains(
-                            Triple(detail.deviceId, detail.bookName, detail.bookAuthor)
-                        ),
+                        isSelected = viewModel.isSelected(detail),
                         onClick = { 
                             if (state.isSelectionMode) {
                                 viewModel.toggleRecordSelection(detail)
@@ -489,9 +487,7 @@ private fun LazyListScope.RecordListContent(
                             isLast = index == sessions.size - 1,
                             viewModel = viewModel,
                             isSelectionMode = state.isSelectionMode,
-                            isSelected = state.selectedRecords.contains(
-                                Triple(session.deviceId, session.bookName, session.bookAuthor)
-                            ),
+                            isSelected = viewModel.isSelected(session),
                             onClick = { 
                                 if (state.isSelectionMode) {
                                     viewModel.toggleRecordSelection(session)
@@ -516,9 +512,7 @@ private fun LazyListScope.RecordListContent(
                     record = record,
                     viewModel = viewModel,
                     isSelectionMode = state.isSelectionMode,
-                    isSelected = state.selectedRecords.contains(
-                        Triple(record.deviceId, record.bookName, record.bookAuthor)
-                    ),
+                    isSelected = viewModel.isSelected(record),
                     onClick = { 
                         if (state.isSelectionMode) {
                             viewModel.toggleRecordSelection(record)
@@ -542,9 +536,7 @@ private fun LazyListScope.RecordListContent(
                     record = record,
                     viewModel = viewModel,
                     isSelectionMode = state.isSelectionMode,
-                    isSelected = state.selectedRecords.contains(
-                        Triple(record.deviceId, record.bookName, record.bookAuthor)
-                    ),
+                    isSelected = viewModel.isSelected(record),
                     onClick = { 
                         if (state.isSelectionMode) {
                             viewModel.toggleRecordSelection(record)
@@ -648,7 +640,7 @@ private fun TimelineSessionView(
     onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val startTime = timeFormat.format(Date(session.startTime))
     val timelineAccentColor = readRecordTimelineAccentColor()
     val secondaryTextColor = readRecordSecondaryTextColor()
