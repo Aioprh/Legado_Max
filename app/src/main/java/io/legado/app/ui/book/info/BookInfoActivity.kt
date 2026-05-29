@@ -86,7 +86,6 @@ import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.association.OnLineImportActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
-import io.legado.app.data.entities.readRecord.ReadRecordSession
 import io.legado.app.ui.book.readRecord.BookReadRecordActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.file.HandleFileContract
@@ -126,9 +125,6 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class BookInfoActivity :
     VMBaseActivity<ActivityBookInfoBinding, BookInfoViewModel>(toolBarTheme = Theme.Dark, showOpenMenuIcon = false),
@@ -295,6 +291,8 @@ class BookInfoActivity :
             viewModel.bookData.value?.isLocal ?: false
         menu.findItem(R.id.menu_delete_alert)?.isChecked =
             LocalConfig.bookInfoDeleteAlert
+        menu.findItem(R.id.menu_show_read_record)?.isChecked =
+            AppConfig.bookInfoShowReadRecord
         return super.onMenuOpened(featureId, menu)
     }
 
@@ -415,6 +413,10 @@ class BookInfoActivity :
             }
 
             R.id.menu_delete_alert -> LocalConfig.bookInfoDeleteAlert = !item.isChecked
+            R.id.menu_show_read_record -> {
+                AppConfig.bookInfoShowReadRecord = !item.isChecked
+                viewModel.getBook()?.let { upReadRecord(it) }
+            }
             R.id.menu_upload -> {
                 viewModel.getBook()?.let { book ->
                     book.getRemoteUrl()?.let {
@@ -946,12 +948,13 @@ class BookInfoActivity :
     }
 
     private fun upReadRecord(book: Book) {
-        if (!AppConfig.enableReadRecord) {
+        if (!AppConfig.enableReadRecord || !AppConfig.bookInfoShowReadRecord) {
             binding.llReadRecord.gone()
             binding.llReadRecordList.gone()
             return
         }
         binding.llReadRecord.visible()
+        binding.llReadRecordList.gone()
         readRecordJob?.cancel()
         readRecordJob = lifecycleScope.launch {
             val deviceId = AppConst.androidId
@@ -959,91 +962,27 @@ class BookInfoActivity :
                 withContext(IO) {
                     val record = appDb.readRecordDao.getReadRecord(deviceId, book.name, book.author)
                     val details = appDb.readRecordDao.getDetailsByBook(deviceId, book.name, book.author)
-                    val sessions = appDb.readRecordDao.getSessionsByBook(deviceId, book.name, book.author)
-                    Triple(record, details, sessions)
+                    Triple(record, details, null)
                 }
             }.getOrElse {
                 AppLog.put("load read record error: name=${book.name}, author=${book.author}", it)
-                Triple(null, emptyList(), emptyList())
+                Triple(null, emptyList(), null)
             }
 
             val record = data.first
             val details = data.second
-            val sessions = data.third
 
             val detailReadTime = details.sumOf { it.readTime }
-            val sessionReadTime = sessions.sumOf { (it.endTime - it.startTime).coerceAtLeast(0L) }
-            val totalReadTime = maxOf(record?.readTime ?: 0L, detailReadTime, sessionReadTime)
+            val totalReadTime = maxOf(record?.readTime ?: 0L, detailReadTime)
 
-            val lastRead = maxOf(
-                record?.lastRead ?: 0L,
-                details.maxOfOrNull { it.lastReadTime } ?: 0L,
-                sessions.maxOfOrNull { it.endTime } ?: 0L
-            )
-
-            val lastSessions = sessions
-                .asSequence()
-                .filter { it.endTime > it.startTime || it.words > 0 }
-                .sortedBy { it.startTime }
-                .fold(mutableListOf<ReadRecordSession>()) { merged, session ->
-                    if (merged.isEmpty()) {
-                        merged.add(session)
-                    } else {
-                        val last = merged.last()
-                        if (session.startTime - last.endTime <= 60_000L) {
-                            merged[merged.lastIndex] = last.copy(
-                                endTime = maxOf(last.endTime, session.endTime),
-                                words = last.words + session.words
-                            )
-                        } else {
-                            merged.add(session)
-                        }
-                    }
-                    merged
-                }
-                .sortedByDescending { it.startTime }
-                .take(3)
-                .toList()
-
-            val summary = if (totalReadTime <= 0L && lastRead <= 0L && lastSessions.isEmpty()) {
+            val summary = if (totalReadTime <= 0L) {
                 getString(R.string.no_read_record)
             } else {
                 val totalStr = io.legado.app.utils.formatReadDuration(totalReadTime)
-                val lastReadStr = if (lastRead > 0L) {
-                    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-                    dateFormat.format(Date(lastRead))
-                } else {
-                    "-"
-                }
-                "${getString(R.string.total_read_time_s, totalStr)} · ${getString(R.string.last_read_s, lastReadStr)}"
+                "阅读时长：$totalStr"
             }
 
             binding.tvReadRecord.text = summary
-
-            if (lastSessions.isEmpty()) {
-                binding.llReadRecordList.gone()
-                return@launch
-            }
-
-            binding.llReadRecordList.visible()
-            binding.llReadRecordList.removeAllViews()
-            val textColor = binding.tvAuthor.currentTextColor
-            val dateFormat = SimpleDateFormat("M月d日", Locale.getDefault())
-            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-            lastSessions.forEach { session ->
-                val start = Date(session.startTime)
-                val end = Date(session.endTime)
-                val duration = (session.endTime - session.startTime).coerceAtLeast(0L)
-                val wordsStr = if (session.words > 0L) " · ${session.words}${getString(R.string.words)}" else ""
-                val line = "${dateFormat.format(start)} ${timeFormat.format(start)}-${timeFormat.format(end)} · ${io.legado.app.utils.formatReadDuration(duration)}$wordsStr"
-                val tv = android.widget.TextView(this@BookInfoActivity).apply {
-                    text = line
-                    setTextColor(textColor)
-                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f)
-                    includeFontPadding = false
-                }
-                binding.llReadRecordList.addView(tv)
-            }
         }
     }
 
