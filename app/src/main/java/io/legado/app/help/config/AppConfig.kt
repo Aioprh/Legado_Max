@@ -249,8 +249,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefBoolean(PreferKey.textSelectAble, true)
 
     var mangaReadMode: String
-        get() = appCtx.getPrefString(PreferKey.mangaReadMode, MangaReadMode.SCROLL)
-            ?: MangaReadMode.SCROLL
+        get() = appCtx.getPrefString(PreferKey.mangaReadMode)?.takeIf { it.isNotBlank() }
+            ?: if (appCtx.getPrefBoolean(PreferKey.enableMangaHorizontalScroll, false)) {
+                MangaReadMode.NORMAL
+            } else {
+                MangaReadMode.SCROLL
+            }
         set(value) {
             appCtx.putPrefString(PreferKey.mangaReadMode, value)
         }
@@ -870,9 +874,13 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     //漫画水平滚动
     var enableMangaHorizontalScroll
-        get() = appCtx.getPrefBoolean(PreferKey.enableMangaHorizontalScroll, false)
+        get() = mangaReadMode != MangaReadMode.SCROLL
         set(value) {
-            appCtx.putPrefBoolean(PreferKey.enableMangaHorizontalScroll, value)
+            mangaReadMode = if (value) {
+                MangaReadMode.NORMAL
+            } else {
+                MangaReadMode.SCROLL
+            }
         }
 
     var mangaColorFilter

@@ -567,7 +567,6 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
                 item.isChecked = !item.isChecked
                 AppConfig.mangaReadMode =
                     if (item.isChecked) MangaReadMode.NORMAL else MangaReadMode.SCROLL
-                AppConfig.enableMangaHorizontalScroll = item.isChecked
                 mMenu?.findItem(R.id.menu_disable_horizontal_page_snap)?.isVisible = item.isChecked
                 setHorizontalScroll(item.isChecked)
                 mAdapter.notifyDataSetChanged()

@@ -158,7 +158,6 @@ class MangaQuickSettingDialog : BasePrefDialogFragment() {
 
         private fun applyReadMode(mode: String) {
             AppConfig.mangaReadMode = mode
-            AppConfig.enableMangaHorizontalScroll = MangaReadMode.isHorizontal(mode)
             if (MangaReadMode.isHorizontal(mode)) {
                 AppConfig.disableHorizontalPageSnap = false
             }
