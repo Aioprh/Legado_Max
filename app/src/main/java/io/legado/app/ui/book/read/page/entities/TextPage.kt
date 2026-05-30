@@ -59,6 +59,7 @@ data class TextPage(
     var isCompleted = false
     var hasReadAloudSpan = false
     var hasAnimatedContent = false
+    var isResumed = false
 
     @JvmField
     var textChapter = emptyTextChapter
