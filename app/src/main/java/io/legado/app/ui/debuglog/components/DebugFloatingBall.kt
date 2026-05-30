@@ -89,57 +89,59 @@ fun DebugFloatingBall(
             .fillMaxSize()
             .onSizeChanged { containerSize = it }
     ) {
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
-                .size(ballSize)
-                .shadow(elevation = 12.dp, shape = CircleShape, ambientColor = startColor, spotColor = endColor)
-                .clip(CircleShape)
-                .background(Brush.linearGradient(colors = listOf(startColor, endColor)))
-                .border(1.5.dp, ringColor, CircleShape)
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragStart = { },
-                        onDragCancel = { },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            val maxX = (containerSize.width - ballSizePx).coerceAtLeast(0f)
-                            val maxY = (containerSize.height - ballSizePx).coerceAtLeast(0f)
-                            offset = Offset(
-                                x = (offset.x + dragAmount.x).coerceIn(0f, maxX),
-                                y = (offset.y + dragAmount.y).coerceIn(0f, maxY)
-                            )
-                        }
-                    )
-                }
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center
-        ) {
-            Surface(
-                modifier = Modifier.size(42.dp),
-                shape = CircleShape,
-                color = glowColor
-            ) {}
+        if (initialized) {
+            Box(
+                modifier = Modifier
+                    .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
+                    .size(ballSize)
+                    .shadow(elevation = 12.dp, shape = CircleShape, ambientColor = startColor, spotColor = endColor)
+                    .clip(CircleShape)
+                    .background(Brush.linearGradient(colors = listOf(startColor, endColor)))
+                    .border(1.5.dp, ringColor, CircleShape)
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragStart = { },
+                            onDragCancel = { },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                val maxX = (containerSize.width - ballSizePx).coerceAtLeast(0f)
+                                val maxY = (containerSize.height - ballSizePx).coerceAtLeast(0f)
+                                offset = Offset(
+                                    x = (offset.x + dragAmount.x).coerceIn(0f, maxX),
+                                    y = (offset.y + dragAmount.y).coerceIn(0f, maxY)
+                                )
+                            }
+                        )
+                    }
+                    .clickable(onClick = onClick),
+                contentAlignment = Alignment.Center
+            ) {
+                Surface(
+                    modifier = Modifier.size(42.dp),
+                    shape = CircleShape,
+                    color = glowColor
+                ) {}
 
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = "调试日志",
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(28.dp)
-            )
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "调试日志",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(28.dp)
+                )
 
-            if (currentUnread > 0) {
-                Badge(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = (-4).dp, y = 4.dp)
-                ) {
-                    Text(
-                        text = currentUnread.coerceAtMost(99).toString(),
-                        color = MaterialTheme.colorScheme.onError,
-                        style = MaterialTheme.typography.labelSmall
-                    )
+                if (currentUnread > 0) {
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-4).dp, y = 4.dp)
+                    ) {
+                        Text(
+                            text = currentUnread.coerceAtMost(99).toString(),
+                            color = MaterialTheme.colorScheme.onError,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
                 }
             }
         }
