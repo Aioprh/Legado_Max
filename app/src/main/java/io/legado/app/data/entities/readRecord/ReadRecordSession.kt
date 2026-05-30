@@ -17,5 +17,7 @@ data class ReadRecordSession(
     val startTime: Long = 0,
     val endTime: Long = 0,
 
-    val words: Long = 0
+    val words: Long = 0,
+    @ColumnInfo(defaultValue = "")
+    val durChapterTitle: String = ""
 )

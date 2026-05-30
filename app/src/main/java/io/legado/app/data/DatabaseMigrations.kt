@@ -20,7 +20,7 @@ object DatabaseMigrations {
             migration_31_32, migration_32_33, migration_33_34, migration_34_35,
             migration_35_36, migration_36_37, migration_37_38, migration_38_39,
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
-            migration_95_96
+            migration_95_96, migration_96_97
         )
     }
 
@@ -529,6 +529,27 @@ object DatabaseMigrations {
                         db.endTransaction()
                     }
                 }
+            }
+        }
+    }
+
+    // =======================================================================
+    // 96 → 97：readRecordSession 表新增 durChapterTitle 列
+    // 记录每次阅读会话结束时所在的章节名称，用于阅读记录详情页按会话显示章节
+    // =======================================================================
+    private val migration_96_97 = object : Migration(96, 97) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val cursor = db.query("PRAGMA table_info(readRecordSession)")
+            var hasDurChapterTitle = false
+            while (cursor.moveToNext()) {
+                if (cursor.getString(cursor.getColumnIndexOrThrow("name")) == "durChapterTitle") {
+                    hasDurChapterTitle = true
+                    break
+                }
+            }
+            cursor.close()
+            if (!hasDurChapterTitle) {
+                db.execSQL("ALTER TABLE readRecordSession ADD COLUMN durChapterTitle TEXT NOT NULL DEFAULT ''")
             }
         }
     }

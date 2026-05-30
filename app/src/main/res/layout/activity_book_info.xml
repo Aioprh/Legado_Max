@@ -352,6 +352,64 @@
 
                             </LinearLayout>
 
+                            <LinearLayout
+                                android:id="@+id/ll_read_record"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:paddingTop="3dp"
+                                android:paddingBottom="3dp"
+                                tools:ignore="UseCompoundDrawables">
+
+                                <ImageView
+                                    android:layout_width="18sp"
+                                    android:layout_height="18sp"
+                                    android:contentDescription="@string/book_read_record"
+                                    android:paddingRight="2dp"
+                                    android:src="@drawable/ic_history"
+                                    app:tint="@color/tv_text_summary"
+                                    tools:ignore="RtlHardcoded,RtlSymmetry" />
+
+                                <TextView
+                                    android:id="@+id/tv_read_record"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:ellipsize="end"
+                                    android:includeFontPadding="false"
+                                    android:paddingRight="6dp"
+                                    android:singleLine="true"
+                                    android:textColor="@color/tv_text_summary"
+                                    android:textSize="13sp"
+                                    tools:ignore="NestedWeights,RtlHardcoded,RtlSymmetry"
+                                    tools:text="累计阅读 10分钟 · 最近阅读 今天 12:00" />
+
+                                <io.legado.app.ui.widget.text.AccentBgTextView
+                                    android:id="@+id/tv_read_record_view"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="8dp"
+                                    android:paddingLeft="5dp"
+                                    android:paddingRight="5dp"
+                                    android:text="@string/view_read_record"
+                                    android:textSize="13sp"
+                                    app:radius="2dp" />
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/ll_read_record_list"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:paddingLeft="20dp"
+                                android:paddingRight="8dp"
+                                android:paddingBottom="6dp"
+                                android:visibility="gone"
+                                tools:ignore="RtlHardcoded"
+                                tools:visibility="visible" />
+
                         </LinearLayout>
 
                         <FrameLayout

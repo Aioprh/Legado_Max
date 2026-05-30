@@ -27,6 +27,7 @@ import com.bumptech.glide.request.RequestOptions
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.AppLog
+import io.legado.app.constant.AppConst
 import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.Theme
@@ -85,6 +86,7 @@ import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.association.OnLineImportActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
+import io.legado.app.ui.book.readRecord.BookReadRecordActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.login.SourceLoginActivity
@@ -120,6 +122,7 @@ import io.noties.markwon.ext.tables.TablePlugin
 import io.noties.markwon.html.HtmlPlugin
 import io.noties.markwon.image.glide.GlideImagesPlugin
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -201,6 +204,7 @@ class BookInfoActivity :
     private var editMenuItem: MenuItem? = null
     private var menuCustomBtn: MenuItem? = null
     private val book get() = viewModel.getBook(false)
+    private var readRecordJob: Job? = null
 
     override val binding by viewBinding(ActivityBookInfoBinding::inflate)
     override val viewModel by viewModels<BookInfoViewModel>()
@@ -287,6 +291,8 @@ class BookInfoActivity :
             viewModel.bookData.value?.isLocal ?: false
         menu.findItem(R.id.menu_delete_alert)?.isChecked =
             LocalConfig.bookInfoDeleteAlert
+        menu.findItem(R.id.menu_show_read_record)?.isChecked =
+            AppConfig.bookInfoShowReadRecord
         return super.onMenuOpened(featureId, menu)
     }
 
@@ -407,6 +413,10 @@ class BookInfoActivity :
             }
 
             R.id.menu_delete_alert -> LocalConfig.bookInfoDeleteAlert = !item.isChecked
+            R.id.menu_show_read_record -> {
+                AppConfig.bookInfoShowReadRecord = !item.isChecked
+                viewModel.getBook()?.let { upReadRecord(it) }
+            }
             R.id.menu_upload -> {
                 viewModel.getBook()?.let { book ->
                     book.getRemoteUrl()?.let {
@@ -499,6 +509,7 @@ class BookInfoActivity :
         tvOrigin.text = getString(R.string.origin_show, book.originName)
         tvLasted.text = getString(R.string.lasted_show, book.latestChapterTitle)
         showBookIntro(book)
+        upReadRecord(book)
         if (book.isWebFile) {
             llToc.gone()
             tvLasted.text = getString(R.string.lasted_show, "下载中...")
@@ -850,6 +861,12 @@ class BookInfoActivity :
                 }
             }
         }
+        llReadRecord.setOnClickListener {
+            openBookReadRecord()
+        }
+        tvReadRecordView.setOnClickListener {
+            openBookReadRecord()
+        }
         tvChangeGroup.setOnClickListener {
             viewModel.getBook()?.let {
                 showDialogFragment(
@@ -916,8 +933,56 @@ class BookInfoActivity :
             true
         }
         refreshLayout?.setOnRefreshListener {
-            refreshLayout.isRefreshing = false
+            refreshLayout?.isRefreshing = false
             refreshBook()
+        }
+    }
+
+    private fun openBookReadRecord() {
+        viewModel.getBook(false)?.let { book ->
+            startActivity<BookReadRecordActivity> {
+                putExtra(BookReadRecordActivity.EXTRA_BOOK_NAME, book.name)
+                putExtra(BookReadRecordActivity.EXTRA_BOOK_AUTHOR, book.author)
+            }
+        }
+    }
+
+    private fun upReadRecord(book: Book) {
+        if (!AppConfig.enableReadRecord || !AppConfig.bookInfoShowReadRecord) {
+            binding.llReadRecord.gone()
+            binding.llReadRecordList.gone()
+            return
+        }
+        binding.llReadRecord.visible()
+        binding.llReadRecordList.gone()
+        readRecordJob?.cancel()
+        readRecordJob = lifecycleScope.launch {
+            val deviceId = AppConst.androidId
+            val data = runCatching {
+                withContext(IO) {
+                    val record = appDb.readRecordDao.getReadRecord(deviceId, book.name, book.author)
+                    val details = appDb.readRecordDao.getDetailsByBook(deviceId, book.name, book.author)
+                    Triple(record, details, null)
+                }
+            }.getOrElse {
+                AppLog.put("load read record error: name=${book.name}, author=${book.author}", it)
+                Triple(null, emptyList(), null)
+            }
+
+            val record = data.first
+            val details = data.second
+
+            val detailReadTime = details.sumOf { it.readTime }
+            val totalReadTime = maxOf(record?.readTime ?: 0L, detailReadTime)
+
+            val summary = if (totalReadTime <= 0L) {
+                getString(R.string.no_read_record)
+            } else {
+                val totalStr = io.legado.app.utils.formatReadDuration(totalReadTime)
+                "阅读时长：$totalStr"
+            }
+
+            binding.tvReadRecord.text = summary
         }
     }
 
@@ -1190,6 +1255,7 @@ class BookInfoActivity :
      }
 
     override fun onDestroy() {
+        readRecordJob?.cancel()
         destroyWeb()
         super.onDestroy()
         if (initGetter) {

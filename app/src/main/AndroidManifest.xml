@@ -337,6 +337,11 @@
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true"
             android:exported="true" />
+        <activity
+            android:name=".ui.book.readRecord.BookReadRecordActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true"
+            android:exported="false" />
         <!-- 存储管理 -->
         <activity
             android:name=".ui.book.storage.StorageManageActivity"
