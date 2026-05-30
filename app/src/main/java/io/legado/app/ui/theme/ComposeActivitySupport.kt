@@ -92,11 +92,13 @@ fun LegadoBackgroundBox(
     backgroundDrawable: Drawable?,
     modifier: Modifier = Modifier,
     backgroundColor: Color = MaterialTheme.colorScheme.background,
+    overlayAlpha: Float? = null,
     content: @Composable () -> Unit
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         if (backgroundDrawable != null) {
-            val overlayAlpha = if (backgroundColor.luminance() > 0.5f) 0.22f else 0.40f
+            val resolvedOverlayAlpha = overlayAlpha
+                ?: if (backgroundColor.luminance() > 0.5f) 0.10f else 0.18f
             Image(
                 bitmap = backgroundDrawable.toBitmap().asImageBitmap(),
                 contentDescription = null,
@@ -106,7 +108,7 @@ fun LegadoBackgroundBox(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(backgroundColor.copy(alpha = overlayAlpha))
+                    .background(backgroundColor.copy(alpha = resolvedOverlayAlpha))
             )
         } else {
             Box(
@@ -122,23 +124,31 @@ fun LegadoBackgroundBox(
 @Composable
 fun LegadoThemeWithBackground(
     backgroundDrawable: Drawable?,
+    overlayAlpha: Float? = null,
     content: @Composable () -> Unit
 ) {
     LegadoTheme {
-        LegadoBackgroundBox(backgroundDrawable = backgroundDrawable) {
+        LegadoBackgroundBox(
+            backgroundDrawable = backgroundDrawable,
+            overlayAlpha = overlayAlpha
+        ) {
             content()
         }
     }
 }
 
 fun ComponentActivity.setLegadoContent(
+    overlayAlpha: Float? = null,
     content: @Composable () -> Unit
 ) {
     setupLegadoComposeSystemBar()
     val backgroundDrawable = loadLegadoBackgroundDrawable()
     enableEdgeToEdge()
     setContent {
-        LegadoThemeWithBackground(backgroundDrawable = backgroundDrawable) {
+        LegadoThemeWithBackground(
+            backgroundDrawable = backgroundDrawable,
+            overlayAlpha = overlayAlpha
+        ) {
             content()
         }
     }

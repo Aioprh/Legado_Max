@@ -1,6 +1,7 @@
 package io.legado.app.ui.about
 
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -50,6 +51,8 @@ class AboutFragment : PreferenceFragmentCompat() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        view.setBackgroundColor(Color.TRANSPARENT)
+        listView.setBackgroundColor(Color.TRANSPARENT)
         listView.overScrollMode = View.OVER_SCROLL_NEVER
     }
 
