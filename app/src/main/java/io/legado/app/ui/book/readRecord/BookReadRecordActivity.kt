@@ -178,34 +178,49 @@ fun BookReadRecordScreen(
         .value
 
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
-    val timelineDays = remember(rawSessions) {
+    val dayTotalDurationMap = remember(rawSessions) {
         rawSessions
+            .groupBy { dateFormat.format(Date(it.startTime)) }
+            .mapValues { (_, sessions) -> sessions.sumOf { (it.endTime - it.startTime).coerceAtLeast(0L) } }
+    }
+    data class MergedSession(val session: ReadRecordSession, val actualDuration: Long)
+
+    val (timelineDays, sessionDurationMap) = remember(rawSessions) {
+        val merged = rawSessions
             .sortedBy { it.startTime }
-            .fold(mutableListOf<ReadRecordSession>()) { merged, session ->
-                if (merged.isEmpty()) {
-                    merged.add(session)
+            .fold(mutableListOf<MergedSession>()) { list, session ->
+                val sessionDuration = (session.endTime - session.startTime).coerceAtLeast(0L)
+                if (list.isEmpty()) {
+                    list.add(MergedSession(session, sessionDuration))
                 } else {
-                    val last = merged.last()
+                    val lastMs = list.last()
+                    val last = lastMs.session
                     if (session.startTime - last.endTime <= 60_000L) {
-                        merged[merged.lastIndex] = last.copy(
-                            endTime = maxOf(last.endTime, session.endTime),
-                            words = last.words + session.words,
-                            durChapterTitle = session.durChapterTitle.ifBlank { last.durChapterTitle }
+                        list[list.lastIndex] = MergedSession(
+                            session = last.copy(
+                                endTime = maxOf(last.endTime, session.endTime),
+                                words = last.words + session.words,
+                                durChapterTitle = session.durChapterTitle.ifBlank { last.durChapterTitle }
+                            ),
+                            actualDuration = lastMs.actualDuration + sessionDuration
                         )
                     } else {
-                        merged.add(session)
+                        list.add(MergedSession(session, sessionDuration))
                     }
                 }
-                merged
+                list
             }
-            .groupBy { dateFormat.format(Date(it.startTime)) }
+        val durationMap = merged.associate { ms -> ms.session.startTime to ms.actualDuration }
+        val days = merged
+            .groupBy { dateFormat.format(Date(it.session.startTime)) }
             .toSortedMap(compareByDescending { it })
             .map { (date, daySessions) ->
                 ReadRecordTimelineDay(
                     date = date,
-                    sessions = daySessions.sortedByDescending { it.startTime }
+                    sessions = daySessions.map { it.session }.sortedByDescending { it.startTime }
                 )
             }
+        Pair(days, durationMap)
     }
 
     val totalReadTime = repository.getBookReadTime(bookName, bookAuthor)
@@ -303,7 +318,7 @@ fun BookReadRecordScreen(
                         items = timelineDays,
                         key = { it.date }
                     ) { day ->
-                        DaySection(day.date, day.sessions)
+                        DaySection(day.date, day.sessions, dayTotalDurationMap[day.date] ?: 0L, sessionDurationMap)
                     }
                 }
             }
@@ -373,13 +388,12 @@ private fun StatChip(
 @Composable
 private fun DaySection(
     date: String,
-    sessions: List<ReadRecordSession>
+    sessions: List<ReadRecordSession>,
+    totalDuration: Long,
+    sessionDurationMap: Map<Long, Long>
 ) {
     var expanded by remember { mutableStateOf(false) }
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val dayTotal = remember(sessions) {
-        sessions.sumOf { (it.endTime - it.startTime).coerceAtLeast(0L) }
-    }
 
     Column(
         modifier = Modifier
@@ -408,7 +422,7 @@ private fun DaySection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = formatReadDuration(dayTotal),
+                    text = formatReadDuration(totalDuration),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
@@ -433,7 +447,7 @@ private fun DaySection(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 sessions.sortedByDescending { it.startTime }.forEach { session ->
-                    SessionRow(session, timeFormat)
+                    SessionRow(session, timeFormat, sessionDurationMap[session.startTime] ?: (session.endTime - session.startTime).coerceAtLeast(0L))
                 }
             }
         }
@@ -441,11 +455,8 @@ private fun DaySection(
 }
 
 @Composable
-private fun SessionRow(session: ReadRecordSession, timeFormat: SimpleDateFormat) {
+private fun SessionRow(session: ReadRecordSession, timeFormat: SimpleDateFormat, duration: Long) {
     val start = remember(session.startTime) { Date(session.startTime) }
-    val duration = remember(session.startTime, session.endTime) {
-        (session.endTime - session.startTime).coerceAtLeast(0L)
-    }
 
     Row(
         modifier = Modifier
