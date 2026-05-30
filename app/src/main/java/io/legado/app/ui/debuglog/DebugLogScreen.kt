@@ -1,5 +1,6 @@
 package io.legado.app.ui.debuglog
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -30,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -54,6 +57,7 @@ import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.FlowStage
 import io.legado.app.model.debug.SourceSubCategory
+import io.legado.app.ui.debug.DebugToolsActivity
 import io.legado.app.ui.debuglog.DebugFloatingBallManager
 import io.legado.app.ui.debuglog.components.DebugCategoryTabs
 import io.legado.app.ui.debuglog.components.DebugLogItem
@@ -122,6 +126,10 @@ fun DebugLogScreen(
     val cardColor = pageCardElevatedContainerColor()
     val secondaryTextColor = pageSecondaryTextColor()
     val mutedIconTint = pageMutedIconTint()
+    val menuItemColors = MenuDefaults.itemColors(
+        textColor = MaterialTheme.colorScheme.onSurface,
+        leadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 
     // 搜索框显示状态
     var showSearch by remember { mutableStateOf(false) }
@@ -204,7 +212,8 @@ fun DebugLogScreen(
                             }
                             DropdownMenu(
                                 expanded = showOverflowMenu,
-                                onDismissRequest = { showOverflowMenu = false }
+                                onDismissRequest = { showOverflowMenu = false },
+                                containerColor = cardColor
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("导出日志") },
@@ -215,10 +224,25 @@ fun DebugLogScreen(
                                     },
                                     leadingIcon = {
                                         Icon(Icons.Default.Save, contentDescription = null)
-                                    }
+                                    },
+                                    colors = menuItemColors
                                 )
 
-                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text("调试工具") },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        context.startActivity(
+                                            Intent(context, DebugToolsActivity::class.java)
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.BugReport, contentDescription = null)
+                                    },
+                                    colors = menuItemColors
+                                )
+
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                                 DropdownMenuItem(
                                     text = { Text("关闭调试球") },
@@ -230,7 +254,8 @@ fun DebugLogScreen(
                                     },
                                     leadingIcon = {
                                         Icon(Icons.Default.Cancel, contentDescription = null)
-                                    }
+                                    },
+                                    colors = menuItemColors
                                 )
                             }
                         }

@@ -131,7 +131,7 @@ by appCtx.getSharedPreferences("local_plus", Context.MODE_PRIVATE) {
 
     /**
      * 是否需要更新默认主题配置
-     * version=1, 版本号低于此值时会更新默认主题为"经典白"和"A屏黑"
+     * version=1, 版本号低于此值时会更新默认主题为"红柚白"和"A屏黑"
      */
     val needUpThemeConfig: Boolean
         get() = !isLastVersion(1, "themeConfigVersion")

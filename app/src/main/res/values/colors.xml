@@ -127,11 +127,11 @@
     <color name="regex_status_error">#D32F2F</color>
     <color name="regex_edit_border">#E0E0E0</color>
 
-    <!-- 默认主题颜色 (经典白) -->
-    <color name="default_primary">#fbf9fd</color>
-    <color name="default_accent">#d4d0da</color>
-    <color name="default_background">#f5f5f5</color>
-    <color name="default_bottom_background">#fbf9fd</color>
+    <!-- 默认主题颜色 (红柚白) -->
+    <color name="default_primary">#fff5f5f5</color>
+    <color name="default_accent">#fff44336</color>
+    <color name="default_background">#fffbfbfb</color>
+    <color name="default_bottom_background">#fff5f5f5</color>
 
     <!-- 默认夜间主题颜色 (A屏黑) -->
     <color name="default_night_primary">#000000</color>

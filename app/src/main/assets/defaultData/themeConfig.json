@@ -1,5 +1,13 @@
 [
   {
+    "themeName": "红柚白",
+    "isNightTheme": false,
+    "primaryColor": "#fff5f5f5",
+    "accentColor": "#fff44336",
+    "backgroundColor": "#fffbfbfb",
+    "bottomBackground": "#fff5f5f5"
+  },
+  {
     "themeName": "经典白",
     "isNightTheme": false,
     "primaryColor": "#fffbf9fd",
@@ -30,14 +38,6 @@
     "accentColor": "#ff8f8f8f",
     "backgroundColor": "#fffdfdfd",
     "bottomBackground": "#fffdfdfd"
-  },
-  {
-    "themeName": "红柚白",
-    "isNightTheme": false,
-    "primaryColor": "#fff5f5f5",
-    "accentColor": "#fff44336",
-    "backgroundColor": "#fffbfbfb",
-    "bottomBackground": "#fff5f5f5"
   },
   {
     "themeName": "典雅蓝",

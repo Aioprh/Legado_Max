@@ -174,7 +174,7 @@ object ThemeConfig {
             context.putPrefInt(PreferKey.cAccent, newDayAccent)
             context.putPrefInt(PreferKey.cBackground, newDayBackground)
             context.putPrefInt(PreferKey.cBBackground, newDayBottomBackground)
-            context.putPrefString(PreferKey.dThemeName, "经典白")
+            context.putPrefString(PreferKey.dThemeName, "红柚白")
         }
 
         if (nightThemeName == "默认") {

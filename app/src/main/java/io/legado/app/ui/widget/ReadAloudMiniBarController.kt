@@ -10,11 +10,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils as AndroidXColorUtils
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
-import io.legado.app.base.BaseActivity
 import io.legado.app.databinding.ViewReadAloudMiniBarBinding
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.model.ReadAloud
@@ -29,8 +29,18 @@ import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+interface ReadAloudMiniBarHost {
+    fun showReadAloudMiniBar(): Boolean
+    fun lockReadAloudMiniBarPosition(): Boolean
+    fun readAloudMiniBarBottomMarginDp(): Int
+    fun defaultReadAloudMiniBarColor(): Int
+    fun onReadAloudMiniBarClick()
+    fun onReadAloudMiniBarLongClick(): Boolean
+}
+
 class ReadAloudMiniBarController(
-    private val activity: BaseActivity<*>,
+    private val activity: AppCompatActivity,
+    private val host: ReadAloudMiniBarHost,
     parent: ViewGroup
 ) {
     companion object {
@@ -52,7 +62,7 @@ class ReadAloudMiniBarController(
     private var dragging = false
 
     private fun isPositionLocked(): Boolean {
-        return activity.lockReadAloudMiniBarPosition()
+        return host.lockReadAloudMiniBarPosition()
     }
 
     private fun resetToDefaultPosition(view: View = binding.readAloudMiniBar) {
@@ -70,7 +80,7 @@ class ReadAloudMiniBarController(
 
     fun refresh() {
         binding.run {
-        if (!activity.showReadAloudMiniBar() || !BaseReadAloudService.isRun) {
+        if (!host.showReadAloudMiniBar() || !BaseReadAloudService.isRun) {
             readAloudMiniBar.invisible()
             stopAnimation(reset = true)
             miniBarVisible = false
@@ -120,7 +130,7 @@ class ReadAloudMiniBarController(
         }
         if (miniBarThemeInitialized) return
         miniBarThemeInitialized = true
-        applyTheme(activity.defaultReadAloudMiniBarColor())
+        applyTheme(host.defaultReadAloudMiniBarColor())
         val cover = BaseReadAloudService.activeBookCover ?: ReadBook.book?.getDisplayCover()
         if (cover != null) {
             ImageLoader.load(activity, cover)
@@ -184,7 +194,7 @@ class ReadAloudMiniBarController(
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     if (!dragging) {
-                        activity.onReadAloudMiniBarClick()
+                        host.onReadAloudMiniBarClick()
                     }
                     true
                 }
@@ -193,7 +203,7 @@ class ReadAloudMiniBarController(
             }
         }
         readAloudMiniBar.setOnLongClickListener {
-            activity.onReadAloudMiniBarLongClick()
+            host.onReadAloudMiniBarLongClick()
         }
         ivReadAloudMiniPlay.setOnClickListener {
             if (BaseReadAloudService.pause) ReadAloud.resume(activity)
@@ -208,7 +218,7 @@ class ReadAloudMiniBarController(
 
     private fun updateBottomMargin() {
         binding.root.updateLayoutParams<FrameLayout.LayoutParams> {
-            bottomMargin = activity.readAloudMiniBarBottomMarginDp().dpToPx()
+            bottomMargin = host.readAloudMiniBarBottomMarginDp().dpToPx()
         }
     }
 
@@ -288,7 +298,7 @@ class ReadAloudMiniBarController(
                 count++
             }
         }
-        if (count == 0L) return activity.defaultReadAloudMiniBarColor()
+        if (count == 0L) return host.defaultReadAloudMiniBarColor()
         return Color.rgb((red / count).toInt(), (green / count).toInt(), (blue / count).toInt())
     }
 }
