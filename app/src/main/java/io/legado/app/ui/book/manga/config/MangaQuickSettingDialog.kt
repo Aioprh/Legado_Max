@@ -15,6 +15,7 @@ import androidx.preference.Preference
 import io.legado.app.R
 import io.legado.app.base.BasePrefDialogFragment
 import io.legado.app.constant.EventBus
+import io.legado.app.constant.MangaReadMode
 import io.legado.app.constant.PreferKey
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.prefs.NameListPreference
@@ -83,7 +84,10 @@ class MangaQuickSettingDialog : BasePrefDialogFragment() {
 
         @SuppressLint("RestrictedApi")
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            putPrefString(KEY_READ_MODE, if (AppConfig.enableMangaHorizontalScroll) MODE_NORMAL else MODE_SCROLL)
+            if (getPrefString(PreferKey.mangaReadMode).isNullOrBlank()) {
+                AppConfig.mangaReadMode =
+                    if (AppConfig.enableMangaHorizontalScroll) MODE_NORMAL else MODE_SCROLL
+            }
             addPreferencesFromResource(R.xml.pref_manga_quick_setting)
             findPreference<SwitchPreference>(KEY_HIDE_FOOTER)?.isChecked = footerConfig.hideFooter
             updatePreloadSummary()
@@ -109,8 +113,8 @@ class MangaQuickSettingDialog : BasePrefDialogFragment() {
 
         override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
             when (key) {
-                KEY_READ_MODE -> {
-                    applyReadMode(getPrefString(KEY_READ_MODE, MODE_SCROLL) ?: MODE_SCROLL)
+                PreferKey.mangaReadMode -> {
+                    applyReadMode(AppConfig.mangaReadMode)
                     updateReadModeSummary()
                     callback?.onMangaQuickSettingChanged()
                 }
@@ -153,8 +157,9 @@ class MangaQuickSettingDialog : BasePrefDialogFragment() {
         }
 
         private fun applyReadMode(mode: String) {
-            AppConfig.enableMangaHorizontalScroll = mode != MODE_SCROLL
-            if (mode != MODE_SCROLL) {
+            AppConfig.mangaReadMode = mode
+            AppConfig.enableMangaHorizontalScroll = MangaReadMode.isHorizontal(mode)
+            if (MangaReadMode.isHorizontal(mode)) {
                 AppConfig.disableHorizontalPageSnap = false
             }
         }
@@ -165,8 +170,7 @@ class MangaQuickSettingDialog : BasePrefDialogFragment() {
         }
 
         private fun updateReadModeSummary() {
-            findPreference<NameListPreference>(KEY_READ_MODE)?.value =
-                if (AppConfig.enableMangaHorizontalScroll) MODE_NORMAL else MODE_SCROLL
+            findPreference<NameListPreference>(PreferKey.mangaReadMode)?.value = AppConfig.mangaReadMode
         }
     }
 
@@ -177,9 +181,8 @@ class MangaQuickSettingDialog : BasePrefDialogFragment() {
     }
 
     companion object {
-        private const val KEY_READ_MODE = "mangaReadMode"
         private const val KEY_HIDE_FOOTER = "mangaHideFooterInfo"
-        private const val MODE_SCROLL = "scroll"
-        private const val MODE_NORMAL = "normal"
+        private const val MODE_SCROLL = MangaReadMode.SCROLL
+        private const val MODE_NORMAL = MangaReadMode.NORMAL
     }
 }

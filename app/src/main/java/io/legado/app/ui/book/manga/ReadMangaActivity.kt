@@ -26,6 +26,7 @@ import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
+import io.legado.app.constant.MangaReadMode
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
@@ -208,7 +209,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
             enableMangaEInk(AppConfig.enableMangaEInk, AppConfig.mangaEInkThreshold)
             enableGray(AppConfig.enableMangaGray)
         }
-        setHorizontalScroll(AppConfig.enableMangaHorizontalScroll)
+        setHorizontalScroll(MangaReadMode.isHorizontal(AppConfig.mangaReadMode))
         binding.recyclerView.run {
             adapter = mAdapter
             itemAnimator = null
@@ -564,6 +565,8 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
 
             R.id.menu_enable_horizontal_scroll -> {
                 item.isChecked = !item.isChecked
+                AppConfig.mangaReadMode =
+                    if (item.isChecked) MangaReadMode.NORMAL else MangaReadMode.SCROLL
                 AppConfig.enableMangaHorizontalScroll = item.isChecked
                 mMenu?.findItem(R.id.menu_disable_horizontal_page_snap)?.isVisible = item.isChecked
                 setHorizontalScroll(item.isChecked)
@@ -784,6 +787,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
     private fun setHorizontalScroll(enable: Boolean) {
         mAdapter.isHorizontal = enable
         if (enable) {
+            mLayoutManager.reverseLayout = MangaReadMode.isJapanese(AppConfig.mangaReadMode)
             if (!enableAutoScroll) {
                 if (AppConfig.disableHorizontalPageSnap || AppConfig.disableMangaPageAnim) {
                     mPagerSnapHelper.attachToRecyclerView(null)
@@ -793,6 +797,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
             }
             mLayoutManager.orientation = LinearLayoutManager.HORIZONTAL
         } else {
+            mLayoutManager.reverseLayout = false
             mPagerSnapHelper.attachToRecyclerView(null)
             mLayoutManager.orientation = LinearLayoutManager.VERTICAL
         }
@@ -969,7 +974,7 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
     }
 
     override fun onMangaQuickSettingChanged(reloadContent: Boolean) {
-        setHorizontalScroll(AppConfig.enableMangaHorizontalScroll)
+        setHorizontalScroll(MangaReadMode.isHorizontal(AppConfig.mangaReadMode))
         setDisableMangaScale(AppConfig.disableMangaScale)
         setDisableClickScroll(AppConfig.disableClickScroll)
         mAdapter.notifyDataSetChanged()

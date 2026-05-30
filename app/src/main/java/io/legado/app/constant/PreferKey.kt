@@ -83,6 +83,7 @@ object PreferKey {
     const val launcherIcon = "launcherIcon"
     const val textSelectAble = "selectText"
     const val shareLayout = "shareLayout"
+    const val mangaReadMode = "mangaReadMode"
     const val comicStyleSelect = "comicStyleSelect"
     const val readStyleSelect = "readStyleSelect"
     const val systemTypefaces = "system_typefaces"
