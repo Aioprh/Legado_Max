@@ -37,9 +37,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.view.View
 import androidx.fragment.app.FragmentContainerView
 import androidx.fragment.app.FragmentManager
-import androidx.fragment.app.commit
 import io.legado.app.R
 import io.legado.app.ui.theme.initLegadoComposeTheme
 import io.legado.app.ui.theme.pageTopBarContainerColor
@@ -173,7 +173,8 @@ private fun AboutHeader(modifier: Modifier = Modifier) {
             Text(
                 text = stringResource(R.string.app_name_sigma),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.size(8.dp))
             Text(
@@ -190,7 +191,7 @@ private fun AboutPreferenceHost(
     fragmentManager: FragmentManager,
     modifier: Modifier = Modifier
 ) {
-    val containerId = R.id.fl_fragment
+    val containerId = androidx.compose.runtime.remember { View.generateViewId() }
     val fragmentTag = "aboutFragment"
 
     AndroidView(
@@ -204,11 +205,9 @@ private fun AboutPreferenceHost(
     )
 
     DisposableEffect(fragmentManager, containerId) {
-        if (fragmentManager.findFragmentByTag(fragmentTag) == null) {
-            fragmentManager.commit {
-                replace(containerId, AboutFragment(), fragmentTag)
-            }
-        }
+        fragmentManager.beginTransaction()
+            .replace(containerId, AboutFragment(), fragmentTag)
+            .commitAllowingStateLoss()
         onDispose { }
     }
 }
