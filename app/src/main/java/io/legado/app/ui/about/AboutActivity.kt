@@ -13,7 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,11 +23,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -35,11 +37,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.view.View
 import androidx.fragment.app.FragmentContainerView
 import androidx.fragment.app.FragmentManager
-import androidx.fragment.app.commit
 import io.legado.app.R
 import io.legado.app.ui.theme.initLegadoComposeTheme
+import io.legado.app.ui.theme.pageTopBarContainerColor
 import io.legado.app.ui.theme.setLegadoContent
 import io.legado.app.utils.openUrl
 import io.legado.app.utils.share
@@ -49,7 +52,7 @@ class AboutActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         initLegadoComposeTheme()
         super.onCreate(savedInstanceState)
-        setLegadoContent {
+        setLegadoContent(overlayAlpha = 0.06f) {
             AboutScreen(
                 fragmentManager = supportFragmentManager,
                 onBackClick = { finish() },
@@ -75,9 +78,18 @@ private fun AboutScreen(
     onShareClick: () -> Unit,
     onScoringClick: () -> Unit
 ) {
+    val topBarColor = pageTopBarContainerColor()
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = topBarColor,
+                    scrolledContainerColor = topBarColor,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
+                    titleContentColor = MaterialTheme.colorScheme.onSecondary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSecondary
+                ),
                 title = { Text(text = stringResource(R.string.about)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -96,7 +108,7 @@ private fun AboutScreen(
                     }
                     IconButton(onClick = onScoringClick) {
                         Icon(
-                            imageVector = Icons.Default.Star,
+                            imageVector = Icons.Outlined.StarBorder,
                             contentDescription = stringResource(R.string.scoring)
                         )
                     }
@@ -161,7 +173,8 @@ private fun AboutHeader(modifier: Modifier = Modifier) {
             Text(
                 text = stringResource(R.string.app_name_sigma),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.size(8.dp))
             Text(
@@ -178,7 +191,7 @@ private fun AboutPreferenceHost(
     fragmentManager: FragmentManager,
     modifier: Modifier = Modifier
 ) {
-    val containerId = R.id.fl_fragment
+    val containerId = androidx.compose.runtime.remember { View.generateViewId() }
     val fragmentTag = "aboutFragment"
 
     AndroidView(
@@ -186,16 +199,15 @@ private fun AboutPreferenceHost(
         factory = { context ->
             FragmentContainerView(context).apply {
                 id = containerId
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
             }
         }
     )
 
     DisposableEffect(fragmentManager, containerId) {
-        if (fragmentManager.findFragmentByTag(fragmentTag) == null) {
-            fragmentManager.commit {
-                replace(containerId, AboutFragment(), fragmentTag)
-            }
-        }
+        fragmentManager.beginTransaction()
+            .replace(containerId, AboutFragment(), fragmentTag)
+            .commitAllowingStateLoss()
         onDispose { }
     }
 }

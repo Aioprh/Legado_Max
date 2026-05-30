@@ -519,7 +519,8 @@ jobs:
               "${API_BASE}/releases?access_token=${GITEE_TOKEN}&per_page=100")
           
           OLD_RELEASE_ID=$(echo "$RELEASES_JSON" | jq -r \
-              '[.[] | select(.id != '$RELEASE_ID')] | sort_by(.created_at) | .[0].id // empty')
+              --argjson rid "$RELEASE_ID" \
+              '[.[] | select(.id != $rid)] | sort_by(.created_at) | .[0].id // empty')
           
           if [ -n "$OLD_RELEASE_ID" ] && [ "$OLD_RELEASE_ID" != "null" ]; then
             RELEASE_COUNT=$(echo "$RELEASES_JSON" | jq -r 'length')
@@ -527,7 +528,8 @@ jobs:
             
             if [ "$RELEASE_COUNT" -gt "$MAX_KEEP" ]; then
               OLD_RELEASE_NAME=$(echo "$RELEASES_JSON" | jq -r \
-                  '.[] | select(.id == '$OLD_RELEASE_ID') | .name')
+                  --argjson rid "$OLD_RELEASE_ID" \
+                  '.[] | select(.id == $rid) | .name')
               echo "🗑️ 删除最旧的Release: $OLD_RELEASE_NAME (ID: $OLD_RELEASE_ID)"
               
               set +e

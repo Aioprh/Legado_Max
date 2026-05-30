@@ -12,6 +12,7 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.preference.PreferenceViewHolder
 import io.legado.app.R
+import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
@@ -64,6 +65,9 @@ open class Preference(context: Context, attrs: AttributeSet) :
                 tvTitle?.setTextColor(pTextColor)
                 val sTextColor = context.getSecondaryTextColor(isLight)
                 tvSummary?.setTextColor(sTextColor)
+            } else if (!viewHolder.itemView.isInEditMode) {
+                tvTitle?.setTextColor(ThemeStore.textColorPrimary(context))
+                tvSummary?.setTextColor(ThemeStore.textColorSecondary(context))
             }
             val iconView = viewHolder.findViewById(R.id.preference_icon)
             if (iconView is ImageView) {
