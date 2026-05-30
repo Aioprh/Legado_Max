@@ -50,7 +50,8 @@ fun DebugFloatingBall(
 
     val ballSize = 56.dp
     val endMargin = 16.dp
-    val bottomMargin = 76.dp
+    val bottomMargin = 100.dp
+    val initialInset = 8.dp
     var offset by remember { mutableStateOf(Offset.Zero) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     var initialized by remember { mutableStateOf(false) }
@@ -59,6 +60,7 @@ fun DebugFloatingBall(
     val ballSizePx = with(density) { ballSize.toPx() }
     val endMarginPx = with(density) { endMargin.toPx() }
     val bottomMarginPx = with(density) { bottomMargin.toPx() }
+    val initialInsetPx = with(density) { initialInset.toPx() }
 
     var currentUnread by remember { mutableIntStateOf(unreadCount) }
 
@@ -71,8 +73,8 @@ fun DebugFloatingBall(
         val maxX = (containerSize.width - ballSizePx).coerceAtLeast(0f)
         val maxY = (containerSize.height - ballSizePx).coerceAtLeast(0f)
         offset = Offset(
-            x = (maxX - endMarginPx).coerceAtLeast(0f),
-            y = (maxY - bottomMarginPx).coerceAtLeast(0f)
+            x = (maxX - endMarginPx - initialInsetPx).coerceAtLeast(0f),
+            y = (maxY - bottomMarginPx - initialInsetPx).coerceAtLeast(0f)
         )
         initialized = true
     }
