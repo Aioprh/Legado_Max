@@ -25,12 +25,16 @@ import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.encodeURI
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.toastOnUi
+import java.security.MessageDigest
 
 private val encodeTypes = listOf(
     "Base64 编码",
     "Base64 解码",
     "MD5 编码 (32位)",
     "MD5 编码 (16位)",
+    "SHA-1 编码",
+    "SHA-256 编码",
+    "SHA-512 编码",
     "URL 编码",
     "URL 解码",
     "Hex 编码",
@@ -190,12 +194,15 @@ fun EncodeToolsScreen(
                                 1 -> EncoderUtils.base64Decode(input)
                                 2 -> MD5Utils.md5Encode(input)
                                 3 -> MD5Utils.md5Encode16(input)
-                                4 -> input.encodeURI()
-                                5 -> java.net.URLDecoder.decode(input, "UTF-8")
-                                6 -> bytesToHex(input.toByteArray())
-                                7 -> String(hexToBytes(input))
-                                8 -> stringToUnicode(input)
-                                9 -> unicodeToString(input)
+                                4 -> shaEncode(input, "SHA-1")
+                                5 -> shaEncode(input, "SHA-256")
+                                6 -> shaEncode(input, "SHA-512")
+                                7 -> input.encodeURI()
+                                8 -> java.net.URLDecoder.decode(input, "UTF-8")
+                                9 -> bytesToHex(input.toByteArray())
+                                10 -> String(hexToBytes(input))
+                                11 -> stringToUnicode(input)
+                                12 -> unicodeToString(input)
                                 else -> input
                             }
                         } catch (e: Exception) {
@@ -290,6 +297,11 @@ fun EncodeToolsScreen(
 
 private fun bytesToHex(bytes: ByteArray): String {
     return bytes.joinToString("") { "%02x".format(it) }
+}
+
+private fun shaEncode(input: String, algorithm: String): String {
+    val digest = MessageDigest.getInstance(algorithm).digest(input.toByteArray())
+    return bytesToHex(digest)
 }
 
 private fun hexToBytes(hex: String): ByteArray {
