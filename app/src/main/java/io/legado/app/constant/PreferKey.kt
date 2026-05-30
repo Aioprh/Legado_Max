@@ -239,6 +239,7 @@ object PreferKey {
     const val textBoldFineTipShown = "textBoldFineTipShown"
     const val textBoldMode = "textBoldMode"
     const val readRecordDisplayMode = "readRecordDisplayMode"
+    const val bookInfoShowReadRecord = "bookInfoShowReadRecord"
     const val highlightRuleDialog = "highlightRuleDialog"
     const val highlightRuleBookTitle = "highlightRuleBookTitle"
     const val highlightRuleBracketNote = "highlightRuleBracketNote"
