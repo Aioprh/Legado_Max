@@ -338,7 +338,6 @@ object ReadBook : CoroutineScope by MainScope() {
             readRecord.readTime = readRecord.readTime + now - readStartTime
             readStartTime = now
             readRecord.lastRead = now
-            readRecord.durChapterTitle = book?.durChapterTitle.orEmpty()
             
             val session = ReadRecordSession(
                 deviceId = readRecord.deviceId,
@@ -346,8 +345,7 @@ object ReadBook : CoroutineScope by MainScope() {
                 bookAuthor = readRecord.bookAuthor,
                 startTime = sessionStartTime,
                 endTime = now,
-                words = 0,
-                durChapterTitle = readRecord.durChapterTitle
+                words = 0
             )
             
             val repository = ReadRecordRepository(appDb.readRecordDao)
@@ -717,7 +715,9 @@ object ReadBook : CoroutineScope by MainScope() {
                 override fun onPageLoaded(pageIndex: Int, content: String) {
                     AppLog.put("懒加载回调: 章节${chapter.index} 第${pageIndex + 1}页 加载完成，准备追加到排版")
                     curTextChapter?.let { textChapter ->
-                        textChapter.appendContent(listOf(content))
+                        // 按段落分割，确保段落间距正常排版
+                        val paragraphs = content.split("\n").filter { it.isNotBlank() }
+                        textChapter.appendContent(paragraphs)
                         AppLog.put("懒加载回调: 已追加到 TextChapter")
                         kotlinx.coroutines.GlobalScope.launch(Main) {
                             callBack?.upContent(0, false)
@@ -769,7 +769,9 @@ object ReadBook : CoroutineScope by MainScope() {
                         override fun onPageLoaded(pageIndex: Int, content: String) {
                             AppLog.put("懒加载回调: 章节${chapter.index} 第${pageIndex + 1}页 加载完成，准备追加到排版")
                             curTextChapter?.let { textChapter ->
-                                textChapter.appendContent(listOf(content))
+                        // 按段落分割，确保段落间距正常排版
+                        val paragraphs = content.split("\n").filter { it.isNotBlank() }
+                        textChapter.appendContent(paragraphs)
                                 AppLog.put("懒加载回调: 已追加到 TextChapter")
                                 kotlinx.coroutines.GlobalScope.launch(Main) {
                                     callBack?.upContent(0, false)
