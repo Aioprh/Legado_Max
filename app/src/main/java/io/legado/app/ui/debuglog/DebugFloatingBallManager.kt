@@ -6,6 +6,7 @@ import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -88,12 +89,10 @@ object DebugFloatingBallManager {
                 }
                 
                 val layoutParams = FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.WRAP_CONTENT,
-                    FrameLayout.LayoutParams.WRAP_CONTENT
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
                 ).apply {
-                    gravity = Gravity.BOTTOM or Gravity.END
-                    bottomMargin = 100.dpToPx(activity)
-                    marginEnd = 16.dpToPx(activity)
+                    gravity = Gravity.TOP or Gravity.START
                 }
                 
                 try {
@@ -190,7 +189,7 @@ object DebugFloatingBallManager {
     @Composable
     private fun DebugFloatingBallContent() {
         Box(
-            modifier = Modifier.padding(8.dp)
+            modifier = Modifier.fillMaxSize()
         ) {
             DebugFloatingBall(
                 onClick = {

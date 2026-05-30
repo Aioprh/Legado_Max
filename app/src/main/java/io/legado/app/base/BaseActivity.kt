@@ -31,6 +31,7 @@ import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.config.ReadAloudActivity
 import io.legado.app.ui.widget.ReadAloudMiniBarController
+import io.legado.app.ui.widget.ReadAloudMiniBarHost
 import io.legado.app.ui.widget.TitleBar
 import io.legado.app.ui.debuglog.DebugFloatingBallManager
 import io.legado.app.ui.debuglog.DebugLogPanelDialog
@@ -56,7 +57,7 @@ abstract class BaseActivity<VB : ViewBinding>(
     private val transparent: Boolean = false,
     private val imageBg: Boolean = true,
     private val showOpenMenuIcon: Boolean = true
-) : AppCompatActivity() {
+) : AppCompatActivity(), ReadAloudMiniBarHost {
 
     protected abstract val binding: VB
     private var readAloudMiniBarController: ReadAloudMiniBarController? = null
@@ -95,7 +96,7 @@ abstract class BaseActivity<VB : ViewBinding>(
         setupSystemBar()
         setContentView(binding.root)
         findViewById<ViewGroup>(android.R.id.content)?.let {
-            readAloudMiniBarController = ReadAloudMiniBarController(this, it)
+            readAloudMiniBarController = ReadAloudMiniBarController(this, this, it)
         }
         upBackgroundImage()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -255,15 +256,15 @@ abstract class BaseActivity<VB : ViewBinding>(
         readAloudMiniBarController?.hide()
     }
 
-    open fun showReadAloudMiniBar(): Boolean = AppConfig.readAloudFloatingUi
+    open override fun showReadAloudMiniBar(): Boolean = AppConfig.readAloudFloatingUi
 
-    open fun lockReadAloudMiniBarPosition(): Boolean = false
+    open override fun lockReadAloudMiniBarPosition(): Boolean = false
 
-    open fun readAloudMiniBarBottomMarginDp(): Int = 76
+    open override fun readAloudMiniBarBottomMarginDp(): Int = 76
 
-    open fun defaultReadAloudMiniBarColor(): Int = 0xFF665185.toInt()
+    open override fun defaultReadAloudMiniBarColor(): Int = 0xFF665185.toInt()
 
-    open fun onReadAloudMiniBarClick() {
+    open override fun onReadAloudMiniBarClick() {
         BaseReadAloudService.activeBookUrl?.let { bookUrl ->
             startActivity<ReadBookActivity> {
                 putExtra("bookUrl", bookUrl)
@@ -275,7 +276,7 @@ abstract class BaseActivity<VB : ViewBinding>(
         } ?: startActivity<ReadAloudActivity>()
     }
 
-    open fun onReadAloudMiniBarLongClick(): Boolean = false
+    open override fun onReadAloudMiniBarLongClick(): Boolean = false
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         return try {

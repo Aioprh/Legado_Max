@@ -6,8 +6,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -32,15 +32,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
-/**
- * 调试悬浮球组件
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DebugFloatingBall(
@@ -52,18 +49,32 @@ fun DebugFloatingBall(
     if (!isVisible) return
 
     val ballSize = 56.dp
-    var offset by remember { mutableStateOf(Offset(x = 0f, y = 0f)) }
-    val configuration = LocalConfiguration.current
-    val density = LocalDensity.current
+    val endMargin = 16.dp
+    val bottomMargin = 76.dp
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    var initialized by remember { mutableStateOf(false) }
+    val density = androidx.compose.ui.platform.LocalDensity.current
 
-    val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
-    val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
     val ballSizePx = with(density) { ballSize.toPx() }
+    val endMarginPx = with(density) { endMargin.toPx() }
+    val bottomMarginPx = with(density) { bottomMargin.toPx() }
 
     var currentUnread by remember { mutableIntStateOf(unreadCount) }
 
     LaunchedEffect(unreadCount) {
         currentUnread = unreadCount
+    }
+
+    LaunchedEffect(containerSize) {
+        if (initialized || containerSize.width <= 0 || containerSize.height <= 0) return@LaunchedEffect
+        val maxX = (containerSize.width - ballSizePx).coerceAtLeast(0f)
+        val maxY = (containerSize.height - ballSizePx).coerceAtLeast(0f)
+        offset = Offset(
+            x = (maxX - endMarginPx).coerceAtLeast(0f),
+            y = (maxY - bottomMarginPx).coerceAtLeast(0f)
+        )
+        initialized = true
     }
 
     val startColor = lerp(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary, 0.28f)
@@ -73,72 +84,66 @@ fun DebugFloatingBall(
 
     Box(
         modifier = modifier
-            .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
-            .size(ballSize)
-            .shadow(elevation = 12.dp, shape = CircleShape, ambientColor = startColor, spotColor = endColor)
-            .clip(CircleShape)
-            .background(Brush.linearGradient(colors = listOf(startColor, endColor)))
-            .border(1.5.dp, ringColor, CircleShape)
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { },
-                    onDragEnd = {
-                        val centerX = offset.x + ballSizePx / 2
-                        if (centerX > screenWidthPx / 2) {
-                            offset = Offset(screenWidthPx - ballSizePx, offset.y)
-                        } else {
-                            offset = Offset(0f, offset.y)
-                        }
-                    },
-                    onDragCancel = { },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        offset += dragAmount
-                        offset = Offset(
-                            x = offset.x.coerceIn(0f, screenWidthPx - ballSizePx),
-                            y = offset.y.coerceIn(0f, screenHeightPx - ballSizePx)
-                        )
-                    }
-                )
-            }
-            .clickable(
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
+            .fillMaxSize()
+            .onSizeChanged { containerSize = it }
     ) {
-        Surface(
-            modifier = Modifier.size(42.dp),
-            shape = CircleShape,
-            color = glowColor
-        ) {}
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
+                .size(ballSize)
+                .shadow(elevation = 12.dp, shape = CircleShape, ambientColor = startColor, spotColor = endColor)
+                .clip(CircleShape)
+                .background(Brush.linearGradient(colors = listOf(startColor, endColor)))
+                .border(1.5.dp, ringColor, CircleShape)
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { },
+                        onDragCancel = { },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            val maxX = (containerSize.width - ballSizePx).coerceAtLeast(0f)
+                            val maxY = (containerSize.height - ballSizePx).coerceAtLeast(0f)
+                            offset = Offset(
+                                x = (offset.x + dragAmount.x).coerceIn(0f, maxX),
+                                y = (offset.y + dragAmount.y).coerceIn(0f, maxY)
+                            )
+                        }
+                    )
+                }
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier.size(42.dp),
+                shape = CircleShape,
+                color = glowColor
+            ) {}
 
-        Icon(
-            imageVector = Icons.Default.Info,
-            contentDescription = "调试日志",
-            tint = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.size(28.dp)
-        )
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "调试日志",
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(28.dp)
+            )
 
-        if (currentUnread > 0) {
-            Badge(
-                containerColor = MaterialTheme.colorScheme.error,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-4).dp, y = 4.dp)
-            ) {
-                Text(
-                    text = currentUnread.coerceAtMost(99).toString(),
-                    color = MaterialTheme.colorScheme.onError,
-                    style = MaterialTheme.typography.labelSmall
-                )
+            if (currentUnread > 0) {
+                Badge(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-4).dp, y = 4.dp)
+                ) {
+                    Text(
+                        text = currentUnread.coerceAtMost(99).toString(),
+                        color = MaterialTheme.colorScheme.onError,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
             }
         }
     }
 }
 
-/**
- * 带过滤功能的智能悬浮球
- */
 @Composable
 fun SmartDebugFloatingBall(
     currentRoute: String?,
