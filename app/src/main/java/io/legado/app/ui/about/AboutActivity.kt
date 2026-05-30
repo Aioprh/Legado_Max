@@ -13,7 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -108,7 +108,7 @@ private fun AboutScreen(
                     }
                     IconButton(onClick = onScoringClick) {
                         Icon(
-                            imageVector = Icons.Default.Star,
+                            imageVector = Icons.Outlined.StarBorder,
                             contentDescription = stringResource(R.string.scoring)
                         )
                     }
