@@ -178,6 +178,11 @@ fun BookReadRecordScreen(
         .value
 
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+    val dayTotalDurationMap = remember(rawSessions) {
+        rawSessions
+            .groupBy { dateFormat.format(Date(it.startTime)) }
+            .mapValues { (_, sessions) -> sessions.sumOf { (it.endTime - it.startTime).coerceAtLeast(0L) } }
+    }
     val timelineDays = remember(rawSessions) {
         rawSessions
             .sortedBy { it.startTime }
@@ -303,7 +308,7 @@ fun BookReadRecordScreen(
                         items = timelineDays,
                         key = { it.date }
                     ) { day ->
-                        DaySection(day.date, day.sessions)
+                        DaySection(day.date, day.sessions, dayTotalDurationMap[day.date] ?: 0L)
                     }
                 }
             }
@@ -373,13 +378,11 @@ private fun StatChip(
 @Composable
 private fun DaySection(
     date: String,
-    sessions: List<ReadRecordSession>
+    sessions: List<ReadRecordSession>,
+    totalDuration: Long
 ) {
     var expanded by remember { mutableStateOf(false) }
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val dayTotal = remember(sessions) {
-        sessions.sumOf { (it.endTime - it.startTime).coerceAtLeast(0L) }
-    }
 
     Column(
         modifier = Modifier
@@ -408,7 +411,7 @@ private fun DaySection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = formatReadDuration(dayTotal),
+                    text = formatReadDuration(totalDuration),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
