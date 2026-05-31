@@ -539,6 +539,7 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
                             val nextIndex = (currentIndex + 1) % chars.size
                             char = chars.getOrNull(nextIndex) ?: ""
                             infoMap[title] = char
+                            infoMap.save()
                             tv.text = if (left) char + newName else newName + char
                             val action = kind.action?.takeIf { it.isNotBlank() } ?: return@setOnClickListener
                             callBack.scope.launch(IO) {
@@ -561,6 +562,7 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
                                     val nextIndex = (currentIndex + 1) % chars.size
                                     char = chars.getOrNull(nextIndex) ?: ""
                                     infoMap[title] = char
+                                    infoMap.save()
                                     tv.text = if (left) char + newName else newName + char
                                     val action = kind.action?.takeIf { it.isNotBlank() } ?: return@setOnTouchListener true
                                     callBack.scope.launch(IO) {
@@ -633,6 +635,7 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
                                     return
                                 }
                                 infoMap[title] = chars[position]
+                                infoMap.save()
                                 if (kind.action != null) {
                                     callBack.scope.launch(IO) {
                                         evalButtonClick(kind.action, source, infoMap, title, sourceJsExtensions)
@@ -1319,12 +1322,8 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
             pooledWebView.realWebView.onPause()
         }
         saveInfoMapJob?.cancel()
-        saveInfoMapJob = callBack.scope.launch {
-            exploreInfoMapList.snapshot().filter { (_, infoMap) -> infoMap.needSave }.map { (_, infoMap) ->
-                launch {
-                    infoMap.saveNow()
-                }
-            }.joinAll()
+        exploreInfoMapList.snapshot().filter { (_, infoMap) -> infoMap.needSave }.forEach { (_, infoMap) ->
+            infoMap.saveNow()
         }
     }
 
