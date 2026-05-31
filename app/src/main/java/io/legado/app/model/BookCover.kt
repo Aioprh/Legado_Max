@@ -21,6 +21,7 @@ import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.help.CacheManager
 import io.legado.app.help.DefaultData
@@ -74,12 +75,25 @@ object BookCover {
         upDefaultCover()
     }
 
-    fun getGalleryDefaultCover(): String? {
-        return coverGalleryRepository.getDefaultCoverPath()
+    fun getGalleryDefaultCover(identity: String? = null): String? {
+        return coverGalleryRepository.getDefaultCoverPath(identity)
     }
 
     fun getDisplayCover(book: Book): String? {
-        return getGalleryDefaultCover() ?: book.getDisplayCover()
+        return getGalleryDefaultCover(book.bookUrl) ?: book.getDisplayCover()
+    }
+
+    fun getDisplayCover(searchBook: SearchBook): String? {
+        val identity = buildString {
+            append(searchBook.bookUrl)
+            append('|')
+            append(searchBook.origin)
+            append('|')
+            append(searchBook.name)
+            append('|')
+            append(searchBook.author)
+        }
+        return getGalleryDefaultCover(identity) ?: searchBook.coverUrl
     }
 
     /**
@@ -95,12 +109,12 @@ object BookCover {
         if (isNightTheme) {
             drawBookName = appCtx.getPrefBoolean(PreferKey.coverShowNameN, true)
             drawBookAuthor = appCtx.getPrefBoolean(PreferKey.coverShowAuthorN, true)
-            path = getGalleryDefaultCover()
+            path = getGalleryDefaultCover("default-night")
                 ?: appCtx.getPrefString(PreferKey.defaultCoverDark)
         } else {
             drawBookName = appCtx.getPrefBoolean(PreferKey.coverShowName, true)
             drawBookAuthor = appCtx.getPrefBoolean(PreferKey.coverShowAuthor, true)
-            path = getGalleryDefaultCover()
+            path = getGalleryDefaultCover("default-day")
                 ?: appCtx.getPrefString(PreferKey.defaultCover)
         }
         defaultDrawable = runCatching {

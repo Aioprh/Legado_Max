@@ -20,7 +20,7 @@ class BookRepository {
         if (book == null) {
             return getConfiguredDefaultCover()
         }
-        BookCover.getGalleryDefaultCover()?.let { return it }
+        BookCover.getGalleryDefaultCover(book.bookUrl)?.let { return it }
         book.getDisplayCover()?.takeIf { it.isNotBlank() }?.let { return it }
         val coverUrl = runCatching {
             BookCover.searchCover(book)

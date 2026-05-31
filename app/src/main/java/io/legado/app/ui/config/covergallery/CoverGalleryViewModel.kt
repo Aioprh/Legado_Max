@@ -73,4 +73,10 @@ class CoverGalleryViewModel : ViewModel() {
             repository.unsetDefaultGroup(groupId)
         }
     }
+
+    fun rerandomizeGroup(groupId: Long) {
+        viewModelScope.launch {
+            repository.rerandomizeGroup(groupId)
+        }
+    }
 }

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -258,6 +259,7 @@ fun CoverGalleryScreen(
                             },
                             onSetDefault = { viewModel.setDefaultGroup(groupWithImages.group.id) },
                             onUnsetDefault = { viewModel.unsetDefaultGroup(groupWithImages.group.id) },
+                            onRerandomize = { viewModel.rerandomizeGroup(groupWithImages.group.id) },
                             onRename = { editGroup = groupWithImages },
                             onDeleteGroup = { deleteGroup = groupWithImages },
                             onDeleteImage = { deleteImage = it }
@@ -304,6 +306,7 @@ private fun CoverGalleryGroupCard(
     onAddImage: () -> Unit,
     onSetDefault: () -> Unit,
     onUnsetDefault: () -> Unit,
+    onRerandomize: () -> Unit,
     onRename: () -> Unit,
     onDeleteGroup: () -> Unit,
     onDeleteImage: (CoverGalleryImage) -> Unit
@@ -341,7 +344,7 @@ private fun CoverGalleryGroupCard(
                         if (group.isDefault) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "默认",
+                                text = "默认 · 随机",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -377,6 +380,16 @@ private fun CoverGalleryGroupCard(
                                 )
                             }
                         )
+                        if (group.isDefault) {
+                            DropdownMenuItem(
+                                text = { Text("重新随机") },
+                                onClick = {
+                                    onRerandomize()
+                                    showMenu = false
+                                },
+                                leadingIcon = { Icon(Icons.Default.Casino, contentDescription = null) }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("重命名") },
                             onClick = {

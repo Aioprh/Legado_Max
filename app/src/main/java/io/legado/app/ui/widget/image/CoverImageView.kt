@@ -294,7 +294,13 @@ class CoverImageView @JvmOverloads constructor(
         fragment: Fragment? = null,
         lifecycle: Lifecycle? = null
     ) {
-        load(searchBook.coverUrl, searchBook.name, searchBook.author, loadOnlyWifi, searchBook.origin, fragment, lifecycle)
+        val galleryIdentity = listOf(
+            searchBook.bookUrl,
+            searchBook.origin,
+            searchBook.name,
+            searchBook.author
+        ).joinToString("|")
+        load(searchBook.coverUrl, searchBook.name, searchBook.author, loadOnlyWifi, searchBook.origin, fragment, lifecycle, galleryIdentity = galleryIdentity)
     }
 
     fun load(
@@ -304,7 +310,7 @@ class CoverImageView @JvmOverloads constructor(
         lifecycle: Lifecycle? = null,
         onLoadFinish: (() -> Unit)? = null
     ) {
-       load(BookCover.getDisplayCover(book), book.name, book.author, loadOnlyWifi, book.origin, fragment, lifecycle, onLoadFinish)
+       load(book.getDisplayCover(), book.name, book.author, loadOnlyWifi, book.origin, fragment, lifecycle, onLoadFinish, book.bookUrl)
     }
 
     fun load(
@@ -315,7 +321,8 @@ class CoverImageView @JvmOverloads constructor(
         sourceOrigin: String? = null,
         fragment: Fragment? = null,
         lifecycle: Lifecycle? = null,
-        onLoadFinish: (() -> Unit)? = null
+        onLoadFinish: (() -> Unit)? = null,
+        galleryIdentity: String? = null
     ) {
         val currentAuthor = author?.replace(AppPattern.bdRegex, "")?.trim()?.also {
             this.author = it
@@ -323,7 +330,9 @@ class CoverImageView @JvmOverloads constructor(
         val currentName = name?.replace(AppPattern.bdRegex, "")?.trim()?.also {
             this.name = it
         }
-        val galleryDefaultCover = BookCover.getGalleryDefaultCover()
+        val galleryDefaultCover = BookCover.getGalleryDefaultCover(
+            galleryIdentity ?: listOfNotNull(sourceOrigin, path, name, author).joinToString("|")
+        )
         val actualPath = galleryDefaultCover ?: path
         this.bitmapPath = actualPath
 

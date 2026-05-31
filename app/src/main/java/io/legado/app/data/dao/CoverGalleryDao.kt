@@ -41,8 +41,9 @@ interface CoverGalleryDao {
     @Query("select max(`order`) from cover_gallery_images where groupId = :groupId")
     suspend fun getMaxImageOrder(groupId: Long): Int?
 
-    @Query("select path from cover_gallery_images where groupId = (select id from cover_gallery_groups where isDefault = 1 limit 1) order by `order`, id limit 1")
-    fun getDefaultCoverPath(): String?
+    @Transaction
+    @Query("select * from cover_gallery_groups where isDefault = 1 limit 1")
+    fun getDefaultGroupWithImages(): CoverGalleryGroupWithImages?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGroup(group: CoverGalleryGroup): Long
