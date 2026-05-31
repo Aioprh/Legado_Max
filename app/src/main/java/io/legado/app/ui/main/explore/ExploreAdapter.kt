@@ -1319,12 +1319,8 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
             pooledWebView.realWebView.onPause()
         }
         saveInfoMapJob?.cancel()
-        saveInfoMapJob = callBack.scope.launch {
-            exploreInfoMapList.snapshot().filter { (_, infoMap) -> infoMap.needSave }.map { (_, infoMap) ->
-                launch {
-                    infoMap.saveNow()
-                }
-            }.joinAll()
+        exploreInfoMapList.snapshot().filter { (_, infoMap) -> infoMap.needSave }.forEach { (_, infoMap) ->
+            infoMap.saveNow()
         }
     }
 
