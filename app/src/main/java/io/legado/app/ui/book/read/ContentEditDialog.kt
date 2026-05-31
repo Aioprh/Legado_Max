@@ -290,7 +290,13 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                 }
                 return@execute content ?: let {
                     val contentProcessor = ContentProcessor.get(book.name, book.origin)
-                    val content = BookHelp.getContent(book, chapter) ?: return@let null
+                    // 优先从当前 TextChapter 获取完整内容（包含懒加载追加的）
+                    val textChapter = ReadBook.curTextChapter
+                    val content = if (textChapter != null && textChapter.chapter.index == chapter.index && textChapter.isFullyLoaded()) {
+                        textChapter.getContent()
+                    } else {
+                        BookHelp.getContent(book, chapter) ?: return@let null
+                    }
                     contentProcessor.getContent(book, chapter, content, includeTitle = false)
                         .toString()
                 }
