@@ -19,6 +19,7 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookSource
 import io.legado.app.databinding.DialogContentEditBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.help.book.BookHelp
@@ -281,6 +282,7 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                 val chapter = appDb.bookChapterDao
                     .getChapter(book.bookUrl, ReadBook.durChapterIndex)
                     ?: return@execute null
+                
                 if (reset) {
                     content = null
                     BookHelp.delContent(book, chapter)
@@ -288,15 +290,19 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                         WebBook.getContentAwait(bookSource, book, chapter)
                     }
                 }
-                // 优先从当前 TextChapter 获取完整内容（包含懒加载追加的）
-                val textChapter = ReadBook.curTextChapter
-                if (textChapter != null && textChapter.chapter.index == chapter.index) {
-                    val fullContent = textChapter.getContent()
-                    if (fullContent.isNotBlank()) {
-                        return@execute fullContent
+                
+                // 懒加载书源且当前章节未完全加载，提示用户稍后编辑
+                val bookSource = ReadBook.bookSource
+                if (bookSource != null && bookSource.nextPageLazyLoad) {
+                    val textChapter = ReadBook.curTextChapter
+                    if (textChapter != null
+                        && textChapter.chapter.index == chapter.index
+                        && !textChapter.isFullyLoaded()) {
+                        return@execute "[开启下一页懒加载，加载完成后可编辑]"
                     }
                 }
-                // 回退到缓存文件
+
+                // 从缓存文件读取（懒加载完成后已保存完整内容）
                 return@execute content ?: let {
                     val contentProcessor = ContentProcessor.get(book.name, book.origin)
                     val cachedContent = BookHelp.getContent(book, chapter) ?: return@let null
@@ -312,7 +318,7 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                 loadStateLiveData.postValue(false)
             }
         }
-        }
 
+    }
 
 }
