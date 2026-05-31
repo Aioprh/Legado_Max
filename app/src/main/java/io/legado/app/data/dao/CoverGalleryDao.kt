@@ -35,6 +35,12 @@ interface CoverGalleryDao {
     @Query("select * from cover_gallery_groups where id = :groupId")
     suspend fun getGroup(groupId: Long): CoverGalleryGroup?
 
+    @get:Query("select * from cover_gallery_groups order by `order`, id")
+    val allGroups: List<CoverGalleryGroup>
+
+    @get:Query("select * from cover_gallery_images order by groupId, `order`, id")
+    val allImages: List<CoverGalleryImage>
+
     @Query("select max(`order`) from cover_gallery_groups")
     suspend fun getMaxGroupOrder(): Int?
 
@@ -48,17 +54,29 @@ interface CoverGalleryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGroup(group: CoverGalleryGroup): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertGroups(vararg groups: CoverGalleryGroup)
+
     @Update
     suspend fun updateGroup(group: CoverGalleryGroup)
 
     @Query("delete from cover_gallery_groups where id = :groupId")
     suspend fun deleteGroup(groupId: Long)
 
+    @Query("delete from cover_gallery_groups")
+    fun deleteAllGroups()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertImage(image: CoverGalleryImage): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insertImages(vararg images: CoverGalleryImage)
+
     @Query("delete from cover_gallery_images where id = :imageId")
     suspend fun deleteImage(imageId: Long)
+
+    @Query("delete from cover_gallery_images")
+    fun deleteAllImages()
 
     @Query("update cover_gallery_groups set isDefault = 0")
     suspend fun clearDefaultGroup()

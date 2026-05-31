@@ -19,7 +19,6 @@ import kotlin.math.absoluteValue
 
 class CoverGalleryRepository {
 
-    private val randomSeedKeyPrefix = "coverGalleryRandomSeed:"
     private val dao = appDb.coverGalleryDao
 
     fun flowGroupsWithImages(query: String) = if (query.isBlank()) {
@@ -136,5 +135,10 @@ class CoverGalleryRepository {
     private fun refreshDefaultCover() {
         BookCover.upDefaultCover()
         postEvent(EventBus.BOOKSHELF_REFRESH, "")
+    }
+
+    companion object {
+        const val backupDirName = "封面图集"
+        const val randomSeedKeyPrefix = "coverGalleryRandomSeed:"
     }
 }

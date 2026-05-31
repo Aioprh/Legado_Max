@@ -53,6 +53,7 @@ import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
 import io.legado.app.ui.book.read.config.HighlightRuleStore
+import io.legado.app.data.repository.CoverGalleryRepository
 
 /**
  * 章节缓存信息
@@ -155,7 +156,8 @@ object Backup {
             ThemeConfig.configFileName,
             BookCover.configFileName,
             "config.xml",
-            "videoConfig.xml"
+            "videoConfig.xml",
+            CoverGalleryRepository.backupDirName
         )
     }
 
@@ -279,6 +281,44 @@ object Backup {
         HighlightRuleStore.getUsedBgImageFiles(appCtx).forEach { bgFile ->
             bgFile.copyTo(File(targetDir, bgFile.name), overwrite = true)
         }
+    }
+
+    private fun stageCoverGallery(rootPath: String) {
+        val groups = appDb.coverGalleryDao.allGroups
+        if (groups.isEmpty()) return
+        val imagesByGroup = appDb.coverGalleryDao.allImages.groupBy { it.groupId }
+        val rootDir = File(rootPath, CoverGalleryRepository.backupDirName).createFolderIfNotExist()
+        val usedFolderNames = hashSetOf<String>()
+        groups.forEachIndexed { index, group ->
+            val folderName = uniqueCoverGalleryFolderName(group.name, index, usedFolderNames)
+            val groupDir = File(rootDir, folderName).createFolderIfNotExist()
+            imagesByGroup[group.id].orEmpty()
+                .sortedWith(compareBy({ it.order }, { it.id }))
+                .map { File(it.path) }
+                .filter { it.exists() && it.isFile }
+                .distinctBy { it.absolutePath }
+                .forEach { imageFile ->
+                    imageFile.copyTo(File(groupDir, imageFile.name), overwrite = true)
+                }
+        }
+    }
+
+    private fun uniqueCoverGalleryFolderName(
+        groupName: String,
+        index: Int,
+        usedFolderNames: MutableSet<String>
+    ): String {
+        val fallbackName = "group${index + 1}"
+        val baseName = groupName.ifBlank { fallbackName }.normalizeFileName().ifBlank {
+            fallbackName
+        }
+        var folderName = baseName
+        var suffix = 2
+        while (!usedFolderNames.add(folderName)) {
+            folderName = "$baseName ($suffix)"
+            suffix++
+        }
+        return folderName
     }
 
     private fun getBackupPaths(): ArrayList<String> {
@@ -438,6 +478,9 @@ object Backup {
         }
         if (selectedFiles.contains("dictRule.json")) {
             writeListToJson(appDb.dictRuleDao.all, "dictRule.json", backupPath)
+        }
+        if (selectedFiles.contains(CoverGalleryRepository.backupDirName)) {
+            stageCoverGallery(backupPath)
         }
 
         // 服务器配置需要加密存储
