@@ -52,6 +52,7 @@ fun DebugFloatingBall(
     val endMargin = 16.dp
     val bottomMargin = 100.dp
     val initialInset = 8.dp
+    val snapThreshold = 84.dp
     var offset by remember { mutableStateOf(Offset.Zero) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     var initialized by remember { mutableStateOf(false) }
@@ -61,11 +62,25 @@ fun DebugFloatingBall(
     val endMarginPx = with(density) { endMargin.toPx() }
     val bottomMarginPx = with(density) { bottomMargin.toPx() }
     val initialInsetPx = with(density) { initialInset.toPx() }
+    val snapThresholdPx = with(density) { snapThreshold.toPx() }
+    val halfBallSizePx = ballSizePx / 2f
 
     var currentUnread by remember { mutableIntStateOf(unreadCount) }
 
     LaunchedEffect(unreadCount) {
         currentUnread = unreadCount
+    }
+
+    fun snapHalfIntoHorizontalEdge(currentOffset: Offset): Offset {
+        val maxX = (containerSize.width - ballSizePx).coerceAtLeast(0f)
+        val maxY = (containerSize.height - ballSizePx).coerceAtLeast(0f)
+        val clampedY = currentOffset.y.coerceIn(0f, maxY)
+        val targetX = when {
+            currentOffset.x <= snapThresholdPx -> -halfBallSizePx
+            maxX - currentOffset.x <= snapThresholdPx -> maxX + halfBallSizePx
+            else -> currentOffset.x.coerceIn(0f, maxX)
+        }
+        return Offset(targetX, clampedY)
     }
 
     LaunchedEffect(containerSize) {
@@ -101,7 +116,12 @@ fun DebugFloatingBall(
                     .pointerInput(Unit) {
                         detectDragGestures(
                             onDragStart = { },
-                            onDragCancel = { },
+                            onDragCancel = {
+                                offset = snapHalfIntoHorizontalEdge(offset)
+                            },
+                            onDragEnd = {
+                                offset = snapHalfIntoHorizontalEdge(offset)
+                            },
                             onDrag = { change, dragAmount ->
                                 change.consume()
                                 val maxX = (containerSize.width - ballSizePx).coerceAtLeast(0f)
