@@ -33,6 +33,16 @@ interface CacheDao {
     fun getRuntimeSourceCaches(now: Long): List<Cache>
 
     @Query(
+        """select * from caches
+        where substr(`key`, 1, 2) = 'v_'
+        or substr(`key`, 1, 9) = 'userInfo_'
+        or substr(`key`, 1, 12) = 'loginHeader_'
+        or substr(`key`, 1, 15) = 'sourceVariable_'
+        or substr(`key`, 1, 8) = 'infoMap_'"""
+    )
+    fun getAllRuntimeSourceCaches(): List<Cache>
+
+    @Query(
         """delete from caches where `key` like 'v_' || :key || '_%'
         or `key` = 'userInfo_' || :key
         or `key` = 'loginHeader_' || :key
@@ -50,6 +60,9 @@ interface CacheDao {
         or `key` like 'infoMap_%'"""
     )
     fun deleteAllRuntimeSourceCaches()
+
+    @Query("delete from caches where substr(`key`, 1, length(:prefix)) = :prefix")
+    fun deleteRuntimeSourceCachesByPrefix(prefix: String)
 
     @Query("delete from caches where deadline > 0 and deadline < :now")
     fun clearDeadline(now: Long)

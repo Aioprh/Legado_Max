@@ -40,7 +40,8 @@ enum class CacheType {
     TTS_CACHE,
     ACACHE_DISK,
     DB_CACHE,
-    LOG_CACHE
+    LOG_CACHE,
+    WEBVIEW_CACHE
 }
 
 data class CacheItem(
@@ -98,7 +99,10 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
                 val aCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateACacheSize() }
                 val aCacheCountDeferred = async(Dispatchers.IO) { StorageCalculator.countACacheItems() }
                 val dbCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateDbCacheSize() }
+                val dbCacheCountDeferred = async(Dispatchers.IO) { StorageCalculator.countDbCacheItems() }
                 val logCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateLogCacheSize() }
+                val webViewCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateWebViewCacheSize() }
+                val webViewCacheCountDeferred = async(Dispatchers.IO) { StorageCalculator.countWebViewCacheDirs() }
                 
                 // 等待所有并行任务完成
                 val bookSize = bookCacheDeferred.await()
@@ -110,7 +114,10 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
                 val aCacheSize = aCacheDeferred.await()
                 val aCacheCount = aCacheCountDeferred.await()
                 val dbSize = dbCacheDeferred.await()
+                val dbCacheCount = dbCacheCountDeferred.await()
                 val logSize = logCacheDeferred.await()
+                val webViewSize = webViewCacheDeferred.await()
+                val webViewCount = webViewCacheCountDeferred.await()
                 
                 val items = mutableListOf<CacheItem>()
                 items.add(createCacheItem(CacheType.BOOK_CACHE, bookSize, true, "${bookCount}本"))
@@ -118,8 +125,9 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
                 items.add(createCacheItem(CacheType.TEMP_CACHE, tempSize, false, null))
                 items.add(createCacheItem(CacheType.TTS_CACHE, ttsSize, true, "${ttsCount}个引擎"))
                 items.add(createCacheItem(CacheType.ACACHE_DISK, aCacheSize, true, "${aCacheCount}项"))
-                items.add(createCacheItem(CacheType.DB_CACHE, dbSize, true, "legado.db"))
+                items.add(createCacheItem(CacheType.DB_CACHE, dbSize, true, "${dbCacheCount}项"))
                 items.add(createCacheItem(CacheType.LOG_CACHE, logSize, false, null))
+                items.add(createCacheItem(CacheType.WEBVIEW_CACHE, webViewSize, true, "${webViewCount}项"))
                 
                 _cacheItems.value = items
                 _totalSize.value = items.sumOf { it.size }
@@ -160,9 +168,10 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
                     CacheType.EPUB_CACHE -> StorageCalculator.clearEpubCache()
                     CacheType.TEMP_CACHE -> StorageCalculator.clearTempCache()
                     CacheType.TTS_CACHE -> StorageCalculator.clearTtsCache(detailId)
-                    CacheType.ACACHE_DISK -> StorageCalculator.clearACache(detailId)
-                    CacheType.DB_CACHE -> StorageCalculator.clearDbCache()
+                    CacheType.ACACHE_DISK -> StorageCalculator.clearACacheAccurate(detailId)
+                    CacheType.DB_CACHE -> StorageCalculator.clearDbCacheByPrefix(detailId)
                     CacheType.LOG_CACHE -> StorageCalculator.clearLogCache()
+                    CacheType.WEBVIEW_CACHE -> StorageCalculator.clearWebViewCache(detailId)
                 }
                 loadCacheInfo()
             } catch (e: Exception) {
@@ -180,7 +189,9 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
                 StorageCalculator.clearTempCache()
                 StorageCalculator.clearTtsCache()
                 StorageCalculator.clearACache()
+                StorageCalculator.clearDbCache()
                 StorageCalculator.clearLogCache()
+                StorageCalculator.clearWebViewCache()
                 loadCacheInfo()
             } catch (e: Exception) {
                 _uiState.value = StorageUiState.Error(e.message ?: "清理失败")
@@ -212,8 +223,9 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
             when (type) {
                 CacheType.BOOK_CACHE -> StorageCalculator.calculateBookCacheDetails()
                 CacheType.TTS_CACHE -> StorageCalculator.calculateTtsCacheDetails()
-                CacheType.ACACHE_DISK -> StorageCalculator.calculateACacheDetails()
-                CacheType.DB_CACHE -> StorageCalculator.calculateDbCacheDetails()
+                CacheType.ACACHE_DISK -> StorageCalculator.calculateACacheDetailsAccurate()
+                CacheType.DB_CACHE -> StorageCalculator.calculateDbCacheDetailsAccurate()
+                CacheType.WEBVIEW_CACHE -> StorageCalculator.calculateWebViewCacheDetails()
                 else -> emptyList()
             }
         }
@@ -228,6 +240,7 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
             CacheType.ACACHE_DISK -> "ACache 磁盘缓存"
             CacheType.DB_CACHE -> "数据库缓存"
             CacheType.LOG_CACHE -> "日志文件"
+            CacheType.WEBVIEW_CACHE -> "WebView 缓存"
         }
     }
 
@@ -240,6 +253,7 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
             CacheType.ACACHE_DISK -> "书源变量、用户信息等运行时缓存"
             CacheType.DB_CACHE -> "CacheDao 存储的临时数据记录"
             CacheType.LOG_CACHE -> "应用运行日志、错误日志等"
+            CacheType.WEBVIEW_CACHE -> "WebView 页面数据、本地缓存、Cookie 等持久化内容"
         }
     }
 
@@ -252,6 +266,7 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
             CacheType.ACACHE_DISK -> Icons.Filled.Save
             CacheType.DB_CACHE -> Icons.Filled.List
             CacheType.LOG_CACHE -> Icons.Filled.Info
+            CacheType.WEBVIEW_CACHE -> Icons.Filled.Description
         }
     }
 
@@ -264,6 +279,7 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
             CacheType.ACACHE_DISK -> 0xFF10B981
             CacheType.DB_CACHE -> 0xFF6366F1
             CacheType.LOG_CACHE -> 0xFF64748B
+            CacheType.WEBVIEW_CACHE -> 0xFF0EA5E9
         }
     }
 }
