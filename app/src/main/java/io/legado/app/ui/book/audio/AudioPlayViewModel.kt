@@ -16,6 +16,7 @@ import io.legado.app.help.book.getBookSource
 import io.legado.app.help.book.removeType
 import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.model.AudioPlay
+import io.legado.app.model.BookCover
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
@@ -50,7 +51,7 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
         }
         customBtnListData.postValue(AudioPlay.bookSource?.customButton == true)
         titleData.postValue(book.name)
-        coverData.postValue(book.getDisplayCover())
+        coverData.postValue(BookCover.getDisplayCover(book))
         if (book.tocUrl.isEmpty() && !loadBookInfo(book)) {
             return
         }

@@ -52,6 +52,7 @@ import io.legado.app.lib.permission.Permissions
 import io.legado.app.lib.permission.PermissionsCompat
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
+import io.legado.app.model.BookCover
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.receiver.MediaButtonReceiver
@@ -196,7 +197,7 @@ abstract class BaseReadAloudService : BaseService(),
         activeBookUrl = book.bookUrl
         activeBookName = book.name
         activeBookAuthor = book.author
-        activeBookCover = book.getDisplayCover()
+        activeBookCover = BookCover.getDisplayCover(book)
         activeChapterTitle = ReadBook.curTextChapter?.title ?: book.durChapterTitle
         activePreviewText = null
     }

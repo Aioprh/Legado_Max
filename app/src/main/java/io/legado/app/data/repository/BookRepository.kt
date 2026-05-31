@@ -20,6 +20,7 @@ class BookRepository {
         if (book == null) {
             return getConfiguredDefaultCover()
         }
+        BookCover.getGalleryDefaultCover()?.let { return it }
         book.getDisplayCover()?.takeIf { it.isNotBlank() }?.let { return it }
         val coverUrl = runCatching {
             BookCover.searchCover(book)
@@ -43,6 +44,9 @@ class BookRepository {
     }
 
     fun getConfiguredDefaultCover(): String? {
+        CoverGalleryRepository().getDefaultCoverPath()?.let {
+            return it
+        }
         val preferenceKey = if (AppConfig.isNightTheme) {
             PreferKey.defaultCoverDark
         } else {

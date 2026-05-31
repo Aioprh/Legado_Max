@@ -14,6 +14,7 @@ import io.legado.app.lib.prefs.fragment.PreferenceFragment
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.BookCover
 import io.legado.app.constant.EventBus
+import io.legado.app.ui.config.covergallery.CoverGalleryActivity
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.image.CoverImageView
 import io.legado.app.utils.FileUtils
@@ -114,6 +115,7 @@ class CoverConfigFragment : PreferenceFragment(),
         when (preference.key) {
             "coverRule" -> showDialogFragment(CoverRuleConfigDialog())
             "coverHtmlCode" -> CoverHtmlActivity.startTemplateList(requireContext())
+            "coverGallery" -> CoverGalleryActivity.start(requireContext())
             PreferKey.defaultCover ->
                 if (getPrefString(preference.key).isNullOrEmpty()) {
                     selectImage.launch {

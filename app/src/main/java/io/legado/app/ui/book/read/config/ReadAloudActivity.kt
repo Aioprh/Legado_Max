@@ -327,7 +327,9 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     }
 
     private fun updateThemeFromCover() {
-        val cover = BaseReadAloudService.activeBookCover ?: ReadBook.book?.getDisplayCover() ?: return
+        val cover = BaseReadAloudService.activeBookCover
+            ?: ReadBook.book?.let { BookCover.getDisplayCover(it) }
+            ?: return
         updateBlurBackground()
         lifecycleScope.launch(Dispatchers.IO) {
             val bitmap = runCatching {
@@ -351,7 +353,7 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
             return
         }
         ReadBook.book?.let { book ->
-            BookCover.loadBlur(this, book.getDisplayCover(), sourceOrigin = book.origin)
+            BookCover.loadBlur(this, BookCover.getDisplayCover(book), sourceOrigin = book.origin)
                 .into(binding.ivBlurBackground)
         }
     }

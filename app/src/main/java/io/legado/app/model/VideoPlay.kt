@@ -24,6 +24,7 @@ import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.RssReadRecord
 import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.RssStar
+import io.legado.app.model.BookCover
 import io.legado.app.exception.ContentEmptyException
 import io.legado.app.help.CacheManager
 import io.legado.app.help.book.getDanmaku
@@ -535,6 +536,6 @@ object VideoPlay : CoroutineScope by MainScope(){
     }
 
     fun getDisplayCover(): String? {
-        return book?.getDisplayCover() ?: rssStar?.image ?: rssRecord?.image
+        return book?.let { BookCover.getDisplayCover(it) } ?: rssStar?.image ?: rssRecord?.image
     }
 }

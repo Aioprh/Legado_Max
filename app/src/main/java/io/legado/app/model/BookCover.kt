@@ -21,6 +21,7 @@ import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
+import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.help.CacheManager
 import io.legado.app.help.DefaultData
 import io.legado.app.help.config.CoverHtmlTemplateConfig
@@ -56,6 +57,7 @@ import androidx.core.graphics.drawable.toDrawable
 object BookCover {
 
     private const val coverRuleConfigKey = "legadoCoverRuleConfig"
+    private val coverGalleryRepository by lazy { CoverGalleryRepository() }
 
     const val configFileName = "coverRule.json"
 
@@ -72,6 +74,14 @@ object BookCover {
         upDefaultCover()
     }
 
+    fun getGalleryDefaultCover(): String? {
+        return coverGalleryRepository.getDefaultCoverPath()
+    }
+
+    fun getDisplayCover(book: Book): String? {
+        return getGalleryDefaultCover() ?: book.getDisplayCover()
+    }
+
     /**
      * 更新默认封面
      * 
@@ -85,11 +95,13 @@ object BookCover {
         if (isNightTheme) {
             drawBookName = appCtx.getPrefBoolean(PreferKey.coverShowNameN, true)
             drawBookAuthor = appCtx.getPrefBoolean(PreferKey.coverShowAuthorN, true)
-            path = appCtx.getPrefString(PreferKey.defaultCoverDark)
+            path = getGalleryDefaultCover()
+                ?: appCtx.getPrefString(PreferKey.defaultCoverDark)
         } else {
             drawBookName = appCtx.getPrefBoolean(PreferKey.coverShowName, true)
             drawBookAuthor = appCtx.getPrefBoolean(PreferKey.coverShowAuthor, true)
-            path = appCtx.getPrefString(PreferKey.defaultCover)
+            path = getGalleryDefaultCover()
+                ?: appCtx.getPrefString(PreferKey.defaultCover)
         }
         defaultDrawable = runCatching {
             BitmapUtils.decodeBitmap(path!!, 600, 900)!!.toDrawable(appCtx.resources)
