@@ -1,7 +1,6 @@
-package io.legado.app.ui.book.source.manage
+package io.legado.app.ui.rss.source.manage
 
 import android.app.Application
-import com.google.gson.JsonObject
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.utils.FileUtils
@@ -11,22 +10,16 @@ import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.writeToOutputStream
 import java.io.File
 
-class SourceContentSearchViewModel(application: Application) : BaseViewModel(application) {
+class RssSourceContentSearchViewModel(application: Application) : BaseViewModel(application) {
 
-    fun loadSources(enabledOnly: Boolean, callback: (List<Triple<String, String, JsonObject>>) -> Unit) {
+    fun loadSources(allSources: Boolean, callback: (List<io.legado.app.data.entities.RssSource>) -> Unit) {
         execute {
-            val sources = if (enabledOnly) {
-                appDb.bookSourceDao.getAllSources().filter { it.enabled }
+            val sources = if (allSources) {
+                appDb.rssSourceDao.all
             } else {
-                appDb.bookSourceDao.getAllSources()
+                appDb.rssSourceDao.all.filter { it.enabled }
             }
-            sources.map { source ->
-                Triple(
-                    source.bookSourceName,
-                    source.bookSourceUrl,
-                    GSON.toJsonTree(source).asJsonObject
-                )
-            }
+            sources
         }.onSuccess {
             callback(it ?: emptyList())
         }.onError {
@@ -36,10 +29,10 @@ class SourceContentSearchViewModel(application: Application) : BaseViewModel(app
 
     fun exportSources(sourceUrls: List<String>, success: (File) -> Unit) {
         execute {
-            val sources = appDb.bookSourceDao.getAllSources().filter {
-                it.bookSourceUrl in sourceUrls
+            val sources = appDb.rssSourceDao.all.filter {
+                it.sourceUrl in sourceUrls
             }
-            val path = "${context.filesDir}/shareBookSource.json"
+            val path = "${context.filesDir}/shareRssSource.json"
             FileUtils.delete(path)
             val file = FileUtils.createFileWithReplace(path)
             file.outputStream().buffered().use { out ->

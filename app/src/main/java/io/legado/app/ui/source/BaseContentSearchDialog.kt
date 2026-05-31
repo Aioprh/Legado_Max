@@ -3,14 +3,18 @@ package io.legado.app.ui.source
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.widget.ArrayAdapter
+import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
+import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
@@ -24,11 +28,18 @@ import io.legado.app.databinding.ItemRuleSearchHeaderBinding
 import io.legado.app.databinding.ItemRuleSearchResultBinding
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.getPrefString
+import io.legado.app.utils.gone
+import io.legado.app.utils.putPrefString
+import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
+import io.legado.app.utils.visible
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 内容查询对话窗基类。
@@ -49,6 +60,10 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
     /** 所有可搜索的字段条目，由子类通过 loadSourceItems 填充 */
     protected var allSourceItems: List<SourceFieldItem> = emptyList()
     protected var sourcesLoaded = false
+    protected var lastResults: List<SourceFieldItem> = emptyList()
+
+    protected var selectedTabs: MutableSet<String> = mutableSetOf()
+    private var historyPopup: PopupWindow? = null
 
     // ========== 子类实现 ==========
 
@@ -64,14 +79,14 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
      */
     abstract fun loadSourceItems(allSources: Boolean, callback: (List<SourceFieldItem>) -> Unit)
 
-    /**
-     * 对 allSourceItems 执行搜索过滤。
-     * 返回匹配的 SourceFieldItem 列表，value 可包含上下文截断。
-     */
-    abstract fun performSearch(query: String, allItems: List<SourceFieldItem>): List<SourceFieldItem>
+    abstract suspend fun performSearch(query: String, allItems: List<SourceFieldItem>): List<SourceFieldItem>
 
     /** 点击"跳转"后导航到对应的源编辑界面 */
     abstract fun navigateToEdit(sourceUrl: String)
+
+    abstract fun getTabNames(): Map<String, String>
+
+    abstract fun exportSources(sourceUrls: List<String>)
 
     // ========== 生命周期 ==========
 
@@ -95,6 +110,14 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
                     adapter.collapseAll()
                     true
                 }
+                R.id.menu_copy_source_urls -> {
+                    copyMatchedSourceUrls()
+                    true
+                }
+                R.id.menu_export_sources -> {
+                    exportMatchedSources()
+                    true
+                }
                 R.id.menu_close -> {
                     dismissAllowingStateLoss()
                     true
@@ -103,7 +126,11 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             }
         }
 
+        val tabNames = getTabNames()
+        selectedTabs = tabNames.keys.toMutableSet()
+
         setupToggleBar()
+        setupTabFilterChips(tabNames)
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
@@ -250,8 +277,190 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         }
     }
 
+    // ========== Tab 过滤 ==========
+
+    private fun setupTabFilterChips(tabNames: Map<String, String>) {
+        if (tabNames.isEmpty()) return
+
+        val rootLayout = binding.root as ViewGroup
+        val searchBarIndex = rootLayout.indexOfChild(binding.searchBarLayout)
+
+        val chipRow = HorizontalScrollView(requireContext()).apply {
+            id = View.generateViewId()
+            isHorizontalScrollBarEnabled = false
+            layoutParams = ConstraintLayout.LayoutParams(
+                ConstraintLayout.LayoutParams.MATCH_PARENT,
+                ConstraintLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topToBottom = binding.searchBarLayout.id
+                startToStart = ConstraintLayout.LayoutParams.PARENT_ID
+                endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+            }
+        }
+
+        val chipLayout = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dpToPx(12), dpToPx(2), dpToPx(12), dpToPx(2))
+        }
+
+        val allLabel = TextView(requireContext()).apply {
+            text = "分类"
+            textSize = 13f
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.secondaryText))
+            setPadding(0, 0, dpToPx(8), 0)
+        }
+        chipLayout.addView(allLabel)
+
+        val allBtn = TextView(requireContext()).apply {
+            text = "全部"
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6))
+            isClickable = true
+            isFocusable = true
+            setTextColor(primaryColor)
+            setBackgroundResource(R.drawable.bg_edit)
+        }
+        allBtn.setOnClickListener {
+            selectedTabs = tabNames.keys.toMutableSet()
+            updateTabChipStyles(chipLayout, tabNames)
+            val query = binding.searchEditText.text.toString().trim()
+            if (query.isNotEmpty()) doSearch(query)
+        }
+        chipLayout.addView(allBtn)
+
+        val chipButtons = mutableListOf<TextView>()
+        for ((tabKey, tabName) in tabNames) {
+            val btn = TextView(requireContext()).apply {
+                text = tabName
+                textSize = 13f
+                gravity = Gravity.CENTER
+                setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    marginEnd = dpToPx(6)
+                }
+                isClickable = true
+                isFocusable = true
+                tag = tabKey
+                setTextColor(primaryColor)
+                setBackgroundResource(R.drawable.bg_edit)
+            }
+            btn.setOnClickListener {
+                val key = btn.tag as String
+                if (selectedTabs.contains(key)) {
+                    if (selectedTabs.size > 1) {
+                        selectedTabs.remove(key)
+                    }
+                } else {
+                    selectedTabs.add(key)
+                }
+                updateTabChipStyles(chipLayout, tabNames)
+                val query = binding.searchEditText.text.toString().trim()
+                if (query.isNotEmpty()) doSearch(query)
+            }
+            chipButtons.add(btn)
+            chipLayout.addView(btn)
+        }
+
+        chipRow.addView(chipLayout)
+        rootLayout.addView(chipRow, searchBarIndex + 1)
+
+        val resultCountLp = binding.resultCountText.layoutParams as ConstraintLayout.LayoutParams
+        resultCountLp.topToBottom = chipRow.id
+        binding.resultCountText.layoutParams = resultCountLp
+    }
+
+    private fun updateTabChipStyles(chipLayout: LinearLayout, tabNames: Map<String, String>) {
+        val context = requireContext()
+        val primaryClr = primaryColor
+        val secondaryClr = ContextCompat.getColor(context, R.color.secondaryText)
+        val allSelected = selectedTabs.size == tabNames.size
+
+        for (i in 0 until chipLayout.childCount) {
+            val child = chipLayout.getChildAt(i)
+            if (child is TextView && child.tag != null) {
+                val tabKey = child.tag as String
+                val isSelected = selectedTabs.contains(tabKey)
+                if (isSelected) {
+                    child.setTextColor(primaryClr)
+                    child.setBackgroundResource(R.drawable.bg_edit)
+                } else {
+                    child.setTextColor(secondaryClr)
+                    child.setBackgroundResource(0)
+                }
+            } else if (child is TextView && child.tag == null && child.text == "全部") {
+                if (allSelected) {
+                    child.setTextColor(primaryClr)
+                    child.setBackgroundResource(R.drawable.bg_edit)
+                } else {
+                    child.setTextColor(secondaryClr)
+                    child.setBackgroundResource(0)
+                }
+            }
+        }
+    }
+
     protected fun dpToPx(dp: Int): Int {
         return (dp * requireContext().resources.displayMetrics.density).toInt()
+    }
+
+    // ========== 搜索历史 ==========
+
+    private fun getSearchHistoryKey(): String = "content_search_history_${getDialogTitle()}"
+
+    private fun loadSearchHistory(): List<String> {
+        val json = getPrefString(getSearchHistoryKey(), null) ?: return emptyList()
+        return try {
+            val arr = org.json.JSONArray(json)
+            (0 until arr.length()).map { arr.getString(it) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun saveSearchHistory(query: String) {
+        val history = loadSearchHistory().toMutableList()
+        history.remove(query)
+        history.add(0, query)
+        if (history.size > MAX_HISTORY_SIZE) {
+            history.removeAt(history.lastIndex)
+        }
+        val arr = org.json.JSONArray()
+        history.forEach { arr.put(it) }
+        putPrefString(getSearchHistoryKey(), arr.toString())
+    }
+
+    private fun showSearchHistory() {
+        val history = loadSearchHistory()
+        if (history.isEmpty()) return
+
+        dismissHistoryPopup()
+
+        val list = android.widget.ListView(requireContext()).apply {
+            adapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, history)
+            setOnItemClickListener { _, _, position, _ ->
+                val query = history[position]
+                binding.searchEditText.setText(query)
+                binding.searchEditText.setSelection(query.length)
+                dismissHistoryPopup()
+                currentSearchTerm = query
+                doSearch(query)
+            }
+        }
+
+        historyPopup = PopupWindow(list, binding.searchEditText.width, FrameLayout.LayoutParams.WRAP_CONTENT, true).apply {
+            isOutsideTouchable = true
+            showAsDropDown(binding.searchEditText)
+        }
+    }
+
+    private fun dismissHistoryPopup() {
+        historyPopup?.dismiss()
+        historyPopup = null
     }
 
     // ========== 搜索输入 ==========
@@ -266,6 +475,8 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
                 if (query.isNotEmpty()) {
                     searchJob?.cancel()
                     currentSearchTerm = query
+                    saveSearchHistory(query)
+                    dismissHistoryPopup()
                     doSearch(query)
                 }
                 true
@@ -273,6 +484,14 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
                 false
             }
         })
+
+        binding.searchEditText.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && binding.searchEditText.text.isEmpty()) {
+                showSearchHistory()
+            } else {
+                dismissHistoryPopup()
+            }
+        }
 
         binding.searchEditText.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -283,9 +502,12 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
 
                 val query = s?.toString()?.trim() ?: ""
                 if (query.isEmpty()) {
+                    dismissHistoryPopup()
                     showInitialState()
                     return
                 }
+
+                dismissHistoryPopup()
 
                 searchJob = lifecycleScope.launch {
                     delay(DEBOUNCE_DELAY)
@@ -306,12 +528,16 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
 
     private fun loadSources() {
         sourcesLoaded = false
+        showLoadingState()
         loadSourceItems(searchAllSources) { items ->
             allSourceItems = items
             sourcesLoaded = true
+            hideLoadingState()
             val query = binding.searchEditText.text.toString().trim()
             if (query.isNotEmpty()) {
                 doSearch(query)
+            } else {
+                showInitialState()
             }
         }
     }
@@ -326,11 +552,22 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         binding.recyclerView.visibility = View.GONE
         binding.resultCountText.visibility = View.GONE
 
-        performSearch(query, allSourceItems)
+        val filteredItems = if (selectedTabs.isNotEmpty()) {
+            allSourceItems.filter { it.tabKey in selectedTabs }
+        } else {
+            allSourceItems
+        }
+
+        searchJob = lifecycleScope.launch(Dispatchers.IO) {
+            val results = performSearch(query, filteredItems)
+            withContext(Dispatchers.Main) {
+                showResults(results)
+            }
+        }
     }
 
-    /** 子类搜索完成后调用此方法展示结果 */
     protected fun showResults(results: List<SourceFieldItem>) {
+        lastResults = results
         if (results.isEmpty()) {
             showEmptyState()
             return
@@ -365,6 +602,18 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         binding.initialStateLayout.visibility = View.GONE
         binding.resultCountText.visibility = View.GONE
         binding.emptyStateLayout.visibility = View.VISIBLE
+    }
+
+    private fun showLoadingState() {
+        binding.recyclerView.visibility = View.GONE
+        binding.emptyStateLayout.visibility = View.GONE
+        binding.resultCountText.visibility = View.GONE
+        binding.initialStateLayout.visibility = View.GONE
+        binding.rotateLoading.visible()
+    }
+
+    private fun hideLoadingState() {
+        binding.rotateLoading.gone()
     }
 
     // ========== 高亮 ==========
@@ -403,7 +652,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(8))
         }
         val textView = TextView(requireContext()).apply {
-            text = item.fullValue
+            text = highlightRuleSyntax(item.fullValue)
             textSize = 14f
             setTextColor(ContextCompat.getColor(requireContext(), R.color.primaryText))
             typeface = android.graphics.Typeface.MONOSPACE
@@ -415,11 +664,61 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             .setTitle("${item.tabName} · ${item.fieldName}")
             .setView(scrollView)
             .setPositiveButton("跳转") { _, _ ->
-                dismiss()
                 navigateToEdit(item.sourceUrl)
+            }
+            .setNeutralButton("复制") { _, _ ->
+                requireContext().sendToClip(item.fullValue)
             }
             .setNegativeButton("关闭", null)
             .show()
+    }
+
+    private fun highlightRuleSyntax(text: String): SpannableString {
+        val spannable = SpannableString(text)
+        val accentColor = ContextCompat.getColor(requireContext(), R.color.accent)
+        val rulePrefixes = listOf("@css:", "@get:", "@json:", "@xpath:", "@js:", "@put:", "@xhtml:")
+        for (prefix in rulePrefixes) {
+            var startIndex = 0
+            while (true) {
+                val index = text.indexOf(prefix, startIndex, ignoreCase = true)
+                if (index == -1) break
+                spannable.setSpan(
+                    ForegroundColorSpan(accentColor),
+                    index,
+                    index + prefix.length,
+                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                startIndex = index + prefix.length
+            }
+        }
+        val jsPatterns = listOf("{{", "}}")
+        for (pattern in jsPatterns) {
+            var startIndex = 0
+            while (true) {
+                val index = text.indexOf(pattern, startIndex)
+                if (index == -1) break
+                spannable.setSpan(
+                    ForegroundColorSpan(accentColor),
+                    index,
+                    index + pattern.length,
+                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                startIndex = index + pattern.length
+            }
+        }
+        return spannable
+    }
+
+    private fun copyMatchedSourceUrls() {
+        if (lastResults.isEmpty()) return
+        val urls = lastResults.map { it.sourceUrl }.distinct()
+        requireContext().sendToClip(urls.joinToString("\n"))
+    }
+
+    private fun exportMatchedSources() {
+        if (lastResults.isEmpty()) return
+        val urls = lastResults.map { it.sourceUrl }.distinct()
+        exportSources(urls)
     }
 
     // ========== Adapter ==========
@@ -545,6 +844,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         protected const val DEBOUNCE_DELAY = 300L
         protected const val VIEW_TYPE_HEADER = 0
         protected const val VIEW_TYPE_RESULT = 1
+        private const val MAX_HISTORY_SIZE = 10
     }
 }
 

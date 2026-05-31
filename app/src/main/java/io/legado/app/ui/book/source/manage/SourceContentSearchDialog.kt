@@ -1,16 +1,15 @@
 package io.legado.app.ui.book.source.manage
 
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
 import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.source.BaseContentSearchDialog
 import io.legado.app.ui.source.SourceFieldItem
+import io.legado.app.utils.GSON
+import io.legado.app.utils.share
 import io.legado.app.utils.startActivity
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /**
  * 书源内容查询对话窗
@@ -120,14 +119,7 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
 
     override fun loadSourceItems(allSources: Boolean, callback: (List<SourceFieldItem>) -> Unit) {
         viewModel.loadSources(allSources) { sourceList ->
-            this.allSources = sourceList.mapNotNull { (name, url, jsonStr) ->
-                try {
-                    Triple(name, url, JsonParser.parseString(jsonStr).asJsonObject)
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            // 生成所有可搜索的字段条目
+            this.allSources = sourceList
             val items = mutableListOf<SourceFieldItem>()
             for ((sourceName, sourceUrl, jsonObj) in this.allSources) {
                 for ((tabKey, fields) in TAB_FIELDS) {
@@ -149,23 +141,17 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
         }
     }
 
-    override fun performSearch(query: String, allItems: List<SourceFieldItem>): List<SourceFieldItem> {
+    override suspend fun performSearch(query: String, allItems: List<SourceFieldItem>): List<SourceFieldItem> {
         if (allSources.isEmpty()) return emptyList()
 
         val contextChars = 50
         val queryLower = query.lowercase()
 
-        val results = if (searchByRuleField) {
+        return if (searchByRuleField) {
             searchRuleFields(queryLower, query.length, contextChars)
         } else {
             searchJsonFull(queryLower, query.length, contextChars)
         }
-
-        lifecycleScope.launch(Dispatchers.Main) {
-            showResults(results)
-        }
-
-        return results
     }
 
     override fun navigateToEdit(sourceUrl: String) {
@@ -174,9 +160,15 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
         }
     }
 
-    // ========== 书源专属搜索逻辑 ==========
+    override fun getTabNames(): Map<String, String> = TAB_NAMES
 
-    private fun searchRuleFields(
+    override fun exportSources(sourceUrls: List<String>) {
+        viewModel.exportSources(sourceUrls) { file ->
+            activity?.share(file)
+        }
+    }
+
+    private suspend fun searchRuleFields(
         queryLower: String,
         queryLen: Int,
         contextChars: Int
@@ -184,6 +176,7 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
         val results = mutableListOf<SourceFieldItem>()
 
         for ((sourceName, sourceUrl, jsonObj) in allSources) {
+            currentCoroutineContext().ensureActive()
             for ((tabKey, fields) in TAB_FIELDS) {
                 for ((fieldKey, fieldName) in fields) {
                     val value = getFieldValue(jsonObj, tabKey, fieldKey) ?: continue
@@ -222,7 +215,7 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
         return results
     }
 
-    private fun searchJsonFull(
+    private suspend fun searchJsonFull(
         queryLower: String,
         queryLen: Int,
         contextChars: Int
@@ -230,6 +223,7 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
         val results = mutableListOf<SourceFieldItem>()
 
         for ((sourceName, sourceUrl, jsonObj) in allSources) {
+            currentCoroutineContext().ensureActive()
             val jsonStr = jsonObj.toString()
             if (!jsonStr.lowercase().contains(queryLower)) continue
 

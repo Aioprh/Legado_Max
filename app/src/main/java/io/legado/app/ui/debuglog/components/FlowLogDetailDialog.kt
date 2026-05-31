@@ -76,7 +76,7 @@ import io.legado.app.model.debug.highlightText
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
-import io.legado.app.utils.showToastOnMain
+import io.legado.app.utils.toastOnUi
 
 @Composable
 fun FlowLogDetailDialog(
@@ -790,7 +790,7 @@ private fun DetailRow(
                     onClick = { if (needsExpand) expanded = !expanded },
                     onLongClick = {
                         clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(value))
-                        context.showToastOnMain("已复制: $label")
+                        context.toastOnUi("已复制: $label")
                     }
                 ),
             overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis,
