@@ -262,6 +262,10 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
 
     private fun save() {
         val content = binding.contentView.text?.toString() ?: return
+        // 内容未变化时不保存，避免覆盖缓存
+        if (content == viewModel.content) {
+            return
+        }
         Coroutine.async {
             val book = ReadBook.book ?: return@async
             val chapter = appDb.bookChapterDao
@@ -298,10 +302,10 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                     if (textChapter != null
                         && textChapter.chapter.index == chapter.index
                         && !textChapter.isFullyLoaded()) {
-                        return@execute "[开启下一页懒加载，加载完成后可编辑]"
+                        return@execute "[已开启下一页懒加载，加载完成后可编辑]"
                     }
                 }
-
+                
                 // 从缓存文件读取（懒加载完成后已保存完整内容）
                 return@execute content ?: let {
                     val contentProcessor = ContentProcessor.get(book.name, book.origin)
