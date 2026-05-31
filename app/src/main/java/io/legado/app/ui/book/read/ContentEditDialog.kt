@@ -19,6 +19,7 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookSource
 import io.legado.app.databinding.DialogContentEditBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.help.book.BookHelp
@@ -261,6 +262,10 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
 
     private fun save() {
         val content = binding.contentView.text?.toString() ?: return
+        // 内容未变化时不保存，避免覆盖缓存
+        if (content == viewModel.content) {
+            return
+        }
         Coroutine.async {
             val book = ReadBook.book ?: return@async
             val chapter = appDb.bookChapterDao
@@ -281,6 +286,7 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                 val chapter = appDb.bookChapterDao
                     .getChapter(book.bookUrl, ReadBook.durChapterIndex)
                     ?: return@execute null
+                
                 if (reset) {
                     content = null
                     BookHelp.delContent(book, chapter)
@@ -288,10 +294,23 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                         WebBook.getContentAwait(bookSource, book, chapter)
                     }
                 }
+                
+                // 懒加载书源且当前章节未完全加载，提示用户稍后编辑
+                val bookSource = ReadBook.bookSource
+                if (bookSource != null && bookSource.nextPageLazyLoad) {
+                    val textChapter = ReadBook.curTextChapter
+                    if (textChapter != null
+                        && textChapter.chapter.index == chapter.index
+                        && !textChapter.isFullyLoaded()) {
+                        return@execute "[已开启下一页懒加载，加载完成后可编辑]"
+                    }
+                }
+                
+                // 从缓存文件读取（懒加载完成后已保存完整内容）
                 return@execute content ?: let {
                     val contentProcessor = ContentProcessor.get(book.name, book.origin)
-                    val content = BookHelp.getContent(book, chapter) ?: return@let null
-                    contentProcessor.getContent(book, chapter, content, includeTitle = false)
+                    val cachedContent = BookHelp.getContent(book, chapter) ?: return@let null
+                    contentProcessor.getContent(book, chapter, cachedContent, includeTitle = false)
                         .toString()
                 }
             }.onStart {

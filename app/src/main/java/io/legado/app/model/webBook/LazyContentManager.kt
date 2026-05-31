@@ -132,6 +132,7 @@ class LazyContentManager(
                 if (nextUrl.isNullOrBlank()) {
                     AppLog.put("懒加载: 无下一页URL，标记完成")
                     isCompleted.set(true)
+                    saveToCache()
                     totalPages.set(currentIdx + 1)
                     return@launch
                 }
@@ -142,6 +143,7 @@ class LazyContentManager(
                 ) {
                     AppLog.put("懒加载: 下一页URL等于下一章URL，标记完成")
                     isCompleted.set(true)
+                    saveToCache()
                     totalPages.set(currentIdx + 1)
                     return@launch
                 }
@@ -230,6 +232,7 @@ class LazyContentManager(
             val nextUrl = prevPage.nextUrl
             if (nextUrl.isNullOrBlank()) {
                 isCompleted.set(true)
+                    saveToCache()
                 totalPages.set(index)
                 return null
             }
@@ -239,6 +242,7 @@ class LazyContentManager(
                 NetworkUtils.getAbsoluteURL(redirectUrl, nextChapterUrl)
             ) {
                 isCompleted.set(true)
+                    saveToCache()
                 totalPages.set(index)
                 return null
             }
@@ -285,5 +289,20 @@ class LazyContentManager(
         val maxLoadedIndex = if (pages.isEmpty()) -1 else pages.keys.max()
         val currentPage = pages[maxLoadedIndex] ?: return false
         return !currentPage.nextUrl.isNullOrBlank()
+    }
+    
+    /**
+     * 保存完整内容到缓存文件
+     */
+    fun saveToCache() {
+        try {
+            val fullContent = getAllLoadedContent()
+            if (fullContent.isNotBlank()) {
+                io.legado.app.help.book.BookHelp.saveText(book, bookChapter, fullContent)
+                io.legado.app.constant.AppLog.put("懒加载: 已保存完整内容到缓存，章节${bookChapter.index}，长度=${fullContent.length}")
+            }
+        } catch (e: Exception) {
+            io.legado.app.constant.AppLog.put("懒加载保存缓存失败: ${e.localizedMessage}", e)
+        }
     }
 }

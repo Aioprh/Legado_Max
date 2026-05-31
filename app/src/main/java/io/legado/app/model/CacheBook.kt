@@ -435,9 +435,9 @@ object CacheBook {
                 return
             }
             if (bookSource.nextPageLazyLoad) {
-                AppLog.put("书源「${bookSource.bookSourceName}」已开启下一页懒加载，只允许在线阅读\n源URL: ${bookSource.bookSourceUrl}\n书名: ${book.name}")
+                AppLog.put("书源「${bookSource.bookSourceName}」已开启下一页懒加载，仅支持通过阅读动作下载\n源URL: ${bookSource.bookSourceUrl}\n书名: ${book.name}")
                 appCtx.toastOnUi(
-                    "该书源已开启下一页懒加载，只允许在线阅读",
+                    "该书源已开启下一页懒加载，仅支持通过阅读动作下载",
                     ToastContext(
                         activityName = "CacheBook",
                         sourceName = bookSource.bookSourceName,
