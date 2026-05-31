@@ -1,4 +1,4 @@
-package io.legado.app.ui.book.storage
+﻿package io.legado.app.ui.book.storage
 
 import android.app.Application
 import androidx.compose.material.icons.Icons
@@ -14,6 +14,9 @@ import io.legado.app.base.BaseViewModel
 import io.legado.app.help.storage.CacheDetail
 import io.legado.app.help.storage.StorageCalculator
 import io.legado.app.utils.ConvertUtils
+import io.legado.app.utils.externalCache
+import io.legado.app.utils.externalFiles
+import io.legado.app.utils.getFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -21,6 +24,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import splitties.init.appCtx
+import java.io.File
 
 // ### 业务层
 // 2. StorageManageViewModel.kt
@@ -50,6 +55,7 @@ data class CacheItem(
     val description: String,
     val size: Long,
     val formattedSize: String,
+    val path: String? = null,
     val icon: ImageVector,
     val iconColor: Long,
     val canExpand: Boolean = false,
@@ -126,8 +132,8 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
                 items.add(createCacheItem(CacheType.TTS_CACHE, ttsSize, true, "${ttsCount}个引擎"))
                 items.add(createCacheItem(CacheType.ACACHE_DISK, aCacheSize, true, "${aCacheCount}项"))
                 items.add(createCacheItem(CacheType.DB_CACHE, dbSize, true, "${dbCacheCount}项"))
-                items.add(createCacheItem(CacheType.LOG_CACHE, logSize, false, null))
                 items.add(createCacheItem(CacheType.WEBVIEW_CACHE, webViewSize, true, "${webViewCount}项"))
+                items.add(createCacheItem(CacheType.LOG_CACHE, logSize, false, null))
                 
                 _cacheItems.value = items
                 _totalSize.value = items.sumOf { it.size }
@@ -211,6 +217,7 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
             description = getCacheDescription(type),
             size = size,
             formattedSize = ConvertUtils.formatFileSize(size),
+            path = getCachePath(type),
             icon = getCacheIcon(type),
             iconColor = getCacheIconColor(type),
             canExpand = canExpand,
@@ -228,6 +235,22 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
                 CacheType.WEBVIEW_CACHE -> StorageCalculator.calculateWebViewCacheDetails()
                 else -> emptyList()
             }
+        }
+    }
+
+    private fun getCachePath(type: CacheType): String {
+        return when (type) {
+            CacheType.BOOK_CACHE -> appCtx.externalFiles.getFile("book_cache").absolutePath
+            CacheType.EPUB_CACHE -> appCtx.externalFiles.getFile("epub").absolutePath
+            CacheType.TEMP_CACHE -> appCtx.externalCache.absolutePath
+            CacheType.TTS_CACHE -> appCtx.cacheDir.getFile("httpTTS").absolutePath
+            CacheType.ACACHE_DISK -> File(appCtx.cacheDir, "ACache").absolutePath
+            CacheType.DB_CACHE -> appCtx.getDatabasePath("legado.db").absolutePath
+            CacheType.WEBVIEW_CACHE -> listOf(
+                appCtx.getDir("webview", android.content.Context.MODE_PRIVATE).absolutePath,
+                appCtx.getDir("hws_webview", android.content.Context.MODE_PRIVATE).absolutePath
+            ).joinToString("\n")
+            CacheType.LOG_CACHE -> appCtx.externalCache.getFile("log").absolutePath
         }
     }
 

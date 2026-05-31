@@ -41,6 +41,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -79,6 +80,7 @@ import java.io.File
 @Composable
 fun FileManageScreen(
     viewModel: FileManageViewModel = viewModel(),
+    initialPath: String? = null,
     onBackClick: () -> Unit
 ) {
     // 从 ViewModel 收集状态
@@ -90,6 +92,10 @@ fun FileManageScreen(
     var showDeleteDialog by remember { mutableStateOf<File?>(null) }
     
     val topBarColor = pageTopBarContainerColor()
+
+    LaunchedEffect(initialPath) {
+        initialPath?.let { viewModel.openPath(it) }
+    }
     
     // 使用原来的 PNG 图标，保持视觉风格一致
     val upIcon = remember { bitmapFromBytes(FilePickerIcon.getUpDir()) }

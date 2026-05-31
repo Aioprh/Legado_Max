@@ -1,4 +1,4 @@
-package io.legado.app.help.storage
+﻿package io.legado.app.help.storage
 
 import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
@@ -32,7 +32,9 @@ data class CacheDetail(
     val name: String,
     val meta: String,
     val size: Long,
-    val formattedSize: String
+    val formattedSize: String,
+    val path: String? = null,
+    val openPath: String? = path
 )
 
 object StorageCalculator {
@@ -152,7 +154,8 @@ object StorageCalculator {
                         name = name,
                         meta = meta,
                         size = size,
-                        formattedSize = ConvertUtils.formatFileSize(size)
+                        formattedSize = ConvertUtils.formatFileSize(size),
+                        path = bookDir.absolutePath
                     ))
                 }
             }
@@ -245,7 +248,8 @@ object StorageCalculator {
                         name = getTtsEngineName(engineDir.name),
                         meta = "最后使用: ${formatLastModified(sizeAndLastModified.second)}",
                         size = sizeAndLastModified.first,
-                        formattedSize = ConvertUtils.formatFileSize(sizeAndLastModified.first)
+                        formattedSize = ConvertUtils.formatFileSize(sizeAndLastModified.first),
+                        path = engineDir.absolutePath
                     ))
                 }
             }
@@ -401,7 +405,8 @@ object StorageCalculator {
                     name = name,
                     meta = "${prefix}前缀 · ${count}项",
                     size = size,
-                    formattedSize = ConvertUtils.formatFileSize(size)
+                    formattedSize = ConvertUtils.formatFileSize(size),
+                    path = aCacheDir.absolutePath
                 ))
             }
         }
@@ -411,7 +416,8 @@ object StorageCalculator {
                 name = "其他 ACache 缓存",
                 meta = "${otherCount}项",
                 size = otherSize,
-                formattedSize = ConvertUtils.formatFileSize(otherSize)
+                formattedSize = ConvertUtils.formatFileSize(otherSize),
+                path = aCacheDir.absolutePath
             ))
         }
 
@@ -527,7 +533,8 @@ object StorageCalculator {
                         name = name,
                         meta = "${matchedCaches.size}项",
                         size = size,
-                        formattedSize = ConvertUtils.formatFileSize(size)
+                        formattedSize = ConvertUtils.formatFileSize(size),
+                        path = appCtx.getDatabasePath("legado.db").absolutePath
                     ))
                 }
             }
@@ -627,7 +634,8 @@ object StorageCalculator {
                 },
                 meta = dir.absolutePath,
                 size = size,
-                formattedSize = ConvertUtils.formatFileSize(size)
+                formattedSize = ConvertUtils.formatFileSize(size),
+                path = dir.absolutePath
             )
         }.sortedByDescending { it.size }
     }
