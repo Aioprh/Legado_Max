@@ -288,16 +288,19 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                         WebBook.getContentAwait(bookSource, book, chapter)
                     }
                 }
+                // 优先从当前 TextChapter 获取完整内容（包含懒加载追加的）
+                val textChapter = ReadBook.curTextChapter
+                if (textChapter != null && textChapter.chapter.index == chapter.index) {
+                    val fullContent = textChapter.getContent()
+                    if (fullContent.isNotBlank()) {
+                        return@execute fullContent
+                    }
+                }
+                // 回退到缓存文件
                 return@execute content ?: let {
                     val contentProcessor = ContentProcessor.get(book.name, book.origin)
-                    // 优先从当前 TextChapter 获取完整内容（包含懒加载追加的）
-                    val textChapter = ReadBook.curTextChapter
-                    val content = if (textChapter != null && textChapter.chapter.index == chapter.index && textChapter.isFullyLoaded()) {
-                        textChapter.getContent()
-                    } else {
-                        BookHelp.getContent(book, chapter) ?: return@let null
-                    }
-                    contentProcessor.getContent(book, chapter, content, includeTitle = false)
+                    val cachedContent = BookHelp.getContent(book, chapter) ?: return@let null
+                    contentProcessor.getContent(book, chapter, cachedContent, includeTitle = false)
                         .toString()
                 }
             }.onStart {
@@ -309,7 +312,7 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                 loadStateLiveData.postValue(false)
             }
         }
+        }
 
-    }
 
 }
