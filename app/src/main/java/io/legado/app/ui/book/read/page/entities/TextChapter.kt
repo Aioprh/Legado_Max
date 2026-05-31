@@ -47,7 +47,11 @@ data class TextChapter(
     }
 
     fun isFullyLoaded(): Boolean {
-        return !useLazyLoading || lazyContent?.isCompleted?.get() == true
+        val fullyLoaded = !useLazyLoading || lazyContent?.isCompleted?.get() == true
+        if (fullyLoaded && lazyContent != null && useLazyLoading) {
+            lazyContent?.saveToCache()
+        }
+        return fullyLoaded
     }
 
     fun maybePrefetchNextPage(currentPageIndex: Int, currentPageProgress: Float = 0f) {
