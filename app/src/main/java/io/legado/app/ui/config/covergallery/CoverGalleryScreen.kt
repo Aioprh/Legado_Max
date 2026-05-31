@@ -43,7 +43,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -71,7 +73,12 @@ import io.legado.app.data.entities.CoverGalleryGroup
 import io.legado.app.data.entities.CoverGalleryGroupWithImages
 import io.legado.app.data.entities.CoverGalleryImage
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.theme.pageCardContainerColor
+import io.legado.app.ui.theme.pageCardElevatedContainerColor
+import io.legado.app.ui.theme.pageMutedIconTint
+import io.legado.app.ui.theme.pageSecondaryTextColor
+import io.legado.app.ui.theme.pageSurfaceVariantColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalGlideComposeApi::class)
@@ -83,6 +90,8 @@ fun CoverGalleryScreen(
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val topBarColor = pageTopBarContainerColor()
+    val elevatedContainerColor = pageCardElevatedContainerColor()
+    val secondaryTextColor = pageSecondaryTextColor()
 
     var showSearch by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -120,6 +129,10 @@ fun CoverGalleryScreen(
     deleteGroup?.let { groupWithImages ->
         AlertDialog(
             onDismissRequest = { deleteGroup = null },
+            containerColor = elevatedContainerColor,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = secondaryTextColor,
+            shape = RoundedCornerShape(0.dp),
             title = { Text("删除分组") },
             text = { Text("确定删除“${groupWithImages.group.name}”及其中 ${groupWithImages.images.size} 张图片吗？") },
             confirmButton = {
@@ -143,6 +156,10 @@ fun CoverGalleryScreen(
     deleteImage?.let { image ->
         AlertDialog(
             onDismissRequest = { deleteImage = null },
+            containerColor = elevatedContainerColor,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = secondaryTextColor,
+            shape = RoundedCornerShape(0.dp),
             title = { Text("删除图片") },
             text = { Text("确定从图集中删除这张图片吗？") },
             confirmButton = {
@@ -227,6 +244,16 @@ fun CoverGalleryScreen(
                             }
                         }
                     },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = elevatedContainerColor,
+                        unfocusedContainerColor = elevatedContainerColor,
+                        focusedBorderColor = pageAccentColor(),
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedLeadingIconColor = pageAccentColor(),
+                        unfocusedLeadingIconColor = pageMutedIconTint(),
+                        focusedTrailingIconColor = pageAccentColor(),
+                        unfocusedTrailingIconColor = pageMutedIconTint()
+                    ),
                     singleLine = true
                 )
             }
@@ -282,13 +309,13 @@ private fun EmptyGallery(
                 imageVector = Icons.Default.Image,
                 contentDescription = null,
                 modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = pageMutedIconTint()
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "暂无封面分组",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = pageSecondaryTextColor()
             )
             Spacer(modifier = Modifier.height(12.dp))
             FilledTonalButton(onClick = onAddGroup) {
@@ -317,7 +344,10 @@ private fun CoverGalleryGroupCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = pageCardContainerColor()),
+        colors = CardDefaults.cardColors(
+            containerColor = pageCardContainerColor(),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -328,8 +358,7 @@ private fun CoverGalleryGroupCard(
                 Icon(
                     imageVector = if (group.isDefault) Icons.Default.Star else Icons.Outlined.StarBorder,
                     contentDescription = null,
-                    tint = if (group.isDefault) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (group.isDefault) pageAccentColor() else pageMutedIconTint()
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -346,26 +375,35 @@ private fun CoverGalleryGroupCard(
                             Text(
                                 text = "默认 · 随机",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
+                                color = pageAccentColor()
                             )
                         }
                     }
                     Text(
                         text = "${images.size} 张图片",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = pageSecondaryTextColor()
                     )
                 }
                 IconButton(onClick = onAddImage) {
-                    Icon(Icons.Default.AddPhotoAlternate, contentDescription = "添加图片")
+                    Icon(
+                        Icons.Default.AddPhotoAlternate,
+                        contentDescription = "添加图片",
+                        tint = pageAccentColor()
+                    )
                 }
                 Box {
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "更多")
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "更多",
+                            tint = pageMutedIconTint()
+                        )
                     }
                     DropdownMenu(
                         expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
+                        onDismissRequest = { showMenu = false },
+                        containerColor = pageCardElevatedContainerColor()
                     ) {
                         DropdownMenuItem(
                             text = { Text(if (group.isDefault) "取消默认" else "设为默认") },
@@ -450,23 +488,35 @@ private fun CoverImageThumb(
             .height(104.dp)
             .clip(RoundedCornerShape(6.dp))
     ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = pageSurfaceVariantColor()
+        ) {}
         GlideImage(
             model = image.path,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
-        IconButton(
-            onClick = onDelete,
+        Surface(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .size(28.dp)
+                .padding(4.dp)
+                .size(24.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f)
         ) {
-            Icon(
-                imageVector = Icons.Default.Clear,
-                contentDescription = "删除图片",
-                tint = Color.White
-            )
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Clear,
+                    contentDescription = "删除图片",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
@@ -481,6 +531,10 @@ private fun GroupNameDialog(
     var name by remember(initialName) { mutableStateOf(initialName) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = pageCardElevatedContainerColor(),
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = pageSecondaryTextColor(),
+        shape = RoundedCornerShape(0.dp),
         title = { Text(title) },
         text = {
             OutlinedTextField(
@@ -488,7 +542,13 @@ private fun GroupNameDialog(
                 onValueChange = { name = it },
                 label = { Text("分组名称") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = pageCardElevatedContainerColor(),
+                    unfocusedContainerColor = pageCardElevatedContainerColor(),
+                    focusedBorderColor = pageAccentColor(),
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                )
             )
         },
         confirmButton = {
