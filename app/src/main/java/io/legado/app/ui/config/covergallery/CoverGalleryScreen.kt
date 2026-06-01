@@ -1,6 +1,7 @@
 package io.legado.app.ui.config.covergallery
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -62,6 +65,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,9 +74,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import io.legado.app.R
 import io.legado.app.data.entities.CoverGalleryGroup
 import io.legado.app.data.entities.CoverGalleryGroupWithImages
 import io.legado.app.data.entities.CoverGalleryImage
+import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.theme.pageCardContainerColor
@@ -80,6 +87,9 @@ import io.legado.app.ui.theme.pageMutedIconTint
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.theme.pageSurfaceVariantColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
+import io.legado.app.ui.widget.dialog.TextDialog
+import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.toastOnUi
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalGlideComposeApi::class)
 @Composable
@@ -88,6 +98,7 @@ fun CoverGalleryScreen(
     onBackClick: () -> Unit
 ) {
     val groups by viewModel.groups.collectAsStateWithLifecycle()
+    val messageDialog by viewModel.messageDialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val topBarColor = pageTopBarContainerColor()
     val elevatedContainerColor = pageCardElevatedContainerColor()
@@ -98,6 +109,7 @@ fun CoverGalleryScreen(
     var editGroup by remember { mutableStateOf<CoverGalleryGroupWithImages?>(null) }
     var deleteGroup by remember { mutableStateOf<CoverGalleryGroupWithImages?>(null) }
     var deleteImage by remember { mutableStateOf<CoverGalleryImage?>(null) }
+    var pendingExportZipName by remember { mutableStateOf("") }
     var pendingImageGroupId by remember { mutableLongStateOf(0L) }
 
     val selectImage = rememberLauncherForActivityResult(HandleFileContract()) {
@@ -108,6 +120,41 @@ fun CoverGalleryScreen(
             }
             pendingImageGroupId = 0L
         }
+    }
+    val selectImportZip = rememberLauncherForActivityResult(HandleFileContract()) {
+        it.uri?.let { uri ->
+            viewModel.importZip(
+                context,
+                uri,
+                onNoImage = { message -> context.toastOnUi(message) }
+            )
+        }
+    }
+    val exportZip = rememberLauncherForActivityResult(HandleFileContract()) {
+        if (it.uri != null) {
+            val zipName = pendingExportZipName.ifBlank { "zip" }
+            context.toastOnUi("导出成功：$zipName")
+        } else {
+            context.toastOnUi("导出失败")
+        }
+        pendingExportZipName = ""
+    }
+
+    messageDialog?.let { dialog ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissMessageDialog() },
+            containerColor = elevatedContainerColor,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = secondaryTextColor,
+            shape = RoundedCornerShape(0.dp),
+            title = { Text(dialog.title) },
+            text = { Text(dialog.message) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.dismissMessageDialog() }) {
+                    Text("确定")
+                }
+            }
+        )
     }
 
     editGroup?.let { groupWithImages ->
@@ -198,6 +245,18 @@ fun CoverGalleryScreen(
                 },
                 title = { Text("封面图集") },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            selectImportZip.launch {
+                                requestCode = 3002
+                                mode = HandleFileContract.FILE
+                                title = "导入zip"
+                                allowExtensions = arrayOf("zip")
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.FileDownload, contentDescription = "导入zip")
+                    }
                     IconButton(onClick = { showSearch = !showSearch }) {
                         Icon(Icons.Default.Search, contentDescription = "搜索")
                     }
@@ -210,6 +269,25 @@ fun CoverGalleryScreen(
                         }
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "添加分组")
+                    }
+                    IconButton(
+                        onClick = {
+                            (context as? AppCompatActivity)?.showDialogFragment(
+                                TextDialog(
+                                    context.getString(R.string.help),
+                                    "## 封面图集\n\n" +
+                                        "- 支持图片类型：jpg、jpeg、png、webp、gif、bmp、heic、heif\n" +
+                                        "- 导入文件类型：zip，zip 中的图片会导入为一个分组。\n" +
+                                        "- 导出文件类型：zip，导出内容为当前分组中的图片。",
+                                    TextDialog.Mode.MD
+                                )
+                            )
+                        }
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_help),
+                            contentDescription = stringResource(R.string.help)
+                        )
                     }
                 }
             )
@@ -287,6 +365,37 @@ fun CoverGalleryScreen(
                             onSetDefault = { viewModel.setDefaultGroup(groupWithImages.group.id) },
                             onUnsetDefault = { viewModel.unsetDefaultGroup(groupWithImages.group.id) },
                             onRerandomize = { viewModel.rerandomizeGroup(groupWithImages.group.id) },
+                            onExportZip = {
+                                if (groupWithImages.images.isEmpty()) {
+                                    context.toastOnUi("空分组不能导出")
+                                    return@CoverGalleryGroupCard
+                                }
+                                viewModel.exportGroupZip(
+                                    context,
+                                    groupWithImages,
+                                    onZipReady = { zipFile ->
+                                        pendingExportZipName = zipFile.name
+                                        exportZip.launch {
+                                            requestCode = 3003
+                                            mode = HandleFileContract.EXPORT
+                                            title = "导出zip"
+                                            onlyOtherActions = true
+                                            otherActions = arrayListOf(
+                                                SelectItem("系统文件选择器", HandleFileContract.DIR),
+                                                SelectItem("自带文件选择器", 10)
+                                            )
+                                            fileData = HandleFileContract.FileData(
+                                                zipFile.name,
+                                                zipFile,
+                                                "application/zip"
+                                            )
+                                        }
+                                    },
+                                    onFailure = { message ->
+                                        context.toastOnUi("导出失败\n$message")
+                                    }
+                                )
+                            },
                             onRename = { editGroup = groupWithImages },
                             onDeleteGroup = { deleteGroup = groupWithImages },
                             onDeleteImage = { deleteImage = it }
@@ -334,6 +443,7 @@ private fun CoverGalleryGroupCard(
     onSetDefault: () -> Unit,
     onUnsetDefault: () -> Unit,
     onRerandomize: () -> Unit,
+    onExportZip: () -> Unit,
     onRename: () -> Unit,
     onDeleteGroup: () -> Unit,
     onDeleteImage: (CoverGalleryImage) -> Unit
@@ -428,6 +538,14 @@ private fun CoverGalleryGroupCard(
                                 leadingIcon = { Icon(Icons.Default.Casino, contentDescription = null) }
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text("导出为zip") },
+                            onClick = {
+                                onExportZip()
+                                showMenu = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.FileUpload, contentDescription = null) }
+                        )
                         DropdownMenuItem(
                             text = { Text("重命名") },
                             onClick = {

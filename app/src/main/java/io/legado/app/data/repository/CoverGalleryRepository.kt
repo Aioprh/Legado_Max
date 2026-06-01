@@ -6,15 +6,25 @@ import androidx.documentfile.provider.DocumentFile
 import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.CoverGalleryGroup
+import io.legado.app.data.entities.CoverGalleryGroupWithImages
 import io.legado.app.data.entities.CoverGalleryImage
 import io.legado.app.help.CacheManager
 import io.legado.app.model.BookCover
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
+import io.legado.app.utils.createFolderIfNotExist
 import io.legado.app.utils.externalFiles
+import io.legado.app.utils.getFile
 import io.legado.app.utils.inputStream
+import io.legado.app.utils.normalizeFileName
 import io.legado.app.utils.postEvent
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.io.FileOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 import kotlin.math.absoluteValue
 
 class CoverGalleryRepository {
@@ -88,6 +98,86 @@ class CoverGalleryRepository {
         refreshDefaultCover()
     }
 
+    suspend fun exportGroupZip(
+        context: Context,
+        groupWithImages: CoverGalleryGroupWithImages
+    ): File = withContext(IO) {
+        val group = groupWithImages.group
+        val fileName = "${group.name.normalizeFileName().ifBlank { "封面图集" }}.zip"
+        val exportDir = context.cacheDir.getFile("coverGalleryExport").createFolderIfNotExist()
+        val zipFile = FileUtils.createFileWithReplace(File(exportDir, fileName).absolutePath)
+        val usedEntryNames = hashSetOf<String>()
+        var imageCount = 0
+        ZipOutputStream(FileOutputStream(zipFile)).use { zipOutputStream ->
+            groupWithImages.images
+                .sortedWith(compareBy({ it.order }, { it.id }))
+                .map { File(it.path) }
+                .filter { it.exists() && it.isFile && it.isCoverGalleryImageFile() }
+                .distinctBy { it.absolutePath }
+                .forEach { imageFile ->
+                    val entryName = uniqueFileName(imageFile.name, usedEntryNames)
+                    zipOutputStream.putNextEntry(ZipEntry(entryName))
+                    imageFile.inputStream().use { it.copyTo(zipOutputStream) }
+                    zipOutputStream.closeEntry()
+                    imageCount++
+                }
+        }
+        if (imageCount == 0) {
+            zipFile.delete()
+            throw NoCoverGalleryImageException("空分组不能导出")
+        }
+        zipFile
+    }
+
+    suspend fun importZip(context: Context, uri: Uri): ZipImportResult = withContext(IO) {
+        val sourceName = DocumentFile.fromSingleUri(context, uri)?.name.orEmpty()
+        val groupName = sourceName
+            .substringBeforeLast('.', sourceName)
+            .trim()
+            .ifBlank { "封面图集" }
+        val targetDir = context.externalFiles.getFile("covers").createFolderIfNotExist()
+        val usedImageNames = targetDir.listFiles()
+            ?.mapTo(hashSetOf()) { it.name }
+            ?: hashSetOf()
+        val imagePaths = arrayListOf<String>()
+
+        uri.inputStream(context).getOrThrow().use { inputStream ->
+            ZipInputStream(inputStream).use { zipInputStream ->
+                var entry = zipInputStream.nextEntry
+                while (entry != null) {
+                    val entryName = entry.name
+                    val fileName = entryName
+                        .substringAfterLast('/')
+                        .substringAfterLast('\\')
+                        .normalizeFileName()
+                    if (!entry.isDirectory && fileName.isCoverGalleryImageFileName()) {
+                        val targetFile = File(targetDir, uniqueFileName(fileName, usedImageNames))
+                        FileOutputStream(targetFile).use { zipInputStream.copyTo(it) }
+                        imagePaths.add(targetFile.absolutePath)
+                    }
+                    zipInputStream.closeEntry()
+                    entry = zipInputStream.nextEntry
+                }
+            }
+        }
+
+        if (imagePaths.isEmpty()) {
+            throw NoCoverGalleryImageException("zip包里没有可导入的图片")
+        }
+
+        val groupId = addGroup(groupName)
+        val images = imagePaths.mapIndexed { index, path ->
+            CoverGalleryImage(
+                groupId = groupId,
+                path = path,
+                order = index
+            )
+        }
+        dao.insertImages(*images.toTypedArray())
+        refreshDefaultCover()
+        ZipImportResult(groupName, images.size)
+    }
+
     fun getDefaultCoverPath(identity: String? = null): String? {
         val groupWithImages = dao.getDefaultGroupWithImages() ?: return null
         val images = groupWithImages.images
@@ -132,13 +222,50 @@ class CoverGalleryRepository {
         return file.absolutePath
     }
 
+    private fun File.isCoverGalleryImageFile(): Boolean {
+        return name.isCoverGalleryImageFileName()
+    }
+
+    private fun String.isCoverGalleryImageFileName(): Boolean {
+        return substringAfterLast('.', "").lowercase() in imageExtensions
+    }
+
+    private fun uniqueFileName(
+        fileName: String,
+        usedNames: MutableSet<String>
+    ): String {
+        val fallbackName = "image.jpg"
+        val normalizedName = fileName.ifBlank { fallbackName }.normalizeFileName().ifBlank { fallbackName }
+        val nameWithoutExtension = normalizedName.substringBeforeLast('.', normalizedName)
+        val extension = normalizedName.substringAfterLast('.', "")
+        var candidate = normalizedName
+        var suffix = 2
+        while (!usedNames.add(candidate)) {
+            candidate = if (extension.isBlank()) {
+                "$nameWithoutExtension-$suffix"
+            } else {
+                "$nameWithoutExtension-$suffix.$extension"
+            }
+            suffix++
+        }
+        return candidate
+    }
+
     private fun refreshDefaultCover() {
         BookCover.upDefaultCover()
         postEvent(EventBus.BOOKSHELF_REFRESH, "")
     }
 
+    data class ZipImportResult(
+        val groupName: String,
+        val imageCount: Int
+    )
+
+    class NoCoverGalleryImageException(message: String) : IllegalArgumentException(message)
+
     companion object {
         const val backupDirName = "封面图集"
         const val randomSeedKeyPrefix = "coverGalleryRandomSeed:"
+        private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif")
     }
 }

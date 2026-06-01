@@ -2,12 +2,15 @@ package io.legado.app.ui.widget.dialog
 
 import android.os.Build
 import android.os.Bundle
+import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
 import android.view.textclassifier.TextClassifier
 import android.util.Log
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.ImageButton
+import android.widget.TextView
 import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -23,6 +26,7 @@ import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
 import io.legado.app.ui.code.CodeEditActivity
+import io.legado.app.constant.Theme
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.setHtml
 import io.legado.app.utils.setLayout
@@ -140,15 +144,18 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         // 设置工具栏颜色
         binding.toolBar.setBackgroundColor(primaryColor)
+        binding.toolBar.setTitleTextColor(Color.WHITE)
+        binding.toolBar.setSubtitleTextColor(Color.WHITE)
         // 加载菜单
         binding.toolBar.inflateMenu(R.menu.dialog_text)
         // 应用菜单着色
-        binding.toolBar.menu.applyTint(requireContext())
+        binding.toolBar.menu.applyTint(requireContext(), Theme.Dark)
         
         // 处理传递的参数
         arguments?.let {
             val title = it.getString("title")
             binding.toolBar.title = title
+            binding.toolBar.post { tintToolbarTextAndIcons() }
             val content = IntentData.get(it.getString("content")) ?: ""
             currentContent = content
             val mode = it.getString("mode")
@@ -263,6 +270,21 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
         
         // 监听帮助文档搜索结果
         setupHelpSearchResultListener()
+    }
+
+    private fun tintToolbarTextAndIcons() {
+        fun tintView(view: View) {
+            when (view) {
+                is TextView -> view.setTextColor(Color.WHITE)
+                is ImageButton -> view.setColorFilter(Color.WHITE)
+                is ViewGroup -> {
+                    for (index in 0 until view.childCount) {
+                        tintView(view.getChildAt(index))
+                    }
+                }
+            }
+        }
+        tintView(binding.toolBar)
     }
     
     /**
