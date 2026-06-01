@@ -112,6 +112,10 @@
         <attr name="bubbleTextColor" format="color" />
     </declare-styleable>
 
+    <declare-styleable name="EditTextFastScroller">
+        <attr name="targetViewId" format="reference" />
+    </declare-styleable>
+
     <declare-styleable name="FilletImageView">
         <attr name="radius" />
         <attr name="left_top_radius" format="dimension" />
