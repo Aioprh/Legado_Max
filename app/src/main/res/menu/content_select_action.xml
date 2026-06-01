@@ -23,13 +23,12 @@
         android:title="@string/dict" />
 
     <item
-        android:id="@+id/menu_search_content"
-        android:title="@string/search_content"
-        app:showAsAction="never" />
+        android:id="@+id/menu_web_search"
+        android:title="@string/web_search" />
 
     <item
-        android:id="@+id/menu_web_search"
-        android:title="@string/web_search"
+        android:id="@+id/menu_search_content"
+        android:title="@string/search_content"
         app:showAsAction="never" />
 
     <item

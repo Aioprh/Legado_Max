@@ -63,10 +63,10 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
     /** 所有菜单项列表（包括自定义和系统菜单项） */
     private var menuItems: List<MenuItemImpl> = emptyList()
     
-    /** 可见菜单项列表（前5项） */
+    /** 可见菜单项列表（前7项） */
     private val visibleMenuItems = arrayListOf<MenuItemImpl>()
     
-    /** 更多菜单项列表（第5项之后的菜单项） */
+    /** 更多菜单项列表（第7项之后的菜单项） */
     private val moreMenuItems = arrayListOf<MenuItemImpl>()
     
     /** 是否展开文本菜单，从配置中读取 */
@@ -126,9 +126,9 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
             adapter.setItems(menuItems)
             binding.ivMenuMore.gone()
         } else {
-            // 折叠模式：只显示前5项，显示更多按钮
+            // 折叠模式：只显示前7项，按需显示更多按钮
             adapter.setItems(visibleMenuItems)
-            binding.ivMenuMore.visible()
+            binding.ivMenuMore.isVisible = moreMenuItems.isNotEmpty()
         }
     }
     
@@ -157,19 +157,19 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
         visibleMenuItems.clear()
         moreMenuItems.clear()
         
-        // 将菜单项分为可见项（前5项）和更多项（第5项之后）
-        if (menuItems.size > 5) {
-            visibleMenuItems.addAll(menuItems.subList(0, 5))
-            moreMenuItems.addAll(menuItems.subList(5, menuItems.size))
+        // 将菜单项分为可见项（前7项）和更多项（第7项之后）
+        if (menuItems.size > 7) {
+            visibleMenuItems.addAll(menuItems.subList(0, 7))
+            moreMenuItems.addAll(menuItems.subList(7, menuItems.size))
         } else {
-            // 如果菜单项少于5个，全部显示在主菜单
+            // 如果菜单项少于7个，全部显示在主菜单
             visibleMenuItems.addAll(menuItems)
         }
     }
 
     /**
      * 更新菜单显示状态
-     * 根据配置决定是展开显示所有菜单项，还是折叠显示前5项
+     * 根据配置决定是展开显示所有菜单项，还是折叠显示前7项
      */
     fun upMenu() {
         // 重新加载菜单项，确保使用最新的配置
@@ -180,9 +180,9 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
             adapter.setItems(menuItems)
             binding.ivMenuMore.gone()
         } else {
-            // 折叠模式：只显示前5项，显示更多按钮
+            // 折叠模式：只显示前7项，按需显示更多按钮
             adapter.setItems(visibleMenuItems)
-            binding.ivMenuMore.visible()
+            binding.ivMenuMore.isVisible = moreMenuItems.isNotEmpty()
         }
     }
 
