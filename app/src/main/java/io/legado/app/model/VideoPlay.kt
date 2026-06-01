@@ -13,6 +13,7 @@ import com.shuyu.gsyvideoplayer.listener.GSYMediaPlayerListener
 import com.shuyu.gsyvideoplayer.utils.CommonUtil
 import com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer
 import io.legado.app.R
+import io.legado.app.constant.AppConst
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.SourceType
@@ -24,11 +25,16 @@ import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.RssReadRecord
 import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.RssStar
+import io.legado.app.data.entities.readRecord.ReadRecord
+import io.legado.app.data.entities.readRecord.ReadRecordSession
+import io.legado.app.data.repository.ReadRecordRepository
 import io.legado.app.exception.ContentEmptyException
 import io.legado.app.help.CacheManager
 import io.legado.app.help.book.getDanmaku
 import io.legado.app.help.book.update
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
+import io.legado.app.help.globalExecutor
 import io.legado.app.help.gsyVideo.ExoVideoManager
 import io.legado.app.help.gsyVideo.ExoVideoManager.Companion.FULLSCREEN_ID
 import io.legado.app.help.gsyVideo.FloatingPlayer
@@ -128,6 +134,59 @@ object VideoPlay : CoroutineScope by MainScope(){
     var danmakuFile: File? = null
     var danmakuStr: String? = null
     var danmakuShow = true
+
+    /**  阅读记录  **/
+    private val readRecord = ReadRecord()
+    /**  本次阅读开始时间  **/
+    private var readStartTime = 0L
+    /**  本次阅读会话开始时间  **/
+    private var sessionStartTime = 0L
+
+    /**
+     * 标记阅读开始，记录会话起始时间
+     */
+    fun markReadStart() {
+        if (!AppConfig.enableReadRecord || book == null) return
+        val now = System.currentTimeMillis()
+        sessionStartTime = now
+        readStartTime = now
+        readRecord.lastRead = now
+    }
+
+    /**
+     * 更新阅读时间，累加播放时长并保存阅读记录
+     */
+    fun upReadTime() {
+        if (!AppConfig.enableReadRecord || book == null) return
+        globalExecutor.execute {
+            val now = System.currentTimeMillis()
+            readRecord.readTime = readRecord.readTime + now - readStartTime
+            readStartTime = now
+            readRecord.lastRead = now
+            readRecord.durChapterTitle = book?.durChapterTitle.orEmpty()
+            val session = ReadRecordSession(
+                deviceId = readRecord.deviceId,
+                bookName = readRecord.bookName,
+                bookAuthor = readRecord.bookAuthor,
+                startTime = sessionStartTime,
+                endTime = now,
+                words = 0,
+                durChapterTitle = readRecord.durChapterTitle
+            )
+            val repository = ReadRecordRepository(appDb.readRecordDao)
+            try {
+                kotlinx.coroutines.runBlocking {
+                    repository.saveReadSession(session)
+                }
+            } catch (e: Exception) {
+                AppLog.put("保存视频阅读记录失败", e, true)
+                kotlinx.coroutines.runBlocking {
+                    appDb.readRecordDao.insert(readRecord)
+                }
+            }
+            sessionStartTime = now
+        }
+    }
 
     /**
      * 开始播放
@@ -315,6 +374,7 @@ object VideoPlay : CoroutineScope by MainScope(){
      * 页面销毁了记得调用是否所有的video
      */
     fun releaseAllVideos() {
+        upReadTime()
         if (videoManager.listener() != null) {
             videoManager.listener().onCompletion()
         }
@@ -352,6 +412,7 @@ object VideoPlay : CoroutineScope by MainScope(){
      * 暂停播放
      */
     fun onPause() {
+        upReadTime()
         if (videoManager.listener() != null) {
             videoManager.listener().onVideoPause()
         }
@@ -361,6 +422,7 @@ object VideoPlay : CoroutineScope by MainScope(){
      * 恢复播放
      */
     fun onResume() {
+        markReadStart()
         if (videoManager.listener() != null) {
             videoManager.listener().onVideoResume()
         }
@@ -428,6 +490,9 @@ object VideoPlay : CoroutineScope by MainScope(){
             durVolumeIndex = b.durVolumeIndex
             durChapterPos = b.durChapterPos
             source = appDb.bookSourceDao.getBookSource(b.origin)
+            readRecord.bookName = b.name
+            readRecord.bookAuthor = b.author
+            readRecord.deviceId = AppConst.androidId
             SourceCallBack.callBackBook(SourceCallBack.START_READ, source as BookSource?, b, chapter)
         }
         upEpisodes()
@@ -503,6 +568,11 @@ object VideoPlay : CoroutineScope by MainScope(){
         val volumes = volumes.toList()
         val durVolume = durVolume
         val toc = toc
+        book?.let {
+            readRecord.bookName = it.name
+            readRecord.bookAuthor = it.author
+            readRecord.deviceId = AppConst.androidId
+        }
         Coroutine.async {
             book?.let { book ->
                 book.lastCheckCount = 0
