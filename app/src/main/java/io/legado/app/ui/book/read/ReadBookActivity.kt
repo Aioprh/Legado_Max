@@ -961,6 +961,11 @@ class ReadBookActivity : BaseReadBookActivity(),
                 return true
             }
 
+            R.id.menu_text_menu_config -> {
+                showDialogFragment(TextMenuConfigDialog())
+                return true
+            }
+
             R.id.menu_dict -> {
                 showDialogFragment(DictDialog(selectedText))
                 return true

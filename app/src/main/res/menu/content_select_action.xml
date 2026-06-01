@@ -27,6 +27,10 @@
         android:title="@string/web_search" />
 
     <item
+        android:id="@+id/menu_text_menu_config"
+        android:title="@string/menu_config" />
+
+    <item
         android:id="@+id/menu_search_content"
         android:title="@string/search_content"
         app:showAsAction="never" />
