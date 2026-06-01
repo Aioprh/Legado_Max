@@ -651,6 +651,7 @@
     <string name="select_start">文本選擇開始位置</string>
     <string name="share_layout">共用佈局</string>
     <string name="browser">瀏覽器</string>
+    <string name="web_search">網頁搜索</string>
     <string name="import_default_rule">導入默認規則</string>
     <string name="group_by_domain">按域名分組</string>
     <string name="name">名稱</string>

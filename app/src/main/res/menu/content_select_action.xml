@@ -28,6 +28,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_web_search"
+        android:title="@string/web_search"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_browser"
         android:title="@string/browser"
         app:showAsAction="never" />
