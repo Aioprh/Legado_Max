@@ -126,6 +126,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             return
         }
         ensureWebView()
+        selectedEngineIndex = defaultEngineIndex(context, engines)
         visible()
         bringToFront()
         setSheetHeight((resources.displayMetrics.heightPixels * collapsedRatio).roundToInt())
@@ -386,6 +387,9 @@ class ReadWebSearchPanel @JvmOverloads constructor(
                     selectedEngineIndex = lastIndex
                 }
             }
+            if (index >= 0 && getDefaultEngineUrl(context).isNullOrBlank()) {
+                saveDefaultEngineUrl(context, newEngine.url)
+            }
             saveEngines(context, engines)
             refreshEngineButtons()
             loadSearch(searchEdit.text.toString())
@@ -399,6 +403,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             }
             selectedEngineIndex = selectedEngineIndex.coerceIn(0, (engines.size - 1).coerceAtLeast(0))
             saveEngines(context, engines)
+            saveDefaultEngineUrl(context, engines.getOrNull(selectedEngineIndex)?.url)
             refreshEngineButtons()
             dialog.dismiss()
             showEngineListDialog()
@@ -452,6 +457,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
 
     companion object {
         private const val ENGINE_PREF_KEY = "readWebSearchEngines"
+        private const val DEFAULT_ENGINE_PREF_KEY = "readWebSearchDefaultEngine"
         private const val QUERY_PLACEHOLDER = "{query}"
 
         private fun defaultEngines(): List<SearchEngine> {
@@ -471,6 +477,20 @@ class ReadWebSearchPanel @JvmOverloads constructor(
 
         private fun saveEngines(context: Context, engines: List<SearchEngine>) {
             context.putPrefString(ENGINE_PREF_KEY, GSON.toJson(engines))
+        }
+
+        private fun defaultEngineIndex(context: Context, engines: List<SearchEngine>): Int {
+            val defaultUrl = getDefaultEngineUrl(context)
+            val index = engines.indexOfFirst { it.url == defaultUrl }
+            return if (index >= 0) index else 0
+        }
+
+        private fun getDefaultEngineUrl(context: Context): String? {
+            return context.getPrefString(DEFAULT_ENGINE_PREF_KEY)
+        }
+
+        private fun saveDefaultEngineUrl(context: Context, url: String?) {
+            context.putPrefString(DEFAULT_ENGINE_PREF_KEY, url.orEmpty())
         }
 
         private fun SearchEngine.buildUrl(query: String): String {
