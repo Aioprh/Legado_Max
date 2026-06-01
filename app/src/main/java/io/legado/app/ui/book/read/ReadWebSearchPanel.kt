@@ -39,14 +39,15 @@ import io.legado.app.help.webView.PooledWebView
 import io.legado.app.help.webView.WebViewPool
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.backgroundColor
-import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.utils.GSON
+import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.gone
 import io.legado.app.utils.openUrl
 import io.legado.app.utils.putPrefString
+import io.legado.app.utils.setDarkeningAllowed
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.visible
 import java.net.URLEncoder
@@ -63,9 +64,22 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         val url: String = ""
     )
 
+    private val panelBackgroundColor: Int
+        get() = context.backgroundColor
+    private val panelTextColor: Int
+        get() = if (ColorUtils.isColorLight(panelBackgroundColor)) Color.BLACK else Color.WHITE
+    private val panelSecondaryTextColor: Int
+        get() = if (ColorUtils.isColorLight(panelBackgroundColor)) Color.DKGRAY else Color.LTGRAY
+    private val panelControlColor: Int
+        get() = if (ColorUtils.isColorLight(panelBackgroundColor)) {
+            Color.argb(18, 0, 0, 0)
+        } else {
+            Color.argb(32, 255, 255, 255)
+        }
+
     private val sheet = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
-        setBackgroundColor(context.backgroundColor)
+        setBackgroundColor(panelBackgroundColor)
         isClickable = true
     }
     private val handle = View(context).apply {
@@ -74,15 +88,16 @@ class ReadWebSearchPanel @JvmOverloads constructor(
     private val searchEdit = EditText(context).apply {
         setSingleLine(true)
         imeOptions = EditorInfo.IME_ACTION_SEARCH
-        setTextColor(context.primaryTextColor)
-        setHintTextColor(Color.GRAY)
+        setTextColor(panelTextColor)
+        setHintTextColor(panelSecondaryTextColor)
         hint = context.getString(R.string.web_search)
         textSize = 16f
         setPadding(14.dpToPx(), 0, 14.dpToPx(), 0)
-        setBackgroundColor(Color.argb(18, 128, 128, 128))
+        setBackgroundColor(panelControlColor)
     }
     private val backButton = ImageButton(context).apply {
         setImageResource(R.drawable.ic_arrow_back)
+        setColorFilter(panelTextColor)
         setBackgroundColor(Color.TRANSPARENT)
         contentDescription = "返回"
         setOnClickListener {
@@ -93,6 +108,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
     }
     private val moreButton = ImageButton(context).apply {
         setImageResource(R.drawable.ic_more_vert)
+        setColorFilter(panelTextColor)
         setBackgroundColor(Color.TRANSPARENT)
         contentDescription = "更多"
         setOnClickListener { showMoreMenu() }
@@ -269,9 +285,11 @@ class ReadWebSearchPanel @JvmOverloads constructor(
                     }
                 }
             }
+            setBackgroundColor(Color.WHITE)
             settings.apply {
                 useWideViewPort = true
                 loadWithOverviewMode = true
+                setDarkeningAllowed(false)
             }
         }
         sheet.addView(
@@ -313,9 +331,9 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         for (index in 0 until engineRow.childCount) {
             val child = engineRow.getChildAt(index) as? TextView ?: continue
             val selected = index == selectedEngineIndex
-            child.setTextColor(if (selected) Color.WHITE else context.primaryTextColor)
+            child.setTextColor(if (selected) Color.WHITE else panelTextColor)
             child.setTypeface(Typeface.DEFAULT, if (selected) Typeface.BOLD else Typeface.NORMAL)
-            child.setBackgroundColor(if (selected) context.accentColor else Color.argb(18, 128, 128, 128))
+            child.setBackgroundColor(if (selected) context.accentColor else panelControlColor)
         }
     }
 
@@ -342,13 +360,13 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
-            setBackgroundColor(context.backgroundColor)
+            setBackgroundColor(panelBackgroundColor)
             addView(
                 TextView(context).apply {
                     text = "搜索引擎"
                     textSize = 20f
                     typeface = Typeface.DEFAULT_BOLD
-                    setTextColor(context.primaryTextColor)
+                    setTextColor(panelTextColor)
                 },
                 LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
             )
@@ -356,7 +374,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
                 TextView(context).apply {
                     text = "长按拖动排序，URL 使用 {query} 表示选中文字"
                     textSize = 13f
-                    setTextColor(Color.GRAY)
+                    setTextColor(panelSecondaryTextColor)
                     setPadding(0, 4.dpToPx(), 0, 8.dpToPx())
                 },
                 LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
@@ -368,6 +386,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             addView(
                 Button(context).apply {
                     text = "添加搜索引擎"
+                    setTextColor(panelTextColor)
                     setOnClickListener {
                         showEngineItemDialog(
                             index = -1,
@@ -402,12 +421,16 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         val nameEdit = EditText(context).apply {
             setSingleLine(true)
             hint = "名称"
+            setTextColor(panelTextColor)
+            setHintTextColor(panelSecondaryTextColor)
             setText(engine.title)
         }
         val urlEdit = EditText(context).apply {
             setSingleLine(false)
             minLines = 2
             hint = "搜索 URL，使用 {query} 表示关键词"
+            setTextColor(panelTextColor)
+            setHintTextColor(panelSecondaryTextColor)
             setText(engine.url)
         }
         val templateRow = LinearLayout(context).apply {
@@ -415,6 +438,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             addView(
                 Button(context).apply {
                     text = "必应模板"
+                    setTextColor(panelTextColor)
                     setOnClickListener {
                         nameEdit.setText(BING_TEMPLATE.title)
                         urlEdit.setText(BING_TEMPLATE.url)
@@ -427,6 +451,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             addView(
                 Button(context).apply {
                     text = "百度模板"
+                    setTextColor(panelTextColor)
                     setOnClickListener {
                         nameEdit.setText(BAIDU_TEMPLATE.title)
                         urlEdit.setText(BAIDU_TEMPLATE.url)
@@ -552,7 +577,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
                 setPadding(12.dpToPx(), 10.dpToPx(), 12.dpToPx(), 10.dpToPx())
                 background = GradientDrawable().apply {
                     cornerRadius = 8.dpToPx().toFloat()
-                    setColor(Color.argb(18, 128, 128, 128))
+                    setColor(panelControlColor)
                 }
                 layoutParams = RecyclerView.LayoutParams(
                     RecyclerView.LayoutParams.MATCH_PARENT,
@@ -640,7 +665,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             val titleView = TextView(root.context).apply {
                 textSize = 16f
                 typeface = Typeface.DEFAULT_BOLD
-                setTextColor(context.primaryTextColor)
+                setTextColor(panelTextColor)
             }
             val defaultTag = TextView(root.context).apply {
                 text = "默认"
@@ -655,7 +680,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             }
             val urlView = TextView(root.context).apply {
                 textSize = 12f
-                setTextColor(Color.GRAY)
+                setTextColor(panelSecondaryTextColor)
                 maxLines = 2
             }
             val defaultButton = TextView(root.context).actionText()
