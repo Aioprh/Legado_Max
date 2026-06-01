@@ -41,12 +41,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
 
+/**
+ * 模块状态主界面
+ * @param viewModel ViewModel实例
+ * @param onBackClick 返回回调
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModuleStatusScreen(
     viewModel: ModuleStatusViewModel = viewModel(),
     onBackClick: () -> Unit
 ) {
+    // 收集状态流，自动更新UI
     val modules by viewModel.modules.collectAsState()
     val topBarColor = pageTopBarContainerColor()
 
@@ -76,6 +82,7 @@ fun ModuleStatusScreen(
                     }
                 },
                 actions = {
+                    // 刷新按钮
                     IconButton(onClick = viewModel::refresh) {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
@@ -83,6 +90,7 @@ fun ModuleStatusScreen(
             )
         }
     ) { paddingValues ->
+        // 模块列表
         LazyColumn(
             modifier = Modifier.padding(paddingValues),
             contentPadding = PaddingValues(16.dp),
@@ -96,6 +104,10 @@ fun ModuleStatusScreen(
     }
 }
 
+/**
+ * 模块状态卡片
+ * @param module 模块状态项
+ */
 @Composable
 private fun ModuleStatusCard(module: ModuleStatusItem) {
     Card(
@@ -109,14 +121,17 @@ private fun ModuleStatusCard(module: ModuleStatusItem) {
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 状态指示点
             StatusDot(module.status)
             Spacer(modifier = Modifier.width(12.dp))
+            // 模块名称
             Text(
                 text = module.name,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium
             )
+            // 状态文本
             Text(
                 text = module.status.label(),
                 style = MaterialTheme.typography.bodyMedium,
@@ -126,6 +141,10 @@ private fun ModuleStatusCard(module: ModuleStatusItem) {
     }
 }
 
+/**
+ * 状态指示点（圆形色块）
+ * @param status 运行状态
+ */
 @Composable
 private fun StatusDot(status: ModuleRunStatus) {
     Box(
@@ -135,6 +154,9 @@ private fun StatusDot(status: ModuleRunStatus) {
     )
 }
 
+/**
+ * 获取状态对应的中文标签
+ */
 private fun ModuleRunStatus.label(): String {
     return when (this) {
         ModuleRunStatus.RUNNING -> "运行中"
@@ -144,12 +166,15 @@ private fun ModuleRunStatus.label(): String {
     }
 }
 
+/**
+ * 获取状态对应的颜色
+ */
 @Composable
 private fun ModuleRunStatus.color(): Color {
     return when (this) {
-        ModuleRunStatus.RUNNING -> Color(0xFF2E7D32)
-        ModuleRunStatus.IDLE -> MaterialTheme.colorScheme.onSurfaceVariant
-        ModuleRunStatus.ERROR -> MaterialTheme.colorScheme.error
-        ModuleRunStatus.DISABLED -> MaterialTheme.colorScheme.outline
+        ModuleRunStatus.RUNNING -> Color(0xFF2E7D32) // 绿色
+        ModuleRunStatus.IDLE -> MaterialTheme.colorScheme.onSurfaceVariant // 灰色
+        ModuleRunStatus.ERROR -> MaterialTheme.colorScheme.error // 红色
+        ModuleRunStatus.DISABLED -> MaterialTheme.colorScheme.outline // 轮廓色
     }
 }
