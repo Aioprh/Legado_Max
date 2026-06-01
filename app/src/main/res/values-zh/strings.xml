@@ -744,7 +744,7 @@
     <string name="action_menu">功能</string>
     <string name="preview">预览</string>
     <string name="text_menu_config">展开文本菜单配置</string>
-    <string name="text_menu_config_desc">选择您想要显示的菜单项</string>
+    <string name="text_menu_config_desc">选择您想要显示的菜单项，超出7个后会显示在溢出菜单</string>
     <string name="process_text_menu_config">其他应用菜单配置</string>
     <string name="process_text_menu_config_desc">选择您想要显示的其他应用菜单项</string>
     <string name="no_process_text_apps">没有找到支持文本处理的应用</string>

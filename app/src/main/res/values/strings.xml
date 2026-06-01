@@ -759,7 +759,7 @@
     <string name="action_menu">Actions</string>
     <string name="preview">Preview</string>
     <string name="text_menu_config">Expand Text Menu Config</string>
-    <string name="text_menu_config_desc">Select the menu items you want to display</string>
+    <string name="text_menu_config_desc">Select the menu items you want to display. Items beyond 7 will be shown in the overflow menu</string>
     <string name="process_text_menu_config">Other Apps Menu Config</string>
     <string name="process_text_menu_config_desc">Select the other apps menu items you want to display</string>
     <string name="no_process_text_apps">No apps found that support text processing</string>
