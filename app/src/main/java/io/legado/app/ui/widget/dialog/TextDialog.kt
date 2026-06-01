@@ -144,12 +144,15 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         // 设置工具栏颜色
         binding.toolBar.setBackgroundColor(primaryColor)
-        binding.toolBar.setTitleTextColor(Color.WHITE)
-        binding.toolBar.setSubtitleTextColor(Color.WHITE)
+        // 根据主题动态选择标题颜色：深色背景用白色，浅色背景用黑色
+        val titleColor = if (isDarkTheme) Color.WHITE else Color.BLACK
+        binding.toolBar.setTitleTextColor(titleColor)
+        binding.toolBar.setSubtitleTextColor(titleColor)
         // 加载菜单
         binding.toolBar.inflateMenu(R.menu.dialog_text)
-        // 应用菜单着色
-        binding.toolBar.menu.applyTint(requireContext(), Theme.Dark)
+        // 应用菜单着色：根据主题动态选择
+        val menuTheme = if (isDarkTheme) Theme.Dark else Theme.Light
+        binding.toolBar.menu.applyTint(requireContext(), menuTheme)
         
         // 处理传递的参数
         arguments?.let {
@@ -273,10 +276,12 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
     }
 
     private fun tintToolbarTextAndIcons() {
+        // 根据主题动态选择着色颜色
+        val tintColor = if (isDarkTheme) Color.WHITE else Color.BLACK
         fun tintView(view: View) {
             when (view) {
-                is TextView -> view.setTextColor(Color.WHITE)
-                is ImageButton -> view.setColorFilter(Color.WHITE)
+                is TextView -> view.setTextColor(tintColor)
+                is ImageButton -> view.setColorFilter(tintColor)
                 is ViewGroup -> {
                     for (index in 0 until view.childCount) {
                         tintView(view.getChildAt(index))
