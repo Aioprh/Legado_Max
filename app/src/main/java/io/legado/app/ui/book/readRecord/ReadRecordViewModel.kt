@@ -10,6 +10,7 @@ import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
 import io.legado.app.data.repository.BookRepository
 import io.legado.app.data.repository.ReadRecordRepository
+import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.putPrefInt
 import kotlinx.coroutines.Dispatchers
@@ -74,6 +75,8 @@ class ReadRecordViewModel : ViewModel() {
 
     private val _displayMode = MutableStateFlow(loadDisplayMode())
     val displayMode = _displayMode.asStateFlow()
+    private val _enableReadRecord = MutableStateFlow(AppConfig.enableReadRecord)
+    val enableReadRecord = _enableReadRecord.asStateFlow()
     private val _searchKey = MutableStateFlow("")
     private val _selectedDate = MutableStateFlow<LocalDate?>(null)
     private val _isSelectionMode = MutableStateFlow(false)
@@ -242,6 +245,11 @@ class ReadRecordViewModel : ViewModel() {
     fun setDisplayMode(mode: DisplayMode) {
         _displayMode.value = mode
         appCtx.putPrefInt(PreferKey.readRecordDisplayMode, mode.ordinal)
+    }
+
+    fun setEnableReadRecord(enabled: Boolean) {
+        AppConfig.enableReadRecord = enabled
+        _enableReadRecord.value = enabled
     }
 
     fun setSelectedDate(date: LocalDate?) {

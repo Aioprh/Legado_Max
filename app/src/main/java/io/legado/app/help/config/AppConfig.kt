@@ -564,9 +564,9 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         }
 
     var enableReadRecord: Boolean
-        get() = true
+        get() = appCtx.getPrefBoolean(PreferKey.enableReadRecord, true)
         set(value) {
-            appCtx.removePref(PreferKey.enableReadRecord)
+            appCtx.putPrefBoolean(PreferKey.enableReadRecord, value)
         }
 
     var bookInfoShowReadRecord: Boolean
