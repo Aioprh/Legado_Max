@@ -76,6 +76,8 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         } else {
             Color.argb(32, 255, 255, 255)
         }
+    private val accentTextColor: Int
+        get() = if (ColorUtils.isColorLight(context.accentColor)) Color.BLACK else Color.WHITE
 
     private val sheet = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
@@ -331,7 +333,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         for (index in 0 until engineRow.childCount) {
             val child = engineRow.getChildAt(index) as? TextView ?: continue
             val selected = index == selectedEngineIndex
-            child.setTextColor(if (selected) Color.WHITE else panelTextColor)
+            child.setTextColor(if (selected) accentTextColor else panelTextColor)
             child.setTypeface(Typeface.DEFAULT, if (selected) Typeface.BOLD else Typeface.NORMAL)
             child.setBackgroundColor(if (selected) context.accentColor else panelControlColor)
         }
@@ -670,7 +672,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             val defaultTag = TextView(root.context).apply {
                 text = "默认"
                 textSize = 12f
-                setTextColor(Color.WHITE)
+                setTextColor(accentTextColor)
                 gravity = Gravity.CENTER
                 setPadding(8.dpToPx(), 2.dpToPx(), 8.dpToPx(), 2.dpToPx())
                 background = GradientDrawable().apply {
