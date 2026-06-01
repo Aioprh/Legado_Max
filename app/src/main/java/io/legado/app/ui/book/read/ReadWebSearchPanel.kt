@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.net.http.SslError
 import android.util.AttributeSet
@@ -18,6 +19,7 @@ import android.webkit.SslErrorHandler
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
@@ -27,6 +29,11 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.net.toUri
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import io.legado.app.R
 import io.legado.app.help.webView.PooledWebView
 import io.legado.app.help.webView.WebViewPool
@@ -43,6 +50,7 @@ import io.legado.app.utils.putPrefString
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.visible
 import java.net.URLEncoder
+import java.util.Collections
 import kotlin.math.roundToInt
 
 class ReadWebSearchPanel @JvmOverloads constructor(
@@ -323,22 +331,74 @@ class ReadWebSearchPanel @JvmOverloads constructor(
     }
 
     private fun showEngineListDialog() {
-        AlertDialog.Builder(context)
-            .setTitle("搜索引擎")
-            .setItems(engines.map { it.title }.toTypedArray()) { _, which ->
-                engines.getOrNull(which)?.let { showEngineItemDialog(which, it) }
+        val dialog = BottomSheetDialog(context)
+        val adapter = EngineManageAdapter(engines.toMutableList())
+        val recyclerView = RecyclerView(context).apply {
+            layoutManager = LinearLayoutManager(context)
+            this.adapter = adapter
+            overScrollMode = OVER_SCROLL_IF_CONTENT_SCROLLS
+        }
+        ItemTouchHelper(adapter.itemTouchCallback).attachToRecyclerView(recyclerView)
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16.dpToPx(), 12.dpToPx(), 16.dpToPx(), 12.dpToPx())
+            setBackgroundColor(context.backgroundColor)
+            addView(
+                TextView(context).apply {
+                    text = "搜索引擎"
+                    textSize = 20f
+                    typeface = Typeface.DEFAULT_BOLD
+                    setTextColor(context.primaryTextColor)
+                },
+                LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            )
+            addView(
+                TextView(context).apply {
+                    text = "长按拖动排序，URL 使用 {query} 表示选中文字"
+                    textSize = 13f
+                    setTextColor(Color.GRAY)
+                    setPadding(0, 4.dpToPx(), 0, 8.dpToPx())
+                },
+                LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+            )
+            addView(
+                recyclerView,
+                LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f)
+            )
+            addView(
+                Button(context).apply {
+                    text = "添加搜索引擎"
+                    setOnClickListener {
+                        showEngineItemDialog(
+                            index = -1,
+                            engine = SearchEngine("新搜索", BING_TEMPLATE.url),
+                            onChanged = { adapter.replaceItems(engines) }
+                        )
+                    }
+                },
+                LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 44.dpToPx()).apply {
+                    topMargin = 8.dpToPx()
+                }
+            )
+        }
+        dialog.setContentView(content)
+        dialog.setOnShowListener {
+            val bottomSheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+            bottomSheet?.layoutParams = bottomSheet?.layoutParams?.apply {
+                height = (resources.displayMetrics.heightPixels * 0.82f).roundToInt()
             }
-            .setPositiveButton("添加") { _, _ ->
-                showEngineItemDialog(
-                    index = -1,
-                    engine = SearchEngine("新搜索", "https://www.bing.com/search?q={query}")
-                )
+            bottomSheet?.let { sheetView ->
+                BottomSheetBehavior.from(sheetView).state = BottomSheetBehavior.STATE_EXPANDED
             }
-            .setNegativeButton(R.string.close, null)
-            .show()
+        }
+        dialog.show()
     }
 
-    private fun showEngineItemDialog(index: Int, engine: SearchEngine) {
+    private fun showEngineItemDialog(
+        index: Int,
+        engine: SearchEngine,
+        onChanged: (() -> Unit)? = null
+    ) {
         val nameEdit = EditText(context).apply {
             setSingleLine(true)
             hint = "名称"
@@ -350,11 +410,39 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             hint = "搜索 URL，使用 {query} 表示关键词"
             setText(engine.url)
         }
+        val templateRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(
+                Button(context).apply {
+                    text = "必应模板"
+                    setOnClickListener {
+                        nameEdit.setText(BING_TEMPLATE.title)
+                        urlEdit.setText(BING_TEMPLATE.url)
+                    }
+                },
+                LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginEnd = 6.dpToPx()
+                }
+            )
+            addView(
+                Button(context).apply {
+                    text = "百度模板"
+                    setOnClickListener {
+                        nameEdit.setText(BAIDU_TEMPLATE.title)
+                        urlEdit.setText(BAIDU_TEMPLATE.url)
+                    }
+                },
+                LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginStart = 6.dpToPx()
+                }
+            )
+        }
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24.dpToPx(), 8.dpToPx(), 24.dpToPx(), 0)
             addView(nameEdit, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
             addView(urlEdit, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+            addView(templateRow, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         }
         val builder = AlertDialog.Builder(context)
             .setTitle(if (index >= 0) R.string.edit else R.string.add)
@@ -393,20 +481,223 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             saveEngines(context, engines)
             refreshEngineButtons()
             loadSearch(searchEdit.text.toString())
+            onChanged?.invoke()
             dialog.dismiss()
         }
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
-            engines = engines.toMutableList().apply {
-                if (index in indices) {
-                    removeAt(index)
+            val engineTitle = engines.getOrNull(index)?.title.orEmpty()
+            AlertDialog.Builder(context)
+                .setTitle("删除搜索引擎")
+                .setMessage("确认删除“$engineTitle”？")
+                .setPositiveButton(R.string.delete) { _, _ ->
+                    engines = engines.toMutableList().apply {
+                        if (index in indices) {
+                            removeAt(index)
+                        }
+                    }
+                    selectedEngineIndex = selectedEngineIndex.coerceIn(0, (engines.size - 1).coerceAtLeast(0))
+                    saveEngines(context, engines)
+                    saveDefaultEngineUrl(context, engines.getOrNull(selectedEngineIndex)?.url)
+                    refreshEngineButtons()
+                    onChanged?.invoke()
+                    dialog.dismiss()
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
+    }
+
+    private inner class EngineManageAdapter(
+        private val items: MutableList<SearchEngine>
+    ) : RecyclerView.Adapter<EngineManageAdapter.EngineViewHolder>() {
+
+        val itemTouchCallback = object : ItemTouchHelper.Callback() {
+            override fun isLongPressDragEnabled(): Boolean = true
+
+            override fun isItemViewSwipeEnabled(): Boolean = false
+
+            override fun getMovementFlags(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ): Int {
+                return makeMovementFlags(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0)
+            }
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                val from = viewHolder.bindingAdapterPosition
+                val to = target.bindingAdapterPosition
+                if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) {
+                    return false
+                }
+                Collections.swap(items, from, to)
+                notifyItemMoved(from, to)
+                return true
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) = Unit
+
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                persistItems()
+            }
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): EngineViewHolder {
+            val root = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(12.dpToPx(), 10.dpToPx(), 12.dpToPx(), 10.dpToPx())
+                background = GradientDrawable().apply {
+                    cornerRadius = 8.dpToPx().toFloat()
+                    setColor(Color.argb(18, 128, 128, 128))
+                }
+                layoutParams = RecyclerView.LayoutParams(
+                    RecyclerView.LayoutParams.MATCH_PARENT,
+                    RecyclerView.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin = 8.dpToPx()
                 }
             }
-            selectedEngineIndex = selectedEngineIndex.coerceIn(0, (engines.size - 1).coerceAtLeast(0))
+            return EngineViewHolder(root)
+        }
+
+        override fun getItemCount(): Int = items.size
+
+        override fun onBindViewHolder(holder: EngineViewHolder, position: Int) {
+            val engine = items[position]
+            val isDefault = isDefaultEngine(position, engine)
+            holder.titleView.text = engine.title
+            holder.urlView.text = engine.url
+            holder.defaultTag.visibility = if (isDefault) VISIBLE else GONE
+            holder.defaultButton.text = if (isDefault) "默认" else "设默认"
+            holder.defaultButton.setOnClickListener {
+                saveDefaultEngineUrl(context, engine.url)
+                selectedEngineIndex = engines.indexOfFirst { it.url == engine.url }.takeIf { it >= 0 } ?: position
+                refreshEngineButtons()
+                notifyDataSetChanged()
+            }
+            holder.editButton.setOnClickListener {
+                showEngineItemDialog(position, engine) {
+                    replaceItems(engines)
+                }
+            }
+            holder.deleteButton.setOnClickListener {
+                confirmDelete(position, engine)
+            }
+        }
+
+        fun replaceItems(newItems: List<SearchEngine>) {
+            items.clear()
+            items.addAll(newItems)
+            notifyDataSetChanged()
+        }
+
+        private fun persistItems() {
+            val selectedUrl = engines.getOrNull(selectedEngineIndex)?.url
+            engines = items.toList()
+            selectedEngineIndex = engines.indexOfFirst { it.url == selectedUrl }
+                .takeIf { it >= 0 }
+                ?: defaultEngineIndex(context, engines)
+            ensureValidDefaultEngine()
             saveEngines(context, engines)
-            saveDefaultEngineUrl(context, engines.getOrNull(selectedEngineIndex)?.url)
             refreshEngineButtons()
-            dialog.dismiss()
-            showEngineListDialog()
+        }
+
+        private fun confirmDelete(position: Int, engine: SearchEngine) {
+            AlertDialog.Builder(context)
+                .setTitle("删除搜索引擎")
+                .setMessage("确认删除“${engine.title}”？")
+                .setPositiveButton(R.string.delete) { _, _ ->
+                    if (position !in items.indices) {
+                        return@setPositiveButton
+                    }
+                    items.removeAt(position)
+                    engines = items.toList()
+                    selectedEngineIndex = selectedEngineIndex.coerceIn(0, (engines.size - 1).coerceAtLeast(0))
+                    ensureValidDefaultEngine()
+                    saveEngines(context, engines)
+                    notifyItemRemoved(position)
+                    notifyItemRangeChanged(position, items.size - position)
+                    refreshEngineButtons()
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
+
+        private fun isDefaultEngine(position: Int, engine: SearchEngine): Boolean {
+            val defaultUrl = getDefaultEngineUrl(context)
+            return if (defaultUrl.isNullOrBlank()) {
+                position == 0
+            } else {
+                engine.url == defaultUrl
+            }
+        }
+
+        inner class EngineViewHolder(root: LinearLayout) : RecyclerView.ViewHolder(root) {
+            val titleView = TextView(root.context).apply {
+                textSize = 16f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(context.primaryTextColor)
+            }
+            val defaultTag = TextView(root.context).apply {
+                text = "默认"
+                textSize = 12f
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                setPadding(8.dpToPx(), 2.dpToPx(), 8.dpToPx(), 2.dpToPx())
+                background = GradientDrawable().apply {
+                    cornerRadius = 8.dpToPx().toFloat()
+                    setColor(context.accentColor)
+                }
+            }
+            val urlView = TextView(root.context).apply {
+                textSize = 12f
+                setTextColor(Color.GRAY)
+                maxLines = 2
+            }
+            val defaultButton = TextView(root.context).actionText()
+            val editButton = TextView(root.context).actionText().apply { text = "编辑" }
+            val deleteButton = TextView(root.context).actionText().apply {
+                text = "删除"
+                setTextColor(Color.rgb(210, 64, 64))
+            }
+
+            init {
+                val titleRow = LinearLayout(root.context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(titleView, LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+                    addView(defaultTag, LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
+                }
+                val actionRow = LinearLayout(root.context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.END
+                    setPadding(0, 8.dpToPx(), 0, 0)
+                    addView(defaultButton)
+                    addView(editButton)
+                    addView(deleteButton)
+                }
+                root.addView(titleRow)
+                root.addView(urlView, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+                root.addView(actionRow, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+            }
+
+            private fun TextView.actionText(): TextView {
+                textSize = 14f
+                setTextColor(context.accentColor)
+                setPadding(12.dpToPx(), 6.dpToPx(), 0, 6.dpToPx())
+                return this
+            }
+        }
+    }
+
+    private fun ensureValidDefaultEngine() {
+        val defaultUrl = getDefaultEngineUrl(context)
+        if (defaultUrl.isNullOrBlank() || engines.none { it.url == defaultUrl }) {
+            saveDefaultEngineUrl(context, engines.firstOrNull()?.url)
         }
     }
 
@@ -459,12 +750,11 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         private const val ENGINE_PREF_KEY = "readWebSearchEngines"
         private const val DEFAULT_ENGINE_PREF_KEY = "readWebSearchDefaultEngine"
         private const val QUERY_PLACEHOLDER = "{query}"
+        private val BING_TEMPLATE = SearchEngine("必应", "https://www.bing.com/search?q={query}")
+        private val BAIDU_TEMPLATE = SearchEngine("百度", "https://www.baidu.com/s?wd={query}")
 
         private fun defaultEngines(): List<SearchEngine> {
-            return listOf(
-                SearchEngine("必应", "https://www.bing.com/search?q={query}"),
-                SearchEngine("百度", "https://www.baidu.com/s?wd={query}")
-            )
+            return listOf(BING_TEMPLATE, BAIDU_TEMPLATE)
         }
 
         private fun loadEngines(context: Context): List<SearchEngine> {
