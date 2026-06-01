@@ -879,6 +879,8 @@
     <string name="storage_manage_summary">管理应用缓存和存储空间</string>
     <string name="download_manage">下载管理</string>
     <string name="download_manage_summary">管理WebView下载的文件</string>
+    <string name="module_status">模块运行状态</string>
+    <string name="module_status_summary">查看 App 各模块是否运行中</string>
     <string name="local_tts">本地 TTS</string>
     <string name="thread_count">线程数</string>
     <string name="all_read_time">总阅读时间</string>

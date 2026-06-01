@@ -894,6 +894,8 @@
     <string name="storage_manage_summary">Manage app cache and storage</string>
     <string name="download_manage">Download Management</string>
     <string name="download_manage_summary">Manage WebView downloaded files</string>
+    <string name="module_status">Module Status</string>
+    <string name="module_status_summary">View app module running status</string>
     <string name="local_tts">Local TTS</string>
     <string name="thread_count">Thread count</string>
     <string name="all_read_time">Total read time</string>
