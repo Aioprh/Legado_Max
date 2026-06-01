@@ -21,6 +21,7 @@ import io.legado.app.databinding.DialogTextViewBinding
 import io.legado.app.help.CacheManager
 import io.legado.app.help.HelpDocManager
 import io.legado.app.help.IntentData
+import io.legado.app.lib.theme.isDarkTheme
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
@@ -144,14 +145,14 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         // 设置工具栏颜色
         binding.toolBar.setBackgroundColor(primaryColor)
-        // 根据主题动态选择标题颜色：深色背景用白色，浅色背景用黑色
-        val titleColor = if (isDarkTheme) Color.WHITE else Color.BLACK
+        // 根据主题动态选择标题颜色：isDarkTheme=true表示浅色背景→用黑色，isDarkTheme=false表示深色背景→用白色
+        val titleColor = if (isDarkTheme) Color.BLACK else Color.WHITE
         binding.toolBar.setTitleTextColor(titleColor)
         binding.toolBar.setSubtitleTextColor(titleColor)
         // 加载菜单
         binding.toolBar.inflateMenu(R.menu.dialog_text)
         // 应用菜单着色：根据主题动态选择
-        val menuTheme = if (isDarkTheme) Theme.Dark else Theme.Light
+        val menuTheme = if (isDarkTheme) Theme.Light else Theme.Dark
         binding.toolBar.menu.applyTint(requireContext(), menuTheme)
         
         // 处理传递的参数
@@ -276,8 +277,8 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
     }
 
     private fun tintToolbarTextAndIcons() {
-        // 根据主题动态选择着色颜色
-        val tintColor = if (isDarkTheme) Color.WHITE else Color.BLACK
+        // 根据主题动态选择着色颜色：isDarkTheme=true表示浅色背景→用黑色，isDarkTheme=false表示深色背景→用白色
+        val tintColor = if (isDarkTheme) Color.BLACK else Color.WHITE
         fun tintView(view: View) {
             when (view) {
                 is TextView -> view.setTextColor(tintColor)
