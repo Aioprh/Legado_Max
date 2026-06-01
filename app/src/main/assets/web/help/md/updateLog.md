@@ -4,6 +4,9 @@
 ### cronet版本: 128.0.6613.40
 ### Kotlin版本: 2.3.10 | Rhino版本: 1.8.1 | Compose版本: 2025.04.01 | Compose UI 版本:  1.7.x | Material3 版本: 1.3.x | okhttp版本: 5.3.2
 
+**2026/06/01**
+- 搜索可多选书源进行搜索
+
 **2026/05/31**
 - 修复在infoMap.save()作用下select和toggle按钮未正确保存切换值的bug
 

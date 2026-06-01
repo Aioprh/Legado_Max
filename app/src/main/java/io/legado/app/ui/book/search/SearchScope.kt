@@ -11,6 +11,11 @@ import splitties.init.appCtx
 
 /**
  * 搜索范围
+ * scope 格式说明:
+ * - ""                           -> 全部书源
+ * - "分组A,分组B"                 -> 多个分组（逗号分隔）
+ * - "书源名::url"                 -> 单个书源（双冒号分隔）
+ * - "书源名1::url1;;书源名2::url2" -> 多个书源（双分号分隔）
  */
 @Suppress("unused")
 data class SearchScope(private var scope: String) {
@@ -60,7 +65,13 @@ data class SearchScope(private var scope: String) {
     val display: String
         get() {
             if (scope.contains("::")) {
-                return scope.substringBefore("::")
+                // 多书源时显示"首书源名 +N"格式
+                val sources = scope.split(";;")
+                return if (sources.size == 1) {
+                    scope.substringBefore("::")
+                } else {
+                    "${sources.first().substringBefore("::")} +${sources.size - 1}"
+                }
             }
             if (scope.isEmpty()) {
                 return appCtx.getString(R.string.all_source)
@@ -75,7 +86,10 @@ data class SearchScope(private var scope: String) {
         get() {
             val list = arrayListOf<String>()
             if (scope.contains("::")) {
-                list.add(scope.substringBefore("::"))
+                // 书源模式下拆分出每个书源名称
+                scope.split(";;").forEach {
+                    list.add(it.substringBefore("::"))
+                }
             } else {
                 scope.splitNotBlank(",").forEach {
                     list.add(it)
@@ -86,7 +100,10 @@ data class SearchScope(private var scope: String) {
 
     fun remove(scope: String) {
         if (isSource()) {
-            this.scope = ""
+            // 书源模式：从多书源列表中移除指定书源
+            val sources = this.scope.split(";;").toMutableList()
+            sources.removeAll { it.substringBefore("::") == scope }
+            this.scope = sources.joinToString(";;")
         } else {
             val stringBuilder = StringBuilder()
             this.scope.split(",").forEach {
@@ -111,9 +128,12 @@ data class SearchScope(private var scope: String) {
             list.addAll(appDb.bookSourceDao.allEnabledPart)
         } else {
             if (scope.contains("::")) {
-                scope.substringAfter("::").let {
-                    appDb.bookSourceDao.getBookSourcePart(it)?.let { source ->
-                        list.add(source)
+                // 书源模式：支持单选和多选（;;分隔）
+                scope.split(";;").forEach { sourceScope ->
+                    sourceScope.substringAfter("::").let { url ->
+                        appDb.bookSourceDao.getBookSourcePart(url)?.let { source ->
+                            list.add(source)
+                        }
                     }
                 }
             } else {
@@ -152,6 +172,13 @@ data class SearchScope(private var scope: String) {
         } else {
             AppConfig.searchGroup = scope
         }
+    }
+
+    companion object {
+        /** 多个书源构造，用伴生对象工厂方法避免JVM签名冲突 */
+        fun fromSources(sources: List<BookSourcePart>) = SearchScope(
+            sources.joinToString(";;") { "${it.bookSourceName.replace(":", "")}::${it.bookSourceUrl}" }
+        )
     }
 
 }
