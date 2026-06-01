@@ -16,7 +16,6 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.databinding.DialogSearchScopeBinding
 import io.legado.app.databinding.ItemCheckBoxBinding
-import io.legado.app.databinding.ItemRadioButtonBinding
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.flowWithLifecycleAndDatabaseChange
@@ -52,6 +51,8 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         binding.toolBar.setBackgroundColor(primaryColor)
         binding.recyclerView.adapter = adapter
+        binding.recyclerView.setFastScrollEnabled(true)
+        binding.recyclerView.isVerticalScrollBarEnabled = false
         initMenu()
         initSearchView()
         initOtherView()
@@ -95,9 +96,9 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
             if (binding.rbGroup.isChecked) {
                 callback.onSearchScopeOk(SearchScope(adapter.selectGroups))
             } else {
-                val selectSource = adapter.selectSource
-                if (selectSource != null) {
-                    callback.onSearchScopeOk(SearchScope(selectSource))
+                // 书源多选：选中书源列表不为空则提交，否则视为全部书源
+                if (adapter.selectSources.isNotEmpty()) {
+                    callback.onSearchScopeOk(SearchScope.fromSources(adapter.selectSources))
                 } else {
                     callback.onSearchScopeOk(SearchScope(""))
                 }
@@ -153,22 +154,16 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
     inner class RecyclerAdapter : RecyclerView.Adapter<ItemViewHolder>() {
 
         val selectGroups = arrayListOf<String>()
-        var selectSource: BookSourcePart? = null
+        /** 书源多选列表，替代原来的单选 */
+        val selectSources = arrayListOf<BookSourcePart>()
 
         override fun getItemViewType(position: Int): Int {
-            return if (binding.rbSource.isChecked) {
-                1
-            } else {
-                0
-            }
+            // 分组和书源模式都使用 CheckBox 多选布局
+            return 0
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
-            return if (viewType == 1) {
-                ItemViewHolder(ItemRadioButtonBinding.inflate(layoutInflater, parent, false))
-            } else {
-                ItemViewHolder(ItemCheckBoxBinding.inflate(layoutInflater, parent, false))
-            }
+            return ItemViewHolder(ItemCheckBoxBinding.inflate(layoutInflater, parent, false))
         }
 
         override fun onBindViewHolder(
@@ -181,16 +176,16 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
             } else {
                 when (holder.binding) {
                     is ItemCheckBoxBinding -> {
-                        groups.getOrNull(position)?.let {
-                            holder.binding.checkBox.isChecked = selectGroups.contains(it)
-                            holder.binding.checkBox.text = it
-                        }
-                    }
-
-                    is ItemRadioButtonBinding -> {
-                        screenSources.getOrNull(position)?.let {
-                            holder.binding.radioButton.isChecked = selectSource == it
-                            holder.binding.radioButton.text = it.bookSourceName
+                        if (binding.rbSource.isChecked) {
+                            screenSources.getOrNull(position)?.let {
+                                holder.binding.checkBox.isChecked = selectSources.contains(it)
+                                holder.binding.checkBox.text = it.bookSourceName
+                            }
+                        } else {
+                            groups.getOrNull(position)?.let {
+                                holder.binding.checkBox.isChecked = selectGroups.contains(it)
+                                holder.binding.checkBox.text = it
+                            }
                         }
                     }
                 }
@@ -200,32 +195,36 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
         override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
             when (holder.binding) {
                 is ItemCheckBoxBinding -> {
-                    groups.getOrNull(position)?.let {
-                        holder.binding.checkBox.isChecked = selectGroups.contains(it)
-                        holder.binding.checkBox.text = it
-                        holder.binding.checkBox.setOnUserCheckedChangeListener { isChecked ->
-                            if (isChecked) {
-                                selectGroups.add(it)
-                            } else {
-                                selectGroups.remove(it)
-                            }
-                            holder.itemView.post {
-                                notifyItemRangeChanged(0, itemCount, "up")
+                    if (binding.rbSource.isChecked) {
+                        // 书源模式：CheckBox 多选
+                        screenSources.getOrNull(position)?.let {
+                            holder.binding.checkBox.isChecked = selectSources.contains(it)
+                            holder.binding.checkBox.text = it.bookSourceName
+                            holder.binding.checkBox.setOnUserCheckedChangeListener { isChecked ->
+                                if (isChecked) {
+                                    selectSources.add(it)
+                                } else {
+                                    selectSources.remove(it)
+                                }
+                                holder.itemView.post {
+                                    notifyItemRangeChanged(0, itemCount, "up")
+                                }
                             }
                         }
-                    }
-                }
-
-                is ItemRadioButtonBinding -> {
-                    screenSources.getOrNull(position)?.let {
-                        holder.binding.radioButton.isChecked = selectSource == it
-                        holder.binding.radioButton.text = it.bookSourceName
-                        holder.binding.radioButton.setOnUserCheckedChangeListener { isChecked ->
-                            if (isChecked) {
-                                selectSource = it
-                            }
-                            holder.itemView.post {
-                                notifyItemRangeChanged(0, itemCount, "up")
+                    } else {
+                        // 分组模式：CheckBox 多选
+                        groups.getOrNull(position)?.let {
+                            holder.binding.checkBox.isChecked = selectGroups.contains(it)
+                            holder.binding.checkBox.text = it
+                            holder.binding.checkBox.setOnUserCheckedChangeListener { isChecked ->
+                                if (isChecked) {
+                                    selectGroups.add(it)
+                                } else {
+                                    selectGroups.remove(it)
+                                }
+                                holder.itemView.post {
+                                    notifyItemRangeChanged(0, itemCount, "up")
+                                }
                             }
                         }
                     }

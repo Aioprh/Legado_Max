@@ -119,13 +119,24 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         menu.transaction {
             menu.removeGroup(R.id.menu_group_1)
             menu.removeGroup(R.id.menu_group_2)
+            menu.removeItem(ID_MENU_MORE)
             var hasChecked = false
             val searchScopeNames = viewModel.searchScope.displayNames
             if (viewModel.searchScope.isSource()) {
-                menu.add(R.id.menu_group_1, Menu.NONE, Menu.NONE, searchScopeNames.first()).apply {
-                    isChecked = true
-                    hasChecked = true
+                // 多书源模式下为每个书源添加菜单项，超过5个时折叠显示
+                val maxShow = 5
+                searchScopeNames.take(maxShow).forEach { name ->
+                    menu.add(R.id.menu_group_1, Menu.NONE, Menu.NONE, name).apply {
+                        isChecked = true
+                    }
                 }
+                if (searchScopeNames.size > maxShow) {
+                    menu.add(Menu.NONE, ID_MENU_MORE, Menu.NONE,
+                        "...+${searchScopeNames.size - maxShow}").apply {
+                        isEnabled = false
+                    }
+                }
+                hasChecked = true
             }
             val allSourceMenu =
                 menu.add(R.id.menu_group_2, R.id.menu_1, Menu.NONE, getString(R.string.all_source))
@@ -306,6 +317,14 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         }
         viewModel.searchBookLiveData.observe(this) {
             adapter.setItems(it)
+        }
+        viewModel.searchProgressLiveData.observe(this) { progress ->
+            if (progress.isNullOrEmpty()) {
+                binding.tvSearchProgress.gone()
+            } else {
+                binding.tvSearchProgress.text = progress
+                binding.tvSearchProgress.visible()
+            }
         }
         lifecycleScope.launch {
             appDb.bookSourceDao.flowEnabledGroups().collect {
@@ -540,6 +559,8 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
     }
 
     companion object {
+
+        private const val ID_MENU_MORE = 99999
 
         fun start(context: Context, key: String?, searchScope: String? = null) {
             context.startActivity<SearchActivity> {

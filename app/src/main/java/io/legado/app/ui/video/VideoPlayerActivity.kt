@@ -811,6 +811,22 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         }
     }
 
+    /**
+     * 暂停时记录视频阅读时长
+     */
+    override fun onPause() {
+        super.onPause()
+        VideoPlay.onPause()
+    }
+
+    /**
+     * 恢复时标记视频阅读开始
+     */
+    override fun onResume() {
+        super.onResume()
+        VideoPlay.onResume()
+    }
+
     override fun onDestroy() {
         destroyWeb()
         super.onDestroy()

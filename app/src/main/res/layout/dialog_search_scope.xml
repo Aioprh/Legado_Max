@@ -56,10 +56,14 @@
 
     </RadioGroup>
 
-    <androidx.recyclerview.widget.RecyclerView
+    <io.legado.app.ui.widget.recycler.scroller.FastScrollRecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:scrollbars="vertical"
+        app:fadeScrollbar="true"
+        app:showBubble="false"
+        app:showTrack="true"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toTopOf="@+id/ll_bottom_bar"
         app:layout_constraintTop_toBottomOf="@+id/rg_scope" />

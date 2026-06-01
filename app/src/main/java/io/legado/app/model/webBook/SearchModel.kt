@@ -60,6 +60,7 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
     private var searchBooks = arrayListOf<SearchBook>()
     private var searchJob: Job? = null
     private var workingState = MutableStateFlow(true)
+    private var completedSourceCount = 0
 
 
     /**
@@ -96,6 +97,7 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
             }
             mSearchId = searchId
             searchPage = 1
+            completedSourceCount = 0
             initSearchPool()
         } else {
             searchPage++
@@ -112,6 +114,7 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
     private fun startSearch() {
         val precision = appCtx.getPrefBoolean(PreferKey.precisionSearch)
         var hasMore = false
+        completedSourceCount = 0
         searchJob = scope.launch(searchPool!!) {
             flow {
                 for (bs in bookSourceParts) {
@@ -141,6 +144,8 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
                 mergeItems(items, precision)
                 currentCoroutineContext().ensureActive()
                 callBack.onSearchSuccess(searchBooks)
+                completedSourceCount++
+                callBack.onSearchProgress(completedSourceCount, bookSourceParts.size, searchBooks.size)
             }.onCompletion {
                 if (it == null) callBack.onSearchFinish(searchBooks.isEmpty(), hasMore)
             }.catch {
@@ -290,6 +295,8 @@ class SearchModel(private val scope: CoroutineScope, private val callBack: CallB
         fun onSearchStart()
         /** 搜索成功回调（实时更新） */
         fun onSearchSuccess(searchBooks: List<SearchBook>)
+        /** 搜索进度回调（每完成一个书源后触发） */
+        fun onSearchProgress(completed: Int, total: Int, resultCount: Int)
         /** 搜索完成回调 */
         fun onSearchFinish(isEmpty: Boolean, hasMore: Boolean)
         /** 搜索取消回调 */

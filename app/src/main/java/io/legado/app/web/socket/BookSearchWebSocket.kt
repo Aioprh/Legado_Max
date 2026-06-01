@@ -90,6 +90,8 @@ class BookSearchWebSocket(handshakeRequest: NanoHTTPD.IHTTPSession) :
         send(GSON.toJson(searchBooks))
     }
 
+    override fun onSearchProgress(completed: Int, total: Int, resultCount: Int) {}
+
     override fun onSearchFinish(isEmpty: Boolean, hasMore: Boolean) = close(normalClosure, SEARCH_FINISH, false)
 
     override fun onSearchCancel(exception: Throwable?) = close(normalClosure, exception?.toString() ?: SEARCH_FINISH, false)
