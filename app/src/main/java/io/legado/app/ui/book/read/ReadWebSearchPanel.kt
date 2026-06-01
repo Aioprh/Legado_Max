@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.read
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -32,9 +33,14 @@ import io.legado.app.help.webView.WebViewPool
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
+import io.legado.app.utils.fromJsonArray
+import io.legado.app.utils.getPrefString
 import io.legado.app.utils.gone
 import io.legado.app.utils.openUrl
+import io.legado.app.utils.putPrefString
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.visible
 import java.net.URLEncoder
 import kotlin.math.roundToInt
@@ -44,13 +50,10 @@ class ReadWebSearchPanel @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : FrameLayout(context, attrs) {
 
-    private enum class SearchEngine(
-        val title: String,
-        val buildUrl: (String) -> String
-    ) {
-        Bing("必应", { query -> "https://www.bing.com/search?q=${encodeQuery(query)}" }),
-        Baidu("百度", { query -> "https://www.baidu.com/s?wd=${encodeQuery(query)}" })
-    }
+    data class SearchEngine(
+        val title: String = "",
+        val url: String = ""
+    )
 
     private val sheet = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
@@ -98,7 +101,8 @@ class ReadWebSearchPanel @JvmOverloads constructor(
     private var pooledWebView: PooledWebView? = null
     private val webView: WebView
         get() = pooledWebView!!.realWebView
-    private var selectedEngine = SearchEngine.Bing
+    private var engines = loadEngines(context)
+    private var selectedEngineIndex = 0
     private var startRawY = 0f
     private var startHeight = 0
     private val collapsedRatio = 0.58f
@@ -166,18 +170,9 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             LinearLayout(context).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(
-                    backButton,
-                    LinearLayout.LayoutParams(44.dpToPx(), 44.dpToPx())
-                )
-                addView(
-                    searchEdit,
-                    LinearLayout.LayoutParams(0, 44.dpToPx(), 1f)
-                )
-                addView(
-                    moreButton,
-                    LinearLayout.LayoutParams(44.dpToPx(), 44.dpToPx())
-                )
+                addView(backButton, LinearLayout.LayoutParams(44.dpToPx(), 44.dpToPx()))
+                addView(searchEdit, LinearLayout.LayoutParams(0, 44.dpToPx(), 1f))
+                addView(moreButton, LinearLayout.LayoutParams(44.dpToPx(), 44.dpToPx()))
             },
             LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 44.dpToPx()).apply {
                 marginStart = 12.dpToPx()
@@ -195,9 +190,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             progressBar,
             LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 2.dpToPx())
         )
-        SearchEngine.entries.forEach { engine ->
-            engineRow.addView(createEngineButton(engine))
-        }
+        refreshEngineButtons()
         searchEdit.setOnEditorActionListener { _, actionId, event ->
             val enterPressed = event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_UP
             if (actionId == EditorInfo.IME_ACTION_SEARCH || enterPressed) {
@@ -216,13 +209,10 @@ class ReadWebSearchPanel @JvmOverloads constructor(
                 true
             }
             menu.add(R.string.edit).setOnMenuItemClickListener {
-                showEngineEditDialog()
+                showEngineListDialog()
                 true
             }
         }.show()
-    }
-
-    private fun showEngineEditDialog() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -281,18 +271,26 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         )
     }
 
-    private fun createEngineButton(engine: SearchEngine): TextView {
+    private fun refreshEngineButtons() {
+        engineRow.removeAllViews()
+        selectedEngineIndex = selectedEngineIndex.coerceIn(0, (engines.size - 1).coerceAtLeast(0))
+        engines.forEachIndexed { index, engine ->
+            engineRow.addView(createEngineButton(index, engine))
+        }
+        updateEngineButtons()
+    }
+
+    private fun createEngineButton(index: Int, engine: SearchEngine): TextView {
         return TextView(context).apply {
             text = engine.title
             gravity = Gravity.CENTER
             textSize = 15f
             setPadding(18.dpToPx(), 0, 18.dpToPx(), 0)
             setOnClickListener {
-                selectedEngine = engine
+                selectedEngineIndex = index
                 updateEngineButtons()
                 loadSearch(searchEdit.text.toString())
             }
-            engineRow.post { updateEngineButtons() }
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 34.dpToPx()
@@ -305,8 +303,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
     private fun updateEngineButtons() {
         for (index in 0 until engineRow.childCount) {
             val child = engineRow.getChildAt(index) as? TextView ?: continue
-            val engine = SearchEngine.entries[index]
-            val selected = engine == selectedEngine
+            val selected = index == selectedEngineIndex
             child.setTextColor(if (selected) Color.WHITE else context.primaryTextColor)
             child.setTypeface(Typeface.DEFAULT, if (selected) Typeface.BOLD else Typeface.NORMAL)
             child.setBackgroundColor(if (selected) context.accentColor else Color.argb(18, 128, 128, 128))
@@ -320,7 +317,92 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         }
         searchEdit.setText(normalizedQuery)
         searchEdit.setSelection(searchEdit.text.length)
-        webView.loadUrl(selectedEngine.buildUrl(normalizedQuery))
+        val engine = engines.getOrNull(selectedEngineIndex) ?: return
+        webView.loadUrl(engine.buildUrl(normalizedQuery))
+    }
+
+    private fun showEngineListDialog() {
+        AlertDialog.Builder(context)
+            .setTitle("搜索引擎")
+            .setItems(engines.map { it.title }.toTypedArray()) { _, which ->
+                engines.getOrNull(which)?.let { showEngineItemDialog(which, it) }
+            }
+            .setPositiveButton("添加") { _, _ ->
+                showEngineItemDialog(
+                    index = -1,
+                    engine = SearchEngine("新搜索", "https://www.bing.com/search?q={query}")
+                )
+            }
+            .setNegativeButton(R.string.close, null)
+            .show()
+    }
+
+    private fun showEngineItemDialog(index: Int, engine: SearchEngine) {
+        val nameEdit = EditText(context).apply {
+            setSingleLine(true)
+            hint = "名称"
+            setText(engine.title)
+        }
+        val urlEdit = EditText(context).apply {
+            setSingleLine(false)
+            minLines = 2
+            hint = "搜索 URL，使用 {query} 表示关键词"
+            setText(engine.url)
+        }
+        val container = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(24.dpToPx(), 8.dpToPx(), 24.dpToPx(), 0)
+            addView(nameEdit, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+            addView(urlEdit, LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        }
+        val builder = AlertDialog.Builder(context)
+            .setTitle(if (index >= 0) R.string.edit else R.string.add)
+            .setView(container)
+            .setPositiveButton(R.string.action_save, null)
+            .setNegativeButton(R.string.cancel, null)
+        if (index >= 0) {
+            builder.setNeutralButton(R.string.delete, null)
+        }
+        val dialog = builder.show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val newEngine = SearchEngine(
+                title = nameEdit.text.toString().trim(),
+                url = urlEdit.text.toString().trim()
+            )
+            if (newEngine.title.isBlank() || newEngine.url.isBlank()) {
+                context.toastOnUi(R.string.non_null_name_url)
+                return@setOnClickListener
+            }
+            if (!newEngine.url.contains(QUERY_PLACEHOLDER)) {
+                context.toastOnUi("搜索 URL 必须包含 $QUERY_PLACEHOLDER")
+                return@setOnClickListener
+            }
+            engines = engines.toMutableList().apply {
+                if (index >= 0) {
+                    set(index, newEngine)
+                } else {
+                    add(newEngine)
+                    selectedEngineIndex = lastIndex
+                }
+            }
+            saveEngines(context, engines)
+            refreshEngineButtons()
+            loadSearch(searchEdit.text.toString())
+            dialog.dismiss()
+        }
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
+            engines = engines.toMutableList().apply {
+                if (index in indices) {
+                    removeAt(index)
+                }
+            }
+            selectedEngineIndex = selectedEngineIndex.coerceIn(0, (engines.size - 1).coerceAtLeast(0))
+            saveEngines(context, engines)
+            refreshEngineButtons()
+            dialog.dismiss()
+            showEngineListDialog()
+        }
     }
 
     private fun onDragTouch(view: View, event: MotionEvent): Boolean {
@@ -369,6 +451,32 @@ class ReadWebSearchPanel @JvmOverloads constructor(
     }
 
     companion object {
+        private const val ENGINE_PREF_KEY = "readWebSearchEngines"
+        private const val QUERY_PLACEHOLDER = "{query}"
+
+        private fun defaultEngines(): List<SearchEngine> {
+            return listOf(
+                SearchEngine("必应", "https://www.bing.com/search?q={query}"),
+                SearchEngine("百度", "https://www.baidu.com/s?wd={query}")
+            )
+        }
+
+        private fun loadEngines(context: Context): List<SearchEngine> {
+            val stored = context.getPrefString(ENGINE_PREF_KEY)
+            val engines = GSON.fromJsonArray<SearchEngine>(stored).getOrNull()
+                ?.filter { it.title.isNotBlank() && it.url.contains(QUERY_PLACEHOLDER) }
+                .orEmpty()
+            return engines.ifEmpty { defaultEngines() }
+        }
+
+        private fun saveEngines(context: Context, engines: List<SearchEngine>) {
+            context.putPrefString(ENGINE_PREF_KEY, GSON.toJson(engines))
+        }
+
+        private fun SearchEngine.buildUrl(query: String): String {
+            return url.replace(QUERY_PLACEHOLDER, encodeQuery(query))
+        }
+
         private fun encodeQuery(query: String): String {
             return URLEncoder.encode(query, Charsets.UTF_8.name())
         }
