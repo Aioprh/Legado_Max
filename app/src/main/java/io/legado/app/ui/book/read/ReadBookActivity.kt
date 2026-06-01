@@ -282,6 +282,14 @@ class ReadBookActivity : BaseReadBookActivity(),
         upScreenTimeOut()
         ReadBook.register(this)
         onBackPressedDispatcher.addCallback(this) {
+            if (binding.webSearchPanel.isShown) {
+                if (binding.webSearchPanel.canGoBack()) {
+                    binding.webSearchPanel.goBack()
+                } else {
+                    binding.webSearchPanel.close()
+                }
+                return@addCallback
+            }
             if (isShowingSearchResult) {
                 exitSearchMenu()
                 restoreLastBookProcess()
@@ -945,6 +953,11 @@ class ReadBookActivity : BaseReadBookActivity(),
             R.id.menu_search_content -> {
                 viewModel.searchContentQuery = selectedText
                 openSearchActivity(selectedText)
+                return true
+            }
+
+            R.id.menu_web_search -> {
+                binding.webSearchPanel.open(selectedText)
                 return true
             }
 
@@ -1838,6 +1851,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         tts?.clearTts()
         textActionMenu.dismiss()
         popupAction.dismiss()
+        binding.webSearchPanel.onDestroy()
         binding.readView.onDestroy()
         ReadBook.unregister(this)
         handler.removeCallbacksAndMessages(null) // 清理Handler消息
