@@ -20,9 +20,11 @@ import android.webkit.WebViewClient
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.net.toUri
 import io.legado.app.R
 import io.legado.app.help.webView.PooledWebView
@@ -67,6 +69,22 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         textSize = 16f
         setPadding(14.dpToPx(), 0, 14.dpToPx(), 0)
         setBackgroundColor(Color.argb(18, 128, 128, 128))
+    }
+    private val backButton = ImageButton(context).apply {
+        setImageResource(R.drawable.ic_arrow_back)
+        setBackgroundColor(Color.TRANSPARENT)
+        contentDescription = "返回"
+        setOnClickListener {
+            if (canGoBack()) {
+                goBack()
+            }
+        }
+    }
+    private val moreButton = ImageButton(context).apply {
+        setImageResource(R.drawable.ic_more_vert)
+        setBackgroundColor(Color.TRANSPARENT)
+        contentDescription = "更多"
+        setOnClickListener { showMoreMenu() }
     }
     private val engineRow = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
@@ -145,7 +163,22 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 22.dpToPx())
         )
         sheet.addView(
-            searchEdit,
+            LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(
+                    backButton,
+                    LinearLayout.LayoutParams(44.dpToPx(), 44.dpToPx())
+                )
+                addView(
+                    searchEdit,
+                    LinearLayout.LayoutParams(0, 44.dpToPx(), 1f)
+                )
+                addView(
+                    moreButton,
+                    LinearLayout.LayoutParams(44.dpToPx(), 44.dpToPx())
+                )
+            },
             LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 44.dpToPx()).apply {
                 marginStart = 12.dpToPx()
                 marginEnd = 12.dpToPx()
@@ -174,6 +207,22 @@ class ReadWebSearchPanel @JvmOverloads constructor(
                 false
             }
         }
+    }
+
+    private fun showMoreMenu() {
+        PopupMenu(context, moreButton).apply {
+            menu.add(R.string.refresh).setOnMenuItemClickListener {
+                pooledWebView?.realWebView?.reload()
+                true
+            }
+            menu.add(R.string.edit).setOnMenuItemClickListener {
+                showEngineEditDialog()
+                true
+            }
+        }.show()
+    }
+
+    private fun showEngineEditDialog() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
