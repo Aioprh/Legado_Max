@@ -20,7 +20,7 @@ object DatabaseMigrations {
             migration_31_32, migration_32_33, migration_33_34, migration_34_35,
             migration_35_36, migration_36_37, migration_37_38, migration_38_39,
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
-            migration_95_96, migration_96_97
+            migration_95_96, migration_96_97, migration_97_98
         )
     }
 
@@ -551,6 +551,39 @@ object DatabaseMigrations {
             if (!hasDurChapterTitle) {
                 db.execSQL("ALTER TABLE readRecordSession ADD COLUMN durChapterTitle TEXT NOT NULL DEFAULT ''")
             }
+        }
+    }
+
+    private val migration_97_98 = object : Migration(97, 98) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `cover_gallery_groups` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `isDefault` INTEGER NOT NULL,
+                    `order` INTEGER NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    `updatedAt` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `cover_gallery_images` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `groupId` INTEGER NOT NULL,
+                    `path` TEXT NOT NULL,
+                    `order` INTEGER NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    FOREIGN KEY(`groupId`) REFERENCES `cover_gallery_groups`(`id`)
+                    ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_cover_gallery_images_groupId` ON `cover_gallery_images` (`groupId`)"
+            )
         }
     }
 

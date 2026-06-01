@@ -384,6 +384,10 @@
             android:hardwareAccelerated="true" />
         <!-- 直链上传配置 -->
         <activity
+            android:name=".ui.config.covergallery.CoverGalleryActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
+        <activity
             android:name=".ui.upload.DirectLinkUploadActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />

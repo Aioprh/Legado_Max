@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -46,33 +47,37 @@ fun FileValidationDialog(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
                 .fillMaxHeight(0.8f),
-            shape = MaterialTheme.shapes.large,
+            shape = RectangleShape,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             )
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(16.dp)
                 ) {
-                    Text(
-                        text = "选择要恢复的文件",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilledTonalButton(onClick = onValidate) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "选择要恢复的文件",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("检测格式")
+                        FilledTonalButton(onClick = onValidate) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("检测格式")
+                        }
                     }
                 }
 
@@ -102,8 +107,23 @@ fun FileValidationDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.End
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    TextButton(
+                        onClick = {
+                            files.forEach { checkedStates[it.fileName] = true }
+                        }
+                    ) {
+                        Text("全选")
+                    }
+                    TextButton(
+                        onClick = {
+                            files.forEach { checkedStates[it.fileName] = false }
+                        }
+                    ) {
+                        Text("全不选")
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
                     TextButton(onClick = onDismiss) {
                         Text("取消", color = MaterialTheme.colorScheme.primary)
                     }

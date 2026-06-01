@@ -6,6 +6,7 @@ import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
+import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.model.BookCover
 import splitties.init.appCtx
 import java.io.File
@@ -51,6 +52,7 @@ object BackupInfoHelper {
     )
 
     val displayNameMap = mapOf(
+        CoverGalleryRepository.backupDirName to "封面图集",
         "bookshelf.json" to "书架书籍",
         "bookmark.json" to "书签",
         "bookGroup.json" to "书籍分组",
@@ -191,6 +193,27 @@ object BackupInfoHelper {
             totalSize += totalBgSize
             if (bgSelected) selectedSize += totalBgSize
             items.add(BackupFileInfo("backgroundImages", "阅读背景", totalBgSize, bgSelected))
+        }
+
+        run {
+            val selected = BackupSelectorConfig.isSelected("coverGallery")
+            val imageSize = appDb.coverGalleryDao.allImages.asSequence()
+                .map { File(it.path) }
+                .filter { it.exists() && it.isFile }
+                .distinctBy { it.absolutePath }
+                .sumOf { it.length() }
+            val estimatedDataSize = appDb.coverGalleryDao.allGroups.size * 100L
+            totalSize += imageSize
+            totalSize += estimatedDataSize
+            if (selected) selectedSize += imageSize + estimatedDataSize
+            items.add(
+                BackupFileInfo(
+                    CoverGalleryRepository.backupDirName,
+                    "封面图集",
+                    imageSize + estimatedDataSize,
+                    selected
+                )
+            )
         }
 
         return BackupOverview(items, totalSize, selectedSize)

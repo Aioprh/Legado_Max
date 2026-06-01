@@ -1,4 +1,4 @@
-package io.legado.app.help.storage
+﻿package io.legado.app.help.storage
 
 import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
@@ -32,10 +32,25 @@ data class CacheDetail(
     val name: String,
     val meta: String,
     val size: Long,
-    val formattedSize: String
+    val formattedSize: String,
+    val path: String? = null,
+    val openPath: String? = path
 )
 
 object StorageCalculator {
+
+    private const val LOG_CACHE_DIR_NAME = "log"
+    private const val ACACHE_OTHER_ID = "__other__"
+    private const val WEBVIEW_DIR_NAME = "app_webview"
+    private const val HWS_WEBVIEW_DIR_NAME = "app_hws_webview"
+
+    private val runtimeCachePrefixes = listOf(
+        "v_" to "书源变量缓存",
+        "userInfo_" to "用户信息缓存",
+        "loginHeader_" to "登录Header缓存",
+        "sourceVariable_" to "书源扩展缓存",
+        "infoMap_" to "信息映射缓存"
+    )
 
     // 缓存有效期：30秒内复用计算结果，避免频繁遍历目录
     private const val CACHE_EXPIRE_MS = 30_000L
@@ -51,6 +66,7 @@ object StorageCalculator {
     private var cachedACacheSize = AtomicLong(-1L)
     private var cachedDbSize = AtomicLong(-1L)
     private var cachedLogSize = AtomicLong(-1L)
+    private var cachedWebViewSize = AtomicLong(-1L)
     
     // 缓存数量统计
     private var cachedBookCount = -1
@@ -73,6 +89,7 @@ object StorageCalculator {
         cachedACacheSize.set(-1L)
         cachedDbSize.set(-1L)
         cachedLogSize.set(-1L)
+        cachedWebViewSize.set(-1L)
         cachedBookCount = -1
         cachedTtsCount = -1
         cachedACacheCount = -1
@@ -137,7 +154,8 @@ object StorageCalculator {
                         name = name,
                         meta = meta,
                         size = size,
-                        formattedSize = ConvertUtils.formatFileSize(size)
+                        formattedSize = ConvertUtils.formatFileSize(size),
+                        path = bookDir.absolutePath
                     ))
                 }
             }
@@ -197,8 +215,12 @@ object StorageCalculator {
         if (bookUrl == null) {
             BookHelp.clearCache()
         } else {
-            val book = appDb.bookDao.getBook(bookUrl) ?: return
-            BookHelp.clearCache(book)
+            val book = appDb.bookDao.getBook(bookUrl)
+            if (book != null) {
+                BookHelp.clearCache(book)
+            } else {
+                FileUtils.delete(appCtx.externalFiles.getFile("book_cache", bookUrl).absolutePath)
+            }
         }
     }
 
@@ -226,7 +248,8 @@ object StorageCalculator {
                         name = getTtsEngineName(engineDir.name),
                         meta = "最后使用: ${formatLastModified(sizeAndLastModified.second)}",
                         size = sizeAndLastModified.first,
-                        formattedSize = ConvertUtils.formatFileSize(sizeAndLastModified.first)
+                        formattedSize = ConvertUtils.formatFileSize(sizeAndLastModified.first),
+                        path = engineDir.absolutePath
                     ))
                 }
             }
@@ -344,17 +367,92 @@ object StorageCalculator {
         }
     }
 
+    suspend fun calculateACacheDetailsAccurate(): List<CacheDetail> = withContext(Dispatchers.IO) {
+        val aCacheDir = File(appCtx.cacheDir, "ACache")
+        if (!aCacheDir.exists()) return@withContext emptyList()
+
+        val prefixStats = mutableMapOf<String, Pair<Long, Int>>()
+        runtimeCachePrefixes.forEach { (prefix, _) ->
+            prefixStats[prefix] = Pair(0L, 0)
+        }
+        var otherSize = 0L
+        var otherCount = 0
+
+        aCacheDir.listFiles()?.forEach { file ->
+            if (file.isFile) {
+                var matched = false
+                for ((prefix, _) in runtimeCachePrefixes) {
+                    if (file.name.startsWith(prefix)) {
+                        val current = prefixStats[prefix] ?: Pair(0L, 0)
+                        prefixStats[prefix] = Pair(current.first + file.length(), current.second + 1)
+                        matched = true
+                        break
+                    }
+                }
+                if (!matched) {
+                    otherSize += file.length()
+                    otherCount++
+                }
+            }
+        }
+
+        val details = mutableListOf<CacheDetail>()
+        runtimeCachePrefixes.forEach { (prefix, name) ->
+            val (size, count) = prefixStats[prefix] ?: Pair(0L, 0)
+            if (count > 0) {
+                details.add(CacheDetail(
+                    id = prefix,
+                    name = name,
+                    meta = "${prefix}前缀 · ${count}项",
+                    size = size,
+                    formattedSize = ConvertUtils.formatFileSize(size),
+                    path = aCacheDir.absolutePath
+                ))
+            }
+        }
+        if (otherCount > 0) {
+            details.add(CacheDetail(
+                id = ACACHE_OTHER_ID,
+                name = "其他 ACache 缓存",
+                meta = "${otherCount}项",
+                size = otherSize,
+                formattedSize = ConvertUtils.formatFileSize(otherSize),
+                path = aCacheDir.absolutePath
+            ))
+        }
+
+        details.sortedByDescending { it.size }
+    }
+
+    fun clearACacheAccurate(prefix: String? = null) {
+        invalidateCache()
+        if (prefix == null) {
+            ACache.get().clear()
+            return
+        }
+        val aCacheDir = File(appCtx.cacheDir, "ACache")
+        aCacheDir.listFiles()?.forEach { file ->
+            val shouldDelete = if (prefix == ACACHE_OTHER_ID) {
+                file.isFile && runtimeCachePrefixes.none { (knownPrefix, _) ->
+                    file.name.startsWith(knownPrefix)
+                }
+            } else {
+                file.isFile && file.name.startsWith(prefix)
+            }
+            if (shouldDelete) {
+                file.delete()
+            }
+        }
+    }
+
     suspend fun calculateDbCacheSize(): Long = withContext(Dispatchers.IO) {
         if (isCacheValid() && cachedDbSize.get() >= 0) {
             return@withContext cachedDbSize.get()
         }
         val size = try {
-            val dbFile = appCtx.getDatabasePath("legado.db")
-            if (dbFile.exists()) {
-                dbFile.length()
-            } else {
-                0L
-            }
+            appDb.cacheDao.getAllRuntimeSourceCaches().sumOf { cache ->
+                cache.key.toByteArray().size + (cache.value?.toByteArray()?.size ?: 0) + Long.SIZE_BYTES
+            }.toLong()
         } catch (e: Exception) {
             0L
         }
@@ -420,6 +518,45 @@ object StorageCalculator {
         }
     }
 
+    suspend fun calculateDbCacheDetailsAccurate(): List<CacheDetail> = withContext(Dispatchers.IO) {
+        val details = mutableListOf<CacheDetail>()
+        try {
+            val caches = appDb.cacheDao.getAllRuntimeSourceCaches()
+            runtimeCachePrefixes.forEach { (prefix, name) ->
+                val matchedCaches = caches.filter { it.key.startsWith(prefix) }
+                if (matchedCaches.isNotEmpty()) {
+                    val size = matchedCaches.sumOf { cache ->
+                        cache.key.toByteArray().size + (cache.value?.toByteArray()?.size ?: 0) + Long.SIZE_BYTES
+                    }.toLong()
+                    details.add(CacheDetail(
+                        id = prefix,
+                        name = name,
+                        meta = "${matchedCaches.size}项",
+                        size = size,
+                        formattedSize = ConvertUtils.formatFileSize(size),
+                        path = appCtx.getDatabasePath("legado.db").absolutePath
+                    ))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        details.sortedByDescending { it.size }
+    }
+
+    suspend fun clearDbCacheByPrefix(prefix: String?) = withContext(Dispatchers.IO) {
+        invalidateCache()
+        try {
+            if (prefix == null) {
+                appDb.cacheDao.deleteAllRuntimeSourceCaches()
+            } else {
+                appDb.cacheDao.deleteRuntimeSourceCachesByPrefix(prefix)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     suspend fun calculateEpubCacheSize(): Long = withContext(Dispatchers.IO) {
         if (isCacheValid() && cachedEpubSize.get() >= 0) {
             return@withContext cachedEpubSize.get()
@@ -440,7 +577,7 @@ object StorageCalculator {
         if (isCacheValid() && cachedTempSize.get() >= 0) {
             return@withContext cachedTempSize.get()
         }
-        val size = calculateDirSizeFast(appCtx.externalCache)
+        val size = calculateDirSizeFast(appCtx.externalCache, excludedRootNames = setOf(LOG_CACHE_DIR_NAME))
         cachedTempSize.set(size)
         markCacheTime()
         size
@@ -449,6 +586,7 @@ object StorageCalculator {
     fun clearTempCache() {
         invalidateCache()
         appCtx.externalCache.listFiles()?.forEach { 
+            if (it.name == LOG_CACHE_DIR_NAME) return@forEach
             if (it.isDirectory) {
                 FileUtils.delete(it.absolutePath)
             } else {
@@ -461,7 +599,7 @@ object StorageCalculator {
         if (isCacheValid() && cachedLogSize.get() >= 0) {
             return@withContext cachedLogSize.get()
         }
-        val logDir = appCtx.externalCache.getFile("log")
+        val logDir = appCtx.externalCache.getFile(LOG_CACHE_DIR_NAME)
         val size = calculateDirSizeFast(logDir)
         cachedLogSize.set(size)
         markCacheTime()
@@ -470,7 +608,58 @@ object StorageCalculator {
 
     fun clearLogCache() {
         invalidateCache()
-        FileUtils.delete(appCtx.externalCache.getFile("log").absolutePath)
+        FileUtils.delete(appCtx.externalCache.getFile(LOG_CACHE_DIR_NAME).absolutePath)
+    }
+
+    suspend fun calculateWebViewCacheSize(): Long = withContext(Dispatchers.IO) {
+        if (isCacheValid() && cachedWebViewSize.get() >= 0) {
+            return@withContext cachedWebViewSize.get()
+        }
+        val size = getWebViewCacheDirs().sumOf { calculateDirSizeFast(it) }
+        cachedWebViewSize.set(size)
+        markCacheTime()
+        size
+    }
+
+    suspend fun calculateWebViewCacheDetails(): List<CacheDetail> = withContext(Dispatchers.IO) {
+        getWebViewCacheDirs().mapNotNull { dir ->
+            val size = calculateDirSizeFast(dir)
+            if (size <= 0L) return@mapNotNull null
+            CacheDetail(
+                id = dir.name,
+                name = when (dir.name) {
+                    WEBVIEW_DIR_NAME -> "WebView 数据"
+                    HWS_WEBVIEW_DIR_NAME -> "华为 WebView 数据"
+                    else -> dir.name
+                },
+                meta = dir.absolutePath,
+                size = size,
+                formattedSize = ConvertUtils.formatFileSize(size),
+                path = dir.absolutePath
+            )
+        }.sortedByDescending { it.size }
+    }
+
+    fun clearWebViewCache(dirName: String? = null) {
+        invalidateCache()
+        if (dirName == null) {
+            getWebViewCacheDirs().forEach { FileUtils.delete(it.absolutePath) }
+        } else {
+            getWebViewCacheDirs()
+                .firstOrNull { it.name == dirName }
+                ?.let { FileUtils.delete(it.absolutePath) }
+        }
+    }
+
+    suspend fun countWebViewCacheDirs(): Int = withContext(Dispatchers.IO) {
+        getWebViewCacheDirs().count { it.exists() && calculateDirSizeFast(it) > 0L }
+    }
+
+    private fun getWebViewCacheDirs(): List<File> {
+        return listOf(
+            appCtx.getDir("webview", android.content.Context.MODE_PRIVATE),
+            appCtx.getDir("hws_webview", android.content.Context.MODE_PRIVATE)
+        )
     }
 
     /**
@@ -478,19 +667,30 @@ object StorageCalculator {
      * 使用栈实现的迭代遍历，避免walkTopDown()的递归调用开销
      * 性能优于walkTopDown()，尤其对深层目录结构
      */
-    private fun calculateDirSizeFast(dir: File): Long {
+    private fun calculateDirSizeFast(
+        dir: File,
+        excludedRootNames: Set<String> = emptySet()
+    ): Long {
         if (!dir.exists()) return 0L
         var size = 0L
         try {
             val stack = java.util.ArrayDeque<File>()
-            stack.push(dir)
+            dir.listFiles()?.forEach { file ->
+                if (!excludedRootNames.contains(file.name)) {
+                    stack.push(file)
+                }
+            }
             while (stack.isNotEmpty()) {
                 val current = stack.pop()
-                current.listFiles()?.forEach { file ->
-                    if (file.isFile) {
-                        size += file.length()
-                    } else if (file.isDirectory) {
-                        stack.push(file)
+                if (current.isFile) {
+                    size += current.length()
+                } else if (current.isDirectory) {
+                    current.listFiles()?.forEach { file ->
+                        if (file.isFile) {
+                            size += file.length()
+                        } else if (file.isDirectory) {
+                            stack.push(file)
+                        }
                     }
                 }
             }
@@ -563,5 +763,13 @@ object StorageCalculator {
         cachedACacheCount = count
         markCacheTime()
         count
+    }
+
+    suspend fun countDbCacheItems(): Int = withContext(Dispatchers.IO) {
+        try {
+            appDb.cacheDao.getAllRuntimeSourceCaches().size
+        } catch (e: Exception) {
+            0
+        }
     }
 }

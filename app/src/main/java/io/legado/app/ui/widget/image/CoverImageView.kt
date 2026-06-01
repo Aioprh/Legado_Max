@@ -294,7 +294,13 @@ class CoverImageView @JvmOverloads constructor(
         fragment: Fragment? = null,
         lifecycle: Lifecycle? = null
     ) {
-        load(searchBook.coverUrl, searchBook.name, searchBook.author, loadOnlyWifi, searchBook.origin, fragment, lifecycle)
+        val galleryIdentity = listOf(
+            searchBook.bookUrl,
+            searchBook.origin,
+            searchBook.name,
+            searchBook.author
+        ).joinToString("|")
+        load(searchBook.coverUrl, searchBook.name, searchBook.author, loadOnlyWifi, searchBook.origin, fragment, lifecycle, galleryIdentity = galleryIdentity)
     }
 
     fun load(
@@ -304,7 +310,7 @@ class CoverImageView @JvmOverloads constructor(
         lifecycle: Lifecycle? = null,
         onLoadFinish: (() -> Unit)? = null
     ) {
-       load(book.getDisplayCover(), book.name, book.author, loadOnlyWifi, book.origin, fragment, lifecycle, onLoadFinish)
+       load(book.getDisplayCover(), book.name, book.author, loadOnlyWifi, book.origin, fragment, lifecycle, onLoadFinish, book.bookUrl)
     }
 
     fun load(
@@ -315,7 +321,8 @@ class CoverImageView @JvmOverloads constructor(
         sourceOrigin: String? = null,
         fragment: Fragment? = null,
         lifecycle: Lifecycle? = null,
-        onLoadFinish: (() -> Unit)? = null
+        onLoadFinish: (() -> Unit)? = null,
+        galleryIdentity: String? = null
     ) {
         val currentAuthor = author?.replace(AppPattern.bdRegex, "")?.trim()?.also {
             this.author = it
@@ -323,11 +330,15 @@ class CoverImageView @JvmOverloads constructor(
         val currentName = name?.replace(AppPattern.bdRegex, "")?.trim()?.also {
             this.name = it
         }
-        this.bitmapPath = path
+        val galleryDefaultCover = BookCover.getGalleryDefaultCover(
+            galleryIdentity ?: listOfNotNull(sourceOrigin, path, name, author).joinToString("|")
+        )
+        val actualPath = galleryDefaultCover ?: path
+        this.bitmapPath = actualPath
 
         // 检查是否启用HTML封面生成（由封面配置页的开关控制）
         val htmlTemplate = CoverHtmlTemplateConfig.getSelectedTemplate()
-        if (appCtx.getPrefBoolean(PreferKey.coverHtmlEnable) && htmlTemplate.htmlCode.isNotBlank() && currentName != null) {
+        if (galleryDefaultCover == null && appCtx.getPrefBoolean(PreferKey.coverHtmlEnable) && htmlTemplate.htmlCode.isNotBlank() && currentName != null) {
             isHtmlCover = true
             loadHtmlCover(currentName, currentAuthor, onLoadFinish)
             return
@@ -340,7 +351,7 @@ class CoverImageView @JvmOverloads constructor(
                 .centerCrop()
                 .into(this)
         } else {
-            if (drawBookName && currentName != null) {
+            if (galleryDefaultCover == null && drawBookName && currentName != null) {
                 val pathName = if (drawBookAuthor){
                     currentName + currentAuthor
                 } else {
@@ -353,9 +364,9 @@ class CoverImageView @JvmOverloads constructor(
                 options = options.set(OkHttpModelLoader.sourceOriginOption, sourceOrigin)
             }
             var builder = if (fragment != null && lifecycle != null) {
-                ImageLoader.load(fragment, lifecycle, path)
+                ImageLoader.load(fragment, lifecycle, actualPath)
             } else {
-                ImageLoader.load(context, path)
+                ImageLoader.load(context, actualPath)
             }
             builder = builder.apply(options)
                 .placeholder(BookCover.defaultDrawable)

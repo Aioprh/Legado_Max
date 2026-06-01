@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,7 +45,8 @@ fun CacheItemCard(
     item: CacheItem,
     onExpandClick: () -> Unit,
     onClearClick: () -> Unit,
-    onDetailClearClick: (String) -> Unit
+    onDetailClearClick: (String) -> Unit,
+    onOpenPathClick: (String) -> Unit
 ) {
     val borderColor = if (item.isExpanded) {
         MaterialTheme.colorScheme.primary
@@ -131,6 +133,17 @@ fun CacheItemCard(
                             overflow = TextOverflow.Ellipsis
                         )
 
+                        item.path?.let { path ->
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = path,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = if (compactWidth) 3 else 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
                         if (item.canExpand) {
                             item.expandBadge?.let { badge ->
                                 Spacer(Modifier.height(8.dp))
@@ -173,6 +186,19 @@ fun CacheItemCard(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+
+                        item.path?.lineSequence()?.firstOrNull()?.let { path ->
+                            IconButton(
+                                onClick = { onOpenPathClick(path) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FolderOpen,
+                                    contentDescription = "打开路径",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -190,7 +216,8 @@ fun CacheItemCard(
                         CacheDetailItem(
                             detail = detail,
                             iconColor = Color(item.iconColor),
-                            onClearClick = { onDetailClearClick(detail.id) }
+                            onClearClick = { onDetailClearClick(detail.id) },
+                            onOpenPathClick = { path -> onOpenPathClick(path) }
                         )
                     }
                 }
@@ -203,7 +230,8 @@ fun CacheItemCard(
 private fun CacheDetailItem(
     detail: CacheDetail,
     iconColor: Color,
-    onClearClick: () -> Unit
+    onClearClick: () -> Unit,
+    onOpenPathClick: (String) -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -248,6 +276,16 @@ private fun CacheDetailItem(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                detail.path?.let { path ->
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = path,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             Spacer(Modifier.width(8.dp))
@@ -274,6 +312,19 @@ private fun CacheDetailItem(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
+                }
+                detail.openPath?.let { path ->
+                    IconButton(
+                        onClick = { onOpenPathClick(path) },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FolderOpen,
+                            contentDescription = "打开路径",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }

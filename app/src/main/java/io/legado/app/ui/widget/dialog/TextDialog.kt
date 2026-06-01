@@ -2,12 +2,15 @@ package io.legado.app.ui.widget.dialog
 
 import android.os.Build
 import android.os.Bundle
+import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
 import android.view.textclassifier.TextClassifier
 import android.util.Log
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.ImageButton
+import android.widget.TextView
 import androidx.fragment.app.setFragmentResultListener
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -18,11 +21,13 @@ import io.legado.app.databinding.DialogTextViewBinding
 import io.legado.app.help.CacheManager
 import io.legado.app.help.HelpDocManager
 import io.legado.app.help.IntentData
+import io.legado.app.lib.theme.isDarkTheme
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
 import io.legado.app.model.debug.DebugLevel
 import io.legado.app.ui.code.CodeEditActivity
+import io.legado.app.constant.Theme
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.setHtml
 import io.legado.app.utils.setLayout
@@ -140,15 +145,21 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         // 设置工具栏颜色
         binding.toolBar.setBackgroundColor(primaryColor)
+        // 根据主题动态选择标题颜色：isDarkTheme=true表示浅色背景→用黑色，isDarkTheme=false表示深色背景→用白色
+        val titleColor = if (isDarkTheme) Color.BLACK else Color.WHITE
+        binding.toolBar.setTitleTextColor(titleColor)
+        binding.toolBar.setSubtitleTextColor(titleColor)
         // 加载菜单
         binding.toolBar.inflateMenu(R.menu.dialog_text)
-        // 应用菜单着色
-        binding.toolBar.menu.applyTint(requireContext())
+        // 应用菜单着色：根据主题动态选择
+        val menuTheme = if (isDarkTheme) Theme.Light else Theme.Dark
+        binding.toolBar.menu.applyTint(requireContext(), menuTheme)
         
         // 处理传递的参数
         arguments?.let {
             val title = it.getString("title")
             binding.toolBar.title = title
+            binding.toolBar.post { tintToolbarTextAndIcons() }
             val content = IntentData.get(it.getString("content")) ?: ""
             currentContent = content
             val mode = it.getString("mode")
@@ -263,6 +274,23 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
         
         // 监听帮助文档搜索结果
         setupHelpSearchResultListener()
+    }
+
+    private fun tintToolbarTextAndIcons() {
+        // 根据主题动态选择着色颜色：isDarkTheme=true表示浅色背景→用黑色，isDarkTheme=false表示深色背景→用白色
+        val tintColor = if (isDarkTheme) Color.BLACK else Color.WHITE
+        fun tintView(view: View) {
+            when (view) {
+                is TextView -> view.setTextColor(tintColor)
+                is ImageButton -> view.setColorFilter(tintColor)
+                is ViewGroup -> {
+                    for (index in 0 until view.childCount) {
+                        tintView(view.getChildAt(index))
+                    }
+                }
+            }
+        }
+        tintView(binding.toolBar)
     }
     
     /**

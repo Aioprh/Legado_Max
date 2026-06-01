@@ -738,7 +738,7 @@ class BookInfoActivity :
     private fun showCover(book: Book) {
         binding.ivCover.load(book, false) {
             if (!AppConfig.isEInkMode) {
-                BookCover.loadBlur(this, book.getDisplayCover(), false, book.origin)
+                BookCover.loadBlur(this, BookCover.getDisplayCover(book), false, book.origin)
                     .into(binding.bgBook)
             }
         }
@@ -799,8 +799,10 @@ class BookInfoActivity :
             }
         }
         ivCover.setOnLongClickListener {
-            viewModel.getBook()?.getDisplayCover()?.let { path ->
+            viewModel.getBook()?.let { book ->
+                BookCover.getDisplayCover(book)?.let { path ->
                 showDialogFragment(PhotoDialog(path, isBook = true))
+            }
             }
             true
         }

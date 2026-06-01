@@ -1,7 +1,9 @@
 package io.legado.app.ui.debuglog.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +48,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.ClipboardManager
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -63,6 +68,7 @@ import io.legado.app.model.debug.ToastContext
 import io.legado.app.model.debug.ToastRuleType
 import io.legado.app.model.debug.ToastSourceType
 import io.legado.app.model.debug.highlightText
+import io.legado.app.utils.toastOnUi
 
 @Composable
 fun DebugLogDetailDialog(
@@ -405,6 +411,7 @@ private fun DetailSection(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DetailRow(
     label: String,
@@ -414,6 +421,8 @@ private fun DetailRow(
     var expanded by remember { mutableStateOf(false) }
     val needsExpand = remember(value) { value.length > 80 || value.count { it == '\n' } > 2 }
     val scrollState = rememberScrollState()
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
 
     Row(
         modifier = Modifier
@@ -440,6 +449,13 @@ private fun DetailRow(
                 .then(
                     if (expanded) Modifier.horizontalScroll(scrollState)
                     else Modifier
+                )
+                .combinedClickable(
+                    onClick = { if (needsExpand) expanded = !expanded },
+                    onLongClick = {
+                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(value))
+                        context.toastOnUi("已复制: $label")
+                    }
                 ),
             overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis,
             maxLines = if (expanded) Int.MAX_VALUE else 3

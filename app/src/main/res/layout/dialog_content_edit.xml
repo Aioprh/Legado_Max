@@ -26,7 +26,18 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:padding="12dp"
+            android:paddingEnd="28dp"
             android:importantForAutofill="no" />
+
+        <io.legado.app.ui.widget.text.EditTextFastScroller
+            android:id="@+id/content_fast_scroller"
+            android:layout_width="24dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="end"
+            android:importantForAccessibility="no"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            app:targetViewId="@id/content_view" />
 
         <io.legado.app.ui.widget.anima.RotateLoading
             android:id="@+id/rl_loading"

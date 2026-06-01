@@ -76,7 +76,12 @@ class HandleFileActivity :
             finish()
         }
         val allowExtensions = intent.getStringArrayExtra("allowExtensions")
-        val selectList: ArrayList<SelectItem<Int>> = when (mode) {
+        val customActions = intent.getJsonArray<SelectItem<Int>>("otherActions")
+        val selectList: ArrayList<SelectItem<Int>> = if (intent.getBooleanExtra("onlyOtherActions", false)) {
+            arrayListOf<SelectItem<Int>>().apply {
+                customActions?.let { addAll(it) }
+            }
+        } else when (mode) {
             HandleFileContract.DIR_SYS -> getDirActions(true)
             HandleFileContract.DIR -> getDirActions()
             HandleFileContract.FILE -> getFileActions()
@@ -90,8 +95,12 @@ class HandleFileActivity :
             HandleFileContract.IMAGE -> getImageActions()
             else -> arrayListOf()
         }
-        intent.getJsonArray<SelectItem<Int>>("otherActions")?.let {
+        if (!intent.getBooleanExtra("onlyOtherActions", false)) customActions?.let {
             selectList.addAll(it)
+        }
+        if (selectList.isEmpty()) {
+            finish()
+            return
         }
         val title = intent.getStringExtra("title") ?: let {
             when (mode) {

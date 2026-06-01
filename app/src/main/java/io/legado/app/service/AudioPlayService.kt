@@ -38,6 +38,7 @@ import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.exoplayer.ExoPlayerHelper
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.model.AudioPlay
+import io.legado.app.model.BookCover
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.AnalyzeUrl.Companion.getMediaItem
 import io.legado.app.receiver.MediaButtonReceiver
@@ -141,7 +142,7 @@ class AudioPlayService : BaseService(),
         doDs()
         execute {
             ImageLoader
-                .loadBitmap(this@AudioPlayService, AudioPlay.book?.getDisplayCover())
+                .loadBitmap(this@AudioPlayService, AudioPlay.book?.let { BookCover.getDisplayCover(it) })
                 .submit()
                 .get()
         }.onSuccess {

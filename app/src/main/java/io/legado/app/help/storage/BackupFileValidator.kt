@@ -113,6 +113,14 @@ object BackupFileValidator {
                     )
                 }
                 
+                if (file.isDirectory) {
+                    return@withContext ValidationResult(
+                        fileName = fileName,
+                        state = ValidationState.VALID,
+                        message = "directory"
+                    )
+                }
+
                 if (file.length() == 0L) {
                     return@withContext ValidationResult(
                         fileName = fileName,

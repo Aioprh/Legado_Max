@@ -19,6 +19,7 @@ import io.legado.app.databinding.ViewReadAloudMiniBarBinding
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
+import io.legado.app.model.BookCover
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
@@ -131,7 +132,8 @@ class ReadAloudMiniBarController(
         if (miniBarThemeInitialized) return
         miniBarThemeInitialized = true
         applyTheme(host.defaultReadAloudMiniBarColor())
-        val cover = BaseReadAloudService.activeBookCover ?: ReadBook.book?.getDisplayCover()
+        val cover = BaseReadAloudService.activeBookCover
+            ?: ReadBook.book?.let { BookCover.getDisplayCover(it) }
         if (cover != null) {
             ImageLoader.load(activity, cover)
                 .circleCrop()

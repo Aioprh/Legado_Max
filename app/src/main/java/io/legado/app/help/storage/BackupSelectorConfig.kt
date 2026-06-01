@@ -3,6 +3,7 @@ package io.legado.app.help.storage
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
+import io.legado.app.data.repository.CoverGalleryRepository
 import splitties.init.appCtx
 
 @Suppress("ConstPropertyName")
@@ -18,6 +19,7 @@ object BackupSelectorConfig {
     )
 
     val allItems = listOf(
+        BackupItem("coverGallery", CoverGalleryRepository.backupDirName, "封面图集", "配置"),
         BackupItem("bookshelf", "bookshelf.json", "书架", "数据库"),
         BackupItem("bookChapter", "bookChapter.json", "章节目录", "数据库"),
         BackupItem("bookmark", "bookmark.json", "书签", "数据库"),

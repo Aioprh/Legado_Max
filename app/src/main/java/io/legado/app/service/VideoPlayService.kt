@@ -45,6 +45,7 @@ import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.help.gsyVideo.FloatingPlayer
 import io.legado.app.model.VideoPlay
+import io.legado.app.model.BookCover
 import io.legado.app.receiver.MediaButtonReceiver
 import io.legado.app.ui.video.VideoPlayerActivity
 import io.legado.app.utils.activityPendingIntent

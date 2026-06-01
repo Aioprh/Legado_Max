@@ -12,17 +12,29 @@ class FileManageActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         initLegadoComposeTheme()
         super.onCreate(savedInstanceState)
+        val initialPath = intent.getStringExtra(EXTRA_INITIAL_PATH)
         setLegadoContent {
-            FileManageScreen(onBackClick = { finish() })
+            FileManageScreen(
+                initialPath = initialPath,
+                onBackClick = { finish() }
+            )
         }
+    }
+
+    companion object {
+        const val EXTRA_INITIAL_PATH = "initialPath"
     }
 }
 
 @Composable
 fun FileManageContent(
+    initialPath: String? = null,
     onBackClick: () -> Unit
 ) {
     LegadoThemeWithBackground(backgroundDrawable = null) {
-        FileManageScreen(onBackClick = onBackClick)
+        FileManageScreen(
+            initialPath = initialPath,
+            onBackClick = onBackClick
+        )
     }
 }

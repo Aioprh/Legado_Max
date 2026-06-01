@@ -13,6 +13,16 @@
         app:showAsAction="never"/>
 
     <item
+        android:id="@+id/menu_copy_source_urls"
+        android:title="复制匹配源URL"
+        app:showAsAction="never"/>
+
+    <item
+        android:id="@+id/menu_export_sources"
+        android:title="导出匹配源"
+        app:showAsAction="never"/>
+
+    <item
         android:id="@+id/menu_close"
         android:title="@string/close"
         app:showAsAction="always"/>

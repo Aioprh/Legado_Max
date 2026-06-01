@@ -30,6 +30,7 @@ import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import io.legado.app.R
 import io.legado.app.ui.book.cacheSelector.BookCacheItem
+import io.legado.app.model.BookCover
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
@@ -64,7 +65,7 @@ fun BookCacheItemCard(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                val coverUrl = item.book.getDisplayCover()
+                val coverUrl = BookCover.getDisplayCover(item.book)
                 if (!coverUrl.isNullOrEmpty()) {
                     GlideImage(
                         model = coverUrl,

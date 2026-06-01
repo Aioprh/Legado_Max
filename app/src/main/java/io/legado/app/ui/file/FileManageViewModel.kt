@@ -157,6 +157,35 @@ class FileManageViewModel(application: Application) : BaseViewModel(application)
         upFiles(file)
     }
 
+    fun openPath(path: String) {
+        val target = File(path).let { file ->
+            when {
+                file.isDirectory -> file
+                file.isFile -> file.parentFile
+                else -> file
+            }
+        } ?: return
+        _subDocs.value = buildPathChain(target).toMutableList()
+        upFiles(target)
+    }
+
+    private fun buildPathChain(target: File): List<File> {
+        val root = rootDoc
+        if (root != null && target.absolutePath.startsWith(root.absolutePath)) {
+            val chain = mutableListOf<File>()
+            var current: File? = target
+            while (current != null && current != root) {
+                chain.add(current)
+                current = current.parentFile
+            }
+            return chain.asReversed()
+        }
+        return generateSequence(target) { it.parentFile }
+            .toList()
+            .asReversed()
+            .filter { it.parentFile != null }
+    }
+
     /**
      * 打开文件
      * 使用 FileProvider 生成 URI 并调用系统打开

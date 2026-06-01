@@ -38,12 +38,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
 import io.legado.app.ui.book.storage.components.CacheItemCard
 import io.legado.app.ui.book.storage.components.CacheSummaryCard
 import io.legado.app.ui.book.storage.components.ClearAllConfirmDialog
 import io.legado.app.ui.book.storage.components.ClearConfirmDialog
+import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
+import io.legado.app.utils.startActivity
 
 // UI层
 // 4. StorageManageScreen.kt
@@ -69,6 +72,7 @@ fun StorageManageScreen(
     val uiState by viewModel.uiState.collectAsState()
     val cacheItems by viewModel.cacheItems.collectAsState()
     val totalSize by viewModel.totalSize.collectAsState()
+    val context = LocalContext.current
     
     var showClearDialog by remember { mutableStateOf<ClearTarget?>(null) }
     var showClearAllDialog by remember { mutableStateOf(false) }
@@ -216,6 +220,11 @@ fun StorageManageScreen(
                             },
                             onDetailClearClick = { detailId ->
                                 showClearDialog = ClearTarget(CacheType.valueOf(item.id), detailId)
+                            },
+                            onOpenPathClick = { path ->
+                                context.startActivity<FileManageActivity> {
+                                    putExtra(FileManageActivity.EXTRA_INITIAL_PATH, path)
+                                }
                             }
                         )
                     }

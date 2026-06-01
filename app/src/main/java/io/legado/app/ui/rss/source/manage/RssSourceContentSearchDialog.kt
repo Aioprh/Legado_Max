@@ -1,21 +1,30 @@
 package io.legado.app.ui.rss.source.manage
 
-import io.legado.app.data.appDb
+import androidx.fragment.app.viewModels
 import io.legado.app.data.entities.RssSource
 import io.legado.app.ui.rss.source.edit.RssSourceEditActivity
 import io.legado.app.ui.source.BaseContentSearchDialog
 import io.legado.app.ui.source.SourceFieldItem
+import io.legado.app.utils.GSON
+import io.legado.app.utils.share
 import io.legado.app.utils.startActivity
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /**
  * 订阅源内容查询对话窗
  */
 class RssSourceContentSearchDialog : BaseContentSearchDialog() {
 
+    private val viewModel by viewModels<RssSourceContentSearchViewModel>()
+
+    private var allRssSources: List<RssSource> = emptyList()
+    private var cachedJsonStrings: Map<String, String> = emptyMap()
+
     companion object {
         private val TAB_NAMES = mapOf(
             "base" to "基础",
-            "start" to "起始",
+            "start" to "启动",
             "list" to "列表",
             "webview" to "正文"
         )
@@ -37,18 +46,18 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
                 "jsLib" to "jsLib"
             ),
             "start" to listOf(
-                "startHtml" to "起始页HTML",
-                "startStyle" to "起始页样式",
-                "startJs" to "起始页JS",
-                "preloadJs" to "预加载JS"
+                "startHtml" to "启动页HTML",
+                "startStyle" to "启动页样式",
+                "startJs" to "启动页JS",
+                "preloadJs" to "预注入JS"
             ),
             "list" to listOf(
-                "ruleArticles" to "文章列表规则",
-                "ruleNextPage" to "下一页规则",
+                "ruleArticles" to "列表规则",
+                "ruleNextPage" to "列表下一页规则",
                 "ruleTitle" to "标题规则",
-                "rulePubDate" to "发布日期规则",
+                "rulePubDate" to "时间规则",
                 "ruleDescription" to "描述规则",
-                "ruleImage" to "图片规则",
+                "ruleImage" to "图片URL规则",
                 "ruleLink" to "链接规则"
             ),
             "webview" to listOf(
@@ -56,8 +65,8 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
                 "style" to "正文样式",
                 "injectJs" to "注入JS",
                 "shouldOverrideUrlLoading" to "URL拦截",
-                "contentWhitelist" to "正文白名单",
-                "contentBlacklist" to "正文黑名单"
+                "contentWhitelist" to "白名单",
+                "contentBlacklist" to "黑名单"
             )
         )
     }
@@ -67,42 +76,67 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
     override fun getSearchHint() = "输入关键词搜索所有订阅源"
 
     override fun loadSourceItems(allSources: Boolean, callback: (List<SourceFieldItem>) -> Unit) {
-        // RssSource 字段较少，直接在 IO 线程加载
-        val sources = if (allSources) {
-            appDb.rssSourceDao.all
-        } else {
-            appDb.rssSourceDao.all.filter { it.enabled }
-        }
-
-        val items = mutableListOf<SourceFieldItem>()
-        for (source in sources) {
-            for ((tabKey, fields) in TAB_FIELDS) {
-                for ((fieldKey, fieldName) in fields) {
-                    val value = getFieldValue(source, fieldKey) ?: continue
-                    if (value.isNotBlank()) {
-                        items.add(SourceFieldItem(
-                            sourceName = source.sourceName,
-                            sourceUrl = source.sourceUrl,
-                            tabKey = tabKey,
-                            tabName = TAB_NAMES[tabKey] ?: tabKey,
-                            fieldKey = fieldKey,
-                            fieldName = fieldName,
-                            value = value
-                        ))
+        viewModel.loadSources(allSources) { sources ->
+            allRssSources = sources
+            cachedJsonStrings = sources.associate { it.sourceUrl to GSON.toJson(it) }
+            val items = mutableListOf<SourceFieldItem>()
+            for (source in sources) {
+                for ((tabKey, fields) in TAB_FIELDS) {
+                    for ((fieldKey, fieldName) in fields) {
+                        val value = getFieldValue(source, fieldKey) ?: continue
+                        if (value.isNotBlank()) {
+                            items.add(SourceFieldItem(
+                                sourceName = source.sourceName,
+                                sourceUrl = source.sourceUrl,
+                                tabKey = tabKey,
+                                tabName = TAB_NAMES[tabKey] ?: tabKey,
+                                fieldKey = fieldKey,
+                                fieldName = fieldName,
+                                value = value
+                            ))
+                        }
                     }
                 }
             }
+            callback(items)
         }
-
-        callback(items)
     }
 
-    override fun performSearch(query: String, allItems: List<SourceFieldItem>): List<SourceFieldItem> {
+    override suspend fun performSearch(query: String, allItems: List<SourceFieldItem>): List<SourceFieldItem> {
         val queryLower = query.lowercase()
         val contextChars = 50
+
+        return if (searchByRuleField) {
+            searchRuleFields(queryLower, query.length, contextChars, allItems)
+        } else {
+            searchJsonFull(queryLower, query.length, contextChars)
+        }
+    }
+
+    override fun navigateToEdit(sourceUrl: String) {
+        startActivity<RssSourceEditActivity> {
+            putExtra("sourceUrl", sourceUrl)
+        }
+    }
+
+    override fun getTabNames(): Map<String, String> = TAB_NAMES
+
+    override fun exportSources(sourceUrls: List<String>) {
+        viewModel.exportSources(sourceUrls) { file ->
+            activity?.share(file)
+        }
+    }
+
+    private suspend fun searchRuleFields(
+        queryLower: String,
+        queryLen: Int,
+        contextChars: Int,
+        allItems: List<SourceFieldItem>
+    ): List<SourceFieldItem> {
         val results = mutableListOf<SourceFieldItem>()
 
         for (item in allItems) {
+            currentCoroutineContext().ensureActive()
             if (item.value.lowercase().contains(queryLower)) {
                 var startIndex = 0
                 val valueLower = item.value.lowercase()
@@ -111,7 +145,7 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
                     if (matchIndex == -1) break
 
                     val start = maxOf(0, matchIndex - contextChars)
-                    val end = minOf(item.value.length, matchIndex + query.length + contextChars)
+                    val end = minOf(item.value.length, matchIndex + queryLen + contextChars)
                     val contextText = buildString {
                         if (start > 0) append("...")
                         append(item.value.substring(start, end))
@@ -124,14 +158,50 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
             }
         }
 
-        showResults(results)
         return results
     }
 
-    override fun navigateToEdit(sourceUrl: String) {
-        startActivity<RssSourceEditActivity> {
-            putExtra("sourceUrl", sourceUrl)
+    private suspend fun searchJsonFull(
+        queryLower: String,
+        queryLen: Int,
+        contextChars: Int
+    ): List<SourceFieldItem> {
+        val results = mutableListOf<SourceFieldItem>()
+
+        for (source in allRssSources) {
+            currentCoroutineContext().ensureActive()
+            val jsonStr = cachedJsonStrings[source.sourceUrl] ?: continue
+            if (!jsonStr.lowercase().contains(queryLower)) continue
+
+            var startIndex = 0
+            val jsonLower = jsonStr.lowercase()
+            while (true) {
+                val matchIndex = jsonLower.indexOf(queryLower, startIndex)
+                if (matchIndex == -1) break
+
+                val start = maxOf(0, matchIndex - contextChars)
+                val end = minOf(jsonStr.length, matchIndex + queryLen + contextChars)
+                val contextText = buildString {
+                    if (start > 0) append("...")
+                    append(jsonStr.substring(start, end))
+                    if (end < jsonStr.length) append("...")
+                }
+
+                results.add(SourceFieldItem(
+                    sourceName = source.sourceName,
+                    sourceUrl = source.sourceUrl,
+                    tabKey = "json",
+                    tabName = "JSON",
+                    fieldKey = "json",
+                    fieldName = "JSON全文",
+                    value = contextText,
+                    fullValue = jsonStr
+                ))
+                startIndex = matchIndex + 1
+            }
         }
+
+        return results
     }
 
     private fun getFieldValue(source: RssSource, fieldKey: String): String? {

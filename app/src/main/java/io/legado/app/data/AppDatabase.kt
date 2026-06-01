@@ -16,6 +16,7 @@ import io.legado.app.data.dao.BookSourceDao
 import io.legado.app.data.dao.BookmarkDao
 import io.legado.app.data.dao.CacheDao
 import io.legado.app.data.dao.CookieDao
+import io.legado.app.data.dao.CoverGalleryDao
 import io.legado.app.data.dao.DictRuleDao
 import io.legado.app.data.dao.HttpTTSDao
 import io.legado.app.data.dao.KeyboardAssistsDao
@@ -41,6 +42,8 @@ import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.data.entities.Cache
 import io.legado.app.data.entities.Cookie
+import io.legado.app.data.entities.CoverGalleryGroup
+import io.legado.app.data.entities.CoverGalleryImage
 import io.legado.app.data.entities.DictRule
 import io.legado.app.data.entities.DirectLinkUploadRule
 import io.legado.app.data.entities.HttpTTS
@@ -75,7 +78,7 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 97,
+    version = 98,
     exportSchema = true,
     entities = [Book::class, BookGroup::class, BookSource::class, BookChapter::class,
         ReplaceRule::class, SearchBook::class, SearchKeyword::class, Cookie::class,
@@ -83,7 +86,8 @@ val appDb by lazy {
         RssStar::class, TxtTocRule::class, ReadRecord::class, ReadRecordDetail::class, 
         ReadRecordSession::class, HttpTTS::class, Cache::class,
         RuleSub::class, DictRule::class, KeyboardAssist::class, Server::class,
-        UrlRecord::class, DirectLinkUploadRule::class, UploadHistory::class],
+        UrlRecord::class, DirectLinkUploadRule::class, UploadHistory::class,
+        CoverGalleryGroup::class, CoverGalleryImage::class],
     views = [BookSourcePart::class],
     autoMigrations = [
         AutoMigration(from = 43, to = 44),
@@ -166,6 +170,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract val urlRecordDao: UrlRecordDao
     abstract val directLinkUploadRuleDao: DirectLinkUploadRuleDao
     abstract val uploadHistoryDao: UploadHistoryDao
+    abstract val coverGalleryDao: CoverGalleryDao
 
     companion object {
 

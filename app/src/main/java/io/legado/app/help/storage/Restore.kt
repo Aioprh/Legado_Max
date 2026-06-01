@@ -8,6 +8,7 @@ import androidx.documentfile.provider.DocumentFile
 import io.legado.app.BuildConfig
 import io.legado.app.R
 import io.legado.app.constant.AppLog
+import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
@@ -16,6 +17,8 @@ import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.data.entities.Cache
+import io.legado.app.data.entities.CoverGalleryGroup
+import io.legado.app.data.entities.CoverGalleryImage
 import io.legado.app.data.entities.DictRule
 import io.legado.app.data.entities.HttpTTS
 import io.legado.app.data.entities.KeyboardAssist
@@ -30,6 +33,7 @@ import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.help.AppCacheManager
+import io.legado.app.help.CacheManager
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.LauncherIconHelp
 import io.legado.app.help.book.isLocal
@@ -42,12 +46,14 @@ import io.legado.app.help.config.ThemeConfig
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
 import io.legado.app.model.BookCover
 import io.legado.app.model.localBook.LocalBook
+import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.ui.book.read.config.HighlightRuleStore
 import io.legado.app.utils.ACache
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.compress.ZipUtils
+import io.legado.app.utils.createFolderIfNotExist
 import io.legado.app.utils.defaultSharedPreferences
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.fromJsonArray
@@ -61,6 +67,7 @@ import io.legado.app.utils.putPrefString
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.isJsonArray
 import io.legado.app.utils.openInputStream
+import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.delay
@@ -309,6 +316,10 @@ object Restore {
             fileToListT<KeyboardAssist>(path, "keyboardAssists.json")?.let {
                 appDb.keyboardAssistsDao.insert(*it.toTypedArray())
             }
+        }
+
+        if (CoverGalleryRepository.backupDirName in selectedSet) {
+            restoreCoverGallery(path)
         }
 
         // 恢复阅读记录
@@ -583,6 +594,8 @@ object Restore {
             appDb.keyboardAssistsDao.insert(*it.toTypedArray())
         }
 
+        restoreCoverGallery(path)
+
         // 恢复阅读记录（先清空再导入）
         appDb.readRecordDao.clear()
         appDb.readRecordDao.clearDetails()
@@ -805,6 +818,79 @@ object Restore {
         if (caches.isNotEmpty()) {
             appDb.cacheDao.insert(*caches.toTypedArray())
         }
+    }
+
+    private suspend fun restoreCoverGallery(path: String) {
+        val galleryDir = File(path, CoverGalleryRepository.backupDirName)
+        if (!galleryDir.exists() || !galleryDir.isDirectory) return
+        val oldGroupIds = appDb.coverGalleryDao.allGroups.map { it.id }
+
+        appDb.coverGalleryDao.deleteAllImages()
+        appDb.coverGalleryDao.deleteAllGroups()
+
+        appDb.cacheDao.deleteRuntimeSourceCachesByPrefix(CoverGalleryRepository.randomSeedKeyPrefix)
+        oldGroupIds.forEach {
+            CacheManager.deleteMemory(CoverGalleryRepository.randomSeedKeyPrefix + it)
+        }
+
+        val targetDir = appCtx.externalFiles.getFile("covers").createFolderIfNotExist()
+        val usedImageNames = hashSetOf<String>()
+        galleryDir.listFiles()
+            ?.filter { it.isDirectory }
+            ?.sortedBy { it.name }
+            ?.forEachIndexed { groupIndex, groupDir ->
+                val groupId = appDb.coverGalleryDao.insertGroup(
+                    CoverGalleryGroup(
+                        name = groupDir.name,
+                        order = groupIndex
+                    )
+                )
+                val images = groupDir.listFiles()
+                    ?.filter { it.isFile && it.isCoverGalleryImageFile() }
+                    ?.sortedBy { it.name }
+                    ?.mapIndexed { imageIndex, imageFile ->
+                        val targetFile = File(
+                            targetDir,
+                            uniqueCoverGalleryImageName(imageFile.name, usedImageNames)
+                        )
+                        imageFile.copyTo(targetFile, overwrite = true)
+                        CoverGalleryImage(
+                            groupId = groupId,
+                            path = targetFile.absolutePath,
+                            order = imageIndex
+                        )
+                    }
+                    .orEmpty()
+                if (images.isNotEmpty()) {
+                    appDb.coverGalleryDao.insertImages(*images.toTypedArray())
+                }
+            }
+
+        BookCover.upDefaultCover()
+        postEvent(EventBus.BOOKSHELF_REFRESH, "")
+    }
+
+    private fun File.isCoverGalleryImageFile(): Boolean {
+        return extension.lowercase() in setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif")
+    }
+
+    private fun uniqueCoverGalleryImageName(
+        fileName: String,
+        usedImageNames: MutableSet<String>
+    ): String {
+        val nameWithoutExtension = fileName.substringBeforeLast('.', fileName)
+        val extension = fileName.substringAfterLast('.', "")
+        var candidate = fileName
+        var suffix = 2
+        while (!usedImageNames.add(candidate)) {
+            candidate = if (extension.isBlank()) {
+                "$nameWithoutExtension-$suffix"
+            } else {
+                "$nameWithoutExtension-$suffix.$extension"
+            }
+            suffix++
+        }
+        return candidate
     }
 
     private fun readBackupPrefs(path: String, fileName: String): Map<String, Any>? {

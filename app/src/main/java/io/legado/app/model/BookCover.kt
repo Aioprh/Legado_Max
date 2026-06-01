@@ -21,6 +21,8 @@ import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.SearchBook
+import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.help.CacheManager
 import io.legado.app.help.DefaultData
 import io.legado.app.help.config.CoverHtmlTemplateConfig
@@ -56,6 +58,7 @@ import androidx.core.graphics.drawable.toDrawable
 object BookCover {
 
     private const val coverRuleConfigKey = "legadoCoverRuleConfig"
+    private val coverGalleryRepository by lazy { CoverGalleryRepository() }
 
     const val configFileName = "coverRule.json"
 
@@ -72,6 +75,27 @@ object BookCover {
         upDefaultCover()
     }
 
+    fun getGalleryDefaultCover(identity: String? = null): String? {
+        return coverGalleryRepository.getDefaultCoverPath(identity)
+    }
+
+    fun getDisplayCover(book: Book): String? {
+        return getGalleryDefaultCover(book.bookUrl) ?: book.getDisplayCover()
+    }
+
+    fun getDisplayCover(searchBook: SearchBook): String? {
+        val identity = buildString {
+            append(searchBook.bookUrl)
+            append('|')
+            append(searchBook.origin)
+            append('|')
+            append(searchBook.name)
+            append('|')
+            append(searchBook.author)
+        }
+        return getGalleryDefaultCover(identity) ?: searchBook.coverUrl
+    }
+
     /**
      * 更新默认封面
      * 
@@ -85,11 +109,13 @@ object BookCover {
         if (isNightTheme) {
             drawBookName = appCtx.getPrefBoolean(PreferKey.coverShowNameN, true)
             drawBookAuthor = appCtx.getPrefBoolean(PreferKey.coverShowAuthorN, true)
-            path = appCtx.getPrefString(PreferKey.defaultCoverDark)
+            path = getGalleryDefaultCover("default-night")
+                ?: appCtx.getPrefString(PreferKey.defaultCoverDark)
         } else {
             drawBookName = appCtx.getPrefBoolean(PreferKey.coverShowName, true)
             drawBookAuthor = appCtx.getPrefBoolean(PreferKey.coverShowAuthor, true)
-            path = appCtx.getPrefString(PreferKey.defaultCover)
+            path = getGalleryDefaultCover("default-day")
+                ?: appCtx.getPrefString(PreferKey.defaultCover)
         }
         defaultDrawable = runCatching {
             BitmapUtils.decodeBitmap(path!!, 600, 900)!!.toDrawable(appCtx.resources)
