@@ -318,6 +318,14 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         viewModel.searchBookLiveData.observe(this) {
             adapter.setItems(it)
         }
+        viewModel.searchProgressLiveData.observe(this) { progress ->
+            if (progress.isNullOrEmpty()) {
+                binding.tvSearchProgress.gone()
+            } else {
+                binding.tvSearchProgress.text = progress
+                binding.tvSearchProgress.visible()
+            }
+        }
         lifecycleScope.launch {
             appDb.bookSourceDao.flowEnabledGroups().collect {
                 groups = it

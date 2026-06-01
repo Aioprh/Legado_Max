@@ -29,6 +29,7 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
     val searchScope: SearchScope = SearchScope(AppConfig.searchScope)
     var searchFinishLiveData = MutableLiveData<Boolean>()
     var isSearchLiveData = MutableLiveData<Boolean>()
+    var searchProgressLiveData = MutableLiveData<String>()
     var searchKey: String = ""
     var hasMore = true
     private var searchID = 0L
@@ -40,10 +41,15 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
 
         override fun onSearchStart() {
             isSearchLiveData.postValue(true)
+            searchProgressLiveData.postValue("")
         }
 
         override fun onSearchSuccess(searchBooks: List<SearchBook>) {
             searchBookLiveData.postValue(searchBooks)
+        }
+
+        override fun onSearchProgress(completed: Int, total: Int, resultCount: Int) {
+            searchProgressLiveData.postValue("结果${resultCount}~进度$completed/$total")
         }
 
         override fun onSearchFinish(isEmpty: Boolean, hasMore: Boolean) {
@@ -54,6 +60,7 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
 
         override fun onSearchCancel(exception: Throwable?) {
             isSearchLiveData.postValue(false)
+            searchProgressLiveData.postValue("")
             exception?.let {
                 context.toastOnUi(it.localizedMessage)
             }
