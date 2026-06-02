@@ -85,6 +85,12 @@ class BackupConfigFragment : PreferenceFragment(),
     private var backupJob: Job? = null
     private var restoreJob: Job? = null
 
+    private fun updateWaitDialog(prefix: String, itemName: String) {
+        listView.post {
+            waitDialog.setText("$prefix：$itemName")
+        }
+    }
+
     private val selectBackupPath = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             if (uri.isContentScheme()) {
@@ -112,10 +118,12 @@ class BackupConfigFragment : PreferenceFragment(),
             if (AppConfig.restoreShowSelector) {
                 showRestoreFileSelector(uri)
             } else {
-                waitDialog.setText("恢复中…")
+                waitDialog.setText("正在恢复…")
                 waitDialog.show()
                 val task = Coroutine.async {
-                    Restore.restore(appCtx, uri)
+                    Restore.restore(appCtx, uri) { itemName ->
+                        updateWaitDialog("正在恢复", itemName)
+                    }
                 }.onFinally {
                     waitDialog.dismiss()
                 }
@@ -368,7 +376,7 @@ class BackupConfigFragment : PreferenceFragment(),
     }
 
     private fun backup(backupPath: String) {
-        waitDialog.setText("备份中…")
+        waitDialog.setText("正在备份…")
         waitDialog.setOnCancelListener {
             backupJob?.cancel()
         }
@@ -376,7 +384,9 @@ class BackupConfigFragment : PreferenceFragment(),
         backupJob?.cancel()
         backupJob = lifecycleScope.launch {
             try {
-                Backup.backupLocked(requireContext(), backupPath)
+                Backup.backupLocked(requireContext(), backupPath) { itemName ->
+                    updateWaitDialog("正在备份", itemName)
+                }
                 appCtx.toastOnUi(R.string.backup_success)
             } catch (e: Throwable) {
                 ensureActive()
@@ -464,9 +474,11 @@ class BackupConfigFragment : PreferenceFragment(),
             if (AppConfig.restoreShowSelector) {
                 showRestoreSelectorFromPath(Backup.backupPath)
             } else {
-                waitDialog.setText("恢复中…")
+                waitDialog.setText("正在恢复…")
                 val restoreTask = Coroutine.async {
-                    Restore.restoreLocked(Backup.backupPath)
+                    Restore.restoreLocked(Backup.backupPath) { itemName ->
+                        updateWaitDialog("正在恢复", itemName)
+                    }
                 }.onFinally {
                     waitDialog.dismiss()
                 }
@@ -613,10 +625,12 @@ class BackupConfigFragment : PreferenceFragment(),
                                 dismissComposeDialog()
                                 
                                 validationJob?.cancel()
-                                waitDialog.setText("恢复中…")
+                                waitDialog.setText("正在恢复…")
                                 waitDialog.show()
                                 val task = Coroutine.async {
-                                    Restore.restoreSelected(appCtx, backupPath, selectedFiles)
+                                    Restore.restoreSelected(appCtx, backupPath, selectedFiles) { itemName ->
+                                        updateWaitDialog("正在恢复", itemName)
+                                    }
                                 }.onFinally {
                                     waitDialog.dismiss()
                                 }

@@ -70,6 +70,14 @@ object BackupInfoHelper {
     )
 
     val displayNameMap = mapOf(
+        "zip" to "打包备份文件",
+        "unzipBackup" to "解压备份文件",
+        "copyBackup" to "保存备份文件",
+        "webDavBackup" to "上传 WebDAV",
+        "clearBackupCache" to "清理临时文件",
+        "webDavBackgroundImages" to "上传背景图片",
+        "applyRestoreConfig" to "应用恢复配置",
+        "themeBackgroundImages" to "主题背景图片",
         CoverGalleryRepository.backupDirName to "封面图集",
         "bookshelf.json" to "书架书籍",
         "bookmark.json" to "书签",
@@ -101,6 +109,10 @@ object BackupInfoHelper {
         "config.xml" to "应用配置",
         "videoConfig.xml" to "视频配置"
     )
+
+    fun getDisplayName(fileName: String): String {
+        return displayNameMap[fileName] ?: fileName
+    }
 
     private val selectorFileAliases = mapOf(
         ReadBookConfig.shareConfigFileName to "readShareConfig.json",

@@ -401,10 +401,14 @@ object Backup {
      * @param context Android Context
      * @param path 备份目标路径，可为null（使用默认路径）
      */
-    suspend fun backupLocked(context: Context, path: String?) {
+    suspend fun backupLocked(
+        context: Context,
+        path: String?,
+        onProgress: ((String) -> Unit)? = null
+    ) {
         mutex.withLock {
             withContext(IO) {
-                backup(context, path)
+                backup(context, path, onProgress)
             }
         }
     }
@@ -424,7 +428,11 @@ object Backup {
      * @param context Android Context
      * @param path 备份目标路径
      */
-    private suspend fun backup(context: Context, path: String?) {
+    private suspend fun backup(
+        context: Context,
+        path: String?,
+        onProgress: ((String) -> Unit)? = null
+    ) {
         LogUtils.d(TAG, "开始备份 path:$path")
         LocalConfig.lastBackup = System.currentTimeMillis()
         val aes = BackupAES()
@@ -434,57 +442,60 @@ object Backup {
 
         // 导出数据库数据到JSON文件
         if (selectedFiles.contains("bookshelf.json")) {
-            writeListToJson(appDb.bookDao.all, "bookshelf.json", backupPath)
+            writeListToJson(appDb.bookDao.all, "bookshelf.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("bookmark.json")) {
-            writeListToJson(appDb.bookmarkDao.all, "bookmark.json", backupPath)
+            writeListToJson(appDb.bookmarkDao.all, "bookmark.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("bookGroup.json")) {
-            writeListToJson(appDb.bookGroupDao.all, "bookGroup.json", backupPath)
+            writeListToJson(appDb.bookGroupDao.all, "bookGroup.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("bookSource.json")) {
-            writeListToJson(appDb.bookSourceDao.all, "bookSource.json", backupPath)
+            writeListToJson(appDb.bookSourceDao.all, "bookSource.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("rssSources.json")) {
-            writeListToJson(appDb.rssSourceDao.all, "rssSources.json", backupPath)
+            writeListToJson(appDb.rssSourceDao.all, "rssSources.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("rssStar.json")) {
-            writeListToJson(appDb.rssStarDao.all, "rssStar.json", backupPath)
+            writeListToJson(appDb.rssStarDao.all, "rssStar.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("replaceRule.json")) {
-            writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", backupPath)
+            writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", backupPath, onProgress)
         }
         if (selectedFiles.contains(HighlightRuleStore.backupFileName)) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName(HighlightRuleStore.backupFileName))
             FileUtils.createFileIfNotExist(backupPath + File.separator + HighlightRuleStore.backupFileName)
                 .writeText(GSON.toJson(HighlightRuleStore.createBackupData(appCtx)))
         }
         if (selectedFiles.contains("readRecord.json")) {
-            writeListToJson(appDb.readRecordDao.all, "readRecord.json", backupPath)
+            writeListToJson(appDb.readRecordDao.all, "readRecord.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("readRecordDetail.json")) {
-            writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", backupPath)
+            writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("searchHistory.json")) {
-            writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", backupPath)
+            writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("txtTocRule.json")) {
-            writeListToJson(appDb.txtTocRuleDao.all, "txtTocRule.json", backupPath)
+            writeListToJson(appDb.txtTocRuleDao.all, "txtTocRule.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("httpTTS.json")) {
-            writeListToJson(appDb.httpTTSDao.all, "httpTTS.json", backupPath)
+            writeListToJson(appDb.httpTTSDao.all, "httpTTS.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("keyboardAssists.json")) {
-            writeListToJson(appDb.keyboardAssistsDao.all, "keyboardAssists.json", backupPath)
+            writeListToJson(appDb.keyboardAssistsDao.all, "keyboardAssists.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("dictRule.json")) {
-            writeListToJson(appDb.dictRuleDao.all, "dictRule.json", backupPath)
+            writeListToJson(appDb.dictRuleDao.all, "dictRule.json", backupPath, onProgress)
         }
         if (selectedFiles.contains(CoverGalleryRepository.backupDirName)) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName(CoverGalleryRepository.backupDirName))
             stageCoverGallery(backupPath)
         }
 
         // 服务器配置需要加密存储
         if (selectedFiles.contains("servers.json")) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName("servers.json"))
             GSON.toJson(appDb.serverDao.all).let { json ->
                 aes.runCatching {
                     encryptBase64(json)
@@ -499,12 +510,14 @@ object Backup {
 
         // 导出阅读配置
         if (selectedFiles.contains(ReadBookConfig.configFileName)) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName(ReadBookConfig.configFileName))
             GSON.toJson(ReadBookConfig.getBackupConfigList()).let {
                 FileUtils.createFileIfNotExist(backupPath + File.separator + ReadBookConfig.configFileName)
                     .writeText(it)
             }
         }
         if (selectedFiles.contains(ReadBookConfig.shareConfigFileName)) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName(ReadBookConfig.shareConfigFileName))
             GSON.toJson(ReadBookConfig.getBackupShareConfig()).let {
                 FileUtils.createFileIfNotExist(backupPath + File.separator + ReadBookConfig.shareConfigFileName)
                     .writeText(it)
@@ -513,6 +526,7 @@ object Backup {
 
         // 导出主题配置
         if (selectedFiles.contains(ThemeConfig.configFileName)) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName(ThemeConfig.configFileName))
             GSON.toJson(ThemeConfig.configList).let {
                 FileUtils.createFileIfNotExist(backupPath + File.separator + ThemeConfig.configFileName)
                     .writeText(it)
@@ -521,6 +535,7 @@ object Backup {
 
         // 导出直链上传配置
         if (selectedFiles.contains(DirectLinkUpload.ruleFileName)) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName(DirectLinkUpload.ruleFileName))
             DirectLinkUpload.getConfig()?.let {
                 FileUtils.createFileIfNotExist(backupPath + File.separator + DirectLinkUpload.ruleFileName)
                     .writeText(GSON.toJson(it))
@@ -529,6 +544,7 @@ object Backup {
 
         // 导出封面规则配置
         if (selectedFiles.contains(BookCover.configFileName)) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName(BookCover.configFileName))
             BookCover.getConfig()?.let {
                 FileUtils.createFileIfNotExist(backupPath + File.separator + BookCover.configFileName)
                     .writeText(GSON.toJson(it))
@@ -539,6 +555,7 @@ object Backup {
 
         // 导出SharedPreferences配置（应用主配置）
         if (selectedFiles.contains("config.xml")) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName("config.xml"))
             appCtx.getSharedPreferences(backupPath, "config")?.let { sp ->
                 val edit = sp.edit()
                 edit.clear()
@@ -570,6 +587,7 @@ object Backup {
 
         // 导出视频播放配置
         if (selectedFiles.contains("videoConfig.xml")) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName("videoConfig.xml"))
             appCtx.getSharedPreferences(backupPath, "videoConfig")?.let { sp ->
                 sp.edit(commit = true) {
                     clear()
@@ -590,18 +608,21 @@ object Backup {
 
         // 打包成ZIP文件
         if (selectedFiles.contains("bg")) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName("backgroundImages"))
             stageBackgroundImageFiles(backupPath)
         }
         if (selectedFiles.contains(HighlightRuleStore.backupFileName)) {
             stageHighlightRuleBackgroundFiles(backupPath)
         }
         if (selectedFiles.contains(runtimeSourceCacheFileName)) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName(runtimeSourceCacheFileName))
             stageRuntimeSourceCaches(backupPath)
         }
         if (selectedFiles.contains(bookCacheFolderName)) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName(bookCacheFolderName))
             stageBookCache(backupPath)
             // 备份书籍缓存时，同时备份对应书籍的章节目录
-            stageBookChapterForCache(backupPath)
+            stageBookChapterForCache(backupPath, onProgress)
         }
 
         currentCoroutineContext().ensureActive()
@@ -618,7 +639,9 @@ object Backup {
             zipFileName
         }
 
+        onProgress?.invoke(BackupInfoHelper.getDisplayName("zip"))
         if (ZipUtils.zipFiles(paths, zipFilePath)) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName("copyBackup"))
             // 复制到目标目录
             when {
                 path.isNullOrBlank() -> {
@@ -636,6 +659,7 @@ object Backup {
 
             // 上传到WebDav云端
             try {
+                onProgress?.invoke(BackupInfoHelper.getDisplayName("webDavBackup"))
                 AppWebDav.backUpWebDav(zipFileName)
             } catch (e: Exception) {
                 AppLog.put("上传备份至webdav失败\n$e", e)
@@ -643,12 +667,14 @@ object Backup {
         }
 
         // 清理临时文件
+        onProgress?.invoke(BackupInfoHelper.getDisplayName("clearBackupCache"))
         FileUtils.delete(backupPath)
         FileUtils.delete(zipFilePath)
 
         currentCoroutineContext().ensureActive()
 
         // 上传背景图片到WebDav
+        onProgress?.invoke(BackupInfoHelper.getDisplayName("webDavBackgroundImages"))
         AppWebDav.upBgs(getBackgroundImageFiles().toTypedArray())
     }
 
@@ -659,8 +685,14 @@ object Backup {
      * @param fileName 目标文件名
      * @param path 目标目录路径
      */
-    private suspend fun writeListToJson(list: List<Any>, fileName: String, path: String) {
+    private suspend fun writeListToJson(
+        list: List<Any>,
+        fileName: String,
+        path: String,
+        onProgress: ((String) -> Unit)? = null
+    ) {
         currentCoroutineContext().ensureActive()
+        onProgress?.invoke(BackupInfoHelper.getDisplayName(fileName))
         withContext(IO) {
             if (list.isNotEmpty()) {
                 LogUtils.d(TAG, "阅读备份 $fileName 列表大小 ${list.size}")
@@ -828,7 +860,10 @@ object Backup {
      * 
      * @param rootPath 备份临时目录路径
      */
-    internal suspend fun stageBookChapterForCache(rootPath: String) {
+    internal suspend fun stageBookChapterForCache(
+        rootPath: String,
+        onProgress: ((String) -> Unit)? = null
+    ) {
         val selectedBooks = BookCacheSelectorConfig.getSelectedBooks()
         if (selectedBooks.isEmpty()) {
             return
@@ -842,7 +877,7 @@ object Backup {
         
         if (allChapters.isNotEmpty()) {
             val fileName = "bookChapterCache.json"
-            writeListToJson(allChapters, fileName, rootPath)
+            writeListToJson(allChapters, fileName, rootPath, onProgress)
             LogUtils.d(TAG, "章节目录已备份，共 ${allChapters.size} 章")
         }
     }
