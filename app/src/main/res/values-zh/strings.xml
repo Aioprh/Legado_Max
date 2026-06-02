@@ -749,7 +749,7 @@
     <string name="text_menu_visible_count">直接显示数量</string>
     <string name="text_menu_visible_count_desc">折叠模式下直接显示 %1$d 个菜单项，超出后放入更多菜单</string>
     <string name="process_text_menu_config">其他应用菜单配置</string>
-    <string name="process_text_menu_config_desc">选择您想要显示的其他应用菜单项</string>
+    <string name="process_text_menu_config_desc">选择您想要显示的其他应用菜单项，Android 6.0以上系统支持此功能</string>
     <string name="no_process_text_apps">没有找到支持文本处理的应用</string>
     <string name="reset_to_default">恢复默认</string>
     <string name="reduce">减</string>
