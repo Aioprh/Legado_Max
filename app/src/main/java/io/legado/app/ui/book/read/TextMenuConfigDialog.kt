@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
@@ -73,9 +74,13 @@ fun TextMenuConfigDialogContent(
     var hiddenIds by remember { 
         mutableStateOf(TextMenuConfig.getHiddenMenuItemIds(context))
     }
+    var customTitles by remember {
+        mutableStateOf(TextMenuConfig.getCustomMenuTitles(context))
+    }
     var visibleCount by remember {
         mutableIntStateOf(TextMenuConfig.getTextMenuVisibleCount(context))
     }
+    var editingItem by remember { mutableStateOf<TextMenuConfig.MenuItemInfo?>(null) }
     var showProcessTextConfig by remember { mutableStateOf(false) }
     
     val topBarColor = pageTopBarContainerColor()
@@ -86,6 +91,19 @@ fun TextMenuConfigDialogContent(
             onDismiss = { showProcessTextConfig = false }
         )
     } else {
+        editingItem?.let { item ->
+            EditMenuTitleDialog(
+                title = customTitles[item.id] ?: TextMenuConfig.getDefaultMenuTitle(context, item),
+                defaultTitle = TextMenuConfig.getDefaultMenuTitle(context, item),
+                onDismiss = { editingItem = null },
+                onConfirm = { newTitle ->
+                    TextMenuConfig.setCustomMenuTitle(context, item.id, newTitle)
+                    customTitles = TextMenuConfig.getCustomMenuTitles(context)
+                    editingItem = null
+                }
+            )
+        }
+
         Dialog(
             onDismissRequest = onDismiss,
             properties = DialogProperties(
@@ -158,7 +176,10 @@ fun TextMenuConfigDialogContent(
                         items(menuItems) { item ->
                             MenuItemRow(
                                 item = item,
+                                title = customTitles[item.id]
+                                    ?: TextMenuConfig.getDefaultMenuTitle(context, item),
                                 isChecked = item.id !in hiddenIds,
+                                onEditClick = { editingItem = item },
                                 onCheckedChange = { checked ->
                                     val newHiddenIds = hiddenIds.toMutableSet()
                                     if (checked) {
@@ -183,6 +204,7 @@ fun TextMenuConfigDialogContent(
                             onClick = {
                                 TextMenuConfig.resetToDefault(context)
                                 hiddenIds = emptySet()
+                                customTitles = emptyMap()
                                 visibleCount = TextMenuConfig.DEFAULT_VISIBLE_COUNT
                                 context.toastOnUi("已重置为默认配置")
                             }
@@ -266,6 +288,55 @@ fun TextMenuVisibleCountRow(
             }
         }
     }
+}
+
+@Composable
+fun EditMenuTitleDialog(
+    title: String,
+    defaultTitle: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var value by remember(title) { mutableStateOf(title) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = stringResource(R.string.text_menu_edit_title))
+        },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = {
+                        Text(text = stringResource(R.string.text_menu_edit_name))
+                    },
+                    placeholder = {
+                        Text(text = defaultTitle)
+                    }
+                )
+                Text(
+                    text = stringResource(R.string.text_menu_edit_name_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(value) }) {
+                Text(text = stringResource(android.R.string.ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(android.R.string.cancel))
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -444,7 +515,9 @@ private fun getProcessTextApps(context: Context): List<ProcessTextAppInfo> {
 @Composable
 fun MenuItemRow(
     item: TextMenuConfig.MenuItemInfo,
+    title: String,
     isChecked: Boolean,
+    onEditClick: () -> Unit,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -460,7 +533,7 @@ fun MenuItemRow(
                 .padding(end = 16.dp)
         ) {
             Text(
-                text = stringResource(item.nameResId),
+                text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -468,6 +541,13 @@ fun MenuItemRow(
                 text = "ID: ${item.id}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        IconButton(onClick = onEditClick) {
+            Icon(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = stringResource(R.string.text_menu_edit_title)
             )
         }
 

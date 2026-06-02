@@ -6,6 +6,8 @@ import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getPrefString
+import io.legado.app.utils.GSON
+import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.putPrefString
 
@@ -61,6 +63,39 @@ object TextMenuConfig {
      * 获取所有菜单项列表
      */
     fun getAllMenuItems(): List<MenuItemInfo> = ALL_MENU_ITEMS
+
+    fun getDefaultMenuTitle(context: Context, item: MenuItemInfo): String {
+        return context.getString(item.nameResId)
+    }
+
+    fun getCustomMenuTitles(context: Context): Map<Int, String> {
+        val json = context.getPrefString(PreferKey.textMenuCustomTitles)
+        return GSON.fromJsonObject<Map<String, String>>(json).getOrNull()
+            ?.mapNotNull { (key, value) ->
+                key.toIntOrNull()?.let { id -> id to value }
+            }
+            ?.toMap()
+            ?: emptyMap()
+    }
+
+    fun getCustomMenuTitle(context: Context, itemId: Int): String? {
+        return getCustomMenuTitles(context)[itemId]?.takeIf { it.isNotBlank() }
+    }
+
+    fun getMenuTitle(context: Context, item: MenuItemInfo): String {
+        return getCustomMenuTitle(context, item.id) ?: getDefaultMenuTitle(context, item)
+    }
+
+    fun setCustomMenuTitle(context: Context, itemId: Int, title: String?) {
+        val titles = getCustomMenuTitles(context).toMutableMap()
+        val normalizedTitle = title?.trim().orEmpty()
+        if (normalizedTitle.isBlank()) {
+            titles.remove(itemId)
+        } else {
+            titles[itemId] = normalizedTitle
+        }
+        context.putPrefString(PreferKey.textMenuCustomTitles, GSON.toJson(titles))
+    }
 
     fun getTextMenuVisibleCount(context: Context): Int {
         return context.getPrefInt(
@@ -137,6 +172,7 @@ object TextMenuConfig {
     fun resetToDefault(context: Context) {
         Log.d(TAG, "resetToDefault")
         context.putPrefString(PreferKey.hiddenTextMenuItems, "")
+        context.putPrefString(PreferKey.textMenuCustomTitles, "")
         setTextMenuVisibleCount(context, DEFAULT_VISIBLE_COUNT)
     }
 

@@ -141,6 +141,11 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
         val myMenu = MenuBuilder(context)      // 自定义菜单
         val otherMenu = MenuBuilder(context)    // 系统菜单（Android 6.0+）
         SupportMenuInflater(context).inflate(R.menu.content_select_action, myMenu)
+        myMenu.visibleItems.forEach { menuItem ->
+            TextMenuConfig.getCustomMenuTitle(context, menuItem.itemId)?.let { customTitle ->
+                menuItem.title = customTitle
+            }
+        }
         
         // Android 6.0+ 支持系统文本处理菜单
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
