@@ -60,7 +60,9 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
 
         override fun onSearchCancel(exception: Throwable?) {
             isSearchLiveData.postValue(false)
-            searchProgressLiveData.postValue("")
+            if (exception != null) {
+                searchProgressLiveData.postValue("")
+            }
             exception?.let {
                 context.toastOnUi(it.localizedMessage)
             }
