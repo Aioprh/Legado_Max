@@ -8,7 +8,7 @@
 <div align="center">
 <img width="125" height="125" src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="legado"/>
 <br>
-阅读Max
+阅读
 <br>
 <a href="https://loyc.xyz/c/legado.html" target="_blank">软件介绍页</a>
 <br>
@@ -21,7 +21,6 @@
 - **appLegacy版**：包名 `io.legado.app`，与原版相同，可覆盖更新
 - **appMax版**：包名 `io.legado.app.yuedu`，共存包名，不会覆盖原版
 - **appS版**：包名 `io.legado.app.yuedu.a`，另一个共存包名
-#### 下载地址 [Gitee Releases](https://gitee.com/GEd520/legados/releases)
 
 # 覆盖安装注意事项 [![](https://img.shields.io/badge/-覆盖安装注意事项-F5F5F5.svg)](#覆盖安装注意事项-)
 
