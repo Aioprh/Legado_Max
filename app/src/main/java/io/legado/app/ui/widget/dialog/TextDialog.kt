@@ -3,6 +3,7 @@ package io.legado.app.ui.widget.dialog
 import android.os.Build
 import android.os.Bundle
 import android.graphics.Color
+import android.graphics.Typeface
 import android.view.View
 import android.view.ViewGroup
 import android.view.textclassifier.TextClassifier
@@ -322,7 +323,7 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
             binding.toolBar.title = docName
             
             // 同步更新文档选择器的选中项（下拉列表）
-            val docIndex = HelpDocManager.getDocIndex(fileName)
+            val docIndex = HelpDocManager.getDocSelectorIndex(fileName)
             if (docIndex >= 0) {
                 binding.helpSpinner.setSelection(docIndex, false)
             }
@@ -498,17 +499,50 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
         binding.helpSelectorLayout.visibility = View.VISIBLE
         
         // 创建帮助文档列表适配器
-        val adapter = ArrayAdapter(
+        val selectorItems = HelpDocManager.helpDocSelectorItems
+        val adapter = object : ArrayAdapter<io.legado.app.help.HelpDocSelectorItem>(
             requireContext(),
             R.layout.item_spinner_dropdown,
-            HelpDocManager.allHelpDocs.map { it.displayName }
-        )
+            selectorItems
+        ) {
+            override fun areAllItemsEnabled(): Boolean {
+                return false
+            }
+
+            override fun isEnabled(position: Int): Boolean {
+                return getItem(position)?.isHeader == false
+            }
+
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getView(position, convertView, parent) as TextView
+                val item = getItem(position)
+                view.text = item?.doc?.displayName ?: item?.displayName ?: ""
+                view.setTypeface(null, Typeface.NORMAL)
+                view.alpha = 1f
+                return view
+            }
+
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getDropDownView(position, convertView, parent) as TextView
+                val item = getItem(position)
+                if (item?.isHeader == true) {
+                    view.text = item.displayName
+                    view.setTypeface(null, Typeface.BOLD)
+                    view.alpha = 0.7f
+                } else {
+                    view.text = "  ${item?.displayName ?: ""}"
+                    view.setTypeface(null, Typeface.NORMAL)
+                    view.alpha = 1f
+                }
+                return view
+            }
+        }
         adapter.setDropDownViewResource(R.layout.item_spinner_dropdown)
         binding.helpSpinner.adapter = adapter
         
         // 设置当前选中的文档
         currentHelpDoc?.let { docName ->
-            val index = HelpDocManager.getDocIndex(docName)
+            val index = HelpDocManager.getDocSelectorIndex(docName)
             if (index >= 0) {
                 binding.helpSpinner.setSelection(index, false)
             }
@@ -517,7 +551,7 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
         // 设置下拉选择监听器
         binding.helpSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                val selectedDoc = HelpDocManager.allHelpDocs[position]
+                val selectedDoc = selectorItems.getOrNull(position)?.doc ?: return
                 if (selectedDoc.fileName != currentHelpDoc) {
                     currentHelpDoc = selectedDoc.fileName
                     loadHelpDoc(selectedDoc.fileName)
