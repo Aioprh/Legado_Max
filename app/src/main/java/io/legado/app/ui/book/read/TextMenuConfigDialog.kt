@@ -14,7 +14,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,6 +72,9 @@ fun TextMenuConfigDialogContent(
     val menuItems = remember { TextMenuConfig.getAllMenuItems() }
     var hiddenIds by remember { 
         mutableStateOf(TextMenuConfig.getHiddenMenuItemIds(context))
+    }
+    var visibleCount by remember {
+        mutableIntStateOf(TextMenuConfig.getTextMenuVisibleCount(context))
     }
     var showProcessTextConfig by remember { mutableStateOf(false) }
     
@@ -137,6 +142,14 @@ fun TextMenuConfigDialogContent(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
 
+                    TextMenuVisibleCountRow(
+                        count = visibleCount,
+                        onCountChange = { count ->
+                            TextMenuConfig.setTextMenuVisibleCount(context, count)
+                            visibleCount = TextMenuConfig.getTextMenuVisibleCount(context)
+                        }
+                    )
+
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -170,6 +183,7 @@ fun TextMenuConfigDialogContent(
                             onClick = {
                                 TextMenuConfig.resetToDefault(context)
                                 hiddenIds = emptySet()
+                                visibleCount = TextMenuConfig.DEFAULT_VISIBLE_COUNT
                                 context.toastOnUi("已重置为默认配置")
                             }
                         ) {
@@ -189,6 +203,71 @@ fun TextMenuConfigDialogContent(
 /**
  * 其他应用菜单配置界面
  */
+@Composable
+fun TextMenuVisibleCountRow(
+    count: Int,
+    onCountChange: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 16.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.text_menu_visible_count),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = stringResource(R.string.text_menu_visible_count_desc, count),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { onCountChange(count - 1) },
+                enabled = count > TextMenuConfig.MIN_VISIBLE_COUNT
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Remove,
+                    contentDescription = stringResource(R.string.reduce)
+                )
+            }
+
+            Box(
+                modifier = Modifier.widthIn(min = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = count.toString(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            IconButton(
+                onClick = { onCountChange(count + 1) },
+                enabled = count < TextMenuConfig.MAX_VISIBLE_COUNT
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(R.string.plus)
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProcessTextConfigContent(

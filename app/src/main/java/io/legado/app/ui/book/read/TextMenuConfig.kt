@@ -4,7 +4,9 @@ import android.content.Context
 import android.util.Log
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
+import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getPrefString
+import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.putPrefString
 
 /**
@@ -22,6 +24,9 @@ import io.legado.app.utils.putPrefString
 object TextMenuConfig {
     
     private const val TAG = "TextMenuConfig"
+    const val DEFAULT_VISIBLE_COUNT = 7
+    const val MIN_VISIBLE_COUNT = 3
+    const val MAX_VISIBLE_COUNT = 10
     
     /**
      * 菜单项信息
@@ -56,6 +61,20 @@ object TextMenuConfig {
      * 获取所有菜单项列表
      */
     fun getAllMenuItems(): List<MenuItemInfo> = ALL_MENU_ITEMS
+
+    fun getTextMenuVisibleCount(context: Context): Int {
+        return context.getPrefInt(
+            PreferKey.textMenuVisibleCount,
+            DEFAULT_VISIBLE_COUNT
+        ).coerceIn(MIN_VISIBLE_COUNT, MAX_VISIBLE_COUNT)
+    }
+
+    fun setTextMenuVisibleCount(context: Context, count: Int) {
+        context.putPrefInt(
+            PreferKey.textMenuVisibleCount,
+            count.coerceIn(MIN_VISIBLE_COUNT, MAX_VISIBLE_COUNT)
+        )
+    }
     
     /**
      * 获取隐藏的菜单项ID集合
@@ -118,6 +137,7 @@ object TextMenuConfig {
     fun resetToDefault(context: Context) {
         Log.d(TAG, "resetToDefault")
         context.putPrefString(PreferKey.hiddenTextMenuItems, "")
+        setTextMenuVisibleCount(context, DEFAULT_VISIBLE_COUNT)
     }
 
     // ==================== 其他应用菜单配置 ====================

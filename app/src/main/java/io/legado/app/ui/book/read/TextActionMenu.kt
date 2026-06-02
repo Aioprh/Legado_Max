@@ -158,9 +158,10 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
         moreMenuItems.clear()
         
         // 将菜单项分为可见项（前7项）和更多项（第7项之后）
-        if (menuItems.size > 7) {
-            visibleMenuItems.addAll(menuItems.subList(0, 7))
-            moreMenuItems.addAll(menuItems.subList(7, menuItems.size))
+        val visibleCount = TextMenuConfig.getTextMenuVisibleCount(context)
+        if (menuItems.size > visibleCount) {
+            visibleMenuItems.addAll(menuItems.subList(0, visibleCount))
+            moreMenuItems.addAll(menuItems.subList(visibleCount, menuItems.size))
         } else {
             // 如果菜单项少于7个，全部显示在主菜单
             visibleMenuItems.addAll(menuItems)
