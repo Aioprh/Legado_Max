@@ -12,7 +12,7 @@
 <br>
 <a href="https://loyc.xyz/c/legado.html" target="_blank">软件介绍页</a>
 <br>
-阅读Max继承自阅读Sigma，在其基础上新增更多实用和强大功能。
+阅读继承自阅读Sigma，在其基础上新增更多实用和强大功能。
 </div>
 
 
@@ -50,11 +50,6 @@
 </a>
 
 [![](https://img.shields.io/badge/-Contents:-696969.svg)](#contents) [![](https://img.shields.io/badge/-Max特色-F5F5F5.svg)](#Max版特色功能-) [![](https://img.shields.io/badge/-Function-F5F5F5.svg)](#Function-主要功能-) [![](https://img.shields.io/badge/-Community-F5F5F5.svg)](#Community-交流社区-) [![](https://img.shields.io/badge/-API-F5F5F5.svg)](#API-) [![](https://img.shields.io/badge/-Other-F5F5F5.svg)](#Other-其他-) [![](https://img.shields.io/badge/-Grateful-F5F5F5.svg)](#Grateful-感谢-) [![](https://img.shields.io/badge/-Interface-F5F5F5.svg)](#Interface-界面-) [![](https://img.shields.io/badge/-覆盖安装注意事项-F5F5F5.svg)](#覆盖安装注意事项-)
-
->新用户？
->
->软件不提供内容，需要您自己手动添加，例如导入书源等。
->看看 [官方帮助文档](https://www.yuque.com/legado/wiki)，也许里面就有你要的答案。
 
 # Max版特色功能 [![](https://img.shields.io/badge/-Max特色-F5F5F5.svg)](#Max版特色功能-)
 
@@ -153,10 +148,10 @@ https://gedoor.github.io/Disclaimer
 # Interface-界面 [![](https://img.shields.io/badge/-Interface-F5F5F5.svg)](#Interface-界面-)
 
 <figure class="third">
-    <img src="https://gitee.com/GEd520/legados/raw/master/static/1.png" width="270">
-    <img src="https://gitee.com/GEd520/legados/raw/master/static/2.png" width="270">
-    <img src="https://gitee.com/GEd520/legados/raw/master/static/3.png" width="270">
-    <img src="https://gitee.com/GEd520/legados/raw/master/static/4.png" width="270">
+    <img src="https://gitee.com/raw/master/static/1.png" width="270">
+    <img src="https://gitee.com/raw/master/static/2.png" width="270">
+    <img src="https://gitee.com/raw/master/static/3.png" width="270">
+    <img src="https://gitee.com/raw/master/static/4.png" width="270">
 </figure>
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-orange.svg" alt="#" align="right">

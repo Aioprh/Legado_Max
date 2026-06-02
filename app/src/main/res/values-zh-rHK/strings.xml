@@ -645,8 +645,10 @@
     <string name="main_activity">主界面</string>
     <string name="selectText">長按選擇文本</string>
     <string name="header">頁眉</string>
+    <string name="header_font_size">字體大小</string>
     <string name="main_body">正文</string>
     <string name="footer">頁腳</string>
+    <string name="footer_font_size">字體大小</string>
     <string name="select_end">文本選擇結束位置</string>
     <string name="select_start">文本選擇開始位置</string>
     <string name="share_layout">共用佈局</string>

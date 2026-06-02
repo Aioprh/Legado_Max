@@ -28,7 +28,7 @@ object AppUpdateGitee : AppUpdate.AppUpdateInterface {
         }
 
     private suspend fun getLatestRelease(): List<AppReleaseInfo> {
-        val lastReleaseUrl = "https://gitee.com/api/v5/repos/GEd520/legados/releases/latest"
+        val lastReleaseUrl = "https://github.com"
         val res = okHttpClient.newCallResponse {
             url(lastReleaseUrl)
         }

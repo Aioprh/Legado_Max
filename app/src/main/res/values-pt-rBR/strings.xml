@@ -657,8 +657,10 @@
     <string name="main_activity">Página inicial</string>
     <string name="selectText">Clique longo para selecionar o texto</string>
     <string name="header">Cabeçalho</string>
+    <string name="header_font_size">Tamanho da fonte</string>
     <string name="main_body">Conteúdo</string>
     <string name="footer">Rodapé</string>
+    <string name="footer_font_size">Tamanho da fonte</string>
     <string name="select_end">Selecionar o fim</string>
     <string name="select_start">Selecionar o início</string>
     <string name="share_layout">Layout compartilhado</string>

@@ -653,8 +653,10 @@
     <string name="main_activity">Trang bắt đầu</string>
     <string name="selectText">Nhấn giữ để chọn văn bản</string>
     <string name="header">Đầu trang</string>
+    <string name="header_font_size">Cỡ chữ</string>
     <string name="main_body">Nội dung</string>
     <string name="footer">Chân trang</string>
+    <string name="footer_font_size">Cỡ chữ</string>
     <string name="select_end">Chọn kết thúc</string>
     <string name="select_start">Chọn bắt đầu</string>
     <string name="share_layout">Bố cục chia sẻ</string>
