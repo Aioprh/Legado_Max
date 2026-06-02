@@ -78,7 +78,7 @@
     <string name="other_setting">Other settings</string>
     <string name="other_setting_s">Some function-related settings</string>
     <string name="precise_manage">Precise Management</string>
-    <string name="precise_manage_summary">URL records, storage, downloads, and files</string>
+    <string name="precise_manage_summary">More precise management</string>
     <string name="about">About</string>
     <string name="donate">Donations</string>
     <string name="exit">Exit</string>
@@ -712,6 +712,7 @@
     <string name="select_start">Select start</string>
     <string name="share_layout">Shared layout</string>
     <string name="browser">Browser</string>
+    <string name="web_search">Web Search</string>
     <string name="import_default_rule">Import default rules</string>
     <string name="group_by_domain">Group by domain</string>
     <string name="name">Name</string>
@@ -758,7 +759,8 @@
     <string name="action_menu">Actions</string>
     <string name="preview">Preview</string>
     <string name="text_menu_config">Expand Text Menu Config</string>
-    <string name="text_menu_config_desc">Select the menu items you want to display</string>
+    <string name="menu_config">Menu Config</string>
+    <string name="text_menu_config_desc">Select the menu items you want to display. Items beyond 7 will be shown in the overflow menu</string>
     <string name="process_text_menu_config">Other Apps Menu Config</string>
     <string name="process_text_menu_config_desc">Select the other apps menu items you want to display</string>
     <string name="no_process_text_apps">No apps found that support text processing</string>
@@ -892,6 +894,8 @@
     <string name="storage_manage_summary">Manage app cache and storage</string>
     <string name="download_manage">Download Management</string>
     <string name="download_manage_summary">Manage WebView downloaded files</string>
+    <string name="module_status">Module Status</string>
+    <string name="module_status_summary">View app module running status</string>
     <string name="local_tts">Local TTS</string>
     <string name="thread_count">Thread count</string>
     <string name="all_read_time">Total read time</string>

@@ -75,7 +75,7 @@
     <string name="other_setting">其它设置</string>
     <string name="other_setting_s">与功能相关的一些设置</string>
     <string name="precise_manage">精准管理</string>
-    <string name="precise_manage_summary">URL 访问记录、储存管理、下载管理、文件管理</string>
+    <string name="precise_manage_summary">更精准的管理</string>
     <string name="about">关于</string>
     <string name="donate">捐赠</string>
     <string name="exit">退出</string>
@@ -699,6 +699,7 @@
     <string name="select_start">文本选择开始位置</string>
     <string name="share_layout">共用布局</string>
     <string name="browser">浏览器</string>
+    <string name="web_search">网页搜索</string>
     <string name="import_default_rule">导入默认规则</string>
     <string name="group_by_domain">按域名分组</string>
     <string name="name">名称</string>
@@ -743,7 +744,8 @@
     <string name="action_menu">功能</string>
     <string name="preview">预览</string>
     <string name="text_menu_config">展开文本菜单配置</string>
-    <string name="text_menu_config_desc">选择您想要显示的菜单项</string>
+    <string name="menu_config">菜单配置</string>
+    <string name="text_menu_config_desc">选择您想要显示的菜单项，超出7个后会显示在溢出菜单</string>
     <string name="process_text_menu_config">其他应用菜单配置</string>
     <string name="process_text_menu_config_desc">选择您想要显示的其他应用菜单项</string>
     <string name="no_process_text_apps">没有找到支持文本处理的应用</string>
@@ -877,6 +879,8 @@
     <string name="storage_manage_summary">管理应用缓存和存储空间</string>
     <string name="download_manage">下载管理</string>
     <string name="download_manage_summary">管理WebView下载的文件</string>
+    <string name="module_status">模块运行状态</string>
+    <string name="module_status_summary">查看 App 各模块是否运行中</string>
     <string name="local_tts">本地 TTS</string>
     <string name="thread_count">线程数</string>
     <string name="all_read_time">总阅读时间</string>

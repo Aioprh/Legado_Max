@@ -26,6 +26,13 @@
         app:iconSpaceReserved="false" />
 
     <io.legado.app.lib.prefs.Preference
+        android:icon="@drawable/ic_settings"
+        android:key="moduleStatus"
+        android:summary="@string/module_status_summary"
+        android:title="@string/module_status"
+        app:iconSpaceReserved="false" />
+
+    <io.legado.app.lib.prefs.Preference
         android:icon="@drawable/ic_folder_outline"
         android:key="fileManage"
         android:summary="@string/file_manage_summary"

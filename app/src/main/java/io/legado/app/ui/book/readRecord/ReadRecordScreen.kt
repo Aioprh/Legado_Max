@@ -59,8 +59,10 @@ fun ReadRecordScreen(
 
     val state by viewModel.uiState.collectAsState()
     val displayMode by viewModel.displayMode.collectAsState()
+    val enableReadRecord by viewModel.enableReadRecord.collectAsState()
     var showSearch by remember { mutableStateOf(false) }
     var showCalendar by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
     var heatmapMode by remember { mutableStateOf(HeatmapMode.TIME) }
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -249,6 +251,35 @@ fun ReadRecordScreen(
                                 },
                                 contentDescription = "切换视图"
                             )
+                        }
+                        Box {
+                            IconButton(onClick = { showOverflowMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "更多")
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(if (enableReadRecord) "关闭记录" else "开启记录")
+                                    },
+                                    onClick = {
+                                        viewModel.setEnableReadRecord(!enableReadRecord)
+                                        showOverflowMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = if (enableReadRecord) {
+                                                Icons.Default.VisibilityOff
+                                            } else {
+                                                Icons.Default.Visibility
+                                            },
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                            }
                         }
                     },
                     scrollBehavior = scrollBehavior

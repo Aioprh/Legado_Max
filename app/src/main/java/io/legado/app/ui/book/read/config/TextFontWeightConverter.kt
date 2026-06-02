@@ -62,15 +62,40 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
 
     private fun showFontWeightDialog() {
         var currentMode = AppConfig.textBoldMode
-        var currentBoldValue = ReadBookConfig.textBold
-        var currentTitleBoldValue = if (currentMode == 1) ReadBookConfig.titleBold.coerceIn(100, 900) else 700
-        var tempTextValue = if (currentMode == 1) currentBoldValue.coerceIn(100, 900) else 400
+        val savedTextBold = ReadBookConfig.textBold
+        var currentBoldValue = if (currentMode == 0) {
+            savedTextBold
+        } else {
+            fineToCoarseWeight(savedTextBold.coerceIn(100, 900))
+        }
+        var currentTitleBoldValue = ReadBookConfig.titleBold.takeIf { it in 100..900 } ?: 700
+        var tempTextValue = if (currentMode == 1) {
+            savedTextBold.coerceIn(100, 900)
+        } else {
+            coarseToFineWeight(currentBoldValue)
+        }
         var tempTitleValue = currentTitleBoldValue
         
         // 视图引用，用于后续切换
         var coarseView: LinearLayout? = null
         var fineView: LinearLayout? = null
-        var switchButton: TextView? = null
+        fun applyFontWeight() {
+            if (currentMode == 1) {
+                ReadBookConfig.textBold = tempTextValue
+                ReadBookConfig.titleBold = tempTitleValue
+            } else {
+                ReadBookConfig.textBold = currentBoldValue
+            }
+            upUi(ReadBookConfig.textBold)
+            onChanged?.invoke()
+        }
+
+        fun updateCoarseSelection() {
+            val bg = context.bottomBackground
+            val isLight = ColorUtils.isColorLight(bg)
+            val textColor = context.getPrimaryTextColor(isLight)
+            updateSelection(coarseView ?: return, currentBoldValue, context.accentColor, textColor)
+        }
         
         context.alert(titleResource = null) {
             customTitle {
@@ -79,7 +104,6 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                     if (currentMode == 0) context.getString(R.string.text_bold_fine_mode) 
                     else context.getString(R.string.text_bold_coarse_mode)
                 ) { button ->
-                    switchButton = button
                     // 切换模式逻辑
                     if (currentMode == 0) {
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
@@ -91,6 +115,8 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                                 AppConfig.textBoldFineTipShown = true
                                 currentMode = 1
                                 AppConfig.textBoldMode = 1
+                                tempTextValue = coarseToFineWeight(currentBoldValue)
+                                applyFontWeight()
                                 button.text = context.getString(R.string.text_bold_coarse_mode)
                                 coarseView?.visibility = View.GONE
                                 fineView?.visibility = View.VISIBLE
@@ -98,6 +124,8 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                         } else {
                             currentMode = 1
                             AppConfig.textBoldMode = 1
+                            tempTextValue = coarseToFineWeight(currentBoldValue)
+                            applyFontWeight()
                             button.text = context.getString(R.string.text_bold_coarse_mode)
                             coarseView?.visibility = View.GONE
                             fineView?.visibility = View.VISIBLE
@@ -105,9 +133,12 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                     } else {
                         currentMode = 0
                         AppConfig.textBoldMode = 0
+                        currentBoldValue = fineToCoarseWeight(tempTextValue)
+                        applyFontWeight()
                         button.text = context.getString(R.string.text_bold_fine_mode)
                         coarseView?.visibility = View.VISIBLE
                         fineView?.visibility = View.GONE
+                        updateCoarseSelection()
                     }
                 }
             }
@@ -120,6 +151,7 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                     // 粗略模式视图
                     coarseView = createCoarseModeView(currentBoldValue) { newValue ->
                         currentBoldValue = newValue
+                        applyFontWeight()
                     }.apply {
                         visibility = if (currentMode == 0) View.VISIBLE else View.GONE
                     }
@@ -128,6 +160,7 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                     fineView = createFineModeView(tempTextValue, tempTitleValue) { newTextValue, newTitleValue ->
                         tempTextValue = newTextValue
                         tempTitleValue = newTitleValue
+                        applyFontWeight()
                     }.apply {
                         visibility = if (currentMode == 1) View.VISIBLE else View.GONE
                     }
@@ -136,19 +169,22 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                     addView(fineView)
                 }
             }
-            
-            positiveButton(android.R.string.ok) {
-                if (currentMode == 1) {
-                    ReadBookConfig.textBold = tempTextValue
-                    ReadBookConfig.titleBold = tempTitleValue
-                } else {
-                    ReadBookConfig.textBold = currentBoldValue
-                }
-                upUi(ReadBookConfig.textBold)
-                onChanged?.invoke()
-            }
-            
-            negativeButton(android.R.string.cancel) {}
+        }
+    }
+
+    private fun coarseToFineWeight(value: Int): Int {
+        return when (value) {
+            1 -> 700
+            2 -> 300
+            else -> 400
+        }
+    }
+
+    private fun fineToCoarseWeight(value: Int): Int {
+        return when {
+            value >= 600 -> 1
+            value <= 350 -> 2
+            else -> 0
         }
     }
 
