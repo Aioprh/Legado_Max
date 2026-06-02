@@ -40,12 +40,13 @@
         android:layout_height="20dp"
         android:layout_marginEnd="4dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_locate"
-        android:visibility="gone"
         android:contentDescription="@string/enable_locate"
+        android:src="@drawable/ic_locate"
+        android:tint="@color/primaryText"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/tv_open"
-        app:layout_constraintTop_toTopOf="@id/tv_open"
         app:layout_constraintRight_toLeftOf="@id/tv_open"
+        app:layout_constraintTop_toTopOf="@id/tv_open"
         tools:ignore="TouchTargetSizeCheck" />
 
     <TextView
@@ -65,8 +66,8 @@
         android:id="@+id/show_comment"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="3"
         android:ellipsize="end"
+        android:maxLines="3"
         android:padding="8dp"
         android:textColor="@color/secondaryText"
         android:visibility="gone"
