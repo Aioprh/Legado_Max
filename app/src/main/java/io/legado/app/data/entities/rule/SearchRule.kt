@@ -2,6 +2,7 @@
 
 import android.os.Parcelable
 import com.google.gson.JsonDeserializer
+import com.google.gson.JsonSyntaxException
 import io.legado.app.utils.INITIAL_GSON
 import kotlinx.parcelize.Parcelize
 
@@ -29,7 +30,15 @@ data class SearchRule(
         val jsonDeserializer = JsonDeserializer<SearchRule?> { json, _, _ ->
             when {
                 json.isJsonObject -> INITIAL_GSON.fromJson(json, SearchRule::class.java)
-                json.isJsonPrimitive -> INITIAL_GSON.fromJson(json.asString, SearchRule::class.java)
+                json.isJsonPrimitive -> runCatching {
+                    INITIAL_GSON.fromJson(json.asString, SearchRule::class.java)
+                }.getOrElse {
+                    if (it is JsonSyntaxException || it is ClassCastException) {
+                        SearchRule(bookList = json.asString)
+                    } else {
+                        throw it
+                    }
+                }
                 else -> null
             }
         }

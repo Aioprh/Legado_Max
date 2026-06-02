@@ -2,6 +2,7 @@ package io.legado.app.data.entities.rule
 
 import android.os.Parcelable
 import com.google.gson.JsonDeserializer
+import com.google.gson.JsonSyntaxException
 import io.legado.app.utils.INITIAL_GSON
 import kotlinx.parcelize.Parcelize
 
@@ -27,10 +28,15 @@ data class ExploreRule(
         val jsonDeserializer = JsonDeserializer<ExploreRule?> { json, _, _ ->
             when {
                 json.isJsonObject -> INITIAL_GSON.fromJson(json, ExploreRule::class.java)
-                json.isJsonPrimitive -> INITIAL_GSON.fromJson(
-                    json.asString,
-                    ExploreRule::class.java
-                )
+                json.isJsonPrimitive -> runCatching {
+                    INITIAL_GSON.fromJson(json.asString, ExploreRule::class.java)
+                }.getOrElse {
+                    if (it is JsonSyntaxException || it is ClassCastException) {
+                        ExploreRule(bookList = json.asString)
+                    } else {
+                        throw it
+                    }
+                }
                 else -> null
             }
         }
