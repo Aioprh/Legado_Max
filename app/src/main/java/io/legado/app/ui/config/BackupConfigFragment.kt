@@ -264,6 +264,7 @@ class BackupConfigFragment : PreferenceFragment(),
             "web_dav_restore" -> restore()
             "import_old" -> restoreOld.launch()
             "viewBackupInfo" -> showBackupInfo()
+            "viewRestoreInfo" -> showRestoreInfo()
         }
         return super.onPreferenceTreeClick(preference)
     }
@@ -332,9 +333,17 @@ class BackupConfigFragment : PreferenceFragment(),
      * 显示备份信息
      */
     private fun showBackupInfo() {
-        BackupInfoDialog.newInstance().show(childFragmentManager, "backupInfo")
+        BackupInfoDialog.newInstance(BackupInfoDialog.Mode.Backup)
+            .show(childFragmentManager, "backupInfo")
     }
 
+    /**
+     * 显示恢复信息
+     */
+    private fun showRestoreInfo() {
+        BackupInfoDialog.newInstance(BackupInfoDialog.Mode.Restore)
+            .show(childFragmentManager, "restoreInfo")
+    }
 
     fun backup() {
         val backupPath = AppConfig.backupPath

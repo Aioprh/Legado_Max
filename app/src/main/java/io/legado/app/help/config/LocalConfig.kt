@@ -46,6 +46,15 @@ by appCtx.getSharedPreferences("local_plus", Context.MODE_PRIVATE) {
         }
 
     /**
+     * 最后一次恢复的时间戳
+     */
+    var lastRestore: Long
+        get() = getLong("lastRestore", 0)
+        set(value) {
+            putLong("lastRestore", value)
+        }
+
+    /**
      * 隐私政策是否已同意
      */
     var privacyPolicyOk: Boolean

@@ -153,6 +153,7 @@ object Restore {
         kotlin.runCatching {
             restoreLocked(Backup.backupPath)
             LocalConfig.lastBackup = System.currentTimeMillis()
+            LocalConfig.lastRestore = System.currentTimeMillis()
         }.onFailure {
             appCtx.toastOnUi("恢复备份出错\n${it.localizedMessage}")
             AppLog.put("恢复备份出错\n${it.localizedMessage}", it)
@@ -185,6 +186,7 @@ object Restore {
             try {
                 restoreSelectedFiles(path, selectedFiles)
                 LocalConfig.lastBackup = System.currentTimeMillis()
+                LocalConfig.lastRestore = System.currentTimeMillis()
             } catch (e: Exception) {
                 appCtx.toastOnUi("恢复备份出错\n${e.localizedMessage}")
                 AppLog.put("选择性恢复备份出错\n${e.localizedMessage}", e)

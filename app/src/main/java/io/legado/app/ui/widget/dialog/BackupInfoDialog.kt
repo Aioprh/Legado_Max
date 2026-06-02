@@ -23,8 +23,16 @@ import java.util.Locale
 
 class BackupInfoDialog : BaseDialogFragment(R.layout.dialog_recycler_view) {
 
+    enum class Mode {
+        Backup,
+        Restore
+    }
+
     private val binding by viewBinding(DialogRecyclerViewBinding::bind)
-    private val adapter by lazy { BackupInfoAdapter(requireContext()) }
+    private val mode: Mode
+        get() = arguments?.getString(ARG_MODE)?.let { runCatching { Mode.valueOf(it) }.getOrNull() }
+            ?: Mode.Backup
+    private val adapter by lazy { BackupInfoAdapter(requireContext(), mode) }
 
     override fun onStart() {
         super.onStart()
@@ -34,54 +42,73 @@ class BackupInfoDialog : BaseDialogFragment(R.layout.dialog_recycler_view) {
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) = binding.run {
         toolBar.setBackgroundColor(primaryColor)
         toolBar.setTitleTextColor(primaryTextColor)
-        toolBar.title = getString(R.string.view_backup_info)
-        
-        val lastBackup = LocalConfig.lastBackup
-        if (lastBackup > 0) {
+        toolBar.title = getString(
+            if (mode == Mode.Restore) R.string.view_restore_info else R.string.view_backup_info
+        )
+
+        val lastTime = if (mode == Mode.Restore) LocalConfig.lastRestore else LocalConfig.lastBackup
+        if (lastTime > 0) {
             val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-            toolBar.subtitle = "上次备份: ${dateFormat.format(Date(lastBackup))}"
+            toolBar.subtitle = if (mode == Mode.Restore) {
+                "上次恢复: ${dateFormat.format(Date(lastTime))}"
+            } else {
+                "上次备份: ${dateFormat.format(Date(lastTime))}"
+            }
         }
 
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         recyclerView.adapter = adapter
 
-        loadBackupInfo()
+        loadInfo()
     }
 
-    private fun loadBackupInfo() {
-        val overview = BackupInfoHelper.getBackupOverview()
+    private fun loadInfo() {
+        val overview = if (mode == Mode.Restore) {
+            BackupInfoHelper.getRestoreOverview()
+        } else {
+            BackupInfoHelper.getBackupOverview()
+        }
 
         if (overview.items.isEmpty()) {
             binding.tvMsg.visibility = View.VISIBLE
-            binding.tvMsg.text = getString(R.string.no_backup_data)
+            binding.tvMsg.text = getString(
+                if (mode == Mode.Restore) R.string.no_restore_data else R.string.no_backup_data
+            )
             return
         }
 
         val items = mutableListOf<BackupInfoItem>()
-
         val selectedCount = overview.items.count { it.selected }
-        items.add(BackupInfoItem.Header(
-            itemCount = selectedCount,
-            totalSize = BackupInfoHelper.formatSize(overview.selectedSize),
-            totalCount = overview.items.size,
-            totalDataSize = BackupInfoHelper.formatSize(overview.totalSize)
-        ))
+        items.add(
+            BackupInfoItem.Header(
+                title = if (mode == Mode.Restore) "恢复数据统计" else "备份数据统计",
+                subtitle = if (mode == Mode.Restore) {
+                    "将恢复 $selectedCount/${overview.items.size} 项"
+                } else {
+                    "已选择 $selectedCount/${overview.items.size} 项"
+                },
+                totalSize = BackupInfoHelper.formatSize(overview.selectedSize)
+            )
+        )
 
-        val categories = BackupInfoHelper.categorizeItems(overview.items, onlySelected = false)
-        categories.forEach { cat ->
-            items.add(BackupInfoItem.Category(
-                name = cat.name,
-                icon = cat.icon,
-                count = cat.items.size,
-                totalSize = BackupInfoHelper.formatSize(cat.totalSize)
-            ))
+        BackupInfoHelper.categorizeItems(overview.items, onlySelected = false).forEach { cat ->
+            items.add(
+                BackupInfoItem.Category(
+                    name = cat.name,
+                    icon = cat.icon,
+                    count = cat.items.size,
+                    totalSize = BackupInfoHelper.formatSize(cat.totalSize)
+                )
+            )
             cat.items.forEach { item ->
-                items.add(BackupInfoItem.File(
-                    fileName = item.fileName,
-                    displayName = item.displayName,
-                    size = BackupInfoHelper.formatSize(item.size),
-                    selected = item.selected
-                ))
+                items.add(
+                    BackupInfoItem.File(
+                        fileName = item.fileName,
+                        displayName = item.displayName,
+                        size = BackupInfoHelper.formatSize(item.size),
+                        selected = item.selected
+                    )
+                )
             }
         }
 
@@ -89,17 +116,22 @@ class BackupInfoDialog : BaseDialogFragment(R.layout.dialog_recycler_view) {
     }
 
     companion object {
-        fun newInstance(): BackupInfoDialog {
-            return BackupInfoDialog()
+        private const val ARG_MODE = "mode"
+
+        fun newInstance(mode: Mode = Mode.Backup): BackupInfoDialog {
+            return BackupInfoDialog().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_MODE, mode.name)
+                }
+            }
         }
     }
 
     sealed class BackupInfoItem {
         data class Header(
-            val itemCount: Int,
-            val totalSize: String,
-            val totalCount: Int,
-            val totalDataSize: String
+            val title: String,
+            val subtitle: String,
+            val totalSize: String
         ) : BackupInfoItem()
 
         data class Category(
@@ -117,8 +149,10 @@ class BackupInfoDialog : BaseDialogFragment(R.layout.dialog_recycler_view) {
         ) : BackupInfoItem()
     }
 
-    class BackupInfoAdapter(context: Context) :
-        RecyclerAdapter<BackupInfoItem, ItemBackupCategoryBinding>(context) {
+    class BackupInfoAdapter(
+        context: Context,
+        private val mode: Mode
+    ) : RecyclerAdapter<BackupInfoItem, ItemBackupCategoryBinding>(context) {
 
         override fun getItemViewType(item: BackupInfoItem, position: Int): Int {
             return when (item) {
@@ -149,9 +183,11 @@ class BackupInfoDialog : BaseDialogFragment(R.layout.dialog_recycler_view) {
             binding.root.visibility = View.VISIBLE
             binding.apply {
                 tvIcon.text = "📦"
-                tvTitle.text = "备份数据统计"
-                tvSubtitle.text = "已选: ${item.itemCount}/${item.totalCount} 项"
+                tvTitle.text = item.title
+                tvSubtitle.text = item.subtitle
+                tvSubtitle.visibility = View.VISIBLE
                 tvCount.text = item.totalSize
+                tvCount.visibility = View.VISIBLE
                 tvSize.visibility = View.GONE
             }
         }
@@ -163,6 +199,7 @@ class BackupInfoDialog : BaseDialogFragment(R.layout.dialog_recycler_view) {
                 tvTitle.text = item.name
                 tvSubtitle.visibility = View.GONE
                 tvCount.text = "${item.count} 项"
+                tvCount.visibility = View.VISIBLE
                 tvSize.text = item.totalSize
                 tvSize.visibility = View.VISIBLE
             }
@@ -171,11 +208,12 @@ class BackupInfoDialog : BaseDialogFragment(R.layout.dialog_recycler_view) {
         private fun bindFile(binding: ItemBackupCategoryBinding, item: BackupInfoItem.File) {
             binding.root.visibility = View.VISIBLE
             binding.apply {
-                tvIcon.text = if (item.selected) "  ✅" else "  ⬜"
+                tvIcon.text = if (item.selected) "  ✓" else "  -"
                 tvTitle.text = item.displayName
                 tvSubtitle.text = item.fileName
                 tvSubtitle.visibility = View.VISIBLE
-                tvCount.visibility = View.GONE
+                tvCount.text = if (mode == Mode.Restore && !item.selected) "忽略" else ""
+                tvCount.visibility = if (mode == Mode.Restore && !item.selected) View.VISIBLE else View.GONE
                 tvSize.text = item.size
                 tvSize.visibility = View.VISIBLE
             }
