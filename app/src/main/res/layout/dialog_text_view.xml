@@ -14,10 +14,12 @@
         app:titleTextAppearance="@style/ToolbarTitle"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <FrameLayout
+    <LinearLayout
         android:id="@+id/help_selector_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:paddingTop="4dp"
@@ -27,12 +29,18 @@
         app:layout_constraintTop_toBottomOf="@+id/tool_bar">
 
         <Spinner
-            android:id="@+id/help_spinner"
-            android:layout_width="wrap_content"
+            android:id="@+id/help_group_spinner"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_gravity="start|center_vertical" />
+            android:layout_weight="1" />
 
-    </FrameLayout>
+        <Spinner
+            android:id="@+id/help_spinner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1.4" />
+
+    </LinearLayout>
 
     <io.legado.app.ui.widget.text.ScrollTextView
         android:id="@+id/text_view"

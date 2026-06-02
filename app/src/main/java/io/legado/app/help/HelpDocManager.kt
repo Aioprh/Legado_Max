@@ -55,12 +55,6 @@ object HelpDocManager {
     val allHelpDocs: List<HelpDoc>
         get() = helpDocGroups.flatMap { it.docs }
 
-    val helpDocSelectorItems: List<HelpDocSelectorItem>
-        get() = helpDocGroups.flatMap { group ->
-            listOf(HelpDocSelectorItem(group.displayName)) +
-                group.docs.map { HelpDocSelectorItem(it.displayName, it) }
-        }
-    
     // 隐藏的帮助文档（可以在某些界面加载查看，但不会出现在切换列表中）
     private val hiddenHelpDocs = listOf(
         HelpDoc("SourceMBookHelp", "书源管理界面帮助"),
@@ -86,9 +80,19 @@ object HelpDocManager {
         return allHelpDocs.indexOfFirst { it.fileName == fileName }
     }
 
-    // 获取帮助文档在分组切换列表中的索引
-    fun getDocSelectorIndex(fileName: String): Int {
-        return helpDocSelectorItems.indexOfFirst { it.doc?.fileName == fileName }
+    // 获取帮助文档所在分组的索引
+    fun getDocGroupIndex(fileName: String): Int {
+        return helpDocGroups.indexOfFirst { group ->
+            group.docs.any { it.fileName == fileName }
+        }
+    }
+
+    // 获取帮助文档在所在分组内的索引
+    fun getDocIndexInGroup(fileName: String): Int {
+        val group = helpDocGroups.firstOrNull { group ->
+            group.docs.any { it.fileName == fileName }
+        } ?: return -1
+        return group.docs.indexOfFirst { it.fileName == fileName }
     }
     
     // 根据文件名获取文档（优先从切换列表查找，找不到再从隐藏文档查找）
