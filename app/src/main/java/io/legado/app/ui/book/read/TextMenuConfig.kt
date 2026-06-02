@@ -186,6 +186,26 @@ object TextMenuConfig {
         return "$packageName/$className"
     }
 
+    fun getCustomProcessTextTitles(context: Context): Map<String, String> {
+        val json = context.getPrefString(PreferKey.processTextCustomTitles)
+        return GSON.fromJsonObject<Map<String, String>>(json).getOrNull() ?: emptyMap()
+    }
+
+    fun getCustomProcessTextTitle(context: Context, key: String): String? {
+        return getCustomProcessTextTitles(context)[key]?.takeIf { it.isNotBlank() }
+    }
+
+    fun setCustomProcessTextTitle(context: Context, key: String, title: String?) {
+        val titles = getCustomProcessTextTitles(context).toMutableMap()
+        val normalizedTitle = title?.trim().orEmpty()
+        if (normalizedTitle.isBlank()) {
+            titles.remove(key)
+        } else {
+            titles[key] = normalizedTitle
+        }
+        context.putPrefString(PreferKey.processTextCustomTitles, GSON.toJson(titles))
+    }
+
     /**
      * 获取隐藏的其他应用菜单项集合
      */
@@ -222,5 +242,6 @@ object TextMenuConfig {
     fun resetProcessTextConfig(context: Context) {
         Log.d(TAG, "resetProcessTextConfig")
         context.putPrefString(PreferKey.hiddenProcessTextItems, "")
+        context.putPrefString(PreferKey.processTextCustomTitles, "")
     }
 }

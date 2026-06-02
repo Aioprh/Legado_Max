@@ -422,9 +422,11 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
                 val className = resolveInfo.activityInfo.name
                 val itemKey = TextMenuConfig.getProcessTextItemKey(packageName, className)
                 if (itemKey !in hiddenItems) {
+                    val title = TextMenuConfig.getCustomProcessTextTitle(context, itemKey)
+                        ?: resolveInfo.loadLabel(context.packageManager)
                     menu.add(
                         Menu.NONE, Menu.NONE,
-                        menuItemOrder++, resolveInfo.loadLabel(context.packageManager)
+                        menuItemOrder++, title
                     ).intent = createProcessTextIntentForResolveInfo(resolveInfo)
                 }
             }

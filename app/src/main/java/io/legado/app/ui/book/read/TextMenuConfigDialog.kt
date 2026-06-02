@@ -22,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -301,6 +302,7 @@ fun EditMenuTitleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RectangleShape,
         title = {
             Text(text = stringResource(R.string.text_menu_edit_title))
         },
@@ -311,6 +313,7 @@ fun EditMenuTitleDialog(
                     onValueChange = { value = it },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    shape = RectangleShape,
                     label = {
                         Text(text = stringResource(R.string.text_menu_edit_name))
                     },
@@ -348,6 +351,10 @@ fun ProcessTextConfigContent(
     var hiddenItems by remember { 
         mutableStateOf(TextMenuConfig.getHiddenProcessTextItems(context))
     }
+    var customTitles by remember {
+        mutableStateOf(TextMenuConfig.getCustomProcessTextTitles(context))
+    }
+    var editingAppInfo by remember { mutableStateOf<ProcessTextAppInfo?>(null) }
     
     val processTextApps = remember {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -359,6 +366,19 @@ fun ProcessTextConfigContent(
     
     val topBarColor = pageTopBarContainerColor()
     val cardColor = pageCardContainerColor()
+
+    editingAppInfo?.let { appInfo ->
+        EditMenuTitleDialog(
+            title = customTitles[appInfo.key] ?: appInfo.label,
+            defaultTitle = appInfo.label,
+            onDismiss = { editingAppInfo = null },
+            onConfirm = { newTitle ->
+                TextMenuConfig.setCustomProcessTextTitle(context, appInfo.key, newTitle)
+                customTitles = TextMenuConfig.getCustomProcessTextTitles(context)
+                editingAppInfo = null
+            }
+        )
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -428,7 +448,9 @@ fun ProcessTextConfigContent(
                         items(processTextApps) { appInfo ->
                             ProcessTextAppRow(
                                 appInfo = appInfo,
+                                title = customTitles[appInfo.key] ?: appInfo.label,
                                 isChecked = appInfo.key !in hiddenItems,
+                                onEditClick = { editingAppInfo = appInfo },
                                 onCheckedChange = { checked ->
                                     val newHiddenItems = hiddenItems.toMutableSet()
                                     if (checked) {
@@ -454,6 +476,7 @@ fun ProcessTextConfigContent(
                         onClick = {
                             TextMenuConfig.resetProcessTextConfig(context)
                             hiddenItems = emptySet()
+                            customTitles = emptyMap()
                             context.toastOnUi("已重置为默认配置")
                         }
                     ) {
@@ -564,7 +587,9 @@ fun MenuItemRow(
 @Composable
 fun ProcessTextAppRow(
     appInfo: ProcessTextAppInfo,
+    title: String,
     isChecked: Boolean,
+    onEditClick: () -> Unit,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -580,7 +605,7 @@ fun ProcessTextAppRow(
                 .padding(end = 16.dp)
         ) {
             Text(
-                text = appInfo.label,
+                text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -588,6 +613,13 @@ fun ProcessTextAppRow(
                 text = appInfo.packageName,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        IconButton(onClick = onEditClick) {
+            Icon(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = stringResource(R.string.text_menu_edit_title)
             )
         }
 
