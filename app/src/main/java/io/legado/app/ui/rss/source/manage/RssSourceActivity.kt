@@ -1,6 +1,7 @@
 package io.legado.app.ui.rss.source.manage
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -10,6 +11,7 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.SearchView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.AppLog
@@ -115,6 +117,8 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
      * 域名缓存，避免重复提取
      */
     private val hostMap = hashMapOf<String, String>()
+    private var locateSourceUrl: String? = null
+    private var locateSourceName: String? = null
     private val itemTouchCallback by lazy { ItemTouchCallback(adapter) }
     private val qrCodeResult = registerForActivityResult(QrCodeResult()) {
         it ?: return@registerForActivityResult
@@ -132,11 +136,29 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
+        locateSourceUrl = intent.getStringExtra("locateSourceUrl")
+        locateSourceName = intent.getStringExtra("locateSourceName")
+        AppLog.put("RssSourceActivity启动: locateSourceUrl=$locateSourceUrl, locateSourceName=$locateSourceName")
         initRecyclerView()
         initSearchView()
+        if (locateSourceUrl != null) {
+            searchView.setQuery("", false)
+        }
         initGroupFlow()
         upSourceFlow()
         initSelectActionBar()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        locateSourceUrl = intent.getStringExtra("locateSourceUrl")
+        locateSourceName = intent.getStringExtra("locateSourceName")
+        AppLog.put("RssSourceActivity onNewIntent: locateSourceUrl=$locateSourceUrl, locateSourceName=$locateSourceName")
+        if (locateSourceUrl != null) {
+            searchView.setQuery("", false)
+            upSourceFlow()
+        }
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
@@ -480,11 +502,36 @@ class RssSourceActivity : VMBaseActivity<ActivityRssSourceBinding, RssSourceView
             }.catch {
                 AppLog.put("订阅源管理界面更新数据出错", it)
             }.flowOn(IO).conflate().collect {
-                adapter.setItems(it, adapter.diffItemCallback)
+                if (locateSourceUrl != null) {
+                    adapter.setItems(it)
+                } else {
+                    adapter.setItems(it, adapter.diffItemCallback)
+                }
                 itemTouchCallback.isCanDrag =
                     sort == RssSourceSort.Default && !groupSourcesByDomain
+                tryLocateSource(it)
                 delay(100)
             }
+        }
+    }
+
+    private fun tryLocateSource(data: List<RssSource>) {
+        val urlToLocate = locateSourceUrl ?: return
+        val nameToLocate = locateSourceName
+        val index = data.indexOfFirst { it.sourceUrl == urlToLocate }.takeIf { it >= 0 }
+            ?: data.indexOfFirst { nameToLocate != null && it.sourceName == nameToLocate }
+        AppLog.put("locate rss source: url=$urlToLocate, name=$nameToLocate, index=$index, dataSize=${data.size}")
+        if (index < 0) {
+            return
+        }
+        locateSourceUrl = null
+        locateSourceName = null
+        binding.recyclerView.post {
+            (binding.recyclerView.layoutManager as? LinearLayoutManager)
+                ?.scrollToPositionWithOffset(index, 72.dpToPx())
+                ?: binding.recyclerView.scrollToPosition(index)
+            adapter.setSelection(index)
+            AppLog.put("locate rss source done: index=$index")
         }
     }
 

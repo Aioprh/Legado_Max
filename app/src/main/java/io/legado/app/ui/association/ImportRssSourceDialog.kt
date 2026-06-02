@@ -15,6 +15,7 @@ import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
+import io.legado.app.constant.AppLog
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.RssSource
@@ -24,6 +25,7 @@ import io.legado.app.databinding.ItemSourceImportBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.ui.rss.source.manage.RssSourceActivity
 import io.legado.app.ui.widget.dialog.CodeDialog
 import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.utils.GSON
@@ -33,6 +35,7 @@ import io.legado.app.utils.gone
 import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.startActivity
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import splitties.views.onClick
@@ -54,6 +57,9 @@ class ImportRssSourceDialog() : BaseDialogFragment(R.layout.dialog_recycler_view
     private val binding by viewBinding(DialogRecyclerViewBinding::bind)
     private val viewModel by viewModels<ImportRssSourceViewModel>()
     private val adapter by lazy { SourcesAdapter(requireContext()) }
+    private var enableLocate = false
+    private val canShowLocate: Boolean
+        get() = arguments?.getBoolean("finishOnDismiss") != true
 
     override fun onStart() {
         super.onStart()
@@ -154,6 +160,11 @@ class ImportRssSourceDialog() : BaseDialogFragment(R.layout.dialog_recycler_view
                 ?.isChecked = AppConfig.importKeepEnable
             findItem(R.id.menu_show_comment)
                 ?.isChecked = AppConfig.importShowComment
+            findItem(R.id.menu_enable_locate)
+                ?.apply {
+                    isVisible = canShowLocate
+                    isChecked = enableLocate
+                }
             findItem(R.id.menu_select_new_source)?.isVisible = false // 暂不支持
             findItem(R.id.menu_select_update_source)?.isVisible = false // 暂不支持
         }
@@ -181,6 +192,12 @@ class ImportRssSourceDialog() : BaseDialogFragment(R.layout.dialog_recycler_view
             R.id.menu_show_comment -> {
                 item.isChecked = !item.isChecked
                 AppConfig.importShowComment = item.isChecked
+                adapter.notifyDataSetChanged()
+            }
+
+            R.id.menu_enable_locate -> {
+                item.isChecked = !item.isChecked
+                enableLocate = item.isChecked
                 adapter.notifyDataSetChanged()
             }
         }
@@ -259,6 +276,11 @@ class ImportRssSourceDialog() : BaseDialogFragment(R.layout.dialog_recycler_view
                     showComment.gone()
                 }
                 val localSource = viewModel.checkSources[holder.layoutPosition]
+                if (canShowLocate && enableLocate && localSource != null) {
+                    ivLocate.visible()
+                } else {
+                    ivLocate.gone()
+                }
                 tvSourceState.text = when {
                     localSource == null -> "新增"
                     item.lastUpdateTime > localSource.lastUpdateTime -> "更新"
@@ -287,6 +309,16 @@ class ImportRssSourceDialog() : BaseDialogFragment(R.layout.dialog_recycler_view
                             requestId = holder.layoutPosition.toString()
                         )
                     )
+                }
+                ivLocate.setOnClickListener {
+                    val source = viewModel.checkSources.getOrNull(holder.layoutPosition)
+                        ?: return@setOnClickListener
+                    AppLog.put("点击定位订阅源图标: url=${source.sourceUrl}, name=${source.sourceName}")
+                    startActivity<RssSourceActivity> {
+                        putExtra("locateSourceUrl", source.sourceUrl)
+                        putExtra("locateSourceName", source.sourceName)
+                    }
+                    dismissAllowingStateLoss()
                 }
             }
         }

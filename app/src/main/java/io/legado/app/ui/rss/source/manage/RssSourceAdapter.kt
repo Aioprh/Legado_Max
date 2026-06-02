@@ -43,6 +43,14 @@ class RssSourceAdapter(context: Context, val callBack: CallBack) :
             }
         }
 
+    fun setSelection(position: Int) {
+        getItem(position)?.let { item ->
+            selected.add(item)
+            notifyItemChanged(position, bundleOf("selected" to null))
+            callBack.upCountView()
+        }
+    }
+
     val diffItemCallback = object : DiffUtil.ItemCallback<RssSource>() {
 
         override fun areItemsTheSame(oldItem: RssSource, newItem: RssSource): Boolean {
