@@ -173,18 +173,6 @@ fun SourceRecycleBinScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 maxLines = 1
                             )
-                            Text(
-                                text = stringResource(
-                                    if (enabled) {
-                                        R.string.source_recycle_bin_enabled
-                                    } else {
-                                        R.string.source_recycle_bin_disabled
-                                    }
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.88f),
-                                maxLines = 1
-                            )
                         }
                     }
                 },
