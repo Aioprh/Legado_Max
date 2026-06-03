@@ -608,6 +608,7 @@ private fun DateHeader(date: String, totalDuration: Long) {
     val todayStr = stringResource(R.string.rr_today)
     val yesterdayStr = stringResource(R.string.rr_yesterday)
     val dayBeforeYesterdayStr = stringResource(R.string.rr_day_before_yesterday)
+    val dateFormat = stringResource(R.string.rr_date_format_md_weekday)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = headerColor
@@ -620,7 +621,7 @@ private fun DateHeader(date: String, totalDuration: Long) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = formatFriendlyDate(date, todayStr, yesterdayStr, dayBeforeYesterdayStr),
+                text = formatFriendlyDate(date, todayStr, yesterdayStr, dayBeforeYesterdayStr, dateFormat),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -641,6 +642,7 @@ private fun TimelineDateHeader(date: String, totalDuration: Long) {
     val todayStr = stringResource(R.string.rr_today)
     val yesterdayStr = stringResource(R.string.rr_yesterday)
     val dayBeforeYesterdayStr = stringResource(R.string.rr_day_before_yesterday)
+    val dateFormat = stringResource(R.string.rr_date_format_md_weekday)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = headerColor
@@ -653,7 +655,7 @@ private fun TimelineDateHeader(date: String, totalDuration: Long) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = formatFriendlyDate(date, todayStr, yesterdayStr, dayBeforeYesterdayStr),
+                text = formatFriendlyDate(date, todayStr, yesterdayStr, dayBeforeYesterdayStr, dateFormat),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -1336,7 +1338,8 @@ private fun formatFriendlyDate(
     dateStr: String,
     todayStr: String,
     yesterdayStr: String,
-    dayBeforeYesterdayStr: String
+    dayBeforeYesterdayStr: String,
+    dateFormat: String
 ): String {
     return try {
         val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -1350,7 +1353,7 @@ private fun formatFriendlyDate(
             localDate == today.minusDays(1) -> yesterdayStr
             localDate == today.minusDays(2) -> dayBeforeYesterdayStr
             else -> {
-                val outputFormat = SimpleDateFormat("M月d日 E", Locale.CHINA)
+                val outputFormat = SimpleDateFormat(dateFormat, Locale.getDefault())
                 outputFormat.format(date)
             }
         }
@@ -1363,7 +1366,8 @@ private fun formatFriendlyDateTime(
     timestamp: Long,
     todayStr: String,
     yesterdayStr: String,
-    dayBeforeYesterdayStr: String
+    dayBeforeYesterdayStr: String,
+    dateFormat: String
 ): String {
     val date = Date(timestamp)
     val today = LocalDate.now()
@@ -1377,8 +1381,8 @@ private fun formatFriendlyDateTime(
         localDate == today.minusDays(1) -> "$yesterdayStr $timeStr"
         localDate == today.minusDays(2) -> "$dayBeforeYesterdayStr $timeStr"
         else -> {
-            val dateFormat = SimpleDateFormat("M月d日", Locale.getDefault())
-            "${dateFormat.format(date)} $timeStr"
+            val df = SimpleDateFormat(dateFormat, Locale.getDefault())
+            "${df.format(date)} $timeStr"
         }
     }
 }
@@ -1387,14 +1391,4 @@ private fun formatDateTime(timestamp: Long): String {
     val date = Date(timestamp)
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     return dateFormat.format(date)
-}
-
-private fun formatTotalReadTime(totalMs: Long): String {
-    val hours = totalMs / (1000 * 60 * 60)
-    val minutes = (totalMs / (1000 * 60)) % 60
-    return when {
-        hours > 0 -> "累计阅读 ${hours}小时${minutes}分钟"
-        minutes > 0 -> "累计阅读 ${minutes}分钟"
-        else -> "累计阅读 0分钟"
-    }
 }

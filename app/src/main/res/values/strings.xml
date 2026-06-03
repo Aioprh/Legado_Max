@@ -1825,6 +1825,10 @@
     <string name="rr_heatmap_fri">Fri</string>
     <string name="rr_heatmap_sat">Sat</string>
     <string name="rr_heatmap_sun">Sun</string>
-    <string name="rr_heatmap_year_month">%1$d年%2$d月</string>
+    <string name="rr_heatmap_year_month">%1$d/%2$d</string>
     <string name="rr_heatmap_date_format">M/d E</string>
+
+    <!-- Date Format -->
+    <string name="rr_date_format_md">M/d</string>
+    <string name="rr_date_format_md_weekday">M/d E</string>
 </resources>

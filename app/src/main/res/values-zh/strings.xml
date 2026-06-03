@@ -1636,4 +1636,8 @@
     <string name="rr_heatmap_sun">日</string>
     <string name="rr_heatmap_year_month">%1$d年%2$d月</string>
     <string name="rr_heatmap_date_format">M月d日 E</string>
+
+    <!-- Date Format -->
+    <string name="rr_date_format_md">M月d日</string>
+    <string name="rr_date_format_md_weekday">M月d日 E</string>
 </resources>
