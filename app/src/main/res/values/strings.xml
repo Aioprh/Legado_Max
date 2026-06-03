@@ -1747,4 +1747,20 @@
     <string name="view_result">查看结果</string>
     <string name="open_editor">打开编辑器</string>
     <string name="info">信息</string>
+    <string name="content_query">内容查询</string>
+    <string name="switch_rule">切换规则</string>
+    <string name="query_rule">查询规则</string>
+    <string name="copy_matched_source_urls">复制匹配源URL</string>
+    <string name="export_matched_sources">导出匹配源</string>
+    <string name="url_source_code">URL源码</string>
+    <string name="result_source_code">结果源码</string>
+    <string name="select_rule">选择规则</string>
+    <string name="preset_rules">预置规则</string>
+    <string name="import_rules">导入规则</string>
+    <string name="share_rules">分享规则</string>
+    <string name="export_rules">导出规则</string>
+    <string name="import_from_clipboard">剪贴板导入</string>
+    <string name="cover_gallery">封面图集</string>
+    <string name="cover_gallery_summary">管理分组封面图集，可设为全局默认封面来源</string>
+    <string name="cronet">Cronet</string>
 </resources>

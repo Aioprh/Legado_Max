@@ -143,7 +143,7 @@
     <item
         android:id="@+id/menu_content_query"
         android:icon="@drawable/ic_search"
-        android:title="内容查询"
+        android:title="@string/content_query"
         app:showAsAction="never" />
 
     <item

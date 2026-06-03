@@ -4,22 +4,22 @@
 
     <item
         android:id="@+id/menu_expand_all"
-        android:title="全部展开"
+        android:title="@string/expand_all"
         app:showAsAction="never"/>
 
     <item
         android:id="@+id/menu_collapse_all"
-        android:title="全部收缩"
+        android:title="@string/collapse_all"
         app:showAsAction="never"/>
 
     <item
         android:id="@+id/menu_copy_source_urls"
-        android:title="复制匹配源URL"
+        android:title="@string/copy_matched_source_urls"
         app:showAsAction="never"/>
 
     <item
         android:id="@+id/menu_export_sources"
-        android:title="导出匹配源"
+        android:title="@string/export_matched_sources"
         app:showAsAction="never"/>
 
     <item
