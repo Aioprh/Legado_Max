@@ -941,7 +941,7 @@
     <string name="book_tree_uri_t">書籍儲存位置</string>
     <string name="book_tree_uri_s">從其它應用程式打開的書籍儲存位置</string>
     <string name="select_book_folder">選擇儲存書籍的資料夾</string>
-    <string name="user_agent">使用者代理</string>
+    <string name="user_agent">用户代理</string>
     <string name="bg_alpha">背景透明度</string>
 
     <!-- check source config string -->
@@ -1316,6 +1316,7 @@
     <string name="ps_toc_partial_load">目錄載入過多時分批載入</string>
     <string name="pt_toc_partial_load">目錄分批載入</string>
     <string name="pt_toc_partial_load_interval">目錄分批載入間隔</string>
+    <string name="ps_toc_partial_load_interval">%s 秒 + 來源並發率</string>
     <string name="query">查詢</string>
     <string name="query_content">查詢網頁內容</string>
     <string name="read_aloud_floating_ui_summary">朗讀時顯示懸浮控制介面</string>

@@ -16,4 +16,11 @@
         <item>時間及僅電量圖示</item>
         <item>時間及電量%</item>
     </string-array>
+
+    <string-array name="language">
+        <item>自動</item>
+        <item>簡體中文</item>
+        <item>繁體中文</item>
+        <item>English</item>
+    </string-array>
 </resources>
