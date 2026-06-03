@@ -95,6 +95,27 @@ class ConcurrentRateLimiter(source: BaseSource?) {
                 Double.POSITIVE_INFINITY
             }
         }
+
+        /**
+         * 根据并发率字符串构建 ConcurrentRecord
+         */
+        private fun buildRecord(rate: String): ConcurrentRecord {
+            val rateIndex = rate.indexOf("/")
+            if (rateIndex > 0) {
+                val accessLimit = rate.take(rateIndex).toIntOrNull() ?: 1
+                val interval = rate.substring(rateIndex + 1).toIntOrNull() ?: 0
+                return ConcurrentRecord(System.currentTimeMillis(), accessLimit, interval, 1)
+            }
+            return ConcurrentRecord(System.currentTimeMillis(), 1, rate.toIntOrNull() ?: 0, 1)
+        }
+
+        /**
+         * 将 ConcurrentRecord 还原为并发率字符串
+         */
+        private fun recordToRate(record: ConcurrentRecord): String {
+            return if (record.accessLimit > 1) "${record.accessLimit}/${record.interval}"
+            else record.interval.toString()
+        }
     }
 
     private val source: BaseSource? = source
@@ -102,27 +123,34 @@ class ConcurrentRateLimiter(source: BaseSource?) {
     /**
      * 开始访问,并发判断
      * 每次调用实时读取 source?.concurrentRate，确保外部对 BookSource 对象并发率的修改即时生效
+     * 若 putConcurrent() 修改了记录，取 source.concurrentRate 与 putConcurrent 值中限制更严格者
      */
     @Throws(ConcurrentException::class)
     private fun fetchStart(): ConcurrentRecord? {
-        val rate = source?.concurrentRate
-        if (rate.isNullOrEmpty() || rate == "0") {
+        val sourceRate = source?.concurrentRate
+        if (sourceRate.isNullOrEmpty() || sourceRate == "0") {
             return null
         }
         val key = key ?: return null
         var isNewRecord = false
-        val fetchRecord = concurrentRecordMap.computeIfAbsent(key) {
-            isNewRecord = true
-            val rateIndex = rate.indexOf("/")
-            if (rateIndex > 0) {
-                val accessLimit = rate.take(rateIndex).toIntOrNull() ?: 1
-                val interval = rate.substring(rateIndex + 1).toIntOrNull() ?: 0
-                ConcurrentRecord(System.currentTimeMillis(), accessLimit, interval, 1)
+        val fetchRecord = concurrentRecordMap.compute(key) { _, record ->
+            if (record == null) {
+                isNewRecord = true
+                return@compute buildRecord(sourceRate)
             }
-            else {
-                ConcurrentRecord(System.currentTimeMillis(),1,rate.toIntOrNull() ?: 0, 1)
+            val recordRate = recordToRate(record)
+            if (recordRate != sourceRate) {
+                val effective = effectiveRate(sourceRate, recordRate)
+                if (effective != recordRate) {
+                    isNewRecord = true
+                    effective?.let { buildRecord(it) } ?: record
+                } else {
+                    record
+                }
+            } else {
+                record
             }
-        }
+        } ?: return null
         if (isNewRecord) return fetchRecord
         val waitTime: Long = synchronized(fetchRecord) {
             //并发控制为 次数/毫秒 , 非并发实际为1/毫秒
