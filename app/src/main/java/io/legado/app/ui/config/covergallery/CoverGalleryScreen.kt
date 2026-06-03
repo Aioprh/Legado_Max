@@ -278,7 +278,8 @@ fun CoverGalleryScreen(
                                     "## 封面图集\n\n" +
                                         "- 支持图片类型：jpg、jpeg、png、webp、gif、bmp、heic、heif\n" +
                                         "- 导入文件类型：zip，zip 中的图片会导入为一个分组。\n" +
-                                        "- 导出文件类型：zip，导出内容为当前分组中的图片。",
+                                        "- 导出文件类型：zip，导出内容为当前分组中的图片。\n"+
+                                        "- 优先级：图集优先级 > html封面优先级 > 原封面/默认封面，当图集封面开启，html封面失效；HTML 没开启或模板为空时，才继续加载书籍原封面或默认封面",
                                     TextDialog.Mode.MD
                                 )
                             )
