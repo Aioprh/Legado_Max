@@ -37,6 +37,7 @@ import io.legado.app.databinding.DialogDownloadChoiceBinding
 import io.legado.app.databinding.ViewLoadMoreBinding
 import io.legado.app.help.book.isImage
 import io.legado.app.help.book.removeType
+import io.legado.app.help.ConcurrentRateLimiter
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.storage.Backup
 import io.legado.app.model.CacheBook
@@ -719,27 +720,38 @@ class ReadMangaActivity : VMBaseActivity<ActivityMangaBinding, ReadMangaViewMode
         }
     }
 
+    /**
+     * 显示离线缓存对话框，可选择章节范围与缓存并发率
+     * 并发率输入校验：仅允许 "纯数字" 或 "次数/毫秒" 两种格式
+     */
     @SuppressLint("InflateParams", "SetTextI18n")
     private fun showDownloadDialog() {
         ReadManga.book?.let { book ->
-            alert(titleResource = R.string.offline_cache) {
+            var rateEdit: android.widget.EditText? = null
+            val alertDialog = alert(titleResource = R.string.offline_cache) {
                 val alertBinding = DialogDownloadChoiceBinding.inflate(layoutInflater).apply {
                     editStart.setText((book.durChapterIndex + 1).toString())
                     editEnd.setText(book.totalChapterNum.toString())
+                    AppConfig.cacheConcurrentRate?.let { editRate.setText(it) }
                 }
+                rateEdit = alertBinding.editRate
                 customView { alertBinding.root }
-                okButton {
-                    alertBinding.run {
-                        val start = editStart.text?.toString()?.let {
-                            if (it.isEmpty()) 0 else it.toInt()
-                        } ?: 0
-                        val end = editEnd.text?.toString()?.let {
-                            if (it.isEmpty()) book.totalChapterNum else it.toInt()
-                        } ?: book.totalChapterNum
-                        CacheBook.start(this@ReadMangaActivity, book, start - 1, end - 1)
-                    }
-                }
+                positiveButton(R.string.ok)
                 cancelButton()
+            }
+            alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val rate = rateEdit?.text?.toString() ?: ""
+                if (rate.isNotBlank() && !ConcurrentRateLimiter.isValidRate(rate)) {
+                    toastOnUi(R.string.cache_rate_invalid)
+                    return@setOnClickListener
+                }
+                AppConfig.cacheConcurrentRate = if (rate.isBlank()) null else rate
+                val start = alertDialog.requireViewById<android.widget.EditText>(R.id.edit_start)
+                    .text.toString().let { if (it.isEmpty()) 0 else it.toInt() }
+                val end = alertDialog.requireViewById<android.widget.EditText>(R.id.edit_end)
+                    .text.toString().let { if (it.isEmpty()) book.totalChapterNum else it.toInt() }
+                CacheBook.start(this@ReadMangaActivity, book, start - 1, end - 1)
+                alertDialog.hide()
             }
         }
     }

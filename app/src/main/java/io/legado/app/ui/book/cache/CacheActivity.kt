@@ -31,6 +31,7 @@ import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.tryParesExportFileName
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.ConcurrentRateLimiter
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
@@ -156,6 +157,10 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
             "${getString(R.string.export_type)}(${getTypeName()})"
         menu.findItem(R.id.menu_export_charset)?.title =
             "${getString(R.string.export_charset)}(${AppConfig.exportCharset})"
+        val rate = AppConfig.cacheConcurrentRate
+        menu.findItem(R.id.menu_cache_rate)?.title =
+            getString(R.string.cache_concurrent_rate) +
+            if (!rate.isNullOrBlank()) "($rate)" else "(${getString(R.string.text_default)})"
         return super.onMenuOpened(featureId, menu)
     }
 
@@ -220,6 +225,7 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
             R.id.menu_export_file_name -> alertExportFileName()
             R.id.menu_export_type -> showExportTypeConfig()
             R.id.menu_export_charset -> showCharsetConfig()
+            R.id.menu_cache_rate -> showCacheRateDialog()
             R.id.menu_log -> showDialogFragment<AppLogDialog>()
             else -> if (item.groupId == R.id.menu_group) {
                 binding.titleBar.subtitle = item.title
@@ -592,6 +598,35 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
                 AppConfig.exportCharset = alertBinding.editView.text?.toString() ?: "UTF-8"
             }
             cancelButton()
+        }
+    }
+
+    /**
+     * 显示缓存并发率设置对话框
+     * 输入校验：仅允许 "纯数字" 或 "次数/毫秒" 两种格式，非法输入 toast 提示且阻止关闭
+     */
+    private fun showCacheRateDialog() {
+        var rateEdit: android.widget.EditText? = null
+        val alertDialog = alert(titleResource = R.string.cache_concurrent_rate) {
+            setMessage(getString(R.string.cache_rate_desc))
+            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
+                editView.hint = getString(R.string.cache_rate_hint)
+                editView.inputType = android.text.InputType.TYPE_CLASS_TEXT
+                AppConfig.cacheConcurrentRate?.let { editView.setText(it) }
+            }
+            rateEdit = alertBinding.editView
+            customView { alertBinding.root }
+            positiveButton(R.string.ok)
+            cancelButton()
+        }
+        alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val value = rateEdit?.text?.toString()
+            if (!value.isNullOrBlank() && !ConcurrentRateLimiter.isValidRate(value)) {
+                toastOnUi(R.string.cache_rate_invalid)
+                return@setOnClickListener
+            }
+            AppConfig.cacheConcurrentRate = if (value.isNullOrBlank()) null else value
+            alertDialog.hide()
         }
     }
 

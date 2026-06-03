@@ -10,6 +10,7 @@ class ConcurrentRateLimiter(source: BaseSource?) {
 
     companion object {
         val concurrentRecordMap = ConcurrentHashMap<String, ConcurrentRecord>()
+
         /**
          * 更新并发率
          */
@@ -44,30 +45,82 @@ class ConcurrentRateLimiter(source: BaseSource?) {
                 }
             }
         }
+
+        /**
+         * 取两个并发率中限制更严格（吞吐量更低）者
+         * null/空/"0" 表示无限制，不参与比较
+         */
+        fun effectiveRate(rate1: String?, rate2: String?): String? {
+            val t1 = throughput(rate1)
+            val t2 = throughput(rate2)
+            return if (t1 <= t2) rate1 else rate2
+        }
+
+        /**
+         * 校验并发率格式是否合法
+         * 空字符串和 null 视为合法（表示不限制）
+         * 合法格式：纯数字 "1500" 或 "次数/毫秒" 如 "20/60000"
+         */
+        fun isValidRate(rate: String?): Boolean {
+            if (rate.isNullOrBlank()) return true
+            val regex = Regex("^(\\d+)(/(\\d+))?$")
+            val match = regex.matchEntire(rate) ?: return false
+            val num = match.groupValues[1].toInt()
+            if (num <= 0) return false
+            val denom = match.groupValues[3]
+            return denom.isEmpty() || denom.toInt() > 0
+        }
+
+        /**
+         * 计算并发率的吞吐量（请求/秒），用于比较限制严格程度
+         * null/空/"0" 返回正无穷（无限制，不参与比较）
+         * "1500" → 1000/1500 ≈ 0.667 req/s
+         * "20/60000" → 20*1000/60000 ≈ 0.333 req/s
+         */
+        private fun throughput(rate: String?): Double {
+            if (rate.isNullOrBlank() || rate == "0") return Double.POSITIVE_INFINITY
+            return try {
+                val idx = rate.indexOf("/")
+                if (idx > 0) {
+                    val limit = rate.take(idx).toDouble()
+                    val ms = rate.substring(idx + 1).toDouble()
+                    if (limit <= 0 || ms <= 0) Double.POSITIVE_INFINITY
+                    else limit * 1000.0 / ms
+                } else {
+                    val ms = rate.toDouble()
+                    if (ms <= 0) Double.POSITIVE_INFINITY
+                    else 1000.0 / ms
+                }
+            } catch (_: NumberFormatException) {
+                Double.POSITIVE_INFINITY
+            }
+        }
     }
 
-    private val concurrentRate = source?.concurrentRate
+    private val source: BaseSource? = source
     private val key = source?.getKey()
     /**
      * 开始访问,并发判断
+     * 每次调用实时读取 source?.concurrentRate，确保外部对 BookSource 对象并发率的修改即时生效
      */
     @Throws(ConcurrentException::class)
     private fun fetchStart(): ConcurrentRecord? {
-        if (concurrentRate.isNullOrEmpty() || concurrentRate == "0") {
+        val rate = source?.concurrentRate
+        if (rate.isNullOrEmpty() || rate == "0") {
             return null
         }
         val key = key ?: return null
         var isNewRecord = false
         val fetchRecord = concurrentRecordMap.computeIfAbsent(key) {
             isNewRecord = true
-            val rateIndex = concurrentRate.indexOf("/")
+            val rateIndex = rate.indexOf("/")
             if (rateIndex > 0) {
-                val accessLimit = concurrentRate.take(rateIndex).toIntOrNull() ?: 1
-                val interval = concurrentRate.substring(rateIndex + 1).toIntOrNull() ?: 0
+                val accessLimit = rate.take(rateIndex).toIntOrNull() ?: 1
+                val interval = rate.substring(rateIndex + 1).toIntOrNull() ?: 0
                 ConcurrentRecord(System.currentTimeMillis(), accessLimit, interval, 1)
             }
             else {
-                ConcurrentRecord(System.currentTimeMillis(),1,concurrentRate.toIntOrNull() ?: 0, 1)
+                ConcurrentRecord(System.currentTimeMillis(),1,rate.toIntOrNull() ?: 0, 1)
             }
         }
         if (isNewRecord) return fetchRecord

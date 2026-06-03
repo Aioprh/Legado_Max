@@ -423,6 +423,10 @@
     <string name="diy_source_group">自定义源分组</string>
     <string name="diy_edit_source_group">输入自定义源分组名称</string>
     <string name="concurrent_rate">并发率（concurrentRate）</string>
+    <string name="cache_concurrent_rate">缓存并发率</string>
+    <string name="cache_rate_desc">并发限制，单位ms，可填写两种格式\n不填写默认无限制，建议填写 1500以上（访问间隔1.5s以上）\n20/60000（60s内访问次数20）</string>
+    <string name="cache_rate_hint">如 1500 或 20/60000</string>
+    <string name="cache_rate_invalid">格式不正确，请填写纯数字（如 1500）或次数/毫秒（如 20/60000）</string>
     <string name="sort_url">分类 URL（sortUrl）</string>
     <string name="login_url">登录 URL(loginUrl)</string>
     <string name="login_ui">登录 UI（loginUi）</string>

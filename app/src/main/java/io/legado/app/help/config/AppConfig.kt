@@ -379,6 +379,20 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefInt(PreferKey.threadCount, value)
         }
 
+    /**
+     * 缓存并发率，格式与书源 concurrentRate 一致：
+     * null/空 = 不限制，"1500" = 间隔1500ms，"20/60000" = 60s内最多20次
+     */
+    var cacheConcurrentRate: String?
+        get() = appCtx.getPrefString(PreferKey.cacheConcurrentRate)
+        set(value) {
+            if (value.isNullOrBlank()) {
+                appCtx.removePref(PreferKey.cacheConcurrentRate)
+            } else {
+                appCtx.putPrefString(PreferKey.cacheConcurrentRate, value)
+            }
+        }
+
     var verboseUpdateLog: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.verboseUpdateLog, false)
         set(value) {

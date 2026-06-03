@@ -13,6 +13,7 @@ import io.legado.app.constant.NotificationId
 import io.legado.app.constant.ReadConstants
 import io.legado.app.data.appDb
 import io.legado.app.help.book.update
+import io.legado.app.help.ConcurrentRateLimiter
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.CacheBook
 import io.legado.app.model.webBook.WebBook
@@ -48,6 +49,10 @@ class CacheBookService : BaseService() {
     private var downloadJob: Job? = null
     private var notificationContent = appCtx.getString(R.string.service_starting)
     private var mutex = Mutex()
+    /**
+     * 已注入缓存并发率的书源 key 列表，用于去重和恢复
+     */
+    private val sourceKeyOrder = mutableListOf<String>()
     private val notificationBuilder by lazy {
         val builder = NotificationCompat.Builder(this, AppConst.channelIdDownload)
             .setSmallIcon(R.drawable.ic_download)
@@ -94,6 +99,7 @@ class CacheBookService : BaseService() {
 
     override fun onDestroy() {
         isRun = false
+        restoreAllRates()
         cachePool.close()
         CacheBook.close()
         super.onDestroy()
@@ -104,6 +110,9 @@ class CacheBookService : BaseService() {
         bookUrl ?: return
         execute {
             val cacheBook = CacheBook.getOrCreate(bookUrl) ?: return@execute
+            // getOrCreate 内部的 updateBookSource 会用数据库副本覆盖所有同源模型的 bookSource，
+            // 因此必须在调用后立即重新注入缓存并发率
+            applyRateToAll()
             val chapterCount = appDb.bookChapterDao.getChapterCount(bookUrl)
             val book = cacheBook.book
             AppLog.put("📥开始缓存《${book.name}》章节范围:$start-$end")
@@ -163,11 +172,55 @@ class CacheBookService : BaseService() {
         }
     }
 
+    /**
+     * 将用户缓存并发率注入所有待缓存书籍的书源
+     * 取 effectiveRate(用户设置, 书源原有)，选择限制更严格的一方
+     * 同时更新 BookSource.concurrentRate 对象字段和 ConcurrentRateLimiter 的全局记录
+     */
+    private fun applyRateToAll() {
+        val userRate = AppConfig.cacheConcurrentRate
+        if (userRate.isNullOrBlank()) return
+        CacheBook.cacheBookMap.values.forEach { model ->
+            val source = model.bookSource
+            val key = source.bookSourceUrl
+            if (key !in sourceKeyOrder) {
+                sourceKeyOrder.add(key)
+            }
+            val effective = ConcurrentRateLimiter.effectiveRate(
+                userRate,
+                source.concurrentRate
+            )
+            if (effective != null && effective != source.concurrentRate) {
+                source.concurrentRate = effective
+                ConcurrentRateLimiter.updateConcurrentRate(key, effective)
+            }
+        }
+    }
+
+    /**
+     * 清理注入痕迹，恢复所有被修改书源的并发率记录
+     * 清除 ConcurrentRateLimiter.concurrentRecordMap 中对应 key 的条目
+     */
+    private fun restoreAllRates() {
+        CacheBook.cacheBookMap.values.forEach { model ->
+            val key = model.bookSource.bookSourceUrl
+            ConcurrentRateLimiter.concurrentRecordMap.remove(key)
+        }
+        sourceKeyOrder.clear()
+    }
+
+    /**
+     * 启动缓存下载任务
+     * 注入缓存并发率 → 启动 startProcessJob → 完成后恢复原始并发率
+     */
     private fun download() {
+        sourceKeyOrder.clear()
+        applyRateToAll()
         downloadJob?.cancel()
         downloadJob = lifecycleScope.launch(cachePool) {
             CacheBook.startProcessJob(cachePool)
             AppLog.put("缓存任务全部完成")
+            restoreAllRates()
             stopSelf()
         }
     }
