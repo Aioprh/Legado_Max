@@ -4,10 +4,12 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,6 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -557,6 +561,57 @@ fun HistoryCard(
     onCopy: () -> Unit
 ) {
     val history = historyWithRule.toUploadHistory()
+    var showFullFileNameDialog by remember { mutableStateOf(false) }
+    var showFullRuleSummaryDialog by remember { mutableStateOf(false) }
+
+    if (showFullFileNameDialog) {
+        AlertDialog(
+            onDismissRequest = { showFullFileNameDialog = false },
+            shape = RectangleShape,
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            title = { Text("完整名称") },
+            text = {
+                SelectionContainer {
+                    Text(
+                        text = history.fileName,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFullFileNameDialog = false }) {
+                    Text("确定")
+                }
+            }
+        )
+    }
+
+    if (showFullRuleSummaryDialog) {
+        AlertDialog(
+            onDismissRequest = { showFullRuleSummaryDialog = false },
+            shape = RectangleShape,
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            title = { Text("完整规则") },
+            text = {
+                SelectionContainer {
+                    Text(
+                        text = history.ruleSummary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFullRuleSummaryDialog = false }) {
+                    Text("确定")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -574,7 +629,13 @@ fun HistoryCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .pointerInput(history.fileName) {
+                            detectTapGestures(
+                                onLongPress = { showFullFileNameDialog = true }
+                            )
+                        }
                 ) {
                     Icon(
                         imageVector = if (history.success) Icons.Default.CheckCircle 
@@ -590,7 +651,8 @@ fun HistoryCard(
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
                 }
                 
@@ -599,7 +661,12 @@ fun HistoryCard(
                     if (displayRuleSummary.isNotBlank()) {
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = MaterialTheme.shapes.small
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier.pointerInput(history.ruleSummary) {
+                                detectTapGestures(
+                                    onLongPress = { showFullRuleSummaryDialog = true }
+                                )
+                            }
                         ) {
                             Text(
                                 text = displayRuleSummary,
