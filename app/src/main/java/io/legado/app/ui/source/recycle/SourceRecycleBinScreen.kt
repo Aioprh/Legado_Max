@@ -1,5 +1,6 @@
 package io.legado.app.ui.source.recycle
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
@@ -18,13 +19,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RestoreFromTrash
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,6 +40,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -89,9 +94,24 @@ fun SourceRecycleBinScreen(
     var showBatchConflictDialog by remember { mutableStateOf(false) }
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
+    var showSearch by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val filterLabel = stringResource(filter.labelRes)
-    val selectedItems = remember(items, selectedIds) {
-        items.filter { it.id in selectedIds }
+    val displayedItems = remember(items, searchQuery) {
+        val query = searchQuery.trim()
+        if (query.isEmpty()) {
+            items
+        } else {
+            items.filter { item ->
+                item.name.contains(query, ignoreCase = true) ||
+                    item.key.contains(query, ignoreCase = true) ||
+                    item.groupName.orEmpty().contains(query, ignoreCase = true) ||
+                    item.payload.contains(query, ignoreCase = true)
+            }
+        }
+    }
+    val selectedItems = remember(displayedItems, selectedIds) {
+        displayedItems.filter { it.id in selectedIds }
     }
     val isSelectionMode = selectedIds.isNotEmpty()
 
@@ -231,18 +251,18 @@ fun SourceRecycleBinScreen(
                             ) {
                                 SourceRecycleDropdownMenuItem(
                                     text = stringResource(
-                                        if (selectedIds.size == items.size) {
+                                        if (selectedIds.size == displayedItems.size) {
                                             R.string.un_select_all
                                         } else {
                                             R.string.select_all
                                         }
                                     ),
-                                    selected = selectedIds.size == items.size,
+                                    selected = selectedIds.size == displayedItems.size,
                                     onClick = {
-                                        selectedIds = if (selectedIds.size == items.size) {
+                                        selectedIds = if (selectedIds.size == displayedItems.size) {
                                             emptySet()
                                         } else {
-                                            items.mapTo(linkedSetOf()) { it.id }
+                                            displayedItems.mapTo(linkedSetOf()) { it.id }
                                         }
                                         actionMenuExpanded = false
                                     }
@@ -250,6 +270,19 @@ fun SourceRecycleBinScreen(
                             }
                         }
                     } else {
+                        IconButton(
+                            onClick = {
+                                showSearch = !showSearch
+                                if (!showSearch) {
+                                    searchQuery = ""
+                                }
+                            }
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = stringResource(R.string.search)
+                            )
+                        }
                         Box {
                             IconButton(onClick = { filterMenuExpanded = true }) {
                                 Icon(
@@ -300,9 +333,9 @@ fun SourceRecycleBinScreen(
                                 )
                                 SourceRecycleDropdownMenuItem(
                                     text = stringResource(R.string.select_all),
-                                    enabled = items.isNotEmpty(),
+                                    enabled = displayedItems.isNotEmpty(),
                                     onClick = {
-                                        selectedIds = items.mapTo(linkedSetOf()) { it.id }
+                                        selectedIds = displayedItems.mapTo(linkedSetOf()) { it.id }
                                         actionMenuExpanded = false
                                     }
                                 )
@@ -328,57 +361,94 @@ fun SourceRecycleBinScreen(
             )
         }
     ) { paddingValues ->
-        if (items.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(R.string.source_recycle_bin_empty),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = secondaryTextColor
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            AnimatedVisibility(visible = showSearch && !isSelectionMode) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    placeholder = { Text(stringResource(R.string.search)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = stringResource(R.string.clear)
+                                )
+                            }
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        disabledContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    singleLine = true
                 )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.padding(paddingValues),
-                contentPadding = PaddingValues(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(items, key = { it.id }) { item ->
-                    val selected = item.id in selectedIds
-                    SourceRecycleBinItem(
-                        item = item,
-                        selected = selected,
-                        secondaryTextColor = secondaryTextColor,
-                        menuExpanded = itemMenuExpanded == item.id,
-                        onToggleSelected = {
-                            itemMenuExpanded = null
-                            selectedIds = selectedIds.toMutableSet().apply {
-                                if (!add(item.id)) remove(item.id)
-                            }
-                        },
-                        onMenuOpen = { itemMenuExpanded = item.id },
-                        onMenuDismiss = { itemMenuExpanded = null },
-                        onRestoreClick = {
-                            itemMenuExpanded = null
-                            viewModel.checkConflict(item) { hasConflict ->
-                                if (hasConflict) {
-                                    conflictTarget = item
-                                } else {
-                                    restoreTarget = item
-                                }
-                            }
-                        },
-                        onDeleteClick = {
-                            itemMenuExpanded = null
-                            deleteTarget = item
-                        }
+
+            if (displayedItems.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.source_recycle_bin_empty),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = secondaryTextColor
                     )
                 }
-                item { Spacer(modifier = Modifier.height(16.dp)) }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(displayedItems, key = { it.id }) { item ->
+                        val selected = item.id in selectedIds
+                        SourceRecycleBinItem(
+                            item = item,
+                            selected = selected,
+                            secondaryTextColor = secondaryTextColor,
+                            menuExpanded = itemMenuExpanded == item.id,
+                            onToggleSelected = {
+                                itemMenuExpanded = null
+                                selectedIds = selectedIds.toMutableSet().apply {
+                                    if (!add(item.id)) remove(item.id)
+                                }
+                            },
+                            onMenuOpen = { itemMenuExpanded = item.id },
+                            onMenuDismiss = { itemMenuExpanded = null },
+                            onRestoreClick = {
+                                itemMenuExpanded = null
+                                viewModel.checkConflict(item) { hasConflict ->
+                                    if (hasConflict) {
+                                        conflictTarget = item
+                                    } else {
+                                        restoreTarget = item
+                                    }
+                                }
+                            },
+                            onDeleteClick = {
+                                itemMenuExpanded = null
+                                deleteTarget = item
+                            }
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
+                }
             }
         }
     }
