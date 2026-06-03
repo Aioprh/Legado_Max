@@ -99,6 +99,7 @@ object BackupInfoHelper {
         "runtimeSourceCache.json" to "书源运行数据",
         "book_cache" to "书籍缓存",
         "bookCacheIndex.json" to "书籍缓存索引",
+        "bookCacheBooks.json" to "书籍缓存书架信息",
         "bookChapterCache.json" to "书籍章节目录",
         ReadBookConfig.configFileName to "阅读样式配置",
         ReadBookConfig.shareConfigFileName to "共享阅读配置",
@@ -201,6 +202,7 @@ object BackupInfoHelper {
         addItem("book_cache", bookCacheSize)
         addItem("bookChapterCache.json", chapterCount * 200L)
         addItem("bookCacheIndex.json", selectedBooks.size * 300L)
+        addItem("bookCacheBooks.json", selectedBooks.size * 500L)
     }
 
     private fun addConfigItems(addItem: (String, Long) -> Unit) {
@@ -242,6 +244,7 @@ object BackupInfoHelper {
         return when (fileName) {
             "book_cache",
             "bookChapterCache.json",
+            "bookCacheBooks.json",
             "bookCacheIndex.json" -> BackupSelectorConfig.isSelected("bookCache")
 
             "backgroundImages" -> BackupSelectorConfig.isSelected("backgroundImages")
@@ -262,6 +265,7 @@ object BackupInfoHelper {
 
             "book_cache",
             "bookChapterCache.json",
+            "bookCacheBooks.json",
             "bookCacheIndex.json" -> !BackupConfig.ignoreBookCache
 
             else -> true

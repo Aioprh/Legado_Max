@@ -170,9 +170,9 @@ class BookCacheSelectorViewModel(application: Application) : BaseViewModel(appli
 
             try {
                 val bookCacheIndexList = mutableListOf<BookCacheIndex>()
+                val bookCacheBooks = mutableListOf<Book>()
                 val allChapters = mutableListOf<BookChapter>()
                 val zipSources = mutableListOf<File>()
-
                 // book_cache 子目录
                 val tempCacheDir = File(tempDir, "book_cache").createFolderIfNotExist()
 
@@ -213,17 +213,24 @@ class BookCacheSelectorViewModel(application: Application) : BaseViewModel(appli
                         val targetBookDir = File(tempCacheDir, folderName)
                             .createFolderIfNotExist()
                         bookFolder.copyRecursively(targetBookDir, overwrite = true)
-                        zipSources.add(targetBookDir)
+                        bookCacheBooks.add(book)
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
                 }
 
                 // 写索引文件到临时目录
+                if (tempCacheDir.exists()) {
+                    zipSources.add(tempCacheDir)
+                }
+
                 if (bookCacheIndexList.isNotEmpty()) {
                     val indexFile = File(tempDir, "bookCacheIndex.json")
                     indexFile.writeText(GSON.toJson(bookCacheIndexList))
                     zipSources.add(indexFile)
+                    val booksFile = File(tempDir, "bookCacheBooks.json")
+                    booksFile.writeText(GSON.toJson(bookCacheBooks))
+                    zipSources.add(booksFile)
                 }
                 if (allChapters.isNotEmpty()) {
                     val chapterFile = File(tempDir, "bookChapterCache.json")
