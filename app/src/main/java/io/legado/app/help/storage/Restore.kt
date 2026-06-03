@@ -8,6 +8,7 @@ import androidx.documentfile.provider.DocumentFile
 import io.legado.app.BuildConfig
 import io.legado.app.R
 import io.legado.app.constant.AppLog
+import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
@@ -104,6 +105,7 @@ object Restore {
     private const val runtimeSourceCacheFileName = "runtimeSourceCache.json"
     private const val bookCacheFolderName = "book_cache"
     private const val bookCacheIndexFileName = "bookCacheIndex.json"
+    private const val bookCacheBooksFileName = "bookCacheBooks.json"
 
     /** 互斥锁，防止并发恢复操作 */
     private val mutex = Mutex()
@@ -509,7 +511,12 @@ object Restore {
         }
 
         // 恢复书籍缓存和章节目录
-        if (bookCacheIndexFileName in selectedSet || "bookChapterCache.json" in selectedSet) {
+        if (
+            bookCacheFolderName in selectedSet ||
+            bookCacheIndexFileName in selectedSet ||
+            bookCacheBooksFileName in selectedSet ||
+            "bookChapterCache.json" in selectedSet
+        ) {
             progress(bookCacheFolderName)
             restoreBookCache(path)
         }
@@ -1266,8 +1273,6 @@ object Restore {
         }
         
         // 先恢复章节目录
-        restoreBookChapterCache(path)
-        
         val indexFile = File(path, bookCacheIndexFileName)
         if (!indexFile.exists()) {
             LogUtils.d(TAG, "书籍缓存索引文件不存在")
@@ -1286,8 +1291,11 @@ object Restore {
             return
         }
         
-        val backupCacheDir = File(path, bookCacheFolderName)
-        if (!backupCacheDir.exists()) {
+        restoreBookCacheBooks(path, cacheIndexList)
+        restoreBookChapterCache(path)
+
+        val backupCacheDir = resolveBackupCacheDir(path, cacheIndexList)
+        if (backupCacheDir == null) {
             LogUtils.d(TAG, "备份缓存目录不存在")
             return
         }
@@ -1370,6 +1378,93 @@ object Restore {
      * 
      * @param path 备份文件解压后的目录路径
      */
+    private fun restoreBookCacheBooks(path: String, cacheIndexList: List<BookCacheIndex>) {
+        ensureDefaultBookGroups()
+        val backupBooks = fileToListT<Book>(path, bookCacheBooksFileName).orEmpty()
+        val books = backupBooks.ifEmpty {
+            cacheIndexList.map {
+                Book(
+                    bookUrl = it.bookUrl,
+                    name = it.bookName,
+                    author = it.author,
+                    originName = it.bookName
+                )
+            }
+        }
+        if (books.isEmpty()) return
+
+        val localBooks = appDb.bookDao.all
+        val missingBooks = books
+            .filter { book ->
+                findMatchingBook(
+                    BookCacheIndex(
+                        bookUrl = book.bookUrl,
+                        bookName = book.name,
+                        author = book.author,
+                        folderName = book.getFolderNameNoCache()
+                    ),
+                    localBooks
+                ) == null
+            }
+            .map { book ->
+                book.copy(
+                    group = 0,
+                    type = book.type and BookType.notShelf.inv()
+                )
+            }
+        if (missingBooks.isNotEmpty()) {
+            appDb.bookDao.insert(*missingBooks.toTypedArray())
+            LogUtils.d(TAG, "恢复书籍缓存书架信息: ${missingBooks.size}")
+        }
+    }
+
+    private fun ensureDefaultBookGroups() {
+        val defaults = arrayOf(
+            BookGroup(BookGroup.IdAll, appCtx.getString(R.string.all), order = -10, show = true),
+            BookGroup(
+                BookGroup.IdLocal,
+                appCtx.getString(R.string.local),
+                order = -9,
+                enableRefresh = false,
+                show = true
+            ),
+            BookGroup(BookGroup.IdAudio, appCtx.getString(R.string.audio), order = -8, show = true),
+            BookGroup(
+                BookGroup.IdNetNone,
+                appCtx.getString(R.string.net_no_group),
+                order = -7,
+                show = true
+            ),
+            BookGroup(
+                BookGroup.IdLocalNone,
+                appCtx.getString(R.string.local_no_group),
+                order = -6,
+                show = false
+            ),
+            BookGroup(BookGroup.IdVideo, appCtx.getString(R.string.video), order = -5, show = true),
+            BookGroup(
+                BookGroup.IdError,
+                appCtx.getString(R.string.update_book_fail),
+                order = -1,
+                show = true
+            )
+        ).filter { appDb.bookGroupDao.getByID(it.groupId) == null }
+
+        if (defaults.isNotEmpty()) {
+            appDb.bookGroupDao.insert(*defaults.toTypedArray())
+        }
+    }
+
+    private fun resolveBackupCacheDir(path: String, cacheIndexList: List<BookCacheIndex>): File? {
+        val cacheDir = File(path, bookCacheFolderName)
+        if (cacheDir.exists()) {
+            return cacheDir
+        }
+        return File(path).takeIf { rootDir ->
+            cacheIndexList.any { File(rootDir, it.folderName).exists() }
+        }
+    }
+
     private fun restoreBookChapterCache(path: String) {
         val chapterFile = File(path, "bookChapterCache.json")
         if (!chapterFile.exists()) {

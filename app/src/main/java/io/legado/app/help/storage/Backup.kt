@@ -47,6 +47,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
+import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.Cache
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookHelp
@@ -116,6 +117,7 @@ object Backup {
     private const val runtimeSourceCacheFileName = "runtimeSourceCache.json"
     private const val bookCacheFolderName = "book_cache"
     private const val bookCacheIndexFileName = "bookCacheIndex.json"
+    private const val bookCacheBooksFileName = "bookCacheBooks.json"
 
     /** 备份临时目录路径，用于存放解压/压缩前的文件 */
     val backupPath: String by lazy {
@@ -775,6 +777,7 @@ object Backup {
         }
         
         val bookCacheIndexList = mutableListOf<BookCacheIndex>()
+        val bookCacheBooks = mutableListOf<Book>()
         val targetCacheDir = File(rootPath, bookCacheFolderName).createFolderIfNotExist()
         
         selectedBooks.forEach { book ->
@@ -811,12 +814,15 @@ object Backup {
             
             val targetBookDir = File(targetCacheDir, folderName).createFolderIfNotExist()
             bookFolder.copyRecursively(targetBookDir, overwrite = true)
+            bookCacheBooks.add(book)
             LogUtils.d(TAG, "备份书籍缓存: ${book.name} -> $folderName, 章节数: ${chapterCacheInfos.size}")
         }
         
         if (bookCacheIndexList.isNotEmpty()) {
             val indexFile = File(rootPath, bookCacheIndexFileName)
             indexFile.writeText(GSON.toJson(bookCacheIndexList))
+            val booksFile = File(rootPath, bookCacheBooksFileName)
+            booksFile.writeText(GSON.toJson(bookCacheBooks))
             LogUtils.d(TAG, "书籍缓存索引已保存，共 ${bookCacheIndexList.size} 本书")
         }
     }
