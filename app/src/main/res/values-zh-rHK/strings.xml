@@ -1280,6 +1280,8 @@
     <string name="edit_json">編輯 JSON</string>
     <string name="enable_locate">開啟定位</string>
     <string name="enhanced_features">增強功能</string>
+    <string name="search_engine_rule">搜索引擎規則</string>
+    <string name="filter">篩選</string>
     <string name="filter_by_domain">按域名篩選</string>
     <string name="float_window">懸浮窗</string>
     <string name="format_code">格式化</string>

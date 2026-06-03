@@ -671,6 +671,7 @@
     <string name="source_recycle_bin_restored">Restored</string>
     <string name="source_recycle_bin_deleted">Deleted</string>
     <string name="source_recycle_bin_cleared">Recycle bin cleared</string>
+    <string name="search_engine_rule">Search engine rule</string>
     <string name="filter">Filter</string>
     <string name="overwrite">Overwrite</string>
     <string name="delete_forever">Delete forever</string>

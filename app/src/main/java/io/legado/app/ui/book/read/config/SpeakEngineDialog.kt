@@ -22,6 +22,7 @@ import io.legado.app.databinding.DialogRecyclerViewBinding
 import io.legado.app.databinding.ItemHttpTtsBinding
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.source.SourceRecycleBinHelp
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
@@ -329,6 +330,7 @@ class SpeakEngineDialog() : BaseDialogFragment(R.layout.dialog_recycler_view),
                             setMessage(getString(R.string.sure_del) + "\n" + httpTTS.name)
                             noButton()
                             yesButton {
+                                SourceRecycleBinHelp.recycleHttpTtsRules(listOf(httpTTS))
                                 appDb.httpTTSDao.delete(httpTTS)
                             }
                         }

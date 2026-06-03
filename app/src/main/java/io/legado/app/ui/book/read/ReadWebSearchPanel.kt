@@ -35,6 +35,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import io.legado.app.R
+import io.legado.app.help.source.SourceRecycleBinHelp
 import io.legado.app.help.webView.PooledWebView
 import io.legado.app.help.webView.WebViewPool
 import io.legado.app.lib.theme.accentColor
@@ -517,6 +518,9 @@ class ReadWebSearchPanel @JvmOverloads constructor(
                 .setTitle("删除搜索引擎")
                 .setMessage("确认删除“$engineTitle”？")
                 .setPositiveButton(R.string.delete) { _, _ ->
+                    engines.getOrNull(index)?.let {
+                        SourceRecycleBinHelp.recycleSearchEngines(listOf(it))
+                    }
                     engines = engines.toMutableList().apply {
                         if (index in indices) {
                             removeAt(index)
@@ -641,6 +645,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
                     if (position !in items.indices) {
                         return@setPositiveButton
                     }
+                    SourceRecycleBinHelp.recycleSearchEngines(listOf(engine))
                     items.removeAt(position)
                     engines = items.toList()
                     selectedEngineIndex = selectedEngineIndex.coerceIn(0, (engines.size - 1).coerceAtLeast(0))
@@ -784,7 +789,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             return listOf(BING_TEMPLATE, BAIDU_TEMPLATE)
         }
 
-        private fun loadEngines(context: Context): List<SearchEngine> {
+        fun loadSearchEngines(context: Context): List<SearchEngine> {
             val stored = context.getPrefString(ENGINE_PREF_KEY)
             val engines = GSON.fromJsonArray<SearchEngine>(stored).getOrNull()
                 ?.filter { it.title.isNotBlank() && it.url.contains(QUERY_PLACEHOLDER) }
@@ -792,8 +797,16 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             return engines.ifEmpty { defaultEngines() }
         }
 
-        private fun saveEngines(context: Context, engines: List<SearchEngine>) {
+        fun saveSearchEngines(context: Context, engines: List<SearchEngine>) {
             context.putPrefString(ENGINE_PREF_KEY, GSON.toJson(engines))
+        }
+
+        private fun loadEngines(context: Context): List<SearchEngine> {
+            return loadSearchEngines(context)
+        }
+
+        private fun saveEngines(context: Context, engines: List<SearchEngine>) {
+            saveSearchEngines(context, engines)
         }
 
         private fun defaultEngineIndex(context: Context, engines: List<SearchEngine>): Int {

@@ -779,6 +779,11 @@ private fun typeLabel(type: String): String {
         SourceRecycleBinHelp.TYPE_BOOK_SOURCE -> stringResource(R.string.book_source)
         SourceRecycleBinHelp.TYPE_RSS_SOURCE -> stringResource(R.string.rss_source)
         SourceRecycleBinHelp.TYPE_REPLACE_RULE -> stringResource(R.string.replace_rule)
+        SourceRecycleBinHelp.TYPE_TXT_TOC_RULE -> stringResource(R.string.txt_toc_rule)
+        SourceRecycleBinHelp.TYPE_HTTP_TTS -> stringResource(R.string.speak_engine)
+        SourceRecycleBinHelp.TYPE_DICT_RULE -> stringResource(R.string.dict_rule)
+        SourceRecycleBinHelp.TYPE_HIGHLIGHT_RULE -> stringResource(R.string.highlight_rule_config)
+        SourceRecycleBinHelp.TYPE_SEARCH_ENGINE -> stringResource(R.string.search_engine_rule)
         else -> type
     }
 }

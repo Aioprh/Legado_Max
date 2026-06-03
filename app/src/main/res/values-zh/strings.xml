@@ -668,6 +668,7 @@
     <string name="source_recycle_bin_restored">已恢复</string>
     <string name="source_recycle_bin_deleted">已彻底删除</string>
     <string name="source_recycle_bin_cleared">回收站已清空</string>
+    <string name="search_engine_rule">搜索引擎规则</string>
     <string name="filter">筛选</string>
     <string name="overwrite">覆盖</string>
     <string name="delete_forever">彻底删除</string>
