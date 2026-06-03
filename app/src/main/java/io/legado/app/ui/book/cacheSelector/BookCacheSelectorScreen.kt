@@ -34,10 +34,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.legado.app.R
 import io.legado.app.ui.book.cacheSelector.components.BookCacheItemCard
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
@@ -71,7 +73,7 @@ fun BookCacheSelectorScreen(
                 ),
                 title = {
                     Text(
-                        text = "书籍缓存选择",
+                        text = stringResource(R.string.bcs_title),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Medium
@@ -80,7 +82,7 @@ fun BookCacheSelectorScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -92,7 +94,7 @@ fun BookCacheSelectorScreen(
                         }
                     }) {
                         Text(
-                            text = if (viewModel.isAllSelected()) "取消全选" else "全选",
+                            text = if (viewModel.isAllSelected()) stringResource(R.string.bcs_deselect_all) else stringResource(R.string.select_all),
                             color = MaterialTheme.colorScheme.onSecondary
                         )
                     }
@@ -116,14 +118,14 @@ fun BookCacheSelectorScreen(
                         modifier = Modifier.weight(1f),
                         enabled = selectedCount > 0
                     ) {
-                        Text("保存选择")
+                        Text(stringResource(R.string.bcs_save_selection))
                     }
                     OutlinedButton(
                         onClick = onExportClick,
                         modifier = Modifier.weight(1f),
                         enabled = selectedCount > 0
                     ) {
-                        Text("导出选中")
+                        Text(stringResource(R.string.bcs_export_selected))
                     }
                 }
             }
@@ -224,13 +226,13 @@ private fun SummaryBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "已选 ${selectedCount} 本",
+                text = stringResource(R.string.bcs_selected_count, selectedCount),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "总大小: ${ConvertUtils.formatFileSize(totalSize)}",
+                text = stringResource(R.string.bcs_total_size, ConvertUtils.formatFileSize(totalSize)),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary

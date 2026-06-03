@@ -1640,4 +1640,35 @@
     <!-- Date Format -->
     <string name="rr_date_format_md">M月d日</string>
     <string name="rr_date_format_md_weekday">M月d日 E</string>
+
+    <!-- Book Cache Selector -->
+    <string name="bcs_title">书籍缓存选择</string>
+    <string name="bcs_save_selection">保存选择</string>
+    <string name="bcs_export_selected">导出选中</string>
+    <string name="bcs_selected_count">已选 %d 本</string>
+    <string name="bcs_total_size">总大小: %s</string>
+    <string name="bcs_deselect_all">取消全选</string>
+
+    <!-- File Validation Dialog -->
+    <string name="fvd_title">选择要恢复的文件</string>
+    <string name="fvd_detect_format">检测格式</string>
+    <string name="fvd_select_all">全选</string>
+    <string name="fvd_deselect_all">全不选</string>
+    <string name="fvd_valid">有效</string>
+    <string name="fvd_invalid">无效</string>
+    <string name="fvd_validating">验证中</string>
+    <string name="fvd_view_details">查看详情</string>
+    <string name="fvd_missing_fields">缺少字段: %s</string>
+    <string name="fvd_can_restore">可以正常恢复</string>
+    <string name="fvd_cannot_restore">无法恢复</string>
+    <string name="fvd_reading_backup">读取备份文件...</string>
+    <string name="fvd_backup_empty">备份文件中没有可恢复的内容</string>
+    <string name="fvd_format_detect_error">格式检测出错: %s</string>
+    <string name="fvd_select_at_least_one">请至少选择一个文件</string>
+    <string name="fvd_restoring">正在恢复...</string>
+    <string name="fvd_downloading">下载备份文件...</string>
+    <string name="fvd_read_backup_error">读取备份文件出错\n%s</string>
+    <string name="fvd_webdav_error">WebDavError\n%s\n将从本地备份恢复。</string>
+    <string name="fvd_jianguoyun_limit">由于坚果云限制列出文件数量，部分备份可能未显示，请及时清理旧备份</string>
+    <string name="fvd_webdav_restore_error">WebDav恢复出错\n%s</string>
 </resources>

@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import io.legado.app.R
 import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.help.storage.ValidationResult
 import io.legado.app.help.storage.ValidationState
@@ -63,7 +65,7 @@ fun FileValidationDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "选择要恢复的文件",
+                            text = stringResource(R.string.fvd_title),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface,
@@ -76,7 +78,7 @@ fun FileValidationDialog(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("检测格式")
+                            Text(stringResource(R.string.fvd_detect_format))
                         }
                     }
                 }
@@ -114,25 +116,25 @@ fun FileValidationDialog(
                             files.forEach { checkedStates[it.fileName] = true }
                         }
                     ) {
-                        Text("全选")
+                        Text(stringResource(R.string.fvd_select_all))
                     }
                     TextButton(
                         onClick = {
                             files.forEach { checkedStates[it.fileName] = false }
                         }
                     ) {
-                        Text("全不选")
+                        Text(stringResource(R.string.fvd_deselect_all))
                     }
                     Spacer(modifier = Modifier.weight(1f))
                     TextButton(onClick = onDismiss) {
-                        Text("取消", color = MaterialTheme.colorScheme.primary)
+                        Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.primary)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = {
                         val selectedFiles = files.filter { checkedStates[it.fileName] == true }.map { it.fileName }
                         onConfirm(selectedFiles)
                     }) {
-                        Text("确定")
+                        Text(stringResource(R.string.ok))
                     }
                 }
             }
@@ -176,7 +178,7 @@ private fun FileValidationItem(
             ValidationState.VALID -> {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "有效",
+                    contentDescription = stringResource(R.string.fvd_valid),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
@@ -188,14 +190,14 @@ private fun FileValidationItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Help,
-                        contentDescription = "查看详情",
+                        contentDescription = stringResource(R.string.fvd_view_details),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(20.dp)
                     )
                 }
                 Icon(
                     imageVector = Icons.Default.Error,
-                    contentDescription = "无效",
+                    contentDescription = stringResource(R.string.fvd_invalid),
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(24.dp)
                 )
@@ -203,7 +205,7 @@ private fun FileValidationItem(
             ValidationState.VALIDATING -> {
                 Icon(
                     imageVector = Icons.Default.HourglassEmpty,
-                    contentDescription = "验证中",
+                    contentDescription = stringResource(R.string.fvd_validating),
                     tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(24.dp)
                 )
@@ -224,7 +226,7 @@ fun ValidationErrorDetailDialog(
             append("\n\n${result.details}")
         }
         if (result.missingFields.isNotEmpty()) {
-            append("\n\n缺少字段: ${result.missingFields.joinToString(", ")}")
+            append("\n\n${stringResource(R.string.fvd_missing_fields, result.missingFields.joinToString(", "))}")
         }
         append("\n\n")
         withStyle(SpanStyle(color = androidx.compose.ui.graphics.Color.Unspecified)) {
@@ -235,9 +237,9 @@ fun ValidationErrorDetailDialog(
             }
         }
         if (result.canRestore) {
-            append("可以正常恢复")
+            append(stringResource(R.string.fvd_can_restore))
         } else {
-            append("无法恢复")
+            append(stringResource(R.string.fvd_cannot_restore))
         }
     }
 
@@ -253,7 +255,7 @@ fun ValidationErrorDetailDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("确定", color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(R.string.ok), color = MaterialTheme.colorScheme.primary)
             }
         }
     )

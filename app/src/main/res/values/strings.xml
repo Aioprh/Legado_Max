@@ -1831,4 +1831,35 @@
     <!-- Date Format -->
     <string name="rr_date_format_md">M/d</string>
     <string name="rr_date_format_md_weekday">M/d E</string>
+
+    <!-- Book Cache Selector -->
+    <string name="bcs_title">Book Cache Selector</string>
+    <string name="bcs_save_selection">Save Selection</string>
+    <string name="bcs_export_selected">Export Selected</string>
+    <string name="bcs_selected_count">Selected %d books</string>
+    <string name="bcs_total_size">Total size: %s</string>
+    <string name="bcs_deselect_all">Deselect All</string>
+
+    <!-- File Validation Dialog -->
+    <string name="fvd_title">Select Files to Restore</string>
+    <string name="fvd_detect_format">Detect Format</string>
+    <string name="fvd_select_all">Select All</string>
+    <string name="fvd_deselect_all">Deselect All</string>
+    <string name="fvd_valid">Valid</string>
+    <string name="fvd_invalid">Invalid</string>
+    <string name="fvd_validating">Validating</string>
+    <string name="fvd_view_details">View Details</string>
+    <string name="fvd_missing_fields">Missing fields: %s</string>
+    <string name="fvd_can_restore">Can be restored normally</string>
+    <string name="fvd_cannot_restore">Cannot be restored</string>
+    <string name="fvd_reading_backup">Reading backup file...</string>
+    <string name="fvd_backup_empty">No recoverable content in backup file</string>
+    <string name="fvd_format_detect_error">Format detection error: %s</string>
+    <string name="fvd_select_at_least_one">Please select at least one file</string>
+    <string name="fvd_restoring">Restoring...</string>
+    <string name="fvd_downloading">Downloading backup file...</string>
+    <string name="fvd_read_backup_error">Error reading backup file\n%s</string>
+    <string name="fvd_webdav_error">WebDavError\n%s\nWill restore from local backup.</string>
+    <string name="fvd_jianguoyun_limit">Due to Jianguoyun limit on listing files, some backups may not be displayed, please clean up old backups in time</string>
+    <string name="fvd_webdav_restore_error">WebDav restore error\n%s</string>
 </resources>

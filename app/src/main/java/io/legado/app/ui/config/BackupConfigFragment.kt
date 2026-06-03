@@ -118,11 +118,11 @@ class BackupConfigFragment : PreferenceFragment(),
             if (AppConfig.restoreShowSelector) {
                 showRestoreFileSelector(uri)
             } else {
-                waitDialog.setText("正在恢复…")
+                waitDialog.setText(getString(R.string.fvd_restoring))
                 waitDialog.show()
                 val task = Coroutine.async {
                     Restore.restore(appCtx, uri) { itemName ->
-                        updateWaitDialog("正在恢复", itemName)
+                        updateWaitDialog(getString(R.string.restore), itemName)
                     }
                 }.onFinally {
                     waitDialog.dismiss()
@@ -376,7 +376,7 @@ class BackupConfigFragment : PreferenceFragment(),
     }
 
     private fun backup(backupPath: String) {
-        waitDialog.setText("正在备份…")
+        waitDialog.setText(getString(R.string.fvd_restoring))
         waitDialog.setOnCancelListener {
             backupJob?.cancel()
         }
@@ -385,7 +385,7 @@ class BackupConfigFragment : PreferenceFragment(),
         backupJob = lifecycleScope.launch {
             try {
                 Backup.backupLocked(requireContext(), backupPath) { itemName ->
-                    updateWaitDialog("正在备份", itemName)
+                    updateWaitDialog(getString(R.string.backup), itemName)
                 }
                 appCtx.toastOnUi(R.string.backup_success)
             } catch (e: Throwable) {
@@ -430,7 +430,7 @@ class BackupConfigFragment : PreferenceFragment(),
             }
             alert {
                 setTitle(R.string.restore)
-                setMessage("WebDavError\n${it.localizedMessage}\n将从本地备份恢复。")
+                setMessage(getString(R.string.fvd_webdav_error, it.localizedMessage))
                 okButton {
                     restoreFromLocal()
                 }
@@ -444,7 +444,7 @@ class BackupConfigFragment : PreferenceFragment(),
     private suspend fun showRestoreDialog(context: Context) {
         val names = withContext(IO) { AppWebDav.getBackupNames() }
         if (AppWebDav.isJianGuoYun && names.size > 700) {
-            context.toastOnUi("由于坚果云限制列出文件数量，部分备份可能未显示，请及时清理旧备份")
+            context.toastOnUi(getString(R.string.fvd_jianguoyun_limit))
         }
         if (names.isNotEmpty()) {
             currentCoroutineContext().ensureActive()
@@ -466,7 +466,7 @@ class BackupConfigFragment : PreferenceFragment(),
     }
 
     private fun restoreWebDav(name: String) {
-        waitDialog.setText("下载备份文件...")
+        waitDialog.setText(getString(R.string.fvd_downloading))
         waitDialog.show()
         val task = Coroutine.async {
             AppWebDav.downloadAndUnzipBackup(name)
@@ -474,10 +474,10 @@ class BackupConfigFragment : PreferenceFragment(),
             if (AppConfig.restoreShowSelector) {
                 showRestoreSelectorFromPath(Backup.backupPath)
             } else {
-                waitDialog.setText("正在恢复…")
+                waitDialog.setText(getString(R.string.fvd_restoring))
                 val restoreTask = Coroutine.async {
                     Restore.restoreLocked(Backup.backupPath) { itemName ->
-                        updateWaitDialog("正在恢复", itemName)
+                        updateWaitDialog(getString(R.string.restore), itemName)
                     }
                 }.onFinally {
                     waitDialog.dismiss()
@@ -488,7 +488,7 @@ class BackupConfigFragment : PreferenceFragment(),
             }
         }.onError {
             AppLog.put("WebDav恢复出错\n${it.localizedMessage}", it)
-            appCtx.toastOnUi("WebDav恢复出错\n${it.localizedMessage}")
+            appCtx.toastOnUi(getString(R.string.fvd_webdav_restore_error, it.localizedMessage))
             waitDialog.dismiss()
         }
         waitDialog.setOnCancelListener {
@@ -509,7 +509,7 @@ class BackupConfigFragment : PreferenceFragment(),
      * 解压ZIP并列出文件供用户选择
      */
     private fun showRestoreFileSelector(uri: android.net.Uri) {
-        waitDialog.setText("读取备份文件...")
+        waitDialog.setText(getString(R.string.fvd_reading_backup))
         waitDialog.show()
 
         lifecycleScope.launch {
@@ -530,7 +530,7 @@ class BackupConfigFragment : PreferenceFragment(),
             } catch (e: Exception) {
                 waitDialog.dismiss()
                 AppLog.put("读取备份文件出错\n${e.localizedMessage}", e)
-                appCtx.toastOnUi("读取备份文件出错\n${e.localizedMessage}")
+                appCtx.toastOnUi(getString(R.string.fvd_read_backup_error, e.localizedMessage))
             }
         }
     }
@@ -563,7 +563,7 @@ class BackupConfigFragment : PreferenceFragment(),
                 waitDialog.dismiss()
 
                 if (files.isEmpty()) {
-                    appCtx.toastOnUi("备份文件中没有可恢复的内容")
+                    appCtx.toastOnUi(getString(R.string.fvd_backup_empty))
                     return@launch
                 }
 
@@ -572,7 +572,7 @@ class BackupConfigFragment : PreferenceFragment(),
             } catch (e: Exception) {
                 waitDialog.dismiss()
                 AppLog.put("读取备份文件出错\n${e.localizedMessage}", e)
-                appCtx.toastOnUi("读取备份文件出错\n${e.localizedMessage}")
+                appCtx.toastOnUi(getString(R.string.fvd_read_backup_error, e.localizedMessage))
             }
         }
     }
@@ -612,24 +612,24 @@ class BackupConfigFragment : PreferenceFragment(),
                                             validationResults[fileName] = result
                                         }
                                     } catch (e: Exception) {
-                                        appCtx.toastOnUi("格式检测出错: ${e.message}")
+                                        appCtx.toastOnUi(getString(R.string.fvd_format_detect_error, e.message))
                                     }
                                 }
                             },
                             onConfirm = { selectedFiles ->
                                 if (selectedFiles.isEmpty()) {
-                                    appCtx.toastOnUi("请至少选择一个文件")
+                                    appCtx.toastOnUi(getString(R.string.fvd_select_at_least_one))
                                     return@FileValidationDialog
                                 }
                                 showDialog = false
                                 dismissComposeDialog()
                                 
                                 validationJob?.cancel()
-                                waitDialog.setText("正在恢复…")
+                                waitDialog.setText(getString(R.string.fvd_restoring))
                                 waitDialog.show()
                                 val task = Coroutine.async {
                                     Restore.restoreSelected(appCtx, backupPath, selectedFiles) { itemName ->
-                                        updateWaitDialog("正在恢复", itemName)
+                                        updateWaitDialog(getString(R.string.restore), itemName)
                                     }
                                 }.onFinally {
                                     waitDialog.dismiss()
