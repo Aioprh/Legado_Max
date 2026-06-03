@@ -1,3 +1,19 @@
+/**
+ * 直链上传配置界面
+ * 
+ * 该文件实现了直链上传功能的配置界面,包括:
+ * - 上传规则的管理(添加、编辑、删除、测试)
+ * - 上传历史的查看和管理
+ * - 规则的导入导出功能
+ * 
+ * 主要组件:
+ * - DirectLinkUploadScreen: 主界面,包含规则管理和上传历史两个标签页
+ * - RuleListTab: 规则列表标签页
+ * - HistoryListTab: 上传历史标签页
+ * - RuleCard: 单个规则卡片
+ * - HistoryCard: 单条历史记录卡片
+ * - RuleEditDialog: 规则编辑对话框
+ */
 package io.legado.app.ui.upload
 
 import android.content.ClipData
@@ -36,34 +52,51 @@ import io.legado.app.ui.upload.DirectLinkUploadViewModel.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * 直链上传配置主界面
+ * 
+ * 该 Composable 是直链上传功能的入口界面,提供:
+ * - 顶部应用栏,包含返回按钮、添加规则按钮和更多操作菜单
+ * - 标签页布局,切换规则管理和上传历史
+ * - 各种对话框(添加/编辑规则、清除历史、导入默认规则、测试结果)
+ * 
+ * @param viewModel 直链上传的 ViewModel,负责业务逻辑和状态管理
+ * @param onBackClick 返回按钮点击回调
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DirectLinkUploadScreen(
     viewModel: DirectLinkUploadViewModel = viewModel(),
     onBackClick: () -> Unit
 ) {
+    // 获取上下文和剪贴板管理器
     val context = LocalContext.current
     val clipboardManager = remember {
         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     }
     
-    val rules by viewModel.rules.collectAsState(initial = emptyList())
-    val histories by viewModel.histories.collectAsState(initial = emptyList())
-    val uiState by viewModel.uiState.collectAsState()
-    val uploadState by viewModel.uploadState.collectAsState()
+    // 从 ViewModel 收集状态
+    val rules by viewModel.rules.collectAsState(initial = emptyList())  // 上传规则列表
+    val histories by viewModel.histories.collectAsState(initial = emptyList())  // 上传历史列表
+    val uiState by viewModel.uiState.collectAsState()  // UI 状态
+    val uploadState by viewModel.uploadState.collectAsState()  // 上传/测试状态
     
-    var selectedTab by remember { mutableStateOf(0) }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var editingRule by remember { mutableStateOf<DirectLinkUploadRule?>(null) }
-    var showClearDialog by remember { mutableStateOf(false) }
-    var showImportDialog by remember { mutableStateOf(false) }
-    var testingRule by remember { mutableStateOf<DirectLinkUploadRule?>(null) }
-    var testResult by remember { mutableStateOf<String?>(null) }
+    // 本地 UI 状态
+    var selectedTab by remember { mutableStateOf(0) }  // 当前选中的标签页索引
+    var showAddDialog by remember { mutableStateOf(false) }  // 是否显示添加规则对话框
+    var editingRule by remember { mutableStateOf<DirectLinkUploadRule?>(null) }  // 正在编辑的规则
+    var showClearDialog by remember { mutableStateOf(false) }  // 是否显示清除历史确认对话框
+    var showImportDialog by remember { mutableStateOf(false) }  // 是否显示导入默认规则对话框
+    var testingRule by remember { mutableStateOf<DirectLinkUploadRule?>(null) }  // 正在测试的规则
+    var testResult by remember { mutableStateOf<String?>(null) }  // 测试结果
     
+    // 标签页标题
     val tabs = listOf("规则管理", "上传历史")
     
+    // 主界面布局
     Scaffold(
         containerColor = Color.Transparent,
+        // 顶部应用栏
         topBar = {
             TopAppBar(
                 title = {
@@ -72,6 +105,7 @@ fun DirectLinkUploadScreen(
                         style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.Medium)
                     )
                 },
+                // 顶部栏颜色配置
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.secondary,
                     scrolledContainerColor = MaterialTheme.colorScheme.secondary,
@@ -79,24 +113,30 @@ fun DirectLinkUploadScreen(
                     titleContentColor = MaterialTheme.colorScheme.onSecondary,
                     actionIconContentColor = MaterialTheme.colorScheme.onSecondary
                 ),
+                // 导航图标(返回按钮)
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
                     }
                 },
+                // 操作按钮区域
                 actions = {
+                    // 添加规则按钮
                     IconButton(onClick = { showAddDialog = true }) {
                         Icon(Icons.Default.Add, "添加规则")
                     }
+                    // 更多操作菜单
                     var showMenu by remember { mutableStateOf(false) }
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, "更多")
                     }
+                    // 下拉菜单
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
                         containerColor = MaterialTheme.colorScheme.surface
                     ) {
+                        // 粘贴规则选项
                         DropdownMenuItem(
                             text = { Text("粘贴规则") },
                             onClick = {
@@ -113,6 +153,7 @@ fun DirectLinkUploadScreen(
                                 Icon(Icons.Default.ContentPaste, null, tint = MaterialTheme.colorScheme.primary) 
                             }
                         )
+                        // 导入默认规则选项
                         DropdownMenuItem(
                             text = { Text("导入默认规则") },
                             onClick = { showImportDialog = true; showMenu = false },
@@ -121,6 +162,7 @@ fun DirectLinkUploadScreen(
                             }
                         )
                         HorizontalDivider()
+                        // 清除历史选项
                         DropdownMenuItem(
                             text = { Text("清除历史") },
                             onClick = { showClearDialog = true; showMenu = false },
@@ -133,7 +175,9 @@ fun DirectLinkUploadScreen(
             )
         }
     ) { paddingValues ->
+        // 主内容区域
         Column(modifier = Modifier.padding(paddingValues)) {
+            // 标签页布局
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -154,7 +198,9 @@ fun DirectLinkUploadScreen(
                 }
             }
             
+            // 根据选中的标签页显示不同内容
             when (selectedTab) {
+                // 规则管理标签页
                 0 -> RuleListTab(
                     rules = rules,
                     onEdit = { editingRule = it },
@@ -170,6 +216,7 @@ fun DirectLinkUploadScreen(
                         clipboardManager.setPrimaryClip(clip)
                     }
                 )
+                // 上传历史标签页
                 1 -> HistoryListTab(
                     histories = histories,
                     onDelete = { historyWithRule ->
