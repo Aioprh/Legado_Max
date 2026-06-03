@@ -33,17 +33,17 @@
         app:iconSpaceReserved="false" />
 
     <io.legado.app.lib.prefs.Preference
-        android:icon="@drawable/ic_folder_outline"
-        android:key="fileManage"
-        android:summary="@string/file_manage_summary"
-        android:title="@string/file_manage"
-        app:iconSpaceReserved="false" />
-
-    <io.legado.app.lib.prefs.Preference
         android:icon="@drawable/ic_outline_delete"
         android:key="sourceRecycleBin"
         android:summary="@string/source_recycle_bin_summary"
         android:title="@string/source_recycle_bin"
+        app:iconSpaceReserved="false" />
+
+    <io.legado.app.lib.prefs.Preference
+        android:icon="@drawable/ic_folder_outline"
+        android:key="fileManage"
+        android:summary="@string/file_manage_summary"
+        android:title="@string/file_manage"
         app:iconSpaceReserved="false" />
 
 </androidx.preference.PreferenceScreen>
