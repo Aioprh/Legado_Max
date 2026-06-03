@@ -132,6 +132,8 @@ class ReadMenu @JvmOverloads constructor(
                     binding.tvCustomBtn.visibility = VISIBLE
                 }
             }
+            // 立即从数据库获取章节名称和链接并显示，无需等待正文加载完成
+            upChapterInfo()
             callBack.upSystemUiVisibility()
             binding.llBrightness.visible(showBrightnessView)
         }
@@ -605,6 +607,34 @@ class ReadMenu @JvmOverloads constructor(
     private fun initAnimation() {
         menuTopIn.setAnimationListener(menuInListener)
         menuTopOut.setAnimationListener(menuOutListener)
+    }
+
+    /**
+     * 立即从数据库获取当前章节的标题和URL并显示
+     * 用于菜单显示时快速展示章节信息，无需等待正文内容加载完成
+     */
+    private fun upChapterInfo() {
+        val book = ReadBook.book ?: return
+        binding.titleBar.title = book.name
+        if (ReadBook.isLocalBook) {
+            binding.tvChapterName.gone()
+            binding.tvChapterUrl.gone()
+            return
+        }
+        Coroutine.async {
+            val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex)
+            post {
+                chapter?.let {
+                    binding.tvChapterName.text = it.title
+                    binding.tvChapterUrl.text = it.getAbsoluteURL()
+                    binding.tvChapterName.visible()
+                    binding.tvChapterUrl.visible()
+                } ?: run {
+                    binding.tvChapterName.gone()
+                    binding.tvChapterUrl.gone()
+                }
+            }
+        }
     }
 
     fun upBookView() {
