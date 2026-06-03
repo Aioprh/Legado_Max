@@ -563,22 +563,14 @@ private fun SourceRecycleBinItem(
     onRestoreClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-    val borderColor = if (selected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-    }
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, borderColor, MaterialTheme.shapes.medium)
             .clickable(onClick = onToggleSelected),
         colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
