@@ -10,6 +10,7 @@ import io.legado.app.ui.book.storage.StorageManageActivity
 import io.legado.app.ui.download.DownloadManageActivity
 import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.ui.module.ModuleStatusActivity
+import io.legado.app.ui.source.recycle.SourceRecycleBinActivity
 import io.legado.app.ui.urlRecord.UrlRecordActivity
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.startActivity
@@ -33,6 +34,7 @@ class PreciseManageFragment : PreferenceFragment() {
             "downloadManage" -> startActivity<DownloadManageActivity>()
             "moduleStatus" -> startActivity<ModuleStatusActivity>()
             "fileManage" -> startActivity<FileManageActivity>()
+            "sourceRecycleBin" -> startActivity<SourceRecycleBinActivity>()
         }
         return super.onPreferenceTreeClick(preference)
     }

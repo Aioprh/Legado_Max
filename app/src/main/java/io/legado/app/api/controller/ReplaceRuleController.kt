@@ -3,6 +3,7 @@ package io.legado.app.api.controller
 import io.legado.app.api.ReturnData
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.ReplaceRule
+import io.legado.app.help.source.SourceRecycleBinHelp
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.replace
@@ -42,7 +43,10 @@ object ReplaceRuleController {
         if (rule == null) {
             returnData.setErrorMsg("格式不对")
         } else {
-            appDb.replaceRuleDao.delete(rule)
+            appDb.runInTransaction {
+                SourceRecycleBinHelp.recycleReplaceRules(listOf(rule))
+                appDb.replaceRuleDao.delete(rule)
+            }
         }
         return returnData
     }

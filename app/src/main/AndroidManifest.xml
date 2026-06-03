@@ -376,6 +376,10 @@
             android:name=".ui.urlRecord.UrlRecordActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
+        <activity
+            android:name=".ui.source.recycle.SourceRecycleBinActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
         <!-- 书源检测 -->
         <activity
             android:name=".ui.book.source.check.CheckSourceActivity"

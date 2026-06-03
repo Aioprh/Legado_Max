@@ -5,6 +5,7 @@ import android.text.TextUtils
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.ReplaceRule
+import io.legado.app.help.source.SourceRecycleBinHelp
 import io.legado.app.utils.splitNotBlank
 
 /**
@@ -21,7 +22,10 @@ class ReplaceRuleViewModel(application: Application) : BaseViewModel(application
 
     fun delete(rule: ReplaceRule) {
         execute {
-            appDb.replaceRuleDao.delete(rule)
+            appDb.runInTransaction {
+                SourceRecycleBinHelp.recycleReplaceRules(listOf(rule))
+                appDb.replaceRuleDao.delete(rule)
+            }
         }
     }
 
@@ -89,7 +93,10 @@ class ReplaceRuleViewModel(application: Application) : BaseViewModel(application
 
     fun delSelection(rules: List<ReplaceRule>) {
         execute {
-            appDb.replaceRuleDao.delete(*rules.toTypedArray())
+            appDb.runInTransaction {
+                SourceRecycleBinHelp.recycleReplaceRules(rules)
+                appDb.replaceRuleDao.delete(*rules.toTypedArray())
+            }
         }
     }
 

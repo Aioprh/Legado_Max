@@ -252,4 +252,5 @@ object PreferKey {
     const val highlightRuleCurrentGroup = "highlightRuleCurrentGroup"
 
     const val backupBookCache = "backupBookCache"
+    const val sourceRecycleBinEnabled = "sourceRecycleBinEnabled"
 }

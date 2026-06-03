@@ -793,6 +793,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.readBarStyleFollowPage, value)
         }
 
+    var sourceRecycleBinEnabled: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.sourceRecycleBinEnabled, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.sourceRecycleBinEnabled, value)
+        }
+
     var sourceEditMaxLine: Int
         get() {
             val maxLine = appCtx.getPrefInt(PreferKey.sourceEditMaxLine, Int.MAX_VALUE)
