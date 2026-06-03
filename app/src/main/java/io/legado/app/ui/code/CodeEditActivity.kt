@@ -130,9 +130,11 @@ class CodeEditActivity :
         when {
             // 内容没有变化，直接退出
             text == viewModel.initialText -> {
-                if (cursorPos > 0) {
+                if (cursorPos > 0 || !fieldKey.isNullOrEmpty() && !tabKey.isNullOrEmpty()) {
                     val result = Intent().apply {
                         putExtra("cursorPosition", cursorPos)
+                        putExtra("fieldKey", fieldKey)
+                        putExtra("tabKey", tabKey)
                     }
                     setResult(RESULT_OK, result)
                 }
@@ -144,9 +146,11 @@ class CodeEditActivity :
                     setMessage(R.string.exit_no_save)
                     positiveButton(R.string.yes)
                     negativeButton(R.string.no) {
-                        if (cursorPos > 0) {
+                        if (cursorPos > 0 || !fieldKey.isNullOrEmpty() && !tabKey.isNullOrEmpty()) {
                             val result = Intent().apply {
                                 putExtra("cursorPosition", cursorPos)
+                                putExtra("fieldKey", fieldKey)
+                                putExtra("tabKey", tabKey)
                             }
                             setResult(RESULT_OK, result)
                         }
@@ -520,7 +524,7 @@ class CodeEditActivity :
                 SelectItem("正文下一页URL规则", "nextContentUrl"),
                 SelectItem("副文规则", "subContent"),
                 SelectItem("替换正则", "replaceRegex"),
-                SelectItem("章节名称规则", "ChapterName"),
+                SelectItem("章节名称规则", "title"),
                 SelectItem("资源正则", "sourceRegex"),
                 SelectItem("图片样式", "imageStyle"),
                 SelectItem("图片解密", "imageDecode"),
@@ -823,7 +827,7 @@ class CodeEditActivity :
             "nextContentUrl" to "正文下一页URL规则",
             "subContent" to "副文规则",
             "replaceRegex" to "替换正则",
-            "ChapterName" to "章节名称规则",
+            "title" to "章节名称规则",
             "sourceRegex" to "资源正则",
             "imageStyle" to "图片样式",
             "imageDecode" to "图片解密",

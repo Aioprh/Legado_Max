@@ -176,9 +176,11 @@ class BookSourceEditActivity :
             val tabKey = data?.getStringExtra("tabKey")
             val cursorPosition = data?.getIntExtra("cursorPosition", -1) ?: -1
             
-            if (!text.isNullOrEmpty() && !fieldKey.isNullOrEmpty() && !tabKey.isNullOrEmpty()) {
+            if (text != null && !fieldKey.isNullOrEmpty() && !tabKey.isNullOrEmpty()) {
                 updateEditEntityValue(tabKey, fieldKey, text, cursorPosition)
-            } else if (!text.isNullOrEmpty()) {
+            } else if (!fieldKey.isNullOrEmpty() && !tabKey.isNullOrEmpty()) {
+                scrollToField(tabKey, fieldKey, cursorPosition)
+            } else if (text != null) {
                 lastFocusedEditText?.let { editText ->
                     editText.setText(text)
                     if (cursorPosition in 0 ..< editText.text.length) {
@@ -212,6 +214,16 @@ class BookSourceEditActivity :
      * @param cursorPosition 光标位置，用于返回后恢复光标
      */
     private fun updateEditEntityValue(tabKey: String, fieldKey: String, value: String, cursorPosition: Int = -1) {
+        scrollToField(tabKey, fieldKey, cursorPosition, value)
+    }
+
+    private fun scrollToField(
+        tabKey: String,
+        fieldKey: String,
+        cursorPosition: Int = -1,
+        value: String? = null
+    ) {
+        val tabPosition = getTabPosition(tabKey)
         val entities = when (tabKey) {
             "base" -> sourceEntities
             "search" -> searchEntities
@@ -222,18 +234,50 @@ class BookSourceEditActivity :
             else -> null
         }
         entities?.find { it.key == fieldKey }?.let { entity ->
-            entity.value = value
-            adapter.notifyDataSetChanged()
-            if (cursorPosition >= 0 && lastFocusedEditText != null) {
-                lastFocusedEditText?.post {
-                    lastFocusedEditText?.setText(value)
-                    if (cursorPosition in 0 ..< value.length) {
-                        lastFocusedEditText?.setSelection(cursorPosition)
-                    }
-                    lastFocusedEditText?.requestFocus()
+            value?.let { entity.value = it }
+            if (binding.tabLayout.selectedTabPosition != tabPosition) {
+                binding.tabLayout.selectTab(binding.tabLayout.getTabAt(tabPosition))
+                binding.recyclerView.post {
+                    adapter.notifyDataSetChanged()
+                    scrollToEntity(entity, cursorPosition, value)
                 }
+            } else {
+                adapter.notifyDataSetChanged()
+                scrollToEntity(entity, cursorPosition, value)
             }
         }
+    }
+
+    private fun getTabPosition(tabKey: String): Int {
+        return when (tabKey) {
+            "search" -> 1
+            "explore" -> 2
+            "info" -> 3
+            "toc" -> 4
+            "content" -> 5
+            else -> 0
+        }
+    }
+
+    private fun scrollToEntity(entity: EditEntity, cursorPosition: Int, value: String?) {
+        val position = adapter.editEntities.indexOf(entity)
+        if (position < 0) return
+        binding.recyclerView.scrollToPosition(position)
+        binding.recyclerView.postDelayed({
+            val viewHolder = binding.recyclerView.findViewHolderForAdapterPosition(position)
+            if (viewHolder is BookSourceEditAdapter.MyViewHolder) {
+                val editText = viewHolder.binding.editText
+                value?.let {
+                    if (editText.text.toString() != it) {
+                        editText.setText(it)
+                    }
+                }
+                if (cursorPosition >= 0) {
+                    editText.setSelection(cursorPosition.coerceAtMost(editText.text.length))
+                }
+                editText.requestFocus()
+            }
+        }, 100)
     }
 
     /**
