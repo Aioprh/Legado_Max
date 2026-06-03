@@ -91,6 +91,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
     private var historyFlowJob: Job? = null
     private var booksFlowJob: Job? = null
     private var precisionSearchMenuItem: MenuItem? = null
+    private var showSearchProgressMenuItem: MenuItem? = null
     private var isManualStopSearch = false
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -112,6 +113,8 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         this.menu = menu
         precisionSearchMenuItem = menu.findItem(R.id.menu_precision_search)
         precisionSearchMenuItem?.isChecked = getPrefBoolean(PreferKey.precisionSearch)
+        showSearchProgressMenuItem = menu.findItem(R.id.menu_show_search_progress)
+        showSearchProgressMenuItem?.isChecked = getPrefBoolean(PreferKey.showSearchProgress)
         return super.onCompatCreateOptionsMenu(menu)
     }
 
@@ -177,6 +180,15 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                 searchView.query?.toString()?.trim()?.let {
                     searchView.setQuery(it, true)
                 }
+            }
+
+            R.id.menu_show_search_progress -> {
+                putPrefBoolean(
+                    PreferKey.showSearchProgress,
+                    !getPrefBoolean(PreferKey.showSearchProgress)
+                )
+                showSearchProgressMenuItem?.isChecked =
+                    getPrefBoolean(PreferKey.showSearchProgress)
             }
 
             R.id.menu_search_scope -> alertSearchScope()
@@ -319,7 +331,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
             adapter.setItems(it)
         }
         viewModel.searchProgressLiveData.observe(this) { progress ->
-            if (progress.isNullOrEmpty()) {
+            if (progress.isNullOrEmpty() || !getPrefBoolean(PreferKey.showSearchProgress)) {
                 binding.tvSearchProgress.gone()
             } else {
                 binding.tvSearchProgress.setTextColor(primaryTextColor)

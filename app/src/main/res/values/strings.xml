@@ -651,6 +651,7 @@
     <string name="screen_find">Search Discovery sources</string>
     <string name="dur_pos">Current location：</string>
     <string name="precision_search">Precise search</string>
+    <string name="show_search_progress">显示搜索进度</string>
     <string name="source_recycle_bin">Rule Recycle Bin</string>
     <string name="source_recycle_bin_summary">Temporarily stores deleted rules for 7 days</string>
     <string name="show_source_recycle_bin">Show Rule Recycle Bin</string>
