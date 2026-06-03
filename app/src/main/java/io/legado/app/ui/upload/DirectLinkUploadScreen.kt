@@ -234,6 +234,7 @@ fun DirectLinkUploadScreen(
             }
         }
         
+        // 添加规则对话框
         if (showAddDialog) {
             RuleEditDialog(
                 onDismiss = { showAddDialog = false },
@@ -244,6 +245,7 @@ fun DirectLinkUploadScreen(
             )
         }
         
+        // 编辑规则对话框(当 editingRule 不为 null 时显示)
         editingRule?.let { rule ->
             RuleEditDialog(
                 rule = rule,
@@ -255,12 +257,13 @@ fun DirectLinkUploadScreen(
             )
         }
         
+        // 清除历史确认对话框
         if (showClearDialog) {
             AlertDialog(
                 onDismissRequest = { showClearDialog = false },
                 containerColor = MaterialTheme.colorScheme.surface,
                 title = { Text("清除历史") },
-                text = { Text("确定要清除所有上传历史记录吗？") },
+                text = { Text("确定要清除所有上传历史记录吗?") },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -279,12 +282,13 @@ fun DirectLinkUploadScreen(
             )
         }
         
+        // 导入默认规则确认对话框
         if (showImportDialog) {
             AlertDialog(
                 onDismissRequest = { showImportDialog = false },
                 containerColor = MaterialTheme.colorScheme.surface,
                 title = { Text("导入默认规则") },
-                text = { Text("将导入2个预置的网盘规则（喵公子网盘①、喵公子网盘②）。\n\n注意：如果已有规则，将不会重复导入。") },
+                text = { Text("将导入2个预置的网盘规则(喵公子网盘①、喵公子网盘②)。\n\n注意:如果已有规则,将不会重复导入。") },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -303,8 +307,10 @@ fun DirectLinkUploadScreen(
             )
         }
         
+        // 上传/测试状态对话框
         uploadState.let { state ->
             when (state) {
+                // 测试中状态
                 is UploadState.Testing -> {
                     AlertDialog(
                         onDismissRequest = { },
@@ -326,6 +332,7 @@ fun DirectLinkUploadScreen(
                         confirmButton = {}
                     )
                 }
+                // 测试成功状态
                 is UploadState.TestSuccess -> {
                     AlertDialog(
                         onDismissRequest = { 
@@ -336,7 +343,7 @@ fun DirectLinkUploadScreen(
                         title = { Text("测试成功") },
                         text = { 
                             Column {
-                                Text("下载链接：")
+                                Text("下载链接:")
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Surface(
                                     color = MaterialTheme.colorScheme.surfaceVariant,
@@ -362,6 +369,7 @@ fun DirectLinkUploadScreen(
                         }
                     )
                 }
+                // 测试失败状态
                 is UploadState.TestError -> {
                     AlertDialog(
                         onDismissRequest = { 
@@ -383,12 +391,25 @@ fun DirectLinkUploadScreen(
                         }
                     )
                 }
+                // 其他状态(空闲等)
                 else -> {}
             }
         }
     }
 }
 
+/**
+ * 规则列表标签页
+ * 
+ * 显示所有上传规则的列表,支持编辑、删除、设为默认、测试和拷贝操作
+ * 
+ * @param rules 上传规则列表
+ * @param onEdit 编辑规则回调
+ * @param onDelete 删除规则回调
+ * @param onSetDefault 设为默认规则回调
+ * @param onTest 测试规则回调
+ * @param onCopy 拷贝规则回调
+ */
 @Composable
 fun RuleListTab(
     rules: List<DirectLinkUploadRule>,
@@ -398,6 +419,7 @@ fun RuleListTab(
     onTest: (DirectLinkUploadRule) -> Unit,
     onCopy: (DirectLinkUploadRule) -> Unit
 ) {
+    // 空状态显示
     if (rules.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -425,6 +447,7 @@ fun RuleListTab(
             }
         }
     } else {
+        // 规则列表
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 8.dp)
@@ -443,6 +466,22 @@ fun RuleListTab(
     }
 }
 
+/**
+ * 规则卡片
+ * 
+ * 显示单个上传规则的详细信息,包括:
+ * - 规则名称和图标
+ * - 默认规则标记
+ * - 上传次数和最后使用时间
+ * - 操作菜单(设为默认、编辑、测试、拷贝、删除)
+ * 
+ * @param rule 上传规则数据
+ * @param onEdit 编辑回调
+ * @param onDelete 删除回调
+ * @param onSetDefault 设为默认回调
+ * @param onTest 测试回调
+ * @param onCopy 拷贝回调
+ */
 @Composable
 fun RuleCard(
     rule: DirectLinkUploadRule,
@@ -464,11 +503,13 @@ fun RuleCard(
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // 第一行:规则名称和操作按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // 规则名称和图标
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.CloudUpload,
@@ -484,7 +525,9 @@ fun RuleCard(
                     )
                 }
                 
+                // 右侧:默认标记和操作菜单
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 默认规则标记
                     if (rule.isDefault) {
                         Icon(
                             imageVector = Icons.Default.Star,
@@ -495,10 +538,12 @@ fun RuleCard(
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                     
+                    // 更多操作按钮
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, "更多")
                     }
                     
+                    // 操作下拉菜单
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false },
@@ -536,6 +581,7 @@ fun RuleCard(
                 }
             }
             
+            // 第二行:上传统计信息(如果有上传记录)
             if (rule.uploadCount > 0) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -559,12 +605,22 @@ fun RuleCard(
     }
 }
 
+/**
+ * 上传历史列表标签页
+ * 
+ * 显示所有上传历史记录,支持删除和复制下载链接操作
+ * 
+ * @param histories 上传历史列表(包含规则信息)
+ * @param onDelete 删除历史记录回调
+ * @param onCopy 复制下载链接回调
+ */
 @Composable
 fun HistoryListTab(
     histories: List<UploadHistoryWithRule>,
     onDelete: (UploadHistoryWithRule) -> Unit,
     onCopy: (UploadHistoryWithRule) -> Unit
 ) {
+    // 空状态显示
     if (histories.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -586,6 +642,7 @@ fun HistoryListTab(
             }
         }
     } else {
+        // 历史记录列表
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 8.dp)
@@ -601,6 +658,22 @@ fun HistoryListTab(
     }
 }
 
+/**
+ * 历史记录卡片
+ * 
+ * 显示单条上传历史记录的详细信息,包括:
+ * - 文件名(长按可查看完整名称)
+ * - 规则名称(长按可查看完整规则名)
+ * - 上传状态(成功/失败)
+ * - 文件大小、耗时、上传时间
+ * - 下载链接(成功时显示)
+ * - 错误信息(失败时显示)
+ * - 操作按钮(复制链接、删除)
+ * 
+ * @param historyWithRule 历史记录数据(包含规则信息)
+ * @param onDelete 删除回调
+ * @param onCopy 复制链接回调
+ */
 @Composable
 fun HistoryCard(
     historyWithRule: UploadHistoryWithRule,
@@ -608,9 +681,11 @@ fun HistoryCard(
     onCopy: () -> Unit
 ) {
     val history = historyWithRule.toUploadHistory()
-    var showFullFileNameDialog by remember { mutableStateOf(false) }
-    var showFullRuleSummaryDialog by remember { mutableStateOf(false) }
+    // 对话框状态
+    var showFullFileNameDialog by remember { mutableStateOf(false) }  // 显示完整文件名对话框
+    var showFullRuleSummaryDialog by remember { mutableStateOf(false) }  // 显示完整规则名对话框
 
+    // 完整文件名对话框
     if (showFullFileNameDialog) {
         AlertDialog(
             onDismissRequest = { showFullFileNameDialog = false },
@@ -635,6 +710,7 @@ fun HistoryCard(
         )
     }
 
+    // 完整规则名对话框
     if (showFullRuleSummaryDialog) {
         AlertDialog(
             onDismissRequest = { showFullRuleSummaryDialog = false },
@@ -669,11 +745,13 @@ fun HistoryCard(
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // 第一行:文件名、规则名、状态标记
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // 文件名(长按查看完整名称)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -684,6 +762,7 @@ fun HistoryCard(
                             )
                         }
                 ) {
+                    // 成功/失败图标
                     Icon(
                         imageVector = if (history.success) Icons.Default.CheckCircle 
                                       else Icons.Default.Error,
@@ -703,7 +782,9 @@ fun HistoryCard(
                     )
                 }
                 
+                // 右侧:规则名和状态标记
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 规则名称标签(长按查看完整名称)
                     val displayRuleSummary = historyWithRule.getDisplayRuleSummary()
                     if (displayRuleSummary.isNotBlank()) {
                         Surface(
@@ -725,6 +806,7 @@ fun HistoryCard(
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                     
+                    // 失败标记
                     if (!history.success) {
                         Surface(
                             color = MaterialTheme.colorScheme.errorContainer,
@@ -741,6 +823,7 @@ fun HistoryCard(
                 }
             }
             
+            // 第二行:文件大小和耗时
             Spacer(modifier = Modifier.height(8.dp))
             
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -758,6 +841,7 @@ fun HistoryCard(
                 }
             }
             
+            // 第三行:上传时间
             Spacer(modifier = Modifier.height(4.dp))
             
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -775,6 +859,7 @@ fun HistoryCard(
                 )
             }
             
+            // 第四行:下载链接(成功时显示)
             if (history.success && history.downloadUrl.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
@@ -805,6 +890,7 @@ fun HistoryCard(
                 }
             }
             
+            // 第五行:错误信息(失败时显示)
             if (!history.success && !history.errorMsg.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
@@ -834,12 +920,14 @@ fun HistoryCard(
                 }
             }
             
+            // 第六行:操作按钮
             Spacer(modifier = Modifier.height(12.dp))
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                // 复制链接按钮(成功时显示)
                 if (history.success && history.downloadUrl.isNotBlank()) {
                     TextButton(onClick = onCopy) {
                         Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
@@ -847,6 +935,7 @@ fun HistoryCard(
                         Text("复制链接", color = MaterialTheme.colorScheme.primary)
                     }
                 }
+                // 删除按钮
                 TextButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
                     Spacer(modifier = Modifier.width(4.dp))
@@ -857,6 +946,19 @@ fun HistoryCard(
     }
 }
 
+/**
+ * 规则编辑对话框
+ * 
+ * 用于添加或编辑上传规则,包含以下字段:
+ * - 上传URL: 文件上传的目标地址
+ * - 下载URL规则: 从上传响应中提取下载链接的规则
+ * - 注释说明: 规则的描述信息
+ * - 自动压缩: 是否在上传前自动压缩文件
+ * 
+ * @param rule 要编辑的规则(null 表示添加新规则)
+ * @param onDismiss 取消回调
+ * @param onSave 保存回调
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RuleEditDialog(
@@ -864,6 +966,7 @@ fun RuleEditDialog(
     onDismiss: () -> Unit,
     onSave: (DirectLinkUploadRule) -> Unit
 ) {
+    // 表单字段状态
     var uploadUrl by remember { mutableStateOf(rule?.uploadUrl ?: "") }
     var downloadUrlRule by remember { mutableStateOf(rule?.downloadUrlRule ?: "") }
     var summary by remember { mutableStateOf(rule?.summary ?: "") }
@@ -874,9 +977,11 @@ fun RuleEditDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         title = { Text(if (rule == null) "添加上传规则" else "编辑上传规则") },
         text = {
+            // 表单内容
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
+                // 上传URL输入框
                 OutlinedTextField(
                     value = uploadUrl,
                     onValueChange = { uploadUrl = it },
@@ -888,6 +993,7 @@ fun RuleEditDialog(
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
+                // 下载URL规则输入框
                 OutlinedTextField(
                     value = downloadUrlRule,
                     onValueChange = { downloadUrlRule = it },
@@ -899,6 +1005,7 @@ fun RuleEditDialog(
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
+                // 注释说明输入框
                 OutlinedTextField(
                     value = summary,
                     onValueChange = { summary = it },
@@ -910,6 +1017,7 @@ fun RuleEditDialog(
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
+                // 自动压缩选项
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -924,6 +1032,7 @@ fun RuleEditDialog(
         confirmButton = {
             TextButton(
                 onClick = {
+                    // 创建新的规则对象
                     val newRule = DirectLinkUploadRule(
                         id = rule?.id ?: 0,
                         uploadUrl = uploadUrl,
@@ -935,6 +1044,7 @@ fun RuleEditDialog(
                     )
                     onSave(newRule)
                 },
+                // 只有必填字段都填写后才能保存
                 enabled = uploadUrl.isNotBlank() && 
                           downloadUrlRule.isNotBlank() && 
                           summary.isNotBlank()
@@ -950,28 +1060,52 @@ fun RuleEditDialog(
     )
 }
 
+/**
+ * 格式化相对时间
+ * 
+ * 将时间戳转换为相对时间描述,如"刚刚"、"5分钟前"、"2小时前"等
+ * 
+ * @param timestamp 时间戳(毫秒)
+ * @return 格式化后的时间字符串
+ */
 private fun formatTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
     
     return when {
-        diff < 60_000 -> "刚刚"
-        diff < 3600_000 -> "${diff / 60_000}分钟前"
-        diff < 86400_000 -> "${diff / 3600_000}小时前"
-        diff < 2592000_000 -> "${diff / 86400_000}天前"
-        else -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(Date(timestamp))
+        diff < 60_000 -> "刚刚"  // 小于1分钟
+        diff < 3600_000 -> "${diff / 60_000}分钟前"  // 小于1小时
+        diff < 86400_000 -> "${diff / 3600_000}小时前"  // 小于1天
+        diff < 2592000_000 -> "${diff / 86400_000}天前"  // 小于30天
+        else -> SimpleDateFormat("MM-dd", Locale.getDefault()).format(Date(timestamp))  // 超过30天显示日期
     }
 }
 
+/**
+ * 格式化日期时间
+ * 
+ * 将时间戳转换为"yyyy-MM-dd HH:mm"格式的字符串
+ * 
+ * @param timestamp 时间戳(毫秒)
+ * @return 格式化后的日期时间字符串
+ */
 private fun formatDateTime(timestamp: Long): String {
     return SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
 }
 
+/**
+ * 格式化文件大小
+ * 
+ * 将字节数转换为人类可读的文件大小格式,如"1.5 KB"、"2.3 MB"等
+ * 
+ * @param size 文件大小(字节)
+ * @return 格式化后的文件大小字符串
+ */
 private fun formatFileSize(size: Long): String {
     return when {
-        size < 1024 -> "$size B"
-        size < 1024 * 1024 -> String.format("%.1f KB", size / 1024.0)
-        size < 1024 * 1024 * 1024 -> String.format("%.1f MB", size / (1024.0 * 1024))
-        else -> String.format("%.1f GB", size / (1024.0 * 1024 * 1024))
+        size < 1024 -> "$size B"  // 小于1KB
+        size < 1024 * 1024 -> String.format("%.1f KB", size / 1024.0)  // 小于1MB
+        size < 1024 * 1024 * 1024 -> String.format("%.1f MB", size / (1024.0 * 1024))  // 小于1GB
+        else -> String.format("%.1f GB", size / (1024.0 * 1024 * 1024))  // 大于等于1GB
     }
 }
