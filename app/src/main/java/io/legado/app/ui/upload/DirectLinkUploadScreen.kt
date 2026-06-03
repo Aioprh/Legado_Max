@@ -7,6 +7,8 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -758,13 +760,16 @@ fun RuleEditDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         title = { Text(if (rule == null) "添加上传规则" else "编辑上传规则") },
         text = {
-            Column {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
                 OutlinedTextField(
                     value = uploadUrl,
                     onValueChange = { uploadUrl = it },
                     label = { Text("上传URL *") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    minLines = 3,
+                    maxLines = 6
                 )
                 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -774,7 +779,8 @@ fun RuleEditDialog(
                     onValueChange = { downloadUrlRule = it },
                     label = { Text("下载URL规则 *") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    minLines = 3,
+                    maxLines = 6
                 )
                 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -784,7 +790,8 @@ fun RuleEditDialog(
                     onValueChange = { summary = it },
                     label = { Text("注释说明 *") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    minLines = 3,
+                    maxLines = 6
                 )
                 
                 Spacer(modifier = Modifier.height(12.dp))
