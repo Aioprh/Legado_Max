@@ -27,6 +27,8 @@ import io.legado.app.databinding.DialogRuleSearchBinding
 import io.legado.app.databinding.ItemRuleSearchHeaderBinding
 import io.legado.app.databinding.ItemRuleSearchResultBinding
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.secondaryTextColor
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.gone
@@ -218,7 +220,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         val labelView = TextView(context).apply {
             text = label
             textSize = 13f
-            setTextColor(ContextCompat.getColor(context, R.color.secondaryText))
+            setTextColor(secondaryTextColor)
             setPadding(0, 0, dpToPx(8), 0)
         }
         row.addView(labelView)
@@ -263,15 +265,13 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         selectedValue: T,
         allValues: List<T>
     ) {
-        val context = requireContext()
-        val primaryClr = primaryColor
         buttons.forEachIndexed { index, btn ->
             val isSelected = allValues[index] == selectedValue
             if (isSelected) {
-                btn.setTextColor(primaryClr)
+                btn.setTextColor(primaryTextColor)
                 btn.setBackgroundResource(R.drawable.bg_edit)
             } else {
-                btn.setTextColor(ContextCompat.getColor(context, R.color.secondaryText))
+                btn.setTextColor(secondaryTextColor)
                 btn.setBackgroundResource(0)
             }
         }
@@ -307,7 +307,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         val allLabel = TextView(requireContext()).apply {
             text = "分类"
             textSize = 13f
-            setTextColor(ContextCompat.getColor(requireContext(), R.color.secondaryText))
+            setTextColor(secondaryTextColor)
             setPadding(0, 0, dpToPx(8), 0)
         }
         chipLayout.addView(allLabel)
@@ -319,7 +319,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6))
             isClickable = true
             isFocusable = true
-            setTextColor(primaryColor)
+            setTextColor(primaryTextColor)
             setBackgroundResource(R.drawable.bg_edit)
         }
         allBtn.setOnClickListener {
@@ -346,7 +346,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
                 isClickable = true
                 isFocusable = true
                 tag = tabKey
-                setTextColor(primaryColor)
+                setTextColor(primaryTextColor)
                 setBackgroundResource(R.drawable.bg_edit)
             }
             btn.setOnClickListener {
@@ -375,9 +375,6 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
     }
 
     private fun updateTabChipStyles(chipLayout: LinearLayout, tabNames: Map<String, String>) {
-        val context = requireContext()
-        val primaryClr = primaryColor
-        val secondaryClr = ContextCompat.getColor(context, R.color.secondaryText)
         val allSelected = selectedTabs.size == tabNames.size
 
         for (i in 0 until chipLayout.childCount) {
@@ -386,18 +383,18 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
                 val tabKey = child.tag as String
                 val isSelected = selectedTabs.contains(tabKey)
                 if (isSelected) {
-                    child.setTextColor(primaryClr)
+                    child.setTextColor(primaryTextColor)
                     child.setBackgroundResource(R.drawable.bg_edit)
                 } else {
-                    child.setTextColor(secondaryClr)
+                    child.setTextColor(secondaryTextColor)
                     child.setBackgroundResource(0)
                 }
             } else if (child is TextView && child.tag == null && child.text == "全部") {
                 if (allSelected) {
-                    child.setTextColor(primaryClr)
+                    child.setTextColor(primaryTextColor)
                     child.setBackgroundResource(R.drawable.bg_edit)
                 } else {
-                    child.setTextColor(secondaryClr)
+                    child.setTextColor(secondaryTextColor)
                     child.setBackgroundResource(0)
                 }
             }

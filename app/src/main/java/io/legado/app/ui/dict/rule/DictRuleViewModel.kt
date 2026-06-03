@@ -6,6 +6,7 @@ import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.DictRule
 import io.legado.app.help.DefaultData
+import io.legado.app.help.source.SourceRecycleBinHelp
 import io.legado.app.utils.toastOnUi
 
 class DictRuleViewModel(application: Application) : BaseViewModel(application) {
@@ -23,6 +24,7 @@ class DictRuleViewModel(application: Application) : BaseViewModel(application) {
 
     fun delete(vararg dictRule: DictRule) {
         execute {
+            SourceRecycleBinHelp.recycleDictRules(dictRule.toList())
             appDb.dictRuleDao.delete(*dictRule)
         }.onError {
             val msg = "删除字典规则出错\n${it.localizedMessage}"

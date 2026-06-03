@@ -5,6 +5,7 @@ import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.help.DefaultData
+import io.legado.app.help.source.SourceRecycleBinHelp
 
 class TxtTocRuleViewModel(app: Application) : BaseViewModel(app) {
 
@@ -16,6 +17,7 @@ class TxtTocRuleViewModel(app: Application) : BaseViewModel(app) {
 
     fun del(vararg txtTocRule: TxtTocRule) {
         execute {
+            SourceRecycleBinHelp.recycleTxtTocRules(txtTocRule.toList())
             appDb.txtTocRuleDao.delete(*txtTocRule)
         }
     }

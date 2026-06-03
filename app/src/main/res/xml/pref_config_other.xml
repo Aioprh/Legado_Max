@@ -184,7 +184,7 @@
             android:defaultValue="false"
             android:key="Cronet"
             android:summary="@string/pref_cronet_summary"
-            android:title="Cronet" />
+            android:title="@string/cronet" />
 
         <io.legado.app.lib.prefs.SwitchPreference
             android:defaultValue="false"

@@ -25,11 +25,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.legado.app.R
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
@@ -80,10 +82,10 @@ fun ReadRecordScreen(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("确认删除") },
+            title = { Text(stringResource(R.string.rr_confirm_delete)) },
             text = {
                 Column {
-                    Text("确定要删除这条阅读记录吗？")
+                    Text(stringResource(R.string.rr_confirm_delete_msg))
                     Row(
                         modifier = Modifier.padding(top = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -92,7 +94,7 @@ fun ReadRecordScreen(
                             checked = skipDeleteConfirm,
                             onCheckedChange = { skipDeleteConfirm = it }
                         )
-                        Text("不再提示", modifier = Modifier.padding(start = 8.dp))
+                        Text(stringResource(R.string.rr_dont_show_again), modifier = Modifier.padding(start = 8.dp))
                     }
                 }
             },
@@ -102,7 +104,7 @@ fun ReadRecordScreen(
                     showDeleteConfirm = false
                     pendingDeleteAction = null
                 }) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -110,7 +112,7 @@ fun ReadRecordScreen(
                     showDeleteConfirm = false
                     pendingDeleteAction = null
                 }) {
-                    Text("取消", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         )
@@ -124,16 +126,16 @@ fun ReadRecordScreen(
         AlertDialog(
             onDismissRequest = { showMergeDialog = false },
             containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("合并同名书籍") },
+            title = { Text(stringResource(R.string.rr_merge_same_name)) },
             text = {
                 if (candidates.isEmpty()) {
-                    Text("没有找到可以合并的记录")
+                    Text(stringResource(R.string.rr_no_merge_candidates))
                 } else {
                     Column {
-                        Text("选择要合并到「${selectedRecord!!.bookName}」的记录：")
+                        Text(stringResource(R.string.rr_select_merge_target, selectedRecord!!.bookName))
                         candidates.forEach { record ->
                             Text(
-                                text = "· ${record.bookName} - ${record.bookAuthor.ifBlank { "未知作者" }}",
+                                text = "· ${record.bookName} - ${record.bookAuthor.ifBlank { stringResource(R.string.rr_unknown_author) }}",
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
@@ -145,12 +147,12 @@ fun ReadRecordScreen(
                     viewModel.mergeReadRecords(selectedRecord!!, candidates)
                     showMergeDialog = false
                 }) {
-                    Text("合并", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.rr_merge), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showMergeDialog = false }) {
-                    Text("取消", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         )
@@ -170,18 +172,18 @@ fun ReadRecordScreen(
                     ),
                     title = {
                         Text(
-                            text = "已选择 ${state.selectedRecords.size} 项",
+                            text = stringResource(R.string.rr_selected_items, state.selectedRecords.size),
                             style = MaterialTheme.typography.titleMedium
                         )
                     },
                     navigationIcon = {
                         IconButton(onClick = { viewModel.exitSelectionMode() }) {
-                            Icon(Icons.Default.Close, contentDescription = "取消选择")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.rr_cancel_selection))
                         }
                     },
                     actions = {
                         IconButton(onClick = { viewModel.selectAllRecords(displayMode) }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = "全选")
+                            Icon(Icons.Default.SelectAll, contentDescription = stringResource(R.string.select_all))
                         }
                         IconButton(onClick = {
                             if (state.selectedRecords.isNotEmpty()) {
@@ -189,7 +191,7 @@ fun ReadRecordScreen(
                                 showDeleteConfirm = true
                             }
                         }) {
-                            Icon(Icons.Default.Delete, contentDescription = "删除选中")
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.rr_delete_selected))
                         }
                     }
                 )
@@ -205,15 +207,15 @@ fun ReadRecordScreen(
                     title = {
                         Column {
                             Text(
-                                text = "阅读记录",
+                                text = stringResource(R.string.read_record),
                                 style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp, fontWeight = FontWeight.Medium)
                             )
                             Text(
                                 text = when (displayMode) {
-                                    DisplayMode.AGGREGATE -> "汇总视图"
-                                    DisplayMode.TIMELINE -> "时间线视图"
-                                    DisplayMode.LATEST -> "最后阅读"
-                                    DisplayMode.READ_TIME -> "阅读时长"
+                                    DisplayMode.AGGREGATE -> stringResource(R.string.rr_aggregate_view)
+                                    DisplayMode.TIMELINE -> stringResource(R.string.rr_timeline_view)
+                                    DisplayMode.LATEST -> stringResource(R.string.rr_latest_read)
+                                    DisplayMode.READ_TIME -> stringResource(R.string.rr_read_duration)
                                 },
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSecondary
@@ -222,15 +224,15 @@ fun ReadRecordScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                            Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                         }
                     },
                     actions = {
                         IconButton(onClick = { showSearch = !showSearch }) {
-                            Icon(Icons.Default.Search, contentDescription = "搜索")
+                            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                         }
                         IconButton(onClick = { showCalendar = true }) {
-                            Icon(Icons.Default.CalendarMonth, contentDescription = "日历")
+                            Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.rr_calendar))
                         }
                         IconButton(onClick = {
                             viewModel.setDisplayMode(
@@ -249,12 +251,12 @@ fun ReadRecordScreen(
                                     DisplayMode.LATEST -> Icons.Default.AutoAwesome
                                     DisplayMode.READ_TIME -> Icons.Default.Schedule
                                 },
-                                contentDescription = "切换视图"
+                                contentDescription = stringResource(R.string.rr_switch_view)
                             )
                         }
                         Box {
                             IconButton(onClick = { showOverflowMenu = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "更多")
+                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more_menu))
                             }
                             DropdownMenu(
                                 expanded = showOverflowMenu,
@@ -262,7 +264,7 @@ fun ReadRecordScreen(
                             ) {
                                 DropdownMenuItem(
                                     text = {
-                                        Text(if (enableReadRecord) "关闭记录" else "开启记录")
+                                        Text(if (enableReadRecord) stringResource(R.string.rr_close_record) else stringResource(R.string.rr_open_record))
                                     },
                                     onClick = {
                                         viewModel.setEnableReadRecord(!enableReadRecord)
@@ -300,12 +302,12 @@ fun ReadRecordScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("搜索书籍") },
+                    placeholder = { Text(stringResource(R.string.rr_search_books)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
                         if (state.searchKey?.isNotEmpty() == true) {
                             IconButton(onClick = { viewModel.setSearchKey("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "清除")
+                                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.clear))
                             }
                         }
                     },
@@ -352,7 +354,7 @@ fun ReadRecordScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "暂无阅读记录",
+                            text = stringResource(R.string.rr_no_records),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -603,6 +605,10 @@ private fun readTimeRecordKey(record: ReadRecord): String {
 private fun DateHeader(date: String, totalDuration: Long) {
     val headerColor = readRecordHeaderContainerColor()
     val secondaryTextColor = readRecordSecondaryTextColor()
+    val todayStr = stringResource(R.string.rr_today)
+    val yesterdayStr = stringResource(R.string.rr_yesterday)
+    val dayBeforeYesterdayStr = stringResource(R.string.rr_day_before_yesterday)
+    val dateFormat = stringResource(R.string.rr_date_format_md_weekday)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = headerColor
@@ -615,7 +621,7 @@ private fun DateHeader(date: String, totalDuration: Long) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = formatFriendlyDate(date),
+                text = formatFriendlyDate(date, todayStr, yesterdayStr, dayBeforeYesterdayStr, dateFormat),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -633,6 +639,10 @@ private fun DateHeader(date: String, totalDuration: Long) {
 private fun TimelineDateHeader(date: String, totalDuration: Long) {
     val headerColor = readRecordHeaderContainerColor()
     val secondaryTextColor = readRecordSecondaryTextColor()
+    val todayStr = stringResource(R.string.rr_today)
+    val yesterdayStr = stringResource(R.string.rr_yesterday)
+    val dayBeforeYesterdayStr = stringResource(R.string.rr_day_before_yesterday)
+    val dateFormat = stringResource(R.string.rr_date_format_md_weekday)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = headerColor
@@ -645,7 +655,7 @@ private fun TimelineDateHeader(date: String, totalDuration: Long) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = formatFriendlyDate(date),
+                text = formatFriendlyDate(date, todayStr, yesterdayStr, dayBeforeYesterdayStr, dateFormat),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -761,7 +771,7 @@ private fun TimelineSessionView(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = session.bookAuthor.ifBlank { "未知作者" },
+                        text = session.bookAuthor.ifBlank { stringResource(R.string.rr_unknown_author) },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -938,7 +948,7 @@ private fun RecordDetailItem(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = detail.bookAuthor.ifBlank { "未知作者" },
+                        text = detail.bookAuthor.ifBlank { stringResource(R.string.rr_unknown_author) },
                         style = MaterialTheme.typography.bodySmall,
                         color = secondaryTextColor
                     )
@@ -1095,7 +1105,7 @@ private fun LatestRecordItem(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = record.bookAuthor.ifBlank { "未知作者" },
+                    text = record.bookAuthor.ifBlank { stringResource(R.string.rr_unknown_author) },
                     style = MaterialTheme.typography.bodySmall,
                     color = secondaryTextColor
                 )
@@ -1140,23 +1150,23 @@ private fun LatestRecordItem(
                         containerColor = MaterialTheme.colorScheme.surface
                     ) {
                         DropdownMenuItem(
-                            text = { Text("合并同名书籍") },
+                            text = { Text(stringResource(R.string.rr_merge_same_name)) },
                             onClick = {
                                 onMerge()
                                 showMenu = false
                             },
-                            leadingIcon = { 
-                                Icon(Icons.Default.Merge, contentDescription = null, tint = readRecordMutedIconTint()) 
+                            leadingIcon = {
+                                Icon(Icons.Default.Merge, contentDescription = null, tint = readRecordMutedIconTint())
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                            text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                             onClick = {
                                 onDelete()
                                 showMenu = false
                             },
-                            leadingIcon = { 
-                                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) 
+                            leadingIcon = {
+                                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                             }
                         )
                     }
@@ -1324,20 +1334,26 @@ private fun ReadTimeRecordItem(
     }
 }
 
-private fun formatFriendlyDate(dateStr: String): String {
+private fun formatFriendlyDate(
+    dateStr: String,
+    todayStr: String,
+    yesterdayStr: String,
+    dayBeforeYesterdayStr: String,
+    dateFormat: String
+): String {
     return try {
         val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val date = inputFormat.parse(dateStr) ?: return dateStr
-        
+
         val today = LocalDate.now()
         val localDate = date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-        
+
         when {
-            localDate == today -> "今天"
-            localDate == today.minusDays(1) -> "昨天"
-            localDate == today.minusDays(2) -> "前天"
+            localDate == today -> todayStr
+            localDate == today.minusDays(1) -> yesterdayStr
+            localDate == today.minusDays(2) -> dayBeforeYesterdayStr
             else -> {
-                val outputFormat = SimpleDateFormat("M月d日 E", Locale.CHINA)
+                val outputFormat = SimpleDateFormat(dateFormat, Locale.getDefault())
                 outputFormat.format(date)
             }
         }
@@ -1346,21 +1362,27 @@ private fun formatFriendlyDate(dateStr: String): String {
     }
 }
 
-private fun formatFriendlyDateTime(timestamp: Long): String {
+private fun formatFriendlyDateTime(
+    timestamp: Long,
+    todayStr: String,
+    yesterdayStr: String,
+    dayBeforeYesterdayStr: String,
+    dateFormat: String
+): String {
     val date = Date(timestamp)
     val today = LocalDate.now()
     val localDate = date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-    
+
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
     val timeStr = timeFormat.format(date)
-    
+
     return when {
-        localDate == today -> "今天 $timeStr"
-        localDate == today.minusDays(1) -> "昨天 $timeStr"
-        localDate == today.minusDays(2) -> "前天 $timeStr"
+        localDate == today -> "$todayStr $timeStr"
+        localDate == today.minusDays(1) -> "$yesterdayStr $timeStr"
+        localDate == today.minusDays(2) -> "$dayBeforeYesterdayStr $timeStr"
         else -> {
-            val dateFormat = SimpleDateFormat("M月d日", Locale.getDefault())
-            "${dateFormat.format(date)} $timeStr"
+            val df = SimpleDateFormat(dateFormat, Locale.getDefault())
+            "${df.format(date)} $timeStr"
         }
     }
 }
@@ -1369,14 +1391,4 @@ private fun formatDateTime(timestamp: Long): String {
     val date = Date(timestamp)
     val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     return dateFormat.format(date)
-}
-
-private fun formatTotalReadTime(totalMs: Long): String {
-    val hours = totalMs / (1000 * 60 * 60)
-    val minutes = (totalMs / (1000 * 60)) % 60
-    return when {
-        hours > 0 -> "累计阅读 ${hours}小时${minutes}分钟"
-        minutes > 0 -> "累计阅读 ${minutes}分钟"
-        else -> "累计阅读 0分钟"
-    }
 }

@@ -1,8 +1,12 @@
 package io.legado.app.ui.config
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.content.Context
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,11 +19,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.createBitmap
+import androidx.core.widget.doAfterTextChanged
 import io.legado.app.R
 import io.legado.app.help.DefaultData
 import io.legado.app.help.config.CoverHtmlTemplateConfig
@@ -31,6 +39,9 @@ import io.legado.app.ui.widget.code.addJsPattern
 import io.legado.app.ui.widget.image.CoverImageView
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,9 +69,9 @@ fun CoverHtmlCodeScreen(
     var showSaveDialog by remember { mutableStateOf(false) }
     var pendingTemplateSwitch by remember { mutableStateOf<CoverHtmlTemplateConfig.Template?>(null) }
     
-    var webView by remember { mutableStateOf<WebView?>(null) }
     var codeView by remember { mutableStateOf<CodeView?>(null) }
-    var webViewReady by remember { mutableStateOf(false) }
+    var previewVersion by remember { mutableIntStateOf(0) }
+    var previewBitmap by remember { mutableStateOf<Bitmap?>(null) }
     
     LaunchedEffect(currentTemplate, currentIsNewTemplate) {
         if (currentIsNewTemplate) {
@@ -79,14 +90,7 @@ fun CoverHtmlCodeScreen(
     }
     
     fun previewCover() {
-        val renderedHtml = BookCover.renderHtmlTemplate(htmlCode, bookName, author)
-        webView?.loadDataWithBaseURL(
-            null,
-            renderedHtml,
-            "text/html",
-            "UTF-8",
-            null
-        )
+        previewVersion++
     }
     
     fun doSaveTemplate() {
@@ -152,10 +156,16 @@ fun CoverHtmlCodeScreen(
             }
         )
     }
-    
-    LaunchedEffect(htmlCode, bookName, author, webViewReady) {
-        if (webViewReady && htmlCode.isNotBlank()) {
-            previewCover()
+
+    LaunchedEffect(currentTemplate, currentIsNewTemplate) {
+        previewCover()
+    }
+
+    LaunchedEffect(previewVersion) {
+        previewBitmap = null
+        if (htmlCode.isNotBlank()) {
+            val renderedHtml = BookCover.renderHtmlTemplate(htmlCode, bookName, author)
+            previewBitmap = renderCoverPreviewBitmap(context, renderedHtml)
         }
     }
     
@@ -255,26 +265,14 @@ fun CoverHtmlCodeScreen(
                         .background(androidx.compose.ui.graphics.Color.White),
                     contentAlignment = Alignment.Center
                 ) {
-                    AndroidView(
-                        factory = { ctx ->
-                            WebView(ctx.applicationContext).apply {
-                                settings.javaScriptEnabled = true
-                                settings.useWideViewPort = true
-                                settings.loadWithOverviewMode = true
-                                settings.setSupportZoom(false)
-                                settings.displayZoomControls = false
-                                setBackgroundColor(Color.WHITE)
-                                webViewClient = object : WebViewClient() {
-                                    override fun onPageFinished(view: WebView?, url: String?) {
-                                        super.onPageFinished(view, url)
-                                    }
-                                }
-                                webView = this
-                                webViewReady = true
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    previewBitmap?.let { bitmap ->
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = stringResource(R.string.cover_html_preview),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } ?: CircularProgressIndicator()
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -300,6 +298,12 @@ fun CoverHtmlCodeScreen(
                                 addHtmlPattern()
                                 addJsPattern()
                                 setPadding(16, 16, 16, 16)
+                                doAfterTextChanged { text ->
+                                    val newCode = text?.toString().orEmpty()
+                                    if (newCode != htmlCode) {
+                                        htmlCode = newCode
+                                    }
+                                }
                                 codeView = this
                             }
                         },
@@ -352,6 +356,64 @@ fun CoverHtmlCodeScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+private suspend fun renderCoverPreviewBitmap(context: Context, html: String): Bitmap? {
+    val renderWidth = 600
+    val renderHeight = 900
+    return withContext(Dispatchers.Main) {
+        var webView: WebView? = null
+        try {
+            var renderComplete = false
+            webView = WebView(context).apply {
+                settings.javaScriptEnabled = true
+                settings.useWideViewPort = false
+                settings.loadWithOverviewMode = false
+                settings.setSupportZoom(false)
+                settings.displayZoomControls = false
+                setInitialScale(100)
+                setBackgroundColor(Color.WHITE)
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        view?.postDelayed({
+                            renderComplete = true
+                        }, 300)
+                    }
+                }
+            }
+            webView.measure(
+                android.view.View.MeasureSpec.makeMeasureSpec(renderWidth, android.view.View.MeasureSpec.EXACTLY),
+                android.view.View.MeasureSpec.makeMeasureSpec(renderHeight, android.view.View.MeasureSpec.EXACTLY)
+            )
+            webView.layout(0, 0, renderWidth, renderHeight)
+            webView.loadDataWithBaseURL("about:blank", html, "text/html", "UTF-8", null)
+
+            var attempts = 0
+            while (!renderComplete && attempts < 40) {
+                delay(50)
+                attempts++
+            }
+
+            webView.measure(
+                android.view.View.MeasureSpec.makeMeasureSpec(renderWidth, android.view.View.MeasureSpec.EXACTLY),
+                android.view.View.MeasureSpec.makeMeasureSpec(renderHeight, android.view.View.MeasureSpec.EXACTLY)
+            )
+            webView.layout(0, 0, renderWidth, renderHeight)
+            createBitmap(renderWidth, renderHeight).also { bitmap ->
+                webView.draw(Canvas(bitmap))
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        } finally {
+            try {
+                webView?.stopLoading()
+                webView?.destroy()
+            } catch (_: Exception) {
             }
         }
     }

@@ -676,6 +676,7 @@
     <string name="source_recycle_bin_restored">Restored</string>
     <string name="source_recycle_bin_deleted">Deleted</string>
     <string name="source_recycle_bin_cleared">Recycle bin cleared</string>
+    <string name="search_engine_rule">Search engine rule</string>
     <string name="filter">Filter</string>
     <string name="overwrite">Overwrite</string>
     <string name="delete_forever">Delete forever</string>
@@ -1752,4 +1753,118 @@
     <string name="view_result">查看结果</string>
     <string name="open_editor">打开编辑器</string>
     <string name="info">信息</string>
+    <string name="content_query">内容查询</string>
+    <string name="switch_rule">切换规则</string>
+    <string name="query_rule">查询规则</string>
+    <string name="copy_matched_source_urls">复制匹配源URL</string>
+    <string name="export_matched_sources">导出匹配源</string>
+    <string name="url_source_code">URL源码</string>
+    <string name="result_source_code">结果源码</string>
+    <string name="select_rule">选择规则</string>
+    <string name="preset_rules">预置规则</string>
+    <string name="import_rules">导入规则</string>
+    <string name="share_rules">分享规则</string>
+    <string name="export_rules">导出规则</string>
+    <string name="import_from_clipboard">剪贴板导入</string>
+    <string name="cover_gallery">封面图集</string>
+    <string name="cover_gallery_summary">管理分组封面图集，可设为全局默认封面来源</string>
+    <string name="cronet">Cronet</string>
+
+    <!-- Read Record Screen -->
+    <string name="rr_confirm_delete">Confirm Delete</string>
+    <string name="rr_confirm_delete_msg">Are you sure you want to delete this reading record?</string>
+    <string name="rr_dont_show_again">Don\'t show again</string>
+    <string name="rr_merge_same_name">Merge Same Name Books</string>
+    <string name="rr_no_merge_candidates">No merge candidates found</string>
+    <string name="rr_select_merge_target">Select records to merge into \"%s\":</string>
+    <string name="rr_merge">Merge</string>
+    <string name="rr_selected_items">Selected %d items</string>
+    <string name="rr_cancel_selection">Cancel Selection</string>
+    <string name="rr_delete_selected">Delete Selected</string>
+    <string name="rr_aggregate_view">Aggregate View</string>
+    <string name="rr_timeline_view">Timeline View</string>
+    <string name="rr_latest_read">Latest Read</string>
+    <string name="rr_read_duration">Read Duration</string>
+    <string name="rr_switch_view">Switch View</string>
+    <string name="rr_close_record">Close Record</string>
+    <string name="rr_open_record">Open Record</string>
+    <string name="rr_search_books">Search Books</string>
+    <string name="rr_no_records">No Reading Records</string>
+    <string name="rr_calendar">Calendar</string>
+    <string name="rr_today">Today</string>
+    <string name="rr_yesterday">Yesterday</string>
+    <string name="rr_day_before_yesterday">Day Before Yesterday</string>
+    <string name="rr_unknown_author">Unknown Author</string>
+
+    <!-- Summary Card -->
+    <string name="rr_total_read_achievement">Total Read Achievement</string>
+    <string name="rr_books_read">Books Read</string>
+    <string name="rr_book_unit">books</string>
+    <string name="rr_total_read_time">Total read time %s</string>
+    <string name="rr_hour">hour</string>
+    <string name="rr_minute">minute</string>
+    <string name="rr_hours">hours</string>
+    <string name="rr_minutes">minutes</string>
+
+    <!-- Heatmap Calendar -->
+    <string name="rr_heatmap_title">Reading Calendar</string>
+    <string name="rr_heatmap_subtitle">View daily reading distribution</string>
+    <string name="rr_heatmap_count">Count</string>
+    <string name="rr_heatmap_duration">Duration</string>
+    <string name="rr_heatmap_clear_filter">Clear Filter</string>
+    <string name="rr_heatmap_prev_month">Previous Month</string>
+    <string name="rr_heatmap_next_month">Next Month</string>
+    <string name="rr_heatmap_show_by_count">Show by read count</string>
+    <string name="rr_heatmap_show_by_duration">Show by read duration</string>
+    <string name="rr_heatmap_read">Read</string>
+    <string name="rr_heatmap_days">Days</string>
+    <string name="rr_heatmap_times">times</string>
+    <string name="rr_heatmap_day_unit">days</string>
+    <string name="rr_heatmap_less">Less</string>
+    <string name="rr_heatmap_more">More</string>
+    <string name="rr_heatmap_no_earlier_data">No earlier data</string>
+    <string name="rr_heatmap_mon">Mon</string>
+    <string name="rr_heatmap_tue">Tue</string>
+    <string name="rr_heatmap_wed">Wed</string>
+    <string name="rr_heatmap_thu">Thu</string>
+    <string name="rr_heatmap_fri">Fri</string>
+    <string name="rr_heatmap_sat">Sat</string>
+    <string name="rr_heatmap_sun">Sun</string>
+    <string name="rr_heatmap_year_month">%1$d/%2$d</string>
+    <string name="rr_heatmap_date_format">M/d E</string>
+
+    <!-- Date Format -->
+    <string name="rr_date_format_md">M/d</string>
+    <string name="rr_date_format_md_weekday">M/d E</string>
+
+    <!-- Book Cache Selector -->
+    <string name="bcs_title">Book Cache Selector</string>
+    <string name="bcs_save_selection">Save Selection</string>
+    <string name="bcs_export_selected">Export Selected</string>
+    <string name="bcs_selected_count">Selected %d books</string>
+    <string name="bcs_total_size">Total size: %s</string>
+    <string name="bcs_deselect_all">Deselect All</string>
+
+    <!-- File Validation Dialog -->
+    <string name="fvd_title">Select Files to Restore</string>
+    <string name="fvd_detect_format">Detect Format</string>
+    <string name="fvd_select_all">Select All</string>
+    <string name="fvd_deselect_all">Deselect All</string>
+    <string name="fvd_valid">Valid</string>
+    <string name="fvd_invalid">Invalid</string>
+    <string name="fvd_validating">Validating</string>
+    <string name="fvd_view_details">View Details</string>
+    <string name="fvd_missing_fields">Missing fields: %s</string>
+    <string name="fvd_can_restore">Can be restored normally</string>
+    <string name="fvd_cannot_restore">Cannot be restored</string>
+    <string name="fvd_reading_backup">Reading backup file...</string>
+    <string name="fvd_backup_empty">No recoverable content in backup file</string>
+    <string name="fvd_format_detect_error">Format detection error: %s</string>
+    <string name="fvd_select_at_least_one">Please select at least one file</string>
+    <string name="fvd_restoring">Restoring...</string>
+    <string name="fvd_downloading">Downloading backup file...</string>
+    <string name="fvd_read_backup_error">Error reading backup file\n%s</string>
+    <string name="fvd_webdav_error">WebDavError\n%s\nWill restore from local backup.</string>
+    <string name="fvd_jianguoyun_limit">Due to Jianguoyun limit on listing files, some backups may not be displayed, please clean up old backups in time</string>
+    <string name="fvd_webdav_restore_error">WebDav restore error\n%s</string>
 </resources>

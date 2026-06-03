@@ -18,7 +18,7 @@
     <item
         android:id="@+id/menu_debug"
         android:icon="@drawable/ic_bug_report"
-        android:title="调试"
+        android:title="@string/debug"
         app:showAsAction="always" />
 
     <item

@@ -672,6 +672,7 @@
     <string name="source_recycle_bin_restored">已恢复</string>
     <string name="source_recycle_bin_deleted">已彻底删除</string>
     <string name="source_recycle_bin_cleared">回收站已清空</string>
+    <string name="search_engine_rule">搜索引擎规则</string>
     <string name="filter">筛选</string>
     <string name="overwrite">覆盖</string>
     <string name="delete_forever">彻底删除</string>
@@ -1576,4 +1577,102 @@
     <string name="underline_width_thick">粗</string>
     <string name="underline_offset_near">近</string>
     <string name="underline_offset_far">远</string>
+
+    <!-- Read Record Screen -->
+    <string name="rr_confirm_delete">确认删除</string>
+    <string name="rr_confirm_delete_msg">确定要删除这条阅读记录吗？</string>
+    <string name="rr_dont_show_again">不再提示</string>
+    <string name="rr_merge_same_name">合并同名书籍</string>
+    <string name="rr_no_merge_candidates">没有找到可以合并的记录</string>
+    <string name="rr_select_merge_target">选择要合并到「%s」的记录：</string>
+    <string name="rr_merge">合并</string>
+    <string name="rr_selected_items">已选择 %d 项</string>
+    <string name="rr_cancel_selection">取消选择</string>
+    <string name="rr_delete_selected">删除选中</string>
+    <string name="rr_aggregate_view">汇总视图</string>
+    <string name="rr_timeline_view">时间线视图</string>
+    <string name="rr_latest_read">最后阅读</string>
+    <string name="rr_read_duration">阅读时长</string>
+    <string name="rr_switch_view">切换视图</string>
+    <string name="rr_close_record">关闭记录</string>
+    <string name="rr_open_record">开启记录</string>
+    <string name="rr_search_books">搜索书籍</string>
+    <string name="rr_no_records">暂无阅读记录</string>
+    <string name="rr_calendar">日历</string>
+    <string name="rr_today">今天</string>
+    <string name="rr_yesterday">昨天</string>
+    <string name="rr_day_before_yesterday">前天</string>
+    <string name="rr_unknown_author">未知作者</string>
+
+    <!-- Summary Card -->
+    <string name="rr_total_read_achievement">累计阅读成就</string>
+    <string name="rr_books_read">已读</string>
+    <string name="rr_book_unit">本书</string>
+    <string name="rr_total_read_time">共阅读 %s</string>
+    <string name="rr_hour">小时</string>
+    <string name="rr_minute">分钟</string>
+    <string name="rr_hours">小时</string>
+    <string name="rr_minutes">分钟</string>
+
+    <!-- Heatmap Calendar -->
+    <string name="rr_heatmap_title">阅读日历</string>
+    <string name="rr_heatmap_subtitle">查看每天的阅读分布</string>
+    <string name="rr_heatmap_count">次数</string>
+    <string name="rr_heatmap_duration">时长</string>
+    <string name="rr_heatmap_clear_filter">清除筛选</string>
+    <string name="rr_heatmap_prev_month">上个月</string>
+    <string name="rr_heatmap_next_month">下个月</string>
+    <string name="rr_heatmap_show_by_count">按阅读次数显示</string>
+    <string name="rr_heatmap_show_by_duration">按阅读时长显示</string>
+    <string name="rr_heatmap_read">阅读</string>
+    <string name="rr_heatmap_days">天数</string>
+    <string name="rr_heatmap_times">次</string>
+    <string name="rr_heatmap_day_unit">天</string>
+    <string name="rr_heatmap_less">少</string>
+    <string name="rr_heatmap_more">多</string>
+    <string name="rr_heatmap_no_earlier_data">无更早数据</string>
+    <string name="rr_heatmap_mon">一</string>
+    <string name="rr_heatmap_tue">二</string>
+    <string name="rr_heatmap_wed">三</string>
+    <string name="rr_heatmap_thu">四</string>
+    <string name="rr_heatmap_fri">五</string>
+    <string name="rr_heatmap_sat">六</string>
+    <string name="rr_heatmap_sun">日</string>
+    <string name="rr_heatmap_year_month">%1$d年%2$d月</string>
+    <string name="rr_heatmap_date_format">M月d日 E</string>
+
+    <!-- Date Format -->
+    <string name="rr_date_format_md">M月d日</string>
+    <string name="rr_date_format_md_weekday">M月d日 E</string>
+
+    <!-- Book Cache Selector -->
+    <string name="bcs_title">书籍缓存选择</string>
+    <string name="bcs_save_selection">保存选择</string>
+    <string name="bcs_export_selected">导出选中</string>
+    <string name="bcs_selected_count">已选 %d 本</string>
+    <string name="bcs_total_size">总大小: %s</string>
+    <string name="bcs_deselect_all">取消全选</string>
+
+    <!-- File Validation Dialog -->
+    <string name="fvd_title">选择要恢复的文件</string>
+    <string name="fvd_detect_format">检测格式</string>
+    <string name="fvd_select_all">全选</string>
+    <string name="fvd_deselect_all">全不选</string>
+    <string name="fvd_valid">有效</string>
+    <string name="fvd_invalid">无效</string>
+    <string name="fvd_validating">验证中</string>
+    <string name="fvd_view_details">查看详情</string>
+    <string name="fvd_missing_fields">缺少字段: %s</string>
+    <string name="fvd_can_restore">可以正常恢复</string>
+    <string name="fvd_cannot_restore">无法恢复</string>
+    <string name="fvd_reading_backup">读取备份文件...</string>
+    <string name="fvd_backup_empty">备份文件中没有可恢复的内容</string>
+    <string name="fvd_format_detect_error">格式检测出错: %s</string>
+    <string name="fvd_select_at_least_one">请至少选择一个文件</string>
+    <string name="fvd_restoring">正在恢复...</string>
+    <string name="fvd_downloading">下载备份文件...</string>
+    <string name="fvd_read_backup_error">读取备份文件出错\n%s</string>
+    <string name="fvd_webdav_error">WebDavError\n%s\n将从本地备份恢复。</string>
+    <string name="fvd_jianguoyun_limit">由于坚果云限制列出文件数量，部分备份可能未显示，请及时清理旧备份</string>
+    <string name="fvd_webdav_restore_error">WebDav恢复出错\n%s</string>
 </resources>

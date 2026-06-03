@@ -19,6 +19,7 @@ import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.DialogHighlightRuleConfigBinding
 import io.legado.app.databinding.ItemHighlightPresetRuleBinding
+import io.legado.app.help.source.SourceRecycleBinHelp
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
@@ -249,6 +250,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         alert("删除") {
             setMessage("确定删除“${rule.name}”吗？")
             okButton {
+                SourceRecycleBinHelp.recycleHighlightRules(listOf(rule))
                 rules.removeAll { it.id == rule.id }
                 syncRules()
             }
@@ -304,6 +306,8 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
                 if (ids.isEmpty()) {
                     requireContext().toastOnUi("请先选择规则")
                 } else {
+                    val deleteRules = rules.filter { ids.contains(it.id) }
+                    SourceRecycleBinHelp.recycleHighlightRules(deleteRules)
                     rules.removeAll { ids.contains(it.id) }
                     syncRules()
                 }

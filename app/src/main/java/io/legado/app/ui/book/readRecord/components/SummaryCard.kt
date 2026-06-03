@@ -34,9 +34,11 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import io.legado.app.R
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.ui.book.readRecord.ReadRecordViewModel
@@ -57,7 +59,9 @@ fun SummaryCard(
 ) {
     val hours = totalReadTime / (1000 * 60 * 60)
     val minutes = (totalReadTime / (1000 * 60)) % 60
-    val timeString = if (hours > 0) "${hours}小时${minutes}分钟" else "${minutes}分钟"
+    val hourStr = stringResource(if (hours == 1L) R.string.rr_hour else R.string.rr_hours)
+    val minuteStr = stringResource(if (minutes == 1L) R.string.rr_minute else R.string.rr_minutes)
+    val timeString = if (hours > 0) "${hours}$hourStr${minutes}$minuteStr" else "${minutes}$minuteStr"
     val shape = RoundedCornerShape(16.dp)
     val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.18f
     val cardColor = if (isDarkBackground) {
@@ -90,7 +94,7 @@ fun SummaryCard(
         ) {
             Column {
                 Text(
-                    text = "累计阅读成就",
+                    text = stringResource(R.string.rr_total_read_achievement),
                     style = MaterialTheme.typography.labelSmall,
                     color = secondaryTextColor,
                     fontWeight = FontWeight.Medium
@@ -99,18 +103,18 @@ fun SummaryCard(
 
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = "已读 ",
+                        text = stringResource(R.string.rr_books_read),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "$bookCount",
+                        text = " $bookCount ",
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = " 本书",
+                        text = stringResource(R.string.rr_book_unit),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -119,7 +123,7 @@ fun SummaryCard(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "共阅读 $timeString",
+                    text = stringResource(R.string.rr_total_read_time, timeString),
                     style = MaterialTheme.typography.bodySmall,
                     color = secondaryTextColor
                 )

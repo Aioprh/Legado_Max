@@ -23,11 +23,13 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import io.legado.app.R
 import io.legado.app.utils.formatReadDuration
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -41,7 +43,6 @@ enum class HeatmapMode {
     TIME
 }
 
-const val HEATMAP_CALENDAR_TITLE = "阅读日历"
 private const val HEATMAP_COUNT_BASELINE = 6
 private const val HEATMAP_TIME_BASELINE_MINUTES = 120
 
@@ -54,13 +55,13 @@ fun HeatmapCalendarStartAction(
         FilterChip(
             selected = currentMode == HeatmapMode.COUNT,
             onClick = { onModeChanged(HeatmapMode.COUNT) },
-            label = { Text("次数") },
+            label = { Text(stringResource(R.string.rr_heatmap_count)) },
             modifier = Modifier.padding(end = 4.dp)
         )
         FilterChip(
             selected = currentMode == HeatmapMode.TIME,
             onClick = { onModeChanged(HeatmapMode.TIME) },
-            label = { Text("时长") }
+            label = { Text(stringResource(R.string.rr_heatmap_duration)) }
         )
     }
 }
@@ -72,7 +73,7 @@ fun HeatmapCalendarEndAction(
     TextButton(onClick = onClearDate) {
         Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.error)
         Spacer(modifier = Modifier.width(4.dp))
-        Text("清除筛选", color = MaterialTheme.colorScheme.error)
+        Text(stringResource(R.string.rr_heatmap_clear_filter), color = MaterialTheme.colorScheme.error)
     }
 }
 
@@ -86,6 +87,12 @@ fun HeatmapCalendarSection(
 ) {
     val today = LocalDate.now()
     var currentYearMonth by remember { mutableStateOf(YearMonth.now()) }
+    val timesStr = stringResource(R.string.rr_heatmap_times)
+    val dayUnitStr = stringResource(R.string.rr_heatmap_day_unit)
+    val prevMonthStr = stringResource(R.string.rr_heatmap_prev_month)
+    val nextMonthStr = stringResource(R.string.rr_heatmap_next_month)
+    val showByCountStr = stringResource(R.string.rr_heatmap_show_by_count)
+    val showByDurationStr = stringResource(R.string.rr_heatmap_show_by_duration)
 
     val maxValue = remember(dailyReadCounts, dailyReadTimes, currentMode) {
         if (currentMode == HeatmapMode.COUNT) {
@@ -129,19 +136,19 @@ fun HeatmapCalendarSection(
                     IconButton(
                         onClick = { currentYearMonth = currentYearMonth.minusMonths(1) }
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "上个月")
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = prevMonthStr)
                     }
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "${currentYearMonth.year}年${currentYearMonth.monthValue}月",
+                            text = stringResource(R.string.rr_heatmap_year_month, currentYearMonth.year, currentYearMonth.monthValue),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = if (currentMode == HeatmapMode.COUNT) "按阅读次数显示" else "按阅读时长显示",
+                            text = if (currentMode == HeatmapMode.COUNT) showByCountStr else showByDurationStr,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -150,7 +157,7 @@ fun HeatmapCalendarSection(
                     IconButton(
                         onClick = { currentYearMonth = currentYearMonth.plusMonths(1) }
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "下个月")
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = nextMonthStr)
                     }
                 }
 
@@ -159,18 +166,18 @@ fun HeatmapCalendarSection(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     MonthStatPill(
-                        label = "阅读",
-                        value = "${monthReadCount}次",
+                        label = stringResource(R.string.rr_heatmap_read),
+                        value = "$monthReadCount$timesStr",
                         modifier = Modifier.weight(1f)
                     )
                     MonthStatPill(
-                        label = "时长",
+                        label = stringResource(R.string.rr_heatmap_duration),
                         value = formatReadDuration(monthReadTime),
                         modifier = Modifier.weight(1f)
                     )
                     MonthStatPill(
-                        label = "天数",
-                        value = "${activeDays}天",
+                        label = stringResource(R.string.rr_heatmap_days),
+                        value = "$activeDays$dayUnitStr",
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -181,7 +188,15 @@ fun HeatmapCalendarSection(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            listOf("一", "二", "三", "四", "五", "六", "日").forEach { day ->
+            listOf(
+                stringResource(R.string.rr_heatmap_mon),
+                stringResource(R.string.rr_heatmap_tue),
+                stringResource(R.string.rr_heatmap_wed),
+                stringResource(R.string.rr_heatmap_thu),
+                stringResource(R.string.rr_heatmap_fri),
+                stringResource(R.string.rr_heatmap_sat),
+                stringResource(R.string.rr_heatmap_sun)
+            ).forEach { day ->
                 Text(
                     text = day,
                     style = MaterialTheme.typography.labelMedium,
@@ -389,7 +404,7 @@ fun HeatmapLegend() {
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("少", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.rr_heatmap_less), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(modifier = Modifier.width(4.dp))
         repeat(5) { index ->
             val color = if (index == 0) {
@@ -412,7 +427,7 @@ fun HeatmapLegend() {
             ) {}
         }
         Spacer(modifier = Modifier.width(4.dp))
-        Text("多", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.rr_heatmap_more), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -455,6 +470,8 @@ private fun SelectedDateSummary(
     readTime: Long,
     onClearDate: () -> Unit
 ) {
+    val timesStr = stringResource(R.string.rr_heatmap_times)
+    val dateFormatStr = stringResource(R.string.rr_heatmap_date_format)
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -470,13 +487,13 @@ private fun SelectedDateSummary(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = date.format(DateTimeFormatter.ofPattern("M月d日 E", Locale.CHINA)),
+                    text = date.format(DateTimeFormatter.ofPattern(dateFormatStr, Locale.CHINA)),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "${readCount}次 · ${formatReadDuration(readTime)}",
+                    text = "${readCount}$timesStr · ${formatReadDuration(readTime)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -566,7 +583,7 @@ fun rememberDaysInRange(startDate: LocalDate, endDate: LocalDate): List<LocalDat
 @Composable
 fun NoEarlierDataIndicator(modifier: Modifier = Modifier) {
     Text(
-        text = "无更早数据",
+        text = stringResource(R.string.rr_heatmap_no_earlier_data),
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier
@@ -585,7 +602,7 @@ fun HeatmapCalendarBottomSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -610,12 +627,12 @@ fun HeatmapCalendarBottomSheet(
                 ) {
                     Column {
                         Text(
-                            text = "阅读日历",
+                            text = stringResource(R.string.rr_heatmap_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "查看每天的阅读分布",
+                            text = stringResource(R.string.rr_heatmap_subtitle),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -626,9 +643,9 @@ fun HeatmapCalendarBottomSheet(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             HeatmapCalendarSection(
                 dailyReadCounts = dailyReadCounts,
                 dailyReadTimes = dailyReadTimes,

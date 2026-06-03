@@ -5,49 +5,49 @@
     <item
         android:id="@+id/menu_select"
         android:icon="@drawable/ic_check"
-        android:title="选择规则"
+        android:title="@string/select_rule"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_add"
         android:icon="@drawable/ic_add"
-        android:title="新增"
+        android:title="@string/add"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_preset"
         android:icon="@drawable/ic_bubble_chart"
-        android:title="预置规则"
+        android:title="@string/preset_rules"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_import"
         android:icon="@drawable/ic_import"
-        android:title="导入规则"
+        android:title="@string/import_rules"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_group"
         android:icon="@drawable/ic_groups"
-        android:title="管理分组"
+        android:title="@string/group_manage"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_share"
         android:icon="@drawable/ic_share"
-        android:title="分享规则"
+        android:title="@string/share_rules"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_export"
         android:icon="@drawable/ic_export"
-        android:title="导出规则"
+        android:title="@string/export_rules"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_reset"
         android:icon="@drawable/ic_restore"
-        android:title="恢复默认"
+        android:title="@string/restore_default"
         app:showAsAction="never" />
 
 </menu>
