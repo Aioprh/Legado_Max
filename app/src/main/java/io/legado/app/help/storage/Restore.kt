@@ -5,6 +5,9 @@ import android.net.Uri
 import android.util.Xml
 import androidx.core.content.edit
 import androidx.documentfile.provider.DocumentFile
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import io.legado.app.BuildConfig
 import io.legado.app.R
 import io.legado.app.constant.AppLog
@@ -1341,8 +1344,8 @@ object Restore {
         val cacheIndexList = runCatching {
             val json = indexFile.readText()
             LogUtils.d(TAG, "索引文件内容长度: ${json.length}")
-            GSON.fromJsonArray<BookCacheIndex>(json).getOrNull()
-        }.getOrNull()?.sanitizeBookCacheIndexes() ?: run {
+            parseBookCacheIndexList(json)
+        }.getOrNull() ?: run {
             LogUtils.d(TAG, "解析书籍缓存索引失败")
             AppLog.put("书籍缓存索引文件解析失败")
             return
@@ -1598,8 +1601,8 @@ object Restore {
                 val cacheIndexFile = File(path, bookCacheIndexFileName)
                 if (cacheIndexFile.exists()) {
                     val cacheIndexList = runCatching {
-                        GSON.fromJsonArray<BookCacheIndex>(cacheIndexFile.readText()).getOrNull()
-                    }.getOrNull()?.sanitizeBookCacheIndexes()
+                        parseBookCacheIndexList(cacheIndexFile.readText())
+                    }.getOrNull()
                     
                     val cacheIndex = cacheIndexList?.find { it.bookUrl == bookUrl }
                     if (cacheIndex != null) {
@@ -1656,6 +1659,68 @@ object Restore {
         allBooks.filter { it.name == cacheIndex.bookName }.firstOrNull()?.let { return it }
         
         return null
+    }
+
+    private fun parseBookCacheIndexList(json: String): List<BookCacheIndex>? {
+        return runCatching {
+            val root = JsonParser.parseString(json)
+            if (!root.isJsonArray) {
+                return@runCatching null
+            }
+            root.asJsonArray.mapNotNull { element ->
+                val obj = element.asJsonObjectOrNull() ?: return@mapNotNull null
+                val bookUrl = obj.stringOrBlank("bookUrl")
+                val bookName = obj.stringOrBlank("bookName")
+                val folderName = obj.stringOrBlank("folderName")
+                if (folderName.isBlank() || (bookUrl.isBlank() && bookName.isBlank())) {
+                    return@mapNotNull null
+                }
+                BookCacheIndex(
+                    bookUrl = bookUrl,
+                    bookName = bookName,
+                    author = obj.stringOrBlank("author"),
+                    folderName = folderName,
+                    chapters = obj.arrayOrEmpty("chapters").mapNotNull { chapterElement ->
+                        val chapter = chapterElement.asJsonObjectOrNull() ?: return@mapNotNull null
+                        val fileName = chapter.stringOrBlank("fileName")
+                        if (fileName.isBlank()) {
+                            return@mapNotNull null
+                        }
+                        ChapterCacheInfo(
+                            index = chapter.intOrZero("index"),
+                            title = chapter.stringOrBlank("title"),
+                            titleMD5 = chapter.stringOrBlank("titleMD5"),
+                            fileName = fileName
+                        )
+                    }
+                )
+            }.sanitizeBookCacheIndexes()
+        }.onFailure {
+            AppLog.put("$bookCacheIndexFileName\n读取解析出错\n${it.localizedMessage}", it)
+        }.getOrNull()
+    }
+
+    private fun JsonElement.asJsonObjectOrNull(): JsonObject? {
+        return takeIf { it.isJsonObject }?.asJsonObject
+    }
+
+    private fun JsonObject.stringOrBlank(name: String): String {
+        val element = get(name) ?: return ""
+        return runCatching {
+            if (element.isJsonNull) "" else element.asString ?: ""
+        }.getOrDefault("")
+    }
+
+    private fun JsonObject.intOrZero(name: String): Int {
+        val element = get(name) ?: return 0
+        return runCatching {
+            if (element.isJsonNull) 0 else element.asInt
+        }.getOrDefault(0)
+    }
+
+    private fun JsonObject.arrayOrEmpty(name: String): List<JsonElement> {
+        val element = get(name) ?: return emptyList()
+        return if (element.isJsonArray) element.asJsonArray.toList() else emptyList()
     }
 
     private fun List<BookCacheIndex>.sanitizeBookCacheIndexes(): List<BookCacheIndex> {
