@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.explore
 
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.Menu
 import android.view.MenuItem
 import android.view.ViewGroup
@@ -40,6 +41,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
 
     companion object {
         private const val REQUEST_CODE_ADD_ALL_TO_SHELF = 1001
+        /** 加载下一页的冷却间隔（毫秒），滚动过快时隔 2 秒再请求 */
+        private const val LOAD_COOLDOWN_MS = 2000L
     }
 
     override val binding by viewBinding(ActivityExploreShowBinding::inflate)
@@ -53,6 +56,9 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     private var menuPage: MenuItem? = null
     private var menuSwitchLayout: MenuItem? = null
     private var menuSelectColumn: MenuItem? = null
+
+    /** 上次发起加载下一页的时间戳，用于 2 秒冷却限制 */
+    private var lastLoadTime = 0L
 
     /** 网格模式列数，持久化到 PreferKey.exploreShowColumn，默认 1 */
     private var columnCount: Int
@@ -246,10 +252,13 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     }
 
     /**
-     * 滚动到底部加载更多
+     * 滚动到底部加载更多，内置 2 秒冷却限制防止频繁请求
      */
     private fun scrollToBottom(forceLoad: Boolean = false) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastLoadTime < LOAD_COOLDOWN_MS) return
         if ((loadMoreView.hasMore && !loadMoreView.isLoading && !loadMoreViewTop.isLoading) || forceLoad) {
+            lastLoadTime = now
             loadMoreView.hasMore()
             viewModel.explore()
         }
