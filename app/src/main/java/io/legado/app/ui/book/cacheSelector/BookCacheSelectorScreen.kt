@@ -89,7 +89,7 @@ fun BookCacheSelectorScreen(
                 },
                 actions = {
                     IconButton(onClick = onHelpClick) {
-                        Icon(Icons.Default.Help, contentDescription = "帮助")
+                        Icon(Icons.Default.Help, contentDescription = stringResource(R.string.help))
                     }
                     TextButton(onClick = {
                         if (viewModel.isAllSelected()) {
