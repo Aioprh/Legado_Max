@@ -252,11 +252,11 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     }
 
     /**
-     * 滚动到底部加载更多，内置 2 秒冷却限制防止频繁请求
+     * 滚动到底部加载更多，列数 >3 时内置 2 秒冷却限制防止频繁请求
      */
     private fun scrollToBottom(forceLoad: Boolean = false) {
         val now = SystemClock.elapsedRealtime()
-        if (now - lastLoadTime < LOAD_COOLDOWN_MS) return
+        if (columnCount > 3 && now - lastLoadTime < LOAD_COOLDOWN_MS) return
         if ((loadMoreView.hasMore && !loadMoreView.isLoading && !loadMoreViewTop.isLoading) || forceLoad) {
             lastLoadTime = now
             loadMoreView.hasMore()
