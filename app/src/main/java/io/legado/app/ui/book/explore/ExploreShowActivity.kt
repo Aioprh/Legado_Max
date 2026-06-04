@@ -6,6 +6,7 @@ import android.view.MenuItem
 import android.view.ViewGroup
 import androidx.activity.viewModels
 import androidx.core.os.bundleOf
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
@@ -22,7 +23,9 @@ import io.legado.app.ui.widget.recycler.LoadMoreView
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.getPrefBoolean
+import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.putPrefBoolean
+import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
@@ -48,6 +51,18 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     private var oldPage = -1
     private var isClearAll = false
     private var menuPage: MenuItem? = null
+    private var menuSwitchLayout: MenuItem? = null
+    private var menuSelectColumn: MenuItem? = null
+
+    /** 网格模式列数，持久化到 PreferKey.exploreShowColumn，默认 1 */
+    private var columnCount: Int
+        get() = getPrefInt(PreferKey.exploreShowColumn, 1)
+        set(value) = putPrefInt(PreferKey.exploreShowColumn, value)
+
+    /** 是否处于网格模式，由"切换布局"菜单切换，持久化到 PreferKey.exploreGridMode */
+    private var isGridMode: Boolean
+        get() = getPrefBoolean(PreferKey.exploreGridMode, false)
+        set(value) = putPrefBoolean(PreferKey.exploreGridMode, value)
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.titleBar.title = intent.getStringExtra("exploreName")
@@ -79,12 +94,23 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.explore_show, menu)
         menuPage = menu.findItem(R.id.menu_page)
+        menuSwitchLayout = menu.findItem(R.id.menu_switch_layout)
+        menuSelectColumn = menu.findItem(R.id.menu_select_column)
+        // 恢复上次的网格模式状态
+        if (isGridMode) {
+            menuSelectColumn?.isVisible = true
+            updateColumnMenuTitle()
+            adapter.isGridMode = true
+            applyLayoutManager(columnCount)
+        }
         return super.onCompatCreateOptionsMenu(menu)
     }
 
     override fun onMenuOpened(featureId: Int, menu: Menu): Boolean {
         menu.findItem(R.id.menu_cover_adapt_wide)?.isChecked =
             getPrefBoolean(PreferKey.coverAdaptWide)
+        // 根据当前网格模式设置切换布局菜单的勾选状态
+        menuSwitchLayout?.isChecked = isGridMode
         return super.onMenuOpened(featureId, menu)
     }
 
@@ -129,8 +155,69 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             R.id.menu_add_all_to_shelf -> {
                 showDialogFragment(GroupSelectDialog(0, REQUEST_CODE_ADD_ALL_TO_SHELF))
             }
+            R.id.menu_switch_layout -> {
+                handleSwitchLayout()
+            }
+            R.id.menu_select_column -> {
+                handleSelectColumn()
+            }
         }
         return super.onCompatOptionsItemSelected(item)
+    }
+
+    /**
+     * 切换布局：列表模式 ↔ 网格模式
+     * 网格模式下显示选择分列菜单图标和简化卡片，列表模式下隐藏菜单图标恢复完整信息
+     */
+    private fun handleSwitchLayout() {
+        isGridMode = !isGridMode
+        if (isGridMode) {
+            menuSelectColumn?.isVisible = true
+            if (columnCount < 1 || columnCount > 10) {
+                columnCount = 2
+            }
+            updateColumnMenuTitle()
+            adapter.isGridMode = true
+            applyLayoutManager(columnCount)
+        } else {
+            menuSelectColumn?.isVisible = false
+            adapter.isGridMode = false
+            applyLayoutManager(1)
+        }
+    }
+
+    /**
+     * 弹出 NumberPickerDialog 选择列数（1-10），确认后更新布局和标题栏图标
+     */
+    private fun handleSelectColumn() {
+        NumberPickerDialog(this)
+            .setTitle(getString(R.string.select_column_count))
+            .setMaxValue(10)
+            .setMinValue(1)
+            .setValue(columnCount)
+            .show { selectedCount ->
+                columnCount = selectedCount
+                updateColumnMenuTitle()
+                applyLayoutManager(selectedCount)
+            }
+    }
+
+    /**
+     * 根据列数设置 RecyclerView 的 LayoutManager
+     * 1 列使用 LinearLayoutManager，>=2 列使用 GridLayoutManager
+     */
+    private fun applyLayoutManager(count: Int) {
+        binding.recyclerView.layoutManager = when {
+            count <= 1 -> LinearLayoutManager(this)
+            else -> GridLayoutManager(this, count)
+        }
+    }
+
+    /**
+     * 更新标题栏中选择分列菜单项的标题为当前列数值
+     */
+    private fun updateColumnMenuTitle() {
+        menuSelectColumn?.title = columnCount.toString()
     }
 
     private fun initRecyclerView() {
@@ -163,8 +250,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      */
     private fun scrollToBottom(forceLoad: Boolean = false) {
         if ((loadMoreView.hasMore && !loadMoreView.isLoading && !loadMoreViewTop.isLoading) || forceLoad) {
-            loadMoreView.hasMore()// 显示加载中
-            viewModel.explore()// 请求下一页
+            loadMoreView.hasMore()
+            viewModel.explore()
         }
     }
 
@@ -173,9 +260,9 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      */
     private fun scrollToTop(forceLoad: Boolean = false) {
         if ((oldPage > 1 && !loadMoreView.isLoading && !loadMoreViewTop.isLoading) || forceLoad) {
-            loadMoreViewTop.hasMore()// 显示顶部加载中
+            loadMoreViewTop.hasMore()
             oldPage--
-            viewModel.explore(oldPage)//加载上一页
+            viewModel.explore(oldPage)
         }
     }
 
@@ -187,9 +274,9 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             loadMoreView.noMore()
         } else {
             adapter.setItems(books)
-            if (isClearAll) { //全清空后,加了头,位置下移一个
-                val layoutManager = binding.recyclerView.layoutManager as LinearLayoutManager
-                layoutManager.scrollToPositionWithOffset(1, 0)
+            if (isClearAll) {
+                val layoutManager = binding.recyclerView.layoutManager as? LinearLayoutManager
+                layoutManager?.scrollToPositionWithOffset(1, 0)
                 isClearAll = false
             }
         }
@@ -198,11 +285,11 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     private fun upDataTop(books: List<SearchBook>) {
         loadMoreViewTop.stopLoad()
         adapter.addItems(0, books)
-        val layoutManager = binding.recyclerView.layoutManager as LinearLayoutManager
-        if (layoutManager.findFirstVisibleItemPosition() <= 1) { //顶部刷新,未滚动，矫正位置
+        val layoutManager = binding.recyclerView.layoutManager as? LinearLayoutManager
+        if (layoutManager != null && layoutManager.findFirstVisibleItemPosition() <= 1) {
             layoutManager.scrollToPositionWithOffset(books.size, 0)
         }
-        if (oldPage <= 1) { //已到顶,隐藏头
+        if (oldPage <= 1) {
             val layoutParams = loadMoreViewTop.layoutParams
             if (layoutParams != null) {
                 layoutParams.height = 0

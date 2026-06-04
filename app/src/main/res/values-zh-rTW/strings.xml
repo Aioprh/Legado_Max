@@ -1500,4 +1500,9 @@
     <string name="fvd_webdav_error">WebDavError\n%s\n將從本地備份恢復。</string>
     <string name="fvd_jianguoyun_limit">由於堅果雲限制列出檔案數量，部分備份可能未顯示，請及時清理舊備份</string>
     <string name="fvd_webdav_restore_error">WebDav恢復出錯\n%s</string>
+
+    <!-- Explore Show Column Layout -->
+    <string name="switch_layout">切換佈局</string>
+    <string name="select_column">選擇分列(%d)</string>
+    <string name="select_column_count">選擇列數</string>
 </resources>

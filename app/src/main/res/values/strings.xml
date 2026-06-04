@@ -1870,4 +1870,9 @@
     <string name="fvd_webdav_error">WebDavError\n%s\nWill restore from local backup.</string>
     <string name="fvd_jianguoyun_limit">Due to Jianguoyun limit on listing files, some backups may not be displayed, please clean up old backups in time</string>
     <string name="fvd_webdav_restore_error">WebDav restore error\n%s</string>
+
+    <!-- Explore Show Column Layout -->
+    <string name="switch_layout">Switch Layout</string>
+    <string name="select_column">Select Column(%d)</string>
+    <string name="select_column_count">Select Column Count</string>
 </resources>

@@ -256,4 +256,9 @@ object PreferKey {
 
     const val backupBookCache = "backupBookCache"
     const val sourceRecycleBinEnabled = "sourceRecycleBinEnabled"
+
+    /** 发现列表列数配置，默认1列，>=2为网格多列 */
+    const val exploreShowColumn = "exploreShowColumn"
+    /** 发现列表是否处于网格模式，由"切换布局"菜单控制 */
+    const val exploreGridMode = "exploreGridMode"
 }

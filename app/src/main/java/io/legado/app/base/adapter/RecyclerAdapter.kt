@@ -397,10 +397,10 @@ abstract class RecyclerAdapter<ITEM, VB : ViewBinding>(protected val context: Co
 
     protected abstract fun getViewBinding(parent: ViewGroup): VB
 
-    final override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {}
+    override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {}
 
     @Suppress("UNCHECKED_CAST")
-    final override fun onBindViewHolder(
+    override fun onBindViewHolder(
         holder: ItemViewHolder,
         position: Int,
         payloads: MutableList<Any>
