@@ -30,6 +30,7 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.glide.AdaptiveCoverTransformation
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.help.glide.OkHttpModelLoader
 import io.legado.app.lib.theme.accentColor
@@ -95,16 +96,11 @@ class CoverImageView @JvmOverloads constructor(
     private val drawBookName = BookCover.drawBookName
     private val drawBookAuthor by lazy { BookCover.drawBookAuthor }
 
-    /** 是否开启适配宽图，读取 PreferKey.coverAdaptWide */
-    private val coverAdaptWide: Boolean get() = context.getPrefBoolean(PreferKey.coverAdaptWide)
-
     override fun setLayoutParams(params: ViewGroup.LayoutParams?) {
         if (params != null) {
             val width = params.width
-            if (width >= 0 && !coverAdaptWide) {
+            if (width >= 0) {
                 params.height = width * 4 / 3
-            } else if (width >= 0) {
-                params.height = ViewGroup.LayoutParams.WRAP_CONTENT
             } else {
                 params.height = ViewGroup.LayoutParams.WRAP_CONTENT
             }
@@ -114,23 +110,7 @@ class CoverImageView @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val measuredWidth = MeasureSpec.getSize(widthMeasureSpec)
-        val measuredHeight = if (coverAdaptWide) {
-            val drawable = drawable
-            val imgW = drawable?.intrinsicWidth ?: 0
-            val imgH = drawable?.intrinsicHeight ?: 0
-            if (imgW > 0 && imgH > 0) {
-                val imgRatio = imgW.toFloat() / imgH
-                if (imgRatio > 3f / 4f) {
-                    (measuredWidth / imgRatio).toInt()
-                } else {
-                    measuredWidth * 4 / 3
-                }
-            } else {
-                measuredWidth * 4 / 3
-            }
-        } else {
-            measuredWidth * 4 / 3
-        }
+        val measuredHeight = measuredWidth * 4 / 3
         super.onMeasure(
             widthMeasureSpec,
             MeasureSpec.makeMeasureSpec(measuredHeight, MeasureSpec.EXACTLY)
@@ -303,8 +283,6 @@ class CoverImageView @JvmOverloads constructor(
                 currentJob = null
                 needNameBitmap.remove(bitmapPath.toString())
                 invalidate()
-                // 适配宽图时，图片加载后触发布局重测以匹配实际比例
-                if (coverAdaptWide) requestLayout()
                 return false
             }
 
@@ -395,10 +373,6 @@ class CoverImageView @JvmOverloads constructor(
                 .placeholder(BookCover.defaultDrawable)
                 .error(BookCover.defaultDrawable)
                 .listener(glideListener)
-            // 适配宽图时不使用 Glide centerCrop 变换，保留原图 intrinsic 尺寸供 onMeasure 计算容器高度
-            if (!coverAdaptWide) {
-                builder = builder.centerCrop()
-            }
             if (onLoadFinish != null) {
                 builder = builder.addListener(object : RequestListener<Drawable> {
                     override fun onLoadFailed(
@@ -419,10 +393,14 @@ class CoverImageView @JvmOverloads constructor(
                         isFirstResource: Boolean
                     ): Boolean {
                         onLoadFinish.invoke()
-                        if (coverAdaptWide) post { requestLayout() }
                         return false
                     }
                 })
+            }
+            builder = if (appCtx.getPrefBoolean(PreferKey.coverAdaptWide)) {
+                builder.transform(AdaptiveCoverTransformation(3f / 4f))
+            } else {
+                builder.centerCrop()
             }
             builder
                 .into(this)
