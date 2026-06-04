@@ -8,6 +8,7 @@ import android.view.View
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
+import androidx.appcompat.widget.SearchView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.textfield.TextInputLayout
@@ -26,6 +27,7 @@ import io.legado.app.databinding.ActivityCacheBookBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.DialogSelectSectionExportBinding
 import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.contains
 import io.legado.app.help.book.getExportFileName
 import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.isLocal
@@ -35,6 +37,7 @@ import io.legado.app.help.ConcurrentRateLimiter
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
+import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.model.CacheBook
 import io.legado.app.service.ExportBookService
 import io.legado.app.ui.about.AppLogDialog
@@ -87,6 +90,8 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
     private var menu: Menu? = null
     private val groupList: ArrayList<BookGroup> = arrayListOf()
     private var groupId: Long = -1
+    private var allBooks: List<Book> = emptyList()
+    private var searchKey: String? = null
 
     private val exportDir = registerForActivityResult(HandleFileContract()) { result ->
         var isReadyPath = false
@@ -129,6 +134,25 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.book_cache, menu)
+        (menu.findItem(R.id.menu_search)?.actionView as? SearchView)?.apply {
+            applyTint(primaryTextColor)
+            queryHint = getString(R.string.action_search)
+            maxWidth = resources.displayMetrics.widthPixels
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(query: String?): Boolean {
+                    searchKey = query
+                    updateVisibleBooks()
+                    clearFocus()
+                    return false
+                }
+
+                override fun onQueryTextChange(newText: String?): Boolean {
+                    searchKey = newText
+                    updateVisibleBooks()
+                    return false
+                }
+            })
+        }
         menu.iconItemOnLongClick(R.id.menu_download) {
             PopupMenu(this, it).apply {
                 inflate(R.menu.book_cache_download)
@@ -230,6 +254,9 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
             else -> if (item.groupId == R.id.menu_group) {
                 binding.titleBar.subtitle = item.title
                 groupId = appDb.bookGroupDao.getByName(item.title.toString())?.groupId ?: 0
+                allBooks = emptyList()
+                searchKey = null
+                menu?.findItem(R.id.menu_search)?.collapseActionView()
                 initBookData()
             }
         }
@@ -271,10 +298,22 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
             ).catch {
                 AppLog.put("缓存管理界面获取书籍列表失败\n${it.localizedMessage}", it)
             }.flowOn(IO).conflate().collect { books ->
-                adapter.setItems(books)
+                allBooks = books
+                updateVisibleBooks()
                 viewModel.loadCacheFiles(books)
             }
         }
+    }
+
+    private fun updateVisibleBooks() {
+        val key = searchKey?.trim()
+        adapter.setItems(
+            if (key.isNullOrEmpty()) {
+                allBooks
+            } else {
+                allBooks.filter { it.contains(key) }
+            }
+        )
     }
 
     @SuppressLint("NotifyDataSetChanged")

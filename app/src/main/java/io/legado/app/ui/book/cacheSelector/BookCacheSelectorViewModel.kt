@@ -125,6 +125,21 @@ class BookCacheSelectorViewModel(application: Application) : BaseViewModel(appli
         updateSelectionSummary()
     }
 
+    fun selectBooks(books: List<Book>) {
+        val bookUrls = books.map { it.bookUrl }.toHashSet()
+        if (bookUrls.isEmpty()) return
+        val current = _bookItems.value.map { item ->
+            if (item.book.bookUrl in bookUrls) {
+                BookCacheSelectorConfig.setSelected(item.book, true)
+                item.copy(isSelected = true)
+            } else {
+                item
+            }
+        }
+        _bookItems.value = current
+        updateSelectionSummary()
+    }
+
     fun deselectAll() {
         val current = _bookItems.value.map { item ->
             BookCacheSelectorConfig.setSelected(item.book, false)
@@ -134,8 +149,27 @@ class BookCacheSelectorViewModel(application: Application) : BaseViewModel(appli
         updateSelectionSummary()
     }
 
+    fun deselectBooks(books: List<Book>) {
+        val bookUrls = books.map { it.bookUrl }.toHashSet()
+        if (bookUrls.isEmpty()) return
+        val current = _bookItems.value.map { item ->
+            if (item.book.bookUrl in bookUrls) {
+                BookCacheSelectorConfig.setSelected(item.book, false)
+                item.copy(isSelected = false)
+            } else {
+                item
+            }
+        }
+        _bookItems.value = current
+        updateSelectionSummary()
+    }
+
     fun isAllSelected(): Boolean {
         return _bookItems.value.isNotEmpty() && _bookItems.value.all { it.isSelected }
+    }
+
+    fun isAllSelected(items: List<BookCacheItem>): Boolean {
+        return items.isNotEmpty() && items.all { it.isSelected }
     }
 
     fun saveSelection() {

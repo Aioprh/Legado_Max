@@ -61,6 +61,10 @@
 -keep class * extends io.legado.app.help.JsExtensions{*;}
 # 数据类
 -keep class **.data.entities.**{*;}
+-keep class io.legado.app.help.storage.BookCacheIndex{*;}
+-keep class io.legado.app.help.storage.ChapterCacheInfo{*;}
+-keep class io.legado.app.ui.book.cacheSelector.BookCacheIndex{*;}
+-keep class io.legado.app.ui.book.cacheSelector.ChapterCacheInfo{*;}
 # hutool-core hutool-crypto
 -keep class
 !cn.hutool.core.util.RuntimeUtil,
