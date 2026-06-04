@@ -256,7 +256,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      */
     private fun scrollToBottom(forceLoad: Boolean = false) {
         val now = SystemClock.elapsedRealtime()
-        if (columnCount > 3 && now - lastLoadTime < LOAD_COOLDOWN_MS) return
+        if (isGridMode && columnCount > 3 && now - lastLoadTime < LOAD_COOLDOWN_MS) return
         if ((loadMoreView.hasMore && !loadMoreView.isLoading && !loadMoreViewTop.isLoading) || forceLoad) {
             lastLoadTime = now
             loadMoreView.hasMore()
