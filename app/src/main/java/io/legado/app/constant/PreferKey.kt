@@ -35,6 +35,7 @@ object PreferKey {
     const val clickActionBR = "clickActionBottomRight"
     const val hideNavigationBar = "hideNavigationBar"
     const val precisionSearch = "precisionSearch"
+    const val showSearchProgress = "showSearchProgress"
     const val readAloudByPage = "readAloudByPage"
     const val ttsEngine = "appTtsEngine"
     const val ttsFollowSys = "ttsFollowSys"
@@ -62,6 +63,7 @@ object PreferKey {
     const val restoreIgnore = "restoreIgnore"
     const val restoreShowSelector = "restoreShowSelector"
     const val threadCount = "threadCount"
+    const val cacheConcurrentRate = "cacheConcurrentRate"
     const val verboseUpdateLog = "verboseUpdateLog" // 详细更新日志开关
     const val webPort = "webPort"
     const val keepLight = "keep_light"

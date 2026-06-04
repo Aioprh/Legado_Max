@@ -13,6 +13,7 @@ import androidx.activity.viewModels
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import android.app.AlertDialog
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.AppConst.charsets
@@ -21,6 +22,7 @@ import io.legado.app.databinding.ActivityBookReadBinding
 import io.legado.app.databinding.DialogDownloadChoiceBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.DialogSimulatedReadingBinding
+import io.legado.app.help.ConcurrentRateLimiter
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.config.ReadBookConfig
@@ -45,6 +47,7 @@ import io.legado.app.utils.setLightStatusBar
 import io.legado.app.utils.setNavigationBarColorAuto
 import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
 import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -263,27 +266,38 @@ abstract class BaseReadBookActivity :
         }
     }
 
+    /**
+     * 显示离线缓存对话框，可选择章节范围与缓存并发率
+     * 并发率输入校验：仅允许 "纯数字" 或 "次数/毫秒" 两种格式
+     */
     @SuppressLint("InflateParams", "SetTextI18n")
     fun showDownloadDialog() {
         ReadBook.book?.let { book ->
-            alert(titleResource = R.string.offline_cache) {
+            var rateEdit: android.widget.EditText? = null
+            val alertDialog = alert(titleResource = R.string.offline_cache) {
                 val alertBinding = DialogDownloadChoiceBinding.inflate(layoutInflater).apply {
                     editStart.setText((book.durChapterIndex + 1).toString())
                     editEnd.setText(book.totalChapterNum.toString())
+                    AppConfig.cacheConcurrentRate?.let { editRate.setText(it) }
                 }
+                rateEdit = alertBinding.editRate
                 customView { alertBinding.root }
-                okButton {
-                    alertBinding.run {
-                        val start = editStart.text!!.toString().let {
-                            if (it.isEmpty()) 0 else it.toInt()
-                        }
-                        val end = editEnd.text!!.toString().let {
-                            if (it.isEmpty()) book.totalChapterNum else it.toInt()
-                        }
-                        CacheBook.start(this@BaseReadBookActivity, book, start - 1, end - 1)
-                    }
-                }
+                positiveButton(R.string.ok)
                 cancelButton()
+            }
+            alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val rate = rateEdit?.text?.toString() ?: ""
+                if (rate.isNotBlank() && !ConcurrentRateLimiter.isValidRate(rate)) {
+                    toastOnUi(R.string.cache_rate_invalid)
+                    return@setOnClickListener
+                }
+                AppConfig.cacheConcurrentRate = if (rate.isBlank()) null else rate
+                val start = alertDialog.requireViewById<android.widget.EditText>(R.id.edit_start)
+                    .text.toString().let { if (it.isEmpty()) 0 else it.toInt() }
+                val end = alertDialog.requireViewById<android.widget.EditText>(R.id.edit_end)
+                    .text.toString().let { if (it.isEmpty()) book.totalChapterNum else it.toInt() }
+                CacheBook.start(this@BaseReadBookActivity, book, start - 1, end - 1)
+                alertDialog.hide()
             }
         }
     }
