@@ -108,22 +108,22 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }
         previewBgColor = cardBgColor
         previewStrokeColor = cardStrokeColor
+        val accentForegroundColor =
+            if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
 
         binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.ivClose.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
-        binding.ivClose.background?.mutate()?.setTint(accentColor)
+        binding.ivClose.background?.mutate()?.setTint(cardBgColor)
         binding.tvPageTitle.setTextColor(primaryTextColor)
         binding.tvPageSubtitle.setTextColor(secondaryTextColor)
-        binding.ivMenu.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
+        binding.ivMenu.setColorFilter(accentForegroundColor, PorterDuff.Mode.SRC_IN)
         binding.ivMenu.background?.mutate()?.setTint(accentColor)
         binding.ivEmpty.setColorFilter(secondaryTextColor, PorterDuff.Mode.SRC_IN)
         binding.tvEmptyMsg.setTextColor(secondaryTextColor)
         binding.tvEmptyHint.setTextColor(secondaryTextColor)
 
         binding.tvEmptyAdd.background?.mutate()?.setTint(accentColor)
-        binding.tvEmptyAdd.setTextColor(
-            if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
-        )
+        binding.tvEmptyAdd.setTextColor(accentForegroundColor)
     }
 
     private fun showMenu(anchor: View) {

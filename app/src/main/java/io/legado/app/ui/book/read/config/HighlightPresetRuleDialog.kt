@@ -89,7 +89,7 @@ class HighlightPresetRuleDialog @JvmOverloads constructor(
 
         binding.sheetContainer.background?.mutate()?.setTint(bg)
         binding.ivBack.setColorFilter(primaryTextColor, PorterDuff.Mode.SRC_IN)
-        binding.ivBack.background?.mutate()?.setTint(accentColor)
+        binding.ivBack.background?.mutate()?.setTint(cardBgColor)
         binding.tvPageTitle.setTextColor(primaryTextColor)
         binding.tvPageSubtitle.setTextColor(secondaryTextColor)
     }
