@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,6 +24,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -33,6 +36,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -60,9 +66,17 @@ fun BookCacheSelectorScreen(
     val bookItems by viewModel.bookItems.collectAsState()
     val selectedCount by viewModel.selectedCount.collectAsState()
     val totalSelectedSize by viewModel.totalSelectedSize.collectAsState()
+    var searchKey by rememberSaveable { mutableStateOf("") }
+    var searchVisible by rememberSaveable { mutableStateOf(false) }
 
     val accentColor = cacheSelectorAccentColor()
     val topBarColor = pageCardContainerColor()
+    val visibleBookItems = bookItems.filter { item ->
+        searchKey.isBlank() ||
+                item.book.name.contains(searchKey, ignoreCase = true) ||
+                item.book.getRealAuthor().contains(searchKey, ignoreCase = true)
+    }
+    val visibleAllSelected = viewModel.isAllSelected(visibleBookItems)
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -90,18 +104,28 @@ fun BookCacheSelectorScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = {
+                        if (searchVisible || searchKey.isNotEmpty()) {
+                            searchKey = ""
+                            searchVisible = false
+                        } else {
+                            searchVisible = true
+                        }
+                    }) {
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.action_search))
+                    }
                     IconButton(onClick = onHelpClick) {
                         Icon(Icons.Default.Help, contentDescription = stringResource(R.string.help))
                     }
                     TextButton(onClick = {
-                        if (viewModel.isAllSelected()) {
-                            viewModel.deselectAll()
+                        if (visibleAllSelected) {
+                            viewModel.deselectBooks(visibleBookItems.map { it.book })
                         } else {
-                            viewModel.selectAll()
+                            viewModel.selectBooks(visibleBookItems.map { it.book })
                         }
                     }) {
                         Text(
-                            text = if (viewModel.isAllSelected()) stringResource(R.string.bcs_deselect_all) else stringResource(R.string.select_all),
+                            text = if (visibleAllSelected) stringResource(R.string.bcs_deselect_all) else stringResource(R.string.select_all),
                             color = accentColor
                         )
                     }
@@ -171,6 +195,14 @@ fun BookCacheSelectorScreen(
                 ) {
                     // 汇总条
                     item {
+                        if (searchVisible || searchKey.isNotEmpty()) {
+                            BookCacheSearchField(
+                                query = searchKey,
+                                onQueryChange = { searchKey = it },
+                                accentColor = accentColor
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
                         SummaryBar(
                             selectedCount = selectedCount,
                             totalSize = totalSelectedSize
@@ -178,15 +210,28 @@ fun BookCacheSelectorScreen(
                         Spacer(Modifier.height(4.dp))
                     }
 
-                    items(
-                        items = bookItems,
-                        key = { it.book.bookUrl }
-                    ) { item ->
-                        BookCacheItemCard(
-                            item = item,
-                            onToggleSelect = { viewModel.toggleSelect(item.book) },
-                            accentColor = accentColor
-                        )
+                    if (visibleBookItems.isEmpty()) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.no_book),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 32.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        items(
+                            items = visibleBookItems,
+                            key = { it.book.bookUrl }
+                        ) { item ->
+                            BookCacheItemCard(
+                                item = item,
+                                onToggleSelect = { viewModel.toggleSelect(item.book) },
+                                accentColor = accentColor
+                            )
+                        }
                     }
 
                     item {
@@ -228,6 +273,32 @@ fun BookCacheSelectorScreen(
             }
         }
     }
+}
+
+@Composable
+private fun BookCacheSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    accentColor: Color
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium,
+        leadingIcon = {
+            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.action_search))
+        },
+        placeholder = {
+            Text(stringResource(R.string.action_search))
+        },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = accentColor,
+            focusedLeadingIconColor = accentColor,
+            cursorColor = accentColor
+        )
+    )
 }
 
 @Composable
