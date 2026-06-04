@@ -51,7 +51,6 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.Cache
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookHelp
-import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
 import io.legado.app.ui.book.read.config.HighlightRuleStore
 import io.legado.app.data.repository.CoverGalleryRepository
@@ -781,7 +780,7 @@ object Backup {
         val targetCacheDir = File(rootPath, bookCacheFolderName).createFolderIfNotExist()
         
         selectedBooks.forEach { book ->
-            val folderName = book.getFolderNameNoCache()
+            val folderName = book.getFolderName()
             val bookFolder = File(cacheDir, folderName)
             
             if (!bookFolder.exists() || !bookFolder.isDirectory) {

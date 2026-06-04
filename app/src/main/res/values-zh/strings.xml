@@ -1260,6 +1260,7 @@
     <string name="change_search_scope">切换搜索范围</string>
     <string name="copy_rule">拷贝规则</string>
     <string name="paste_rule">粘贴规则</string>
+    <string name="highlight_rule_help">高亮规则说明</string>
     <string name="groups_or_source">多分组/书源</string>
     <string name="replace_state_change">替换(启用/禁用)</string>
     <string name="show_last_update_time">显示上次更新时间</string>

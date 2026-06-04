@@ -1,5 +1,6 @@
 package io.legado.app.ui.book.cacheSelector
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,10 +15,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,7 +45,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
 import io.legado.app.ui.book.cacheSelector.components.BookCacheItemCard
 import io.legado.app.ui.theme.pageCardContainerColor
-import io.legado.app.ui.theme.pageTopBarContainerColor
 import io.legado.app.utils.ConvertUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,14 +53,16 @@ fun BookCacheSelectorScreen(
     viewModel: BookCacheSelectorViewModel = viewModel(),
     onBackClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onExportClick: () -> Unit
+    onExportClick: () -> Unit,
+    onHelpClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val bookItems by viewModel.bookItems.collectAsState()
     val selectedCount by viewModel.selectedCount.collectAsState()
     val totalSelectedSize by viewModel.totalSelectedSize.collectAsState()
 
-    val topBarColor = pageTopBarContainerColor()
+    val accentColor = cacheSelectorAccentColor()
+    val topBarColor = pageCardContainerColor()
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -67,9 +71,9 @@ fun BookCacheSelectorScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = topBarColor,
                     scrolledContainerColor = topBarColor,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
-                    titleContentColor = MaterialTheme.colorScheme.onSecondary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSecondary
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 title = {
                     Text(
@@ -86,6 +90,9 @@ fun BookCacheSelectorScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onHelpClick) {
+                        Icon(Icons.Default.Help, contentDescription = stringResource(R.string.help))
+                    }
                     TextButton(onClick = {
                         if (viewModel.isAllSelected()) {
                             viewModel.deselectAll()
@@ -95,7 +102,7 @@ fun BookCacheSelectorScreen(
                     }) {
                         Text(
                             text = if (viewModel.isAllSelected()) stringResource(R.string.bcs_deselect_all) else stringResource(R.string.select_all),
-                            color = MaterialTheme.colorScheme.onSecondary
+                            color = accentColor
                         )
                     }
                 }
@@ -116,14 +123,28 @@ fun BookCacheSelectorScreen(
                     Button(
                         onClick = onSaveClick,
                         modifier = Modifier.weight(1f),
-                        enabled = selectedCount > 0
+                        enabled = selectedCount > 0,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = accentColor,
+                            contentColor = Color.White,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                        )
                     ) {
                         Text(stringResource(R.string.bcs_save_selection))
                     }
                     OutlinedButton(
                         onClick = onExportClick,
                         modifier = Modifier.weight(1f),
-                        enabled = selectedCount > 0
+                        enabled = selectedCount > 0,
+                        border = BorderStroke(
+                            1.dp,
+                            if (selectedCount > 0) accentColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                        ),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = accentColor,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                        )
                     ) {
                         Text(stringResource(R.string.bcs_export_selected))
                     }
@@ -139,7 +160,7 @@ fun BookCacheSelectorScreen(
                         .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = accentColor)
                 }
             }
             is BookCacheSelectorUiState.Idle -> {
@@ -163,7 +184,8 @@ fun BookCacheSelectorScreen(
                     ) { item ->
                         BookCacheItemCard(
                             item = item,
-                            onToggleSelect = { viewModel.toggleSelect(item.book) }
+                            onToggleSelect = { viewModel.toggleSelect(item.book) },
+                            accentColor = accentColor
                         )
                     }
 
@@ -180,7 +202,7 @@ fun BookCacheSelectorScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = accentColor)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = (uiState as BookCacheSelectorUiState.Exporting).message,
@@ -213,10 +235,11 @@ private fun SummaryBar(
     selectedCount: Int,
     totalSize: Long
 ) {
+    val accentColor = cacheSelectorAccentColor()
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        color = cacheSelectorTintContainerColor(accentColor)
     ) {
         Row(
             modifier = Modifier
@@ -235,8 +258,24 @@ private fun SummaryBar(
                 text = stringResource(R.string.bcs_total_size, ConvertUtils.formatFileSize(totalSize)),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
+                color = accentColor
             )
         }
+    }
+}
+
+@Composable
+internal fun cacheSelectorAccentColor(): Color {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.18f
+    return if (isDark) Color(0xFF5AB9A8) else Color(0xFF2F7D6B)
+}
+
+@Composable
+internal fun cacheSelectorTintContainerColor(accentColor: Color): Color {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.18f
+    return if (isDark) {
+        accentColor.copy(alpha = 0.16f)
+    } else {
+        accentColor.copy(alpha = 0.10f)
     }
 }

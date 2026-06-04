@@ -25,6 +25,11 @@ object HelpDocManager {
                 HelpDoc("jsPackagesHelp", "JS Packages使用指南"),
                 HelpDoc("书源字段规则类型", "书源字段规则类型"),
                 HelpDoc("订阅源字段规则类型", "订阅源字段规则类型"),
+                HelpDoc("打印源对象的JS对象", "打印源JS对象"),
+                HelpDoc("legado_data_objects", "书源JS格式文档"),
+                HelpDoc("legado_data_url_guide", "Data URL使用指南"),
+                HelpDoc("legado_network_api", "网络访问 API 参考"),
+                HelpDoc("highlightRules", "高亮规则说明")
             )
         ),
         HelpDocGroup(
@@ -33,13 +38,14 @@ object HelpDocManager {
                 HelpDoc("订阅源机制详解", "订阅源机制详解"),
                 HelpDoc("预注入JS机制详解", "订阅源预注入JS机制"),
                 HelpDoc("替换规则流程与机制", "替换规则流程与机制"),
-                HelpDoc("下拉刷新流程与机制", "下拉刷新流程与机制"),
                 HelpDoc("jsVariableHelp", "JS 变量存储机制详解"),
+                HelpDoc("下拉刷新流程与机制", "下拉刷新流程与机制"),
                 HelpDoc("图片加载机制", "图片加载机制"),
                 HelpDoc("网络请求机制", "网络请求机制"),
                 HelpDoc("错误处理机制", "错误处理机制"),
                 HelpDoc("懒加载与缓存机制分析", "懒加载与缓存机制"),
-                HelpDoc("登录信息与运行变量备份机制", "书源登录信息与运行变量备份机制")
+                HelpDoc("登录信息与运行变量备份机制", "书源登录信息与运行变量备份机制"),
+                HelpDoc("bookCacheHelp", "书籍缓存备份机制")
             )
         ),
         HelpDocGroup(

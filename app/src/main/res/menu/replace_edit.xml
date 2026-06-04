@@ -31,4 +31,9 @@
         android:title="@string/paste_rule"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/menu_highlight_rule_help"
+        android:title="@string/highlight_rule_help"
+        app:showAsAction="never" />
+
 </menu>

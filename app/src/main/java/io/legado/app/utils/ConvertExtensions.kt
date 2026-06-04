@@ -122,10 +122,26 @@ fun Int.dpToPx(): Int = this.toFloat().dpToPx().toInt()
 
 fun Int.spToPx(): Int = this.toFloat().spToPx().toInt()
 
-fun Float.dpToPx(): Float = android.util.TypedValue.applyDimension(
-    android.util.TypedValue.COMPLEX_UNIT_DIP, this, Resources.getSystem().displayMetrics
-)
+fun Float.dpToPx(): Float {
+    val displayMetrics = Resources.getSystem().displayMetrics
+    return if (displayMetrics != null) {
+        android.util.TypedValue.applyDimension(
+            android.util.TypedValue.COMPLEX_UNIT_DIP, this, displayMetrics
+        )
+    } else {
+        // Fallback: use typical density (2.75 is common for xhdpi devices)
+        this * 2.75f
+    }
+}
 
-fun Float.spToPx(): Float = android.util.TypedValue.applyDimension(
-    android.util.TypedValue.COMPLEX_UNIT_SP, this, Resources.getSystem().displayMetrics
-)
+fun Float.spToPx(): Float {
+    val displayMetrics = Resources.getSystem().displayMetrics
+    return if (displayMetrics != null) {
+        android.util.TypedValue.applyDimension(
+            android.util.TypedValue.COMPLEX_UNIT_SP, this, displayMetrics
+        )
+    } else {
+        // Fallback: use typical scaled density (2.75 is common for xhdpi devices)
+        this * 2.75f
+    }
+}

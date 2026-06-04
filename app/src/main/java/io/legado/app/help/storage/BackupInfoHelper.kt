@@ -4,7 +4,6 @@ import io.legado.app.data.appDb
 import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.book.BookHelp
-import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.model.BookCover
@@ -192,7 +191,7 @@ object BackupInfoHelper {
         var chapterCount = 0
         if (cacheDir.exists()) {
             selectedBooks.forEach { book ->
-                val bookFolder = File(cacheDir, book.getFolderNameNoCache())
+                val bookFolder = File(cacheDir, book.getFolderName())
                 if (bookFolder.exists()) {
                     bookCacheSize += bookFolder.walkTopDown().filter { it.isFile }.sumOf { it.length() }
                     chapterCount += appDb.bookChapterDao.getChapterList(book.bookUrl).size

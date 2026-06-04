@@ -1,5 +1,6 @@
 package io.legado.app.ui.book.cacheSelector.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,22 +32,32 @@ import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 import io.legado.app.R
 import io.legado.app.ui.book.cacheSelector.BookCacheItem
+import io.legado.app.ui.book.cacheSelector.cacheSelectorTintContainerColor
 import io.legado.app.model.BookCover
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun BookCacheItemCard(
     item: BookCacheItem,
-    onToggleSelect: () -> Unit
+    onToggleSelect: () -> Unit,
+    accentColor: Color
 ) {
+    val shape = RoundedCornerShape(12.dp)
+    val borderColor = if (item.isSelected) {
+        accentColor.copy(alpha = 0.55f)
+    } else {
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .border(1.dp, borderColor, shape)
             .clickable { onToggleSelect() },
-        shape = RoundedCornerShape(12.dp),
+        shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = if (item.isSelected) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                cacheSelectorTintContainerColor(accentColor)
             } else {
                 MaterialTheme.colorScheme.surface
             }
@@ -118,7 +130,7 @@ fun BookCacheItemCard(
                 text = item.formattedSize,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
+                color = accentColor
             )
 
             Spacer(Modifier.width(4.dp))
@@ -126,7 +138,11 @@ fun BookCacheItemCard(
             // 选择框
             Checkbox(
                 checked = item.isSelected,
-                onCheckedChange = { onToggleSelect() }
+                onCheckedChange = { onToggleSelect() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = accentColor,
+                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             )
         }
     }

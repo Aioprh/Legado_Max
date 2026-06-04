@@ -1286,6 +1286,7 @@
     <string name="change_search_scope">Toggle search scope</string>
     <string name="copy_rule">Copy Rule</string>
     <string name="paste_rule">Paste Rule</string>
+    <string name="highlight_rule_help">Highlight Rule Help</string>
     <string name="groups_or_source">Multi-group / book source</string>
     <string name="replace_state_change">Replace (enable / disable)</string>
     <string name="show_last_update_time">Show last updated time</string>
