@@ -40,7 +40,6 @@ import io.legado.app.help.LauncherIconHelp
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.upType
 import io.legado.app.help.book.BookHelp
-import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
@@ -511,14 +510,24 @@ object Restore {
         }
 
         // 恢复书籍缓存和章节目录
+        LogUtils.d(TAG, "检查是否需要恢复书籍缓存")
+        LogUtils.d(TAG, "selectedSet 内容: ${selectedSet.joinToString(", ")}")
+        LogUtils.d(TAG, "bookCacheFolderName: $bookCacheFolderName, 是否在 selectedSet: ${bookCacheFolderName in selectedSet}")
+        LogUtils.d(TAG, "bookCacheIndexFileName: $bookCacheIndexFileName, 是否在 selectedSet: ${bookCacheIndexFileName in selectedSet}")
+        LogUtils.d(TAG, "bookCacheBooksFileName: $bookCacheBooksFileName, 是否在 selectedSet: ${bookCacheBooksFileName in selectedSet}")
+        LogUtils.d(TAG, "bookChapterCache.json: bookChapterCache.json, 是否在 selectedSet: ${"bookChapterCache.json" in selectedSet}")
+        
         if (
             bookCacheFolderName in selectedSet ||
             bookCacheIndexFileName in selectedSet ||
             bookCacheBooksFileName in selectedSet ||
             "bookChapterCache.json" in selectedSet
         ) {
+            LogUtils.d(TAG, "满足书籍缓存恢复条件，开始恢复")
             progress(bookCacheFolderName)
             restoreBookCache(path)
+        } else {
+            LogUtils.d(TAG, "不满足书籍缓存恢复条件，跳过")
         }
 
         progress("applyRestoreConfig")
@@ -1267,28 +1276,87 @@ object Restore {
      * 2. 其次按章节标题匹配
      */
     private fun restoreBookCache(path: String) {
+        LogUtils.d(TAG, "开始恢复书籍缓存，路径: $path")
+        
         if (BackupConfig.ignoreBookCache) {
-            LogUtils.d(TAG, "忽略书籍缓存恢复")
+            LogUtils.d(TAG, "忽略书籍缓存恢复（配置项已禁用）")
+            AppLog.put("书籍缓存恢复被忽略，请在恢复配置中启用")
             return
         }
         
         // 先恢复章节目录
         val indexFile = File(path, bookCacheIndexFileName)
         if (!indexFile.exists()) {
-            LogUtils.d(TAG, "书籍缓存索引文件不存在")
+            LogUtils.d(TAG, "书籍缓存索引文件不存在: ${indexFile.absolutePath}")
+            AppLog.put("书籍缓存索引文件不存在，无法恢复书籍缓存")
+            
+            // 尝试从 bookCacheBooks.json 直接恢复书籍信息
+            val booksFile = File(path, bookCacheBooksFileName)
+            if (booksFile.exists()) {
+                LogUtils.d(TAG, "尝试从 bookCacheBooks.json 直接恢复书籍信息")
+                try {
+                    ensureDefaultBookGroups()
+                    val books = fileToListT<Book>(path, bookCacheBooksFileName)
+                        .orEmpty()
+                        .mapNotNull { it.sanitizeForCacheRestore() }
+                    
+                    if (books.isNotEmpty()) {
+                        LogUtils.d(TAG, "从 bookCacheBooks.json 读取到 ${books.size} 本书")
+                        
+                        val localBooks = appDb.bookDao.all
+                        LogUtils.d(TAG, "当前数据库中有 ${localBooks.size} 本书")
+                        
+                        val missingBooks = books.filter { book ->
+                            val exists = localBooks.any { it.bookUrl == book.bookUrl || it.name == book.name }
+                            LogUtils.d(TAG, "书籍《${book.name}》${if (exists) "已存在" else "不存在"}")
+                            !exists
+                        }.map { book ->
+                            book.copy(
+                                group = 0,
+                                type = book.type and BookType.notShelf.inv()
+                            )
+                        }
+                        
+                        if (missingBooks.isNotEmpty()) {
+                            appDb.bookDao.insert(*missingBooks.toTypedArray())
+                            LogUtils.d(TAG, "从 bookCacheBooks.json 恢复书籍: ${missingBooks.size}")
+                            AppLog.put("从书籍缓存恢复 ${missingBooks.size} 本书到书架")
+                            
+                            // 发送书架刷新事件
+                            postEvent(EventBus.BOOKSHELF_REFRESH, "")
+                        } else {
+                            LogUtils.d(TAG, "所有书籍已存在，无需恢复")
+                        }
+                    }
+                } catch (e: Exception) {
+                    LogUtils.d(TAG, "从 bookCacheBooks.json 恢复失败: ${e.message}")
+                    AppLog.put("从 bookCacheBooks.json 恢复失败\n${e.localizedMessage}", e)
+                }
+            }
             return
         }
         
+        LogUtils.d(TAG, "找到书籍缓存索引文件: ${indexFile.absolutePath}, 大小: ${indexFile.length()}")
+        
         val cacheIndexList = runCatching {
-            GSON.fromJsonArray<BookCacheIndex>(indexFile.readText()).getOrNull()
-        }.getOrNull() ?: run {
+            val json = indexFile.readText()
+            LogUtils.d(TAG, "索引文件内容长度: ${json.length}")
+            GSON.fromJsonArray<BookCacheIndex>(json).getOrNull()
+        }.getOrNull()?.sanitizeBookCacheIndexes() ?: run {
             LogUtils.d(TAG, "解析书籍缓存索引失败")
+            AppLog.put("书籍缓存索引文件解析失败")
             return
         }
         
         if (cacheIndexList.isEmpty()) {
             LogUtils.d(TAG, "书籍缓存索引为空")
+            AppLog.put("书籍缓存索引为空")
             return
+        }
+        
+        LogUtils.d(TAG, "解析到 ${cacheIndexList.size} 个书籍缓存索引")
+        cacheIndexList.forEach { index ->
+            LogUtils.d(TAG, "  - 《${index.bookName}》作者: ${index.author}, 目录: ${index.folderName}, 章节数: ${index.chapters.size}")
         }
         
         restoreBookCacheBooks(path, cacheIndexList)
@@ -1322,7 +1390,7 @@ object Restore {
                 return@forEach
             }
             
-            val targetFolderName = matchedBook.getFolderNameNoCache()
+            val targetFolderName = matchedBook.getFolderName()
             val targetBookDir = File(targetCacheDir, targetFolderName)
             if (!targetBookDir.exists()) {
                 targetBookDir.mkdirs()
@@ -1334,6 +1402,7 @@ object Restore {
             val currentChapterByTitle = currentChapters.associateBy { it.title }
             
             // 恢复章节文件，根据需要重命名
+            val copiedSourceNames = hashSetOf<String>()
             cacheIndex.chapters.forEach { chapterInfo ->
                 val sourceFile = File(sourceCacheDir, chapterInfo.fileName)
                 if (!sourceFile.exists()) {
@@ -1355,8 +1424,15 @@ object Restore {
                 
                 // 复制文件（如果文件名不同则重命名）
                 sourceFile.copyTo(targetFile, overwrite = true)
+                copiedSourceNames.add(sourceFile.name)
                 chapterRestoredCount++
             }
+            sourceCacheDir.listFiles()
+                ?.filter { it.isFile && it.name.endsWith(".nb") && it.name !in copiedSourceNames }
+                ?.forEach { sourceFile ->
+                    sourceFile.copyTo(File(targetBookDir, sourceFile.name), overwrite = true)
+                    chapterRestoredCount++
+                }
             
             // 复制图片文件夹（如果有）
             val sourceImageDir = File(sourceCacheDir, "images")
@@ -1379,9 +1455,19 @@ object Restore {
      * @param path 备份文件解压后的目录路径
      */
     private fun restoreBookCacheBooks(path: String, cacheIndexList: List<BookCacheIndex>) {
+        LogUtils.d(TAG, "开始恢复书籍缓存书架信息")
+        
         ensureDefaultBookGroups()
-        val backupBooks = fileToListT<Book>(path, bookCacheBooksFileName).orEmpty()
+        LogUtils.d(TAG, "已确保默认书籍分组存在")
+        
+        val backupBooks = fileToListT<Book>(path, bookCacheBooksFileName)
+            .orEmpty()
+            .mapNotNull { it.sanitizeForCacheRestore() }
+        
+        LogUtils.d(TAG, "从 $bookCacheBooksFileName 读取到 ${backupBooks.size} 本书")
+        
         val books = backupBooks.ifEmpty {
+            LogUtils.d(TAG, "使用缓存索引生成最小书籍记录")
             cacheIndexList.map {
                 Book(
                     bookUrl = it.bookUrl,
@@ -1391,20 +1477,29 @@ object Restore {
                 )
             }
         }
-        if (books.isEmpty()) return
+        
+        if (books.isEmpty()) {
+            LogUtils.d(TAG, "没有需要恢复的书籍")
+            return
+        }
 
         val localBooks = appDb.bookDao.all
+        LogUtils.d(TAG, "当前数据库中有 ${localBooks.size} 本书")
+        
         val missingBooks = books
             .filter { book ->
-                findMatchingBook(
+                val matched = findMatchingBook(
                     BookCacheIndex(
                         bookUrl = book.bookUrl,
                         bookName = book.name,
                         author = book.author,
-                        folderName = book.getFolderNameNoCache()
+                        folderName = book.getFolderName()
                     ),
                     localBooks
-                ) == null
+                )
+                val exists = matched != null
+                LogUtils.d(TAG, "书籍《${book.name}》${if (exists) "已存在 (匹配: ${matched?.name})" else "不存在，将恢复"}")
+                !exists
             }
             .map { book ->
                 book.copy(
@@ -1412,9 +1507,21 @@ object Restore {
                     type = book.type and BookType.notShelf.inv()
                 )
             }
+        
         if (missingBooks.isNotEmpty()) {
+            LogUtils.d(TAG, "准备插入 ${missingBooks.size} 本缺失书籍")
+            missingBooks.forEach { book ->
+                LogUtils.d(TAG, "  - 《${book.name}》作者: ${book.author}, bookUrl: ${book.bookUrl}, type: ${book.type}, group: ${book.group}")
+            }
+            
             appDb.bookDao.insert(*missingBooks.toTypedArray())
             LogUtils.d(TAG, "恢复书籍缓存书架信息: ${missingBooks.size}")
+            AppLog.put("从书籍缓存恢复 ${missingBooks.size} 本书到书架")
+            
+            // 发送书架刷新事件
+            postEvent(EventBus.BOOKSHELF_REFRESH, "")
+        } else {
+            LogUtils.d(TAG, "所有书籍已存在，无需恢复")
         }
     }
 
@@ -1492,7 +1599,7 @@ object Restore {
                 if (cacheIndexFile.exists()) {
                     val cacheIndexList = runCatching {
                         GSON.fromJsonArray<BookCacheIndex>(cacheIndexFile.readText()).getOrNull()
-                    }.getOrNull()
+                    }.getOrNull()?.sanitizeBookCacheIndexes()
                     
                     val cacheIndex = cacheIndexList?.find { it.bookUrl == bookUrl }
                     if (cacheIndex != null) {
@@ -1549,6 +1656,69 @@ object Restore {
         allBooks.filter { it.name == cacheIndex.bookName }.firstOrNull()?.let { return it }
         
         return null
+    }
+
+    private fun List<BookCacheIndex>.sanitizeBookCacheIndexes(): List<BookCacheIndex> {
+        LogUtils.d(TAG, "开始清理书籍缓存索引，原始数量: ${this.size}")
+        
+        return mapNotNull { cacheIndex ->
+            @Suppress("USELESS_CAST")
+            val bookUrl = (cacheIndex.bookUrl as String?) ?: ""
+            @Suppress("USELESS_CAST")
+            val bookName = (cacheIndex.bookName as String?) ?: ""
+            @Suppress("USELESS_CAST")
+            val folderName = (cacheIndex.folderName as String?) ?: ""
+            
+            LogUtils.d(TAG, "处理索引: bookUrl='$bookUrl', bookName='$bookName', folderName='$folderName'")
+            
+            if (folderName.isBlank() || (bookUrl.isBlank() && bookName.isBlank())) {
+                LogUtils.d(TAG, "跳过无效书籍缓存索引: bookUrl=$bookUrl, bookName=$bookName, folderName=$folderName")
+                return@mapNotNull null
+            }
+            @Suppress("USELESS_CAST")
+            val chapters = (cacheIndex.chapters as List<ChapterCacheInfo>?)
+                .orEmpty()
+                .mapNotNull { chapterInfo ->
+                    @Suppress("USELESS_CAST")
+                    val fileName = (chapterInfo.fileName as String?) ?: ""
+                    if (fileName.isBlank()) {
+                        return@mapNotNull null
+                    }
+                    @Suppress("USELESS_CAST")
+                    val title = (chapterInfo.title as String?) ?: ""
+                    @Suppress("USELESS_CAST")
+                    val titleMD5 = (chapterInfo.titleMD5 as String?) ?: ""
+                    chapterInfo.copy(
+                        title = title,
+                        titleMD5 = titleMD5,
+                        fileName = fileName
+                    )
+                }
+            @Suppress("USELESS_CAST")
+            cacheIndex.copy(
+                bookUrl = bookUrl,
+                bookName = bookName,
+                author = (cacheIndex.author as String?) ?: "",
+                folderName = folderName,
+                chapters = chapters
+            )
+        }
+    }
+
+    private fun Book.sanitizeForCacheRestore(): Book? {
+        @Suppress("USELESS_CAST")
+        bookUrl = (bookUrl as String?) ?: ""
+        @Suppress("USELESS_CAST")
+        name = (name as String?) ?: ""
+        @Suppress("USELESS_CAST")
+        author = (author as String?) ?: ""
+        @Suppress("USELESS_CAST")
+        originName = (originName as String?) ?: name
+        if (bookUrl.isBlank() && name.isBlank()) {
+            LogUtils.d(TAG, "跳过无效缓存书籍信息")
+            return null
+        }
+        return this
     }
 
 }

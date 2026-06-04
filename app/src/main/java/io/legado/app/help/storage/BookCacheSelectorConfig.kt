@@ -3,7 +3,6 @@ package io.legado.app.help.storage
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.help.book.BookHelp
-import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
@@ -48,7 +47,7 @@ object BookCacheSelectorConfig {
             ?: return emptyList()
         
         return appDb.bookDao.all.filter { book ->
-            book.getFolderNameNoCache() in folderNames
+            book.getFolderName() in folderNames
         }
     }
 

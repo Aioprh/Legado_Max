@@ -9,7 +9,6 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookHelp
-import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.help.storage.BookCacheSelectorConfig
 import io.legado.app.utils.ConvertUtils
 import io.legado.app.utils.GSON
@@ -182,7 +181,7 @@ class BookCacheSelectorViewModel(application: Application) : BaseViewModel(appli
                     )
 
                     try {
-                        val folderName = book.getFolderNameNoCache()
+                        val folderName = book.getFolderName()
                         val bookFolder = File(cacheDir, folderName)
                         if (!bookFolder.exists() || !bookFolder.isDirectory) return@forEachIndexed
 
@@ -203,7 +202,7 @@ class BookCacheSelectorViewModel(application: Application) : BaseViewModel(appli
                             BookCacheIndex(
                                 bookUrl = book.bookUrl,
                                 bookName = book.name,
-                                author = book.author,
+                                author = book.author ?: "",
                                 folderName = folderName,
                                 chapters = chapterCacheInfos.sortedBy { it.index }
                             )
@@ -302,7 +301,7 @@ class BookCacheSelectorViewModel(application: Application) : BaseViewModel(appli
     }
 
     private fun calculateBookCacheSize(book: Book): Long {
-        val cacheDir = File(BookHelp.cachePath, book.getFolderNameNoCache())
+        val cacheDir = File(BookHelp.cachePath, book.getFolderName())
         return calculateDirSize(cacheDir)
     }
 

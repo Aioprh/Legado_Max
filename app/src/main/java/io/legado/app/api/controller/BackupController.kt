@@ -8,7 +8,6 @@ import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
-import io.legado.app.help.book.getFolderNameNoCache
 import io.legado.app.help.storage.Backup
 import io.legado.app.help.storage.BackupAES
 import io.legado.app.help.storage.BookCacheSelectorConfig
@@ -386,7 +385,7 @@ object BackupController {
             var chapterCount = 0
             if (cacheDir.exists()) {
                 selectedBooks.forEach { book ->
-                    val folderName = book.getFolderNameNoCache()
+                    val folderName = book.getFolderName()
                     val bookFolder = File(cacheDir, folderName)
                     if (bookFolder.exists()) {
                         bookCacheSize += bookFolder.walkTopDown().filter { it.isFile }.sumOf { it.length() }
