@@ -3,6 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/menu_cover_adapt_wide"
+        android:title="@string/cover_adapt_wide"
+        android:checkable="true"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_page"
         android:title="@string/menu_page"
         app:showAsAction="always" />

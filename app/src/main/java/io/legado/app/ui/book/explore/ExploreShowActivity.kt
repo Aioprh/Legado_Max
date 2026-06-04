@@ -10,6 +10,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
+import io.legado.app.constant.EventBus
+import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.databinding.ActivityExploreShowBinding
 import io.legado.app.databinding.ViewLoadMoreBinding
@@ -19,6 +21,9 @@ import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.recycler.LoadMoreView
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.applyNavigationBarPadding
+import io.legado.app.utils.getPrefBoolean
+import io.legado.app.utils.putPrefBoolean
+import io.legado.app.utils.postEvent
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
@@ -77,8 +82,20 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         return super.onCompatCreateOptionsMenu(menu)
     }
 
+    override fun onMenuOpened(featureId: Int, menu: Menu): Boolean {
+        menu.findItem(R.id.menu_cover_adapt_wide)?.isChecked =
+            getPrefBoolean(PreferKey.coverAdaptWide)
+        return super.onMenuOpened(featureId, menu)
+    }
+
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
+            R.id.menu_cover_adapt_wide -> {
+                item.isChecked = !item.isChecked
+                putPrefBoolean(PreferKey.coverAdaptWide, item.isChecked)
+                adapter.notifyDataSetChanged()
+                postEvent(EventBus.BOOKSHELF_REFRESH, "")
+            }
             R.id.menu_page -> {
                 val page = viewModel.pageLiveData.value ?: 1
                 NumberPickerDialog(this)
