@@ -397,8 +397,12 @@ class CoverImageView @JvmOverloads constructor(
                     }
                 })
             }
+            builder = if (appCtx.getPrefBoolean(PreferKey.coverAdaptWide)) {
+                builder.transform(AdaptiveCoverTransformation(3f / 4f))
+            } else {
+                builder.centerCrop()
+            }
             builder
-                .transform(AdaptiveCoverTransformation(3f / 4f))
                 .into(this)
         }
     }

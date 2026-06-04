@@ -91,6 +91,10 @@ class CoverConfigFragment : PreferenceFragment(),
                 }
             }
 
+            PreferKey.coverAdaptWide -> {
+                postEvent(EventBus.BOOKSHELF_REFRESH, "")
+            }
+
             PreferKey.coverShowName -> {
                 findPreference<SwitchPreference>(PreferKey.coverShowAuthor)
                     ?.isEnabled = getPrefBoolean(key)
