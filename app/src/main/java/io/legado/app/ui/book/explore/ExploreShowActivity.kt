@@ -273,7 +273,14 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         } else if (adapter.getActualItemCount() == books.size) {
             loadMoreView.noMore()
         } else {
-            adapter.setItems(books)
+            // 增量追加新数据，避免 setItems 的 notifyDataSetChanged 导致已渲染封面闪烁
+            val oldCount = adapter.getActualItemCount()
+            if (oldCount == 0) {
+                adapter.setItems(books)
+            } else {
+                val newItems = books.subList(oldCount, books.size)
+                adapter.addItems(newItems)
+            }
             if (isClearAll) {
                 val layoutManager = binding.recyclerView.layoutManager as? LinearLayoutManager
                 layoutManager?.scrollToPositionWithOffset(1, 0)
