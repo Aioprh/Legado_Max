@@ -40,7 +40,8 @@ class BookCacheSelectorActivity : AppCompatActivity() {
                     viewModel.saveSelection()
                     finish()
                 },
-                onExportClick = { selectExportDir.launch { mode = HandleFileContract.DIR } }
+                onExportClick = { selectExportDir.launch { mode = HandleFileContract.DIR } },
+                onHelpClick = { /* TODO: 实现帮助功能 */ }
             )
         }
     }
@@ -50,13 +51,15 @@ class BookCacheSelectorActivity : AppCompatActivity() {
 fun BookCacheSelectorContent(
     onBackClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onExportClick: () -> Unit
+    onExportClick: () -> Unit,
+    onHelpClick: () -> Unit
 ) {
     LegadoThemeWithBackground(backgroundDrawable = null) {
         BookCacheSelectorScreen(
             onBackClick = onBackClick,
             onSaveClick = onSaveClick,
-            onExportClick = onExportClick
+            onExportClick = onExportClick,
+            onHelpClick = onHelpClick
         )
     }
 }

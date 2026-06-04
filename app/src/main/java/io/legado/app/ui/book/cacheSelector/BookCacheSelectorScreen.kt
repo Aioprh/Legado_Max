@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,7 +52,8 @@ fun BookCacheSelectorScreen(
     viewModel: BookCacheSelectorViewModel = viewModel(),
     onBackClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onExportClick: () -> Unit
+    onExportClick: () -> Unit,
+    onHelpClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val bookItems by viewModel.bookItems.collectAsState()
@@ -86,6 +88,9 @@ fun BookCacheSelectorScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onHelpClick) {
+                        Icon(Icons.Default.Help, contentDescription = "帮助")
+                    }
                     TextButton(onClick = {
                         if (viewModel.isAllSelected()) {
                             viewModel.deselectAll()
