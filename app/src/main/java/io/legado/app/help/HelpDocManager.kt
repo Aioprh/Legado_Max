@@ -25,6 +25,7 @@ object HelpDocManager {
                 HelpDoc("jsPackagesHelp", "JS Packages使用指南"),
                 HelpDoc("书源字段规则类型", "书源字段规则类型"),
                 HelpDoc("订阅源字段规则类型", "订阅源字段规则类型"),
+                HelpDoc("highlightRules", "高亮规则说明")
             )
         ),
         HelpDocGroup(
