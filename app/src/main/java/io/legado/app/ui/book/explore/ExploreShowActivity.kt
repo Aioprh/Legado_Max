@@ -1,6 +1,8 @@
 package io.legado.app.ui.book.explore
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.view.Menu
 import android.view.MenuItem
@@ -59,6 +61,12 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
 
     /** 上次发起加载下一页的时间戳，用于 2 秒冷却限制 */
     private var lastLoadTime = 0L
+
+    /** 冷却期延迟重试的 Handler */
+    private val handler = Handler(Looper.getMainLooper())
+
+    /** 是否已有延迟重试排队中 */
+    private var loadRetryScheduled = false
 
     /** 网格模式列数，持久化到 PreferKey.exploreShowColumn，默认 1 */
     private var columnCount: Int
@@ -252,16 +260,33 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     }
 
     /**
-     * 滚动到底部加载更多，列数 >3 时内置 2 秒冷却限制防止频繁请求
+     * 滚动到底部加载更多，列数 >3 时内置 2 秒冷却限制。
+     * 冷却期内延迟重试，避免停在底部无法触发 onScrolled 导致加载卡死。
      */
     private fun scrollToBottom(forceLoad: Boolean = false) {
         val now = SystemClock.elapsedRealtime()
-        if (isGridMode && columnCount > 3 && now - lastLoadTime < LOAD_COOLDOWN_MS) return
+        if (isGridMode && columnCount > 3 && now - lastLoadTime < LOAD_COOLDOWN_MS) {
+            scheduleLoadRetry(LOAD_COOLDOWN_MS - (now - lastLoadTime))
+            return
+        }
         if ((loadMoreView.hasMore && !loadMoreView.isLoading && !loadMoreViewTop.isLoading) || forceLoad) {
+            loadRetryScheduled = false
             lastLoadTime = now
             loadMoreView.hasMore()
             viewModel.explore()
         }
+    }
+
+    /**
+     * 冷却期内延迟重试加载下一页，仅排队一次
+     */
+    private fun scheduleLoadRetry(delayMs: Long) {
+        if (loadRetryScheduled) return
+        loadRetryScheduled = true
+        handler.postDelayed({
+            loadRetryScheduled = false
+            scrollToBottom()
+        }, delayMs)
     }
 
     /**
