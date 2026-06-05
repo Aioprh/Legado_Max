@@ -256,11 +256,12 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      * 更新切换布局菜单标题为当前模式名称
      */
     private fun updateSwitchLayoutTitle() {
-        menuSwitchLayout?.title = when (layoutMode) {
+        val modeName = when (layoutMode) {
             LAYOUT_GRID -> getString(R.string.switch_layout_grid)
             LAYOUT_WATERFALL -> getString(R.string.switch_layout_waterfall)
             else -> getString(R.string.switch_layout_list)
         }
+        menuSwitchLayout?.title = "${getString(R.string.switch_layout)}(当前:$modeName)"
     }
 
     private fun initRecyclerView() {

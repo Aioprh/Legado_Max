@@ -129,12 +129,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         item: SearchBook
     ) {
         val lastTag = holder.itemView.tag as? String
-        val isRebind = lastTag == item.bookUrl
+        if (lastTag == item.bookUrl) return
         holder.itemView.tag = item.bookUrl
-
-        if (!isRebind) {
-            binding.tvNameWaterfall.text = item.name
-        }
+        binding.tvNameWaterfall.text = item.name
 
         val coverUrl = item.coverUrl
         val imageView = binding.ivCoverWaterfall
@@ -152,47 +149,31 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         val cachedRatio = waterfallAspectCache[coverUrl]
         if (cachedRatio != null) {
             lp.height = (cardWidth * cachedRatio).toInt()
-            imageView.layoutParams = lp
-            if (!isRebind) {
-                loadImage(coverUrl, item.origin, imageView)
-            }
-        } else if (!isRebind) {
+        } else {
             lp.height = ViewGroup.LayoutParams.WRAP_CONTENT
-            imageView.layoutParams = lp
-            loadImage(coverUrl, item.origin, imageView) { resource ->
-                val w = resource.intrinsicWidth
-                val h = resource.intrinsicHeight
-                if (w > 0 && h > 0) {
-                    waterfallAspectCache.put(coverUrl, h.toFloat() / w.toFloat())
-                    notifyItemChanged(holder.bindingAdapterPosition)
-                }
-            }
         }
-    }
+        imageView.layoutParams = lp
 
-    private fun loadImage(
-        url: String,
-        origin: String,
-        imageView: android.widget.ImageView,
-        onReady: ((Drawable) -> Unit)? = null
-    ) {
         val options = RequestOptions()
-        if (origin.isNotEmpty()) {
-            options.set(OkHttpModelLoader.sourceOriginOption, origin)
+        if (item.origin.isNotEmpty()) {
+            options.set(OkHttpModelLoader.sourceOriginOption, item.origin)
         }
-        var builder = ImageLoader.load(context, url)
+        ImageLoader.load(context, coverUrl)
             .apply(options)
             .placeholder(R.drawable.image_cover_default)
-        if (onReady != null) {
-            builder = builder.addListener(object : RequestListener<Drawable> {
+            .addListener(object : RequestListener<Drawable> {
                 override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>, isFirstResource: Boolean): Boolean = false
                 override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>?, dataSource: DataSource, isFirstResource: Boolean): Boolean {
-                    onReady(resource)
+                    val w = resource.intrinsicWidth
+                    val h = resource.intrinsicHeight
+                    if (w > 0 && h > 0) {
+                        waterfallAspectCache.put(coverUrl, h.toFloat() / w.toFloat())
+                    }
                     return false
                 }
             })
-        }
-        builder.centerCrop().into(imageView)
+            .centerCrop()
+            .into(imageView)
     }
 
     override fun convert(
