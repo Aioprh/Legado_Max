@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.collection.LruCache
 import androidx.core.view.isVisible
 import com.bumptech.glide.load.DataSource
@@ -51,6 +52,12 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         }
     private var cardWidth = 0
 
+    private fun updateCardWidth(parentWidth: Int) {
+        if (cardWidth == 0 && parentWidth > 0 && columnCount > 1) {
+            cardWidth = (parentWidth - (columnCount + 1) * 8) / columnCount
+        }
+    }
+
     override fun getItemViewType(item: SearchBook, position: Int): Int {
         return when (layoutMode) {
             2 -> VIEW_TYPE_WATERFALL
@@ -60,16 +67,12 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
     }
 
     override fun getViewBinding(parent: ViewGroup): ItemSearchBinding {
-        if (cardWidth == 0 && columnCount > 1) {
-            cardWidth = (parent.width - (columnCount + 1) * 8) / columnCount
-        }
+        updateCardWidth(parent.width)
         return ItemSearchBinding.inflate(inflater, parent, false)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
-        if (cardWidth == 0 && columnCount > 1) {
-            cardWidth = (parent.width - (columnCount + 1) * 8) / columnCount
-        }
+        updateCardWidth(parent.width)
         return when (viewType) {
             VIEW_TYPE_GRID -> ItemViewHolder(ItemExploreShowGridBinding.inflate(inflater, parent, false))
             VIEW_TYPE_WATERFALL -> ItemViewHolder(ItemExploreShowWaterfallBinding.inflate(inflater, parent, false))
@@ -135,24 +138,20 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         val coverUrl = item.coverUrl
         val imageView = binding.ivCoverWaterfall
-        imageView.adjustViewBounds = true
-        val lp = imageView.layoutParams
-        lp.width = ViewGroup.LayoutParams.MATCH_PARENT
 
         if (coverUrl.isNullOrEmpty()) {
-            lp.height = cardWidth * 4 / 3
-            imageView.layoutParams = lp
+            imageView.layoutParams = ViewGroup.LayoutParams(cardWidth, cardWidth * 4 / 3)
             imageView.setImageResource(R.drawable.image_cover_default)
             return
         }
 
         val cachedRatio = waterfallAspectCache[coverUrl]
-        if (cachedRatio != null) {
-            lp.height = (cardWidth * cachedRatio).toInt()
+        val height = if (cachedRatio != null) {
+            (cardWidth * cachedRatio).toInt()
         } else {
-            lp.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.WRAP_CONTENT
         }
-        imageView.layoutParams = lp
+        imageView.layoutParams = LinearLayout.LayoutParams(cardWidth, height)
 
         val options = RequestOptions()
         if (item.origin.isNotEmpty()) {

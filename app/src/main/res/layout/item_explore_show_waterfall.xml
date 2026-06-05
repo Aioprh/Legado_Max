@@ -9,6 +9,7 @@
         android:id="@+id/iv_cover_waterfall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
         android:contentDescription="@string/img_cover"
         android:scaleType="centerCrop" />
 
