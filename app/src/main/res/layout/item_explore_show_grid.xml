@@ -18,6 +18,18 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <io.legado.app.ui.widget.image.CircleImageView
+        android:id="@+id/iv_in_bookshelf_grid"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:layout_marginEnd="4dp"
+        android:layout_marginTop="4dp"
+        android:scaleType="centerCrop"
+        android:src="@color/md_green_600"
+        android:visibility="invisible"
+        app:layout_constraintRight_toRightOf="@id/iv_cover_grid"
+        app:layout_constraintTop_toTopOf="@id/iv_cover_grid" />
+
     <!-- 书名：位于封面下方，最多两行 -->
     <TextView
         android:id="@+id/tv_name_grid"

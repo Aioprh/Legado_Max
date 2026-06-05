@@ -96,6 +96,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding: ItemExploreShowGridBinding,
         item: SearchBook
     ) {
+        binding.ivInBookshelfGrid.isVisible = callBack.isInBookshelf(item)
         val lastItemTag = holder.itemView.tag as? String
         if (lastItemTag == item.bookUrl) return
         holder.itemView.tag = item.bookUrl
@@ -107,6 +108,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding: ItemExploreShowWaterfallBinding,
         item: SearchBook
     ) {
+        binding.ivInBookshelfWaterfall.isVisible = callBack.isInBookshelf(item)
         binding.tvNameWaterfall.text = item.name
         binding.tvAuthorWaterfall.text = context.getString(R.string.author_show, item.author)
 

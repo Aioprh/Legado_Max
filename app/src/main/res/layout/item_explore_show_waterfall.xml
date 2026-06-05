@@ -27,6 +27,18 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <io.legado.app.ui.widget.image.CircleImageView
+            android:id="@+id/iv_in_bookshelf_waterfall"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:layout_marginEnd="4dp"
+            android:layout_marginTop="4dp"
+            android:scaleType="centerCrop"
+            android:src="@color/md_green_600"
+            android:visibility="invisible"
+            app:layout_constraintRight_toRightOf="@id/iv_cover_waterfall"
+            app:layout_constraintTop_toTopOf="@id/iv_cover_waterfall" />
+
         <TextView
             android:id="@+id/tv_name_waterfall"
             android:layout_width="0dp"
