@@ -53,8 +53,10 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
     private var cardWidth = 0
 
     private fun updateCardWidth(parentWidth: Int) {
-        if (cardWidth == 0 && parentWidth > 0 && columnCount > 1) {
-            cardWidth = (parentWidth - (columnCount + 1) * 8) / columnCount
+        if (cardWidth == 0 && columnCount > 1) {
+            val screenW = context.resources.displayMetrics.widthPixels
+            val totalPadding = (columnCount + 2) * 4 * context.resources.displayMetrics.density.toInt()
+            cardWidth = (screenW - totalPadding) / columnCount
         }
     }
 
