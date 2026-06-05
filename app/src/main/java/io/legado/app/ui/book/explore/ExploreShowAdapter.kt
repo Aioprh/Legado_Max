@@ -129,9 +129,12 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         item: SearchBook
     ) {
         val lastTag = holder.itemView.tag as? String
-        if (lastTag == item.bookUrl) return
+        val isRebind = lastTag == item.bookUrl
         holder.itemView.tag = item.bookUrl
-        binding.tvNameWaterfall.text = item.name
+
+        if (!isRebind) {
+            binding.tvNameWaterfall.text = item.name
+        }
 
         val coverUrl = item.coverUrl
         val imageView = binding.ivCoverWaterfall
@@ -150,8 +153,10 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         if (cachedRatio != null) {
             lp.height = (cardWidth * cachedRatio).toInt()
             imageView.layoutParams = lp
-            loadImage(coverUrl, item.origin, imageView)
-        } else {
+            if (!isRebind) {
+                loadImage(coverUrl, item.origin, imageView)
+            }
+        } else if (!isRebind) {
             lp.height = ViewGroup.LayoutParams.WRAP_CONTENT
             imageView.layoutParams = lp
             loadImage(coverUrl, item.origin, imageView) { resource ->
