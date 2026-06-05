@@ -23,6 +23,7 @@ object HelpDocManager {
             "legado高级文档",
             listOf(
                 HelpDoc("jsPackagesHelp", "JS Packages使用指南"),
+                HelpDoc("legado_java_api_reference", "Java/Android/第三方库API参考"),
                 HelpDoc("书源字段规则类型", "书源字段规则类型"),
                 HelpDoc("订阅源字段规则类型", "订阅源字段规则类型"),
                 HelpDoc("打印源对象的JS对象", "打印源JS对象"),
@@ -43,8 +44,9 @@ object HelpDocManager {
                 HelpDoc("图片加载机制", "图片加载机制"),
                 HelpDoc("网络请求机制", "网络请求机制"),
                 HelpDoc("错误处理机制", "错误处理机制"),
-                HelpDoc("懒加载与缓存机制分析", "懒加载与缓存机制"),
-                HelpDoc("登录信息与运行变量备份机制", "书源登录信息与运行变量备份机制"),
+                HelpDoc("正文下一页懒加载与缓存机制", "正文下一页懒加载与缓存机制"),
+                HelpDoc("目录不完全加载机制", "目录不完全加载机制"),
+                HelpDoc("书源登录信息与运行变量备份机制", "登录信息与运行变量备份机制"),
                 HelpDoc("bookCacheHelp", "书籍缓存备份机制")
             )
         ),
@@ -111,4 +113,25 @@ object HelpDocManager {
     fun isHiddenDoc(fileName: String): Boolean {
         return hiddenHelpDocs.any { it.fileName == fileName }
     }
+
+    // 自定义文档分组(延迟加载)
+    private var customGroupsCache: List<CustomHelpDocGroup>? = null
+
+    /**
+     * 获取自定义文档分组
+     */
+    fun getCustomGroups(context: android.content.Context): List<CustomHelpDocGroup> {
+        if (customGroupsCache == null) {
+            customGroupsCache = CustomHelpDocManager.scanCustomDocs(context)
+        }
+        return customGroupsCache ?: emptyList()
+    }
+
+    /**
+     * 刷新自定义文档缓存
+     */
+    fun refreshCustomGroups(context: android.content.Context) {
+        customGroupsCache = CustomHelpDocManager.scanCustomDocs(context, forceRefresh = true)
+    }
+
 }

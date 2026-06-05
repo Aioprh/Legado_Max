@@ -158,7 +158,7 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
             val assets = requireContext().assets
             val docs = withContext(IO) {
                 val result = mutableMapOf<String, String>()
-                //将搜索范围从 allHelpDocs 改为 allDocs ，确保隐藏文档也能被搜索到。
+
                 for (doc in HelpDocManager.allDocs) {
                     try {
                         result[doc.fileName] = loadDoc(assets, doc.fileName)
@@ -198,9 +198,9 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
         val queryLower = query.lowercase()
         val contextChars = 80
 
-        //将搜索范围从 allHelpDocs 改为 allDocs ，确保隐藏文档也能被搜索到。
         for (doc in HelpDocManager.allDocs) {
             val content = allDocsContent[doc.fileName] ?: continue
+
             val lines = content.lineSequence().toList()
             val matchedLines = mutableListOf<SearchResultItem>()
 
@@ -220,7 +220,7 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
                         lineNumber = lineNum,
                         matchedText = contextText,
                         searchTerm = query,
-                        lineContent = line  // 保存匹配行的完整内容
+                        lineContent = line
                     ))
                 }
             }

@@ -908,7 +908,6 @@
     <string name="restore_show_selector_summary">Show file selection dialog before restoring</string>
     <string name="select_files_to_restore">Select restore files</string>
     <string name="read_config">Reading interface settings</string>
-    <string name="group_name">Group name</string>
     <string name="note_content">Remarks section</string>
     <string name="replace_enable_default_t">Enable replace rule by default</string>
     <string name="replace_enable_default_s">For new added books</string>
@@ -1876,4 +1875,6 @@
     <string name="switch_layout_list">List</string>
     <string name="switch_layout_grid">Grid</string>
     <string name="switch_layout_waterfall">Waterfall</string>
+
+    <string name="group_name">分组名称</string>
 </resources>

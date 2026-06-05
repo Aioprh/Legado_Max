@@ -142,11 +142,13 @@ object WebViewPool {
             createNewWebView() // 创建新实例
         }
         pooledWebView.upContext(context).apply {
+            (realWebView.parent as? ViewGroup)?.removeView(realWebView)//从父视图中移除
             realWebView.settings.setDarkeningAllowed(AppConfig.isNightTheme) //设置是否夜间
             if (inUsePool.isEmpty()) {
                 // 第一个 WebView 被获取时，恢复全局定时器
                 realWebView.resumeTimers()
             }
+            realWebView.onResume()//恢复WebView状态
             isInUse = true
         }
         inUsePool[pooledWebView.id] = pooledWebView
@@ -227,16 +229,17 @@ object WebViewPool {
                         }
                         if (inUsePool.isEmpty()) {
                             // 所有 WebView 都已释放，暂停全局定时器节省资源
-                            webview.pauseTimers()
+                            webview.pauseTimers()//暂停定时器
                         }
-                        webview.onPause()
+                        webview.onPause()//暂停WebView状态
                     }
                     pooledWebView.isInUse = false
                     pooledWebView.lastUseTime = System.currentTimeMillis()
                     idlePool.push(pooledWebView)
                 }
             }
-            loadUrl(BLANK_HTML)
+            loadUrl(BLANK_HTML)//加载空白页
+            
         }
     }
 
