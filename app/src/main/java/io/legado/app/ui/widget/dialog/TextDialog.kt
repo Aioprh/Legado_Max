@@ -597,6 +597,9 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
             
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
+
+        // 设置自定义文档按钮
+        setupCustomDocButtons()
     }
 
     private fun updateHelpDocSpinner(groupIndex: Int, selectedFileName: String? = null) {
@@ -640,6 +643,36 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
 
         if (docs.isNotEmpty()) {
             binding.helpSpinner.setSelection(selectedIndex, false)
+        }
+    }
+
+    /**
+     * 设置自定义文档按钮
+     */
+    private fun setupCustomDocButtons() {
+        // 显示按钮布局
+        binding.customDocButtonsLayout.visibility = View.VISIBLE
+
+        // 添加分组按钮
+        binding.addGroupBtn.setOnClickListener {
+            val dialog = AddCustomGroupDialog()
+            dialog.onGroupCreated = {
+                // 刷新文档选择器
+                HelpDocManager.refreshCustomGroups(requireContext())
+                setupHelpSelector()
+            }
+            showDialogFragment(dialog)
+        }
+
+        // 添加文档按钮
+        binding.addDocBtn.setOnClickListener {
+            val dialog = AddCustomDocDialog()
+            dialog.onDocAdded = {
+                // 刷新文档选择器
+                HelpDocManager.refreshCustomGroups(requireContext())
+                setupHelpSelector()
+            }
+            showDialogFragment(dialog)
         }
     }
     
