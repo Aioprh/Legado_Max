@@ -23,15 +23,16 @@
 
     <io.legado.app.ui.widget.image.CircleImageView
         android:id="@+id/iv_in_bookshelf"
-        android:layout_width="8dp"
-        android:layout_height="8dp"
-        android:layout_margin="8dp"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:layout_marginEnd="4dp"
+        android:layout_marginTop="4dp"
         android:scaleType="centerCrop"
         android:scrollbars="none"
         android:src="@color/md_green_600"
         android:visibility="invisible"
-        app:layout_constraintLeft_toRightOf="@id/iv_cover"
-        app:layout_constraintTop_toTopOf="@id/tv_name" />
+        app:layout_constraintRight_toRightOf="@id/iv_cover"
+        app:layout_constraintTop_toTopOf="@id/iv_cover" />
 
     <io.legado.app.ui.widget.text.BadgeView
         android:id="@+id/bv_originCount"
@@ -53,7 +54,7 @@
         android:textColor="@color/primaryText"
         android:textSize="16sp"
         app:layout_constraintEnd_toStartOf="@id/bv_originCount"
-        app:layout_constraintStart_toEndOf="@+id/iv_in_bookshelf"
+        app:layout_constraintStart_toEndOf="@id/iv_cover"
         app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
