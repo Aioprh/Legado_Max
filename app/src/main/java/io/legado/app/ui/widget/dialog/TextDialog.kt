@@ -230,10 +230,26 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
         
         // 根据文档类型控制放大镜按钮的可见性（必须在恢复 isHelpMode 和 currentHelpDoc 之后调用）
         updateSearchButtonVisibility()
+        updateEditButtonVisibility()
         
         binding.toolBar.setOnMenuItemClickListener { menu ->
             when (menu.itemId) {
                 R.id.menu_close -> dismissAllowingStateLoss()
+                R.id.menu_edit_custom_doc -> {
+                    // 编辑自定义文档
+                    currentHelpDoc?.let { filePath ->
+                        currentContent?.let { content ->
+                            val cacheKey = "custom_doc_${System.currentTimeMillis()}"
+                            CacheManager.putMemory(cacheKey, content)
+                            startActivity<CodeEditActivity> {
+                                putExtra("cacheKey", cacheKey)
+                                putExtra("title", binding.toolBar.title)
+                                putExtra("languageName", "text.html.markdown")
+                                putExtra("customDocPath", filePath)
+                            }
+                        }
+                    }
+                }
                 R.id.menu_fullscreen_edit -> {
                     currentContent?.let { content ->
                         val cacheKey = "code_text_${System.currentTimeMillis()}"
@@ -477,7 +493,7 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
      */
     private fun updateSearchButtonVisibility() {
         val searchMenuItem = binding.toolBar.menu.findItem(R.id.menu_search_help)
-        
+
         if (!isHelpMode) {
             // 非帮助文档模式，显示放大镜按钮
             searchMenuItem?.isVisible = true
@@ -486,6 +502,15 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
             val isHidden = currentHelpDoc?.let { HelpDocManager.isHiddenDoc(it) } ?: false
             searchMenuItem?.isVisible = !isHidden
         }
+    }
+
+    /**
+     * 更新编辑按钮可见性
+     * 仅对自定义文档显示编辑按钮
+     */
+    private fun updateEditButtonVisibility() {
+        val editItem = binding.toolBar.menu.findItem(R.id.menu_edit_custom_doc)
+        editItem?.isVisible = isHelpMode && currentHelpDoc?.let { HelpDocManager.isCustomDoc(it) } == true
     }
     
     /**
@@ -564,6 +589,7 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
                     currentHelpDoc = newDocPath
                     loadHelpDoc(newDocPath, firstDoc is CustomHelpDoc)
                     updateSearchButtonVisibility()
+                    updateEditButtonVisibility()
                 }
             }
 
@@ -592,6 +618,7 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
                     currentHelpDoc = newDocPath
                     loadHelpDoc(newDocPath, selectedDoc is CustomHelpDoc)
                     updateSearchButtonVisibility()
+                    updateEditButtonVisibility()
                 }
             }
             

@@ -11,6 +11,13 @@
         app:showAsAction="always" />
 
     <item
+        android:id="@+id/menu_edit_custom_doc"
+        android:icon="@drawable/ic_edit"
+        android:title="@string/edit_custom_doc"
+        android:visible="false"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/menu_fullscreen_edit"
         android:icon="@drawable/ic_code"
         android:title="@string/edit_content"
