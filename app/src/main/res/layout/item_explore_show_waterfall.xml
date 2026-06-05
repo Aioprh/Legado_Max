@@ -7,11 +7,10 @@
 
     <ImageView
         android:id="@+id/iv_cover_waterfall"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:contentDescription="@string/img_cover"
-        android:scaleType="centerCrop"
-        android:src="@drawable/image_cover_default" />
+        android:scaleType="centerCrop" />
 
     <TextView
         android:id="@+id/tv_name_waterfall"

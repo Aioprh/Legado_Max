@@ -230,9 +230,18 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      */
     private fun applyLayoutManager(count: Int) {
         binding.recyclerView.layoutManager = when {
-            layoutMode == LAYOUT_LIST || count <= 1 -> LinearLayoutManager(this)
-            layoutMode == LAYOUT_WATERFALL -> StaggeredGridLayoutManager(count, StaggeredGridLayoutManager.VERTICAL)
-            else -> GridLayoutManager(this, count)
+            layoutMode == LAYOUT_LIST || count <= 1 -> {
+                binding.recyclerView.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator()
+                LinearLayoutManager(this)
+            }
+            layoutMode == LAYOUT_WATERFALL -> {
+                binding.recyclerView.itemAnimator = null
+                StaggeredGridLayoutManager(count, StaggeredGridLayoutManager.VERTICAL)
+            }
+            else -> {
+                binding.recyclerView.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator()
+                GridLayoutManager(this, count)
+            }
         }
     }
 

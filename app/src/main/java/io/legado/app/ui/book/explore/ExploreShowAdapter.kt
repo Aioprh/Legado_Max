@@ -9,6 +9,7 @@ import androidx.core.view.isVisible
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
@@ -19,6 +20,7 @@ import io.legado.app.databinding.ItemExploreShowWaterfallBinding
 import io.legado.app.databinding.ItemSearchBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
+import io.legado.app.help.glide.OkHttpModelLoader
 import io.legado.app.utils.gone
 import io.legado.app.utils.visible
 
@@ -32,7 +34,6 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         private val waterfallAspectCache = LruCache<String, Float>(399)
     }
 
-    /** 布局模式，由 Activity 控制。0=列表, 1=网格, 2=瀑布流 */
     var layoutMode: Int = 0
         set(value) {
             if (field != value) {
@@ -41,7 +42,6 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             }
         }
 
-    /** 瀑布流列数，由 Activity 同步，用于计算卡片宽度 */
     var columnCount: Int = 2
 
     override fun getItemViewType(item: SearchBook, position: Int): Int {
@@ -98,10 +98,6 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         }
     }
 
-    /**
-     * 网格模式：仅渲染封面和书名（最多两行）。
-     * 比对上次绑定的 bookUrl，相同则跳过避免返回页面时封面闪烁。
-     */
     private fun bindGrid(
         holder: ItemViewHolder,
         binding: ItemExploreShowGridBinding,
@@ -115,75 +111,78 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
     }
 
     /**
-     * 瀑布流模式：使用普通 ImageView + adjustViewBounds 加载封面。
-     * 首次加载时依赖 ImageView 自动适配比例；加载成功后缓存宽高比，
-     * 下次绑定时直接设置精确高度，避免 placeholder 导致初次高度均等。
+     * 瀑布流绑定：先检测缓存比例，有则直接设精确高度；无则先用默认高度加载，
+     * 加载完成后缓存比例 + notifyItemChanged 触发重绑，重绑时用已缓存比例算出精确高度，
+     * StaggeredGridLayoutManager 由此获得各 item 不同的高度实现错落排列。
      */
     private fun bindWaterfall(
         holder: ItemViewHolder,
         binding: ItemExploreShowWaterfallBinding,
         item: SearchBook
     ) {
-        val lastItemTag = holder.itemView.tag as? String
-        if (lastItemTag == item.bookUrl) return
+        val lastTag = holder.itemView.tag as? String
+        if (lastTag == item.bookUrl) return
         holder.itemView.tag = item.bookUrl
         binding.tvNameWaterfall.text = item.name
 
         val coverUrl = item.coverUrl
+        val imageView = binding.ivCoverWaterfall
+        val cardWidth = getCardWidth()
+        val defaultHeight = cardWidth * 4 / 3
+
         if (coverUrl.isNullOrEmpty()) {
-            binding.ivCoverWaterfall.setImageResource(R.drawable.image_cover_default)
+            setImageSize(imageView, cardWidth, defaultHeight)
+            imageView.setImageResource(R.drawable.image_cover_default)
             return
         }
 
-        val imageView = binding.ivCoverWaterfall
-        imageView.adjustViewBounds = true
-        val layoutParams = imageView.layoutParams
-        layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
-
         val cachedRatio = waterfallAspectCache[coverUrl]
         if (cachedRatio != null) {
-            layoutParams.height = (getWaterfallCardWidth() * cachedRatio).toInt()
-            imageView.layoutParams = layoutParams
-            ImageLoader.load(context, coverUrl)
-                .placeholder(R.drawable.image_cover_default)
-                .centerCrop()
-                .into(imageView)
+            val targetHeight = (cardWidth * cachedRatio).toInt().coerceIn(cardWidth / 3, cardWidth * 3)
+            setImageSize(imageView, cardWidth, targetHeight)
+            loadCoverInto(coverUrl, item.origin, imageView)
         } else {
-            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
-            imageView.layoutParams = layoutParams
-            ImageLoader.load(context, coverUrl)
-                .placeholder(R.drawable.image_cover_default)
-                .addListener(object : RequestListener<Drawable> {
-                    override fun onLoadFailed(
-                        e: GlideException?,
-                        model: Any?,
-                        target: Target<Drawable>,
-                        isFirstResource: Boolean
-                    ): Boolean = false
-
-                    override fun onResourceReady(
-                        resource: Drawable,
-                        model: Any,
-                        target: Target<Drawable>?,
-                        dataSource: DataSource,
-                        isFirstResource: Boolean
-                    ): Boolean {
-                        val w = resource.intrinsicWidth
-                        val h = resource.intrinsicHeight
-                        if (w > 0 && h > 0) {
-                            val ratio = h.toFloat() / w.toFloat()
-                            waterfallAspectCache.put(coverUrl, ratio)
-                        }
-                        return false
-                    }
-                })
-                .centerCrop()
-                .into(imageView)
+            setImageSize(imageView, cardWidth, defaultHeight)
+            val adapterPosition = holder.bindingAdapterPosition
+            loadCoverInto(coverUrl, item.origin, imageView) { resource ->
+                val w = resource.intrinsicWidth
+                val h = resource.intrinsicHeight
+                if (w > 0 && h > 0) {
+                    waterfallAspectCache.put(coverUrl, h.toFloat() / w.toFloat())
+                    notifyItemChanged(adapterPosition)
+                }
+            }
         }
     }
 
-    /** 计算瀑布流单卡片宽度：屏幕宽度 / 列数，扣除左右 padding */
-    private fun getWaterfallCardWidth(): Int {
+    private fun setImageSize(view: android.widget.ImageView, width: Int, height: Int) {
+        val lp = view.layoutParams
+        lp.width = width
+        lp.height = height
+        view.layoutParams = lp
+    }
+
+    private fun loadCoverInto(url: String, origin: String, imageView: android.widget.ImageView, onReady: ((Drawable) -> Unit)? = null) {
+        val options = RequestOptions()
+        if (origin.isNotEmpty()) {
+            options.set(OkHttpModelLoader.sourceOriginOption, origin)
+        }
+        var builder = ImageLoader.load(context, url)
+            .apply(options)
+            .placeholder(R.drawable.image_cover_default)
+        if (onReady != null) {
+            builder = builder.addListener(object : RequestListener<Drawable> {
+                override fun onLoadFailed(e: GlideException?, model: Any?, target: Target<Drawable>, isFirstResource: Boolean): Boolean = false
+                override fun onResourceReady(resource: Drawable, model: Any, target: Target<Drawable>?, dataSource: DataSource, isFirstResource: Boolean): Boolean {
+                    onReady(resource)
+                    return false
+                }
+            })
+        }
+        builder.centerCrop().into(imageView)
+    }
+
+    private fun getCardWidth(): Int {
         val screenWidth = context.resources.displayMetrics.widthPixels
         val paddingTotal = (columnCount + 1) * 8
         return (screenWidth - paddingTotal) / columnCount.coerceAtLeast(2)
