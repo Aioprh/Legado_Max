@@ -22,6 +22,7 @@ import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.databinding.DialogHelpSearchBinding
 import io.legado.app.databinding.ItemHelpSearchHeaderBinding
 import io.legado.app.databinding.ItemHelpSearchResultBinding
+import io.legado.app.help.HelpDoc
 import io.legado.app.help.HelpDocManager
 import io.legado.app.help.CustomHelpDoc
 import io.legado.app.help.CustomHelpDocManager

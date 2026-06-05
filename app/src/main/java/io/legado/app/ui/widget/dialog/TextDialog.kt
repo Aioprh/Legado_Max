@@ -19,10 +19,12 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.databinding.DialogTextViewBinding
 import io.legado.app.help.CacheManager
+import io.legado.app.help.HelpDoc
+import io.legado.app.help.HelpDocGroup
+import io.legado.app.help.HelpDocManager
 import io.legado.app.help.CustomHelpDoc
 import io.legado.app.help.CustomHelpDocGroup
 import io.legado.app.help.CustomHelpDocManager
-import io.legado.app.help.HelpDocManager
 import io.legado.app.help.IntentData
 import io.legado.app.lib.theme.isDarkTheme
 import io.legado.app.lib.theme.primaryColor
