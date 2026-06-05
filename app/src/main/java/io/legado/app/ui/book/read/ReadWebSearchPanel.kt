@@ -153,6 +153,8 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             return
         }
         ensureWebView()
+        webView.resumeTimers()//恢复定时器
+        webView.onResume()//恢复WebView状态
         selectedEngineIndex = defaultEngineIndex(context, engines)
         visible()
         bringToFront()
