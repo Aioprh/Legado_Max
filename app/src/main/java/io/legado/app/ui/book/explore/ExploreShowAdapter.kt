@@ -35,8 +35,6 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             }
         }
 
-    var columnCount: Int = 2
-
     override fun getItemViewType(item: SearchBook, position: Int): Int {
         return when (layoutMode) {
             2 -> VIEW_TYPE_WATERFALL
@@ -111,6 +109,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         val coverUrl = item.coverUrl
         val imageView = binding.ivCoverWaterfall
+        val lastTag = imageView.tag as? String
+        if (lastTag == coverUrl) return
+        imageView.tag = coverUrl
         imageView.adjustViewBounds = true
         val lp = imageView.layoutParams
         lp.width = ViewGroup.LayoutParams.MATCH_PARENT
