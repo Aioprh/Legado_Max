@@ -1,6 +1,6 @@
 # 打印源对象的JS对象
 
-本文档说明在legado项目中，如何在JS脚本中打印源对象及其内容。以下的log()和toast()方法需要java.toast()和java.log()这么使用。
+本文档说明在legado项目中，如何在JS脚本中打印源对象及其内容。log()和toast()方法需要java.toast()和java.log()这么使用。
 
 ## 打印方法
 

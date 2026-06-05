@@ -23,6 +23,7 @@ object HelpDocManager {
             "legado高级文档",
             listOf(
                 HelpDoc("jsPackagesHelp", "JS Packages使用指南"),
+                HelpDoc("legado_java_api_reference", "Java/Android/第三方库API参考"),
                 HelpDoc("书源字段规则类型", "书源字段规则类型"),
                 HelpDoc("订阅源字段规则类型", "订阅源字段规则类型"),
                 HelpDoc("打印源对象的JS对象", "打印源JS对象"),
@@ -43,8 +44,9 @@ object HelpDocManager {
                 HelpDoc("图片加载机制", "图片加载机制"),
                 HelpDoc("网络请求机制", "网络请求机制"),
                 HelpDoc("错误处理机制", "错误处理机制"),
-                HelpDoc("懒加载与缓存机制分析", "懒加载与缓存机制"),
-                HelpDoc("登录信息与运行变量备份机制", "书源登录信息与运行变量备份机制"),
+                HelpDoc("正文下一页懒加载与缓存机制分析", "正文下一页懒加载与缓存机制"),
+                HelpDoc("目录不完全加载机制", "目录不完全加载机制"),
+                HelpDoc("书源登录信息与运行变量备份机制", "登录信息与运行变量备份机制"),
                 HelpDoc("bookCacheHelp", "书籍缓存备份机制")
             )
         ),
