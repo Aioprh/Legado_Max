@@ -22,8 +22,8 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         private const val VIEW_TYPE_GRID = 1
     }
 
-    /** 网格模式开关，由 Activity 控制。true=简化卡片（仅封面+书名），false=完整列表信息 */
-    var isGridMode: Boolean = false
+    /** 布局模式，由 Activity 控制。0=列表, 1=网格, 2=瀑布流；非列表模式均使用简化卡片 */
+    var layoutMode: Int = 0
         set(value) {
             if (field != value) {
                 field = value
@@ -32,7 +32,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         }
 
     override fun getItemViewType(item: SearchBook, position: Int): Int {
-        return if (isGridMode) VIEW_TYPE_GRID else VIEW_TYPE_LIST
+        return if (layoutMode != 0) VIEW_TYPE_GRID else VIEW_TYPE_LIST
     }
 
     override fun getViewBinding(parent: ViewGroup): ItemSearchBinding {

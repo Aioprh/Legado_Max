@@ -51,15 +51,6 @@
         app:allowDividerBelow="false"
         app:iconSpaceReserved="false" />
 
-    <io.legado.app.lib.prefs.SwitchPreference
-        android:defaultValue="false"
-        android:key="coverAdaptWide"
-        android:title="@string/cover_adapt_wide"
-        android:summary="@string/cover_adapt_wide_summary"
-        app:allowDividerAbove="false"
-        app:allowDividerBelow="false"
-        app:iconSpaceReserved="false" />
-
     <io.legado.app.lib.prefs.PreferenceCategory
         android:key="dayThemeCategory"
         android:title="@string/day"

@@ -1079,8 +1079,6 @@
     <string name="cover_show_name_summary">Book title shown on cover</string>
     <string name="cover_show_author">show author</string>
     <string name="cover_show_author_summary">Author shown on cover</string>
-    <string name="cover_adapt_wide">Adapt wide cover</string>
-    <string name="cover_adapt_wide_summary">Show wide cover images in full, preventing horizontal cropping</string>
     <string name="read_aloud_prev_paragraph">Read aloud the previous paragraph</string>
     <string name="read_aloud_next_paragraph">Read aloud the next paragraph</string>
     <string name="wait_download">wait download</string>
@@ -1875,4 +1873,7 @@
     <string name="switch_layout">Switch Layout</string>
     <string name="select_column">Select Column(%d)</string>
     <string name="select_column_count">Select Column Count</string>
+    <string name="switch_layout_list">List</string>
+    <string name="switch_layout_grid">Grid</string>
+    <string name="switch_layout_waterfall">Waterfall</string>
 </resources>

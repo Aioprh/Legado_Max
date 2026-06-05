@@ -1064,8 +1064,6 @@
     <string name="cover_show_name_summary">封面上显示书名</string>
     <string name="cover_show_author">显示作者</string>
     <string name="cover_show_author_summary">封面上显示作者</string>
-    <string name="cover_adapt_wide">适配宽图</string>
-    <string name="cover_adapt_wide_summary">当封面图片宽度较大时自动完整显示，避免左右内容被裁剪</string>
     <string name="read_aloud_prev_paragraph">朗读上一段</string>
     <string name="read_aloud_next_paragraph">朗读下一段</string>
     <string name="wait_download">待下载</string>
@@ -1683,4 +1681,7 @@
     <string name="switch_layout">切换布局</string>
     <string name="select_column">选择分列(%d)</string>
     <string name="select_column_count">选择列数</string>
+    <string name="switch_layout_list">列表</string>
+    <string name="switch_layout_grid">网格</string>
+    <string name="switch_layout_waterfall">瀑布流</string>
 </resources>

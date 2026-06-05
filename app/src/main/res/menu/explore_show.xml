@@ -2,12 +2,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <item
-        android:id="@+id/menu_cover_adapt_wide"
-        android:title="@string/cover_adapt_wide"
-        android:checkable="true"
-        app:showAsAction="never" />
-
     <!-- 选择分列：网格图标，标题显示当前列数，位于"第x页"左侧 -->
     <item
         android:id="@+id/menu_select_column"
