@@ -71,13 +71,17 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
     }
 
     /**
-     * 网格模式：仅渲染封面和书名（最多两行）
+     * 网格模式：仅渲染封面和书名（最多两行）。
+     * 比对上次绑定的 bookUrl，相同则跳过避免返回页面时封面闪烁。
      */
     private fun bindGrid(
         holder: ItemViewHolder,
         binding: ItemExploreShowGridBinding,
         item: SearchBook
     ) {
+        val lastItemTag = holder.itemView.tag as? String
+        if (lastItemTag == item.bookUrl) return
+        holder.itemView.tag = item.bookUrl
         binding.ivCoverGrid.load(item, AppConfig.loadCoverOnlyWifi)
         binding.tvNameGrid.text = item.name
     }
