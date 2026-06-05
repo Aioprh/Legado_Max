@@ -43,6 +43,13 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         }
 
     var columnCount: Int = 2
+        set(value) {
+            if (field != value) {
+                field = value
+                cardWidth = 0
+            }
+        }
+    private var cardWidth = 0
 
     override fun getItemViewType(item: SearchBook, position: Int): Int {
         return when (layoutMode) {
@@ -53,10 +60,16 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
     }
 
     override fun getViewBinding(parent: ViewGroup): ItemSearchBinding {
+        if (cardWidth == 0 && columnCount > 1) {
+            cardWidth = (parent.width - (columnCount + 1) * 8) / columnCount
+        }
         return ItemSearchBinding.inflate(inflater, parent, false)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
+        if (cardWidth == 0 && columnCount > 1) {
+            cardWidth = (parent.width - (columnCount + 1) * 8) / columnCount
+        }
         return when (viewType) {
             VIEW_TYPE_GRID -> ItemViewHolder(ItemExploreShowGridBinding.inflate(inflater, parent, false))
             VIEW_TYPE_WATERFALL -> ItemViewHolder(ItemExploreShowWaterfallBinding.inflate(inflater, parent, false))
@@ -110,11 +123,6 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding.tvNameGrid.text = item.name
     }
 
-    /**
-     * 瀑布流绑定：先检测缓存比例，有则直接设精确高度；无则先用默认高度加载，
-     * 加载完成后缓存比例 + notifyItemChanged 触发重绑，重绑时用已缓存比例算出精确高度，
-     * StaggeredGridLayoutManager 由此获得各 item 不同的高度实现错落排列。
-     */
     private fun bindWaterfall(
         holder: ItemViewHolder,
         binding: ItemExploreShowWaterfallBinding,
@@ -127,42 +135,42 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         val coverUrl = item.coverUrl
         val imageView = binding.ivCoverWaterfall
-        val cardWidth = getCardWidth()
-        val defaultHeight = cardWidth * 4 / 3
+        imageView.adjustViewBounds = true
+        val lp = imageView.layoutParams
+        lp.width = ViewGroup.LayoutParams.MATCH_PARENT
 
         if (coverUrl.isNullOrEmpty()) {
-            setImageSize(imageView, cardWidth, defaultHeight)
+            lp.height = cardWidth * 4 / 3
+            imageView.layoutParams = lp
             imageView.setImageResource(R.drawable.image_cover_default)
             return
         }
 
         val cachedRatio = waterfallAspectCache[coverUrl]
         if (cachedRatio != null) {
-            val targetHeight = (cardWidth * cachedRatio).toInt().coerceIn(cardWidth / 3, cardWidth * 3)
-            setImageSize(imageView, cardWidth, targetHeight)
-            loadCoverInto(coverUrl, item.origin, imageView)
+            lp.height = (cardWidth * cachedRatio).toInt()
+            imageView.layoutParams = lp
+            loadImage(coverUrl, item.origin, imageView)
         } else {
-            setImageSize(imageView, cardWidth, defaultHeight)
-            val adapterPosition = holder.bindingAdapterPosition
-            loadCoverInto(coverUrl, item.origin, imageView) { resource ->
+            lp.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            imageView.layoutParams = lp
+            loadImage(coverUrl, item.origin, imageView) { resource ->
                 val w = resource.intrinsicWidth
                 val h = resource.intrinsicHeight
                 if (w > 0 && h > 0) {
                     waterfallAspectCache.put(coverUrl, h.toFloat() / w.toFloat())
-                    notifyItemChanged(adapterPosition)
+                    notifyItemChanged(holder.bindingAdapterPosition)
                 }
             }
         }
     }
 
-    private fun setImageSize(view: android.widget.ImageView, width: Int, height: Int) {
-        val lp = view.layoutParams
-        lp.width = width
-        lp.height = height
-        view.layoutParams = lp
-    }
-
-    private fun loadCoverInto(url: String, origin: String, imageView: android.widget.ImageView, onReady: ((Drawable) -> Unit)? = null) {
+    private fun loadImage(
+        url: String,
+        origin: String,
+        imageView: android.widget.ImageView,
+        onReady: ((Drawable) -> Unit)? = null
+    ) {
         val options = RequestOptions()
         if (origin.isNotEmpty()) {
             options.set(OkHttpModelLoader.sourceOriginOption, origin)
@@ -180,12 +188,6 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             })
         }
         builder.centerCrop().into(imageView)
-    }
-
-    private fun getCardWidth(): Int {
-        val screenWidth = context.resources.displayMetrics.widthPixels
-        val paddingTotal = (columnCount + 1) * 8
-        return (screenWidth - paddingTotal) / columnCount.coerceAtLeast(2)
     }
 
     override fun convert(
