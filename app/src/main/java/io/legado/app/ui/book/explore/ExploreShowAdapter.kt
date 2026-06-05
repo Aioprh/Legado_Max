@@ -1,9 +1,15 @@
 package io.legado.app.ui.book.explore
 
 import android.content.Context
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.ViewGroup
+import androidx.collection.LruCache
 import androidx.core.view.isVisible
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.Target
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
@@ -23,9 +29,10 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         private const val VIEW_TYPE_LIST = 0
         private const val VIEW_TYPE_GRID = 1
         private const val VIEW_TYPE_WATERFALL = 2
+        private val waterfallAspectCache = LruCache<String, Float>(399)
     }
 
-    /** 布局模式，由 Activity 控制。0=列表, 1=网格, 2=瀑布流；非列表模式均使用简化卡片 */
+    /** 布局模式，由 Activity 控制。0=列表, 1=网格, 2=瀑布流 */
     var layoutMode: Int = 0
         set(value) {
             if (field != value) {
@@ -33,6 +40,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
                 notifyDataSetChanged()
             }
         }
+
+    /** 瀑布流列数，由 Activity 同步，用于计算卡片宽度 */
+    var columnCount: Int = 2
 
     override fun getItemViewType(item: SearchBook, position: Int): Int {
         return when (layoutMode) {
@@ -105,8 +115,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
     }
 
     /**
-     * 瀑布流模式：使用普通 ImageView 加载封面，依靠 adjustViewBounds 动态适配图片比例实现错落效果。
-     * 比对上次绑定的 bookUrl，相同则跳过避免返回页面时封面闪烁。
+     * 瀑布流模式：使用普通 ImageView + adjustViewBounds 加载封面。
+     * 首次加载时依赖 ImageView 自动适配比例；加载成功后缓存宽高比，
+     * 下次绑定时直接设置精确高度，避免 placeholder 导致初次高度均等。
      */
     private fun bindWaterfall(
         holder: ItemViewHolder,
@@ -117,15 +128,65 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         if (lastItemTag == item.bookUrl) return
         holder.itemView.tag = item.bookUrl
         binding.tvNameWaterfall.text = item.name
+
         val coverUrl = item.coverUrl
         if (coverUrl.isNullOrEmpty()) {
             binding.ivCoverWaterfall.setImageResource(R.drawable.image_cover_default)
             return
         }
-        ImageLoader.load(context, coverUrl)
-            .placeholder(R.drawable.image_cover_default)
-            .centerCrop()
-            .into(binding.ivCoverWaterfall)
+
+        val imageView = binding.ivCoverWaterfall
+        imageView.adjustViewBounds = true
+        val layoutParams = imageView.layoutParams
+        layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
+
+        val cachedRatio = waterfallAspectCache[coverUrl]
+        if (cachedRatio != null) {
+            layoutParams.height = (getWaterfallCardWidth() * cachedRatio).toInt()
+            imageView.layoutParams = layoutParams
+            ImageLoader.load(context, coverUrl)
+                .placeholder(R.drawable.image_cover_default)
+                .centerCrop()
+                .into(imageView)
+        } else {
+            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            imageView.layoutParams = layoutParams
+            ImageLoader.load(context, coverUrl)
+                .placeholder(R.drawable.image_cover_default)
+                .addListener(object : RequestListener<Drawable> {
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Drawable>,
+                        isFirstResource: Boolean
+                    ): Boolean = false
+
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        model: Any,
+                        target: Target<Drawable>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean
+                    ): Boolean {
+                        val w = resource.intrinsicWidth
+                        val h = resource.intrinsicHeight
+                        if (w > 0 && h > 0) {
+                            val ratio = h.toFloat() / w.toFloat()
+                            waterfallAspectCache.put(coverUrl, ratio)
+                        }
+                        return false
+                    }
+                })
+                .centerCrop()
+                .into(imageView)
+        }
+    }
+
+    /** 计算瀑布流单卡片宽度：屏幕宽度 / 列数，扣除左右 padding */
+    private fun getWaterfallCardWidth(): Int {
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val paddingTotal = (columnCount + 1) * 8
+        return (screenWidth - paddingTotal) / columnCount.coerceAtLeast(2)
     }
 
     override fun convert(
