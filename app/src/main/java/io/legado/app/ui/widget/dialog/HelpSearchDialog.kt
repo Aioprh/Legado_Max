@@ -22,10 +22,7 @@ import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.databinding.DialogHelpSearchBinding
 import io.legado.app.databinding.ItemHelpSearchHeaderBinding
 import io.legado.app.databinding.ItemHelpSearchResultBinding
-import io.legado.app.help.HelpDoc
 import io.legado.app.help.HelpDocManager
-import io.legado.app.help.CustomHelpDoc
-import io.legado.app.help.CustomHelpDocManager
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.debug.DebugCategory
 import io.legado.app.model.debug.DebugEvent
@@ -162,18 +159,9 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
             val docs = withContext(IO) {
                 val result = mutableMapOf<String, String>()
 
-                // 加载内置文档
                 for (doc in HelpDocManager.allDocs) {
                     try {
-                        val content = if (doc is HelpDoc) {
-                            loadDoc(assets, doc.fileName)
-                        } else if (doc is CustomHelpDoc) {
-                            CustomHelpDocManager.loadDoc(doc.filePath)
-                        } else {
-                            continue
-                        }
-                        val key = if (doc is HelpDoc) doc.fileName else (doc as CustomHelpDoc).filePath
-                        result[key] = content
+                        result[doc.fileName] = loadDoc(assets, doc.fileName)
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -210,21 +198,8 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
         val queryLower = query.lowercase()
         val contextChars = 80
 
-        // 搜索所有文档(内置 + 自定义)
         for (doc in HelpDocManager.allDocs) {
-            val (docName, fileName, content) = when (doc) {
-                is HelpDoc -> Triple(
-                    doc.displayName,
-                    doc.fileName,
-                    allDocsContent[doc.fileName] ?: continue
-                )
-                is CustomHelpDoc -> Triple(
-                    doc.displayName,
-                    doc.filePath,
-                    allDocsContent[doc.filePath] ?: continue
-                )
-                else -> continue
-            }
+            val content = allDocsContent[doc.fileName] ?: continue
 
             val lines = content.lineSequence().toList()
             val matchedLines = mutableListOf<SearchResultItem>()
@@ -252,8 +227,8 @@ class HelpSearchDialog : BaseDialogFragment(R.layout.dialog_help_search) {
 
             if (matchedLines.isNotEmpty()) {
                 results.add(DocSearchResult(
-                    docName = docName,
-                    fileName = fileName,
+                    docName = doc.displayName,
+                    fileName = doc.fileName,
                     items = matchedLines
                 ))
             }

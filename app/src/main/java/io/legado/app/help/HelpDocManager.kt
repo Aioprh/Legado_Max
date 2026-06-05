@@ -134,35 +134,4 @@ object HelpDocManager {
         customGroupsCache = CustomHelpDocManager.scanCustomDocs(context, forceRefresh = true)
     }
 
-    /**
-     * 获取所有文档分组(内置 + 自定义)
-     */
-    fun getAllGroups(context: android.content.Context): List<Any> {
-        return helpDocGroups + getCustomGroups(context)
-    }
-
-    /**
-     * 获取所有自定义文档
-     */
-    fun getAllCustomDocs(context: android.content.Context): List<CustomHelpDoc> {
-        return getCustomGroups(context).flatMap { it.docs }
-    }
-
-    /**
-     * 判断是否为自定义文档
-     */
-    fun isCustomDoc(filePath: String): Boolean {
-        return filePath.startsWith("/sdcard/") || filePath.contains("LegadoPlus/help_docs")
-    }
-
-    /**
-     * 根据文件路径加载文档(自动判断内置或自定义)
-     */
-    fun loadDocByPath(assets: AssetManager, fileNameOrPath: String): String {
-        return if (isCustomDoc(fileNameOrPath)) {
-            CustomHelpDocManager.loadDoc(fileNameOrPath)
-        } else {
-            loadDoc(assets, fileNameOrPath)
-        }
-    }
 }
