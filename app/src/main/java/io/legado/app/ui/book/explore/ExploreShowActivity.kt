@@ -80,10 +80,11 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      */
     private var layoutMode: Int
         get() {
-            val intVal = getPrefInt(PreferKey.exploreGridMode, 0)
-            if (intVal != 0) return intVal
-            if (getPrefBoolean(PreferKey.exploreGridMode, false)) return LAYOUT_GRID
-            return LAYOUT_LIST
+            return try {
+                getPrefInt(PreferKey.exploreGridMode, 0)
+            } catch (_: ClassCastException) {
+                if (getPrefBoolean(PreferKey.exploreGridMode, false)) LAYOUT_GRID else LAYOUT_LIST
+            }
         }
         set(value) = putPrefInt(PreferKey.exploreGridMode, value)
 
