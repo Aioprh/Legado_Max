@@ -35,6 +35,8 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             }
         }
 
+    var columnCount: Int = 2
+
     override fun getItemViewType(item: SearchBook, position: Int): Int {
         return when (layoutMode) {
             2 -> VIEW_TYPE_WATERFALL
@@ -106,6 +108,25 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         item: SearchBook
     ) {
         binding.tvNameWaterfall.text = item.name
+        binding.tvAuthorWaterfall.text = context.getString(R.string.author_show, item.author)
+
+        val kinds = item.getKindList()
+        if (kinds.isEmpty()) {
+            binding.llKindWaterfall.gone()
+        } else {
+            binding.llKindWaterfall.visible()
+            binding.llKindWaterfall.setLabels(kinds)
+        }
+
+        if (item.latestChapterTitle.isNullOrEmpty()) {
+            binding.tvLastedWaterfall.gone()
+        } else {
+            binding.tvLastedWaterfall.text = context.getString(R.string.lasted_show, item.latestChapterTitle)
+            binding.tvLastedWaterfall.visible()
+        }
+
+        binding.tvIntroduceWaterfall.text = item.trimIntro(context)
+        binding.tvIntroduceWaterfall.maxLines = if (columnCount <= 3) 10 else 1
 
         val coverUrl = item.coverUrl
         val imageView = binding.ivCoverWaterfall

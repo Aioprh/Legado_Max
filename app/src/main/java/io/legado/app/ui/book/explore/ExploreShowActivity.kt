@@ -124,6 +124,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             menuSelectColumn?.isVisible = true
             updateColumnMenuTitle()
             adapter.layoutMode = layoutMode
+            adapter.columnCount = columnCount
             applyLayoutManager(columnCount)
         }
         updateSwitchLayoutTitle()
@@ -199,6 +200,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 }
                 updateColumnMenuTitle()
                 adapter.layoutMode = layoutMode
+                adapter.columnCount = columnCount
                 applyLayoutManager(columnCount)
             }
         }
@@ -217,6 +219,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             .show { selectedCount ->
                 columnCount = selectedCount
                 updateColumnMenuTitle()
+                adapter.columnCount = selectedCount
                 applyLayoutManager(selectedCount)
             }
     }
