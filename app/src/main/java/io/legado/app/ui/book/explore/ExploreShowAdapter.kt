@@ -97,9 +97,10 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         item: SearchBook
     ) {
         binding.ivInBookshelfGrid.isVisible = callBack.isInBookshelf(item)
+        val tagKey = "${item.bookUrl}_$columnCount"
         val lastItemTag = holder.itemView.tag as? String
-        if (lastItemTag == item.bookUrl) return
-        holder.itemView.tag = item.bookUrl
+        if (lastItemTag == tagKey) return
+        holder.itemView.tag = tagKey
         binding.ivCoverGrid.load(item, AppConfig.loadCoverOnlyWifi)
         binding.tvNameGrid.text = item.name
     }
@@ -132,9 +133,10 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
         val coverUrl = item.coverUrl
         val imageView = binding.ivCoverWaterfall
+        val tagKey = "${coverUrl}_$columnCount"
         val lastTag = imageView.tag as? String
-        if (lastTag == coverUrl) return
-        imageView.tag = coverUrl
+        if (lastTag == tagKey) return
+        imageView.tag = tagKey
         imageView.adjustViewBounds = true
         val lp = imageView.layoutParams
         lp.width = ViewGroup.LayoutParams.MATCH_PARENT
