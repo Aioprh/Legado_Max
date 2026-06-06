@@ -189,7 +189,9 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
 
     /**
      * 切换布局：列表 → 网格 → 瀑布流 三轮换
-     * 网格和瀑布流模式下显示选择分列菜单图标和简化卡片，列表模式下隐藏菜单图表恢复完整信息
+     * 网格模式下显示选择分列菜单图标和简化卡片（仅封面+书名）；
+     * 瀑布流模式下显示分列菜单图标和完整信息卡片（封面+书名+作者+分类+最新章节+简介）；
+     * 列表模式下隐藏菜单图标恢复完整信息
      */
     private fun handleSwitchLayout() {
         layoutMode = (layoutMode + 1) % 3
@@ -313,7 +315,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     }
 
     /**
-     * 滚动到底部加载更多，列数 >3 时内置 2 秒冷却限制。
+     * 滚动到底部加载更多，非列表模式下列数 >3 时内置 2 秒冷却限制。
      * 冷却期内延迟重试，避免停在底部无法触发 onScrolled 导致加载卡死。
      */
     private fun scrollToBottom(forceLoad: Boolean = false) {
