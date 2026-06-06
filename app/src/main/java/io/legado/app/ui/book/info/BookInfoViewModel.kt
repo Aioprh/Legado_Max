@@ -1,4 +1,4 @@
-package io.legado.app.ui.book.info
+﻿package io.legado.app.ui.book.info
 
 import android.app.Application
 import android.content.Intent
@@ -108,6 +108,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
             val name = intent.getStringExtra("name") ?: ""
             val author = intent.getStringExtra("author") ?: ""
             appDb.bookDao.getBook(name, author)?.let { book ->
+                inBookshelf = !book.isNotShelf
                 upBook(book)
             }
         }
@@ -697,3 +698,4 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
     }
 
 }
+
