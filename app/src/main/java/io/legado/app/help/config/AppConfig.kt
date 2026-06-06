@@ -280,6 +280,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefInt(PreferKey.bookshelfLayout, value)
         }
 
+    var folderLayout: Int
+        get() = appCtx.getPrefInt(PreferKey.folderLayout, 0)
+        set(value) {
+            appCtx.putPrefInt(PreferKey.folderLayout, value)
+        }
+
     var saveTabPosition: Int
         get() = appCtx.getPrefInt(PreferKey.saveTabPosition, 0)
         set(value) {

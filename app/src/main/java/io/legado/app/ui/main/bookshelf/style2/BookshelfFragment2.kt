@@ -59,8 +59,24 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
 
     private val binding by viewBinding(FragmentBookshelf2Binding::bind)
     private val bookshelfLayout by lazy { AppConfig.bookshelfLayout }
+    private val folderLayout by lazy { AppConfig.folderLayout }
+    // 计算书籍布局和文件夹布局列数的最小公倍数，以确保在同一个 GridLayoutManager 中两者都能完美等分宽度显示
+    private val maxSpan by lazy {
+        val a = max(bookshelfLayout, 1)
+        val b = max(folderLayout, 1)
+        var gcd = a
+        var tempB = b
+        // 辗转相除法求最大公约数
+        while (tempB > 0) {
+            val temp = tempB
+            tempB = gcd % tempB
+            gcd = temp
+        }
+        // 最小公倍数 = (a * b) / 最大公约数
+        (a * b) / gcd
+    }
     private val booksAdapter: BaseBooksAdapter<*> by lazy {
-        if (bookshelfLayout >= 2) {
+        if (maxSpan >= 2) {
             BooksAdapterGrid(requireContext(), this)
         } else {
             BooksAdapterList(requireContext(), this)
@@ -93,8 +109,21 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             binding.refreshLayout.isRefreshing = false
             activityViewModel.upToc(books, onlyUpdateRead)
         }
-        if (bookshelfLayout >= 2) {
-            binding.rvBookshelf.layoutManager = GridLayoutManager(context, bookshelfLayout)
+        if (maxSpan >= 2) {
+            binding.rvBookshelf.layoutManager = GridLayoutManager(context, maxSpan).apply {
+                spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                    override fun getSpanSize(position: Int): Int {
+                        val viewType = booksAdapter.getItemViewType(position)
+                        // 1 代表 BookGroup（文件夹），否则为普通书籍
+                        if (viewType == 1) {
+                            // 动态计算文件夹元素占据的跨度，使其按设定的文件夹列数等分屏幕
+                            return if (folderLayout >= 2) maxSpan / folderLayout else maxSpan
+                        }
+                        // 动态计算书籍元素占据的跨度，使其按设定的书籍列数等分屏幕
+                        return if (bookshelfLayout >= 2) maxSpan / bookshelfLayout else maxSpan
+                    }
+                }
+            }
         } else {
             binding.rvBookshelf.layoutManager = LinearLayoutManager(context)
         }
@@ -117,8 +146,10 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                 val position = parent.getChildAdapterPosition(view)
                 if (position == RecyclerView.NO_POSITION) return
                 
-                if (bookshelfLayout >= 2) {
-                    val rowIndex = position / bookshelfLayout
+                if (maxSpan >= 2) {
+                    val layoutManager = parent.layoutManager as GridLayoutManager
+                    // 使用 SpanSizeLookup 获取元素所在的行索引，用于准确计算外边距
+                    val rowIndex = layoutManager.spanSizeLookup.getSpanGroupIndex(position, maxSpan)
                     when (rowIndex) {
                         0 -> outRect.set(bookshelfMargin, marginFirst, bookshelfMargin, bookshelfMargin)
                         lastRowIndex -> outRect.set(bookshelfMargin, bookshelfMargin, bookshelfMargin, marginFirst)

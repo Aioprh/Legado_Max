@@ -52,6 +52,7 @@ object PreferKey {
     const val copyCrashLog = "copyCrashLog" // 崩溃时复制日志到剪贴板
     const val mdLinkInnerBrowser = "mdLinkInnerBrowser" // MD链接用内置浏览器打开
     const val bookshelfLayout = "bookshelfLayout"
+    const val folderLayout = "folderLayout"
     const val bookshelfSort = "bookshelfSort"
     const val bookExportFileName = "bookExportFileName"
     const val bookImportFileName = "bookImportFileName"

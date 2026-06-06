@@ -63,6 +63,7 @@
     <string name="layout_grid5">网格五列</string>
     <string name="layout_grid6">网格六列</string>
     <string name="bookshelf_layout">书架布局</string>
+    <string name="folder_view">文件夹视图</string>
     <string name="view">视图</string>
     <string name="book_library">书城</string>
     <string name="book_local">添加本地</string>
