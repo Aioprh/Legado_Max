@@ -59,7 +59,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     private var menuPage: MenuItem? = null
     private var menuSwitchLayout: MenuItem? = null
     private var menuSelectColumn: MenuItem? = null
-
+    /** 当前书源 URL，用于按书源隔离布局配置 */
+    private val sourceUrl: String by lazy { intent.getStringExtra("sourceUrl") ?: "" }
     /** 上次发起加载下一页的时间戳，用于 2 秒冷却限制 */
     private var lastLoadTime = 0L
 
@@ -69,29 +70,23 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     /** 是否已有延迟重试排队中 */
     private var loadRetryScheduled = false
 
-    /** 网格模式列数，持久化到 PreferKey.exploreShowColumn，默认 2 */
+    /** 网格模式列数，按书源持久化，默认 2 */
     private var columnCountGrid: Int
-        get() = getPrefInt(PreferKey.exploreShowColumn, 2)
-        set(value) = putPrefInt(PreferKey.exploreShowColumn, value)
+        get() = getPrefInt("${PreferKey.exploreShowColumn}_${sourceUrl}", 2)
+        set(value) = putPrefInt("${PreferKey.exploreShowColumn}_${sourceUrl}", value)
 
-    /** 瀑布流模式列数，持久化到 PreferKey.exploreShowColumnWaterfall，默认 2 */
+    /** 瀑布流模式列数，按书源持久化，默认 2 */
     private var columnCountWaterfall: Int
-        get() = getPrefInt(PreferKey.exploreShowColumnWaterfall, 2)
-        set(value) = putPrefInt(PreferKey.exploreShowColumnWaterfall, value)
+        get() = getPrefInt("${PreferKey.exploreShowColumnWaterfall}_${sourceUrl}", 2)
+        set(value) = putPrefInt("${PreferKey.exploreShowColumnWaterfall}_${sourceUrl}", value)
 
     /**
-     * 布局模式，由"切换布局"菜单轮换，持久化到 PreferKey.exploreGridMode
-     * 0=列表, 1=网格, 2=瀑布流；兼容旧版 Boolean 值（false→0, true→1）
+     * 布局模式，由"切换布局"菜单轮换，按书源持久化
+     * 0=列表, 1=网格, 2=瀑布流
      */
     private var layoutMode: Int
-        get() {
-            return try {
-                getPrefInt(PreferKey.exploreGridMode, 0)
-            } catch (_: ClassCastException) {
-                if (getPrefBoolean(PreferKey.exploreGridMode, false)) LAYOUT_GRID else LAYOUT_LIST
-            }
-        }
-        set(value) = putPrefInt(PreferKey.exploreGridMode, value)
+        get() = getPrefInt("${PreferKey.exploreGridMode}_${sourceUrl}", 0)
+        set(value) = putPrefInt("${PreferKey.exploreGridMode}_${sourceUrl}", value)
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.titleBar.title = intent.getStringExtra("exploreName")
