@@ -33,9 +33,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import io.legado.app.constant.PreferKey
+import io.legado.app.utils.getPrefInt
+import io.legado.app.utils.putPrefInt
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -57,6 +61,7 @@ fun DebugFloatingBall(
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     var initialized by remember { mutableStateOf(false) }
     val density = androidx.compose.ui.platform.LocalDensity.current
+    val context = LocalContext.current
 
     val ballSizePx = with(density) { ballSize.toPx() }
     val endMarginPx = with(density) { endMargin.toPx() }
@@ -69,6 +74,11 @@ fun DebugFloatingBall(
 
     LaunchedEffect(unreadCount) {
         currentUnread = unreadCount
+    }
+
+    fun savePosition(pos: Offset) {
+        context.putPrefInt(PreferKey.debugFloatingBallPosX, pos.x.roundToInt())
+        context.putPrefInt(PreferKey.debugFloatingBallPosY, pos.y.roundToInt())
     }
 
     fun snapHalfIntoHorizontalEdge(currentOffset: Offset): Offset {
@@ -85,12 +95,18 @@ fun DebugFloatingBall(
 
     LaunchedEffect(containerSize) {
         if (initialized || containerSize.width <= 0 || containerSize.height <= 0) return@LaunchedEffect
-        val maxX = (containerSize.width - ballSizePx).coerceAtLeast(0f)
-        val maxY = (containerSize.height - ballSizePx).coerceAtLeast(0f)
-        offset = Offset(
-            x = (maxX - endMarginPx - initialInsetPx).coerceAtLeast(0f),
-            y = (maxY - bottomMarginPx - initialInsetPx).coerceAtLeast(0f)
-        )
+        val savedX = context.getPrefInt(PreferKey.debugFloatingBallPosX, -1)
+        val savedY = context.getPrefInt(PreferKey.debugFloatingBallPosY, -1)
+        if (savedX >= 0 && savedY >= 0) {
+            offset = Offset(savedX.toFloat(), savedY.toFloat())
+        } else {
+            val maxX = (containerSize.width - ballSizePx).coerceAtLeast(0f)
+            val maxY = (containerSize.height - ballSizePx).coerceAtLeast(0f)
+            offset = Offset(
+                x = (maxX - endMarginPx - initialInsetPx).coerceAtLeast(0f),
+                y = (maxY - bottomMarginPx - initialInsetPx).coerceAtLeast(0f)
+            )
+        }
         initialized = true
     }
 
@@ -118,9 +134,11 @@ fun DebugFloatingBall(
                             onDragStart = { },
                             onDragCancel = {
                                 offset = snapHalfIntoHorizontalEdge(offset)
+                                savePosition(offset)
                             },
                             onDragEnd = {
                                 offset = snapHalfIntoHorizontalEdge(offset)
+                                savePosition(offset)
                             },
                             onDrag = { change, dragAmount ->
                                 change.consume()
