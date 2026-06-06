@@ -81,13 +81,19 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                     upBook(it)
                     return@execute
                 }
-                appDb.searchBookDao.getSearchBook(bookUrl)?.toBook()?.let {
-                    upBook(it)
+                appDb.searchBookDao.getSearchBook(bookUrl)?.toBook()?.let { book ->
+                    appDb.bookDao.getBook(book.name, book.author)?.let {
+                        inBookshelf = !it.isNotShelf
+                    }
+                    upBook(book)
                     return@execute
                 }
             }
-            appDb.searchBookDao.getFirstByNameAuthor(name, author)?.toBook()?.let {
-                upBook(it)
+            appDb.searchBookDao.getFirstByNameAuthor(name, author)?.toBook()?.let { book ->
+                appDb.bookDao.getBook(book.name, book.author)?.let {
+                    inBookshelf = !it.isNotShelf
+                }
+                upBook(book)
                 return@execute
             }
             throw NoStackTraceException("未找到书籍")
