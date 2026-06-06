@@ -66,7 +66,6 @@
     <string name="layout_grid5">Grid-5</string>
     <string name="layout_grid6">Grid-6</string>
     <string name="bookshelf_layout">Layout</string>
-    <string name="folder_view">Folder View</string>
     <string name="view">View</string>
     <string name="book_library">Library</string>
     <string name="book_local">Import books</string>

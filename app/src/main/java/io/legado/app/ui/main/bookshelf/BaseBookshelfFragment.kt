@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.widget.AdapterView
 import androidx.core.view.indices
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -175,7 +174,6 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
     fun configBookshelf() {
         alert(titleResource = R.string.bookshelf_layout) {
             var bookshelfLayout = AppConfig.bookshelfLayout
-            var folderLayout = AppConfig.folderLayout
             var bookshelfSort = AppConfig.bookshelfSort
             var showBookname = AppConfig.showBookname
             val alertBinding =
@@ -187,10 +185,6 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         if (bookshelfLayout !in rgLayout.indices) {
                             bookshelfLayout = 0
                             AppConfig.bookshelfLayout = 0
-                        }
-                        if (folderLayout !in rgFolderLayout.indices) {
-                            folderLayout = 0
-                            AppConfig.folderLayout = 0
                         }
                         if (bookshelfSort !in rgSort.indices) {
                             bookshelfSort = 0
@@ -206,7 +200,6 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         swShowWaitUpBooks.isChecked = AppConfig.showWaitUpCount
                         swShowBookshelfFastScroller.isChecked = AppConfig.showBookshelfFastScroller
                         rgLayout.checkByIndex(bookshelfLayout)
-                        rgFolderLayout.checkByIndex(folderLayout)
                         rgbLayout.checkByIndex(showBookname)
                         if (bookshelfLayout < 2) {
                             bookNameChoice.visibility = View.GONE
@@ -217,14 +210,6 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         }
                         rgSort.checkByIndex(bookshelfSort)
                         margin.progress = AppConfig.bookshelfMargin
-                        
-                        llFolderLayout.visibility = if (spGroupStyle.selectedItemPosition == 1) View.VISIBLE else View.GONE
-                        spGroupStyle.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                                llFolderLayout.visibility = if (position == 1) View.VISIBLE else View.GONE
-                            }
-                            override fun onNothingSelected(parent: AdapterView<*>?) {}
-                        }
                     }
             customView { alertBinding.root }
             okButton {
@@ -262,10 +247,6 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                     if (bookshelfSort != rgSort.getCheckedIndex()) {
                         AppConfig.bookshelfSort = rgSort.getCheckedIndex()
                         upSort()
-                    }
-                    if (folderLayout != rgFolderLayout.getCheckedIndex()) {
-                        AppConfig.folderLayout = rgFolderLayout.getCheckedIndex()
-                        recreate = true
                     }
                     if (bookshelfLayout != rgLayout.getCheckedIndex()) {
                         AppConfig.bookshelfLayout = rgLayout.getCheckedIndex()
