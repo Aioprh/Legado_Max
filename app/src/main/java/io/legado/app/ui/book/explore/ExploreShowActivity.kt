@@ -194,6 +194,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      * 列表模式下隐藏菜单图标恢复完整信息
      */
     private fun handleSwitchLayout() {
+        val savedPosition = findFirstVisibleItemPosition()
         layoutMode = (layoutMode + 1) % 3
         when (layoutMode) {
             LAYOUT_LIST -> {
@@ -222,6 +223,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 applyLayoutManager(columnCountWaterfall)
             }
         }
+        restoreScrollPosition(savedPosition)
         updateSwitchLayoutTitle()
     }
 
@@ -231,6 +233,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      */
     private fun handleSelectColumn() {
         val currentCount = if (layoutMode == LAYOUT_WATERFALL) columnCountWaterfall else columnCountGrid
+        val savedPosition = findFirstVisibleItemPosition()
         NumberPickerDialog(this)
             .setTitle(getString(R.string.select_column_count))
             .setMaxValue(10)
@@ -245,6 +248,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 updateColumnMenuTitle()
                 adapter.columnCount = selectedCount
                 applyLayoutManager(selectedCount)
+                restoreScrollPosition(savedPosition)
             }
     }
 
@@ -267,6 +271,33 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 GridLayoutManager(this, count)
             }
         }
+    }
+
+    /**
+     * 获取当前 LayoutManager 中第一个可见项的位置（用于切换布局/列数后恢复）
+     */
+    private fun findFirstVisibleItemPosition(): Int {
+        val layoutManager = binding.recyclerView.layoutManager ?: return 0
+        return when (layoutManager) {
+            is StaggeredGridLayoutManager -> {
+                val positions = IntArray(layoutManager.spanCount)
+                layoutManager.findFirstVisibleItemPositions(positions)
+                positions.minOrNull() ?: 0
+            }
+            is LinearLayoutManager -> layoutManager.findFirstVisibleItemPosition()
+            else -> 0
+        }
+    }
+
+    /**
+     * 切换布局/列数后将 RecyclerView 滚动到之前的位置
+     * 只恢复有效位置，避免越界
+     */
+    private fun restoreScrollPosition(position: Int) {
+        if (position < 0) return
+        val layoutManager = binding.recyclerView.layoutManager ?: return
+        if (position >= adapter.itemCount) return
+        layoutManager.scrollToPosition(position)
     }
 
     /**
