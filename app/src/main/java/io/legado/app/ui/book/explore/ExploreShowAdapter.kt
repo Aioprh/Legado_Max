@@ -25,6 +25,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         private const val VIEW_TYPE_LIST = 0
         private const val VIEW_TYPE_GRID = 1
         private const val VIEW_TYPE_WATERFALL = 2
+        private const val SPACING_RATIO = 0.05f
     }
 
     var layoutMode: Int = 0
@@ -101,8 +102,18 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         val lastItemTag = holder.itemView.tag as? String
         if (lastItemTag == tagKey) return
         holder.itemView.tag = tagKey
-        binding.ivCoverGrid.load(item, AppConfig.loadCoverOnlyWifi)
+        val spacing = calcColumnSpacing()
+        val halfSpacing = spacing / 2
+        holder.itemView.setPadding(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
+        val contentWidth = context.resources.displayMetrics.widthPixels / columnCount - spacing
+        binding.ivCoverGrid.load(item, AppConfig.loadCoverOnlyWifi, overrideWidth = contentWidth, overrideHeight = contentWidth * 4 / 3)
         binding.tvNameGrid.text = item.name
+    }
+
+    private fun calcColumnSpacing(): Int {
+        val screenWidth = context.resources.displayMetrics.widthPixels
+        val itemWidth = screenWidth / columnCount.coerceAtLeast(1)
+        return (itemWidth * SPACING_RATIO).toInt().coerceIn(2, 80)
     }
 
     private fun bindWaterfall(
@@ -148,7 +159,14 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
             return
         }
 
-        val options = RequestOptions()
+        val spacing = calcColumnSpacing()
+        val halfSpacing = spacing / 2
+        (binding.root.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+            it.setMargins(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
+            binding.root.layoutParams = it
+        }
+        val contentWidth = context.resources.displayMetrics.widthPixels / columnCount - spacing
+        val options = RequestOptions().override(contentWidth, contentWidth * 4 / 3)
         if (item.origin.isNotEmpty()) {
             options.set(OkHttpModelLoader.sourceOriginOption, item.origin)
         }

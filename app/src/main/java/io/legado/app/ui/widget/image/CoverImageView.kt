@@ -293,7 +293,9 @@ class CoverImageView @JvmOverloads constructor(
         searchBook: SearchBook,
         loadOnlyWifi: Boolean = false,
         fragment: Fragment? = null,
-        lifecycle: Lifecycle? = null
+        lifecycle: Lifecycle? = null,
+        overrideWidth: Int = 0,
+        overrideHeight: Int = 0
     ) {
         val galleryIdentity = listOf(
             searchBook.bookUrl,
@@ -301,7 +303,7 @@ class CoverImageView @JvmOverloads constructor(
             searchBook.name,
             searchBook.author
         ).joinToString("|")
-        load(searchBook.coverUrl, searchBook.name, searchBook.author, loadOnlyWifi, searchBook.origin, fragment, lifecycle, galleryIdentity = galleryIdentity)
+        load(searchBook.coverUrl, searchBook.name, searchBook.author, loadOnlyWifi, searchBook.origin, fragment, lifecycle, galleryIdentity = galleryIdentity, overrideWidth = overrideWidth, overrideHeight = overrideHeight)
     }
 
     fun load(
@@ -309,9 +311,18 @@ class CoverImageView @JvmOverloads constructor(
         loadOnlyWifi: Boolean = false,
         fragment: Fragment? = null,
         lifecycle: Lifecycle? = null,
+        overrideWidth: Int = 0,
+        overrideHeight: Int = 0,
         onLoadFinish: (() -> Unit)? = null
     ) {
-       load(book.getDisplayCover(), book.name, book.author, loadOnlyWifi, book.origin, fragment, lifecycle, onLoadFinish, book.bookUrl)
+       load(
+           book.getDisplayCover(), book.name, book.author,
+           loadOnlyWifi, book.origin, fragment, lifecycle,
+           galleryIdentity = book.bookUrl,
+           overrideWidth = overrideWidth,
+           overrideHeight = overrideHeight,
+           onLoadFinish = onLoadFinish
+       )
     }
 
     fun load(
@@ -322,8 +333,10 @@ class CoverImageView @JvmOverloads constructor(
         sourceOrigin: String? = null,
         fragment: Fragment? = null,
         lifecycle: Lifecycle? = null,
-        onLoadFinish: (() -> Unit)? = null,
-        galleryIdentity: String? = null
+        galleryIdentity: String? = null,
+        overrideWidth: Int = 0,
+        overrideHeight: Int = 0,
+        onLoadFinish: (() -> Unit)? = null
     ) {
         val currentAuthor = author?.replace(AppPattern.bdRegex, "")?.trim()?.also {
             this.author = it
@@ -396,6 +409,9 @@ class CoverImageView @JvmOverloads constructor(
                         return false
                     }
                 })
+            }
+            if (overrideWidth > 0 && overrideHeight > 0) {
+                builder.override(overrideWidth, overrideHeight)
             }
             builder.centerCrop()
             builder
