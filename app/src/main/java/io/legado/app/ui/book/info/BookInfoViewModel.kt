@@ -578,8 +578,12 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                 }
                 if (ReadBook.book?.isSameNameAuthor(book) == true) {
                     ReadBook.book = book
+                    ReadBook.inBookshelf = true
                 } else if (AudioPlay.book?.isSameNameAuthor(book) == true) {
                     AudioPlay.book = book
+                    AudioPlay.inBookshelf = true
+                } else if (ReadManga.book?.isSameNameAuthor(book) == true) {
+                    ReadManga.inBookshelf = true
                 }
                 book.save()
                 SourceCallBack.callBackBook(SourceCallBack.ADD_BOOK_SHELF, bookSource, book)
