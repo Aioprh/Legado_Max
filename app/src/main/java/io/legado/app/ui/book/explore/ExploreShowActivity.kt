@@ -69,10 +69,15 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     /** 是否已有延迟重试排队中 */
     private var loadRetryScheduled = false
 
-    /** 网格模式列数，持久化到 PreferKey.exploreShowColumn，默认 1 */
-    private var columnCount: Int
-        get() = getPrefInt(PreferKey.exploreShowColumn, 1)
+    /** 网格模式列数，持久化到 PreferKey.exploreShowColumn，默认 2 */
+    private var columnCountGrid: Int
+        get() = getPrefInt(PreferKey.exploreShowColumn, 2)
         set(value) = putPrefInt(PreferKey.exploreShowColumn, value)
+
+    /** 瀑布流模式列数，持久化到 PreferKey.exploreShowColumnWaterfall，默认 2 */
+    private var columnCountWaterfall: Int
+        get() = getPrefInt(PreferKey.exploreShowColumnWaterfall, 2)
+        set(value) = putPrefInt(PreferKey.exploreShowColumnWaterfall, value)
 
     /**
      * 布局模式，由"切换布局"菜单轮换，持久化到 PreferKey.exploreGridMode
@@ -122,10 +127,11 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         menuSelectColumn = menu.findItem(R.id.menu_select_column)
         if (layoutMode != LAYOUT_LIST) {
             menuSelectColumn?.isVisible = true
+            val count = if (layoutMode == LAYOUT_WATERFALL) columnCountWaterfall else columnCountGrid
             updateColumnMenuTitle()
             adapter.layoutMode = layoutMode
-            adapter.columnCount = columnCount
-            applyLayoutManager(columnCount)
+            adapter.columnCount = count
+            applyLayoutManager(count)
         }
         updateSwitchLayoutTitle()
         return super.onCompatCreateOptionsMenu(menu)
@@ -193,15 +199,25 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 adapter.layoutMode = LAYOUT_LIST
                 applyLayoutManager(1)
             }
-            LAYOUT_GRID, LAYOUT_WATERFALL -> {
+            LAYOUT_GRID -> {
                 menuSelectColumn?.isVisible = true
-                if (columnCount < 1 || columnCount > 10) {
-                    columnCount = 2
+                if (columnCountGrid < 1 || columnCountGrid > 10) {
+                    columnCountGrid = 2
                 }
                 updateColumnMenuTitle()
                 adapter.layoutMode = layoutMode
-                adapter.columnCount = columnCount
-                applyLayoutManager(columnCount)
+                adapter.columnCount = columnCountGrid
+                applyLayoutManager(columnCountGrid)
+            }
+            LAYOUT_WATERFALL -> {
+                menuSelectColumn?.isVisible = true
+                if (columnCountWaterfall < 1 || columnCountWaterfall > 10) {
+                    columnCountWaterfall = 2
+                }
+                updateColumnMenuTitle()
+                adapter.layoutMode = layoutMode
+                adapter.columnCount = columnCountWaterfall
+                applyLayoutManager(columnCountWaterfall)
             }
         }
         updateSwitchLayoutTitle()
@@ -209,15 +225,21 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
 
     /**
      * 弹出 NumberPickerDialog 选择列数（1-10），确认后更新布局和标题栏图标
+     * 当前为网格模式时设置网格列数，瀑布流模式时设置瀑布流列数
      */
     private fun handleSelectColumn() {
+        val currentCount = if (layoutMode == LAYOUT_WATERFALL) columnCountWaterfall else columnCountGrid
         NumberPickerDialog(this)
             .setTitle(getString(R.string.select_column_count))
             .setMaxValue(10)
             .setMinValue(1)
-            .setValue(columnCount)
+            .setValue(currentCount)
             .show { selectedCount ->
-                columnCount = selectedCount
+                if (layoutMode == LAYOUT_WATERFALL) {
+                    columnCountWaterfall = selectedCount
+                } else {
+                    columnCountGrid = selectedCount
+                }
                 updateColumnMenuTitle()
                 adapter.columnCount = selectedCount
                 applyLayoutManager(selectedCount)
@@ -246,10 +268,11 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     }
 
     /**
-     * 更新标题栏中选择分列菜单项的标题为当前列数值
+     * 更新标题栏中选择分列菜单项的标题为当前布局模式对应的列数值
      */
     private fun updateColumnMenuTitle() {
-        menuSelectColumn?.title = columnCount.toString()
+        val count = if (layoutMode == LAYOUT_WATERFALL) columnCountWaterfall else columnCountGrid
+        menuSelectColumn?.title = count.toString()
     }
 
     /**
@@ -295,7 +318,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      */
     private fun scrollToBottom(forceLoad: Boolean = false) {
         val now = SystemClock.elapsedRealtime()
-        if (layoutMode != LAYOUT_LIST && columnCount > 3 && now - lastLoadTime < LOAD_COOLDOWN_MS) {
+        val currentCount = if (layoutMode == LAYOUT_WATERFALL) columnCountWaterfall else columnCountGrid
+        if (layoutMode != LAYOUT_LIST && currentCount > 3 && now - lastLoadTime < LOAD_COOLDOWN_MS) {
             scheduleLoadRetry(LOAD_COOLDOWN_MS - (now - lastLoadTime))
             return
         }
