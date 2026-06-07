@@ -68,9 +68,24 @@ class CoverImageView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : AppCompatImageView(context, attrs) {
     companion object {
-        private val nameBitmapCache by lazy { LruCache<String, Bitmap>(33) }
-        private val needNameBitmap by lazy { LruCache<String, Boolean>(99) }
-        private val htmlCoverCache by lazy { LruCache<String, Bitmap>(50) }
+        private val _nameBitmapCache by lazy { LruCache<String, Bitmap>(33) }
+        private val _needNameBitmap by lazy { LruCache<String, Boolean>(99) }
+        private val _htmlCoverCache by lazy { LruCache<String, Bitmap>(50) }
+
+        /**
+         * 书名绘制缓存（公开供 CoverLoader 使用）
+         */
+        val nameBitmapCache: LruCache<String, Bitmap> get() = _nameBitmapCache
+        
+        /**
+         * 是否需要绘制书名标记缓存（公开供 CoverLoader 使用）
+         */
+        val needNameBitmap: LruCache<String, Boolean> get() = _needNameBitmap
+        
+        /**
+         * HTML封面缓存（公开供 CoverLoader 使用）
+         */
+        val htmlCoverCache: LruCache<String, Bitmap> get() = _htmlCoverCache
 
         /**
          * 清除HTML封面缓存
@@ -79,8 +94,20 @@ class CoverImageView @JvmOverloads constructor(
          * 确保书架上的封面能及时刷新
          */
         fun clearHtmlCoverCache() {
-            htmlCoverCache.evictAll()
+            _htmlCoverCache.evictAll()
         }
+
+        /**
+         * 清除所有封面缓存
+         */
+        fun clearAllCache() {
+            _htmlCoverCache.evictAll()
+            _nameBitmapCache.evictAll()
+            _needNameBitmap.evictAll()
+        }
+
+        // Job 存储 tag key
+        private const val TAG_KEY_JOB = "cover_job"
     }
     private var viewWidth: Float = 0f
     private var viewHeight: Float = 0f

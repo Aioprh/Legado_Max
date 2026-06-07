@@ -51,6 +51,7 @@ import io.legado.app.model.BookCover
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.ui.book.read.config.HighlightRuleStore
+import io.legado.app.ui.widget.image.CoverImageView
 import io.legado.app.utils.ACache
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
@@ -417,6 +418,8 @@ object Restore {
             File(path, BookCover.configFileName).takeIf { it.exists() }?.runCatching {
                 val json = readText()
                 BookCover.saveCoverRule(json)
+                // 清除封面缓存，确保使用新配置生成封面
+                CoverImageView.clearAllCache()
             }?.onFailure { AppLog.put("恢复封面规则出错\n${it.localizedMessage}", it) }
         }
 
@@ -761,6 +764,8 @@ object Restore {
         }?.runCatching {
             val json = readText()
             BookCover.saveCoverRule(json)
+            // 清除封面缓存，确保使用新配置生成封面
+            CoverImageView.clearAllCache()
         }?.onFailure {
             AppLog.put("恢复封面规则出错\n${it.localizedMessage}", it)
         }
