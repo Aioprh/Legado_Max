@@ -193,6 +193,7 @@ fun VideoSettingsContent(
                                 VideoPlay.quickJumpMinutesB = kotlin.math.abs(value)
                                 quickJumpMinutesB = kotlin.math.abs(value)
                             }
+                            postEvent(EventBus.VIDEO_CONFIG_CHANGED, true)
                         }
                 }
             )
@@ -223,6 +224,7 @@ fun VideoSettingsContent(
                                 VideoPlay.quickJumpMinutesA = kotlin.math.abs(value)
                                 quickJumpMinutesA = kotlin.math.abs(value)
                             }
+                            postEvent(EventBus.VIDEO_CONFIG_CHANGED, true)
                         }
                 }
             )

@@ -810,7 +810,7 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         observeEvent<Boolean>(EventBus.VIDEO_CONFIG_CHANGED) {
             updateQuickJumpButtonsState()
             // 更新播放器静音状态
-            playerView.gsyVideoManager.setNeedMute(VideoPlay.mutePlay)
+            playerView.setMute(VideoPlay.mutePlay)
         }
 
     }

@@ -90,6 +90,14 @@ class VideoPlayer: StandardGSYVideoPlayer {
 
     public override fun lockTouchLogic() = super.lockTouchLogic()
 
+    /**
+     * 设置静音状态
+     * 使用 getCurrentPlayer() 确保在全屏和小屏模式下都能正确设置
+     */
+    fun setMute(needMute: Boolean) {
+        getCurrentPlayer().gsyVideoManager.setNeedMute(needMute)
+    }
+
     override fun init(context: Context) {
         super.init(context)
         initView()

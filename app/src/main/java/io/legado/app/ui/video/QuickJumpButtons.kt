@@ -1,17 +1,17 @@
 package io.legado.app.ui.video
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Replay
-import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,9 +53,9 @@ fun QuickJumpButtons(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 快退a分钟（大步后退）
+            // 快退a分钟（大步后退）- 使用两个左箭头叠加
             QuickJumpButton(
-                icon = Icons.Default.Replay,
+                icon = { DoubleArrowLeft() },
                 label = "-${minutesA}分",
                 contentDescription = stringResource(R.string.quick_jump_back_a, minutesA),
                 onClick = onBackA
@@ -63,7 +63,7 @@ fun QuickJumpButtons(
 
             // 快退b分钟（小步后退）
             QuickJumpButton(
-                icon = Icons.Default.KeyboardArrowLeft,
+                icon = { Icon(Icons.Default.KeyboardArrowLeft, contentDescription = null) },
                 label = "-${minutesB}分",
                 contentDescription = stringResource(R.string.quick_jump_back_b, minutesB),
                 onClick = onBackB
@@ -71,15 +71,15 @@ fun QuickJumpButtons(
 
             // 快进b分钟（小步前进）
             QuickJumpButton(
-                icon = Icons.Default.KeyboardArrowRight,
+                icon = { Icon(Icons.Default.KeyboardArrowRight, contentDescription = null) },
                 label = "+${minutesB}分",
                 contentDescription = stringResource(R.string.quick_jump_forward_b, minutesB),
                 onClick = onForwardB
             )
 
-            // 快进a分钟（大步前进）
+            // 快进a分钟（大步前进）- 使用两个右箭头叠加
             QuickJumpButton(
-                icon = Icons.Default.RotateRight,
+                icon = { DoubleArrowRight() },
                 label = "+${minutesA}分",
                 contentDescription = stringResource(R.string.quick_jump_forward_a, minutesA),
                 onClick = onForwardA
@@ -90,7 +90,7 @@ fun QuickJumpButtons(
 
 @Composable
 private fun QuickJumpButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: @Composable () -> Unit,
     label: String,
     contentDescription: String,
     onClick: () -> Unit
@@ -102,19 +102,55 @@ private fun QuickJumpButton(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = MaterialTheme.colorScheme.primary
-            )
+            icon()
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = label,
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 maxLines = 1
             )
         }
+    }
+}
+
+/**
+ * 双左箭头图标 - 用于大步后退
+ */
+@Composable
+private fun DoubleArrowLeft() {
+    Box(contentAlignment = Alignment.Center) {
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowLeft,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowLeft,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.offset(x = (-4).dp)
+        )
+    }
+}
+
+/**
+ * 双右箭头图标 - 用于大步前进
+ */
+@Composable
+private fun DoubleArrowRight() {
+    Box(contentAlignment = Alignment.Center) {
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.offset(x = 4.dp)
+        )
     }
 }
