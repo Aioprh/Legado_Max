@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.FastForward
-import androidx.compose.material.icons.automirrored.filled.FastRewind
-import androidx.compose.material.icons.automirrored.filled.Redo
-import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -55,7 +55,7 @@ fun QuickJumpButtons(
         ) {
             // 快退a分钟（大步后退）
             QuickJumpButton(
-                icon = Icons.AutoMirrored.Filled.Undo,
+                icon = Icons.Default.Replay,
                 label = "-${minutesA}分",
                 contentDescription = stringResource(R.string.quick_jump_back_a, minutesA),
                 onClick = onBackA
@@ -63,7 +63,7 @@ fun QuickJumpButtons(
 
             // 快退b分钟（小步后退）
             QuickJumpButton(
-                icon = Icons.AutoMirrored.Filled.FastRewind,
+                icon = Icons.Default.KeyboardArrowLeft,
                 label = "-${minutesB}分",
                 contentDescription = stringResource(R.string.quick_jump_back_b, minutesB),
                 onClick = onBackB
@@ -71,7 +71,7 @@ fun QuickJumpButtons(
 
             // 快进b分钟（小步前进）
             QuickJumpButton(
-                icon = Icons.AutoMirrored.Filled.FastForward,
+                icon = Icons.Default.KeyboardArrowRight,
                 label = "+${minutesB}分",
                 contentDescription = stringResource(R.string.quick_jump_forward_b, minutesB),
                 onClick = onForwardB
@@ -79,7 +79,7 @@ fun QuickJumpButtons(
 
             // 快进a分钟（大步前进）
             QuickJumpButton(
-                icon = Icons.AutoMirrored.Filled.Redo,
+                icon = Icons.Default.RotateRight,
                 label = "+${minutesA}分",
                 contentDescription = stringResource(R.string.quick_jump_forward_a, minutesA),
                 onClick = onForwardA
