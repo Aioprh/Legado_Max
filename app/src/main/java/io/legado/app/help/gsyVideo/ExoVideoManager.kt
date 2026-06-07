@@ -25,6 +25,18 @@ class ExoVideoManager: GSYVideoBaseManager() {
         return ExoPlayerManager()
     }
 
+    /**
+     * 重写 setNeedMute 方法，使其立即应用静音状态
+     * 解决静音播放开关关闭后，视频播放不能立刻达到静音/有声的效果的问题
+     */
+    @OptIn(UnstableApi::class)
+    override fun setNeedMute(needMute: Boolean) {
+        // 先调用父类方法设置状态
+        super.setNeedMute(needMute)
+        // 然后立即应用到播放器，确保实时生效
+        playerManager?.setNeedMute(needMute)
+    }
+
 //    fun prepare(
 //        url: String,
 //        mapHeadData: MutableMap<String?, String?>?,
