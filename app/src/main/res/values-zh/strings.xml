@@ -1684,4 +1684,19 @@
     <string name="switch_layout_list">列表</string>
     <string name="switch_layout_grid">网格</string>
     <string name="switch_layout_waterfall">瀑布流</string>
+
+    <!-- 视频播放器手势控制设置 -->
+    <string name="double_tap_seek_enabled">双击快退/快进</string>
+    <string name="double_tap_seek_seconds">双击跳转秒数</string>
+    <string name="double_tap_seek_seconds_summary">双击跳转秒数：%d秒</string>
+    <string name="quick_jump_buttons_enabled">快捷跳转按钮</string>
+    <string name="quick_jump_minutes_a">快退/快进分钟数A</string>
+    <string name="quick_jump_minutes_b">快退/快进分钟数B</string>
+    <string name="quick_jump_minutes_summary">分钟数：%d分钟</string>
+    <string name="left_slide_brightness_enabled">左侧滑动调节亮度</string>
+    <string name="right_slide_volume_enabled">右侧滑动调节音量</string>
+    <string name="quick_jump_back_a">快退%d分钟</string>
+    <string name="quick_jump_back_b">快退%d分钟</string>
+    <string name="quick_jump_forward_b">快进%d分钟</string>
+    <string name="quick_jump_forward_a">快进%d分钟</string>
 </resources>

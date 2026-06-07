@@ -99,6 +99,48 @@ object VideoPlay : CoroutineScope by MainScope(){
         set(value) {
             videoPrefs.edit { putBoolean("mutePlay", value) }
         }
+    /**  双击快退/快进功能开关  **/
+    var doubleTapSeekEnabled
+        get() = videoPrefs.getBoolean("doubleTapSeekEnabled", true)
+        set(value) {
+            videoPrefs.edit { putBoolean("doubleTapSeekEnabled", value) }
+        }
+    /**  双击跳转秒数  **/
+    var doubleTapSeekSeconds
+        get() = videoPrefs.getInt("doubleTapSeekSeconds", 10)
+        set(value) {
+            videoPrefs.edit { putInt("doubleTapSeekSeconds", value) }
+        }
+    /**  快捷跳转按钮开关  **/
+    var quickJumpButtonsEnabled
+        get() = videoPrefs.getBoolean("quickJumpButtonsEnabled", false)
+        set(value) {
+            videoPrefs.edit { putBoolean("quickJumpButtonsEnabled", value) }
+        }
+    /**  快捷跳转a分钟数  **/
+    var quickJumpMinutesA
+        get() = videoPrefs.getInt("quickJumpMinutesA", 5)
+        set(value) {
+            videoPrefs.edit { putInt("quickJumpMinutesA", value) }
+        }
+    /**  快捷跳转b分钟数  **/
+    var quickJumpMinutesB
+        get() = videoPrefs.getInt("quickJumpMinutesB", 1)
+        set(value) {
+            videoPrefs.edit { putInt("quickJumpMinutesB", value) }
+        }
+    /**  左侧滑动调节亮度开关  **/
+    var leftSlideBrightnessEnabled
+        get() = videoPrefs.getBoolean("leftSlideBrightnessEnabled", true)
+        set(value) {
+            videoPrefs.edit { putBoolean("leftSlideBrightnessEnabled", value) }
+        }
+    /**  右侧滑动调节音量开关  **/
+    var rightSlideVolumeEnabled
+        get() = videoPrefs.getBoolean("rightSlideVolumeEnabled", true)
+        set(value) {
+            videoPrefs.edit { putBoolean("rightSlideVolumeEnabled", value) }
+        }
     /**  弹幕滚动速度  **/
     var danmakuSpeed = 1.2f
     /**  锁屏  **/

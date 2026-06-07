@@ -1877,4 +1877,19 @@
     <string name="switch_layout_waterfall">Waterfall</string>
 
     <string name="group_name">分组名称</string>
+
+    <!-- Video Player Gesture Control Settings -->
+    <string name="double_tap_seek_enabled">Double tap to rewind/forward</string>
+    <string name="double_tap_seek_seconds">Double tap seek seconds</string>
+    <string name="double_tap_seek_seconds_summary">Double tap seek seconds: %d seconds</string>
+    <string name="quick_jump_buttons_enabled">Quick jump buttons</string>
+    <string name="quick_jump_minutes_a">Rewind/forward minutes A</string>
+    <string name="quick_jump_minutes_b">Rewind/forward minutes B</string>
+    <string name="quick_jump_minutes_summary">Minutes: %d minutes</string>
+    <string name="left_slide_brightness_enabled">Left slide to adjust brightness</string>
+    <string name="right_slide_volume_enabled">Right slide to adjust volume</string>
+    <string name="quick_jump_back_a">Rewind %d minutes</string>
+    <string name="quick_jump_back_b">Rewind %d minutes</string>
+    <string name="quick_jump_forward_b">Forward %d minutes</string>
+    <string name="quick_jump_forward_a">Forward %d minutes</string>
 </resources>

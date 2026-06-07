@@ -91,6 +91,8 @@ import io.legado.app.utils.toggleSystemBar
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import io.legado.app.help.InnerBrowserLinkResolver
+import androidx.compose.ui.platform.ComposeView
+import io.legado.app.ui.theme.LegadoTheme
 import io.noties.markwon.Markwon
 import io.noties.markwon.MarkwonConfiguration
 import io.noties.markwon.ext.tables.TablePlugin
@@ -233,9 +235,11 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         if (book == null) {
             binding.data.invisible()
             binding.chaptersContainer.invisible()
+            binding.quickJumpButtons.gone()
             return
         }
         showBook(book)
+        setupQuickJumpButtons()
         if (VideoPlay.episodes.isNullOrEmpty()) {
             binding.chapters.gone()
         } else {
@@ -248,6 +252,30 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             binding.volumes.visible()
             showVolumes(VideoPlay.volumes)
         }
+    }
+
+    private fun setupQuickJumpButtons() {
+        binding.quickJumpButtons.setContent {
+            LegadoTheme {
+                QuickJumpButtons(
+                    enabled = VideoPlay.quickJumpButtonsEnabled,
+                    minutesA = VideoPlay.quickJumpMinutesA,
+                    minutesB = VideoPlay.quickJumpMinutesB,
+                    onBackA = { performQuickJump(-VideoPlay.quickJumpMinutesA) },
+                    onBackB = { performQuickJump(-VideoPlay.quickJumpMinutesB) },
+                    onForwardB = { performQuickJump(VideoPlay.quickJumpMinutesB) },
+                    onForwardA = { performQuickJump(VideoPlay.quickJumpMinutesA) }
+                )
+            }
+        }
+    }
+
+    private fun performQuickJump(minutes: Int) {
+        val currentPosition = playerView.getCurrentPositionWhenPlaying()
+        val duration = playerView.getDuration()
+        val jumpMs = minutes * 60 * 1000L
+        val newPosition = (currentPosition + jumpMs).coerceIn(0, duration)
+        playerView.seekTo(newPosition)
     }
 
     private fun showBook(book: Book) {
@@ -519,6 +547,7 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             supportActionBar?.hide()
             binding.chaptersContainer.gone()
             binding.data.gone()
+            binding.quickJumpButtons.gone()
             playerView.startWindowFullscreen(this, false, false)
         } else {
             requestedOrientation = orientation
@@ -526,6 +555,9 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             if (VideoPlay.book != null) {
                 binding.chaptersContainer.visible()
                 binding.data.visible()
+                if (VideoPlay.quickJumpButtonsEnabled) {
+                    binding.quickJumpButtons.visible()
+                }
             }
             playerView.postDelayed({
                 playerView.backFromFull(this)

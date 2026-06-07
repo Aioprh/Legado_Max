@@ -1,77 +1,38 @@
 package io.legado.app.ui.video.config
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
-import io.legado.app.R
+import android.view.ViewGroup
+import androidx.compose.ui.platform.ComposeView
 import io.legado.app.base.BaseDialogFragment
-import io.legado.app.databinding.DialogVideoSettingsBinding
-import io.legado.app.model.VideoPlay
-import io.legado.app.ui.widget.number.NumberPickerDialog
-import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.ui.theme.LegadoTheme
 
 class SettingsDialog(private val context: Context, private val callBack: CallBack? = null) :
-    BaseDialogFragment(R.layout.dialog_video_settings) {
-    private val binding by viewBinding(DialogVideoSettingsBinding::bind)
+    BaseDialogFragment(0) {
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        return ComposeView(requireContext()).apply {
+            setContent {
+                LegadoTheme {
+                    VideoSettingsContent(
+                        onDismiss = { dismiss() }
+                    )
+                }
+            }
+        }
+    }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        initData()
-        initView()
+        // Compose内容已在onCreateView中设置，无需额外初始化
     }
 
-    @SuppressLint("SetTextI18n")
-    private fun initData() {
-        binding.run {
-            tvPressSpeed.text = (VideoPlay.longPressSpeed / 10.0f).toPressSpeedStr()
-            cbAutoPlay.isChecked = VideoPlay.autoPlay
-            cbStartFull.isChecked = VideoPlay.startFull
-            cbFullBottomProgress.isChecked = VideoPlay.fullBottomProgressBar
-            // 初始化静音播放复选框状态
-            cbMutePlay.isChecked = VideoPlay.mutePlay
-        }
-    }
-
-    @SuppressLint("SetTextI18n")
-    private fun initView() {
-        binding.run {
-            cbAutoPlay.setOnCheckedChangeListener { _, isChecked ->
-                VideoPlay.autoPlay = isChecked
-                ctStartFull.visibility = if (isChecked) View.VISIBLE else View.GONE
-            }
-            cbStartFull.setOnCheckedChangeListener { _, isChecked ->
-                VideoPlay.startFull = isChecked
-            }
-            cbFullBottomProgress.setOnCheckedChangeListener { _, isChecked ->
-                VideoPlay.fullBottomProgressBar = isChecked
-            }
-            // 静音播放设置变更监听
-            cbMutePlay.setOnCheckedChangeListener { _, isChecked ->
-                VideoPlay.mutePlay = isChecked
-            }
-            tvPressSpeed.setOnClickListener { _ ->
-                NumberPickerDialog(requireContext(), true)
-                    .setTitle(getString(R.string.press_speed))
-                    .setMaxValue(60)
-                    .setMinValue(5)
-                    .setValue(VideoPlay.longPressSpeed)
-                    .setCustomButton((R.string.btn_default_s)) {
-                        VideoPlay.longPressSpeed = 30
-                        tvPressSpeed.text = 3.0f.toPressSpeedStr()
-                    }
-                    .show {
-                        VideoPlay.longPressSpeed = it
-                        tvPressSpeed.text = (it / 10.0f).toPressSpeedStr()
-                    }
-            }
-        }
-    }
-
-    private fun Float.toPressSpeedStr(): String {
-        return context.getString(R.string.press_speed_summary, this)
-    }
     interface CallBack {
-//        fun upUi()
+        // 可扩展的回调接口
     }
-
 }

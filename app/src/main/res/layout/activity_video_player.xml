@@ -74,6 +74,16 @@
                 android:textSize="14sp"
                 tools:ignore="RtlSymmetry" />
 
+            <androidx.compose.ui.platform.ComposeView
+                android:id="@+id/quick_jump_buttons"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                tools:ignore="RtlSymmetry" />
+
             <androidx.core.widget.NestedScrollView
                 android:id="@+id/scroll_view_r"
                 android:layout_width="match_parent"
