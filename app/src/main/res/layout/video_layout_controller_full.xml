@@ -110,58 +110,57 @@
             app:layout_constraintStart_toEndOf="@+id/start"
             app:layout_constraintTop_toBottomOf="@+id/progress" />
 
-        <!-- 快捷跳转按钮 -->
-        <TextView
-            android:id="@+id/quick_jump_back_a"
+        <!-- 快捷跳转按钮容器，居中显示 -->
+        <LinearLayout
+            android:id="@+id/quick_jump_container"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:orientation="horizontal"
             android:gravity="center"
-            android:textColor="#ffffff"
-            android:textSize="12sp"
             android:visibility="gone"
-            app:layout_constraintStart_toEndOf="@+id/next"
-            app:layout_constraintTop_toBottomOf="@+id/progress"
-            tools:text="-5分" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/progress">
 
-        <TextView
-            android:id="@+id/quick_jump_back_b"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:gravity="center"
-            android:textColor="#ffffff"
-            android:textSize="12sp"
-            android:visibility="gone"
-            app:layout_constraintStart_toEndOf="@+id/quick_jump_back_a"
-            app:layout_constraintTop_toBottomOf="@+id/progress"
-            tools:text="-1分" />
+            <TextView
+                android:id="@+id/quick_jump_back_a"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:textColor="#ffffff"
+                android:textSize="12sp"
+                tools:text="-5分" />
 
-        <TextView
-            android:id="@+id/quick_jump_forward_b"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:gravity="center"
-            android:textColor="#ffffff"
-            android:textSize="12sp"
-            android:visibility="gone"
-            app:layout_constraintStart_toEndOf="@+id/quick_jump_back_b"
-            app:layout_constraintTop_toBottomOf="@+id/progress"
-            tools:text="+1分" />
+            <TextView
+                android:id="@+id/quick_jump_back_b"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:textColor="#ffffff"
+                android:textSize="12sp"
+                tools:text="-1分" />
 
-        <TextView
-            android:id="@+id/quick_jump_forward_a"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:gravity="center"
-            android:textColor="#ffffff"
-            android:textSize="12sp"
-            android:visibility="gone"
-            app:layout_constraintStart_toEndOf="@+id/quick_jump_forward_b"
-            app:layout_constraintTop_toBottomOf="@+id/progress"
-            tools:text="+5分" />
+            <TextView
+                android:id="@+id/quick_jump_forward_b"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:textColor="#ffffff"
+                android:textSize="12sp"
+                tools:text="+1分" />
+
+            <TextView
+                android:id="@+id/quick_jump_forward_a"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textColor="#ffffff"
+                android:textSize="12sp"
+                tools:text="+5分" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/toggle_danmaku"

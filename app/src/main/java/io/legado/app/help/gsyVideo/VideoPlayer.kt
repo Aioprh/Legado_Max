@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import com.shuyu.gsyvideoplayer.listener.LockClickListener
 import com.shuyu.gsyvideoplayer.utils.CommonUtil
@@ -395,40 +396,35 @@ class VideoPlayer: StandardGSYVideoPlayer {
     private fun initQuickJumpButtons() {
         if (!mIfCurrentIsFullscreen) return
         
+        val quickJumpContainer = findViewById<LinearLayout>(R.id.quick_jump_container)
         val quickJumpBackA = findViewById<TextView>(R.id.quick_jump_back_a)
         val quickJumpBackB = findViewById<TextView>(R.id.quick_jump_back_b)
         val quickJumpForwardB = findViewById<TextView>(R.id.quick_jump_forward_b)
         val quickJumpForwardA = findViewById<TextView>(R.id.quick_jump_forward_a)
         
         if (!VideoPlay.quickJumpButtonsEnabled) {
-            quickJumpBackA?.visibility = GONE
-            quickJumpBackB?.visibility = GONE
-            quickJumpForwardB?.visibility = GONE
-            quickJumpForwardA?.visibility = GONE
+            quickJumpContainer?.visibility = GONE
             return
         }
         
         val minutesA = VideoPlay.quickJumpMinutesA
         val minutesB = VideoPlay.quickJumpMinutesB
         
+        quickJumpContainer?.visibility = VISIBLE
         quickJumpBackA?.apply {
             text = "-${minutesA}分"
-            visibility = VISIBLE
             setOnClickListener { performQuickJump(-minutesA) }
         }
         quickJumpBackB?.apply {
             text = "-${minutesB}分"
-            visibility = VISIBLE
             setOnClickListener { performQuickJump(-minutesB) }
         }
         quickJumpForwardB?.apply {
             text = "+${minutesB}分"
-            visibility = VISIBLE
             setOnClickListener { performQuickJump(minutesB) }
         }
         quickJumpForwardA?.apply {
             text = "+${minutesA}分"
-            visibility = VISIBLE
             setOnClickListener { performQuickJump(minutesA) }
         }
     }
