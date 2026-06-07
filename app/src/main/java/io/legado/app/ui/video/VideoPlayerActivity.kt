@@ -567,8 +567,6 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             binding.data.gone()
             binding.quickJumpButtons.gone()
             playerView.startWindowFullscreen(this, false, false)
-            // 在全屏模式下显示快捷跳转按钮
-            setupFullScreenQuickJumpButtons()
         } else {
             requestedOrientation = orientation
             supportActionBar?.show()
@@ -583,28 +581,6 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
                 playerView.backFromFull(this)
             }, if (VideoPlay.isPortraitVideo) 300 else 0)
             upView()
-        }
-    }
-
-    private fun setupFullScreenQuickJumpButtons() {
-        if (!VideoPlay.quickJumpButtonsEnabled) return
-        val fullPlayer = playerView.getFullWindowPlayer()
-        if (fullPlayer == null) return
-        val composeView = fullPlayer.findViewById<ComposeView>(R.id.full_quick_jump_buttons)
-        if (composeView == null) return
-        composeView.visibility = View.VISIBLE
-        composeView.setContent {
-            LegadoTheme {
-                QuickJumpButtons(
-                    enabled = VideoPlay.quickJumpButtonsEnabled,
-                    minutesA = VideoPlay.quickJumpMinutesA,
-                    minutesB = VideoPlay.quickJumpMinutesB,
-                    onBackA = { performQuickJump(-VideoPlay.quickJumpMinutesA) },
-                    onBackB = { performQuickJump(-VideoPlay.quickJumpMinutesB) },
-                    onForwardB = { performQuickJump(VideoPlay.quickJumpMinutesB) },
-                    onForwardA = { performQuickJump(VideoPlay.quickJumpMinutesA) }
-                )
-            }
         }
     }
 

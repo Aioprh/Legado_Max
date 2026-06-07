@@ -369,6 +369,8 @@ class VideoPlayer: StandardGSYVideoPlayer {
         if (mIfCurrentIsFullscreen && !VideoPlay.fullBottomProgressBar) {
             mBottomProgressBar = null
         }
+        //初始化全屏快捷跳转按钮
+        initQuickJumpButtons()
         //切换选集
         episodeList = findViewById(R.id.episode_list)
         btnNext = findViewById(R.id.next)
@@ -385,6 +387,63 @@ class VideoPlayer: StandardGSYVideoPlayer {
         btnNext?.setOnClickListener {
             VideoPlay.upDurIndex(1,this)
         }
+    }
+
+    /**
+     * 初始化全屏快捷跳转按钮
+     */
+    private fun initQuickJumpButtons() {
+        if (!mIfCurrentIsFullscreen) return
+        
+        val quickJumpBackA = findViewById<TextView>(R.id.quick_jump_back_a)
+        val quickJumpBackB = findViewById<TextView>(R.id.quick_jump_back_b)
+        val quickJumpForwardB = findViewById<TextView>(R.id.quick_jump_forward_b)
+        val quickJumpForwardA = findViewById<TextView>(R.id.quick_jump_forward_a)
+        
+        if (!VideoPlay.quickJumpButtonsEnabled) {
+            quickJumpBackA?.visibility = GONE
+            quickJumpBackB?.visibility = GONE
+            quickJumpForwardB?.visibility = GONE
+            quickJumpForwardA?.visibility = GONE
+            return
+        }
+        
+        val minutesA = VideoPlay.quickJumpMinutesA
+        val minutesB = VideoPlay.quickJumpMinutesB
+        
+        quickJumpBackA?.apply {
+            text = "-${minutesA}分"
+            visibility = VISIBLE
+            setOnClickListener { performQuickJump(-minutesA) }
+        }
+        quickJumpBackB?.apply {
+            text = "-${minutesB}分"
+            visibility = VISIBLE
+            setOnClickListener { performQuickJump(-minutesB) }
+        }
+        quickJumpForwardB?.apply {
+            text = "+${minutesB}分"
+            visibility = VISIBLE
+            setOnClickListener { performQuickJump(minutesB) }
+        }
+        quickJumpForwardA?.apply {
+            text = "+${minutesA}分"
+            visibility = VISIBLE
+            setOnClickListener { performQuickJump(minutesA) }
+        }
+    }
+
+    /**
+     * 执行快捷跳转（分钟）
+     */
+    private fun performQuickJump(minutes: Int) {
+        if (!mHadPlay) return
+        val currentPosition = getCurrentPositionWhenPlaying()
+        val duration = getDuration()
+        val jumpMs = minutes * 60 * 1000L
+        val newPosition = (currentPosition + jumpMs).coerceIn(0, duration)
+        seekTo(newPosition)
+        showOverlayTip("${if (minutes > 0) "+" else ""}${minutes}分", 1000)
     }
 
 
