@@ -121,15 +121,6 @@ fun VideoSettingsContent(
             }
         )
 
-        // 分隔标题：手势控制
-        Text(
-            text = stringResource(R.string.double_tap_seek_enabled),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-        )
-
         // 双击快退/快进开关
         SettingSwitchItem(
             title = stringResource(R.string.double_tap_seek_enabled),
@@ -186,12 +177,22 @@ fun VideoSettingsContent(
                         .setMinValue(1)
                         .setValue(quickJumpMinutesA)
                         .setCustomButton(R.string.btn_default_s) {
-                            VideoPlay.quickJumpMinutesA = 5
-                            quickJumpMinutesA = 5
+                        VideoPlay.quickJumpMinutesA = 5
+                        quickJumpMinutesA = 5
+                        // 验证：A的绝对值必须大于等于B的绝对值
+                        if (kotlin.math.abs(quickJumpMinutesB) > 5) {
+                            VideoPlay.quickJumpMinutesB = 5
+                            quickJumpMinutesB = 5
                         }
+                    }
                         .show { value ->
                             VideoPlay.quickJumpMinutesA = value
                             quickJumpMinutesA = value
+                            // 验证：A的绝对值必须大于等于B的绝对值
+                            if (kotlin.math.abs(value) < kotlin.math.abs(quickJumpMinutesB)) {
+                                VideoPlay.quickJumpMinutesB = kotlin.math.abs(value)
+                                quickJumpMinutesB = kotlin.math.abs(value)
+                            }
                         }
                 }
             )
@@ -208,23 +209,24 @@ fun VideoSettingsContent(
                         .setCustomButton(R.string.btn_default_s) {
                             VideoPlay.quickJumpMinutesB = 1
                             quickJumpMinutesB = 1
+                            // 验证：A的绝对值必须大于等于B的绝对值
+                            if (kotlin.math.abs(quickJumpMinutesA) < 1) {
+                                VideoPlay.quickJumpMinutesA = 1
+                                quickJumpMinutesA = 1
+                            }
                         }
                         .show { value ->
                             VideoPlay.quickJumpMinutesB = value
                             quickJumpMinutesB = value
+                            // 验证：A的绝对值必须大于等于B的绝对值
+                            if (kotlin.math.abs(value) > kotlin.math.abs(quickJumpMinutesA)) {
+                                VideoPlay.quickJumpMinutesA = kotlin.math.abs(value)
+                                quickJumpMinutesA = kotlin.math.abs(value)
+                            }
                         }
                 }
             )
         }
-
-        // 分隔标题：滑动控制
-        Text(
-            text = stringResource(R.string.left_slide_brightness_enabled),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-        )
 
         // 左侧滑动调节亮度
         SettingSwitchItem(

@@ -3,13 +3,15 @@ package io.legado.app.ui.video
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.FastRewind
-import androidx.compose.material.icons.filled.Forward30
-import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.automirrored.filled.FastForward
+import androidx.compose.material.icons.automirrored.filled.FastRewind
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -19,10 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.legado.app.R
-import io.legado.app.model.VideoPlay
 
 /**
  * 快捷跳转按钮组件
@@ -30,9 +32,9 @@ import io.legado.app.model.VideoPlay
  */
 @Composable
 fun QuickJumpButtons(
-    enabled: Boolean = VideoPlay.quickJumpButtonsEnabled,
-    minutesA: Int = VideoPlay.quickJumpMinutesA,
-    minutesB: Int = VideoPlay.quickJumpMinutesB,
+    enabled: Boolean,
+    minutesA: Int,
+    minutesB: Int,
     onBackA: () -> Unit,
     onBackB: () -> Unit,
     onForwardB: () -> Unit,
@@ -53,7 +55,7 @@ fun QuickJumpButtons(
         ) {
             // 快退a分钟（大步后退）
             QuickJumpButton(
-                icon = Icons.Filled.Replay,
+                icon = Icons.AutoMirrored.Filled.Undo,
                 label = "-${minutesA}分",
                 contentDescription = stringResource(R.string.quick_jump_back_a, minutesA),
                 onClick = onBackA
@@ -61,7 +63,7 @@ fun QuickJumpButtons(
 
             // 快退b分钟（小步后退）
             QuickJumpButton(
-                icon = Icons.Filled.FastRewind,
+                icon = Icons.AutoMirrored.Filled.FastRewind,
                 label = "-${minutesB}分",
                 contentDescription = stringResource(R.string.quick_jump_back_b, minutesB),
                 onClick = onBackB
@@ -69,7 +71,7 @@ fun QuickJumpButtons(
 
             // 快进b分钟（小步前进）
             QuickJumpButton(
-                icon = Icons.Filled.FastForward,
+                icon = Icons.AutoMirrored.Filled.FastForward,
                 label = "+${minutesB}分",
                 contentDescription = stringResource(R.string.quick_jump_forward_b, minutesB),
                 onClick = onForwardB
@@ -77,7 +79,7 @@ fun QuickJumpButtons(
 
             // 快进a分钟（大步前进）
             QuickJumpButton(
-                icon = Icons.Filled.Forward30,
+                icon = Icons.AutoMirrored.Filled.Redo,
                 label = "+${minutesA}分",
                 contentDescription = stringResource(R.string.quick_jump_forward_a, minutesA),
                 onClick = onForwardA
@@ -95,7 +97,7 @@ private fun QuickJumpButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.padding(2.dp)
+        modifier = Modifier.padding(horizontal = 4.dp)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
@@ -105,10 +107,13 @@ private fun QuickJumpButton(
                 contentDescription = contentDescription,
                 tint = MaterialTheme.colorScheme.primary
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = label,
-                fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1
             )
         }
     }

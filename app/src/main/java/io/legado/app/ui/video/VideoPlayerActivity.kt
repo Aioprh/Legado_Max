@@ -101,8 +101,6 @@ import io.noties.markwon.image.glide.GlideImagesPlugin
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 
 class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlayerViewModel>(),
     SettingsDialog.CallBack,RssFavoritesDialog.Callback {
@@ -258,15 +256,12 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
 
     private fun setupQuickJumpButtons() {
         binding.quickJumpButtons.setContent {
-            val enabled = remember { mutableStateOf(VideoPlay.quickJumpButtonsEnabled) }
-            val minutesA = remember { mutableStateOf(VideoPlay.quickJumpMinutesA) }
-            val minutesB = remember { mutableStateOf(VideoPlay.quickJumpMinutesB) }
-            
+            // 直接读取 VideoPlay 的属性值，每次 setContent 时会获取最新值
             LegadoTheme {
                 QuickJumpButtons(
-                    enabled = enabled.value,
-                    minutesA = minutesA.value,
-                    minutesB = minutesB.value,
+                    enabled = VideoPlay.quickJumpButtonsEnabled,
+                    minutesA = VideoPlay.quickJumpMinutesA,
+                    minutesB = VideoPlay.quickJumpMinutesB,
                     onBackA = { performQuickJump(-VideoPlay.quickJumpMinutesA) },
                     onBackB = { performQuickJump(-VideoPlay.quickJumpMinutesB) },
                     onForwardB = { performQuickJump(VideoPlay.quickJumpMinutesB) },
@@ -277,16 +272,13 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     }
     
     private fun updateQuickJumpButtonsState() {
+        // 重新设置 Compose 内容以更新按钮状态
         binding.quickJumpButtons.setContent {
-            val enabled = remember { mutableStateOf(VideoPlay.quickJumpButtonsEnabled) }
-            val minutesA = remember { mutableStateOf(VideoPlay.quickJumpMinutesA) }
-            val minutesB = remember { mutableStateOf(VideoPlay.quickJumpMinutesB) }
-            
             LegadoTheme {
                 QuickJumpButtons(
-                    enabled = enabled.value,
-                    minutesA = minutesA.value,
-                    minutesB = minutesB.value,
+                    enabled = VideoPlay.quickJumpButtonsEnabled,
+                    minutesA = VideoPlay.quickJumpMinutesA,
+                    minutesB = VideoPlay.quickJumpMinutesB,
                     onBackA = { performQuickJump(-VideoPlay.quickJumpMinutesA) },
                     onBackB = { performQuickJump(-VideoPlay.quickJumpMinutesB) },
                     onForwardB = { performQuickJump(VideoPlay.quickJumpMinutesB) },
@@ -817,6 +809,8 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
 
         observeEvent<Boolean>(EventBus.VIDEO_CONFIG_CHANGED) {
             updateQuickJumpButtonsState()
+            // 更新播放器静音状态
+            playerView.gsyVideoManager.setNeedMute(VideoPlay.mutePlay)
         }
 
     }
