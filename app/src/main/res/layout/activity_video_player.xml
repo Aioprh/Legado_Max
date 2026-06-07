@@ -17,6 +17,13 @@
         android:layout_height="wrap_content"
         tools:layout_height="300dp" />
 
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/quick_jump_buttons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp" />
+
     <LinearLayout
         android:id="@+id/data"
         android:layout_width="match_parent"
@@ -72,16 +79,6 @@
                 android:text="@string/author"
                 android:textColor="@color/tv_text_summary"
                 android:textSize="14sp"
-                tools:ignore="RtlSymmetry" />
-
-            <androidx.compose.ui.platform.ComposeView
-                android:id="@+id/quick_jump_buttons"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
                 tools:ignore="RtlSymmetry" />
 
             <androidx.core.widget.NestedScrollView

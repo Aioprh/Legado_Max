@@ -14,7 +14,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
 import io.legado.app.model.VideoPlay
+import io.legado.app.constant.EventBus
 import io.legado.app.ui.widget.number.NumberPickerDialog
+import io.legado.app.utils.postEvent
 
 /**
  * 视频播放器设置界面 - Compose实现
@@ -168,6 +170,7 @@ fun VideoSettingsContent(
             onCheckedChange = { checked ->
                 quickJumpButtonsEnabled = checked
                 VideoPlay.quickJumpButtonsEnabled = checked
+                postEvent(EventBus.VIDEO_CONFIG_CHANGED, true)
             }
         )
 

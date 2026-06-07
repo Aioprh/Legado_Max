@@ -57,6 +57,7 @@ object EventBus {
     // ── 视频播放 ──
     const val VIDEO_SUB_TITLE = "VideoSubTitle"             // 视频字幕更新
     const val UP_VIDEO_INFO = "upVideoInfo"                 // 视频信息更新
+    const val VIDEO_CONFIG_CHANGED = "videoConfigChanged"   // 视频播放器配置变化
 
     // ── 系统 ──
     const val BATTERY_CHANGED = "batteryChanged"            // 电池电量变化

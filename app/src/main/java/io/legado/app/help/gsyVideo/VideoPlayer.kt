@@ -52,6 +52,9 @@ class VideoPlayer: StandardGSYVideoPlayer {
     var mToggleDanmaku: TextView? = null //弹幕开关
     private var mDanmakuStartSeekPosition: Long = -1
 
+    // 音量调节相关
+    private val mAudioManager: AudioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+
 
     override fun getLayoutId(): Int {
         return if (mIfCurrentIsFullscreen)
@@ -151,6 +154,10 @@ class VideoPlayer: StandardGSYVideoPlayer {
             val time = getCurrentPositionWhenPlaying()
             resolveDanmakuStart(time)
         }
+        // 滑动结束后隐藏亮度/音量提示
+        if (mBrightness || mChangeVolume) {
+            showOverlayTip()
+        }
         super.touchSurfaceUp()
     }
 
@@ -183,30 +190,21 @@ class VideoPlayer: StandardGSYVideoPlayer {
                 val noEnd = Math.abs(screenHeight - mDownY) > mSeekEndOffset
 
                 if (mFirstTouch) {
-                    // 根据配置决定是否启用亮度/音量调节
-                    val leftSlideEnabled = VideoPlay.leftSlideBrightnessEnabled
-                    val rightSlideEnabled = VideoPlay.rightSlideVolumeEnabled
-
-                    // 左侧滑动调节亮度（需配置启用）
-                    mBrightness = (mDownX < curWidth * 0.5f) && noEnd && leftSlideEnabled
-                    mFirstTouch = false
-
-                    // 如果亮度调节未启用（左侧滑动但配置关闭），则尝试音量调节
-                    if (!mBrightness && rightSlideEnabled && noEnd) {
-                        mChangeVolume = true
-                        mGestureDownVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                    }
-                }
-
-                // 处理音量调节（右侧滑动，需配置启用）
-                if (!mBrightness && !mChangeVolume) {
-                    val rightSlideEnabled = VideoPlay.rightSlideVolumeEnabled
-                    if (rightSlideEnabled && noEnd) {
-                        mChangeVolume = true
-                        if (mGestureDownVolume == 0) {
+                    val isLeftSide = mDownX < curWidth * 0.5f
+                    
+                    if (isLeftSide) {
+                        // 左侧滑动：仅当leftSlideBrightnessEnabled=true时调节亮度
+                        if (VideoPlay.leftSlideBrightnessEnabled && noEnd) {
+                            mBrightness = true
+                        }
+                    } else {
+                        // 右侧滑动：仅当rightSlideVolumeEnabled=true时调节音量
+                        if (VideoPlay.rightSlideVolumeEnabled && noEnd) {
+                            mChangeVolume = true
                             mGestureDownVolume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
                         }
                     }
+                    mFirstTouch = false
                 }
                 mShowVKey = !noEnd
             }
@@ -249,7 +247,7 @@ class VideoPlayer: StandardGSYVideoPlayer {
         val slideRatio = -deltaY / screenHeight
         val volumeDelta = (slideRatio * maxVolume * 0.5f).toInt()
         val newVolume = (mGestureDownVolume + volumeDelta).coerceIn(0, maxVolume)
-        mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, AudioManager.FLAG_SHOW_UI)
+        mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
         return (newVolume * 100 / maxVolume)
     }
 
