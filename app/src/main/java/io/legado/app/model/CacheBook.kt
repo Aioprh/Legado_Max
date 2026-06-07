@@ -9,6 +9,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
 import io.legado.app.exception.ConcurrentException
+import io.legado.app.help.ConcurrentRateLimiter
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
@@ -101,10 +102,23 @@ object CacheBook {
      * @param newBookSource 新的书源
      */
     private fun updateBookSource(newBookSource: BookSource) {
+        // 如果缓存服务正在运行，保留已注入的缓存并发率
+        val userRate = if (CacheBookService.isRun) AppConfig.cacheConcurrentRate else null
         cacheBookMap.forEach {
             val model = it.value
             if (model.bookSource.bookSourceUrl == newBookSource.bookSourceUrl) {
                 model.bookSource = newBookSource
+                // 如果有有效的缓存并发率，重新注入
+                if (userRate != null) {
+                    val effectiveRate = ConcurrentRateLimiter.effectiveRate(
+                        userRate,
+                        newBookSource.concurrentRate
+                    )
+                    if (effectiveRate != null && effectiveRate != newBookSource.concurrentRate) {
+                        model.bookSource.concurrentRate = effectiveRate
+                        ConcurrentRateLimiter.updateConcurrentRate(newBookSource.bookSourceUrl, effectiveRate)
+                    }
+                }
             }
         }
     }
