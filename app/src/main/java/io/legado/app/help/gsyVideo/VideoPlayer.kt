@@ -92,10 +92,13 @@ class VideoPlayer: StandardGSYVideoPlayer {
 
     /**
      * 设置静音状态
-     * 使用 getCurrentPlayer() 确保在全屏和小屏模式下都能正确设置
+     * 同时更新小屏和全屏播放器，确保静音立即生效
      */
     fun setMute(needMute: Boolean) {
-        getCurrentPlayer().gsyVideoManager.setNeedMute(needMute)
+        // 更新当前播放器
+        gsyVideoManager.setNeedMute(needMute)
+        // 同时更新全屏播放器（如果存在）
+        getFullWindowPlayer()?.gsyVideoManager?.setNeedMute(needMute)
     }
 
     override fun init(context: Context) {
@@ -595,6 +598,8 @@ class VideoPlayer: StandardGSYVideoPlayer {
 //            gsyVideoPlayer.mDanmakuView = this.mDanmakuView
             gsyVideoPlayer.mDanmakuStartSeekPosition = this.getCurrentPositionWhenPlaying()
             onPrepareDanmaku(gsyVideoPlayer)
+            // 同步静音状态到全屏播放器
+            gsyVideoPlayer.gsyVideoManager.setNeedMute(VideoPlay.mutePlay)
         }
         return gsyBaseVideoPlayer
     }
