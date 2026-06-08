@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import io.legado.app.base.BaseService
+import io.legado.app.ui.debuglog.DebugFloatingBallManager
 import io.legado.app.utils.LogUtils
 import java.lang.ref.WeakReference
 
@@ -126,6 +127,7 @@ object LifecycleHelp : Application.ActivityLifecycleCallbacks {
     }
 
     private fun onAppFinished() {
+        DebugFloatingBallManager.onAppFinished()
         appFinishedListener?.invoke()
     }
 }

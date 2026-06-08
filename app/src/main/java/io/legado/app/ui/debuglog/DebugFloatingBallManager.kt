@@ -20,7 +20,6 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.repository.debug.DebugEventCenter
 import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.book.read.BaseReadBookActivity
 import io.legado.app.ui.debuglog.components.DebugFloatingBall
 import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.utils.removePref
@@ -32,7 +31,6 @@ object DebugFloatingBallManager {
     private var currentActivity: Activity? = null
     private var floatingBallView: ComposeView? = null
     private var showToken: Int = 0
-    private var readingActivityDestroyed = false
     
     fun updateFloatingBallState(enabled: Boolean) {
         if (enabled) {
@@ -145,10 +143,6 @@ object DebugFloatingBallManager {
     
     fun onActivityResumed(activity: Activity) {
         if (AppConfig.debugLogFloatingBall) {
-            if (activity is BaseReadBookActivity && readingActivityDestroyed) {
-                resetSavedPosition()
-                readingActivityDestroyed = false
-            }
             if (!isShowing && !isAttaching) {
                 show(activity)
             }
@@ -168,9 +162,14 @@ object DebugFloatingBallManager {
             hide()
             currentActivity = null
         }
-        if (activity is BaseReadBookActivity && !activity.isChangingConfigurations) {
-            readingActivityDestroyed = true
-        }
+    }
+    
+    /**
+     * 应用退出时调用，重置悬浮球位置
+     * 只有完全退出应用后再进入时才会重置位置
+     */
+    fun onAppFinished() {
+        resetSavedPosition()
     }
     
     fun onPanelDismissed(activity: Activity) {
