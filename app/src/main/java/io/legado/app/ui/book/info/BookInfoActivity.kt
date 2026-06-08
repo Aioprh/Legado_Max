@@ -825,9 +825,9 @@ class BookInfoActivity :
                     if (book.isWebFile) {
                         showWebFileDownloadAlert()
                     } else {
-                        viewModel.addToBookshelf {
+                        viewModel.addToBookshelf(success = {
                             upTvBookshelf()
-                        }
+                        })
                     }
                 }
             }
@@ -1223,9 +1223,9 @@ class BookInfoActivity :
             if (viewModel.inBookshelf) {
                 viewModel.saveBook(book)
             } else if (groupId > 0) {
-                viewModel.addToBookshelf {
+                viewModel.addToBookshelf({
                     upTvBookshelf()
-                }
+                }, groupId)
             }
         }
     }
