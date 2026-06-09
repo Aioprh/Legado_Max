@@ -623,20 +623,22 @@ object ReadBook : CoroutineScope by MainScope() {
     /**
      * 加载当前章节和前后一章内容
      * @param resetPageOffset 滚动阅读是否重置滚动位置
+     * @param forceReload 是否强制重新加载（忽略加载状态检查，用于高亮规则更新等场景）
      * @param success 当前章节加载完成回调
      */
     fun loadContent(
         resetPageOffset: Boolean,
+        forceReload: Boolean = false,
         success: (() -> Unit)? = null
     ) {
-        loadContent(durChapterIndex, resetPageOffset = resetPageOffset) {
+        loadContent(durChapterIndex, resetPageOffset = resetPageOffset, forceReload = forceReload) {
             success?.invoke()
         }
         if (AppConfig.preDownloadNum > 0) {
-            loadContent(durChapterIndex + 1, resetPageOffset = resetPageOffset)
+            loadContent(durChapterIndex + 1, resetPageOffset = resetPageOffset, forceReload = forceReload)
         }
         if (AppConfig.backwardPreDownloadNum > 0) {
-            loadContent(durChapterIndex - 1, resetPageOffset = resetPageOffset)
+            loadContent(durChapterIndex - 1, resetPageOffset = resetPageOffset, forceReload = forceReload)
         }
     }
 
@@ -661,18 +663,20 @@ object ReadBook : CoroutineScope by MainScope() {
      * @param index 章节序号
      * @param upContent 是否更新视图
      * @param resetPageOffset 滚动阅读是否重置滚动位置
+     * @param forceReload 是否强制重新加载（忽略加载状态检查）
      * @param success 加载完成回调
      */
     fun loadContent(
         index: Int,
         upContent: Boolean = true,
         resetPageOffset: Boolean = false,
+        forceReload: Boolean = false,
         success: (() -> Unit)? = null
     ) {
         Coroutine.async {
             val book = book!!
             val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, index) ?: return@async
-            if (addLoading(index)) {
+            if (addLoading(index, forceReload)) {
                 val cachedContent = BookHelp.getContent(book, chapter)
                 cachedContent?.let {
                     contentLoadFinish(
@@ -863,8 +867,8 @@ object ReadBook : CoroutineScope by MainScope() {
     }
 
     @Synchronized
-    private fun addLoading(index: Int): Boolean {
-        if (loadingChapters.contains(index)) return false
+    private fun addLoading(index: Int, forceReload: Boolean = false): Boolean {
+        if (!forceReload && loadingChapters.contains(index)) return false
         loadingChapters.add(index)
         return true
     }

@@ -1886,7 +1886,7 @@ class ReadBookActivity : BaseReadBookActivity(),
                     2 -> readView.upStyle()
                     3 -> readView.upBgAlpha()
                     4 -> readView.upPageSlopSquare()
-                    5 -> if (isInitFinish) ReadBook.loadContent(resetPageOffset = false)
+                    5 -> if (isInitFinish) ReadBook.loadContent(resetPageOffset = false, forceReload = true)
                     6 -> readView.upContent(resetPageOffset = false)
                     8 -> ChapterProvider.upStyle()
                     9 -> readView.invalidateTextPage()
