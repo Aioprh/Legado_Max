@@ -1404,6 +1404,8 @@
     <string name="beta_releaseA_version">共存版</string>
     <string name="video_setting">视频设置</string>
     <string name="video_setting_summary">自动播放、全屏播放等配置</string>
+    <string name="auto_play">自动播放</string>
+    <string name="start_full">直接全屏播放</string>
     <string name="history">历史</string>
     <string name="book_read_record">阅读记录</string>
     <string name="view_read_record">查看</string>
@@ -1818,4 +1820,83 @@
     <string name="quick_jump_back_b">快退%d分钟</string>
     <string name="quick_jump_forward_b">快进%d分钟</string>
     <string name="quick_jump_forward_a">快进%d分钟</string>
+
+    <!-- 编辑器相关 -->
+    <string name="edit_code">编辑代码</string>
+    <string name="edit_json">编辑JSON</string>
+    <string name="edit_theme_monokai">Monokai明亮</string>
+    <string name="edit_theme_monokai_dimmed">Monokai暗淡</string>
+    <string name="change_theme">选择主题</string>
+    <string name="edit_theme_modern_dark">现代暗色</string>
+    <string name="edit_theme_modern_light">现代亮色</string>
+    <string name="edit_theme_solarized_dark">Solarized暗色</string>
+    <string name="edit_theme_solarized_light">Solarized亮色</string>
+    <string name="edit_theme_abyss">深渊</string>
+    <string name="edit_theme_quiet_light">静谧亮色</string>
+    <string name="search_result">搜索结果:</string>
+    <string name="find">查找</string>
+    <string name="btn_previous">上一个</string>
+    <string name="btn_next">下一个</string>
+    <string name="replace_all">全部</string>
+    <string name="format_code">格式化</string>
+    <string name="config_settings">配置</string>
+    <string name="auto_wrap">自动换行</string>
+    <string name="font_size">字号 %d</string>
+    <string name="view_code">查看代码</string>
+    <string name="find_next_match">下一个匹配</string>
+    <string name="find_prev_match">上一个匹配</string>
+    <string name="query_content">查询网页内容</string>
+    <string name="query_hint">输入查询内容</string>
+    <string name="query_result">找到 %1$d 处匹配</string>
+    <string name="query_no_result">未找到匹配内容</string>
+    <string name="please_focus_cursor_on_textbox">请将光标聚焦到文本框</string>
+    <string name="focus_lost_on_textbox">文本框光标焦点丢失</string>
+    <string name="show_web_log">输出日志</string>
+    <string name="load_with_web_log">输出WebLog</string>
+
+    <!-- 视频播放相关 -->
+    <string name="video">视频</string>
+    <string name="float_window">悬浮窗</string>
+    <string name="video_play">视频播放</string>
+    <string name="no_more_chapter">没有更多章节</string>
+    <string name="overlay">覆盖</string>
+    <string name="margin">边距</string>
+    <string name="replace_to_js">JS处理</string>
+    <string name="layout_type">样式:</string>
+    <string name="layout_list_compact">紧凑列表</string>
+    <string name="enable_preload">预加载</string>
+    <string name="is_event_listener">事件监听器</string>
+    <string name="rule_call_back">回调操作（callBackJs）</string>
+    <string name="time_hour">小时</string>
+    <string name="custom_button">自定义按钮</string>
+    <string name="next_page_lazy_load">下一页懒加载</string>
+    <string name="welcome_show_time">欢迎页显示时间</string>
+    <string name="welcome_show_time_summary">设置为0不显示欢迎页</string>
+    <string name="domain">域名</string>
+    <string name="write_source_comment">编写源注释</string>
+    <string name="float_permission_rationale">阅读需要悬浮窗权限来显示播放窗口</string>
+
+    <!-- 播放模式相关 -->
+    <string name="play_mode">播放模式</string>
+    <string name="speed_control">速度控制</string>
+    <string name="next">下一首</string>
+    <string name="previous">上一首</string>
+    <string name="btn_next">下一个</string>
+    <string name="btn_previous">上一个</string>
+
+    <!-- 更新相关 -->
+    <string name="auto_update">自动更新</string>
+    <string name="time_day">天</string>
+    <string name="update_interval">间隔:</string>
+    <string name="silent_update">静默更新</string>
+    <string name="only_update_read">仅更新完结书籍</string>
+    <string name="ps_only_update_read">自动刷新时仅更新完结书籍</string>
+    <string name="show_search_progress">显示搜索进度</string>
+    <string name="select_color">选择颜色</string>
+
+    <!-- 源编辑相关 -->
+    <string name="source_tab_start">开始</string>
+    <string name="r_startHtml">起始页HTML文本（startHtml）</string>
+    <string name="r_startStyle">起始页样式文本（startStyle）</string>
+    <string name="r_startJs">起始页Js（startJs）</string>
 </resources>
