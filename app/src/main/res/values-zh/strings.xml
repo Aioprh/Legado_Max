@@ -1881,8 +1881,6 @@
     <string name="speed_control">速度控制</string>
     <string name="next">下一首</string>
     <string name="previous">上一首</string>
-    <string name="btn_next">下一个</string>
-    <string name="btn_previous">上一个</string>
 
     <!-- 更新相关 -->
     <string name="auto_update">自动更新</string>
