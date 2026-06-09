@@ -47,9 +47,14 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 
     private val selectImageResult = registerForActivityResult(HandleFileContract()) { result ->
         result.uri?.let { uri ->
+            // 选择图片时，清除背景颜色
+            editingRule.bgColor = null
             val rawPath = RealPathUtil.getPath(requireContext(), uri) ?: uri.toString()
             val savedPath = TextLine.copyBgImageToInternal(requireContext(), rawPath)
+            editingRule.bgImage = savedPath ?: rawPath
             binding.etBgImage.setText(savedPath ?: rawPath)
+            updateBgPreview()
+            updatePreview()
         }
     }
 
@@ -252,6 +257,14 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etUnderlineOffset.setText(editingRule.underlineOffset.formatDistance())
         binding.etSvgPath.setText(editingRule.underlineSvgPath.orEmpty())
         binding.etBgImage.setText(editingRule.bgImage.orEmpty())
+        // 如果有背景颜色，显示颜色值；如果有背景图片，显示图片路径
+        if (!editingRule.bgImage.isNullOrBlank()) {
+            binding.etBgImage.setText(editingRule.bgImage)
+        } else if (editingRule.bgColor != null) {
+            binding.etBgImage.setText(editingRule.bgColor!!.toHexColor())
+        } else {
+            binding.etBgImage.setText("")
+        }
         binding.etSampleText.setText(editingRule.sampleText.ifBlank { editingRule.normalizedSampleText() })
         binding.spBgImageFit.setSelection(editingRule.bgImageFit.coerceIn(0, 2))
         binding.sbBgImageScale.progress = (editingRule.bgImageScale.coerceIn(0.1f, 5f) * 10).toInt()
@@ -263,6 +276,8 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         
         updateColorPreview(binding.viewTextColorPreview, editingRule.textColor)
         updateColorPreview(binding.viewUnderlineColorPreview, editingRule.underlineColor)
+        // 更新背景预览：如果有背景图片显示图片，否则显示颜色
+        updateBgPreview()
         
         updateSvgPathVisibility(editingRule.underlineMode)
     }
@@ -280,6 +295,10 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         }
         binding.llUnderlineColor.setOnClickListener {
             showColorPicker(2, editingRule.underlineColor ?: Color.BLACK)
+        }
+        // 点击背景预览块可以选择颜色
+        binding.viewBgImagePreview.setOnClickListener {
+            showColorPicker(3, editingRule.bgColor ?: Color.BLACK)
         }
         binding.tvRegexToggle.setOnClickListener {
             isRegexMode = !isRegexMode
@@ -330,8 +349,23 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             updatePreview()
         }
         binding.etBgImage.doAfterTextChanged {
-            editingRule.bgImage = it?.toString().orEmpty().takeIf { it.isNotBlank() }
-            updateBgImagePreview()
+            val text = it?.toString().orEmpty()
+            // 判断输入的是颜色值还是图片路径
+            val color = parseColorOrNull(text)
+            if (color != null) {
+                // 输入的是颜色值
+                editingRule.bgColor = color
+                editingRule.bgImage = null
+            } else if (text.isNotBlank()) {
+                // 输入的是图片路径
+                editingRule.bgImage = text
+                editingRule.bgColor = null
+            } else {
+                // 清空
+                editingRule.bgImage = null
+                editingRule.bgColor = null
+            }
+            updateBgPreview()
             updatePreview()
         }
         binding.etSampleText.doAfterTextChanged {
@@ -445,19 +479,28 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.llSvgPath.visibility = if (mode == 5) View.VISIBLE else View.GONE
     }
 
-    private fun updateBgImagePreview() {
-        val path = editingRule.bgImage.orEmpty()
-        if (path.isBlank()) {
-            binding.viewBgImagePreview.setBackgroundColor(Color.TRANSPARENT)
+    private fun updateBgPreview() {
+        // 如果有背景图片，显示图片预览
+        val bgImage = editingRule.bgImage.orEmpty()
+        if (bgImage.isNotBlank()) {
+            val bitmap = TextLine.getBgBitmap(bgImage)
+            if (bitmap != null) {
+                val drawable = android.graphics.drawable.BitmapDrawable(resources, bitmap)
+                binding.viewBgImagePreview.background = drawable
+            } else {
+                // 图片加载失败时显示默认颜色
+                updateColorPreview(binding.viewBgImagePreview, null)
+            }
             return
         }
-        val bitmap = TextLine.getBgBitmap(path)
-        if (bitmap != null) {
-            val drawable = android.graphics.drawable.BitmapDrawable(resources, bitmap)
-            binding.viewBgImagePreview.background = drawable
-        } else {
-            binding.viewBgImagePreview.setBackgroundColor(Color.TRANSPARENT)
+        // 如果有背景颜色，显示颜色预览
+        val bgColor = editingRule.bgColor
+        if (bgColor != null) {
+            updateColorPreview(binding.viewBgImagePreview, bgColor)
+            return
         }
+        // 都没有，显示默认颜色（和文本颜色预览块一样）
+        updateColorPreview(binding.viewBgImagePreview, null)
     }
 
     private fun showBgImagePicker() {
@@ -476,6 +519,8 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         android.app.AlertDialog.Builder(requireContext())
             .setTitle("选择背景图片")
             .setItems(options.toTypedArray()) { _, which ->
+                // 选择图片时，清除背景颜色
+                editingRule.bgColor = null
                 if (which == 0) {
                     selectImageResult.launch {
                         mode = HandleFileContract.IMAGE
@@ -483,7 +528,10 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
                     }
                 } else {
                     val selected = "assets://bg/${assetItems[which - 1]}"
+                    editingRule.bgImage = selected
                     binding.etBgImage.setText(selected)
+                    updateBgPreview()
+                    updatePreview()
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -519,7 +567,9 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             underlineWidth = binding.etUnderlineWidth.text?.toString()?.toFloatOrNull()?.coerceIn(0.1f, 10f) ?: 1f,
             underlineOffset = binding.etUnderlineOffset.text?.toString()?.toFloatOrNull()?.coerceIn(0f, 20f) ?: 2f,
             underlineSvgPath = binding.etSvgPath.text?.toString().orEmpty().takeIf { binding.spUnderlineMode.selectedItemPosition == 5 }.orEmpty(),
-            bgImage = binding.etBgImage.text?.toString().orEmpty().takeIf { it.isNotBlank() },
+            // 背景：判断输入的是颜色值还是图片路径
+            bgColor = parseColorOrNull(binding.etBgImage.text?.toString().orEmpty()),
+            bgImage = binding.etBgImage.text?.toString().orEmpty().takeIf { it.isNotBlank() && parseColorOrNull(it) == null },
             bgImageFit = binding.spBgImageFit.selectedItemPosition,
             bgImageScale = (binding.sbBgImageScale.progress.coerceAtLeast(1) / 10f).coerceIn(0.1f, 5f)
         )
@@ -550,7 +600,9 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
                 underlineWidth = binding.etUnderlineWidth.text?.toString()?.toFloatOrNull()?.coerceIn(0.1f, 10f) ?: 1f,
                 underlineOffset = binding.etUnderlineOffset.text?.toString()?.toFloatOrNull()?.coerceIn(0f, 20f) ?: 2f,
                 underlineSvgPath = binding.etSvgPath.text?.toString().orEmpty(),
-                bgImage = binding.etBgImage.text?.toString().orEmpty().takeIf { it.isNotBlank() },
+                // 背景：判断输入的是颜色值还是图片路径
+                bgColor = parseColorOrNull(binding.etBgImage.text?.toString().orEmpty()),
+                bgImage = binding.etBgImage.text?.toString().orEmpty().takeIf { it.isNotBlank() && parseColorOrNull(it) == null },
                 bgImageFit = binding.spBgImageFit.selectedItemPosition,
                 bgImageScale = (binding.sbBgImageScale.progress.coerceAtLeast(1) / 10f).coerceIn(0.1f, 5f)
             )
@@ -617,6 +669,14 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
                 editingRule.underlineColor = color
                 binding.etUnderlineColor.setText(color.toHexColor())
                 updateColorPreview(binding.viewUnderlineColorPreview, color)
+                updatePreview()
+            }
+            3 -> {
+                // 选择背景颜色时，清除背景图片
+                editingRule.bgColor = color
+                editingRule.bgImage = null
+                binding.etBgImage.setText(color.toHexColor())
+                updateBgPreview()
                 updatePreview()
             }
         }

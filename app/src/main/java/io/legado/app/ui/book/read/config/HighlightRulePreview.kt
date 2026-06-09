@@ -18,6 +18,7 @@ object HighlightRulePreview {
             val underlineWidth = rule.underlineWidth
             val underlineOffset = rule.underlineOffset
             val hasBgImage = !rule.bgImage.isNullOrBlank()
+            val bgColor = rule.bgColor
 
             if (hasBgImage) {
                 spannable.setSpan(
@@ -26,6 +27,21 @@ object HighlightRulePreview {
                         rule.bgImage!!,
                         rule.bgImageFit,
                         rule.bgImageScale,
+                        rule.underlineMode,
+                        accentColor,
+                        underlineWidth,
+                        rule.underlineSvgPath.orEmpty(),
+                        underlineOffset
+                    ),
+                    start,
+                    end,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            } else if (bgColor != null) {
+                spannable.setSpan(
+                    BgColorSpan(
+                        textColor,
+                        bgColor,
                         rule.underlineMode,
                         accentColor,
                         underlineWidth,
