@@ -56,7 +56,6 @@
     <string name="bookshelf_empty">书架还空着，先去搜索书籍或从发现里添加吧！</string>
     <string name="action_search">搜索</string>
     <string name="action_download">下载</string>
-    <string name="all_versions">所有版本</string>
     <string name="layout_list">列表</string>
     <string name="layout_grid2">网格二列</string>
     <string name="layout_grid3">网格三列</string>
@@ -617,7 +616,7 @@
     <string name="bg_image">背景图片</string>
     <string name="bg_color">背景颜色</string>
     <string name="text_color">文字颜色</string>
-    <string name="text_accent_color">强调色</string>
+    <string name="text_accent_color">强调颜色</string>
     <string name="select_image">选择图片</string>
     <string name="group_manage">分组管理</string>
     <string name="group_select">分组选择</string>
@@ -650,6 +649,7 @@
     <string name="screen_find">筛选发现源</string>
     <string name="dur_pos">当前位置：</string>
     <string name="precision_search">精准搜索</string>
+    <string name="show_search_progress">显示搜索进度</string>
     <string name="source_recycle_bin">规则回收站</string>
     <string name="source_recycle_bin_summary">临时存放已删除规则，默认保留 7 天</string>
     <string name="show_source_recycle_bin">显示规则回收站</string>
@@ -708,16 +708,6 @@
     <string name="tone_colour">在线朗读音色</string>
     <string name="select_count">（%1$d/%2$d）</string>
     <string name="show_rss">显示订阅</string>
-    <string name="debug_mode">调试模式</string>
-    <string name="debug_mode_summary">启用后显示调试工具入口</string>
-    <string name="debug_log_floating_ball">调试日志悬浮球</string>
-    <string name="debug_log_floating_ball_summary">启用后在应用任意页面显示调试日志悬浮球</string>
-    <string name="copy_crash_log_title">复制崩溃日志</string>
-    <string name="copy_crash_log_summary">崩溃后重新进入应用时自动复制日志到剪贴板</string>
-    <string name="md_link_inner_browser">使用内置浏览器打开</string>
-    <string name="md_link_inner_browser_summary">Markdown文件中的链接默认使用内置浏览器打开</string>
-    <string name="verbose_update_log">详细更新日志</string>
-    <string name="verbose_update_log_summary">启用后在调试日志中显示书籍更新过程的详细信息</string>
     <string name="service_stop">服务已停止</string>
     <string name="service_start">正在启动服务\n具体信息请查看通知栏</string>
     <string name="default_path">默认路径</string>
@@ -1054,6 +1044,7 @@
     <string name="check_source_show_debug_message_summary">书源校验时显示网络请求步骤和时间</string>
     <string name="need_login">需要登录</string>
     <string name="pref_cronet_summary">使用 Cronet 网络组件</string>
+    <string name="cronet">Cronet</string>
     <string name="anti_alias">抗锯齿</string>
     <string name="pref_anti_alias_summary">绘制图片时抗锯齿</string>
     <string name="upload_url">上传 URL</string>
@@ -1220,7 +1211,7 @@
     <string name="page_touch_slop_dialog_title">滑动翻页阈值（0 = 系统默认值）</string>
     <string name="page_touch_slop_summary">滑动多长距离才会触发滑动翻页（系统默认值 %s px）</string>
     <string name="page_touch_click_title">边缘点击阈值</string>
-    <string name="page_touch_click_summary">距离屏幕左右边缘多少像素内不触发点击事件，默认为0px</string>
+    <string name="page_touch_click_summary">左右边缘多少距离不会触发点击事件，默认为0px</string>
     <string name="page_touch_click_dialog_title">边缘点击阈值</string>
     <string name="touch_page_anim_speed_title">触摸翻页速度</string>
     <string name="key_page_anim_speed_title">按键翻页速度</string>
@@ -1295,6 +1286,24 @@
     <string name="clear_webview_data">清除 WebView 数据</string>
     <string name="clear_webview_data_summary">清除内置浏览器所有数据</string>
     <string name="source_tab_list">列表</string>
+    <string name="source_tab_start">启动</string>
+    <string name="r_startHtml">启动页html文本（startHtml）</string>
+    <string name="r_startStyle">启动页style文本（startStyle）</string>
+    <string name="r_startJs">启动页Js（startJs）</string>
+    <string name="load_with_web_log">输出 WebLog</string>
+    <string name="auto_update">自动更新</string>
+    <string name="time_day">天</string>
+    <string name="update_interval">间隔：</string>
+    <string name="silent_update">静默更新</string>
+    <string name="show_web_log">输出日志</string>
+    <string name="query_content">查询网页内容</string>
+    <string name="query_hint">输入要查询的内容</string>
+    <string name="find_prev_match">上一个匹配</string>
+    <string name="find_next_match">下一个匹配</string>
+    <string name="query_result">找到 %1$d 个匹配项</string>
+    <string name="query_no_result">未找到匹配内容</string>
+    <string name="please_focus_cursor_on_textbox">请将光标聚焦在文本框</string>
+    <string name="focus_lost_on_textbox">在文本框丢失光标焦点</string>
     <string name="dict_rule">字典规则</string>
     <string name="dict_rule_search">字典规则-搜索</string>
     <string name="config_dict_rule">配置字典规则</string>
@@ -1319,6 +1328,8 @@
     <string name="file_manage_summary">管理私有文件夹的文件</string>
     <string name="create_folder">创建文件夹</string>
     <string name="allow_drop_down_refresh">允许下拉刷新</string>
+    <string name="only_update_read">仅更新已读完</string>
+    <string name="ps_only_update_read">自动刷新时，只更新已读完的书籍</string>
     <string name="text_underline">文字下划线</string>
     <string name="select_new_source">选中新增源</string>
     <string name="select_update_source">选中更新源</string>
@@ -1402,24 +1413,6 @@
     <string name="official_version">正式版</string>
     <string name="beta_release_version">测试版</string>
     <string name="beta_releaseA_version">共存版</string>
-    <string name="video_setting">视频设置</string>
-    <string name="video_setting_summary">自动播放、全屏播放等配置</string>
-    <string name="auto_play">自动播放</string>
-    <string name="start_full">直接全屏播放</string>
-    <string name="history">历史</string>
-    <string name="book_read_record">阅读记录</string>
-    <string name="view_read_record">查看</string>
-    <string name="no_read_record">暂无阅读记录</string>
-    <string name="total_read_time_s">总阅读时间 %1$s</string>
-    <string name="last_read_s">最后阅读 %1$s</string>
-    <string name="show_read_record_in_book_info">显示阅读记录</string>
-    <string name="words">字数</string>
-    <string name="app_name_sigma">阅读Max</string>
-    <string name="about_description_sigma">\u3000\u3000阅读Max继承自阅读Sigma，旨在改进和增加原版功能，欢迎您的加入。</string>
-    <string name="contributors_summary_sigma">gedoor、Luoyacheng、Horis、Xwite、GEd520、youfengknight等，详情请在GitHub中查看</string>
-    <string name="app_share_description_sigma">
-        阅读Max下载地址:\nhttps://github.com/
-    </string>
     <string name="stream_read_aloud_audio">流式播放音频</string>
     <string name="stream_read_aloud_audio_summary">即边下边播，网络不好时播放会断断续续，仅TTS源有效</string>
     <string name="read_aloud_floating_ui">启用朗读悬浮窗</string>
@@ -1474,52 +1467,29 @@
     <string name="manga_epaper_value">阈值</string>
     <string name="disable_horizontal_page_snap">禁用水平翻页效果</string>
     <string name="enable_manga_gray">开启图片灰色</string>
+    <string name="play_mode">播放模式</string>
+    <string name="speed_control">语速控制</string>
+    <string name="next">下一首</string>
+    <string name="previous">上一首</string>
     <string name="custom_hosts">自定义Hosts</string>
     <string name="custom_hosts_summary">域名到IP的映射</string>
     <string name="show_bookname">显示书名</string>
     <string name="sure_cache_book">是否确认开始缓存？</string>
-    <string name="non_printable_set">不可见字符设置</string>
-    <string name="whitespace_leading">行首</string>
-    <string name="whitespace_inner">行中</string>
-    <string name="whitespace_trailing">行尾</string>
-    <string name="whitespace_empty">空行</string>
-    <string name="line_separator">换行符</string>
-    <string name="whitespace_selection">选中</string>
-    <string name="press_speed">长按速度</string>
-    <string name="press_speed_summary">长按速度 %.1f</string>
-    <string name="full_bottom_progress">全屏时显示底部进度条</string>
-    <string name="mute_play">静音播放</string>
-    <string name="mute_play_enabled">当前静音播放已启用</string>
-    <string name="json_format">JSON格式</string>
-    <string name="open_other_video_player">使用其他播放器打开</string>
-    <string name="show_source_comment">显示源注释</string>
-    <string name="enable_locate">启用定位</string>
-    <string name="adapt_special_style">适配特殊样式</string>
-    <string name="show_line_number">显示 %d 行</string>
-    <string name="setting_show_line_number">设置辅助按钮显示行数</string>
-    <string name="menu_page">第 %d 页</string>
-    <string name="change_page">选择页</string>
-    <string name="add_all_to_shelf">全部加入书架</string>
-    <string name="adding_books">正在添加 %d 本书…</string>
-    <string name="add_books_success">成功添加 %d 本书</string>
-    <string name="all_books_in_shelf">列表书籍已全部在书架</string>
     <string name="auto_check_new_backup_t">自动检查新备份</string>
     <string name="auto_check_new_backup_s">打开软件时检查是否有新备份，有新备份时提示是否更新</string>
-    <string name="r_preloadJs">预加载Js（preloadJs）</string>
-    <string name="cache_first">优先加载缓存</string>
-    <string name="rule_sub_content">子内容规则（subContent）</string>
-    <string name="system_auto">跟随系统</string>
-    <string name="immersion_nav_bar">沉浸式导航栏</string>
-    <string name="day_nav_bar_immersion">白天导航栏透明</string>
-    <string name="night_nav_bar_immersion">夜间导航栏透明</string>
-    <string name="manual_input_img_src">手动输入图片链接</string>
-    <string name="enter_img_src_path">请输入图片链接</string>
-    <string name="empty_img_src_input">图片链接不能为空</string>
-    <string name="invalid_file_path">文件路径无效</string>
-    <string name="is_system_tts_no_export">无法导出系统TTS</string>
-    <string name="click_image_way">点击图片方式</string>
-    <string name="auto_update_summary">每天自动检查应用更新</string>
     <string name="sys_image_picker">系统图片选择器</string>
+
+    <!-- Debug Settings -->
+    <string name="debug_mode">调试模式</string>
+    <string name="debug_mode_summary">开启后显示调试工具入口</string>
+    <string name="debug_log_floating_ball">调试日志悬浮球</string>
+    <string name="debug_log_floating_ball_summary">开启后在应用内任何页面显示调试日志悬浮球</string>
+    <string name="copy_crash_log_title">崩溃时复制日志</string>
+    <string name="copy_crash_log_summary">应用崩溃后再次进入app将自动将日志复制到剪贴板</string>
+    <string name="md_link_inner_browser">用内置浏览器打开</string>
+    <string name="md_link_inner_browser_summary">md文件中的链接默认用内置浏览器打开</string>
+    <string name="verbose_update_log">详细更新日志</string>
+    <string name="verbose_update_log_summary">开启后在调试日志中显示详细的书籍更新流程信息</string>
 
     <!-- Debug Tools -->
     <string name="debug_tools">调试工具</string>
@@ -1566,13 +1536,6 @@
     <string name="input_is_empty">输入不能为空</string>
     <string name="debug_request_src">请求体源码</string>
     <string name="debug_response_src">响应体源码</string>
-    <string name="debug_user_agent">User-Agent</string>
-    <string name="debug_ua_default">默认</string>
-    <string name="debug_ua_chrome_pc">Chrome PC</string>
-    <string name="debug_ua_chrome_mobile">Chrome Mobile</string>
-    <string name="debug_ua_safari_ios">Safari iOS</string>
-    <string name="debug_ua_firefox">Firefox</string>
-    <string name="debug_ua_custom">自定义</string>
     
     <!-- CURL Test -->
     <string name="debug_curl_test">CURL测试</string>
@@ -1647,29 +1610,21 @@
     <string name="zero_match">0 处匹配</string>
     <string name="input_test_text_hint">请输入测试文本</string>
     <string name="regex_mode">正则</string>
-    <string name="connection_status">连接状态</string>
-    <string name="please_input_url">请输入URL地址</string>
-    <string name="url_format_error">URL格式不正确</string>
-    <string name="checking_connection">检查中...</string>
-    <string name="connection_success">连接成功</string>
-    <string name="connection_failed">连接失败</string>
+
+    <!-- Smart Import -->
     <string name="smart_import">智能导入</string>
-    <!-- URL Record -->
-    <string name="url_record">URL访问记录</string>
-    <string name="record_url_switch">启用URL记录</string>
-    <string name="record_url_enabled">URL记录已启用</string>
-    <string name="record_url_disabled">URL记录已禁用</string>
-    <string name="clear_records">清除记录</string>
-    <string name="clear_old_records">清除旧记录</string>
-    <string name="clear_old_7_days">清除7天前的记录</string>
-    <string name="clear_old_30_days">清除30天前的记录</string>
-    <string name="clear_all_records">清除所有记录</string>
-    <string name="search_url_record_hint">搜索URL/域名/来源</string>
-    <string name="filter_by_domain">按域名筛选</string>
     <string name="history_record">历史记录</string>
     <string name="detected_as">识别为: %1$s (%2$d条)</string>
     <string name="detecting">识别中...</string>
     <string name="unknown_type">未知类型</string>
+
+    <!-- Bookshelf Actions -->
+    <string name="add_all_to_shelf">全部加入书架</string>
+    <string name="adding_books">正在添加 %d 本书…</string>
+    <string name="add_books_success">成功添加 %d 本书</string>
+    <string name="all_books_in_shelf">列表书籍已全部在书架</string>
+
+    <!-- Underline Settings -->
     <string name="underline_width_setting">下划线粗细</string>
     <string name="underline_width">粗细</string>
     <string name="underline_width_thin">细</string>
@@ -1752,29 +1707,6 @@
     <string name="bcs_total_size">总大小: %s</string>
     <string name="bcs_deselect_all">取消全选</string>
 
-    <!-- TTS Debug -->
-    <string name="play_audio">播放音频</string>
-    <string name="view_js_lib">查看JS库</string>
-    <string name="view_result">查看结果</string>
-    <string name="open_editor">打开编辑器</string>
-    <string name="info">信息</string>
-    <string name="content_query">内容查询</string>
-    <string name="switch_rule">切换规则</string>
-    <string name="query_rule">查询规则</string>
-    <string name="copy_matched_source_urls">拷贝匹配的源URL</string>
-    <string name="export_matched_sources">导出匹配的源</string>
-    <string name="url_source_code">URL源码</string>
-    <string name="result_source_code">结果源码</string>
-    <string name="select_rule">选择规则</string>
-    <string name="preset_rules">预设规则</string>
-    <string name="import_rules">导入规则</string>
-    <string name="share_rules">分享规则</string>
-    <string name="export_rules">导出规则</string>
-    <string name="import_from_clipboard">从剪贴板导入</string>
-    <string name="cover_gallery">封面画廊</string>
-    <string name="cover_gallery_summary">管理分组封面画廊，可设置为全局默认封面源</string>
-    <string name="cronet">Cronet</string>
-
     <!-- File Validation Dialog -->
     <string name="fvd_title">选择要恢复的文件</string>
     <string name="fvd_detect_format">检测格式</string>
@@ -1821,80 +1753,147 @@
     <string name="quick_jump_forward_b">快进%d分钟</string>
     <string name="quick_jump_forward_a">快进%d分钟</string>
 
-    <!-- 编辑器相关 -->
+    <!-- Code Editor Settings -->
     <string name="edit_code">编辑代码</string>
-    <string name="edit_json">编辑JSON</string>
-    <string name="edit_theme_monokai">莫奈明亮</string>
-    <string name="edit_theme_monokai_dimmed">莫奈暗淡</string>
-    <string name="change_theme">选择主题</string>
-    <string name="edit_theme_modern_dark">现代暗色</string>
-    <string name="edit_theme_modern_light">现代亮色</string>
-    <string name="edit_theme_solarized_dark">日光暗色</string>
-    <string name="edit_theme_solarized_light">日光亮色</string>
+    <string name="edit_theme_monokai">莫奈亮光</string>
+    <string name="edit_theme_monokai_dimmed">莫奈柔光</string>
+    <string name="edit_theme_modern_dark">现代深色</string>
+    <string name="edit_theme_modern_light">现代浅色</string>
+    <string name="edit_theme_solarized_dark">日光深色</string>
+    <string name="edit_theme_solarized_light">日光浅色</string>
     <string name="edit_theme_abyss">渊默如海</string>
     <string name="edit_theme_quiet_light">素影清晖</string>
     <string name="search_result">搜索结果:</string>
     <string name="find">查找</string>
-    <string name="btn_previous">上一个</string>
-    <string name="btn_next">下一个</string>
+    <string name="btn_previous">上个</string>
+    <string name="btn_next">下个</string>
     <string name="replace_all">全部</string>
     <string name="format_code">格式化</string>
+    <string name="change_theme">选择主题</string>
     <string name="config_settings">配置</string>
     <string name="auto_wrap">自动换行</string>
-    <string name="font_size">字号 %d</string>
+    <string name="font_size">字体大小 %d</string>
     <string name="view_code">查看代码</string>
-    <string name="find_next_match">下一个匹配</string>
-    <string name="find_prev_match">上一个匹配</string>
-    <string name="query_content">查询网页内容</string>
-    <string name="query_hint">输入查询内容</string>
-    <string name="query_result">找到 %1$d 处匹配</string>
-    <string name="query_no_result">未找到匹配内容</string>
-    <string name="please_focus_cursor_on_textbox">请将光标聚焦到文本框</string>
-    <string name="focus_lost_on_textbox">文本框光标焦点丢失</string>
-    <string name="show_web_log">输出日志</string>
-    <string name="load_with_web_log">输出WebLog</string>
 
-    <!-- 视频播放相关 -->
+    <!-- Video Settings -->
+    <string name="float_permission_rationale">阅读需要悬浮窗权限来显示播放窗口</string>
     <string name="video">视频</string>
     <string name="float_window">悬浮窗</string>
     <string name="video_play">视频播放</string>
+    <string name="overlay">叠加</string>
+    <string name="margin">间距</string>
+    <string name="auto_play">自动播放</string>
+    <string name="start_full">直接全屏播放</string>
+    <string name="video_setting">视频设置</string>
+    <string name="video_setting_summary">自动播放、全屏播放等配置</string>
+
+    <!-- Reading & Source Settings -->
     <string name="no_more_chapter">没有更多章节</string>
-    <string name="overlay">覆盖</string>
-    <string name="margin">边距</string>
-    <string name="replace_to_js">JS处理</string>
-    <string name="layout_type">样式:</string>
-    <string name="layout_list_compact">紧凑列表</string>
+    <string name="replace_to_js">js处理</string>
     <string name="enable_preload">预加载</string>
-    <string name="is_event_listener">事件监听器</string>
+    <string name="is_event_listener">事件监听</string>
     <string name="rule_call_back">回调操作（callBackJs）</string>
-    <string name="time_hour">小时</string>
-    <string name="custom_button">自定义按钮</string>
     <string name="next_page_lazy_load">下一页懒加载</string>
+    <string name="write_source_comment">写入源注释</string>
+
+    <!-- Layout & UI Settings -->
+    <string name="layout_type">样式：</string>
+    <string name="layout_list_compact">紧凑列表</string>
+    <string name="custom_button">定制按钮</string>
+
+    <!-- App Settings -->
+    <string name="time_hour">小时</string>
     <string name="welcome_show_time">欢迎页显示时间</string>
-    <string name="welcome_show_time_summary">设置为0不显示欢迎页</string>
+    <string name="welcome_show_time_summary">设为0不显示欢迎页</string>
     <string name="domain">域名</string>
-    <string name="write_source_comment">编写源注释</string>
-    <string name="float_permission_rationale">阅读需要悬浮窗权限来显示播放窗口</string>
 
-    <!-- 播放模式相关 -->
-    <string name="play_mode">播放模式</string>
-    <string name="speed_control">速度控制</string>
-    <string name="next">下一首</string>
-    <string name="previous">上一首</string>
-
-    <!-- 更新相关 -->
-    <string name="auto_update">自动更新</string>
-    <string name="time_day">天</string>
-    <string name="update_interval">间隔:</string>
-    <string name="silent_update">静默更新</string>
-    <string name="only_update_read">仅更新完结书籍</string>
-    <string name="ps_only_update_read">自动刷新时仅更新完结书籍</string>
-    <string name="show_search_progress">显示搜索进度</string>
-    <string name="select_color">选择颜色</string>
-
-    <!-- 源编辑相关 -->
-    <string name="source_tab_start">开始</string>
-    <string name="r_startHtml">起始页HTML文本（startHtml）</string>
-    <string name="r_startStyle">起始页样式文本（startStyle）</string>
-    <string name="r_startJs">起始页Js（startJs）</string>
+    <!-- History & Read Record -->
+    <string name="history">历史记录</string>
+    <string name="book_read_record">阅读记录</string>
+    <string name="view_read_record">查看</string>
+    <string name="no_read_record">暂无阅读记录</string>
+    <string name="total_read_time_s">累计阅读 %1$s</string>
+    <string name="last_read_s">最近阅读 %1$s</string>
+    <string name="show_read_record_in_book_info">显示阅读记录</string>
+    <string name="words">字</string>
+    <string name="app_name_sigma">阅读Max</string>
+    <string name="about_description_sigma">\u3000\u3000阅读Max继承自阅读Sigma，旨在原版基础上完善和增加功能，欢迎您的加入。</string>
+    <string name="contributors_summary_sigma">gedoor、Luoyacheng、Horis、Xwite、GEd520、youfengknight 等，详情请在 GitHub 中查看</string>
+    <string name="app_share_description_sigma">
+        阅读 Max 下载地址：\nhttps://github.com/
+    </string>
+    <string name="non_printable_set">不可视字符设定</string>
+    <string name="whitespace_leading">行首</string>
+    <string name="whitespace_inner">行中</string>
+    <string name="whitespace_trailing">行尾</string>
+    <string name="whitespace_empty">空行</string>
+    <string name="line_separator">换行</string>
+    <string name="whitespace_selection">选中</string>
+    <string name="press_speed">长按倍速</string>
+    <string name="press_speed_summary">长按倍速 %.1f</string>
+    <string name="full_bottom_progress">全屏时显示底部进度条</string>
+    <string name="mute_play">静音播放</string>
+    <string name="mute_play_enabled">当前开启静音播放</string>
+    <string name="json_format">json格式</string>
+    <string name="open_other_video_player">其它播放器打开</string>
+    <string name="show_source_comment">显示源注释</string>
+    <string name="enable_locate">开启定位</string>
+    <string name="adapt_special_style">适配特殊样式</string>
+    <string name="show_line_number">展示%d行</string>
+    <string name="setting_show_line_number">设置辅助按键展示的行数</string>
+    <string name="menu_page">第 %d 页</string>
+    <string name="change_page">选择页数</string>
+    <string name="r_preloadJs">预注入Js（preloadJs）</string>
+    <string name="cache_first">优先加载缓存</string>
+    <string name="rule_sub_content">副文规则（subContent）</string>
+    <string name="system_auto">跟随系统</string>
+    <string name="immersion_nav_bar">沉浸式操作栏</string>
+    <string name="day_nav_bar_immersion">白天操作栏颜色透明</string>
+    <string name="night_nav_bar_immersion">夜间操作栏颜色透明</string>
+    <string name="manual_input_img_src">手动输入图片链接</string>
+    <string name="enter_img_src_path">请输入图片链接</string>
+    <string name="empty_img_src_input">图片链接不能为空</string>
+    <string name="invalid_file_path">文件路径无效</string>
+    <string name="is_system_tts_no_export">无法导出系统tts</string>
+    <string name="click_image_way">点击图片方式</string>
+    <string name="auto_update_summary">每天自动检查软件是否更新</string>
+    <string name="debug_ua_default">默认</string>
+    <string name="debug_ua_custom">自定义</string>
+    <string name="connection_status">连接状态</string>
+    <string name="please_input_url">请输入URL地址</string>
+    <string name="url_format_error">URL格式不正确</string>
+    <string name="checking_connection">检测中...</string>
+    <string name="connection_success">连接成功</string>
+    <string name="connection_failed">连接失败</string>
+    <string name="url_record">URL访问记录</string>
+    <string name="record_url_switch">开启URL记录</string>
+    <string name="record_url_enabled">已开启URL记录</string>
+    <string name="record_url_disabled">已关闭URL记录</string>
+    <string name="clear_records">清除记录</string>
+    <string name="clear_old_records">清除旧记录</string>
+    <string name="clear_old_7_days">清除7天前的记录</string>
+    <string name="clear_old_30_days">清除30天前的记录</string>
+    <string name="clear_all_records">清除所有记录</string>
+    <string name="search_url_record_hint">搜索URL/域名/来源</string>
+    <string name="filter_by_domain">按域名筛选</string>
+    <string name="play_audio">播放音频</string>
+    <string name="view_js_lib">查看JS库</string>
+    <string name="view_result">查看结果</string>
+    <string name="open_editor">打开编辑器</string>
+    <string name="info">信息</string>
+    <string name="content_query">内容查询</string>
+    <string name="switch_rule">切换规则</string>
+    <string name="query_rule">查询规则</string>
+    <string name="copy_matched_source_urls">复制匹配源URL</string>
+    <string name="export_matched_sources">导出匹配源</string>
+    <string name="url_source_code">URL源码</string>
+    <string name="result_source_code">结果源码</string>
+    <string name="select_rule">选择规则</string>
+    <string name="preset_rules">预置规则</string>
+    <string name="import_rules">导入规则</string>
+    <string name="share_rules">分享规则</string>
+    <string name="export_rules">导出规则</string>
+    <string name="import_from_clipboard">剪贴板导入</string>
+    <string name="cover_gallery">封面图集</string>
+    <string name="cover_gallery_summary">管理分组封面图集，可设为全局默认封面来源</string>
 </resources>
