@@ -294,6 +294,7 @@ object HighlightRuleStore {
             buildSanitizedRuleId(name, pattern, sampleText, group)
         }
         val underlineSvgPath = runCatching { rule.underlineSvgPath }.getOrNull()
+        val bgColor = runCatching { rule.bgColor }.getOrNull()
         val bgImage = runCatching { rule.bgImage }.getOrNull()?.takeIf { it.isNotBlank() }
         return HighlightRule(
             id = id,
@@ -309,6 +310,7 @@ object HighlightRuleStore {
             underlineWidth = runCatching { rule.underlineWidth }.getOrDefault(1f).coerceIn(0.1f, 10f),
             underlineOffset = runCatching { rule.underlineOffset }.getOrDefault(2f).coerceIn(0f, 20f),
             underlineSvgPath = underlineSvgPath,
+            bgColor = bgColor,
             bgImage = bgImage,
             bgImageFit = runCatching { rule.bgImageFit }.getOrDefault(0).coerceIn(0, 2),
             bgImageScale = runCatching { rule.bgImageScale }.getOrDefault(1f).coerceIn(0.1f, 5f),

@@ -374,13 +374,70 @@ data class TextLine(
             return false
         }
         return columns.none {
-            it is TextBaseColumn && (it.textColor != null || it.underlineMode != 0 || it.bgImage.isNotEmpty())
+            it is TextBaseColumn && (it.textColor != null || it.underlineMode != 0 || it.bgImage.isNotEmpty() || it.bgColor != null)
         }
     }
 
     private fun drawStyledBackgrounds(canvas: Canvas) {
         if (isImage || columns.isEmpty()) return
-        if (columns.none { (it as? TextBaseColumn)?.bgImage?.isNotEmpty() == true }) return
+        // 检查是否有背景颜色或背景图片
+        if (columns.none { (it as? TextBaseColumn)?.let { c -> c.bgImage.isNotEmpty() || c.bgColor != null } == true }) return
+        
+        // 绘制背景颜色段
+        drawBgColorSegments(canvas)
+        
+        // 绘制背景图片段
+        drawBgImageSegments(canvas)
+    }
+
+    private fun drawBgColorSegments(canvas: Canvas) {
+        var rangeStart = 0f
+        var rangeEnd = 0f
+        var currentBgColor: Int? = null
+        var active = false
+        columns.forEachIndexed { index, column ->
+            val textColumn = column as? TextBaseColumn
+            val bgColor = textColumn?.bgColor
+            val bgImage = textColumn?.bgImage ?: ""
+            // 只有在没有背景图片时才绘制背景颜色
+            when {
+                (bgColor == null || bgImage.isNotEmpty()) && active -> {
+                    drawBgColorSegment(canvas, rangeStart, rangeEnd, currentBgColor!!)
+                    active = false
+                }
+                bgColor != null && bgImage.isEmpty() && !active -> {
+                    rangeStart = textColumn!!.start
+                    rangeEnd = textColumn.end
+                    currentBgColor = bgColor
+                    active = true
+                }
+                bgColor != null && bgImage.isEmpty() && bgColor == currentBgColor && active -> {
+                    rangeEnd = textColumn!!.end
+                }
+                bgColor != null && bgImage.isEmpty() && active -> {
+                    drawBgColorSegment(canvas, rangeStart, rangeEnd, currentBgColor!!)
+                    rangeStart = textColumn!!.start
+                    rangeEnd = textColumn.end
+                    currentBgColor = bgColor
+                }
+            }
+            if (active && index == columns.lastIndex) {
+                drawBgColorSegment(canvas, rangeStart, rangeEnd, currentBgColor!!)
+            }
+        }
+    }
+
+    private fun drawBgColorSegment(canvas: Canvas, startX: Float, endX: Float, bgColor: Int) {
+        val paint = PaintPool.obtain()
+        paint.style = android.graphics.Paint.Style.FILL
+        paint.color = bgColor
+        val top = bgPaddingTop
+        val bottom = height - bgPaddingBottom
+        canvas.drawRect(startX, top, endX, bottom, paint)
+        PaintPool.recycle(paint)
+    }
+
+    private fun drawBgImageSegments(canvas: Canvas) {
         var rangeStart = 0f
         var rangeEnd = 0f
         var currentBgImage = ""

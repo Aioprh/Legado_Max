@@ -14,6 +14,7 @@ data class HighlightRule(
     var underlineWidth: Float = 1f,
     var underlineOffset: Float = 2f,
     var underlineSvgPath: String? = null,
+    var bgColor: Int? = null,
     var bgImage: String? = null,
     var bgImageFit: Int = 0,
     var bgImageScale: Float = 1f,
@@ -45,6 +46,8 @@ data class HighlightRule(
                     else -> "背景图(平铺)"
                 }
             )
+        } else if (bgColor != null) {
+            parts.add("背景色 ${bgColor!!.toHexColor()}")
         }
         if (parts.isEmpty()) {
             parts.add("无样式")

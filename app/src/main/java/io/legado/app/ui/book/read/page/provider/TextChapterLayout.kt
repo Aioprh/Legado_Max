@@ -975,6 +975,7 @@ class TextChapterLayout(
                 val highlightStyle = extractHighlightStyle(spanned, charIndex)
                 val underlineMode = highlightStyle?.underlineMode ?: 0
                 val underlineColor = highlightStyle?.underlineColor
+                val bgColor = highlightStyle?.bgColor
                 val bgImage = highlightStyle?.bgImage ?: ""
                 val bgImageFit = highlightStyle?.bgImageFit ?: 0
                 val bgImageScale = highlightStyle?.bgImageScale ?: 1f
@@ -1070,6 +1071,7 @@ class TextChapterLayout(
                                 linkUrl,
                                 underlineMode,
                                 underlineColor,
+                                bgColor = bgColor,
                                 bgImage = bgImage,
                                 bgImageFit = bgImageFit,
                                 bgImageScale = bgImageScale
@@ -1089,6 +1091,7 @@ class TextChapterLayout(
                             linkUrl,
                             underlineMode,
                             underlineColor,
+                            bgColor = bgColor,
                             bgImage = bgImage,
                             bgImageFit = bgImageFit,
                             bgImageScale = bgImageScale
@@ -1229,11 +1232,13 @@ class TextChapterLayout(
         var underlineWidth = 1f
         var underlineOffset = 2f
         var underlineSvgPath = ""
+        var bgColor: Int? = null
         var bgImage = ""
         var bgImageFit = 0
         var bgImageScale = 1f
         var hasUnderline = false
         var hasBgImage = false
+        var hasBgColor = false
         spans.forEach { span ->
             if (span.underlineMode != 0) {
                 underlineMode = span.underlineMode
@@ -1249,14 +1254,19 @@ class TextChapterLayout(
                 bgImageScale = span.bgImageScale
                 hasBgImage = true
             }
+            if (span.bgColor != null) {
+                bgColor = span.bgColor
+                hasBgColor = true
+            }
         }
-        if (!hasUnderline && !hasBgImage) return null
+        if (!hasUnderline && !hasBgImage && !hasBgColor) return null
         return HighlightStyleSpan(
             underlineMode = if (hasUnderline) underlineMode else 0,
             underlineColor = underlineColor,
             underlineWidth = underlineWidth,
             underlineOffset = underlineOffset,
             underlineSvgPath = if (hasUnderline) underlineSvgPath else "",
+            bgColor = if (hasBgColor) bgColor else null,
             bgImage = if (hasBgImage) bgImage else "",
             bgImageFit = if (hasBgImage) bgImageFit else 0,
             bgImageScale = if (hasBgImage) bgImageScale else 1f,
@@ -1369,7 +1379,7 @@ class TextChapterLayout(
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
-            if (rule.underlineMode != 0 || !rule.bgImage.isNullOrBlank()) {
+            if (rule.underlineMode != 0 || !rule.bgImage.isNullOrBlank() || rule.bgColor != null) {
                 spannable.setSpan(
                     HighlightStyleSpan(
                         underlineMode = rule.underlineMode,
@@ -1377,6 +1387,7 @@ class TextChapterLayout(
                         underlineWidth = rule.underlineWidth,
                         underlineOffset = rule.underlineOffset,
                         underlineSvgPath = rule.underlineSvgPath.orEmpty(),
+                        bgColor = rule.bgColor,
                         bgImage = rule.bgImage.orEmpty(),
                         bgImageFit = rule.bgImageFit,
                         bgImageScale = rule.bgImageScale
@@ -1410,7 +1421,7 @@ class TextChapterLayout(
         val layout = if (useZhLayout) {
             val (words, widths) = measureTextSplit(text, widthsArray)
             val indentSize = if (isFirstLine) paragraphIndent.length else 0
-            ZhLayout(text, textPaint, visibleWidth, words, widths, indentSize)
+            ZhLayout(styledText, textPaint, visibleWidth, words, widths, indentSize)
         } else {
             StaticLayout(styledText, textPaint, visibleWidth, Layout.Alignment.ALIGN_NORMAL, 0f, 0f, true)
         }
@@ -1732,6 +1743,7 @@ class TextChapterLayout(
         val underlineWidth = highlightStyle?.underlineWidth ?: 1f
         val underlineOffset = highlightStyle?.underlineOffset ?: 2f
         val underlineSvgPath = highlightStyle?.underlineSvgPath ?: ""
+        val bgColor = highlightStyle?.bgColor
         val bgImage = highlightStyle?.bgImage ?: ""
         val bgImageFit = highlightStyle?.bgImageFit ?: 0
         val bgImageScale = highlightStyle?.bgImageScale ?: 1f
@@ -1768,6 +1780,7 @@ class TextChapterLayout(
                     underlineWidth = underlineWidth,
                     underlineOffset = underlineOffset,
                     underlineSvgPath = underlineSvgPath,
+                    bgColor = bgColor,
                     bgImage = bgImage,
                     bgImageFit = bgImageFit,
                     bgImageScale = bgImageScale
