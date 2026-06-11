@@ -14,7 +14,6 @@ import android.widget.ArrayAdapter
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
-import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
@@ -64,7 +63,8 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
     protected var lastResults: List<SourceFieldItem> = emptyList()
 
     protected var selectedTabs: MutableSet<String> = mutableSetOf()
-    private var historyPopup: PopupWindow? = null
+    private var historyRecyclerView: RecyclerView? = null
+    private var historyContainer: LinearLayout? = null
 
     // ========== 子类实现 ==========
 
@@ -435,7 +435,8 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
     private fun getSearchHistoryKey(): String = "content_search_history_${getDialogTitle()}"
 
     private fun loadSearchHistory(): List<String> {
-        val json = getPrefString(getSearchHistoryKey(), null) ?: return emptyList()
+        val json = getPrefString(getSearchHistoryKey(), "")
+        if (json.isNullOrBlank()) return emptyList()
         return try {
             val arr = org.json.JSONArray(json)
             (0 until arr.length()).map { arr.getString(it) }
@@ -451,6 +452,10 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         if (history.size > MAX_HISTORY_SIZE) {
             history.removeAt(history.lastIndex)
         }
+        saveSearchHistory(history)
+    }
+
+    private fun saveSearchHistory(history: List<String>) {
         val arr = org.json.JSONArray()
         history.forEach { arr.put(it) }
         putPrefString(getSearchHistoryKey(), arr.toString())
@@ -462,27 +467,120 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
 
         dismissHistoryPopup()
 
-        val list = android.widget.ListView(requireContext()).apply {
-            adapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, history)
-            setOnItemClickListener { _, _, position, _ ->
-                val query = history[position]
+        val context = requireContext()
+        val rootLayout = binding.root as ViewGroup
+
+        // 创建历史面板容器
+        val container = LinearLayout(context).apply {
+            id = View.generateViewId()
+            orientation = LinearLayout.VERTICAL
+            layoutParams = ConstraintLayout.LayoutParams(
+                ConstraintLayout.LayoutParams.MATCH_PARENT,
+                ConstraintLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topToBottom = binding.searchBarLayout.id
+                startToStart = ConstraintLayout.LayoutParams.PARENT_ID
+                endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+            }
+            setPadding(dpToPx(12), dpToPx(4), dpToPx(12), dpToPx(4))
+        }
+
+        // 标题行
+        val headerRow = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        val titleView = TextView(context).apply {
+            text = "搜索历史"
+            textSize = 12f
+            setTextColor(ContextCompat.getColor(context, R.color.secondaryText))
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            )
+        }
+        headerRow.addView(titleView)
+
+        val clearBtn = TextView(context).apply {
+            text = "清空"
+            textSize = 12f
+            setTextColor(accentColor)
+            setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4))
+            isClickable = true
+            isFocusable = true
+        }
+        clearBtn.setOnClickListener {
+            putPrefString(getSearchHistoryKey(), "")
+            dismissHistoryPopup()
+        }
+        headerRow.addView(clearBtn)
+        container.addView(headerRow)
+
+        // RecyclerView
+        val recyclerView = RecyclerView(context).apply {
+            layoutManager = LinearLayoutManager(context)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            val maxHeight = (context.resources.displayMetrics.heightPixels * 0.25).toInt()
+            if (history.size > 5) {
+                layoutParams.height = maxHeight
+            }
+        }
+        val mutableHistory = history.toMutableList()
+        val adapter = HistoryAdapter(
+            mutableHistory,
+            onItemClick = { query ->
                 binding.searchEditText.setText(query)
                 binding.searchEditText.setSelection(query.length)
                 dismissHistoryPopup()
                 currentSearchTerm = query
                 doSearch(query)
+            },
+            onItemDelete = { position ->
+                mutableHistory.removeAt(position)
+                if (mutableHistory.isEmpty()) {
+                    putPrefString(getSearchHistoryKey(), "")
+                    dismissHistoryPopup()
+                } else {
+                    saveSearchHistory(mutableHistory)
+                    recyclerView.adapter?.notifyDataSetChanged()
+                }
             }
+        )
+        recyclerView.adapter = adapter
+        container.addView(recyclerView)
+
+        // 圆角背景 - 和主窗口同色 + 边框
+        container.background = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dpToPx(8).toFloat()
+            setColor(ContextCompat.getColor(context, R.color.background))
+            setStroke(dpToPx(1), ContextCompat.getColor(context, R.color.divider))
         }
 
-        historyPopup = PopupWindow(list, binding.searchEditText.width, FrameLayout.LayoutParams.WRAP_CONTENT, true).apply {
-            isOutsideTouchable = true
-            showAsDropDown(binding.searchEditText)
-        }
+        // 插入到 searchBarLayout 下方，覆盖在分类上方
+        val chipRowIndex = rootLayout.indexOfChild(binding.recyclerView)
+        rootLayout.addView(container, chipRowIndex)
+
+        historyContainer = container
+        historyRecyclerView = recyclerView
     }
 
+
     private fun dismissHistoryPopup() {
-        historyPopup?.dismiss()
-        historyPopup = null
+        historyContainer?.let { container ->
+            val rootLayout = binding.root as ViewGroup
+            rootLayout.removeView(container)
+        }
+        historyContainer = null
+        historyRecyclerView = null
     }
 
     // ========== 搜索输入 ==========
@@ -510,8 +608,14 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         binding.searchEditText.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus && binding.searchEditText.text.isEmpty()) {
                 showSearchHistory()
-            } else {
+            } else if (!hasFocus) {
                 dismissHistoryPopup()
+            }
+        }
+
+        binding.searchEditText.setOnClickListener {
+            if (binding.searchEditText.text.isEmpty()) {
+                showSearchHistory()
             }
         }
 
@@ -867,6 +971,67 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         protected const val VIEW_TYPE_HEADER = 0
         protected const val VIEW_TYPE_RESULT = 1
         private const val MAX_HISTORY_SIZE = 10
+    }
+
+    private inner class HistoryAdapter(
+        private val history: MutableList<String>,
+        private val onItemClick: (String) -> Unit,
+        private val onItemDelete: (Int) -> Unit
+    ) : RecyclerView.Adapter<HistoryAdapter.HistoryViewHolder>() {
+
+        inner class HistoryViewHolder(val row: LinearLayout) : RecyclerView.ViewHolder(row)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): HistoryViewHolder {
+            val context = parent.context
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                setPadding(dpToPx(12), dpToPx(10), dpToPx(12), dpToPx(10))
+            }
+
+            val textView = TextView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+                setTextColor(ContextCompat.getColor(context, R.color.primaryText))
+                textSize = 14f
+            }
+            row.addView(textView)
+
+            val deleteBtn = TextView(context).apply {
+                text = "✕"
+                textSize = 12f
+                setTextColor(ContextCompat.getColor(context, R.color.secondaryText))
+                setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4))
+                isClickable = true
+                isFocusable = true
+            }
+            row.addView(deleteBtn)
+
+            return HistoryViewHolder(row)
+        }
+
+        override fun onBindViewHolder(holder: HistoryViewHolder, position: Int) {
+            val query = history[position]
+            val textView = holder.row.getChildAt(0) as TextView
+            val deleteBtn = holder.row.getChildAt(1) as TextView
+
+            textView.text = query
+            textView.setOnClickListener {
+                onItemClick(query)
+            }
+            deleteBtn.setOnClickListener {
+                onItemDelete(position)
+            }
+        }
+
+        override fun getItemCount() = history.size
     }
 }
 
