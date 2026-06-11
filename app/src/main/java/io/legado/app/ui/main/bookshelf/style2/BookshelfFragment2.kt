@@ -62,6 +62,7 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
     private var bookLayout = AppConfig.bookLayout
     private var spanCount = 1
     private lateinit var booksAdapter: BaseBooksAdapter<*>
+    private var spanSizeLookup: GridLayoutManager.SpanSizeLookup? = null
     private var bookGroups: List<BookGroup> = emptyList()
     private var booksFlowJob: Job? = null
     override var groupId = BookGroup.IdRoot
@@ -70,8 +71,6 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
     override var onlyUpdateRead = false
     private val bookshelfMargin by lazy { AppConfig.bookshelfMargin }
     private var itemCount = 0
-    private var totalRows = 0
-    private var lastRowIndex = 0
 
     // 计算最小公倍数
     private fun lcm(a: Int, b: Int): Int {
@@ -147,6 +146,8 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                         }
                     }
                 }
+                this.spanSizeLookup.isSpanIndexCacheEnabled = true
+                this@BookshelfFragment2.spanSizeLookup = this.spanSizeLookup
             }
         } else {
             LinearLayoutManager(context)
@@ -175,11 +176,15 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                 val position = parent.getChildAdapterPosition(view)
                 if (position == RecyclerView.NO_POSITION) return
                 
-                if (spanCount >= 2) {
-                    val rowIndex = position / spanCount
+                if (spanCount >= 2 && spanSizeLookup != null) {
+                    // 使用spanSizeLookup获取正确的行号（组索引）
+                    val rowIndex = spanSizeLookup!!.getSpanGroupIndex(position, spanCount)
+                    val lastGroupIndex = if (itemCount > 0) {
+                        spanSizeLookup!!.getSpanGroupIndex(itemCount - 1, spanCount)
+                    } else 0
                     when (rowIndex) {
                         0 -> outRect.set(bookshelfMargin, marginFirst, bookshelfMargin, bookshelfMargin)
-                        lastRowIndex -> outRect.set(bookshelfMargin, bookshelfMargin, bookshelfMargin, marginFirst)
+                        lastGroupIndex -> outRect.set(bookshelfMargin, bookshelfMargin, bookshelfMargin, marginFirst)
                         else -> outRect.set(bookshelfMargin, bookshelfMargin, bookshelfMargin, bookshelfMargin)
                     }
                 } else {
@@ -208,10 +213,6 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             bookGroups = data
             booksAdapter.updateItems(groupId)
             itemCount = getItemCount()
-            if (spanCount >= 2) {
-                totalRows = if (itemCount % spanCount == 0) itemCount / spanCount else itemCount / spanCount + 1
-                lastRowIndex = totalRows - 1
-            }
             binding.tvEmptyMsg.isGone = itemCount > 0
             binding.refreshLayout.isEnabled = enableRefresh && itemCount > 0
         }
@@ -273,10 +274,6 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                 books = list
                 booksAdapter.updateItems(groupId)
                 itemCount = getItemCount()
-                if (spanCount >= 2) {
-                    totalRows = if (itemCount % spanCount == 0) itemCount / spanCount else itemCount / spanCount + 1
-                    lastRowIndex = totalRows - 1
-                }
                 binding.tvEmptyMsg.isGone = itemCount > 0
                 binding.refreshLayout.isEnabled = enableRefresh && itemCount > 0
             }

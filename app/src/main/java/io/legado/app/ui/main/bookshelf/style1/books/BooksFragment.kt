@@ -78,8 +78,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     private var onlyUpdateRead = false
     private val bookshelfMargin by lazy { AppConfig.bookshelfMargin }
     private var itemCount = 0
-    private var totalRows = 0
-    private var lastRowIndex = 0
 
     private fun createBooksAdapter(): BaseBooksAdapter<*> {
         return when (AppConfig.bookLayout) {
@@ -167,6 +165,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
                 
                 if (bookLayout >= 2) {
                     val rowIndex = position / bookLayout
+                    val lastRowIndex = if (itemCount > 0) (itemCount - 1) / bookLayout else 0
                     when (rowIndex) {
                         0 -> outRect.set(bookshelfMargin, marginFirst, bookshelfMargin, bookshelfMargin)
                         lastRowIndex -> outRect.set(bookshelfMargin, bookshelfMargin, bookshelfMargin, marginFirst)
@@ -242,11 +241,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
                 AppLog.put("书架更新出错", it)
             }.conflate().flowOn(Dispatchers.Default).collect { list ->
                 itemCount = list.size
-                val spanCount = bookLayout
-                if (spanCount >= 2) {
-                    totalRows = if (itemCount % spanCount == 0) itemCount / spanCount else itemCount / spanCount + 1
-                    lastRowIndex = totalRows - 1
-                }
                 binding.tvEmptyMsg.isGone = itemCount > 0
                 binding.refreshLayout.isEnabled = enableRefresh && itemCount > 0
                 booksAdapter.setItems(list)
