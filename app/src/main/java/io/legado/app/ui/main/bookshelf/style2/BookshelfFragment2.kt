@@ -182,13 +182,19 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                     val lastGroupIndex = if (itemCount > 0) {
                         spanSizeLookup!!.getSpanGroupIndex(itemCount - 1, spanCount)
                     } else 0
-                    when (rowIndex) {
+                    // 处理单行情况：既是第一行也是最后一行
+                    if (rowIndex == 0 && rowIndex == lastGroupIndex) {
+                        outRect.set(bookshelfMargin, marginFirst, bookshelfMargin, marginFirst)
+                    } else when (rowIndex) {
                         0 -> outRect.set(bookshelfMargin, marginFirst, bookshelfMargin, bookshelfMargin)
                         lastGroupIndex -> outRect.set(bookshelfMargin, bookshelfMargin, bookshelfMargin, marginFirst)
                         else -> outRect.set(bookshelfMargin, bookshelfMargin, bookshelfMargin, bookshelfMargin)
                     }
                 } else {
-                    when (position) {
+                    // 处理单行情况：既是第一行也是最后一行
+                    if (position == 0 && position == itemCount - 1) {
+                        outRect.set(0, marginFirst, 0, marginFirst)
+                    } else when (position) {
                         0 -> outRect.set(0, marginFirst, 0, marginNormal)
                         itemCount - 1 -> outRect.set(0, marginNormal, 0, marginFirst)
                         else -> outRect.set(0, marginNormal, 0, marginNormal)

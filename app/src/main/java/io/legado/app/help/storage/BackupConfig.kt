@@ -165,7 +165,8 @@ object BackupConfig {
             ignoreThemeConfig && themePrefKeys.contains(key) -> false
             ignoreCoverConfig && coverPrefKeys.contains(key) -> false
             PreferKey.themeMode == key && ignoreThemeMode -> false
-            PreferKey.bookshelfLayout == key && ignoreBookshelfLayout -> false
+            // 书架布局相关配置统一处理
+            (PreferKey.bookshelfLayout == key || PreferKey.folderLayout == key || PreferKey.bookLayout == key) && ignoreBookshelfLayout -> false
             PreferKey.showRss == key && ignoreShowRss -> false
             PreferKey.threadCount == key && ignoreThreadCount -> false
             else -> true
