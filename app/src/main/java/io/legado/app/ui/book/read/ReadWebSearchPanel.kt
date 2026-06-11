@@ -787,20 +787,46 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         private val BING_TEMPLATE = SearchEngine("必应", "https://www.bing.com/search?q={query}")
         private val BAIDU_TEMPLATE = SearchEngine("百度", "https://www.baidu.com/s?wd={query}")
 
+        // 自定义反序列化器：确保 JSON null 被替换为默认值
+        private val searchEngineDeserializer = object : com.google.gson.JsonDeserializer<SearchEngine> {
+            override fun deserialize(
+                json: com.google.gson.JsonElement,
+                typeOfT: java.lang.reflect.Type,
+                context: com.google.gson.JsonDeserializationContext
+            ): SearchEngine {
+                val obj = json.asJsonObject
+                return SearchEngine(
+                    title = obj.get("title")?.takeIf { !it.isJsonNull }?.asString ?: "",
+                    url = obj.get("url")?.takeIf { !it.isJsonNull }?.asString ?: ""
+                )
+            }
+        }
+
+        // 使用自定义反序列化器的 GSON 实例
+        private val engineGson: com.google.gson.Gson = com.google.gson.GsonBuilder()
+            .registerTypeAdapter(SearchEngine::class.java, searchEngineDeserializer)
+            .create()
+
         private fun defaultEngines(): List<SearchEngine> {
             return listOf(BING_TEMPLATE, BAIDU_TEMPLATE)
         }
 
         fun loadSearchEngines(context: Context): List<SearchEngine> {
-            val stored = context.getPrefString(ENGINE_PREF_KEY)
-            val engines = GSON.fromJsonArray<SearchEngine>(stored).getOrNull()
-                ?.filter { it.title.isNotBlank() && it.url.contains(QUERY_PLACEHOLDER) }
-                .orEmpty()
-            return engines.ifEmpty { defaultEngines() }
+            val stored = context.getPrefString(ENGINE_PREF_KEY) ?: return defaultEngines()
+            if (stored.isBlank()) return defaultEngines()
+            return try {
+                engineGson.fromJson(stored, Array<SearchEngine>::class.java)
+                    ?.toList()
+                    ?.filter { it.title.isNotBlank() && it.url.contains(QUERY_PLACEHOLDER) }
+                    .orEmpty()
+                    .ifEmpty { defaultEngines() }
+            } catch (e: Exception) {
+                defaultEngines()
+            }
         }
 
         fun saveSearchEngines(context: Context, engines: List<SearchEngine>) {
-            context.putPrefString(ENGINE_PREF_KEY, GSON.toJson(engines))
+            context.putPrefString(ENGINE_PREF_KEY, engineGson.toJson(engines))
         }
 
         private fun loadEngines(context: Context): List<SearchEngine> {
