@@ -27,8 +27,7 @@ import io.legado.app.databinding.DialogRuleSearchBinding
 import io.legado.app.databinding.ItemRuleSearchHeaderBinding
 import io.legado.app.databinding.ItemRuleSearchResultBinding
 import io.legado.app.lib.theme.primaryColor
-import io.legado.app.lib.theme.primaryTextColor
-import io.legado.app.lib.theme.secondaryTextColor
+import io.legado.app.lib.theme.accentColor
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.gone
@@ -220,7 +219,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         val labelView = TextView(context).apply {
             text = label
             textSize = 13f
-            setTextColor(secondaryTextColor)
+            setTextColor(ContextCompat.getColor(context, R.color.secondaryText))
             setPadding(0, 0, dpToPx(8), 0)
         }
         row.addView(labelView)
@@ -268,11 +267,11 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         buttons.forEachIndexed { index, btn ->
             val isSelected = allValues[index] == selectedValue
             if (isSelected) {
-                btn.setTextColor(primaryTextColor)
-                btn.setBackgroundResource(R.drawable.bg_edit)
+                btn.setTextColor(accentColor)
+                btn.background = createChipBackground(true)
             } else {
-                btn.setTextColor(secondaryTextColor)
-                btn.setBackgroundResource(0)
+                btn.setTextColor(ContextCompat.getColor(btn.context, R.color.primaryText))
+                btn.background = createChipBackground(false)
             }
         }
     }
@@ -307,7 +306,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         val allLabel = TextView(requireContext()).apply {
             text = "分类"
             textSize = 13f
-            setTextColor(secondaryTextColor)
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.secondaryText))
             setPadding(0, 0, dpToPx(8), 0)
         }
         chipLayout.addView(allLabel)
@@ -319,8 +318,8 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6))
             isClickable = true
             isFocusable = true
-            setTextColor(primaryTextColor)
-            setBackgroundResource(R.drawable.bg_edit)
+            setTextColor(accentColor)
+            background = createChipBackground(true)
         }
         allBtn.setOnClickListener {
             selectedTabs = tabNames.keys.toMutableSet()
@@ -346,8 +345,8 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
                 isClickable = true
                 isFocusable = true
                 tag = tabKey
-                setTextColor(primaryTextColor)
-                setBackgroundResource(R.drawable.bg_edit)
+                setTextColor(accentColor)
+                background = createChipBackground(true)
             }
             btn.setOnClickListener {
                 val key = btn.tag as String
@@ -383,19 +382,19 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
                 val tabKey = child.tag as String
                 val isSelected = selectedTabs.contains(tabKey)
                 if (isSelected) {
-                    child.setTextColor(primaryTextColor)
-                    child.setBackgroundResource(R.drawable.bg_edit)
+                    child.setTextColor(accentColor)
+                    child.background = createChipBackground(true)
                 } else {
-                    child.setTextColor(secondaryTextColor)
-                    child.setBackgroundResource(0)
+                    child.setTextColor(ContextCompat.getColor(child.context, R.color.primaryText))
+                    child.background = createChipBackground(false)
                 }
             } else if (child is TextView && child.tag == null && child.text == "全部") {
                 if (allSelected) {
-                    child.setTextColor(primaryTextColor)
-                    child.setBackgroundResource(R.drawable.bg_edit)
+                    child.setTextColor(accentColor)
+                    child.background = createChipBackground(true)
                 } else {
-                    child.setTextColor(secondaryTextColor)
-                    child.setBackgroundResource(0)
+                    child.setTextColor(ContextCompat.getColor(child.context, R.color.primaryText))
+                    child.background = createChipBackground(false)
                 }
             }
         }
@@ -403,6 +402,32 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
 
     protected fun dpToPx(dp: Int): Int {
         return (dp * requireContext().resources.displayMetrics.density).toInt()
+    }
+
+    /**
+     * 动态创建 Chip 背景。
+     * 选中：accentColor 填充 + 圆角（Material Chip 风格）。
+     * 未选中：透明背景 + 细边框（继承默认文字颜色）。
+     */
+    private fun createChipBackground(selected: Boolean): android.graphics.drawable.GradientDrawable {
+        return android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dpToPx(16).toFloat()
+            if (selected) {
+                val color = accentColor
+                setColor(android.graphics.Color.argb(
+                    30,
+                    android.graphics.Color.red(color),
+                    android.graphics.Color.green(color),
+                    android.graphics.Color.blue(color)
+                ))
+                setStroke(dpToPx(1), color)
+            } else {
+                val ctx = requireContext()
+                val borderColor = ContextCompat.getColor(ctx, R.color.divider)
+                setColor(android.graphics.Color.TRANSPARENT)
+                setStroke(dpToPx(1), borderColor)
+            }
+        }
     }
 
     // ========== 搜索历史 ==========

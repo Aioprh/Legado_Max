@@ -118,7 +118,7 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
     override fun getSearchHint() = "输入关键词搜索所有书源"
 
     override fun loadSourceItems(allSources: Boolean, callback: (List<SourceFieldItem>) -> Unit) {
-        viewModel.loadSources(allSources) { sourceList ->
+        viewModel.loadSources(!allSources) { sourceList ->
             this.allSources = sourceList
             val items = mutableListOf<SourceFieldItem>()
             for ((sourceName, sourceUrl, jsonObj) in this.allSources) {
@@ -142,15 +142,15 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
     }
 
     override suspend fun performSearch(query: String, allItems: List<SourceFieldItem>): List<SourceFieldItem> {
-        if (allSources.isEmpty()) return emptyList()
+        if (allItems.isEmpty()) return emptyList()
 
         val contextChars = 50
         val queryLower = query.lowercase()
 
         return if (searchByRuleField) {
-            searchRuleFields(queryLower, query.length, contextChars)
+            searchRuleFields(queryLower, query.length, contextChars, allItems)
         } else {
-            searchJsonFull(queryLower, query.length, contextChars)
+            searchJsonFull(queryLower, query.length, contextChars, allItems)
         }
     }
 
@@ -171,44 +171,32 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
     private suspend fun searchRuleFields(
         queryLower: String,
         queryLen: Int,
-        contextChars: Int
+        contextChars: Int,
+        allItems: List<SourceFieldItem>
     ): List<SourceFieldItem> {
         val results = mutableListOf<SourceFieldItem>()
 
-        for ((sourceName, sourceUrl, jsonObj) in allSources) {
+        for (item in allItems) {
             currentCoroutineContext().ensureActive()
-            for ((tabKey, fields) in TAB_FIELDS) {
-                for ((fieldKey, fieldName) in fields) {
-                    val value = getFieldValue(jsonObj, tabKey, fieldKey) ?: continue
-                    if (value.lowercase().contains(queryLower)) {
-                        var startIndex = 0
-                        val valueLower = value.lowercase()
-                        while (true) {
-                            val matchIndex = valueLower.indexOf(queryLower, startIndex)
-                            if (matchIndex == -1) break
+            val value = item.value
+            if (!value.lowercase().contains(queryLower)) continue
 
-                            val start = maxOf(0, matchIndex - contextChars)
-                            val end = minOf(value.length, matchIndex + queryLen + contextChars)
-                            val contextText = buildString {
-                                if (start > 0) append("...")
-                                append(value.substring(start, end))
-                                if (end < value.length) append("...")
-                            }
+            var startIndex = 0
+            val valueLower = value.lowercase()
+            while (true) {
+                val matchIndex = valueLower.indexOf(queryLower, startIndex)
+                if (matchIndex == -1) break
 
-                            results.add(SourceFieldItem(
-                                sourceName = sourceName,
-                                sourceUrl = sourceUrl,
-                                tabKey = tabKey,
-                                tabName = TAB_NAMES[tabKey] ?: tabKey,
-                                fieldKey = fieldKey,
-                                fieldName = fieldName,
-                                value = contextText,
-                                fullValue = value
-                            ))
-                            startIndex = matchIndex + 1
-                        }
-                    }
+                val start = maxOf(0, matchIndex - contextChars)
+                val end = minOf(value.length, matchIndex + queryLen + contextChars)
+                val contextText = buildString {
+                    if (start > 0) append("...")
+                    append(value.substring(start, end))
+                    if (end < value.length) append("...")
                 }
+
+                results.add(item.copy(value = contextText))
+                startIndex = matchIndex + 1
             }
         }
 
@@ -218,12 +206,16 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
     private suspend fun searchJsonFull(
         queryLower: String,
         queryLen: Int,
-        contextChars: Int
+        contextChars: Int,
+        allItems: List<SourceFieldItem>
     ): List<SourceFieldItem> {
         val results = mutableListOf<SourceFieldItem>()
+        val sourceUrls = allItems.map { it.sourceUrl }.distinct()
 
-        for ((sourceName, sourceUrl, jsonObj) in allSources) {
+        for (sourceUrl in sourceUrls) {
             currentCoroutineContext().ensureActive()
+            val source = allSources.find { it.second == sourceUrl } ?: continue
+            val (_, _, jsonObj) = source
             val jsonStr = jsonObj.toString()
             if (!jsonStr.lowercase().contains(queryLower)) continue
 
@@ -242,7 +234,7 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
                 }
 
                 results.add(SourceFieldItem(
-                    sourceName = sourceName,
+                    sourceName = source.first,
                     sourceUrl = sourceUrl,
                     tabKey = "json",
                     tabName = "JSON",

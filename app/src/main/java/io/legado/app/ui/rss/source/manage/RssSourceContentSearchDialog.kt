@@ -109,7 +109,7 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
         return if (searchByRuleField) {
             searchRuleFields(queryLower, query.length, contextChars, allItems)
         } else {
-            searchJsonFull(queryLower, query.length, contextChars)
+            searchJsonFull(queryLower, query.length, contextChars, allItems)
         }
     }
 
@@ -164,12 +164,15 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
     private suspend fun searchJsonFull(
         queryLower: String,
         queryLen: Int,
-        contextChars: Int
+        contextChars: Int,
+        allItems: List<SourceFieldItem>
     ): List<SourceFieldItem> {
         val results = mutableListOf<SourceFieldItem>()
+        val sourceUrls = allItems.map { it.sourceUrl }.distinct()
 
-        for (source in allRssSources) {
+        for (sourceUrl in sourceUrls) {
             currentCoroutineContext().ensureActive()
+            val source = allRssSources.find { it.sourceUrl == sourceUrl } ?: continue
             val jsonStr = cachedJsonStrings[source.sourceUrl] ?: continue
             if (!jsonStr.lowercase().contains(queryLower)) continue
 
