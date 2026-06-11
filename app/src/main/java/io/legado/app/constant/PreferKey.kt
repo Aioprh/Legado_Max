@@ -53,6 +53,8 @@ object PreferKey {
     const val mdLinkInnerBrowser = "mdLinkInnerBrowser" // MD链接用内置浏览器打开
     const val bookshelfLayout = "bookshelfLayout"
     const val bookshelfSort = "bookshelfSort"
+    const val folderLayout = "folderLayout"
+    const val bookLayout = "bookLayout"
     const val bookExportFileName = "bookExportFileName"
     const val bookImportFileName = "bookImportFileName"
     const val episodeExportFileName = "episodeExportFileName"

@@ -1506,4 +1506,8 @@
     <string name="switch_layout_list">列表</string>
     <string name="switch_layout_grid">網格</string>
     <string name="switch_layout_waterfall">瀑布流</string>
+
+    <!-- 書架布局 -->
+    <string name="book_view">書籍視圖</string>
+    <string name="folder_view">文件夾視圖</string>
 </resources>

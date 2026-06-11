@@ -58,14 +58,10 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
     }
 
     private val binding by viewBinding(FragmentBookshelf2Binding::bind)
-    private val bookshelfLayout by lazy { AppConfig.bookshelfLayout }
-    private val booksAdapter: BaseBooksAdapter<*> by lazy {
-        if (bookshelfLayout >= 2) {
-            BooksAdapterGrid(requireContext(), this)
-        } else {
-            BooksAdapterList(requireContext(), this)
-        }
-    }
+    private var folderLayout = AppConfig.folderLayout
+    private var bookLayout = AppConfig.bookLayout
+    private var spanCount = 1
+    private lateinit var booksAdapter: BaseBooksAdapter<*>
     private var bookGroups: List<BookGroup> = emptyList()
     private var booksFlowJob: Job? = null
     override var groupId = BookGroup.IdRoot
@@ -77,6 +73,24 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
     private var totalRows = 0
     private var lastRowIndex = 0
 
+    // 计算最小公倍数
+    private fun lcm(a: Int, b: Int): Int {
+        return a * b / gcd(a, b)
+    }
+
+    // 计算最大公约数
+    private fun gcd(a: Int, b: Int): Int {
+        return if (b == 0) a else gcd(b, a % b)
+    }
+
+    private fun createBooksAdapter(): BaseBooksAdapter<*> {
+        return if (AppConfig.bookLayout >= 2) {
+            BooksAdapterGrid(requireContext(), this)
+        } else {
+            BooksAdapterList(requireContext(), this)
+        }
+    }
+
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         setSupportToolbar(binding.titleBar.toolbar)
         initRecyclerView()
@@ -85,6 +99,10 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
     }
 
     private fun initRecyclerView() {
+        // 初始化适配器
+        if (!this::booksAdapter.isInitialized) {
+            booksAdapter = createBooksAdapter()
+        }
         binding.rvBookshelf.setHasFixedSize(true)
         binding.rvBookshelf.setEdgeEffectColor(primaryColor)
         upFastScrollerBar()
@@ -93,17 +111,57 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             binding.refreshLayout.isRefreshing = false
             activityViewModel.upToc(books, onlyUpdateRead)
         }
-        if (bookshelfLayout >= 2) {
-            binding.rvBookshelf.layoutManager = GridLayoutManager(context, bookshelfLayout)
+        // 让文件夹和书籍完全独立，互不影响
+        // 使用最小公倍数作为spanCount，两者可以自由选择列数
+        val bookSpan = if (bookLayout >= 2) bookLayout else 1
+        val folderSpan = if (folderLayout >= 2) folderLayout else 1
+        val useGrid = bookSpan > 1 || folderSpan > 1
+        
+        // 计算最小公倍数
+        spanCount = if (useGrid) {
+            lcm(bookSpan, folderSpan)
         } else {
-            binding.rvBookshelf.layoutManager = LinearLayoutManager(context)
+            1
         }
+        
+        val layoutManager = if (useGrid) {
+            GridLayoutManager(context, spanCount).apply {
+                spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                    override fun getSpanSize(position: Int): Int {
+                        return if (booksAdapter.getItemViewType(position) == 1) {
+                            // 文件夹：folderLayout >= 2 时占 spanCount/folderSpan 列（显示为folderLayout列网格）
+                            // folderLayout < 2 时占满一行（列表样式）
+                            if (folderLayout >= 2) {
+                                spanCount / folderSpan
+                            } else {
+                                spanCount // 占满一行（列表样式）
+                            }
+                        } else {
+                            // 书籍：bookLayout >= 2 时占 spanCount/bookSpan 列（显示为bookLayout列网格）
+                            // bookLayout < 2 时占满一行（列表样式）
+                            if (bookLayout >= 2) {
+                                spanCount / bookSpan
+                            } else {
+                                spanCount // 占满一行（列表样式）
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            LinearLayoutManager(context)
+        }
+        binding.rvBookshelf.layoutManager = layoutManager
         binding.rvBookshelf.adapter = booksAdapter
         /**
          * 采用 layoutManager?.onRestoreInstanceState(layoutState)
          * 恢复滚动位置
          * **/
-        binding.rvBookshelf.itemAnimator =  null
+        binding.rvBookshelf.itemAnimator = null
+        // 清除旧的ItemDecoration，避免累积
+        while (binding.rvBookshelf.itemDecorationCount > 0) {
+            binding.rvBookshelf.removeItemDecorationAt(0)
+        }
         binding.rvBookshelf.addItemDecoration(object : RecyclerView.ItemDecoration() {
             private val marginFirst = bookshelfMargin + 24
             private val marginNormal = bookshelfMargin
@@ -117,8 +175,8 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                 val position = parent.getChildAdapterPosition(view)
                 if (position == RecyclerView.NO_POSITION) return
                 
-                if (bookshelfLayout >= 2) {
-                    val rowIndex = position / bookshelfLayout
+                if (spanCount >= 2) {
+                    val rowIndex = position / spanCount
                     when (rowIndex) {
                         0 -> outRect.set(bookshelfMargin, marginFirst, bookshelfMargin, bookshelfMargin)
                         lastRowIndex -> outRect.set(bookshelfMargin, bookshelfMargin, bookshelfMargin, marginFirst)
@@ -150,7 +208,6 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             bookGroups = data
             booksAdapter.updateItems(groupId)
             itemCount = getItemCount()
-            val spanCount = bookshelfLayout
             if (spanCount >= 2) {
                 totalRows = if (itemCount % spanCount == 0) itemCount / spanCount else itemCount / spanCount + 1
                 lastRowIndex = totalRows - 1
@@ -216,7 +273,6 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                 books = list
                 booksAdapter.updateItems(groupId)
                 itemCount = getItemCount()
-                val spanCount = bookshelfLayout
                 if (spanCount >= 2) {
                     totalRows = if (itemCount % spanCount == 0) itemCount / spanCount else itemCount / spanCount + 1
                     lastRowIndex = totalRows - 1
@@ -230,7 +286,10 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
     fun back(): Boolean {
         if (groupId != BookGroup.IdRoot) {
             groupId = BookGroup.IdRoot
-            initBooksData()
+            // 检查View是否存在，避免崩溃
+            if (view != null && viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                initBooksData()
+            }
             return true
         }
         return false
@@ -301,6 +360,17 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             booksAdapter.notification(it)
         }
         observeEvent<String>(EventBus.BOOKSHELF_REFRESH) {
+            // 更新布局配置
+            folderLayout = AppConfig.folderLayout
+            bookLayout = AppConfig.bookLayout
+            // 如果布局类型改变，重新创建适配器
+            val newAdapter = createBooksAdapter()
+            if (newAdapter::class != booksAdapter::class) {
+                booksAdapter = newAdapter
+                booksAdapter.updateItems(groupId)
+            }
+            // 重新初始化RecyclerView以应用新的布局
+            initRecyclerView()
             booksAdapter.notifyDataSetChanged()
             upFastScrollerBar()
         }

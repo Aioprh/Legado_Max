@@ -1738,6 +1738,10 @@
     <string name="switch_layout_grid">网格</string>
     <string name="switch_layout_waterfall">瀑布流</string>
 
+    <!-- 书架布局 -->
+    <string name="book_view">书籍视图</string>
+    <string name="folder_view">文件夹视图</string>
+
     <!-- 视频播放器手势控制设置 -->
     <string name="double_tap_seek_enabled">双击快退/快进</string>
     <string name="double_tap_seek_seconds">双击跳转秒数</string>

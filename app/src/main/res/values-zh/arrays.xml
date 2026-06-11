@@ -13,6 +13,16 @@
         <item>文件夹</item>
     </string-array>
 
+    <string-array name="book_view">
+        <item>列表</item>
+        <item>紧凑列表</item>
+        <item>网格2列</item>
+        <item>网格3列</item>
+        <item>网格4列</item>
+        <item>网格5列</item>
+        <item>网格6列</item>
+    </string-array>
+
     <string-array name="text_suffix">
         <item>.txt</item>
         <item>.json</item>

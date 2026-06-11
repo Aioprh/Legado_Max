@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
+import io.legado.app.databinding.ItemBookshelfGridGroupBinding
 import io.legado.app.databinding.ItemBookshelfList2Binding
 import io.legado.app.databinding.ItemBookshelfListBinding
 import io.legado.app.databinding.ItemBookshelfListGroupBinding
@@ -22,9 +23,16 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
-            1 -> GroupViewHolder(ItemBookshelfListGroupBinding.inflate(inflater, parent, false))
+            1 -> {
+                // 根据folderLayout选择文件夹布局
+                if (AppConfig.folderLayout >= 2) {
+                    GroupGridViewHolder(ItemBookshelfGridGroupBinding.inflate(inflater, parent, false))
+                } else {
+                    GroupViewHolder(ItemBookshelfListGroupBinding.inflate(inflater, parent, false))
+                }
+            }
             else -> {
-                if (AppConfig.bookshelfLayout == 0) { BookViewHolder(ItemBookshelfListBinding.inflate(inflater, parent, false)) }
+                if (AppConfig.bookLayout == 0) { BookViewHolder(ItemBookshelfListBinding.inflate(inflater, parent, false)) }
                 else { BookViewHolder2(ItemBookshelfList2Binding.inflate(inflater, parent, false)) }
             }
 
@@ -48,6 +56,11 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             }
 
             is GroupViewHolder -> (getItem(position) as? BookGroup)?.let {
+                holder.registerListener(it)
+                holder.onBind(it, position, payloads)
+            }
+
+            is GroupGridViewHolder -> (getItem(position) as? BookGroup)?.let {
                 holder.registerListener(it)
                 holder.onBind(it, position, payloads)
             }
@@ -201,6 +214,41 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             tvAuthor.gone()
             tvLast.gone()
             tvRead.gone()
+        }
+
+        fun onBind(item: BookGroup, position: Int, payloads: MutableList<Any>) = binding.run {
+            if (payloads.isEmpty()) {
+                onBind(item, position)
+            } else {
+                for (i in payloads.indices) {
+                    val bundle = payloads[i] as Bundle
+                    bundle.keySet().forEach {
+                        when (it) {
+                            "groupName" -> tvName.text = item.groupName
+                            "cover" -> ivCover.load(item.cover)
+                        }
+                    }
+                }
+            }
+        }
+
+        fun registerListener(item: Any) {
+            binding.root.setOnClickListener {
+                callBack.onItemClick(item)
+            }
+            binding.root.onLongClick {
+                callBack.onItemLongClick(item)
+            }
+        }
+
+    }
+
+    inner class GroupGridViewHolder(val binding: ItemBookshelfGridGroupBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+
+        fun onBind(item: BookGroup, position: Int) = binding.run {
+            tvName.text = item.groupName
+            ivCover.load(item.cover)
         }
 
         fun onBind(item: BookGroup, position: Int, payloads: MutableList<Any>) = binding.run {

@@ -173,18 +173,15 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
     @SuppressLint("InflateParams")
     fun configBookshelf() {
         alert(titleResource = R.string.bookshelf_layout) {
-            var bookshelfLayout = AppConfig.bookshelfLayout
             var bookshelfSort = AppConfig.bookshelfSort
             var showBookname = AppConfig.showBookname
+            var bookLayout = AppConfig.bookLayout
+            var folderLayout = AppConfig.folderLayout
             val alertBinding =
                 DialogBookshelfConfigBinding.inflate(layoutInflater)
                     .apply {
                         if (AppConfig.bookGroupStyle !in 0..<spGroupStyle.count) {
                             AppConfig.bookGroupStyle = 0
-                        }
-                        if (bookshelfLayout !in rgLayout.indices) {
-                            bookshelfLayout = 0
-                            AppConfig.bookshelfLayout = 0
                         }
                         if (bookshelfSort !in rgSort.indices) {
                             bookshelfSort = 0
@@ -195,18 +192,29 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                             AppConfig.showBookname = 0
                         }
                         spGroupStyle.setSelection(AppConfig.bookGroupStyle)
+                        spBookView.setSelection(bookLayout)
+                        spFolderView.setSelection(folderLayout)
+                        // 根据分组样式控制文件夹视图的可见性
+                        llFolderView.visibility = if (AppConfig.bookGroupStyle == 1) View.VISIBLE else View.GONE
+                        // 监听分组样式变化，动态更新文件夹视图的可见性
+                        spGroupStyle.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                                llFolderView.visibility = if (position == 1) View.VISIBLE else View.GONE
+                            }
+                            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+                        }
                         swShowUnread.isChecked = AppConfig.showUnread
                         swShowLastUpdateTime.isChecked = AppConfig.showLastUpdateTime
                         swShowWaitUpBooks.isChecked = AppConfig.showWaitUpCount
                         swShowBookshelfFastScroller.isChecked = AppConfig.showBookshelfFastScroller
-                        rgLayout.checkByIndex(bookshelfLayout)
                         rgbLayout.checkByIndex(showBookname)
-                        if (bookshelfLayout < 2) {
-                            bookNameChoice.visibility = View.GONE
-                        }
-                        rgLayout.setOnCheckedChangeListener { group, checkedId ->
-                            val index = group.getCheckedIndex()
-                            bookNameChoice.visibility = if (index > 1) View.VISIBLE else View.GONE
+                        // 根据书籍视图控制书名显示选项的可见性
+                        bookNameChoice.visibility = if (bookLayout > 1) View.VISIBLE else View.GONE
+                        spBookView.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                                bookNameChoice.visibility = if (position > 1) View.VISIBLE else View.GONE
+                            }
+                            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
                         }
                         rgSort.checkByIndex(bookshelfSort)
                         margin.progress = AppConfig.bookshelfMargin
@@ -214,11 +222,19 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
             customView { alertBinding.root }
             okButton {
                 alertBinding.apply {
-                    var notifyMain = false
                     var recreate = false
+                    var refreshBookshelf = false
                     if (AppConfig.bookGroupStyle != spGroupStyle.selectedItemPosition) {
                         AppConfig.bookGroupStyle = spGroupStyle.selectedItemPosition
-                        notifyMain = true
+                        recreate = true // 分组样式改变需要重新创建Activity
+                    }
+                    if (bookLayout != spBookView.selectedItemPosition) {
+                        AppConfig.bookLayout = spBookView.selectedItemPosition
+                        refreshBookshelf = true
+                    }
+                    if (folderLayout != spFolderView.selectedItemPosition) {
+                        AppConfig.folderLayout = spFolderView.selectedItemPosition
+                        refreshBookshelf = true
                     }
                     if (showBookname != rgbLayout.getCheckedIndex()) {
                         AppConfig.showBookname = rgbLayout.getCheckedIndex()
@@ -248,19 +264,10 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         AppConfig.bookshelfSort = rgSort.getCheckedIndex()
                         upSort()
                     }
-                    if (bookshelfLayout != rgLayout.getCheckedIndex()) {
-                        AppConfig.bookshelfLayout = rgLayout.getCheckedIndex()
-                        if (AppConfig.bookshelfLayout < 2) {
-                            activityViewModel.booksGridRecycledViewPool.clear()
-                        } else {
-                            activityViewModel.booksListRecycledViewPool.clear()
-                        }
-                        recreate = true
-                    }
                     if (recreate) {
                         postEvent(EventBus.RECREATE, "")
-                    } else if (notifyMain) {
-                        postEvent(EventBus.NOTIFY_MAIN, false)
+                    } else if (refreshBookshelf) {
+                        postEvent(EventBus.BOOKSHELF_REFRESH, "")
                     }
                 }
             }

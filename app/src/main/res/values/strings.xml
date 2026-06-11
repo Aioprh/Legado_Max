@@ -1892,6 +1892,10 @@
     <string name="switch_layout_grid">Grid</string>
     <string name="switch_layout_waterfall">Waterfall</string>
 
+    <!-- Bookshelf Layout -->
+    <string name="book_view">Book View</string>
+    <string name="folder_view">Folder View</string>
+
     <!-- Group Management -->
     <string name="group_name">Group Name</string>
 
