@@ -64,6 +64,10 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     val booksListRecycledViewPool = RecycledViewPool().apply {
         setMaxRecycledViews(0, 30)
     }
+    // 紧凑列表布局使用独立的 RecycledViewPool，避免与标准列表布局混淆导致 ClassCastException
+    val booksList2RecycledViewPool = RecycledViewPool().apply {
+        setMaxRecycledViews(0, 30)
+    }
     val booksGridRecycledViewPool = RecycledViewPool().apply {
         setMaxRecycledViews(0, 100)
     }

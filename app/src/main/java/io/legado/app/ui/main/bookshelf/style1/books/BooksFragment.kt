@@ -116,6 +116,10 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         if (bookLayout >= 2) {
             binding.rvBookshelf.layoutManager = GridLayoutManager(context, bookLayout)
             binding.rvBookshelf.setRecycledViewPool(activityViewModel.booksGridRecycledViewPool)
+        } else if (bookLayout == 1) {
+            // 紧凑列表使用独立的 RecycledViewPool，避免与标准列表布局混淆
+            binding.rvBookshelf.layoutManager = LinearLayoutManager(context)
+            binding.rvBookshelf.setRecycledViewPool(activityViewModel.booksList2RecycledViewPool)
         } else {
             binding.rvBookshelf.layoutManager = LinearLayoutManager(context)
             binding.rvBookshelf.setRecycledViewPool(activityViewModel.booksListRecycledViewPool)

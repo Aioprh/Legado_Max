@@ -1895,6 +1895,16 @@
     <!-- Bookshelf Layout -->
     <string name="book_view">Book View</string>
     <string name="folder_view">Folder View</string>
+    <!-- Show more info in list view -->
+    <string name="show_more_info">Show More Info</string>
+    <string name="show_intro">Show Intro</string>
+    <string name="show_tags">Show Tags</string>
+    <!-- Intro lines selection -->
+    <string name="intro_lines">Intro Lines</string>
+    <string name="intro_lines_1">1 Line</string>
+    <string name="intro_lines_2">2 Lines</string>
+    <string name="intro_lines_3">3 Lines</string>
+    <string name="intro_lines_4">4 Lines</string>
 
     <!-- Group Management -->
     <string name="group_name">Group Name</string>

@@ -5,23 +5,23 @@
     android:id="@+id/cv_content"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_item_focused_on_tv"
+    android:layout_margin="4dp"
+    android:background="@drawable/card_border_background"
     android:clickable="true"
     android:focusable="true"
+    android:padding="8dp"
     android:scrollbars="none"
     tools:ignore="UnusedAttribute">
 
+    <!-- 封面固定在顶部，不随底部内容扩展而居中 -->
     <io.legado.app.ui.widget.image.CoverImageView
         android:id="@+id/iv_cover"
         android:layout_width="48dp"
         android:layout_height="64dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginBottom="4dp"
         android:contentDescription="@string/img_cover"
         android:scaleType="centerCrop"
         android:src="@drawable/image_cover_default"
         android:transitionName="img_cover"
-        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="UnusedAttribute" />
@@ -30,7 +30,7 @@
         android:id="@+id/fl_has_new"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
+        android:layout_marginEnd="8dp"
         app:layout_constraintBottom_toBottomOf="@+id/tv_name"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="@+id/tv_name">
@@ -55,14 +55,14 @@
             tools:ignore="RtlHardcoded" />
     </FrameLayout>
 
+    <!-- 书名与封面顶部对齐 -->
     <TextView
         android:id="@+id/tv_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="10dp"
+        android:layout_marginStart="10dp"
         android:includeFontPadding="false"
-        android:paddingLeft="2dp"
-        android:paddingBottom="4dp"
+        android:paddingStart="2dp"
         android:scrollbars="none"
         android:singleLine="true"
         android:textColor="@color/primaryText"
@@ -70,7 +70,7 @@
         app:layout_constraintBottom_toTopOf="@+id/tv_author"
         app:layout_constraintLeft_toRightOf="@+id/iv_cover"
         app:layout_constraintRight_toLeftOf="@id/fl_has_new"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/iv_cover"
         tools:ignore="RtlHardcoded,RtlSymmetry"
         tools:text="@string/book_name"/>
 

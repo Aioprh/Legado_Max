@@ -292,6 +292,31 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefInt(PreferKey.bookLayout, value)
         }
 
+    var showMoreInfoInList: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.showMoreInfoInList, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.showMoreInfoInList, value)
+        }
+
+    var showIntroInList: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.showIntroInList, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.showIntroInList, value)
+        }
+
+    var showTagsInList: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.showTagsInList, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.showTagsInList, value)
+        }
+
+    // 简介显示行数（默认2行，范围1-10）
+    var introLinesInList: Int
+        get() = appCtx.getPrefInt(PreferKey.introLinesInList, 2)
+        set(value) {
+            appCtx.putPrefInt(PreferKey.introLinesInList, value.coerceIn(1, 10))
+        }
+
     var saveTabPosition: Int
         get() = appCtx.getPrefInt(PreferKey.saveTabPosition, 0)
         set(value) {
