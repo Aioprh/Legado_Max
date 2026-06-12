@@ -62,7 +62,8 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
     protected var sourcesLoaded = false
     protected var lastResults: List<SourceFieldItem> = emptyList()
 
-    protected var selectedTabs: MutableSet<String> = mutableSetOf()
+    /** 当前选中的分类 key，"__ALL__" 表示全部分类 */
+    protected var selectedTab: String = "__ALL__"
     private var historyRecyclerView: RecyclerView? = null
     private var historyContainer: LinearLayout? = null
 
@@ -128,7 +129,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         }
 
         val tabNames = getTabNames()
-        selectedTabs = tabNames.keys.toMutableSet()
+        selectedTab = "__ALL__"
 
         setupToggleBar()
         setupTabFilterChips(tabNames)
@@ -318,14 +319,15 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             setPadding(dpToPx(12), dpToPx(6), dpToPx(12), dpToPx(6))
             isClickable = true
             isFocusable = true
-            setTextColor(accentColor)
-            background = createChipBackground(true)
+            tag = "__ALL__"
         }
         allBtn.setOnClickListener {
-            selectedTabs = tabNames.keys.toMutableSet()
-            updateTabChipStyles(chipLayout, tabNames)
-            val query = binding.searchEditText.text.toString().trim()
-            if (query.isNotEmpty()) doSearch(query)
+            if (selectedTab != "__ALL__") {
+                selectedTab = "__ALL__"
+                updateTabChipStyles(chipLayout)
+                val query = binding.searchEditText.text.toString().trim()
+                if (query.isNotEmpty()) doSearch(query)
+            }
         }
         chipLayout.addView(allBtn)
 
@@ -345,21 +347,15 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
                 isClickable = true
                 isFocusable = true
                 tag = tabKey
-                setTextColor(accentColor)
-                background = createChipBackground(true)
             }
             btn.setOnClickListener {
                 val key = btn.tag as String
-                if (selectedTabs.contains(key)) {
-                    if (selectedTabs.size > 1) {
-                        selectedTabs.remove(key)
-                    }
-                } else {
-                    selectedTabs.add(key)
+                if (selectedTab != key) {
+                    selectedTab = key
+                    updateTabChipStyles(chipLayout)
+                    val query = binding.searchEditText.text.toString().trim()
+                    if (query.isNotEmpty()) doSearch(query)
                 }
-                updateTabChipStyles(chipLayout, tabNames)
-                val query = binding.searchEditText.text.toString().trim()
-                if (query.isNotEmpty()) doSearch(query)
             }
             chipButtons.add(btn)
             chipLayout.addView(btn)
@@ -371,25 +367,17 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         val resultCountLp = binding.resultCountText.layoutParams as ConstraintLayout.LayoutParams
         resultCountLp.topToBottom = chipRow.id
         binding.resultCountText.layoutParams = resultCountLp
+
+        updateTabChipStyles(chipLayout)
     }
 
-    private fun updateTabChipStyles(chipLayout: LinearLayout, tabNames: Map<String, String>) {
-        val allSelected = selectedTabs.size == tabNames.size
-
+    private fun updateTabChipStyles(chipLayout: LinearLayout) {
         for (i in 0 until chipLayout.childCount) {
             val child = chipLayout.getChildAt(i)
             if (child is TextView && child.tag != null) {
-                val tabKey = child.tag as String
-                val isSelected = selectedTabs.contains(tabKey)
+                val tag = child.tag as String
+                val isSelected = tag == selectedTab
                 if (isSelected) {
-                    child.setTextColor(accentColor)
-                    child.background = createChipBackground(true)
-                } else {
-                    child.setTextColor(ContextCompat.getColor(child.context, R.color.primaryText))
-                    child.background = createChipBackground(false)
-                }
-            } else if (child is TextView && child.tag == null && child.text == "全部") {
-                if (allSelected) {
                     child.setTextColor(accentColor)
                     child.background = createChipBackground(true)
                 } else {
@@ -678,10 +666,10 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         binding.recyclerView.visibility = View.GONE
         binding.resultCountText.visibility = View.GONE
 
-        val filteredItems = if (selectedTabs.isNotEmpty()) {
-            allSourceItems.filter { it.tabKey in selectedTabs }
-        } else {
+        val filteredItems = if (selectedTab == "__ALL__") {
             allSourceItems
+        } else {
+            allSourceItems.filter { it.tabKey == selectedTab }
         }
 
         searchJob = lifecycleScope.launch(Dispatchers.IO) {
