@@ -14,6 +14,7 @@ import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentStatePagerAdapter
+import androidx.viewpager.widget.ViewPager
 import io.legado.app.R
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
@@ -80,6 +81,17 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         binding.viewPagerBookshelf.setEdgeEffectColor(primaryColor)
         binding.viewPagerBookshelf.offscreenPageLimit = 2
         binding.viewPagerBookshelf.adapter = adapter
+        // 监听 ViewPager 页面切换，更新当前分组名称显示
+        binding.viewPagerBookshelf.addOnPageChangeListener(object : ViewPager.OnPageChangeListener {
+            override fun onPageSelected(position: Int) {
+                // 页面切换时更新当前分组位置和名称
+                currentPosition = position
+                AppConfig.saveTabPosition = position
+                tvGroupName.text = bookGroups.getOrNull(position)?.groupName ?: ""
+            }
+            override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
+            override fun onPageScrollStateChanged(state: Int) {}
+        })
         initTitleSelect()
         updateTitleColor()
     }
