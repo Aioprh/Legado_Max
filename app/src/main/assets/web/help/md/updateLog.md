@@ -4,6 +4,25 @@
 ### cronet版本: 128.0.6613.40
 ### Kotlin版本: 2.3.10 | Rhino版本: 1.8.1 | Compose版本: 2025.04.01 | Compose UI 版本:  1.7.x | Material3 版本: 1.3.x | okhttp版本: 5.3.2
 
+## 项目继承历史
+### 原版
+* [Github](https://github.com/gedoor/legado)
+### Sigma版
+* [Github](https://github.com/Luoyacheng/legado)
+* [Gitee](https://gitee.com/lyc486/legado/releases)
+* [详细日志](https://gitee.com/lyc486/legado/commits/main)
+### Max版
+* [Github](https://github.com/youfengknight/Legado_Max)
+* [Github分支](https://github.com/GEd520/legados)
+
+**2026/06/11**
+- 将分组样式标签切换分组改为下拉选择
+- 文件夹视图和书籍视图独立配置
+- [修复]：恢复半屏浏览器搜索引擎时，因GSON解析的null值覆盖了Kotlin非空默认值而导致的崩溃
+
+**2026/06/10**
+- 优化中英文资源文件
+
 **2026/06/09**
 - 修复语言为英语的情况下大量出现中文字符的情况
 - 试修复高亮规则部分bug
@@ -42,7 +61,6 @@
 - 高亮规则界面按钮优化
 - 缓存选择页面颜色优化
 - 试优化书籍封面宽图不适配的问题
-- 增加适配宽图开关
 - 发现页新增切换布局功能，支持1-10列网格展示
 - 发现页网格模式加载下一页增加2秒冷却限制防频繁请求
 - 书籍缓存选择界面字体颜色优化，增加搜索
