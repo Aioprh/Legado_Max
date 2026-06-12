@@ -166,6 +166,8 @@ class ReadView(context: Context, attrs: AttributeSet) :
         setRect9x()
         prevPage.x = -w.toFloat()
         pageDelegate?.setViewSize(w, h)
+        // 更新章节排版所需的布局参数，确保视图尺寸变化时章节内容能正确排版
+        ChapterProvider.upViewSize(w, h)
         if (w > 0 && h > 0) {
             upBg()
             callBack.upSystemUiVisibility()
