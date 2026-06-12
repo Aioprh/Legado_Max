@@ -140,6 +140,11 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                     }
                 }
                 hasChecked = true
+            } else {
+                // 分组模式：scope 非空即视为有效选中（支持临时选择未启用分组）
+                if (searchScopeNames.isNotEmpty()) {
+                    hasChecked = true
+                }
             }
             val allSourceMenu =
                 menu.add(R.id.menu_group_2, R.id.menu_1, Menu.NONE, getString(R.string.all_source))
@@ -149,11 +154,11 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                             hasChecked = true
                         }
                     }
+            // 菜单渲染仍然只显示已启用分组
             groups?.forEach {
                 if (searchScopeNames.contains(it)) {
                     menu.add(R.id.menu_group_1, Menu.NONE, Menu.NONE, it).apply {
                         isChecked = true
-                        hasChecked = true
                     }
                 } else {
                     menu.add(R.id.menu_group_2, Menu.NONE, Menu.NONE, it)

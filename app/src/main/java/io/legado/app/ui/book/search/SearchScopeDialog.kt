@@ -83,20 +83,16 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
     private fun initOtherView() {
         binding.rgScope.setOnCheckedChangeListener { _, checkedId ->
             binding.toolBar.menu.findItem(R.id.menu_screen)?.isVisible = checkedId == R.id.rb_source
+            updateSelectAllText()
             upData()
         }
-        binding.tvCancel.setOnClickListener {
-            dismiss()
-        }
         binding.tvAllSource.setOnClickListener {
-            callback.onSearchScopeOk(SearchScope(""))
-            dismiss()
+            toggleSelectAll()
         }
         binding.tvOk.setOnClickListener {
             if (binding.rbGroup.isChecked) {
                 callback.onSearchScopeOk(SearchScope(adapter.selectGroups))
             } else {
-                // 书源多选：选中书源列表不为空则提交，否则视为全部书源
                 if (adapter.selectSources.isNotEmpty()) {
                     callback.onSearchScopeOk(SearchScope.fromSources(adapter.selectSources))
                 } else {
@@ -110,9 +106,45 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
     private fun initData() {
         lifecycleScope.launch {
             groups = withContext(IO) {
-                appDb.bookSourceDao.allEnabledGroups()
+                appDb.bookSourceDao.allGroups()
             }
             upData()
+        }
+    }
+
+    /**
+     * 切换全选 / 取消全选
+     */
+    private fun toggleSelectAll() {
+        if (binding.rbGroup.isChecked) {
+            if (adapter.selectGroups.size == groups.size) {
+                adapter.selectGroups.clear()
+            } else {
+                adapter.selectGroups.clear()
+                adapter.selectGroups.addAll(groups)
+            }
+        } else {
+            if (adapter.selectSources.size == screenSources.size) {
+                adapter.selectSources.clear()
+            } else {
+                adapter.selectSources.clear()
+                adapter.selectSources.addAll(screenSources)
+            }
+        }
+        updateSelectAllText()
+        adapter.notifyItemRangeChanged(0, adapter.itemCount, "up")
+    }
+
+    private fun updateSelectAllText() {
+        val isAllSelected = if (binding.rbGroup.isChecked) {
+            groups.isNotEmpty() && adapter.selectGroups.size == groups.size
+        } else {
+            screenSources.isNotEmpty() && adapter.selectSources.size == screenSources.size
+        }
+        binding.tvAllSource.text = if (isAllSelected) {
+            getString(R.string.un_select_all)
+        } else {
+            getString(R.string.select_all)
         }
     }
 
@@ -121,6 +153,7 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
         if (binding.rbSource.isChecked) {
             upBookSource(screenText)
         } else {
+            updateSelectAllText()
             adapter.notifyDataSetChanged()
         }
     }
@@ -145,6 +178,7 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
             }.flowOn(IO).conflate().collect { data ->
                 screenSources.clear()
                 screenSources.addAll(data)
+                updateSelectAllText()
                 adapter.notifyDataSetChanged()
                 delay(500)
             }
@@ -154,11 +188,9 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
     inner class RecyclerAdapter : RecyclerView.Adapter<ItemViewHolder>() {
 
         val selectGroups = arrayListOf<String>()
-        /** 书源多选列表，替代原来的单选 */
         val selectSources = arrayListOf<BookSourcePart>()
 
         override fun getItemViewType(position: Int): Int {
-            // 分组和书源模式都使用 CheckBox 多选布局
             return 0
         }
 
@@ -180,11 +212,13 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
                             screenSources.getOrNull(position)?.let {
                                 holder.binding.checkBox.isChecked = selectSources.contains(it)
                                 holder.binding.checkBox.text = it.bookSourceName
+                                setSourceAlpha(holder.binding, it.enabled)
                             }
                         } else {
                             groups.getOrNull(position)?.let {
                                 holder.binding.checkBox.isChecked = selectGroups.contains(it)
                                 holder.binding.checkBox.text = it
+                                holder.binding.root.alpha = 1.0f
                             }
                         }
                     }
@@ -196,32 +230,34 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
             when (holder.binding) {
                 is ItemCheckBoxBinding -> {
                     if (binding.rbSource.isChecked) {
-                        // 书源模式：CheckBox 多选
-                        screenSources.getOrNull(position)?.let {
-                            holder.binding.checkBox.isChecked = selectSources.contains(it)
-                            holder.binding.checkBox.text = it.bookSourceName
+                        screenSources.getOrNull(position)?.let { source ->
+                            holder.binding.checkBox.isChecked = selectSources.contains(source)
+                            holder.binding.checkBox.text = source.bookSourceName
+                            setSourceAlpha(holder.binding, source.enabled)
                             holder.binding.checkBox.setOnUserCheckedChangeListener { isChecked ->
                                 if (isChecked) {
-                                    selectSources.add(it)
+                                    selectSources.add(source)
                                 } else {
-                                    selectSources.remove(it)
+                                    selectSources.remove(source)
                                 }
+                                updateSelectAllText()
                                 holder.itemView.post {
                                     notifyItemRangeChanged(0, itemCount, "up")
                                 }
                             }
                         }
                     } else {
-                        // 分组模式：CheckBox 多选
-                        groups.getOrNull(position)?.let {
-                            holder.binding.checkBox.isChecked = selectGroups.contains(it)
-                            holder.binding.checkBox.text = it
+                        groups.getOrNull(position)?.let { group ->
+                            holder.binding.checkBox.isChecked = selectGroups.contains(group)
+                            holder.binding.checkBox.text = group
+                            holder.binding.root.alpha = 1.0f
                             holder.binding.checkBox.setOnUserCheckedChangeListener { isChecked ->
                                 if (isChecked) {
-                                    selectGroups.add(it)
+                                    selectGroups.add(group)
                                 } else {
-                                    selectGroups.remove(it)
+                                    selectGroups.remove(group)
                                 }
+                                updateSelectAllText()
                                 holder.itemView.post {
                                     notifyItemRangeChanged(0, itemCount, "up")
                                 }
@@ -238,6 +274,13 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
             } else {
                 groups.size
             }
+        }
+
+        /**
+         * 未启用书源降低透明度作为视觉区分
+         */
+        private fun setSourceAlpha(binding: ItemCheckBoxBinding, enabled: Boolean) {
+            binding.root.alpha = if (enabled) 1.0f else 0.5f
         }
 
     }

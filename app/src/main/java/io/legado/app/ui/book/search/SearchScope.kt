@@ -39,7 +39,7 @@ data class SearchScope(private var scope: String) {
     fun update(scope: String, postValue: Boolean = true, save: Boolean = true) {
         this.scope = scope
         if (postValue) stateLiveData.postValue(scope)
-        if (save) { //不对单书源的搜索进行缓存，防止下次依旧为单书源搜索（单书源搜索需要每次都指定）
+        if (save) {
             save()
         }
     }
@@ -65,7 +65,6 @@ data class SearchScope(private var scope: String) {
     val display: String
         get() {
             if (scope.contains("::")) {
-                // 多书源时显示"首书源名 +N"格式
                 val sources = scope.split(";;")
                 return if (sources.size == 1) {
                     scope.substringBefore("::")
@@ -79,14 +78,10 @@ data class SearchScope(private var scope: String) {
             return scope
         }
 
-    /**
-     * 搜索范围显示
-     */
     val displayNames: List<String>
         get() {
             val list = arrayListOf<String>()
             if (scope.contains("::")) {
-                // 书源模式下拆分出每个书源名称
                 scope.split(";;").forEach {
                     list.add(it.substringBefore("::"))
                 }
@@ -100,7 +95,6 @@ data class SearchScope(private var scope: String) {
 
     fun remove(scope: String) {
         if (isSource()) {
-            // 书源模式：从多书源列表中移除指定书源
             val sources = this.scope.split(";;").toMutableList()
             sources.removeAll { it.substringBefore("::") == scope }
             this.scope = sources.joinToString(";;")
@@ -121,6 +115,7 @@ data class SearchScope(private var scope: String) {
 
     /**
      * 搜索范围书源
+     * 分组模式下包含该分组下所有书源（含未启用），支持临时搜索未启用书源
      */
     fun getBookSourceParts(): List<BookSourcePart> {
         val list = hashSetOf<BookSourcePart>()
@@ -128,7 +123,6 @@ data class SearchScope(private var scope: String) {
             list.addAll(appDb.bookSourceDao.allEnabledPart)
         } else {
             if (scope.contains("::")) {
-                // 书源模式：支持单选和多选（;;分隔）
                 scope.split(";;").forEach { sourceScope ->
                     sourceScope.substringAfter("::").let { url ->
                         appDb.bookSourceDao.getBookSourcePart(url)?.let { source ->
@@ -139,7 +133,7 @@ data class SearchScope(private var scope: String) {
             } else {
                 val oldScope = scope.splitNotBlank(",")
                 val newScope = oldScope.filter {
-                    val bookSources = appDb.bookSourceDao.getEnabledPartByGroup(it)
+                    val bookSources = appDb.bookSourceDao.getPartByGroup(it)
                     list.addAll(bookSources)
                     bookSources.isNotEmpty()
                 }
@@ -175,7 +169,6 @@ data class SearchScope(private var scope: String) {
     }
 
     companion object {
-        /** 多个书源构造，用伴生对象工厂方法避免JVM签名冲突 */
         fun fromSources(sources: List<BookSourcePart>) = SearchScope(
             sources.joinToString(";;") { "${it.bookSourceName.replace(":", "")}::${it.bookSourceUrl}" }
         )
