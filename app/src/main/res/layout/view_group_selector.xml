@@ -9,7 +9,7 @@
     android:clickable="true"
     android:focusable="true"
     android:background="@drawable/bg_discover_embedded_action"
-    android:paddingStart="12dp"
+    android:paddingStart="4dp"
     android:paddingEnd="8dp">
 
     <TextView
