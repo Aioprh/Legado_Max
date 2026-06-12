@@ -1741,6 +1741,16 @@
     <!-- 书架布局 -->
     <string name="book_view">书籍视图</string>
     <string name="folder_view">文件夹视图</string>
+    <!-- 列表视图显示更多信息 -->
+    <string name="show_more_info">显示更多信息</string>
+    <string name="show_intro">显示简介</string>
+    <string name="show_tags">显示标签</string>
+    <!-- 简介行数选择 -->
+    <string name="intro_lines">简介行数</string>
+    <string name="intro_lines_1">1行</string>
+    <string name="intro_lines_2">2行</string>
+    <string name="intro_lines_3">3行</string>
+    <string name="intro_lines_4">4行</string>
 
     <!-- 视频播放器手势控制设置 -->
     <string name="double_tap_seek_enabled">双击快退/快进</string>

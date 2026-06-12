@@ -15,8 +15,11 @@
 * [Github](https://github.com/youfengknight/Legado_Max)
 * [Github分支](https://github.com/GEd520/legados)
 
+**2026/06/12**
+- 优化分组样式为标签时的切换分组下拉菜单
+
 **2026/06/11**
-- 将分组样式标签切换分组改为下拉选择
+- 将分组样式为标签时的切换分组改为下拉选择
 - 文件夹视图和书籍视图独立配置
 - [修复]：恢复半屏浏览器搜索引擎时，因GSON解析的null值覆盖了Kotlin非空默认值而导致的崩溃
 

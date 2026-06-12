@@ -2,16 +2,22 @@ package io.legado.app.ui.main.bookshelf.style1.books
 
 import android.content.Context
 import android.os.Bundle
+import android.view.Gravity
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import com.google.android.flexbox.FlexboxLayout
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.entities.Book
 import io.legado.app.databinding.ItemBookshelfListBinding
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
+import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
+import io.legado.app.utils.splitNotBlank
 import io.legado.app.utils.toTimeAgo
+import io.legado.app.utils.visible
 import splitties.views.onLongClick
 
 class BooksAdapterList(
@@ -39,6 +45,8 @@ class BooksAdapterList(
             ivCover.load(item, false)
             upRefresh(binding, item)
             upLastUpdateTime(binding, item)
+            // 显示简介和标签（仅在列表视图启用"显示更多信息"时）
+            upMoreInfo(binding, item)
         } else {
             for (i in payloads.indices) {
                 val bundle = payloads[i] as Bundle
@@ -57,6 +65,7 @@ class BooksAdapterList(
 
                         "refresh" -> upRefresh(binding, item)
                         "lastUpdateTime" -> upLastUpdateTime(binding, item)
+                        "moreInfo" -> upMoreInfo(binding, item)
                     }
                 }
             }
@@ -86,6 +95,60 @@ class BooksAdapterList(
             }
         } else {
             binding.tvLastUpdateTime.text = ""
+        }
+    }
+
+    /** 更新简介和标签的显示状态 */
+    private fun upMoreInfo(binding: ItemBookshelfListBinding, item: Book) {
+        // 显示标签（使用 FlexboxLayout，每个标签有外框）
+        if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
+            binding.flexboxTags.visible()
+            updateTagViews(binding.flexboxTags, item.customTag ?: item.kind ?: "")
+        } else {
+            binding.flexboxTags.gone()
+        }
+        // 显示简介（使用配置的行数）
+        if (AppConfig.showMoreInfoInList && AppConfig.showIntroInList) {
+            binding.tvIntro.visible()
+            binding.tvIntro.text = item.intro ?: item.customIntro ?: ""
+            // 根据配置设置简介的最大行数
+            binding.tvIntro.maxLines = AppConfig.introLinesInList
+        } else {
+            binding.tvIntro.gone()
+        }
+    }
+
+    /** 更新 FlexboxLayout 中的标签视图 */
+    private fun updateTagViews(flexboxLayout: FlexboxLayout, tagsText: String) {
+        flexboxLayout.removeAllViews()
+        if (tagsText.isBlank()) return
+
+        // 使用 splitNotBlank 方法分隔标签（与书籍详情页一致，使用逗号和换行符）
+        val tags = tagsText.splitNotBlank(",", "\n")
+        for (tag in tags) {
+            val tagView = createTagView(tag)
+            flexboxLayout.addView(tagView)
+        }
+    }
+
+    /** 创建单个标签视图（带外框样式） */
+    private fun createTagView(tag: String): TextView {
+        return TextView(context).apply {
+            text = tag
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(context.resources.getColor(io.legado.app.R.color.tv_text_summary, null))
+            setBackgroundResource(io.legado.app.R.drawable.bg_tag)
+            // 设置内边距
+            setPadding(8, 4, 8, 4)
+            // 设置 FlexboxLayout.LayoutParams
+            layoutParams = FlexboxLayout.LayoutParams(
+                FlexboxLayout.LayoutParams.WRAP_CONTENT,
+                FlexboxLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                // 标签之间的间距
+                setMargins(4, 2, 4, 2)
+            }
         }
     }
 

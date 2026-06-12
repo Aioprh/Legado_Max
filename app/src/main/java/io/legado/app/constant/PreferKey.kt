@@ -55,6 +55,11 @@ object PreferKey {
     const val bookshelfSort = "bookshelfSort"
     const val folderLayout = "folderLayout"
     const val bookLayout = "bookLayout"
+    const val showMoreInfoInList = "showMoreInfoInList"
+    const val showIntroInList = "showIntroInList"
+    const val showTagsInList = "showTagsInList"
+    // 简介显示行数（1-4行）
+    const val introLinesInList = "introLinesInList"
     const val bookExportFileName = "bookExportFileName"
     const val bookImportFileName = "bookImportFileName"
     const val episodeExportFileName = "episodeExportFileName"
