@@ -10,7 +10,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:attachToActivity="false"
-        app:contentLayout="@layout/view_group_selector"
         app:title="@string/bookshelf" />
 
     <androidx.viewpager.widget.ViewPager

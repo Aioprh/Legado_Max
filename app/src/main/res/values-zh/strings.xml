@@ -1751,6 +1751,8 @@
     <string name="intro_lines_2">2行</string>
     <string name="intro_lines_3">3行</string>
     <string name="intro_lines_4">4行</string>
+    <!-- 下拉选择分组（仅分组样式为标签时生效） -->
+    <string name="dropdown_select_group">下拉选择分组</string>
 
     <!-- 视频播放器手势控制设置 -->
     <string name="double_tap_seek_enabled">双击快退/快进</string>

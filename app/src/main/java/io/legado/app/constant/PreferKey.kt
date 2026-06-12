@@ -60,6 +60,8 @@ object PreferKey {
     const val showTagsInList = "showTagsInList"
     // 简介显示行数（1-4行）
     const val introLinesInList = "introLinesInList"
+    // 下拉选择分组开关（仅在分组样式为标签时生效）
+    const val dropdownSelectGroup = "dropdownSelectGroup"
     const val bookExportFileName = "bookExportFileName"
     const val bookImportFileName = "bookImportFileName"
     const val episodeExportFileName = "episodeExportFileName"

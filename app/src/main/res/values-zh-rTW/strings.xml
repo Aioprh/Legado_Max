@@ -1520,4 +1520,6 @@
     <string name="intro_lines_2">2行</string>
     <string name="intro_lines_3">3行</string>
     <string name="intro_lines_4">4行</string>
+    <!-- 下拉選擇分組（僅分組樣式為標籤時生效） -->
+    <string name="dropdown_select_group">下拉選擇分組</string>
 </resources>

@@ -195,12 +195,17 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         spGroupStyle.setSelection(AppConfig.bookGroupStyle)
                         spBookView.setSelection(bookLayout)
                         spFolderView.setSelection(folderLayout)
-                        // 根据分组样式控制文件夹视图的可见性
+                        // 根据分组样式控制文件夹视图和下拉选择分组的可见性
                         llFolderView.visibility = if (AppConfig.bookGroupStyle == 1) View.VISIBLE else View.GONE
-                        // 监听分组样式变化，动态更新文件夹视图的可见性
+                        // 下拉选择分组开关仅在分组样式为标签（position == 0）时显示
+                        swDropdownSelectGroup.visibility = if (AppConfig.bookGroupStyle == 0) View.VISIBLE else View.GONE
+                        swDropdownSelectGroup.isChecked = AppConfig.dropdownSelectGroup
+                        // 监听分组样式变化，动态更新文件夹视图和下拉选择分组的可见性
                         spGroupStyle.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
                             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                                 llFolderView.visibility = if (position == 1) View.VISIBLE else View.GONE
+                                // 下拉选择分组开关仅在分组样式为标签（position == 0）时显示
+                                swDropdownSelectGroup.visibility = if (position == 0) View.VISIBLE else View.GONE
                             }
                             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
                         }
@@ -314,6 +319,11 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         refreshBookshelf = true
                     }
                     // 简介行数已在 NumberPickerDialog 回调中保存，无需在此处保存
+                    // 保存"下拉选择分组"开关配置
+                    if (AppConfig.dropdownSelectGroup != swDropdownSelectGroup.isChecked) {
+                        AppConfig.dropdownSelectGroup = swDropdownSelectGroup.isChecked
+                        recreate = true // 下拉选择分组改变需要重新创建Activity以更新标题栏行为
+                    }
                     if (bookshelfSort != rgSort.getCheckedIndex()) {
                         AppConfig.bookshelfSort = rgSort.getCheckedIndex()
                         upSort()

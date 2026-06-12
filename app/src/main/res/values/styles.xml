@@ -48,7 +48,10 @@
         <item name="colorAccent">@color/md_grey_900</item>
     </style>
 
-    <style name="Spinner" parent="android:Theme.Holo.Light" />
+    <!-- Spinner 样式，统一字体大小为 14sp -->
+    <style name="Spinner" parent="android:Theme.Holo.Light">
+        <item name="android:textSize">14sp</item>
+    </style>
 
     //**********System Style******************//
 

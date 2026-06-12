@@ -317,6 +317,13 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefInt(PreferKey.introLinesInList, value.coerceIn(1, 10))
         }
 
+    // 下拉选择分组开关（默认关闭，仅在分组样式为标签时生效）
+    var dropdownSelectGroup: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.dropdownSelectGroup, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.dropdownSelectGroup, value)
+        }
+
     var saveTabPosition: Int
         get() = appCtx.getPrefInt(PreferKey.saveTabPosition, 0)
         set(value) {

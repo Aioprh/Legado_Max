@@ -1905,6 +1905,8 @@
     <string name="intro_lines_2">2 Lines</string>
     <string name="intro_lines_3">3 Lines</string>
     <string name="intro_lines_4">4 Lines</string>
+    <!-- Dropdown select group (only for tag group style) -->
+    <string name="dropdown_select_group">Dropdown Select Group</string>
 
     <!-- Group Management -->
     <string name="group_name">Group Name</string>
