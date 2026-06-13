@@ -37,6 +37,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
+            android:paddingEnd="@dimen/fastscroll_scrollbar_padding_end"
+            android:paddingStart="@dimen/fastscroll_scrollbar_padding_start"
             tools:ignore="ContentDescription"
             tools:src="@drawable/fastscroll_handle" />
 

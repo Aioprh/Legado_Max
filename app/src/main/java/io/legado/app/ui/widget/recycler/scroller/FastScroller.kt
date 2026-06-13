@@ -510,7 +510,7 @@ class FastScroller : LinearLayout {
     }
 
     private fun getScrollbarTranslationOffset(): Float {
-        val offset = (mScrollbar.width.toFloat()).let { if (it > 0f) it else resources.getDimensionPixelSize(R.dimen.fastscroll_scrollbar_padding_end).toFloat() }
+        val offset = resources.getDimensionPixelSize(R.dimen.fastscroll_scrollbar_padding_end).toFloat()
         return if (alignToLeft) -offset else offset
     }
 
