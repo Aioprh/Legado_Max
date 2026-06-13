@@ -36,11 +36,19 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     val errorTopLiveData = MutableLiveData<String>()
     val pageLiveData = MutableLiveData<Int>()
     val addAllToShelfResult = MutableLiveData<Int>()
+    /** 屏蔽规则变化后通知UI全量刷新书籍列表 */
+    val blockRulesRefreshData = MutableLiveData<List<SearchBook>>()
+    /** 屏蔽数量变化通知UI更新进度指示器 */
+    val blockedCountData = MutableLiveData<Int>()
     val booksCount: Int get() = books.size
     private var bookSource: BookSource? = null
     private var exploreUrl: String? = null
     private var page = 1
     private var books = linkedSetOf<SearchBook>()
+    /** 原始未过滤的书籍列表，用于屏蔽规则变化时重新过滤 */
+    private var allBooks = linkedSetOf<SearchBook>()
+    /** 当前书源URL，用于屏蔽规则过滤 */
+    var currentSourceUrl: String = ""
 
     //实时监听数据库对比书名作者，判断书是否在书架上
     init {
@@ -72,6 +80,7 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     fun initData(intent: Intent) {
         execute {
             val sourceUrl = intent.getStringExtra("sourceUrl")
+            currentSourceUrl = sourceUrl ?: ""
             exploreUrl = intent.getStringExtra("exploreUrl")
             page = parsePageFromUrl(exploreUrl)
             if (bookSource == null && sourceUrl != null) {
@@ -92,11 +101,14 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
         WebBook.exploreBook(viewModelScope, source, url, page)
             .timeout(if (BuildConfig.DEBUG) 0L else 60000L)
             .onSuccess(IO) { searchBooks ->
+                allBooks.addAll(searchBooks)
+                val filtered = ExploreBlockRuleStore.filterBooks(getApplication(), searchBooks, currentSourceUrl)
                 val newBooks = linkedSetOf<SearchBook>()
-                newBooks.addAll(searchBooks)
+                newBooks.addAll(filtered)
                 newBooks.addAll(books)
                 books = newBooks
-                addBooksData.postValue(searchBooks)
+                addBooksData.postValue(filtered)
+                blockedCountData.postValue(allBooks.size - books.size)
                 appDb.searchBookDao.insert(*searchBooks.toTypedArray())
                 pageLiveData.postValue(page)
             }.onError {
@@ -111,6 +123,7 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     fun skipPage(page: Int) {
         if (page > 0) {
             books.clear()
+            allBooks.clear()
             this.page = page
             pageLiveData.postValue(page)
         }
@@ -126,8 +139,11 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
         WebBook.exploreBook(viewModelScope, source, url, requestPage)
             .timeout(if (BuildConfig.DEBUG) 0L else 60000L)
             .onSuccess(IO) { searchBooks ->
-                books.addAll(searchBooks)
+                allBooks.addAll(searchBooks)
+                val filtered = ExploreBlockRuleStore.filterBooks(getApplication(), searchBooks, currentSourceUrl)
+                books.addAll(filtered)
                 booksData.postValue(books.toList())
+                blockedCountData.postValue(allBooks.size - books.size)
                 appDb.searchBookDao.insert(*searchBooks.toTypedArray())
                 pageLiveData.postValue(requestPage)
                 page = requestPage + 1
@@ -154,6 +170,18 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
         }
         exploreUrl = updatedUrl
         return updatedUrl
+    }
+
+    /**
+     * 屏蔽规则变化后重新过滤当前书籍列表
+     */
+    fun applyBlockRules(sourceUrl: String) {
+        currentSourceUrl = sourceUrl
+        ExploreBlockRuleStore.invalidateCache()
+        val filtered = ExploreBlockRuleStore.filterBooks(getApplication(), allBooks.toList(), sourceUrl)
+        books = linkedSetOf<SearchBook>().apply { addAll(filtered) }
+        blockedCountData.postValue(allBooks.size - books.size)
+        blockRulesRefreshData.postValue(books.toList())
     }
 
     fun isInBookShelf(book: SearchBook): Boolean {

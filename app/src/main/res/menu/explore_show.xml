@@ -26,4 +26,10 @@
         android:title="@string/switch_layout"
         app:showAsAction="never" />
 
+    <!-- 屏蔽规则：配置发现界面书籍屏蔽规则 -->
+    <item
+        android:id="@+id/menu_block_rule"
+        android:title="@string/explore_block_rule"
+        app:showAsAction="never" />
+
 </menu>

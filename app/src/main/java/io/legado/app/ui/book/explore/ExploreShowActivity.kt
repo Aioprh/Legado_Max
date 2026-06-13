@@ -27,11 +27,26 @@ import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefInt
+import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.ui.book.explore.ExploreBlockRuleConfigDialog
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import io.legado.app.ui.theme.LegadoTheme
 
 /**
  * 发现列表
@@ -61,6 +76,14 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     private var menuSelectColumn: MenuItem? = null
     /** 当前书源 URL，用于按书源隔离布局配置 */
     private val sourceUrl: String by lazy { intent.getStringExtra("sourceUrl") ?: "" }
+    /** 是否显示屏蔽进度指示器 */
+    private var showBlockProgress: Boolean
+        get() = getPrefBoolean(PreferKey.exploreBlockRuleShowProgress, false)
+        set(value) = putPrefBoolean(PreferKey.exploreBlockRuleShowProgress, value)
+    /** 当前被屏蔽的书籍数量，用于进度指示器 */
+    private var blockedCount by mutableIntStateOf(0)
+    /** 屏蔽进度悬浮芯片 ComposeView */
+    private var blockProgressComposeView: ComposeView? = null
     /** 上次发起加载下一页的时间戳，用于 2 秒冷却限制 */
     private var lastLoadTime = 0L
 
@@ -93,6 +116,11 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         initRecyclerView()
         viewModel.booksData.observe(this) { upData(it) }
         viewModel.addBooksData.observe(this) { upDataTop(it) }
+        viewModel.blockRulesRefreshData.observe(this) { refreshDataAfterBlock(it) }
+        viewModel.blockedCountData.observe(this) { count ->
+            blockedCount = count
+            updateBlockProgressChip()
+        }
         viewModel.initData(intent)
         viewModel.errorLiveData.observe(this) {
             loadMoreView.error(it)
@@ -175,11 +203,74 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             R.id.menu_switch_layout -> {
                 handleSwitchLayout()
             }
+            R.id.menu_block_rule -> {
+                showBlockRuleConfig()
+            }
             R.id.menu_select_column -> {
                 handleSelectColumn()
             }
         }
         return super.onCompatOptionsItemSelected(item)
+    }
+
+    /**
+     * 打开屏蔽规则配置弹窗
+     */
+    private fun showBlockRuleConfig() {
+        val dialog = ExploreBlockRuleConfigDialog()
+        dialog.sourceUrl = sourceUrl
+        dialog.onRulesChanged = {
+            viewModel.applyBlockRules(sourceUrl)
+        }
+        dialog.onShowProgressChanged = {
+            showBlockProgress = it
+            updateBlockProgressChip()
+        }
+        dialog.show(supportFragmentManager, "exploreBlockRuleConfig")
+    }
+
+    /**
+     * 更新屏蔽进度悬浮芯片的显示状态
+     * 芯片位于列表上方右侧，点击可打开屏蔽规则配置
+     */
+    private fun updateBlockProgressChip() {
+        val contentView = binding.contentView
+        if (showBlockProgress && blockedCount > 0) {
+            if (blockProgressComposeView == null) {
+                blockProgressComposeView = ComposeView(this).also { composeView ->
+                    composeView.setContent {
+                        LegadoTheme {
+                            Surface(
+                                modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                shadowElevation = 4.dp,
+                                onClick = { showBlockRuleConfig() }
+                            ) {
+                                Text(
+                                    text = getString(R.string.explore_block_rule_progress_text, blockedCount),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                    val params = android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                        android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        gravity = android.view.Gravity.TOP or android.view.Gravity.END
+                    }
+                    contentView.addView(composeView, params)
+                }
+            }
+        } else {
+            blockProgressComposeView?.let {
+                contentView.removeView(it)
+                blockProgressComposeView = null
+            }
+        }
     }
 
     /**
@@ -402,6 +493,18 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 layoutManager?.scrollToPositionWithOffset(1, 0)
                 isClearAll = false
             }
+        }
+    }
+
+    /**
+     * 屏蔽规则变化后全量刷新列表，避免 subList 越界
+     */
+    private fun refreshDataAfterBlock(books: List<SearchBook>) {
+        loadMoreView.stopLoad()
+        if (books.isEmpty()) {
+            loadMoreView.noMore(getString(R.string.empty))
+        } else {
+            adapter.setItems(books)
         }
     }
 

@@ -1403,4 +1403,39 @@
     <string name="intro_lines_4">4行</string>
     <!-- 下拉選擇分組（僅分組樣式為標籤時生效） -->
     <string name="dropdown_select_group">下拉選擇分組</string>
+    <string name="explore_block_rule">封鎖規則</string>
+    <string name="explore_block_rule_config">封鎖規則</string>
+    <string name="explore_block_rule_add">新增封鎖規則</string>
+    <string name="explore_block_rule_edit">編輯封鎖規則</string>
+    <string name="explore_block_rule_name">規則名稱</string>
+    <string name="explore_block_rule_name_hint">例如：封鎖廣告</string>
+    <string name="explore_block_rule_pattern">關鍵詞/正則表達式</string>
+    <string name="explore_block_rule_pattern_hint">輸入關鍵詞或正則表達式</string>
+    <string name="explore_block_rule_is_regex">啟用正則</string>
+    <string name="explore_block_rule_target_scope">作用範圍</string>
+    <string name="explore_block_rule_scope_title">標題</string>
+    <string name="explore_block_rule_scope_author">作者</string>
+    <string name="explore_block_rule_scope_tag">標籤</string>
+    <string name="explore_block_rule_scope_intro">簡介</string>
+    <string name="explore_block_rule_scope_all">全部</string>
+    <string name="explore_block_rule_source_scope">作用的書源</string>
+    <string name="explore_block_rule_source_scope_hint">書源URL，分號分隔，空=所有書源</string>
+    <string name="explore_block_rule_exclude_scope">排除的書源</string>
+    <string name="explore_block_rule_exclude_scope_hint">排除的書源URL，分號分隔</string>
+    <string name="explore_block_rule_enabled">是否啟用</string>
+    <string name="explore_block_rule_empty">暫無封鎖規則</string>
+    <string name="explore_block_rule_delete_confirm">確定刪除規則「%1$s」?</string>
+    <string name="explore_block_rule_pattern_required">關鍵詞或正則不能為空</string>
+    <string name="explore_block_rule_import_success">封鎖規則匯入成功</string>
+    <string name="explore_block_rule_export_success">封鎖規則已複製到剪貼簿</string>
+    <string name="explore_block_rule_group_default">預設分組</string>
+    <string name="explore_block_rule_group_manage">管理分組</string>
+    <string name="explore_block_rule_clipboard_empty">剪貼簿為空</string>
+    <string name="explore_block_rule_import_invalid">無效的封鎖規則數據</string>
+    <string name="explore_block_rule_keyword_mode">關鍵詞</string>
+    <string name="explore_block_rule_regex_mode">正則</string>
+    <string name="explore_block_rule_show_progress">顯示封鎖進度</string>
+    <string name="explore_block_rule_progress_text">已封鎖 %1$d 本</string>
+    <string name="explore_block_rule_active_rules">起效的規則</string>
+    <string name="explore_block_rule_active_rules_empty">當前書源無起效的規則</string>
 </resources>
