@@ -15,16 +15,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -62,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.DialogFragment
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
+import io.legado.app.data.entities.SearchBook
 import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
@@ -83,6 +88,7 @@ import io.legado.app.utils.toastOnUi
 class ExploreBlockRuleConfigDialog : DialogFragment() {
 
     var sourceUrl: String = ""
+    var allBooks: List<SearchBook> = emptyList()
     var onRulesChanged: (() -> Unit)? = null
     var onShowProgressChanged: ((Boolean) -> Unit)? = null
 
@@ -96,6 +102,7 @@ class ExploreBlockRuleConfigDialog : DialogFragment() {
                 LegadoTheme {
                     ExploreBlockRuleConfigContent(
                         sourceUrl = sourceUrl,
+                        allBooks = allBooks,
                         onDismiss = { dismissAllowingStateLoss() },
                         onRulesChanged = {
                             onRulesChanged?.invoke()
@@ -118,6 +125,7 @@ class ExploreBlockRuleConfigDialog : DialogFragment() {
 @Composable
 private fun ExploreBlockRuleConfigContent(
     sourceUrl: String,
+    allBooks: List<SearchBook>,
     onDismiss: () -> Unit,
     onRulesChanged: () -> Unit,
     onShowProgressChanged: (Boolean) -> Unit
@@ -333,9 +341,9 @@ private fun ExploreBlockRuleConfigContent(
                     style = MaterialTheme.typography.bodyMedium,
                     color = pageAccentColor()
                 )
-                val activeRules = rules.filter { it.enabled && it.pattern.isNotBlank() && it.matchesScope(sourceUrl) }
+                val currentMatchedRules = ExploreBlockRuleStore.getMatchedRules(context, allBooks, sourceUrl)
                 Text(
-                    text = "${activeRules.size}",
+                    text = "${currentMatchedRules.size}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = pageSecondaryTextColor()
                 )
@@ -373,40 +381,23 @@ private fun ExploreBlockRuleConfigContent(
         }
     }
 
-    // Active rules dialog
+    // 起效的规则弹窗：显示实际匹配到书籍的规则，可展开查看匹配的书
     if (showActiveRules) {
-        val activeRules = rules.filter { it.enabled && it.pattern.isNotBlank() && it.matchesScope(sourceUrl) }
+        val activeMatchedRules = ExploreBlockRuleStore.getMatchedRules(context, allBooks, sourceUrl)
         AlertDialog(
             onDismissRequest = { showActiveRules = false },
             title = { Text(stringResource(R.string.explore_block_rule_active_rules)) },
             text = {
-                if (activeRules.isEmpty()) {
+                if (activeMatchedRules.isEmpty()) {
                     Text(
                         text = stringResource(R.string.explore_block_rule_active_rules_empty),
                         color = pageSecondaryTextColor()
                     )
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                        items(activeRules, key = { it.id }) { rule ->
-                            ListItem(
-                                headlineContent = {
-                                    Text(
-                                        text = rule.name.ifBlank { rule.pattern },
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                },
-                                supportingContent = {
-                                    Text(
-                                        text = "${rule.modeLabel()} / ${rule.scopeSummary()} / ${rule.pattern}",
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = pageSecondaryTextColor()
-                                    )
-                                }
-                            )
+                        items(activeMatchedRules, key = { it.id }) { rule ->
+                            val matchedBooks = allBooks.filter { rule.matches(it) }
+                            ActiveRuleItem(rule = rule, matchedBooks = matchedBooks)
                             HorizontalDivider()
                         }
                     }
@@ -416,6 +407,77 @@ private fun ExploreBlockRuleConfigContent(
                 TextButton(onClick = { showActiveRules = false }) { Text(stringResource(android.R.string.ok)) }
             }
         )
+    }
+}
+
+/** 起效规则项，可展开/收起查看匹配到的书籍，默认收起 */
+@Composable
+private fun ActiveRuleItem(
+    rule: ExploreBlockRule,
+    matchedBooks: List<SearchBook>
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // 规则标题行，点击展开/收起
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = rule.name.ifBlank { rule.pattern },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "${rule.modeLabel()} / ${rule.scopeSummary()} / 匹配${matchedBooks.size}本",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = pageSecondaryTextColor()
+                )
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = if (expanded) "收起" else "展开",
+                modifier = Modifier.size(20.dp),
+                tint = pageSecondaryTextColor()
+            )
+        }
+
+        // 展开后显示匹配的书籍列表
+        AnimatedVisibility(visible = expanded) {
+            Column(modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) {
+                matchedBooks.forEach { book ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "《${book.name}》",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        if (book.author.isNotBlank()) {
+                            Text(
+                                text = " ${book.author}",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = pageSecondaryTextColor()
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

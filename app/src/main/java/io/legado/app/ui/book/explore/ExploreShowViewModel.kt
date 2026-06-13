@@ -40,6 +40,8 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     val blockRulesRefreshData = MutableLiveData<List<SearchBook>>()
     /** 屏蔽数量变化通知UI更新进度指示器 */
     val blockedCountData = MutableLiveData<Int>()
+    /** 实际匹配到书籍的规则列表，用于"起效的规则"展示 */
+    val matchedRulesData = MutableLiveData<List<ExploreBlockRule>>()
     val booksCount: Int get() = books.size
     private var bookSource: BookSource? = null
     private var exploreUrl: String? = null
@@ -47,6 +49,8 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     private var books = linkedSetOf<SearchBook>()
     /** 原始未过滤的书籍列表，用于屏蔽规则变化时重新过滤 */
     private var allBooks = linkedSetOf<SearchBook>()
+    /** 获取原始未过滤书籍列表的副本 */
+    val allBooksList: List<SearchBook> get() = allBooks.toList()
     /** 当前书源URL，用于屏蔽规则过滤 */
     var currentSourceUrl: String = ""
 
@@ -178,9 +182,11 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     fun applyBlockRules(sourceUrl: String) {
         currentSourceUrl = sourceUrl
         ExploreBlockRuleStore.invalidateCache()
+        val matched = ExploreBlockRuleStore.getMatchedRules(getApplication(), allBooks.toList(), sourceUrl)
         val filtered = ExploreBlockRuleStore.filterBooks(getApplication(), allBooks.toList(), sourceUrl)
         books = linkedSetOf<SearchBook>().apply { addAll(filtered) }
         blockedCountData.postValue(allBooks.size - books.size)
+        matchedRulesData.postValue(matched)
         blockRulesRefreshData.postValue(books.toList())
     }
 

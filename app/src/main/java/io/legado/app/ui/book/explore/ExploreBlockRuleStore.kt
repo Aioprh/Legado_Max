@@ -69,6 +69,18 @@ object ExploreBlockRuleStore {
         }
     }
 
+    /**
+     * 获取实际匹配到书籍的规则列表
+     * 返回在指定书籍列表和书源下，至少匹配了一本书的规则
+     */
+    fun getMatchedRules(context: Context, books: List<SearchBook>, sourceUrl: String): List<ExploreBlockRule> {
+        val rules = loadEnabled(context)
+        if (rules.isEmpty() || books.isEmpty()) return emptyList()
+        return rules.filter { rule ->
+            rule.matchesScope(sourceUrl) && books.any { book -> rule.matches(book) }
+        }
+    }
+
     /** 清除缓存，下次加载时重新从 SharedPreferences 读取 */
     fun invalidateCache() {
         cachedRules = null

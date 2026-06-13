@@ -219,6 +219,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     private fun showBlockRuleConfig() {
         val dialog = ExploreBlockRuleConfigDialog()
         dialog.sourceUrl = sourceUrl
+        dialog.allBooks = viewModel.allBooksList
         dialog.onRulesChanged = {
             viewModel.applyBlockRules(sourceUrl)
         }
