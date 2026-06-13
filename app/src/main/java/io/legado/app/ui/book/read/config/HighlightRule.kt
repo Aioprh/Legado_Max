@@ -18,11 +18,21 @@ data class HighlightRule(
     var bgImage: String? = null,
     var bgImageFit: Int = 0,
     var bgImageScale: Float = 1f,
+    /** 作用范围，书名或书源URL，分号分隔，为空则对所有书籍生效 */
+    var scope: String? = null,
+    /** 排除范围，书名或书源URL，分号分隔，匹配的书籍不应用该规则 */
+    var excludeScope: String? = null,
 ) {
 
     fun styleSummary(): String {
         val parts = ArrayList<String>(4)
         parts.add(targetScopeLabel())
+        if (!scope.isNullOrBlank()) {
+            parts.add("仅: ${scope!!.replace(";", "; ").trim()}")
+        }
+        if (!excludeScope.isNullOrBlank()) {
+            parts.add("排除: ${excludeScope!!.replace(";", "; ").trim()}")
+        }
         textColor?.let {
             parts.add("字色 ${it.toHexColor()}")
         }
@@ -75,6 +85,34 @@ data class HighlightRule(
 
     fun copyWithNewId(): HighlightRule {
         return copy(id = "${System.currentTimeMillis()}_${name.hashCode()}")
+    }
+
+    /**
+     * 判断规则是否对指定书籍生效
+     * - scope 为空时，默认对所有书籍生效（仍会检查 excludeScope）
+     * - scope 非空时，仅对匹配书名或书源URL的书籍生效
+     * - excludeScope 非空时，匹配的书籍会被排除
+     */
+    fun matchesScope(bookName: String, bookOrigin: String): Boolean {
+        // 检查作用范围：scope 非空时，书名或书源URL必须匹配其中一项
+        val scopeVal = scope
+        if (!scopeVal.isNullOrBlank()) {
+            val scopeItems = scopeVal.split(";").map { it.trim() }.filter { it.isNotBlank() }
+            val inScope = scopeItems.any { item ->
+                bookName.contains(item) || bookOrigin.contains(item)
+            }
+            if (!inScope) return false
+        }
+        // 检查排除范围：书名或书源URL匹配排除项则不生效
+        val excludeVal = excludeScope
+        if (!excludeVal.isNullOrBlank()) {
+            val excludeItems = excludeVal.split(";").map { it.trim() }.filter { it.isNotBlank() }
+            val excluded = excludeItems.any { item ->
+                bookName.contains(item) || bookOrigin.contains(item)
+            }
+            if (excluded) return false
+        }
+        return true
     }
 
     companion object {

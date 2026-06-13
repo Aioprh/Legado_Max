@@ -401,7 +401,22 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         ) {
             binding.tvTitle.text = item.name.ifBlank { getString(R.string.highlight_rule_unnamed) }
             binding.tvDesc.text = item.styleSummary()
-            binding.tvPattern.text = "${item.group} / ${item.targetScopeLabel()} / ${item.displayPattern()}"
+            binding.tvPattern.text = buildString {
+                append(item.group)
+                append(" / ")
+                append(item.targetScopeLabel())
+                append(" / ")
+                append(item.displayPattern())
+                // 显示书籍作用域信息
+                if (!item.scope.isNullOrBlank()) {
+                    append(" / 仅: ")
+                    append(item.scope!!.replace(";", "; ").trim())
+                }
+                if (!item.excludeScope.isNullOrBlank()) {
+                    append(" / 排除: ")
+                    append(item.excludeScope!!.replace(";", "; ").trim())
+                }
+            }
             binding.tvPreview.text = HighlightRulePreview.build(item)
 
             val density = binding.root.context.resources.displayMetrics.density

@@ -296,6 +296,9 @@ object HighlightRuleStore {
         val underlineSvgPath = runCatching { rule.underlineSvgPath }.getOrNull()
         val bgColor = runCatching { rule.bgColor }.getOrNull()
         val bgImage = runCatching { rule.bgImage }.getOrNull()?.takeIf { it.isNotBlank() }
+        // 书籍作用域字段，旧数据缺失时默认为空（对所有书籍生效）
+        val scope = runCatching { rule.scope }.getOrNull()?.takeIf { it.isNotBlank() }
+        val excludeScope = runCatching { rule.excludeScope }.getOrNull()?.takeIf { it.isNotBlank() }
         return HighlightRule(
             id = id,
             name = name,
@@ -314,6 +317,8 @@ object HighlightRuleStore {
             bgImage = bgImage,
             bgImageFit = runCatching { rule.bgImageFit }.getOrDefault(0).coerceIn(0, 2),
             bgImageScale = runCatching { rule.bgImageScale }.getOrDefault(1f).coerceIn(0.1f, 5f),
+            scope = scope,
+            excludeScope = excludeScope,
         )
     }
 

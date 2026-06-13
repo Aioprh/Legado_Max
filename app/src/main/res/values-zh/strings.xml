@@ -776,6 +776,10 @@
     <string name="highlight_rule_import_invalid">剪贴板内容不是有效的高亮规则列表</string>
     <string name="highlight_rule_import_success">高亮规则已导入</string>
     <string name="highlight_rule_export_success">高亮规则已复制到剪贴板</string>
+    <string name="highlight_rule_scope">作用范围，书名或书源URL</string>
+    <string name="highlight_rule_scope_hint">书名或书源URL，分号分隔，留空则对所有书籍生效</string>
+    <string name="highlight_rule_exclude_scope">排除范围，书名或书源URL</string>
+    <string name="highlight_rule_exclude_scope_hint">要排除的书名或书源URL，分号分隔</string>
     <string name="action_menu">功能</string>
     <string name="preview">预览</string>
     <string name="text_menu_config">展开文本菜单配置</string>

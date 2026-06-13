@@ -188,6 +188,46 @@
                         android:paddingStart="8dp"
                         android:paddingEnd="8dp" />
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:text="@string/highlight_rule_scope"
+                        android:textColor="@color/primaryText"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/et_scope"
+                        android:layout_width="match_parent"
+                        android:layout_height="42dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/shape_highlight_rule_input"
+                        android:hint="@string/highlight_rule_scope_hint"
+                        android:inputType="text"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:text="@string/highlight_rule_exclude_scope"
+                        android:textColor="@color/primaryText"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/et_exclude_scope"
+                        android:layout_width="match_parent"
+                        android:layout_height="42dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/shape_highlight_rule_input"
+                        android:hint="@string/highlight_rule_exclude_scope_hint"
+                        android:inputType="text"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:textSize="14sp" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

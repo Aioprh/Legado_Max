@@ -1292,6 +1292,10 @@
     <string name="format_code">格式化</string>
     <string name="highlight_rule_config">高亮規則配置</string>
     <string name="highlight_rule_config_summary">配置閱讀內容高亮規則</string>
+    <string name="highlight_rule_scope">作用範圍，書名或書源URL</string>
+    <string name="highlight_rule_scope_hint">書名或書源URL，分號分隔，留空則對所有書籍生效</string>
+    <string name="highlight_rule_exclude_scope">排除範圍，書名或書源URL</string>
+    <string name="highlight_rule_exclude_scope_hint">要排除的書名或書源URL，分號分隔</string>
     <string name="history">歷史記錄</string>
     <string name="immersion_nav_bar">沉浸式操作列</string>
     <string name="key_page_anim_speed_title">按鍵翻頁動畫速度</string>

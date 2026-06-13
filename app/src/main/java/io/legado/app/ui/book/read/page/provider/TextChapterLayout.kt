@@ -1345,6 +1345,8 @@ class TextChapterLayout(
 
     private fun applyHighlightRulesFromStore(spannable: SpannableStringBuilder): SpannableStringBuilder {
         HighlightRuleStore.loadEnabled(appCtx).forEach { rule ->
+            // 按书籍作用域过滤，不匹配则跳过
+            if (!rule.matchesScope(book.name, book.origin)) return@forEach
             val regex = kotlin.runCatching { Regex(rule.pattern) }.getOrNull() ?: return@forEach
             applyRuleSpans(spannable, rule, regex)
         }
@@ -1356,7 +1358,8 @@ class TextChapterLayout(
         isTitle: Boolean = false
     ): SpannableStringBuilder {
         compiledHighlightRules.forEach { compiled ->
-            if (!compiled.rule.appliesTo(isTitle)) return@forEach
+            // 按标题/正文作用域和书籍作用域过滤
+            if (!compiled.rule.appliesTo(isTitle, book.name, book.origin)) return@forEach
             applyRuleSpans(spannable, compiled.rule, compiled.regex)
         }
         return spannable
@@ -1889,7 +1892,9 @@ class TextChapterLayout(
         val regex: Regex,
     )
 
-    private fun HighlightRule.appliesTo(isTitle: Boolean): Boolean {
+    /** 判断规则是否对当前文本生效，同时检查书籍作用域和标题/正文作用域 */
+    private fun HighlightRule.appliesTo(isTitle: Boolean, bookName: String, bookOrigin: String): Boolean {
+        if (!matchesScope(bookName, bookOrigin)) return false
         return when (targetScope) {
             HighlightRule.TARGET_TITLE -> isTitle
             HighlightRule.TARGET_BODY -> !isTitle

@@ -198,6 +198,10 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.tvBgImagePick.setTextColor(primaryTextColor)
         binding.etSampleText.setTextColor(primaryTextColor)
         binding.etSampleText.setHintTextColor(secondaryTextColor)
+        binding.etScope.setTextColor(primaryTextColor)
+        binding.etScope.setHintTextColor(secondaryTextColor)
+        binding.etExcludeScope.setTextColor(primaryTextColor)
+        binding.etExcludeScope.setHintTextColor(secondaryTextColor)
 
         binding.tvRegexToggle.setTextColor(primaryTextColor)
         binding.tvRegexToggle.background?.mutate()?.setTint(bg)
@@ -220,6 +224,8 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etBgImage.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvBgImagePick.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etSampleText.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.etScope.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.etExcludeScope.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.spBgImageFit.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvWidthMinus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvWidthPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
@@ -273,6 +279,9 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         val groupIndex = groupItems.indexOf(editingRule.group).takeIf { it >= 0 } ?: 0
         binding.spGroup.setSelection(groupIndex)
         binding.spTarget.setSelection(editingRule.targetScope.coerceIn(0, 2))
+        // 书籍作用域字段绑定
+        binding.etScope.setText(editingRule.scope.orEmpty())
+        binding.etExcludeScope.setText(editingRule.excludeScope.orEmpty())
         
         updateColorPreview(binding.viewTextColorPreview, editingRule.textColor)
         updateColorPreview(binding.viewUnderlineColorPreview, editingRule.underlineColor)
@@ -443,6 +452,13 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 
                 override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
             }
+        // 书籍作用域输入监听，空白时存为null
+        binding.etScope.doAfterTextChanged {
+            editingRule.scope = it?.toString().orEmpty().takeIf { it.isNotBlank() }
+        }
+        binding.etExcludeScope.doAfterTextChanged {
+            editingRule.excludeScope = it?.toString().orEmpty().takeIf { it.isNotBlank() }
+        }
     }
 
     private fun updateRegexToggle() {
@@ -571,7 +587,10 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             bgColor = parseColorOrNull(binding.etBgImage.text?.toString().orEmpty()),
             bgImage = binding.etBgImage.text?.toString().orEmpty().takeIf { it.isNotBlank() && parseColorOrNull(it) == null },
             bgImageFit = binding.spBgImageFit.selectedItemPosition,
-            bgImageScale = (binding.sbBgImageScale.progress.coerceAtLeast(1) / 10f).coerceIn(0.1f, 5f)
+            bgImageScale = (binding.sbBgImageScale.progress.coerceAtLeast(1) / 10f).coerceIn(0.1f, 5f),
+            // 书籍作用域，空白时存为null表示对所有书籍生效
+            scope = binding.etScope.text?.toString().orEmpty().takeIf { it.isNotBlank() },
+            excludeScope = binding.etExcludeScope.text?.toString().orEmpty().takeIf { it.isNotBlank() },
         )
         onSave(editingRule)
         dismissAllowingStateLoss()
