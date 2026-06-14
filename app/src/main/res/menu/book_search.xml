@@ -16,6 +16,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_block_rule"
+        android:title="@string/explore_block_rule"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_source_manage"
         android:title="@string/book_source_manage"
         app:showAsAction="never" />

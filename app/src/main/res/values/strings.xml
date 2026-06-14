@@ -1964,4 +1964,14 @@
     <string name="explore_block_rule_progress_text">Blocked %1$d</string>
     <string name="explore_block_rule_active_rules">Active rules</string>
     <string name="explore_block_rule_active_rules_empty">No active rules for current source</string>
+    <string name="explore_block_rule_scope_rss_time">Time</string>
+    <string name="explore_block_rule_rss_source_scope">Apply to RSS sources</string>
+    <string name="explore_block_rule_book_target_scope">Book Source Target Scope</string>
+    <string name="explore_block_rule_rss_target_scope">RSS Source Target Scope</string>
+    <string name="explore_block_rule_scope_rss_title">Title</string>
+    <string name="explore_block_rule_scope_rss_intro">Intro</string>
+
+    <!-- Block Rule Management (Settings) -->
+    <string name="block_rule_manage">Block Rules</string>
+    <string name="block_rule_manage_summary">Manage block rules for discover, search and RSS</string>
 </resources>

@@ -24,6 +24,7 @@ import io.legado.app.databinding.ViewLoadMoreBinding
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.rss.read.ReadRss
+import io.legado.app.model.blockrule.BlockRuleStore
 import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.recycler.LoadMoreView
 import io.legado.app.ui.widget.recycler.VerticalDivider
@@ -69,6 +70,11 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
         LoadMoreView(requireContext())
     }
     private var articlesFlowJob: Job? = null
+    /** 原始未过滤的文章列表，用于屏蔽规则变化时重新过滤 */
+    var rawArticles: List<RssArticle> = emptyList()
+        private set
+    /** 当前被屏蔽的文章数量 */
+    private var blockedCount: Int = 0
     override val isGridLayout: Boolean
         get() = activityViewModel.articleStyle == 2
     private var fullRefresh = true
@@ -174,10 +180,14 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
                 .catch {
                     AppLog.put("订阅文章界面获取数据失败\n${it.localizedMessage}", it)
                 }.flowOn(IO).collect { newList ->
-                    if (!isResumed || fullRefresh || newList.isEmpty()) {
-                        adapter.setItems(newList)
+                    rawArticles = newList
+                    val filtered = applyBlockRulesToList(newList)
+                    blockedCount = newList.size - filtered.size
+                    (activity as? RssSortActivity)?.updateBlockedCount()
+                    if (!isResumed || fullRefresh || filtered.isEmpty()) {
+                        adapter.setItems(filtered)
                     } else {
-                        adapter.setItems(newList, object : DiffUtil.ItemCallback<RssArticle>() {
+                        adapter.setItems(filtered, object : DiffUtil.ItemCallback<RssArticle>() {
                             override fun areItemsTheSame(oldItem: RssArticle, newItem: RssArticle): Boolean {
                                 return oldItem.link == newItem.link
                             }
@@ -286,4 +296,28 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
         fullRefresh = false
         ReadRss.readRss(this, rssArticle, activityViewModel.rssSource)
     }
+
+    /**
+     * 对文章列表应用屏蔽规则过滤
+     */
+    private fun applyBlockRulesToList(articles: List<RssArticle>): List<RssArticle> {
+        val sourceUrl = activityViewModel.rssSource?.sourceUrl.orEmpty()
+        return BlockRuleStore.filterRssArticles(requireContext(), articles, sourceUrl)
+    }
+
+    /**
+     * 屏蔽规则变化后重新过滤当前文章列表
+     * 由 RssSortActivity 调用
+     */
+    fun applyBlockRules() {
+        val filtered = applyBlockRulesToList(rawArticles)
+        blockedCount = rawArticles.size - filtered.size
+        adapter.setItems(filtered)
+    }
+
+    /**
+     * 获取当前被屏蔽的文章数量
+     * 由 RssSortActivity 调用
+     */
+    fun getBlockedCount(): Int = blockedCount
 }

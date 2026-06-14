@@ -121,7 +121,12 @@
             android:title="@string/md_link_inner_browser"
             app:iconSpaceReserved="false" />
 
-        
+        <!-- 屏蔽规则管理 -->
+        <io.legado.app.lib.prefs.Preference
+            android:key="blockRuleManage"
+            android:summary="@string/block_rule_manage_summary"
+            android:title="@string/block_rule_manage"
+            app:iconSpaceReserved="false" />
 
     </io.legado.app.lib.prefs.PreferenceCategory>
 

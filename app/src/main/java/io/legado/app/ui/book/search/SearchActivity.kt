@@ -36,9 +36,24 @@ import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.about.AppLogDialog
+import io.legado.app.model.blockrule.BlockRuleStore
+import io.legado.app.ui.blockrule.BlockRuleConfigDialog
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.utils.ColorUtils
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.applyTint
@@ -93,6 +108,16 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
     private var precisionSearchMenuItem: MenuItem? = null
     private var showSearchProgressMenuItem: MenuItem? = null
     private var isManualStopSearch = false
+    /** 原始未过滤的搜索结果，用于屏蔽规则变化时重新过滤 */
+    private var rawSearchBooks: List<SearchBook> = emptyList()
+    /** 是否显示屏蔽进度指示器 */
+    private var showBlockProgress: Boolean
+        get() = getPrefBoolean(PreferKey.blockRuleShowProgress, false)
+        set(value) = putPrefBoolean(PreferKey.blockRuleShowProgress, value)
+    /** 当前被屏蔽的搜索结果数量，用于进度指示器 */
+    private var blockedCount by mutableIntStateOf(0)
+    /** 屏蔽进度悬浮芯片 ComposeView */
+    private var blockProgressComposeView: ComposeView? = null
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.llInputHelp.setBackgroundColor(backgroundColor)
@@ -195,6 +220,8 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                 showSearchProgressMenuItem?.isChecked =
                     getPrefBoolean(PreferKey.showSearchProgress)
             }
+
+            R.id.menu_block_rule -> showBlockRuleConfig()
 
             R.id.menu_search_scope -> alertSearchScope()
             R.id.menu_source_manage -> startActivity<BookSourceActivity>()
@@ -333,7 +360,11 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
             }
         }
         viewModel.searchBookLiveData.observe(this) {
-            adapter.setItems(it)
+            rawSearchBooks = it
+            val filtered = BlockRuleStore.filterSearchBooks(this, it)
+            blockedCount = it.size - filtered.size
+            updateBlockProgressChip()
+            adapter.setItems(filtered)
         }
         viewModel.searchProgressLiveData.observe(this) { progress ->
             if (progress.isNullOrEmpty() || !getPrefBoolean(PreferKey.showSearchProgress)) {
@@ -565,6 +596,78 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                 viewModel.clearHistory()
             }
             noButton()
+        }
+    }
+
+    /**
+     * 打开屏蔽规则配置弹窗
+     */
+    private fun showBlockRuleConfig() {
+        val dialog = BlockRuleConfigDialog()
+        dialog.sourceUrl = ""
+        dialog.allBooks = rawSearchBooks
+        dialog.onRulesChanged = {
+            applyBlockRules()
+        }
+        dialog.onShowProgressChanged = {
+            showBlockProgress = it
+            updateBlockProgressChip()
+        }
+        dialog.show(supportFragmentManager, "searchBlockRuleConfig")
+    }
+
+    /**
+     * 屏蔽规则变化后重新过滤搜索结果
+     */
+    private fun applyBlockRules() {
+        BlockRuleStore.invalidateCache()
+        val filtered = BlockRuleStore.filterSearchBooks(this, rawSearchBooks)
+        blockedCount = rawSearchBooks.size - filtered.size
+        updateBlockProgressChip()
+        adapter.setItems(filtered)
+    }
+
+    /**
+     * 更新屏蔽进度悬浮芯片的显示状态
+     * 芯片位于搜索结果上方右侧，点击可打开屏蔽规则配置
+     */
+    private fun updateBlockProgressChip() {
+        val contentView = binding.contentView
+        if (showBlockProgress && blockedCount > 0) {
+            if (blockProgressComposeView == null) {
+                blockProgressComposeView = ComposeView(this).also { composeView ->
+                    composeView.setContent {
+                        LegadoTheme {
+                            Surface(
+                                modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                shadowElevation = 4.dp,
+                                onClick = { showBlockRuleConfig() }
+                            ) {
+                                Text(
+                                    text = getString(R.string.explore_block_rule_progress_text, blockedCount),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                    val params = android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                        android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        gravity = android.view.Gravity.TOP or android.view.Gravity.END
+                    }
+                    contentView.addView(composeView, params)
+                }
+            }
+        } else {
+            blockProgressComposeView?.let {
+                contentView.removeView(it)
+                blockProgressComposeView = null
+            }
         }
     }
 

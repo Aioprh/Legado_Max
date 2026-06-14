@@ -33,7 +33,7 @@ import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
-import io.legado.app.ui.book.explore.ExploreBlockRuleConfigDialog
+import io.legado.app.ui.blockrule.BlockRuleConfigDialog
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -78,8 +78,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     private val sourceUrl: String by lazy { intent.getStringExtra("sourceUrl") ?: "" }
     /** 是否显示屏蔽进度指示器 */
     private var showBlockProgress: Boolean
-        get() = getPrefBoolean(PreferKey.exploreBlockRuleShowProgress, false)
-        set(value) = putPrefBoolean(PreferKey.exploreBlockRuleShowProgress, value)
+        get() = getPrefBoolean(PreferKey.blockRuleShowProgress, false)
+        set(value) = putPrefBoolean(PreferKey.blockRuleShowProgress, value)
     /** 当前被屏蔽的书籍数量，用于进度指示器 */
     private var blockedCount by mutableIntStateOf(0)
     /** 屏蔽进度悬浮芯片 ComposeView */
@@ -217,7 +217,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      * 打开屏蔽规则配置弹窗
      */
     private fun showBlockRuleConfig() {
-        val dialog = ExploreBlockRuleConfigDialog()
+        val dialog = BlockRuleConfigDialog()
         dialog.sourceUrl = sourceUrl
         dialog.allBooks = viewModel.allBooksList
         dialog.onRulesChanged = {

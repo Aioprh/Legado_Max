@@ -39,6 +39,7 @@ import io.legado.app.ui.upload.DirectLinkUploadActivity
 import io.legado.app.ui.video.config.SettingsDialog
 import io.legado.app.ui.widget.code.addJsonPattern
 import io.legado.app.ui.widget.number.NumberPickerDialog
+import io.legado.app.ui.blockrule.BlockRuleConfigDialog
 import io.legado.app.ui.debuglog.DebugFloatingBallManager
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.applyTint
@@ -201,6 +202,7 @@ class OtherConfigFragment : PreferenceFragment(),
             }
 
             PreferKey.clearWebViewData -> clearWebViewData()
+            "blockRuleManage" -> showBlockRuleConfig()
             "localPassword" -> alertLocalPassword()
             PreferKey.shrinkDatabase -> shrinkDatabase()
         }
@@ -448,6 +450,16 @@ class OtherConfigFragment : PreferenceFragment(),
             }
             cancelButton()
         }
+    }
+
+    /**
+     * 打开屏蔽规则配置弹窗
+     */
+    private fun showBlockRuleConfig() {
+        val dialog = BlockRuleConfigDialog()
+        dialog.sourceUrl = ""
+        dialog.allBooks = emptyList()
+        dialog.show(childFragmentManager, "blockRuleConfig")
     }
 
     @SuppressLint("InflateParams")

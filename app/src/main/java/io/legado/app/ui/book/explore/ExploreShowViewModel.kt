@@ -12,6 +12,8 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.help.book.isNotShelf
+import io.legado.app.model.blockrule.BlockRule
+import io.legado.app.model.blockrule.BlockRuleStore
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.stackTraceStr
@@ -41,7 +43,7 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     /** 屏蔽数量变化通知UI更新进度指示器 */
     val blockedCountData = MutableLiveData<Int>()
     /** 实际匹配到书籍的规则列表，用于"起效的规则"展示 */
-    val matchedRulesData = MutableLiveData<List<ExploreBlockRule>>()
+    val matchedRulesData = MutableLiveData<List<BlockRule>>()
     val booksCount: Int get() = books.size
     private var bookSource: BookSource? = null
     private var exploreUrl: String? = null
@@ -106,7 +108,7 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
             .timeout(if (BuildConfig.DEBUG) 0L else 60000L)
             .onSuccess(IO) { searchBooks ->
                 allBooks.addAll(searchBooks)
-                val filtered = ExploreBlockRuleStore.filterBooks(getApplication(), searchBooks, currentSourceUrl)
+                val filtered = BlockRuleStore.filterBooks(getApplication(), searchBooks, currentSourceUrl)
                 val newBooks = linkedSetOf<SearchBook>()
                 newBooks.addAll(filtered)
                 newBooks.addAll(books)
@@ -144,7 +146,7 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
             .timeout(if (BuildConfig.DEBUG) 0L else 60000L)
             .onSuccess(IO) { searchBooks ->
                 allBooks.addAll(searchBooks)
-                val filtered = ExploreBlockRuleStore.filterBooks(getApplication(), searchBooks, currentSourceUrl)
+                val filtered = BlockRuleStore.filterBooks(getApplication(), searchBooks, currentSourceUrl)
                 books.addAll(filtered)
                 booksData.postValue(books.toList())
                 blockedCountData.postValue(allBooks.size - books.size)
@@ -181,9 +183,9 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
      */
     fun applyBlockRules(sourceUrl: String) {
         currentSourceUrl = sourceUrl
-        ExploreBlockRuleStore.invalidateCache()
-        val matched = ExploreBlockRuleStore.getMatchedRules(getApplication(), allBooks.toList(), sourceUrl)
-        val filtered = ExploreBlockRuleStore.filterBooks(getApplication(), allBooks.toList(), sourceUrl)
+        BlockRuleStore.invalidateCache()
+        val matched = BlockRuleStore.getMatchedRules(getApplication(), allBooks.toList(), sourceUrl)
+        val filtered = BlockRuleStore.filterBooks(getApplication(), allBooks.toList(), sourceUrl)
         books = linkedSetOf<SearchBook>().apply { addAll(filtered) }
         blockedCountData.postValue(allBooks.size - books.size)
         matchedRulesData.postValue(matched)

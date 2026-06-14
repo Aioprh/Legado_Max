@@ -30,6 +30,8 @@ import io.legado.app.databinding.ActivityRssArtivlesBinding
 import io.legado.app.help.source.sortUrls
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.ui.login.SourceLoginActivity
+import io.legado.app.model.blockrule.BlockRuleStore
+import io.legado.app.ui.blockrule.BlockRuleConfigDialog
 import io.legado.app.ui.rss.source.edit.RssSourceEditActivity
 import io.legado.app.ui.widget.dialog.VariableDialog
 import io.legado.app.utils.*
@@ -39,6 +41,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.viewpager.widget.ViewPager
 import io.legado.app.utils.startActivity
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import io.legado.app.constant.PreferKey
+import io.legado.app.ui.theme.LegadoTheme
 
 class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewModel>(),
     VariableDialog.Callback {
@@ -66,6 +82,15 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
     private val tabRows = mutableListOf<LinearLayout>()
     var maxTagsPerRow = 10 // 每行尽量容纳10个标签,横屏20
     private val tabScrollViews = mutableListOf<HorizontalScrollView>() // 添加滚动视图列表
+
+    /** 是否显示屏蔽进度指示器 */
+    private var showBlockProgress: Boolean
+        get() = getPrefBoolean(PreferKey.blockRuleShowProgress, false)
+        set(value) = putPrefBoolean(PreferKey.blockRuleShowProgress, value)
+    /** 当前被屏蔽的文章数量，用于进度指示器 */
+    private var blockedCount by mutableIntStateOf(0)
+    /** 屏蔽进度悬浮芯片 ComposeView */
+    private var blockProgressComposeView: ComposeView? = null
 
     private fun setupMultiLineTabs() {
         val tabsContainer = binding.tabsContainer
@@ -342,6 +367,8 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
                 upFragments()
             }
 
+            R.id.menu_block_rule -> showBlockRuleConfig()
+
             R.id.menu_read_record -> showDialogFragment(ReadRecordDialog(viewModel.rssSource?.sourceUrl))
         }
         return super.onCompatOptionsItemSelected(item)
@@ -482,6 +509,90 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
                 putExtra("key", key)
             }
         }
+    }
+
+    /**
+     * 打开屏蔽规则配置弹窗
+     */
+    private fun showBlockRuleConfig() {
+        val dialog = BlockRuleConfigDialog()
+        dialog.sourceUrl = viewModel.rssSource?.sourceUrl.orEmpty()
+        dialog.allBooks = emptyList()
+        // 收集当前可见 fragment 的原始文章列表，用于"起效的规则"计数
+        dialog.allRssArticles = currentArticlesFragment()?.rawArticles ?: emptyList()
+        dialog.onRulesChanged = {
+            BlockRuleStore.invalidateCache()
+            // 通知所有 fragment 重新应用屏蔽规则，并更新屏蔽计数
+            var totalBlocked = 0
+            fragmentMap.values.forEach { fragment ->
+                val f = fragment as? RssArticlesFragment
+                f?.applyBlockRules()
+                totalBlocked += f?.getBlockedCount() ?: 0
+            }
+            blockedCount = totalBlocked
+            updateBlockProgressChip()
+        }
+        dialog.onShowProgressChanged = {
+            showBlockProgress = it
+            updateBlockProgressChip()
+        }
+        dialog.show(supportFragmentManager, "rssBlockRuleConfig")
+    }
+
+    /**
+     * 更新屏蔽进度悬浮芯片的显示状态
+     * 芯片位于内容上方右侧，点击可打开屏蔽规则配置
+     */
+    private fun updateBlockProgressChip() {
+        val contentView = binding.contentView
+        if (showBlockProgress && blockedCount > 0) {
+            if (blockProgressComposeView == null) {
+                blockProgressComposeView = ComposeView(this).also { composeView ->
+                    composeView.setContent {
+                        LegadoTheme {
+                            Surface(
+                                modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                shadowElevation = 4.dp,
+                                onClick = { showBlockRuleConfig() }
+                            ) {
+                                Text(
+                                    text = getString(R.string.explore_block_rule_progress_text, blockedCount),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                    val params = android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                        android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        gravity = android.view.Gravity.TOP or android.view.Gravity.END
+                    }
+                    contentView.addView(composeView, params)
+                }
+            }
+        } else {
+            blockProgressComposeView?.let {
+                contentView.removeView(it)
+                blockProgressComposeView = null
+            }
+        }
+    }
+
+    /**
+     * 由 RssArticlesFragment 调用，更新总屏蔽计数和进度芯片
+     */
+    fun updateBlockedCount() {
+        var totalBlocked = 0
+        fragmentMap.values.forEach { fragment ->
+            totalBlocked += (fragment as? RssArticlesFragment)?.getBlockedCount() ?: 0
+        }
+        blockedCount = totalBlocked
+        updateBlockProgressChip()
     }
 
 }

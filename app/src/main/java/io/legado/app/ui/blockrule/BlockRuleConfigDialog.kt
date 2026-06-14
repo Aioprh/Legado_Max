@@ -1,4 +1,4 @@
-package io.legado.app.ui.book.explore
+package io.legado.app.ui.blockrule
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -73,11 +73,16 @@ import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.RssSource
+import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.theme.pageAccentColor
+import io.legado.app.model.blockrule.BlockRule
+import io.legado.app.model.blockrule.BlockRuleGroupStore
+import io.legado.app.model.blockrule.BlockRuleStore
 import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
@@ -95,10 +100,11 @@ import kotlinx.coroutines.withContext
  * 使用 Compose 构建界面，通过 DialogFragment + ComposeView 模式桥接到传统 View 系统。
  * 包含规则列表、编辑弹窗、分组管理、起效规则查看等功能。
  */
-class ExploreBlockRuleConfigDialog : DialogFragment() {
+class BlockRuleConfigDialog : DialogFragment() {
 
     var sourceUrl: String = ""
     var allBooks: List<SearchBook> = emptyList()
+    var allRssArticles: List<RssArticle> = emptyList()
     var onRulesChanged: (() -> Unit)? = null
     var onShowProgressChanged: ((Boolean) -> Unit)? = null
 
@@ -110,9 +116,10 @@ class ExploreBlockRuleConfigDialog : DialogFragment() {
         return ComposeView(requireContext()).apply {
             setContent {
                 LegadoTheme {
-                    ExploreBlockRuleConfigContent(
+                    BlockRuleConfigContent(
                         sourceUrl = sourceUrl,
                         allBooks = allBooks,
+                        allRssArticles = allRssArticles,
                         onDismiss = { dismissAllowingStateLoss() },
                         onRulesChanged = {
                             onRulesChanged?.invoke()
@@ -133,45 +140,53 @@ class ExploreBlockRuleConfigDialog : DialogFragment() {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExploreBlockRuleConfigContent(
+private fun BlockRuleConfigContent(
     sourceUrl: String,
     allBooks: List<SearchBook>,
+    allRssArticles: List<RssArticle>,
     onDismiss: () -> Unit,
     onRulesChanged: () -> Unit,
     onShowProgressChanged: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
-    var rules by remember { mutableStateOf<List<ExploreBlockRule>>(ExploreBlockRuleStore.load(context)) }
+    var rules by remember { mutableStateOf<List<BlockRule>>(BlockRuleStore.load(context)) }
     var currentGroup by remember { mutableStateOf<String?>(null) }
-    var editingRule by remember { mutableStateOf<ExploreBlockRule?>(null) }
-    var deletingRule by remember { mutableStateOf<ExploreBlockRule?>(null) }
+    var editingRule by remember { mutableStateOf<BlockRule?>(null) }
+    var deletingRule by remember { mutableStateOf<BlockRule?>(null) }
     var showGroupManage by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
-    var showProgress by remember { mutableStateOf(context.getPrefBoolean(PreferKey.exploreBlockRuleShowProgress, false)) }
+    var showProgress by remember { mutableStateOf(context.getPrefBoolean(PreferKey.blockRuleShowProgress, false)) }
     var showActiveRules by remember { mutableStateOf(false) }
     var allSources by remember { mutableStateOf<List<BookSource>>(emptyList()) }
+    var allRssSources by remember { mutableStateOf<List<RssSource>>(emptyList()) }
 
-    // 加载所有书源，用于规则列表中书源名称显示
+    // 加载所有书源和订阅源，用于规则列表中名称显示
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             allSources = appDb.bookSourceDao.getAllSources()
+            allRssSources = appDb.rssSourceDao.all
         }
     }
 
     fun refresh() {
-        ExploreBlockRuleStore.invalidateCache()
-        rules = ExploreBlockRuleStore.load(context)
+        BlockRuleStore.invalidateCache()
+        rules = BlockRuleStore.load(context)
         onRulesChanged()
     }
 
-    fun saveRules(newRules: List<ExploreBlockRule>) {
-        ExploreBlockRuleStore.save(context, newRules)
+    fun saveRules(newRules: List<BlockRule>) {
+        BlockRuleStore.save(context, newRules)
         rules = newRules
         onRulesChanged()
     }
 
-    val filteredRules = if (currentGroup == null) rules else rules.filter { it.group == currentGroup }
-    val groups = ExploreBlockRuleGroupStore.load(context)
+    val filteredRules = when (currentGroup) {
+        null -> rules
+        BlockRuleGroupStore.BOOK_SOURCE_GROUP -> rules.filter { BlockRuleGroupStore.isInBookSourceGroup(it) }
+        BlockRuleGroupStore.RSS_SOURCE_GROUP -> rules.filter { BlockRuleGroupStore.isInRssSourceGroup(it) }
+        else -> rules.filter { it.group == currentGroup }
+    }
+    val groups = BlockRuleGroupStore.load(context)
 
     // Delete confirm dialog
     deletingRule?.let { rule ->
@@ -192,7 +207,7 @@ private fun ExploreBlockRuleConfigContent(
 
     // Edit dialog
     editingRule?.let { rule ->
-        ExploreBlockRuleEditContent(
+        BlockRuleEditContent(
             sourceRule = rule,
             groups = groups,
             onSave = { newRule ->
@@ -211,11 +226,14 @@ private fun ExploreBlockRuleConfigContent(
 
     // Group manage dialog
     if (showGroupManage) {
-        ExploreBlockRuleGroupManageContent(
-            groups = groups,
+        val allGroupsForManage = remember(groups) {
+            BlockRuleGroupStore.RESERVED_GROUPS.toList() + groups.filter { it !in BlockRuleGroupStore.RESERVED_GROUPS }
+        }
+        BlockRuleGroupManageContent(
+            groups = allGroupsForManage,
             onAddGroup = { name ->
                 val newGroups = (groups + name).distinct()
-                ExploreBlockRuleGroupStore.save(context, newGroups)
+                BlockRuleGroupStore.save(context, newGroups)
                 refresh()
             },
             onRenameGroup = { oldName, newName ->
@@ -223,16 +241,16 @@ private fun ExploreBlockRuleConfigContent(
                     if (it.group == oldName) it.copy(group = newName) else it
                 }
                 val newGroups = groups.map { if (it == oldName) newName else it }
-                ExploreBlockRuleGroupStore.save(context, newGroups)
+                BlockRuleGroupStore.save(context, newGroups)
                 saveRules(newRules)
                 if (currentGroup == oldName) currentGroup = newName
             },
             onDeleteGroup = { name ->
                 val newRules = rules.map {
-                    if (it.group == name) it.copy(group = ExploreBlockRuleGroupStore.DEFAULT_GROUP) else it
+                    if (it.group == name) it.copy(group = BlockRuleGroupStore.DEFAULT_GROUP) else it
                 }
                 val newGroups = groups.filterNot { it == name }
-                ExploreBlockRuleGroupStore.save(context, newGroups)
+                BlockRuleGroupStore.save(context, newGroups)
                 saveRules(newRules)
                 if (currentGroup == name) currentGroup = null
             },
@@ -266,8 +284,8 @@ private fun ExploreBlockRuleConfigContent(
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = {
-                    editingRule = ExploreBlockRule(
-                        group = currentGroup ?: ExploreBlockRuleGroupStore.DEFAULT_GROUP
+                    editingRule = BlockRule(
+                        group = currentGroup ?: BlockRuleGroupStore.DEFAULT_GROUP
                     )
                 }) {
                     Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.explore_block_rule_add))
@@ -305,8 +323,21 @@ private fun ExploreBlockRuleConfigContent(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Group filter chips
-            if (groups.size > 1) {
+            // Group filter chips（含保留分组：书源、订阅源）
+            val allFilterGroups = remember(groups, rules) {
+                val result = mutableListOf<String>()
+                // 保留分组
+                if (rules.any { BlockRuleGroupStore.isInBookSourceGroup(it) }) {
+                    result.add(BlockRuleGroupStore.BOOK_SOURCE_GROUP)
+                }
+                if (rules.any { BlockRuleGroupStore.isInRssSourceGroup(it) }) {
+                    result.add(BlockRuleGroupStore.RSS_SOURCE_GROUP)
+                }
+                // 用户自定义分组
+                result.addAll(groups)
+                result
+            }
+            if (allFilterGroups.size > 1 || allFilterGroups.isNotEmpty()) {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -316,7 +347,7 @@ private fun ExploreBlockRuleConfigContent(
                         onClick = { currentGroup = null },
                         label = { Text(stringResource(R.string.explore_block_rule_scope_all)) }
                     )
-                    groups.forEach { group ->
+                    allFilterGroups.forEach { group ->
                         FilterChip(
                             selected = currentGroup == group,
                             onClick = { currentGroup = group },
@@ -341,7 +372,7 @@ private fun ExploreBlockRuleConfigContent(
                     checked = showProgress,
                     onCheckedChange = {
                         showProgress = it
-                        context.putPrefBoolean(PreferKey.exploreBlockRuleShowProgress, it)
+                        context.putPrefBoolean(PreferKey.blockRuleShowProgress, it)
                         onShowProgressChanged(it)
                     }
                 )
@@ -359,7 +390,11 @@ private fun ExploreBlockRuleConfigContent(
                     style = MaterialTheme.typography.bodyMedium,
                     color = pageAccentColor()
                 )
-                val currentMatchedRules = ExploreBlockRuleStore.getMatchedRules(context, allBooks, sourceUrl)
+                val currentMatchedRules = if (allRssArticles.isNotEmpty()) {
+                    BlockRuleStore.getMatchedRssRules(context, allRssArticles, sourceUrl)
+                } else {
+                    BlockRuleStore.getMatchedRules(context, allBooks, sourceUrl)
+                }
                 Text(
                     text = "${currentMatchedRules.size}",
                     style = MaterialTheme.typography.bodyMedium,
@@ -384,6 +419,7 @@ private fun ExploreBlockRuleConfigContent(
                         BlockRuleItem(
                             rule = rule,
                             allSources = allSources,
+                            allRssSources = allRssSources,
                             onToggleEnabled = {
                                 val newRules = rules.map {
                                     if (it.id == rule.id) it.copy(enabled = !it.enabled) else it
@@ -400,9 +436,13 @@ private fun ExploreBlockRuleConfigContent(
         }
     }
 
-    // 起效的规则弹窗：显示实际匹配到书籍的规则，可展开查看匹配的书
+    // 起效的规则弹窗：显示实际匹配到书籍/文章的规则，可展开查看匹配的内容
     if (showActiveRules) {
-        val activeMatchedRules = ExploreBlockRuleStore.getMatchedRules(context, allBooks, sourceUrl)
+        val activeMatchedRules = if (allRssArticles.isNotEmpty()) {
+            BlockRuleStore.getMatchedRssRules(context, allRssArticles, sourceUrl)
+        } else {
+            BlockRuleStore.getMatchedRules(context, allBooks, sourceUrl)
+        }
         AlertDialog(
             onDismissRequest = { showActiveRules = false },
             title = { Text(stringResource(R.string.explore_block_rule_active_rules)) },
@@ -412,6 +452,14 @@ private fun ExploreBlockRuleConfigContent(
                         text = stringResource(R.string.explore_block_rule_active_rules_empty),
                         color = pageSecondaryTextColor()
                     )
+                } else if (allRssArticles.isNotEmpty()) {
+                    LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                        items(activeMatchedRules, key = { it.id }) { rule ->
+                            val matchedArticles = allRssArticles.filter { rule.matchesRssArticle(it) }
+                            ActiveRssRuleItem(rule = rule, matchedArticles = matchedArticles)
+                            HorizontalDivider()
+                        }
+                    }
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                         items(activeMatchedRules, key = { it.id }) { rule ->
@@ -429,10 +477,10 @@ private fun ExploreBlockRuleConfigContent(
     }
 }
 
-/** 起效规则项，可展开/收起查看匹配到的书籍，默认收起 */
+/** 起效规则项（书籍），可展开/收起查看匹配到的书籍，默认收起 */
 @Composable
 private fun ActiveRuleItem(
-    rule: ExploreBlockRule,
+    rule: BlockRule,
     matchedBooks: List<SearchBook>
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -500,11 +548,83 @@ private fun ActiveRuleItem(
     }
 }
 
+/** 起效规则项（订阅源文章），可展开/收起查看匹配到的文章，默认收起 */
+@Composable
+private fun ActiveRssRuleItem(
+    rule: BlockRule,
+    matchedArticles: List<RssArticle>
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // 规则标题行，点击展开/收起
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = rule.name.ifBlank { rule.pattern },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "${rule.modeLabel()} / ${rule.scopeSummary()} / 匹配${matchedArticles.size}条",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = pageSecondaryTextColor()
+                )
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = if (expanded) "收起" else "展开",
+                modifier = Modifier.size(20.dp),
+                tint = pageSecondaryTextColor()
+            )
+        }
+
+        // 展开后显示匹配的文章列表
+        AnimatedVisibility(visible = expanded) {
+            Column(modifier = Modifier.padding(start = 8.dp, bottom = 4.dp)) {
+                matchedArticles.forEach { article ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = article.title.ifBlank { article.link },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                        if (!article.pubDate.isNullOrBlank()) {
+                            Text(
+                                text = " ${article.pubDate}",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = pageSecondaryTextColor()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** 规则列表项，显示名称、模式、范围、分组，支持启用/编辑/删除 */
 @Composable
 private fun BlockRuleItem(
-    rule: ExploreBlockRule,
+    rule: BlockRule,
     allSources: List<BookSource>,
+    allRssSources: List<RssSource>,
     onToggleEnabled: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -539,7 +659,19 @@ private fun BlockRuleItem(
                         allSources.find { it.bookSourceUrl == url }?.bookSourceName ?: url
                     }
                     Text(
-                        text = "仅: ${scopeNames.joinToString(", ")}",
+                        text = "书源: ${scopeNames.joinToString(", ")}",
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = pageSecondaryTextColor()
+                    )
+                }
+                if (!rule.rssScope.isNullOrBlank()) {
+                    val rssScopeNames = rule.rssScope!!.split(";").map { it.trim() }.filter { it.isNotBlank() }.map { url ->
+                        allRssSources.find { it.sourceUrl == url }?.sourceName ?: url
+                    }
+                    Text(
+                        text = "订阅源: ${rssScopeNames.joinToString(", ")}",
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodySmall,
@@ -569,27 +701,37 @@ private fun BlockRuleItem(
 /** 规则编辑弹窗，支持新增和编辑屏蔽规则 */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-private fun ExploreBlockRuleEditContent(
-    sourceRule: ExploreBlockRule,
+private fun BlockRuleEditContent(
+    sourceRule: BlockRule,
     groups: List<String>,
-    onSave: (ExploreBlockRule) -> Unit,
+    onSave: (BlockRule) -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(sourceRule.name) }
     var pattern by remember { mutableStateOf(sourceRule.pattern) }
     var isRegex by remember { mutableStateOf(sourceRule.isRegex) }
-    var selectedGroup by remember { mutableStateOf(sourceRule.group.ifBlank { ExploreBlockRuleGroupStore.DEFAULT_GROUP }) }
+    var selectedGroup by remember { mutableStateOf(sourceRule.group.ifBlank { BlockRuleGroupStore.DEFAULT_GROUP }) }
     var targetScope by remember { mutableIntStateOf(sourceRule.targetScope) }
+    var rssTargetScope by remember { mutableIntStateOf(sourceRule.rssTargetScope) }
     var scope by remember { mutableStateOf(sourceRule.scope.orEmpty()) }
+    var rssScope by remember { mutableStateOf(sourceRule.rssScope.orEmpty()) }
     var enabled by remember { mutableStateOf(sourceRule.enabled) }
     var patternError by remember { mutableStateOf<String?>(null) }
+    var bookScopeError by remember { mutableStateOf<String?>(null) }
+    var rssScopeError by remember { mutableStateOf<String?>(null) }
+    var noScopeError by remember { mutableStateOf<String?>(null) }
+    var showBookScope by remember { mutableStateOf(sourceRule.targetScope != 0 || (sourceRule.targetScope == 0 && sourceRule.rssTargetScope == 0)) }
+    var showRssScope by remember { mutableStateOf(sourceRule.rssTargetScope != 0 || (sourceRule.targetScope == 0 && sourceRule.rssTargetScope == 0)) }
     var showScopeSelector by remember { mutableStateOf(false) }
+    var showRssScopeSelector by remember { mutableStateOf(false) }
     var totalSourceCount by remember { mutableIntStateOf(0) }
+    var totalRssSourceCount by remember { mutableIntStateOf(0) }
 
-    // 加载书源总数，用于判断是否全选
+    // 加载书源总数和订阅源总数，用于判断是否全选
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             totalSourceCount = appDb.bookSourceDao.getAllSources().size
+            totalRssSourceCount = appDb.rssSourceDao.all.size
         }
     }
 
@@ -688,7 +830,7 @@ private fun ExploreBlockRuleEditContent(
                     }
                 }
 
-                // Target scope multi-select
+                // ===== 作用范围主开关 =====
                 Text(
                     text = stringResource(R.string.explore_block_rule_target_scope),
                     style = MaterialTheme.typography.bodyMedium,
@@ -696,44 +838,154 @@ private fun ExploreBlockRuleEditContent(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val scopeOptions = listOf(
-                        ExploreBlockRule.SCOPE_TITLE to stringResource(R.string.explore_block_rule_scope_title),
-                        ExploreBlockRule.SCOPE_AUTHOR to stringResource(R.string.explore_block_rule_scope_author),
-                        ExploreBlockRule.SCOPE_TAG to stringResource(R.string.explore_block_rule_scope_tag),
-                        ExploreBlockRule.SCOPE_INTRO to stringResource(R.string.explore_block_rule_scope_intro),
+                    FilterChip(
+                        selected = showBookScope,
+                        onClick = {
+                            showBookScope = !showBookScope
+                            if (showBookScope) {
+                                noScopeError = null
+                            } else {
+                                targetScope = 0
+                                scope = ""
+                                bookScopeError = null
+                            }
+                        },
+                        label = { Text("书源") }
                     )
-                    scopeOptions.forEach { (flag, label) ->
-                        FilterChip(
-                            selected = (targetScope and flag) != 0,
-                            onClick = {
-                                targetScope = targetScope xor flag
+                    FilterChip(
+                        selected = showRssScope,
+                        onClick = {
+                            showRssScope = !showRssScope
+                            if (showRssScope) {
+                                noScopeError = null
+                            } else {
+                                rssTargetScope = 0
+                                rssScope = ""
+                                rssScopeError = null
+                            }
+                        },
+                        label = { Text("订阅源") }
+                    )
+                }
+
+                noScopeError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                HorizontalDivider()
+
+                // ===== 书源作用范围子区域 =====
+                AnimatedVisibility(visible = showBookScope) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(R.string.explore_block_rule_book_target_scope),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            val bookScopeOptions = listOf(
+                                BlockRule.SCOPE_TITLE to stringResource(R.string.explore_block_rule_scope_title),
+                                BlockRule.SCOPE_AUTHOR to stringResource(R.string.explore_block_rule_scope_author),
+                                BlockRule.SCOPE_TAG to stringResource(R.string.explore_block_rule_scope_tag),
+                                BlockRule.SCOPE_INTRO to stringResource(R.string.explore_block_rule_scope_intro),
+                            )
+                            bookScopeOptions.forEach { (flag, label) ->
+                                FilterChip(
+                                    selected = (targetScope and flag) != 0,
+                                    onClick = {
+                                        targetScope = targetScope xor flag
+                                        bookScopeError = null
+                                    },
+                                    label = { Text(label) }
+                                )
+                            }
+                        }
+                        bookScopeError?.let {
+                            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+
+                        // 作用的指定书源选择器
+                        OutlinedTextField(
+                            value = if (scope.isBlank()) "全部书源" else {
+                                val count = scope.split(";").map { it.trim() }.filter { it.isNotBlank() }.size
+                                "已选 $count 个书源"
                             },
-                            label = { Text(label) }
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.explore_block_rule_source_scope)) },
+                            trailingIcon = {
+                                IconButton(onClick = { showScopeSelector = true }) {
+                                    Icon(Icons.Filled.ExpandMore, contentDescription = "选择书源")
+                                }
+                            },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showScopeSelector = true }
                         )
                     }
                 }
 
-                // Source scope - 可点击打开书源选择器
-                OutlinedTextField(
-                    value = if (scope.isBlank()) "默认全选" else {
-                        val count = scope.split(";").map { it.trim() }.filter { it.isNotBlank() }.size
-                        "已选 $count 个书源"
-                    },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.explore_block_rule_source_scope)) },
-                    trailingIcon = {
-                        IconButton(onClick = { showScopeSelector = true }) {
-                            Icon(Icons.Filled.ExpandMore, contentDescription = "选择书源")
+                // ===== 订阅源作用范围子区域 =====
+                AnimatedVisibility(visible = showRssScope) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
+
+                        Text(
+                            text = stringResource(R.string.explore_block_rule_rss_target_scope),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            val rssScopeOptions = listOf(
+                                BlockRule.SCOPE_RSS_TITLE to stringResource(R.string.explore_block_rule_scope_rss_title),
+                                BlockRule.SCOPE_RSS_TIME to stringResource(R.string.explore_block_rule_scope_rss_time),
+                            )
+                            rssScopeOptions.forEach { (flag, label) ->
+                                FilterChip(
+                                    selected = (rssTargetScope and flag) != 0,
+                                    onClick = {
+                                        rssTargetScope = rssTargetScope xor flag
+                                        rssScopeError = null
+                                    },
+                                    label = { Text(label) }
+                                )
+                            }
                         }
-                    },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showScopeSelector = true }
-                )
+                        rssScopeError?.let {
+                            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
+
+                        // 作用的指定订阅源选择器
+                        OutlinedTextField(
+                            value = if (rssScope.isBlank()) "全部订阅源" else {
+                                val count = rssScope.split(";").map { it.trim() }.filter { it.isNotBlank() }.size
+                                "已选 $count 个订阅源"
+                            },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.explore_block_rule_rss_source_scope)) },
+                            trailingIcon = {
+                                IconButton(onClick = { showRssScopeSelector = true }) {
+                                    Icon(Icons.Filled.ExpandMore, contentDescription = "选择订阅源")
+                                }
+                            },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showRssScopeSelector = true }
+                        )
+                    }
+                }
 
                 // Enabled
                 Row(
@@ -750,18 +1002,37 @@ private fun ExploreBlockRuleEditContent(
         },
         confirmButton = {
             TextButton(
-                enabled = pattern.isNotBlank() && patternError == null && targetScope != 0,
+                enabled = pattern.isNotBlank() && patternError == null,
                 onClick = {
+                    // 前端安全验证：必须至少选择书源或订阅源之一
+                    var hasError = false
+                    if (!showBookScope && !showRssScope) {
+                        noScopeError = "请至少选择书源或订阅源"
+                        hasError = true
+                    }
+                    // 已启用的作用范围必须至少选择一个子字段
+                    if (showBookScope && targetScope == 0) {
+                        bookScopeError = "请至少选择一项书源作用范围"
+                        hasError = true
+                    }
+                    if (showRssScope && rssTargetScope == 0) {
+                        rssScopeError = "请至少选择一项订阅源作用范围"
+                        hasError = true
+                    }
+                    if (hasError) return@TextButton
+
                     onSave(
                         sourceRule.copy(
                             id = sourceRule.id.ifBlank { System.currentTimeMillis().toString() },
                             name = name.ifBlank { pattern },
                             pattern = pattern,
                             isRegex = isRegex,
-                            group = selectedGroup.ifBlank { ExploreBlockRuleGroupStore.DEFAULT_GROUP },
+                            group = selectedGroup.ifBlank { BlockRuleGroupStore.DEFAULT_GROUP },
                             targetScope = targetScope,
+                            rssTargetScope = rssTargetScope,
                             enabled = enabled,
                             scope = scope.takeIf { it.isNotBlank() },
+                            rssScope = rssScope.takeIf { it.isNotBlank() },
                         )
                     )
                 }
@@ -779,7 +1050,7 @@ private fun ExploreBlockRuleEditContent(
         BookSourceSelectorDialog(
             title = stringResource(R.string.explore_block_rule_source_scope),
             initialSelectedUrls = currentScopeUrls,
-            defaultSelectAll = scope.isBlank(),
+            defaultSelectAll = false,
             onConfirm = { selectedUrls ->
                 // 如果全选了所有书源，保存为空（空=所有书源）
                 scope = if (selectedUrls.isEmpty() || selectedUrls.size == totalSourceCount) {
@@ -792,11 +1063,32 @@ private fun ExploreBlockRuleEditContent(
             onDismiss = { showScopeSelector = false }
         )
     }
+
+    // 作用的订阅源选择器弹窗
+    if (showRssScopeSelector) {
+        val currentRssScopeUrls = if (rssScope.isBlank()) emptySet()
+        else rssScope.split(";").map { it.trim() }.filter { it.isNotBlank() }.toSet()
+        RssSourceSelectorDialog(
+            title = stringResource(R.string.explore_block_rule_rss_source_scope),
+            initialSelectedUrls = currentRssScopeUrls,
+            defaultSelectAll = false,
+            onConfirm = { selectedUrls ->
+                // 如果全选了所有订阅源，保存为空（空=所有订阅源）
+                rssScope = if (selectedUrls.isEmpty() || selectedUrls.size == totalRssSourceCount) {
+                    ""
+                } else {
+                    selectedUrls.joinToString(";")
+                }
+                showRssScopeSelector = false
+            },
+            onDismiss = { showRssScopeSelector = false }
+        )
+    }
 }
 
 /** 分组管理弹窗，支持新增/重命名/删除分组 */
 @Composable
-private fun ExploreBlockRuleGroupManageContent(
+private fun BlockRuleGroupManageContent(
     groups: List<String>,
     onAddGroup: (String) -> Unit,
     onRenameGroup: (oldName: String, newName: String) -> Unit,
@@ -861,14 +1153,24 @@ private fun ExploreBlockRuleGroupManageContent(
         text = {
             LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                 items(localGroups) { group ->
+                    val isReserved = BlockRuleGroupStore.isReservedGroup(group)
                     ListItem(
                         leadingContent = {
-                            Icon(Icons.Filled.Folder, contentDescription = null)
+                            Icon(
+                                Icons.Filled.Folder,
+                                contentDescription = null,
+                                tint = if (isReserved) pageSecondaryTextColor() else MaterialTheme.colorScheme.primary
+                            )
                         },
-                        headlineContent = { Text(group) },
+                        headlineContent = {
+                            Text(
+                                group,
+                                color = if (isReserved) pageSecondaryTextColor() else MaterialTheme.colorScheme.onSurface
+                            )
+                        },
                         trailingContent = {
-                            Row {
-                                if (group != ExploreBlockRuleGroupStore.DEFAULT_GROUP) {
+                            if (!isReserved) {
+                                Row {
                                     IconButton(onClick = {
                                         inputDialog = GroupInput("重命名分组", group) { newName ->
                                             onRenameGroup(group, newName)
@@ -1094,6 +1396,194 @@ private fun BookSourceSelectorDialog(
     )
 }
 
+/**
+ * 订阅源选择器弹窗
+ *
+ * 显示所有订阅源供用户勾选，支持搜索过滤、全选和反选操作。
+ * 用于"作用的订阅源"字段的可视化选择。
+ *
+ * @param title 弹窗标题
+ * @param initialSelectedUrls 初始选中的订阅源URL集合
+ * @param defaultSelectAll 初始未选任何订阅源时是否默认全选
+ * @param onConfirm 确认回调，参数为选中的订阅源URL集合
+ * @param onDismiss 取消回调
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RssSourceSelectorDialog(
+    title: String,
+    initialSelectedUrls: Set<String>,
+    defaultSelectAll: Boolean = false,
+    onConfirm: (Set<String>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var allSources by remember { mutableStateOf<List<RssSource>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedUrls by remember { mutableStateOf(initialSelectedUrls) }
+    var defaultSelectAllPending by remember { mutableStateOf(defaultSelectAll && initialSelectedUrls.isEmpty()) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val sources = appDb.rssSourceDao.all
+            withContext(Dispatchers.Main) {
+                allSources = sources
+                if (defaultSelectAllPending) {
+                    selectedUrls = sources.map { it.sourceUrl }.toSet()
+                    defaultSelectAllPending = false
+                }
+                isLoading = false
+            }
+        }
+    }
+
+    val filteredSources = remember(allSources, searchQuery) {
+        if (searchQuery.isBlank()) allSources
+        else allSources.filter {
+            it.sourceName.contains(searchQuery, ignoreCase = true) ||
+                it.sourceUrl.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (allSources.isEmpty()) {
+                Text(
+                    text = "暂无订阅源",
+                    color = pageSecondaryTextColor()
+                )
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // 搜索框
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("搜索订阅源名称或URL") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 全选 / 反选按钮 + 已选计数
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = {
+                            selectedUrls = filteredSources.map { it.sourceUrl }.toSet()
+                        }) {
+                            Text("全选")
+                        }
+                        TextButton(onClick = {
+                            val filteredUrls = filteredSources.map { it.sourceUrl }.toSet()
+                            val newSelected = selectedUrls.toMutableSet()
+                            filteredUrls.forEach { url ->
+                                if (url in newSelected) newSelected.remove(url) else newSelected.add(url)
+                            }
+                            selectedUrls = newSelected
+                        }) {
+                            Text("反选")
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            text = "${selectedUrls.size}/${allSources.size}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = pageSecondaryTextColor()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // 订阅源列表 + 滚动条
+                    val listState = rememberLazyListState()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                    ) {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.CenterStart)
+                        ) {
+                            items(filteredSources, key = { it.sourceUrl }) { source ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedUrls = if (source.sourceUrl in selectedUrls) {
+                                                selectedUrls - source.sourceUrl
+                                            } else {
+                                                selectedUrls + source.sourceUrl
+                                            }
+                                        }
+                                        .padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = source.sourceUrl in selectedUrls,
+                                        onCheckedChange = { checked ->
+                                            selectedUrls = if (checked) {
+                                                selectedUrls + source.sourceUrl
+                                            } else {
+                                                selectedUrls - source.sourceUrl
+                                            }
+                                        }
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = source.sourceName.ifBlank { source.sourceUrl },
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        if (source.sourceName.isNotBlank()) {
+                                            Text(
+                                                text = source.sourceUrl,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = pageSecondaryTextColor()
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        VerticalScrollbar(
+                            state = listState,
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedUrls) }) {
+                Text(stringResource(android.R.string.ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        }
+    )
+}
+
 private data class GroupInput(
     val title: String,
     val initialName: String = "",
@@ -1106,25 +1596,25 @@ private fun importFromClipboard(context: android.content.Context, onRefresh: () 
         context.toastOnUi(R.string.explore_block_rule_clipboard_empty)
         return
     }
-    val imported = GSON.fromJsonArray<ExploreBlockRule>(clip).getOrNull()
+    val imported = GSON.fromJsonArray<BlockRule>(clip).getOrNull()
     if (imported.isNullOrEmpty()) {
         context.toastOnUi(R.string.explore_block_rule_import_invalid)
         return
     }
-    val existing = ExploreBlockRuleStore.load(context)
+    val existing = BlockRuleStore.load(context)
     val newRules = imported.map { rule ->
-        var normalized = ExploreBlockRuleStore.sanitizeRule(rule)
+        var normalized = BlockRuleStore.sanitizeRule(rule)
         if (existing.any { it.id == normalized.id }) {
             normalized = normalized.copyWithNewId()
         }
         normalized
     }
-    ExploreBlockRuleStore.save(context, existing + newRules)
+    BlockRuleStore.save(context, existing + newRules)
     context.toastOnUi(R.string.explore_block_rule_import_success)
     onRefresh()
 }
 
-private fun exportToClipboard(context: android.content.Context, rules: List<ExploreBlockRule>) {
+private fun exportToClipboard(context: android.content.Context, rules: List<BlockRule>) {
     if (rules.isEmpty()) {
         context.toastOnUi(R.string.explore_block_rule_empty)
         return

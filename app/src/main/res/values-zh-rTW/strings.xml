@@ -1561,4 +1561,12 @@
     <string name="explore_block_rule_progress_text">已屏蔽 %1$d 本</string>
     <string name="explore_block_rule_active_rules">起效的規則</string>
     <string name="explore_block_rule_active_rules_empty">當前書源無起效的規則</string>
+    <string name="explore_block_rule_scope_rss_time">時間</string>
+    <string name="explore_block_rule_rss_source_scope">作用的訂閱源</string>
+    <string name="explore_block_rule_book_target_scope">書源作用範圍</string>
+    <string name="explore_block_rule_rss_target_scope">訂閱源作用範圍</string>
+    <string name="explore_block_rule_scope_rss_title">標題</string>
+    <string name="explore_block_rule_scope_rss_intro">簡介</string>
+    <string name="block_rule_manage">屏蔽規則</string>
+    <string name="block_rule_manage_summary">管理發現、搜尋和訂閱源的屏蔽規則</string>
 </resources>
