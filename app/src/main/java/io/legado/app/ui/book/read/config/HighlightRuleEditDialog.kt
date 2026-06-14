@@ -167,8 +167,15 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             if (ColorUtils.isColorLight(accentColor)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
         )
 
-        binding.switchEnable.trackTintList = android.content.res.ColorStateList.valueOf(accentColor)
-        binding.switchEnable.thumbTintList = android.content.res.ColorStateList.valueOf(accentColor)
+        val disabledColor = ColorUtils.blendColors(accentColor, secondaryTextColor, 0.6f)
+        binding.switchEnable.trackTintList = android.content.res.ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(accentColor, disabledColor)
+        )
+        binding.switchEnable.thumbTintList = android.content.res.ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+            intArrayOf(accentColor, secondaryTextColor)
+        )
 
         val cardDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE

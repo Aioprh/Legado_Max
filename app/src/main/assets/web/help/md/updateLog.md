@@ -15,6 +15,10 @@
 * [Github](https://github.com/youfengknight/Legado_Max)
 * [Github分支](https://github.com/GEd520/legados)
 
+**2026/06/14**
+- 修复底栏管理编辑界面无法滚动
+- 优化高亮规则编辑界面
+
 **2026/06/13**
 - 高亮规则添加书籍作用域功能
 - 添加书源发现界面屏蔽规则功能
