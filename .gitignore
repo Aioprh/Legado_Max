@@ -25,4 +25,5 @@ package-lock.json
 .vscode
 *.hprof*.hprof
 .docs
+.workbuddy/
 /gradle/gradle-daemon-jvm.properties
