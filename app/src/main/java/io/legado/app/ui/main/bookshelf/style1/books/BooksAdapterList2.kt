@@ -12,6 +12,7 @@ import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.invisible
 import io.legado.app.utils.toTimeAgo
+import io.legado.app.utils.dpToPx
 import splitties.views.onLongClick
 
 /**
@@ -35,6 +36,16 @@ class BooksAdapterList2(
         payloads: MutableList<Any>
     ) = binding.run {
         if (payloads.isEmpty()) {
+            // 根据配置控制书籍外边框显示和间距
+            if (AppConfig.showBookBorder) {
+                root.background = context.resources.getDrawable(io.legado.app.R.drawable.card_border_background, null)
+                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
+                    4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()
+                )
+            } else {
+                root.background = null
+                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 0, 0, 0)
+            }
             tvName.text = item.name
             tvAuthor.text = item.author
             tvRead.text = item.durChapterTitle

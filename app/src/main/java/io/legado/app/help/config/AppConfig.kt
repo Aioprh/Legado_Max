@@ -310,6 +310,13 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.showTagsInList, value)
         }
 
+    // 书籍外边框开关（默认关闭，仅在列表/紧凑列表视图时生效）
+    var showBookBorder: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.showBookBorder, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.showBookBorder, value)
+        }
+
     // 简介显示行数（默认2行，范围1-10）
     var introLinesInList: Int
         get() = appCtx.getPrefInt(PreferKey.introLinesInList, 2)

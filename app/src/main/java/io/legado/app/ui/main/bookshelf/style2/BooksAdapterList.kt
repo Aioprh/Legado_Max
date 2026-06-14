@@ -19,6 +19,7 @@ import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.splitNotBlank
 import io.legado.app.utils.visible
+import io.legado.app.utils.dpToPx
 import splitties.views.onLongClick
 
 @Suppress("UNUSED_PARAMETER")
@@ -75,6 +76,16 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun onBind(item: Book, position: Int) = binding.run {
+            // 根据配置控制书籍外边框显示和间距
+            if (AppConfig.showBookBorder) {
+                root.background = context.resources.getDrawable(io.legado.app.R.drawable.card_border_background, null)
+                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
+                    4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()
+                )
+            } else {
+                root.background = null
+                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 0, 0, 0)
+            }
             tvName.text = item.name
             tvAuthor.text = item.author
             tvRead.text = item.durChapterTitle
@@ -201,6 +212,16 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun onBind(item: Book, position: Int) = binding.run {
+            // 根据配置控制书籍外边框显示和间距
+            if (AppConfig.showBookBorder) {
+                root.background = context.resources.getDrawable(io.legado.app.R.drawable.card_border_background, null)
+                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
+                    4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()
+                )
+            } else {
+                root.background = null
+                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 0, 0, 0)
+            }
             tvName.text = item.name
             tvAuthor.text = item.author
             tvRead.text = item.durChapterTitle

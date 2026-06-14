@@ -1749,6 +1749,7 @@
     <string name="show_more_info">显示更多信息</string>
     <string name="show_intro">显示简介</string>
     <string name="show_tags">显示标签</string>
+    <string name="show_book_border">显示外边框</string>
     <!-- 简介行数选择 -->
     <string name="intro_lines">简介行数</string>
     <string name="intro_lines_1">1行</string>

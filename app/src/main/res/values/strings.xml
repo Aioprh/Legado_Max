@@ -1903,6 +1903,7 @@
     <string name="show_more_info">Show More Info</string>
     <string name="show_intro">Show Intro</string>
     <string name="show_tags">Show Tags</string>
+    <string name="show_book_border">Show Border</string>
     <!-- Intro lines selection -->
     <string name="intro_lines">Intro Lines</string>
     <string name="intro_lines_1">1 Line</string>

@@ -218,6 +218,9 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         swShowMoreInfo.isChecked = AppConfig.showMoreInfoInList
                         swShowIntro.isChecked = AppConfig.showIntroInList
                         swShowTags.isChecked = AppConfig.showTagsInList
+                        // 书籍外边框开关（仅在列表/紧凑列表视图时显示，默认关闭）
+                        swShowBookBorder.visibility = if (bookLayout <= 1) View.VISIBLE else View.GONE
+                        swShowBookBorder.isChecked = AppConfig.showBookBorder
                         // 子菜单可见性
                         swShowIntro.visibility = if (AppConfig.showMoreInfoInList) View.VISIBLE else View.GONE
                         swShowTags.visibility = if (AppConfig.showMoreInfoInList) View.VISIBLE else View.GONE
@@ -256,8 +259,10 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         spBookView.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
                             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
                                 bookNameChoice.visibility = if (position > 1) View.VISIBLE else View.GONE
-                                // 根据书籍视图控制"显示更多信息"的可见性（仅在列表视图时显示）
+                                // 根据书籍视图控制"显示更多信息"的可见性（仅在标准列表视图时显示）
                                 llShowMoreInfo.visibility = if (position == 0) View.VISIBLE else View.GONE
+                                // 书籍外边框开关（仅在列表/紧凑列表视图时显示）
+                                swShowBookBorder.visibility = if (position <= 1) View.VISIBLE else View.GONE
                             }
                             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
                         }
@@ -319,6 +324,11 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         refreshBookshelf = true
                     }
                     // 简介行数已在 NumberPickerDialog 回调中保存，无需在此处保存
+                    // 保存"书籍外边框"开关配置
+                    if (AppConfig.showBookBorder != swShowBookBorder.isChecked) {
+                        AppConfig.showBookBorder = swShowBookBorder.isChecked
+                        refreshBookshelf = true
+                    }
                     // 保存"下拉选择分组"开关配置
                     if (AppConfig.dropdownSelectGroup != swDropdownSelectGroup.isChecked) {
                         AppConfig.dropdownSelectGroup = swDropdownSelectGroup.isChecked

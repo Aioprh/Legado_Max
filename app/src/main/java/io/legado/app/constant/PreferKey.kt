@@ -58,6 +58,8 @@ object PreferKey {
     const val showMoreInfoInList = "showMoreInfoInList"
     const val showIntroInList = "showIntroInList"
     const val showTagsInList = "showTagsInList"
+    // 书籍外边框开关（仅在列表/紧凑列表视图时生效）
+    const val showBookBorder = "showBookBorder"
     // 简介显示行数（1-4行）
     const val introLinesInList = "introLinesInList"
     // 下拉选择分组开关（仅在分组样式为标签时生效）
