@@ -15,6 +15,7 @@ import io.legado.app.data.entities.SearchBook
 import io.legado.app.databinding.ItemChangeSourceBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getCompatColor
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
@@ -81,40 +82,50 @@ class ChangeBookSourceAdapter(
                     }
                 }
             }
-            val score = callBack.getBookScore(item)
-            if (score > 0) {
-                binding.ivBad.gone()
-                binding.ivGood.visible()
-                DrawableCompat.setTint(
-                    binding.ivGood.drawable,
-                    appCtx.getCompatColor(R.color.md_red_A200)
-                )
-                DrawableCompat.setTint(
-                    binding.ivBad.drawable,
-                    appCtx.getCompatColor(R.color.md_blue_100)
-                )
-            } else if (score < 0) {
-                binding.ivGood.gone()
-                binding.ivBad.visible()
-                DrawableCompat.setTint(
-                    binding.ivGood.drawable,
-                    appCtx.getCompatColor(R.color.md_red_100)
-                )
-                DrawableCompat.setTint(
-                    binding.ivBad.drawable,
-                    appCtx.getCompatColor(R.color.md_blue_A200)
-                )
+
+            if (AppConfig.changeSourceShowScore) {
+                ivGood.visible()
+                ivBad.visible()
+                setTextLeftMargin(binding, 30.dpToPx())
+                val score = callBack.getBookScore(item)
+                if (score > 0) {
+                    binding.ivBad.gone()
+                    binding.ivGood.visible()
+                    DrawableCompat.setTint(
+                        binding.ivGood.drawable,
+                        appCtx.getCompatColor(R.color.md_red_A200)
+                    )
+                    DrawableCompat.setTint(
+                        binding.ivBad.drawable,
+                        appCtx.getCompatColor(R.color.md_blue_100)
+                    )
+                } else if (score < 0) {
+                    binding.ivGood.gone()
+                    binding.ivBad.visible()
+                    DrawableCompat.setTint(
+                        binding.ivGood.drawable,
+                        appCtx.getCompatColor(R.color.md_red_100)
+                    )
+                    DrawableCompat.setTint(
+                        binding.ivBad.drawable,
+                        appCtx.getCompatColor(R.color.md_blue_A200)
+                    )
+                } else {
+                    binding.ivGood.visible()
+                    binding.ivBad.visible()
+                    DrawableCompat.setTint(
+                        binding.ivGood.drawable,
+                        appCtx.getCompatColor(R.color.md_red_100)
+                    )
+                    DrawableCompat.setTint(
+                        binding.ivBad.drawable,
+                        appCtx.getCompatColor(R.color.md_blue_100)
+                    )
+                }
             } else {
-                binding.ivGood.visible()
-                binding.ivBad.visible()
-                DrawableCompat.setTint(
-                    binding.ivGood.drawable,
-                    appCtx.getCompatColor(R.color.md_red_100)
-                )
-                DrawableCompat.setTint(
-                    binding.ivBad.drawable,
-                    appCtx.getCompatColor(R.color.md_blue_100)
-                )
+                ivGood.gone()
+                ivBad.gone()
+                setTextLeftMargin(binding, 15.dpToPx())
             }
 
             if (AppConfig.changeSourceLoadWordCount && !item.chapterWordCountText.isNullOrBlank()) {
@@ -131,8 +142,20 @@ class ChangeBookSourceAdapter(
         }
     }
 
+    private fun setTextLeftMargin(binding: ItemChangeSourceBinding, marginPx: Int) {
+        (binding.tvOrigin.layoutParams as ViewGroup.MarginLayoutParams).leftMargin = marginPx
+        (binding.tvLast.layoutParams as ViewGroup.MarginLayoutParams).leftMargin = marginPx
+        (binding.tvCurrentChapterWordCount.layoutParams as ViewGroup.MarginLayoutParams).leftMargin = marginPx
+        (binding.tvRespondTime.layoutParams as ViewGroup.MarginLayoutParams).leftMargin = marginPx
+        binding.tvOrigin.requestLayout()
+        binding.tvLast.requestLayout()
+        binding.tvCurrentChapterWordCount.requestLayout()
+        binding.tvRespondTime.requestLayout()
+    }
+
     override fun registerListener(holder: ItemViewHolder, binding: ItemChangeSourceBinding) {
         binding.ivGood.setOnClickListener {
+            if (!AppConfig.changeSourceShowScore) return@setOnClickListener
             if (binding.ivBad.isVisible) {
                 DrawableCompat.setTint(
                     binding.ivGood.drawable,
@@ -154,6 +177,7 @@ class ChangeBookSourceAdapter(
             }
         }
         binding.ivBad.setOnClickListener {
+            if (!AppConfig.changeSourceShowScore) return@setOnClickListener
             if (binding.ivGood.isVisible) {
                 DrawableCompat.setTint(
                     binding.ivBad.drawable,

@@ -52,6 +52,11 @@
         android:checkable="true"
         app:showAsAction="never" />
     <item
+        android:id="@+id/menu_show_score"
+        android:title="@string/show_score"
+        android:checkable="true"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/menu_group"
         android:title="@string/group">
 
