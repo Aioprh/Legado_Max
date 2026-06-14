@@ -7,7 +7,7 @@ import io.legado.app.data.entities.SearchBook
  *
  * 用于屏蔽发现列表中匹配关键词或正则表达式的书籍。
  * 作用范围使用位掩码支持多选（标题/作者/标签/简介），
- * 书源作用域支持指定生效和排除的书源URL。
+ * 书源作用域支持指定生效的书源URL。
  *
  * 存储方式：SharedPreferences + JSON 序列化，由 [ExploreBlockRuleStore] 管理
  */
@@ -28,8 +28,6 @@ data class ExploreBlockRule(
     var enabled: Boolean = true,
     /** 作用的书源，书源URL分号分隔，为空则对所有书源生效 */
     var scope: String? = null,
-    /** 排除的书源，书源URL分号分隔，匹配的书源不应用该规则 */
-    var excludeScope: String? = null,
 ) {
 
     /** 检查是否包含指定的作用范围标志 */
@@ -57,20 +55,14 @@ data class ExploreBlockRule(
 
     /**
      * 判断规则是否对指定书源生效
-     * - scope 为空时，默认对所有书源生效（仍会检查 excludeScope）
+     * - scope 为空时，默认对所有书源生效
      * - scope 非空时，仅对匹配书源URL的书源生效
-     * - excludeScope 非空时，匹配的书源会被排除
      */
     fun matchesScope(sourceUrl: String): Boolean {
         val scopeVal = scope
         if (!scopeVal.isNullOrBlank()) {
             val items = scopeVal.split(";").map { it.trim() }.filter { it.isNotBlank() }
             if (!items.any { sourceUrl.contains(it) }) return false
-        }
-        val excludeVal = excludeScope
-        if (!excludeVal.isNullOrBlank()) {
-            val items = excludeVal.split(";").map { it.trim() }.filter { it.isNotBlank() }
-            if (items.any { sourceUrl.contains(it) }) return false
         }
         return true
     }

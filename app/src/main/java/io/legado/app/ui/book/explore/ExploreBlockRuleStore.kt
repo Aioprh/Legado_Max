@@ -101,7 +101,6 @@ object ExploreBlockRuleStore {
             "${System.currentTimeMillis()}_${name.hashCode().toUInt().toString(16)}"
         }
         val scope = runCatching { rule.scope }.getOrNull()?.takeIf { it.isNotBlank() }
-        val excludeScope = runCatching { rule.excludeScope }.getOrNull()?.takeIf { it.isNotBlank() }
         return ExploreBlockRule(
             id = id,
             name = name,
@@ -112,7 +111,6 @@ object ExploreBlockRuleStore {
                 .coerceIn(0, ExploreBlockRule.SCOPE_ALL),
             enabled = runCatching { rule.enabled }.getOrDefault(true),
             scope = scope,
-            excludeScope = excludeScope,
         )
     }
 }

@@ -19,9 +19,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -32,6 +34,8 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,6 +54,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -66,11 +71,14 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.DialogFragment
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
+import io.legado.app.data.appDb
+import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.theme.pageAccentColor
+import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getClipText
@@ -78,6 +86,8 @@ import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.toastOnUi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 屏蔽规则配置弹窗
@@ -139,6 +149,14 @@ private fun ExploreBlockRuleConfigContent(
     var showMoreMenu by remember { mutableStateOf(false) }
     var showProgress by remember { mutableStateOf(context.getPrefBoolean(PreferKey.exploreBlockRuleShowProgress, false)) }
     var showActiveRules by remember { mutableStateOf(false) }
+    var allSources by remember { mutableStateOf<List<BookSource>>(emptyList()) }
+
+    // 加载所有书源，用于规则列表中书源名称显示
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            allSources = appDb.bookSourceDao.getAllSources()
+        }
+    }
 
     fun refresh() {
         ExploreBlockRuleStore.invalidateCache()
@@ -365,6 +383,7 @@ private fun ExploreBlockRuleConfigContent(
                     items(filteredRules, key = { it.id }) { rule ->
                         BlockRuleItem(
                             rule = rule,
+                            allSources = allSources,
                             onToggleEnabled = {
                                 val newRules = rules.map {
                                     if (it.id == rule.id) it.copy(enabled = !it.enabled) else it
@@ -485,6 +504,7 @@ private fun ActiveRuleItem(
 @Composable
 private fun BlockRuleItem(
     rule: ExploreBlockRule,
+    allSources: List<BookSource>,
     onToggleEnabled: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -515,15 +535,13 @@ private fun BlockRuleItem(
                     )
                 }
                 if (!rule.scope.isNullOrBlank()) {
+                    val scopeNames = rule.scope!!.split(";").map { it.trim() }.filter { it.isNotBlank() }.map { url ->
+                        allSources.find { it.bookSourceUrl == url }?.bookSourceName ?: url
+                    }
                     Text(
-                        text = "仅: ${rule.scope!!.replace(";", "; ").trim()}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = pageSecondaryTextColor()
-                    )
-                }
-                if (!rule.excludeScope.isNullOrBlank()) {
-                    Text(
-                        text = "排除: ${rule.excludeScope!!.replace(";", "; ").trim()}",
+                        text = "仅: ${scopeNames.joinToString(", ")}",
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodySmall,
                         color = pageSecondaryTextColor()
                     )
@@ -563,9 +581,17 @@ private fun ExploreBlockRuleEditContent(
     var selectedGroup by remember { mutableStateOf(sourceRule.group.ifBlank { ExploreBlockRuleGroupStore.DEFAULT_GROUP }) }
     var targetScope by remember { mutableIntStateOf(sourceRule.targetScope) }
     var scope by remember { mutableStateOf(sourceRule.scope.orEmpty()) }
-    var excludeScope by remember { mutableStateOf(sourceRule.excludeScope.orEmpty()) }
     var enabled by remember { mutableStateOf(sourceRule.enabled) }
     var patternError by remember { mutableStateOf<String?>(null) }
+    var showScopeSelector by remember { mutableStateOf(false) }
+    var totalSourceCount by remember { mutableIntStateOf(0) }
+
+    // 加载书源总数，用于判断是否全选
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            totalSourceCount = appDb.bookSourceDao.getAllSources().size
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -689,24 +715,24 @@ private fun ExploreBlockRuleEditContent(
                     }
                 }
 
-                // Source scope
+                // Source scope - 可点击打开书源选择器
                 OutlinedTextField(
-                    value = scope,
-                    onValueChange = { scope = it },
+                    value = if (scope.isBlank()) "默认全选" else {
+                        val count = scope.split(";").map { it.trim() }.filter { it.isNotBlank() }.size
+                        "已选 $count 个书源"
+                    },
+                    onValueChange = {},
+                    readOnly = true,
                     label = { Text(stringResource(R.string.explore_block_rule_source_scope)) },
-                    placeholder = { Text(stringResource(R.string.explore_block_rule_source_scope_hint)) },
+                    trailingIcon = {
+                        IconButton(onClick = { showScopeSelector = true }) {
+                            Icon(Icons.Filled.ExpandMore, contentDescription = "选择书源")
+                        }
+                    },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Exclude scope
-                OutlinedTextField(
-                    value = excludeScope,
-                    onValueChange = { excludeScope = it },
-                    label = { Text(stringResource(R.string.explore_block_rule_exclude_scope)) },
-                    placeholder = { Text(stringResource(R.string.explore_block_rule_exclude_scope_hint)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showScopeSelector = true }
                 )
 
                 // Enabled
@@ -736,7 +762,6 @@ private fun ExploreBlockRuleEditContent(
                             targetScope = targetScope,
                             enabled = enabled,
                             scope = scope.takeIf { it.isNotBlank() },
-                            excludeScope = excludeScope.takeIf { it.isNotBlank() },
                         )
                     )
                 }
@@ -746,6 +771,27 @@ private fun ExploreBlockRuleEditContent(
             TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
         }
     )
+
+    // 作用的书源选择器弹窗
+    if (showScopeSelector) {
+        val currentScopeUrls = if (scope.isBlank()) emptySet()
+        else scope.split(";").map { it.trim() }.filter { it.isNotBlank() }.toSet()
+        BookSourceSelectorDialog(
+            title = stringResource(R.string.explore_block_rule_source_scope),
+            initialSelectedUrls = currentScopeUrls,
+            defaultSelectAll = scope.isBlank(),
+            onConfirm = { selectedUrls ->
+                // 如果全选了所有书源，保存为空（空=所有书源）
+                scope = if (selectedUrls.isEmpty() || selectedUrls.size == totalSourceCount) {
+                    ""
+                } else {
+                    selectedUrls.joinToString(";")
+                }
+                showScopeSelector = false
+            },
+            onDismiss = { showScopeSelector = false }
+        )
+    }
 }
 
 /** 分组管理弹窗，支持新增/重命名/删除分组 */
@@ -856,6 +902,194 @@ private fun ExploreBlockRuleGroupManageContent(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(android.R.string.cancel)) }
+        }
+    )
+}
+
+/**
+ * 书源选择器弹窗
+ *
+ * 显示所有书源供用户勾选，支持搜索过滤、全选和反选操作。
+ * 用于"作用的书源"字段的可视化选择。
+ *
+ * @param title 弹窗标题
+ * @param initialSelectedUrls 初始选中的书源URL集合
+ * @param defaultSelectAll 初始未选任何书源时是否默认全选
+ * @param onConfirm 确认回调，参数为选中的书源URL集合
+ * @param onDismiss 取消回调
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BookSourceSelectorDialog(
+    title: String,
+    initialSelectedUrls: Set<String>,
+    defaultSelectAll: Boolean = false,
+    onConfirm: (Set<String>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var allSources by remember { mutableStateOf<List<BookSource>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedUrls by remember { mutableStateOf(initialSelectedUrls) }
+    var defaultSelectAllPending by remember { mutableStateOf(defaultSelectAll && initialSelectedUrls.isEmpty()) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            val sources = appDb.bookSourceDao.getAllSources()
+            withContext(Dispatchers.Main) {
+                allSources = sources
+                if (defaultSelectAllPending) {
+                    selectedUrls = sources.map { it.bookSourceUrl }.toSet()
+                    defaultSelectAllPending = false
+                }
+                isLoading = false
+            }
+        }
+    }
+
+    val filteredSources = remember(allSources, searchQuery) {
+        if (searchQuery.isBlank()) allSources
+        else allSources.filter {
+            it.bookSourceName.contains(searchQuery, ignoreCase = true) ||
+                it.bookSourceUrl.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (allSources.isEmpty()) {
+                Text(
+                    text = "暂无书源",
+                    color = pageSecondaryTextColor()
+                )
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // 搜索框
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("搜索书源名称或URL") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 全选 / 反选按钮 + 已选计数
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = {
+                            selectedUrls = filteredSources.map { it.bookSourceUrl }.toSet()
+                        }) {
+                            Text("全选")
+                        }
+                        TextButton(onClick = {
+                            val filteredUrls = filteredSources.map { it.bookSourceUrl }.toSet()
+                            val newSelected = selectedUrls.toMutableSet()
+                            filteredUrls.forEach { url ->
+                                if (url in newSelected) newSelected.remove(url) else newSelected.add(url)
+                            }
+                            selectedUrls = newSelected
+                        }) {
+                            Text("反选")
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            text = "${selectedUrls.size}/${allSources.size}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = pageSecondaryTextColor()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // 书源列表 + 滚动条
+                    val listState = rememberLazyListState()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                    ) {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.CenterStart)
+                        ) {
+                            items(filteredSources, key = { it.bookSourceUrl }) { source ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedUrls = if (source.bookSourceUrl in selectedUrls) {
+                                                selectedUrls - source.bookSourceUrl
+                                            } else {
+                                                selectedUrls + source.bookSourceUrl
+                                            }
+                                        }
+                                        .padding(vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = source.bookSourceUrl in selectedUrls,
+                                        onCheckedChange = { checked ->
+                                            selectedUrls = if (checked) {
+                                                selectedUrls + source.bookSourceUrl
+                                            } else {
+                                                selectedUrls - source.bookSourceUrl
+                                            }
+                                        }
+                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = source.bookSourceName.ifBlank { source.bookSourceUrl },
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        if (source.bookSourceName.isNotBlank()) {
+                                            Text(
+                                                text = source.bookSourceUrl,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = pageSecondaryTextColor()
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        VerticalScrollbar(
+                            state = listState,
+                            modifier = Modifier.align(Alignment.CenterEnd)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selectedUrls) }) {
+                Text(stringResource(android.R.string.ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
         }
     )
 }
