@@ -144,8 +144,9 @@ object BlockRuleStore {
         var rssScopeFlags = runCatching { rule.rssTargetScope }.getOrDefault(0)
 
         // 迁移旧版数据：旧版 targetScope 同时包含书源和订阅源的位标志
-        // 仅当 rssTargetScope 为 0（新字段未设置）且 targetScope 有旧版 RSS 位时迁移
-        if (rssScopeFlags == 0 && bookScope != 0) {
+        // 仅当 rssTargetScope 为 0（新字段未设置）且 targetScope 含旧版 RSS 特有高位（bit 16+）时才迁移。
+        // 新规则 targetScope 在 0~15 范围内（纯书源位），不应误触发迁移。
+        if (rssScopeFlags == 0 && (bookScope and BlockRule.SCOPE_BOOK_ALL.inv()) != 0) {
             // 旧版 SCOPE_TITLE 同时表示书源标题和订阅源标题
             if ((bookScope and BlockRule.SCOPE_TITLE) != 0) {
                 rssScopeFlags = rssScopeFlags or BlockRule.SCOPE_RSS_TITLE

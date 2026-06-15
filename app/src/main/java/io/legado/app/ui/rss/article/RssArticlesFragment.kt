@@ -310,9 +310,14 @@ class RssArticlesFragment() : VMBaseFragment<RssArticlesViewModel>(R.layout.frag
      * 由 RssSortActivity 调用
      */
     fun applyBlockRules() {
-        val filtered = applyBlockRulesToList(rawArticles)
-        blockedCount = rawArticles.size - filtered.size
-        adapter.setItems(filtered)
+        if (!isAdded) return
+        try {
+            val filtered = applyBlockRulesToList(rawArticles)
+            blockedCount = rawArticles.size - filtered.size
+            adapter.setItems(filtered)
+        } catch (_: Exception) {
+            // fragment detached during execution, ignore
+        }
     }
 
     /**

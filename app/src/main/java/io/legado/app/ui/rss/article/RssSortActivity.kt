@@ -246,6 +246,8 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
                 currentArticlesFragment()?.let {
                     updatePageMenu(it.getCurrentPage(), it.showPageMenu())
                 }
+                // 切换分类时刷新屏蔽进度芯片，仅显示当前分类的屏蔽计数
+                updateCurrentBlockedCount()
             }
         })
         viewModel.initData(intent) {
@@ -522,15 +524,13 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
         dialog.allRssArticles = currentArticlesFragment()?.rawArticles ?: emptyList()
         dialog.onRulesChanged = {
             BlockRuleStore.invalidateCache()
-            // 通知所有 fragment 重新应用屏蔽规则，并更新屏蔽计数
-            var totalBlocked = 0
+            // 通知所有已 attached 的 fragment 重新应用屏蔽规则
             fragmentMap.values.forEach { fragment ->
                 val f = fragment as? RssArticlesFragment
-                f?.applyBlockRules()
-                totalBlocked += f?.getBlockedCount() ?: 0
+                if (f?.isAdded == true) f.applyBlockRules()
             }
-            blockedCount = totalBlocked
-            updateBlockProgressChip()
+            // 进度芯片仅显示当前可见分类的屏蔽计数，避免跨分类干扰
+            updateCurrentBlockedCount()
         }
         dialog.onShowProgressChanged = {
             showBlockProgress = it
@@ -584,14 +584,19 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
     }
 
     /**
-     * 由 RssArticlesFragment 调用，更新总屏蔽计数和进度芯片
+     * 由 RssArticlesFragment 调用，更新屏蔽进度芯片。
+     * 仅统计当前可见 fragment 的屏蔽计数，隔离不同分类之间的屏蔽状态，
+     * 防止预加载的相邻 fragment 干扰进度显示。
      */
     fun updateBlockedCount() {
-        var totalBlocked = 0
-        fragmentMap.values.forEach { fragment ->
-            totalBlocked += (fragment as? RssArticlesFragment)?.getBlockedCount() ?: 0
-        }
-        blockedCount = totalBlocked
+        updateCurrentBlockedCount()
+    }
+
+    /**
+     * 仅使用当前可见 fragment 的屏蔽计数更新进度芯片
+     */
+    private fun updateCurrentBlockedCount() {
+        blockedCount = currentArticlesFragment()?.getBlockedCount() ?: 0
         updateBlockProgressChip()
     }
 
