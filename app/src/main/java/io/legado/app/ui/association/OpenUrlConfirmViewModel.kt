@@ -5,6 +5,7 @@ import android.os.Bundle
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.SourceType
 import io.legado.app.data.appDb
+import io.legado.app.help.source.OpenUrlConfirmMemory
 import io.legado.app.help.source.SourceHelp
 
 class OpenUrlConfirmViewModel(app: Application): BaseViewModel(app) {
@@ -21,6 +22,16 @@ class OpenUrlConfirmViewModel(app: Application): BaseViewModel(app) {
         sourceName = arguments.getString("sourceName") ?: ""
         sourceOrigin = arguments.getString("sourceOrigin") ?: ""
         sourceType = arguments.getInt("sourceType", SourceType.book)
+    }
+
+    /** 返回此源的记忆行为: "allow" / "deny" / null */
+    fun getRememberedAction(): String? {
+        return OpenUrlConfirmMemory.getAction(getApplication(), sourceOrigin)
+    }
+
+    /** 记住选择: allow=true 允许, allow=false 拒绝 */
+    fun rememberChoice(allow: Boolean) {
+        OpenUrlConfirmMemory.remember(getApplication(), sourceOrigin, allow)
     }
 
     fun disableSource(block: () -> Unit) {

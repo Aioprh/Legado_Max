@@ -97,6 +97,7 @@ object PreferKey {
     const val changeSourceLoadToc = "changeSourceLoadToc"
     const val changeSourceLoadInfo = "changeSourceLoadInfo"
     const val changeSourceLoadWordCount = "changeSourceLoadWordCount"
+    const val changeSourceShowScore = "changeSourceShowScore"
     const val chineseConverterType = "chineseConverterType"
     const val launcherIcon = "launcherIcon"
     const val textSelectAble = "selectText"
@@ -268,6 +269,7 @@ object PreferKey {
     const val highlightRuleItems = "highlightRuleItems"
     const val highlightRuleGroups = "highlightRuleGroups"
     const val highlightRuleCurrentGroup = "highlightRuleCurrentGroup"
+
     const val blockRuleItems = "exploreBlockRuleItems"
     const val blockRuleGroups = "exploreBlockRuleGroups"
     const val blockRuleCurrentGroup = "exploreBlockRuleCurrentGroup"
@@ -275,6 +277,7 @@ object PreferKey {
     const val blockRuleEnabled = "exploreBlockRuleEnabled"
 
     const val backupBookCache = "backupBookCache"
+
     const val sourceRecycleBinEnabled = "sourceRecycleBinEnabled"
 
     /** 发现列表网格模式列数配置，默认2列 */
@@ -283,6 +286,9 @@ object PreferKey {
     const val exploreShowColumnWaterfall = "exploreShowColumnWaterfall"
     /** 发现列表布局模式，由"切换布局"菜单控制 */
     const val exploreGridMode = "exploreGridMode"
+
+    /** 跳转确认记忆，存储 JSON: {"sourceUrl":"allow|deny", ...} */
+    const val openUrlConfirmMemory = "openUrlConfirmMemory"
 
     /** 首页布局模式 0: 混合列表 1: 分源Tab */
     const val homepageLayoutMode = "homepageLayoutMode"

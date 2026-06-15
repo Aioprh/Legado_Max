@@ -25,6 +25,8 @@ import io.legado.app.utils.splitNotBlank
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
+import io.legado.app.constant.PreferKey
+import io.legado.app.utils.removePref
 
 object SourceHelp {
 
@@ -95,6 +97,12 @@ object SourceHelp {
         appDb.bookSourceDao.delete(key)
         appDb.cacheDao.deleteSourceVariables(key)
         SourceConfig.removeSource(key)
+        // 清理发现页布局记忆
+        appCtx.removePref("${PreferKey.exploreGridMode}_${key}")
+        appCtx.removePref("${PreferKey.exploreShowColumnWaterfall}_${key}")
+        appCtx.removePref("${PreferKey.exploreShowColumn}_${key}")
+        // 清理跳转确认记忆
+        OpenUrlConfirmMemory.forget(appCtx, key)
     }
 
     fun deleteBookSource(key: String) {
@@ -121,6 +129,8 @@ object SourceHelp {
         appDb.rssSourceDao.delete(key)
         appDb.rssArticleDao.delete(key)
         appDb.cacheDao.deleteSourceVariables(key)
+        // 清理跳转确认记忆
+        OpenUrlConfirmMemory.forget(appCtx, key)
     }
 
     fun deleteRssSource(key: String) {

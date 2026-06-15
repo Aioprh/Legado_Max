@@ -24,6 +24,17 @@
         android:textColor="@color/primaryText"
         android:textSize="16sp" />
 
+    <CheckBox
+        android:id="@+id/cb_remember"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:text="记住此选择，不再询问"
+        android:textColor="@color/secondaryText"
+        android:textSize="14sp" />
+
     <com.google.android.flexbox.FlexboxLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.Toolbar
 import androidx.core.net.toUri
+import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
@@ -55,6 +56,20 @@ class OpenUrlConfirmDialog() : BaseDialogFragment(R.layout.dialog_open_url_confi
             dismiss()
             return
         }
+
+        // 若已记住，直接执行不再弹窗
+        when (viewModel.getRememberedAction()) {
+            "allow" -> {
+                openUrl()
+                dismiss()
+                return
+            }
+            "deny" -> {
+                dismiss()
+                return
+            }
+        }
+
         binding.toolBar.setBackgroundColor(primaryColor)
         binding.toolBar.subtitle = viewModel.sourceName
         initView()
@@ -68,8 +83,18 @@ class OpenUrlConfirmDialog() : BaseDialogFragment(R.layout.dialog_open_url_confi
 
     private fun initView() {
         binding.message.text = "正在请求跳转链接/应用，是否跳转？"
-        binding.btnNegative.setOnClickListener { dismiss() }
+        binding.cbRemember.isVisible = true
+
+        binding.btnNegative.setOnClickListener {
+            if (binding.cbRemember.isChecked) {
+                viewModel.rememberChoice(false)
+            }
+            dismiss()
+        }
         binding.btnPositive.setOnClickListener {
+            if (binding.cbRemember.isChecked) {
+                viewModel.rememberChoice(true)
+            }
             openUrl()
             dismiss()
         }
@@ -79,9 +104,7 @@ class OpenUrlConfirmDialog() : BaseDialogFragment(R.layout.dialog_open_url_confi
         try {
             val uri = viewModel.uri.toUri()
             val mimeType = viewModel.mimeType
-            // 创建目标 Intent 并设置类型
             val targetIntent = Intent(Intent.ACTION_VIEW).apply {
-                // 同时设置 Data 和 Type
                 if (!mimeType.isNullOrBlank()) {
                     setDataAndType(uri, mimeType)
                 } else {
@@ -90,7 +113,6 @@ class OpenUrlConfirmDialog() : BaseDialogFragment(R.layout.dialog_open_url_confi
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
 
-            // 验证是否有应用可以处理
             if (targetIntent.resolveActivity(appCtx.packageManager) != null) {
                 startActivity(targetIntent)
             } else {
