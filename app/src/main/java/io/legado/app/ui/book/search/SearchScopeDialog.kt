@@ -91,15 +91,31 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
         }
         binding.tvOk.setOnClickListener {
             if (binding.rbGroup.isChecked) {
-                callback.onSearchScopeOk(SearchScope(adapter.selectGroups))
+                // 临时分组展开为临时书源
+                lifecycleScope.launch {
+                    val allSources = withContext(IO) {
+                        val result = arrayListOf<BookSourcePart>()
+                        adapter.selectGroups.forEach { group ->
+                            result.addAll(appDb.bookSourceDao.getPartByGroup(group))
+                        }
+                        result
+                    }
+                    if (allSources.isNotEmpty()) {
+                        callback.onSearchScopeOk(SearchScope.fromSources(allSources))
+                    } else {
+                        callback.onSearchScopeOk(SearchScope(""))
+                    }
+                    dismiss()
+                }
             } else {
+                // 临时书源
                 if (adapter.selectSources.isNotEmpty()) {
                     callback.onSearchScopeOk(SearchScope.fromSources(adapter.selectSources))
                 } else {
                     callback.onSearchScopeOk(SearchScope(""))
                 }
+                dismiss()
             }
-            dismiss()
         }
     }
 
@@ -135,6 +151,9 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
         adapter.notifyItemRangeChanged(0, adapter.itemCount, "up")
     }
 
+    /**
+     * 全选/取消全选
+     */
     private fun updateSelectAllText() {
         val isAllSelected = if (binding.rbGroup.isChecked) {
             groups.isNotEmpty() && adapter.selectGroups.size == groups.size
@@ -166,16 +185,13 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
                 searchKey.isNullOrEmpty() -> {
                     appDb.bookSourceDao.flowAll()
                 }
-
                 else -> {
                     appDb.bookSourceDao.flowSearch(searchKey)
                 }
             }.flowWithLifecycleAndDatabaseChange(
                 lifecycle,
                 table = AppDatabase.BOOK_SOURCE_TABLE_NAME
-            ).catch {
-                AppLog.put("多分组/书源界面更新书源出错", it)
-            }.flowOn(IO).conflate().collect { data ->
+            ).flowOn(IO).conflate().collect { data ->
                 screenSources.clear()
                 screenSources.addAll(data)
                 updateSelectAllText()
@@ -186,10 +202,8 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
     }
 
     inner class RecyclerAdapter : RecyclerView.Adapter<ItemViewHolder>() {
-
         val selectGroups = arrayListOf<String>()
         val selectSources = arrayListOf<BookSourcePart>()
-
         override fun getItemViewType(position: Int): Int {
             return 0
         }
@@ -230,6 +244,7 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
             when (holder.binding) {
                 is ItemCheckBoxBinding -> {
                     if (binding.rbSource.isChecked) {
+                        // 书源
                         screenSources.getOrNull(position)?.let { source ->
                             holder.binding.checkBox.isChecked = selectSources.contains(source)
                             holder.binding.checkBox.text = source.bookSourceName
@@ -247,6 +262,7 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
                             }
                         }
                     } else {
+                        // 分组
                         groups.getOrNull(position)?.let { group ->
                             holder.binding.checkBox.isChecked = selectGroups.contains(group)
                             holder.binding.checkBox.text = group
@@ -286,12 +302,6 @@ class SearchScopeDialog : BaseDialogFragment(R.layout.dialog_search_scope) {
     }
 
     interface Callback {
-
-        /**
-         * 搜索范围确认
-         */
         fun onSearchScopeOk(searchScope: SearchScope)
-
     }
-
 }

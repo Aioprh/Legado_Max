@@ -115,7 +115,7 @@ data class SearchScope(private var scope: String) {
 
     /**
      * 搜索范围书源
-     * 分组模式下包含该分组下所有书源（含未启用），支持临时搜索未启用书源
+     * 临时分组通过展开为临时书源实现
      */
     fun getBookSourceParts(): List<BookSourcePart> {
         val list = hashSetOf<BookSourcePart>()
@@ -133,7 +133,7 @@ data class SearchScope(private var scope: String) {
             } else {
                 val oldScope = scope.splitNotBlank(",")
                 val newScope = oldScope.filter {
-                    val bookSources = appDb.bookSourceDao.getPartByGroup(it)
+                    val bookSources = appDb.bookSourceDao.getEnabledPartByGroup(it)
                     list.addAll(bookSources)
                     bookSources.isNotEmpty()
                 }
