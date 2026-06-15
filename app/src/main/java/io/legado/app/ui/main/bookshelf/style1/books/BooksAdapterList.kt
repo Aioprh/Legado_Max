@@ -149,7 +149,10 @@ class BooksAdapterList(
             textSize = 11f
             gravity = Gravity.CENTER
             setTextColor(context.resources.getColor(io.legado.app.R.color.tv_text_summary, null))
-            setBackgroundResource(io.legado.app.R.drawable.bg_tag)
+            // 根据书籍外边框状态同步标签外框：有边框时使用带描边的标签背景，无边框时仅显示纯文本
+            if (AppConfig.showBookBorder) {
+                setBackgroundResource(io.legado.app.R.drawable.bg_tag)
+            }
             // 设置内边距
             setPadding(8, 4, 8, 4)
             // 设置 FlexboxLayout.LayoutParams
