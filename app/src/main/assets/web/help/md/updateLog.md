@@ -4,16 +4,21 @@
 ### cronet版本: 128.0.6613.40
 ### Kotlin版本: 2.3.10 | Rhino版本: 1.8.1 | Compose版本: 2025.04.01 | Compose UI 版本:  1.7.x | Material3 版本: 1.3.x | okhttp版本: 5.3.2
 
-## 项目继承历史
-### 原版
+### 项目继承历史
+##### 原版
 * [Github](https://github.com/gedoor/legado)
-### Sigma版
+##### Sigma版
 * [Github](https://github.com/Luoyacheng/legado)
 * [Gitee](https://gitee.com/lyc486/legado/releases)
 * [详细日志](https://gitee.com/lyc486/legado/commits/main)
-### Max版
-* [Github](https://github.com/youfengknight/Legado_Max)
-* [Github分支](https://github.com/GEd520/legados)
+##### Max版
+* [Github主干youfengknight](https://github.com/youfengknight/Legado_Max)
+* [Github分支GEd520](https://github.com/GEd520/legados)
+* [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
+
+**2026/06/15**
+- 修复屏蔽规则作用范围持久化
+- 修复订阅源预加载跨分类干扰
 
 **2026/06/14**
 - 修复底栏管理编辑界面无法滚动
