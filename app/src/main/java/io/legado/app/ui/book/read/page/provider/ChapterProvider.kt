@@ -303,6 +303,11 @@ object ChapterProvider {
         }
         if (width != viewWidth || height != viewHeight) {
             if (width == viewWidth) {
+                // 纯高度变化（如状态栏显隐导致的微调）延迟 300ms 防抖处理
+                // 但必须立即清除预加载章节缓存，否则在延迟窗口内切换章节
+                // 会使用按旧高度排版的缓存数据，导致内容显示不全
+                ReadBook.prevTextChapter = null
+                ReadBook.nextTextChapter = null
                 upViewSizeRunnable = handler.postDelayed(300) {
                     upViewSizeRunnable = null
                     notifyViewSizeChange(width, height)
@@ -320,6 +325,12 @@ object ChapterProvider {
         viewWidth = width
         viewHeight = height
         upLayout()
+        // 容器尺寸变更后，清除预加载的章节缓存
+        // prevTextChapter/nextTextChapter 中的页面按旧尺寸排版，
+        // 若不清除，后续 moveToNextChapter/moveToPrevChapter 会直接使用旧排版数据，
+        // 导致内容渲染不全（横竖屏切换/小窗全屏切换场景复现）
+        ReadBook.prevTextChapter = null
+        ReadBook.nextTextChapter = null
         postEvent(EventBus.UP_CONFIG, arrayListOf(5))
     }
 

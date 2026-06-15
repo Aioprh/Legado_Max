@@ -339,6 +339,10 @@ class ReadBookActivity : BaseReadBookActivity(),
         super.onConfigurationChanged(newConfig)
         upSystemUiVisibility()
         binding.readView.upStatusBar()
+        // 横竖屏切换时提前清除缓存的预加载章节，防止后续章节切换使用旧容器尺寸的排版数据
+        // ReadView.onSizeChanged 也会触发相同逻辑，此处作为兜底保障时序更早执行
+        ReadBook.prevTextChapter = null
+        ReadBook.nextTextChapter = null
     }
 
     override fun onTopResumedActivityChanged(isTopResumedActivity: Boolean) {
