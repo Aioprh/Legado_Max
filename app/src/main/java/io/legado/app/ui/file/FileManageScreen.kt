@@ -64,6 +64,7 @@ import io.legado.app.R
 import io.legado.app.ui.file.utils.FilePickerIcon
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
+import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 import java.io.File
 
 /**
@@ -444,19 +445,12 @@ private fun DeleteConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.delete)) },
-        text = { Text("确定要删除 \"$fileName\" 吗？") },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.delete))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
+    AppConfirmDialog(
+        title = stringResource(R.string.delete),
+        text = "确定要删除 \"$fileName\" 吗？",
+        confirmText = stringResource(R.string.delete),
+        destructive = true,
+        onConfirm = onConfirm,
+        onDismissRequest = onDismiss
     )
 }

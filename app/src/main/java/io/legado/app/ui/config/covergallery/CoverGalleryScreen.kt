@@ -87,6 +87,7 @@ import io.legado.app.ui.theme.pageMutedIconTint
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.theme.pageSurfaceVariantColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
+import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
@@ -174,56 +175,32 @@ fun CoverGalleryScreen(
     }
 
     deleteGroup?.let { groupWithImages ->
-        AlertDialog(
-            onDismissRequest = { deleteGroup = null },
-            containerColor = elevatedContainerColor,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            textContentColor = secondaryTextColor,
-            shape = RoundedCornerShape(0.dp),
-            title = { Text("删除分组") },
-            text = { Text("确定删除“${groupWithImages.group.name}”及其中 ${groupWithImages.images.size} 张图片吗？") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteGroup(groupWithImages.group.id)
-                        deleteGroup = null
-                    }
-                ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
-                }
+        AppConfirmDialog(
+            title = "删除分组",
+            text = "确定删除“${groupWithImages.group.name}”及其中 ${groupWithImages.images.size} 张图片吗？",
+            confirmText = "删除",
+            destructive = true,
+            onConfirm = {
+                viewModel.deleteGroup(groupWithImages.group.id)
+                deleteGroup = null
             },
-            dismissButton = {
-                TextButton(onClick = { deleteGroup = null }) {
-                    Text("取消")
-                }
-            }
+            onDismissRequest = { deleteGroup = null },
+            containerColor = elevatedContainerColor
         )
     }
 
     deleteImage?.let { image ->
-        AlertDialog(
-            onDismissRequest = { deleteImage = null },
-            containerColor = elevatedContainerColor,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            textContentColor = secondaryTextColor,
-            shape = RoundedCornerShape(0.dp),
-            title = { Text("删除图片") },
-            text = { Text("确定从图集中删除这张图片吗？") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteImage(image.id)
-                        deleteImage = null
-                    }
-                ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
-                }
+        AppConfirmDialog(
+            title = "删除图片",
+            text = "确定从图集中删除这张图片吗？",
+            confirmText = "删除",
+            destructive = true,
+            onConfirm = {
+                viewModel.deleteImage(image.id)
+                deleteImage = null
             },
-            dismissButton = {
-                TextButton(onClick = { deleteImage = null }) {
-                    Text("取消")
-                }
-            }
+            onDismissRequest = { deleteImage = null },
+            containerColor = elevatedContainerColor
         )
     }
 

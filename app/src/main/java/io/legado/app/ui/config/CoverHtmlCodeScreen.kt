@@ -36,6 +36,7 @@ import io.legado.app.model.BookCover
 import io.legado.app.ui.widget.code.CodeView
 import io.legado.app.ui.widget.code.addHtmlPattern
 import io.legado.app.ui.widget.code.addJsPattern
+import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 import io.legado.app.ui.widget.image.CoverImageView
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
@@ -125,34 +126,23 @@ fun CoverHtmlCodeScreen(
     }
     
     if (showSaveDialog && pendingTemplateSwitch != null) {
-        AlertDialog(
-            onDismissRequest = { 
+        AppConfirmDialog(
+            title = stringResource(R.string.cover_html_save_changes),
+            text = stringResource(R.string.cover_html_unsaved_hint),
+            confirmText = stringResource(R.string.action_save),
+            dismissText = stringResource(R.string.discard),
+            onConfirm = {
+                doSaveTemplate()
+                currentTemplate = pendingTemplateSwitch
+                currentIsNewTemplate = false
                 showSaveDialog = false
                 pendingTemplateSwitch = null
             },
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text(stringResource(R.string.cover_html_save_changes)) },
-            text = { Text(stringResource(R.string.cover_html_unsaved_hint)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    doSaveTemplate()
-                    currentTemplate = pendingTemplateSwitch
-                    currentIsNewTemplate = false
-                    showSaveDialog = false
-                    pendingTemplateSwitch = null
-                }) {
-                    Text(stringResource(R.string.action_save))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    currentTemplate = pendingTemplateSwitch
-                    currentIsNewTemplate = false
-                    showSaveDialog = false
-                    pendingTemplateSwitch = null
-                }) {
-                    Text(stringResource(R.string.discard))
-                }
+            onDismissRequest = {
+                currentTemplate = pendingTemplateSwitch
+                currentIsNewTemplate = false
+                showSaveDialog = false
+                pendingTemplateSwitch = null
             }
         )
     }

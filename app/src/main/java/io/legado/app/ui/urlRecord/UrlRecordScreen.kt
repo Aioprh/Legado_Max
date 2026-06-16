@@ -55,6 +55,7 @@ import androidx.compose.ui.text.withStyle
 import io.legado.app.data.entities.UrlRecord
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
+import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -92,34 +93,22 @@ fun UrlRecordScreen(
 
     if (showClearDialog != null) {
         val days = showClearDialog!!
-        AlertDialog(
-            onDismissRequest = { showClearDialog = null },
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text(if (days == 0) "清除所有记录" else "清除${days}天前的记录") },
-            text = {
-                Text(if (days == 0) "确定要清除所有URL访问记录吗？" else "确定要清除${days}天前的记录吗？")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        coroutineScope.launch {
-                            if (days == 0) {
-                                viewModel.clearAll()
-                            } else {
-                                viewModel.deleteOldRecords(days)
-                            }
-                        }
-                        showClearDialog = null
+        AppConfirmDialog(
+            title = if (days == 0) "清除所有记录" else "清除${days}天前的记录",
+            text = if (days == 0) "确定要清除所有URL访问记录吗？" else "确定要清除${days}天前的记录吗？",
+            confirmText = "确定",
+            destructive = true,
+            onConfirm = {
+                coroutineScope.launch {
+                    if (days == 0) {
+                        viewModel.clearAll()
+                    } else {
+                        viewModel.deleteOldRecords(days)
                     }
-                ) {
-                    Text("确定", color = MaterialTheme.colorScheme.error)
                 }
+                showClearDialog = null
             },
-            dismissButton = {
-                TextButton(onClick = { showClearDialog = null }) {
-                    Text("取消")
-                }
-            }
+            onDismissRequest = { showClearDialog = null }
         )
     }
 

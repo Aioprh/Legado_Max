@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.stringResource
 import io.legado.app.R
@@ -17,11 +18,12 @@ fun AppConfirmDialog(
     onConfirm: () -> Unit,
     onDismissRequest: () -> Unit,
     destructive: Boolean = false,
-    dismissText: String = stringResource(R.string.cancel)
+    dismissText: String = stringResource(R.string.cancel),
+    containerColor: Color = MaterialTheme.colorScheme.surface
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = containerColor,
         shape = RectangleShape,
         titleContentColor = MaterialTheme.colorScheme.onSurface,
         textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,

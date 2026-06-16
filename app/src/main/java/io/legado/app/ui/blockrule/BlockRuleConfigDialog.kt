@@ -81,6 +81,7 @@ import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.theme.pageAccentColor
+import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 import io.legado.app.model.blockrule.BlockRule
 import io.legado.app.model.blockrule.BlockRuleGroupStore
 import io.legado.app.model.blockrule.BlockRuleStore
@@ -1156,20 +1157,17 @@ private fun BlockRuleGroupManageContent(
 
     // Delete confirm dialog
     deleteDialog?.let { groupName ->
-        AlertDialog(
-            onDismissRequest = { deleteDialog = null },
-            title = { Text(stringResource(R.string.explore_block_rule_group_manage)) },
-            text = { Text("确定删除分组「$groupName」？规则将移至默认分组。") },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeleteGroup(groupName)
-                    localGroups = localGroups.filterNot { it == groupName }
-                    deleteDialog = null
-                }) { Text(stringResource(android.R.string.ok)) }
+        AppConfirmDialog(
+            title = stringResource(R.string.explore_block_rule_group_manage),
+            text = "确定删除分组「$groupName」？规则将移至默认分组。",
+            confirmText = stringResource(android.R.string.ok),
+            destructive = true,
+            onConfirm = {
+                onDeleteGroup(groupName)
+                localGroups = localGroups.filterNot { it == groupName }
+                deleteDialog = null
             },
-            dismissButton = {
-                TextButton(onClick = { deleteDialog = null }) { Text(stringResource(android.R.string.cancel)) }
-            }
+            onDismissRequest = { deleteDialog = null }
         )
     }
 

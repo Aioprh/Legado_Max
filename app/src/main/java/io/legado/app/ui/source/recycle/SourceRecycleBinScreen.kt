@@ -70,6 +70,7 @@ import io.legado.app.data.entities.SourceRecycleBin
 import io.legado.app.help.source.SourceRecycleBinHelp
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
+import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -443,7 +444,7 @@ fun SourceRecycleBinScreen(
     }
 
     restoreTarget?.let { item ->
-        SourceRecycleConfirmDialog(
+        AppConfirmDialog(
             onDismissRequest = { restoreTarget = null },
             title = stringResource(R.string.restore),
             text = stringResource(R.string.source_recycle_bin_restore_msg, item.name),
@@ -457,7 +458,7 @@ fun SourceRecycleBinScreen(
     }
 
     conflictTarget?.let { item ->
-        SourceRecycleConfirmDialog(
+        AppConfirmDialog(
             onDismissRequest = { conflictTarget = null },
             title = stringResource(R.string.source_recycle_bin_conflict_title),
             text = stringResource(R.string.source_recycle_bin_conflict_msg, item.name),
@@ -471,7 +472,7 @@ fun SourceRecycleBinScreen(
     }
 
     deleteTarget?.let { item ->
-        SourceRecycleConfirmDialog(
+        AppConfirmDialog(
             onDismissRequest = { deleteTarget = null },
             title = stringResource(R.string.delete_forever),
             text = stringResource(R.string.source_recycle_bin_delete_msg, item.name),
@@ -486,7 +487,7 @@ fun SourceRecycleBinScreen(
     }
 
     if (showClearDialog) {
-        SourceRecycleConfirmDialog(
+        AppConfirmDialog(
             onDismissRequest = { showClearDialog = false },
             title = stringResource(R.string.source_recycle_bin_clear_title),
             text = stringResource(R.string.source_recycle_bin_clear_msg),
@@ -500,7 +501,7 @@ fun SourceRecycleBinScreen(
     }
 
     if (showBatchRestoreDialog) {
-        SourceRecycleConfirmDialog(
+        AppConfirmDialog(
             onDismissRequest = { showBatchRestoreDialog = false },
             title = stringResource(R.string.restore),
             text = stringResource(
@@ -517,7 +518,7 @@ fun SourceRecycleBinScreen(
     }
 
     if (showBatchConflictDialog) {
-        SourceRecycleConfirmDialog(
+        AppConfirmDialog(
             onDismissRequest = { showBatchConflictDialog = false },
             title = stringResource(R.string.source_recycle_bin_conflict_title),
             text = stringResource(
@@ -534,7 +535,7 @@ fun SourceRecycleBinScreen(
     }
 
     if (showBatchDeleteDialog) {
-        SourceRecycleConfirmDialog(
+        AppConfirmDialog(
             onDismissRequest = { showBatchDeleteDialog = false },
             title = stringResource(R.string.delete_forever),
             text = stringResource(
@@ -715,43 +716,6 @@ private fun SourceRecycleDropdownMenuItem(
             disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
             disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
         )
-    )
-}
-
-@Composable
-private fun SourceRecycleConfirmDialog(
-    onDismissRequest: () -> Unit,
-    title: String,
-    text: String,
-    confirmText: String,
-    onConfirm: () -> Unit,
-    destructive: Boolean = false
-) {
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RectangleShape,
-        titleContentColor = MaterialTheme.colorScheme.onSurface,
-        textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-        title = { Text(title) },
-        text = { Text(text) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    text = confirmText,
-                    color = if (destructive) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    }
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text(stringResource(R.string.cancel))
-            }
-        }
     )
 }
 

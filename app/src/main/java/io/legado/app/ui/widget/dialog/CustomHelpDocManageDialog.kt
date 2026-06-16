@@ -57,6 +57,7 @@ import io.legado.app.help.CustomHelpDocGroup
 import io.legado.app.help.CustomHelpDocManager
 import io.legado.app.help.HelpDocManager
 import io.legado.app.ui.theme.LegadoTheme
+import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 import io.legado.app.utils.toastOnUi
 
 class CustomHelpDocManageDialog : DialogFragment() {
@@ -498,20 +499,13 @@ private fun DeleteConfirmDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("删除")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
+    AppConfirmDialog(
+        title = title,
+        text = message,
+        confirmText = "删除",
+        destructive = true,
+        onConfirm = onConfirm,
+        onDismissRequest = onDismiss
     )
 }
 

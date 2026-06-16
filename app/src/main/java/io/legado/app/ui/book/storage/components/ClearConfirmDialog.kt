@@ -1,10 +1,7 @@
 package io.legado.app.ui.book.storage.components
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 
 // ### UI组件
 // 7. ClearConfirmDialog.kt
@@ -20,26 +17,13 @@ fun ClearConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = { Text("确认清理") },
-        text = {
-            Text("确定要清理 \"$targetName\" 吗？此操作不可撤销。")
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    text = "确定",
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
+    AppConfirmDialog(
+        title = "确认清理",
+        text = "确定要清理 \"$targetName\" 吗？此操作不可撤销。",
+        confirmText = "确定",
+        destructive = true,
+        onConfirm = onConfirm,
+        onDismissRequest = onDismiss
     )
 }
 
@@ -48,25 +32,12 @@ fun ClearAllConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = { Text("一键清理") },
-        text = {
-            Text("确定要清理所有缓存吗？\n\n注意：这不会清理数据库中的书籍、书源等重要数据，仅清理临时缓存文件。")
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    text = "确定",
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
+    AppConfirmDialog(
+        title = "一键清理",
+        text = "确定要清理所有缓存吗？\n\n注意：这不会清理数据库中的书籍、书源等重要数据，仅清理临时缓存文件。",
+        confirmText = "确定",
+        destructive = true,
+        onConfirm = onConfirm,
+        onDismissRequest = onDismiss
     )
 }

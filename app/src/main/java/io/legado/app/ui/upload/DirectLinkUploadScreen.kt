@@ -49,6 +49,7 @@ import io.legado.app.data.entities.DirectLinkUploadRule
 import io.legado.app.data.entities.UploadHistory
 import io.legado.app.data.entities.UploadHistoryWithRule
 import io.legado.app.ui.upload.DirectLinkUploadViewModel.*
+import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -259,54 +260,33 @@ fun DirectLinkUploadScreen(
         
         // 清除历史确认对话框
         if (showClearDialog) {
-            AlertDialog(
-                onDismissRequest = { showClearDialog = false },
-                containerColor = MaterialTheme.colorScheme.surface,
-                title = { Text("清除历史") },
-                text = { Text("确定要清除所有上传历史记录吗?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.clearAllHistories()
-                            showClearDialog = false
-                        }
-                    ) {
-                        Text("确定", color = MaterialTheme.colorScheme.error)
-                    }
+            AppConfirmDialog(
+                title = "清除历史",
+                text = "确定要清除所有上传历史记录吗?",
+                confirmText = "确定",
+                destructive = true,
+                onConfirm = {
+                    viewModel.clearAllHistories()
+                    showClearDialog = false
                 },
-                dismissButton = {
-                    TextButton(onClick = { showClearDialog = false }) {
-                        Text("取消", color = MaterialTheme.colorScheme.primary)
-                    }
-                }
+                onDismissRequest = { showClearDialog = false }
             )
         }
-        
+
         // 导入默认规则确认对话框
         if (showImportDialog) {
-            AlertDialog(
-                onDismissRequest = { showImportDialog = false },
-                containerColor = MaterialTheme.colorScheme.surface,
-                title = { Text("导入默认规则") },
-                text = { Text("将导入2个预置的网盘规则(喵公子网盘①、喵公子网盘②)。\n\n注意:如果已有规则,将不会重复导入。") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.importDefaultRules()
-                            showImportDialog = false
-                        }
-                    ) {
-                        Text("导入", color = MaterialTheme.colorScheme.primary)
-                    }
+            AppConfirmDialog(
+                title = "导入默认规则",
+                text = "将导入2个预置的网盘规则(喵公子网盘①、喵公子网盘②)。\n\n注意:如果已有规则,将不会重复导入。",
+                confirmText = "导入",
+                onConfirm = {
+                    viewModel.importDefaultRules()
+                    showImportDialog = false
                 },
-                dismissButton = {
-                    TextButton(onClick = { showImportDialog = false }) {
-                        Text("取消", color = MaterialTheme.colorScheme.primary)
-                    }
-                }
+                onDismissRequest = { showImportDialog = false }
             )
         }
-        
+
         // 上传/测试状态对话框
         uploadState.let { state ->
             when (state) {
