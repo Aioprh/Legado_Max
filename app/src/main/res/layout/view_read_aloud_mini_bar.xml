@@ -46,7 +46,7 @@
         android:layout_marginStart="5dp"
         android:contentDescription="@string/stop"
         android:padding="7dp"
-        android:src="@drawable/ic_clear" />
+        android:src="@drawable/ic_baseline_close" />
 
     <TextView
         android:id="@+id/tv_read_aloud_mini_title"

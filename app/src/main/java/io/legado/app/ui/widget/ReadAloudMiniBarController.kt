@@ -252,7 +252,11 @@ class ReadAloudMiniBarController(
         }
         ivReadAloudMiniClose.background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
-            setColor(AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 6))
+            setColor(AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 8))
+            setStroke(
+                2.dpToPx(),
+                AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 84)
+            )
         }
         ivReadAloudMiniPlay.setColorFilter(textColor)
         ivReadAloudMiniClose.setColorFilter(softColor)
