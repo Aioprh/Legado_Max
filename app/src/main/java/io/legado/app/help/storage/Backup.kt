@@ -260,10 +260,18 @@ object Backup {
     }
 
     fun stageBackgroundImageFiles(rootPath: String) {
+        // 阅读界面背景图片：直接复制到暂存根目录
         getReadBackgroundImageFiles().forEach { bgFile ->
             bgFile.copyTo(File(rootPath, bgFile.name), overwrite = true)
         }
-        listOf(PreferKey.bgImage, PreferKey.bgImageN).forEach { prefKey ->
+        // 防御性清理：删除已有的 bgImage/bgImageN 子目录，
+        // 避免因上次备份清理不彻底导致残留的已删除图片被一并打包
+        val themePrefKeys = listOf(PreferKey.bgImage, PreferKey.bgImageN)
+        themePrefKeys.forEach { prefKey ->
+            FileUtils.delete(File(rootPath, prefKey).absolutePath)
+        }
+        // 当前生效的主题背景图片
+        themePrefKeys.forEach { prefKey ->
             appCtx.getPrefString(prefKey)?.let { path ->
                 resolveThemeBackgroundFile(path, prefKey)
             }?.let { bgFile ->
@@ -271,6 +279,7 @@ object Backup {
                 bgFile.copyTo(File(targetDir, bgFile.name), overwrite = true)
             }
         }
+        // 所有已保存主题配置中的背景图片
         getThemeConfigBackgroundFiles().forEach { (prefKey, bgFile) ->
             val targetDir = File(rootPath, prefKey).createFolderIfNotExist()
             bgFile.copyTo(File(targetDir, bgFile.name), overwrite = true)
@@ -322,22 +331,22 @@ object Backup {
         return folderName
     }
 
+    /**
+     * 收集待打包的文件路径列表。
+     *
+     * 备份采用 staging-based 架构：所有待备份内容（JSON 数据文件、背景图片、
+     * 封面图集等）已通过各 stage*() 方法预先复制到 backupPath 暂存目录。
+     * 本函数只需返回 backupPath 下的所有直接子项，由 ZipUtils.zipFile()
+     * 递归处理子目录内容。
+     *
+     * 这确保了只有被 stage*() 明确复制的文件才会进入备份包，
+     * 不会意外包含外部目录中未被引用的残留图片文件。
+     */
     private fun getBackupPaths(): ArrayList<String> {
         return File(backupPath)
             .listFiles()
             ?.mapTo(arrayListOf()) { it.absolutePath }
             ?: arrayListOf()
-        val paths = arrayListOf(*backupFileNames)
-        for (i in 0 until paths.size) {
-            paths[i] = backupPath + File.separator + paths[i]
-        }
-        val bgFiles = getBackgroundImageFiles()
-        LogUtils.d(TAG, "背景图片文件数量: ${bgFiles.size}")
-        bgFiles.forEach {
-            LogUtils.d(TAG, "添加背景图片: ${it.absolutePath}")
-            paths.add(it.absolutePath)
-        }
-        return paths
     }
 
     /**
