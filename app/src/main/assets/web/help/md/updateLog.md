@@ -16,6 +16,10 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/06/16**
+- 屏蔽规则功能增强，可利用其筛选书籍字数
+- 修复备份时已删除的背景图片仍被打包的问题
+
 **2026/06/15**
 - 修复屏蔽规则作用范围持久化
 - 修复订阅源预加载跨分类干扰
