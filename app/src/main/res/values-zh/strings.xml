@@ -1929,8 +1929,9 @@
     <string name="explore_block_rule_target_scope">作用范围</string>
     <string name="explore_block_rule_scope_title">标题</string>
     <string name="explore_block_rule_scope_author">作者</string>
-    <string name="explore_block_rule_scope_tag">标签</string>
+    <string name="explore_block_rule_scope_kind">分类</string>
     <string name="explore_block_rule_scope_intro">简介</string>
+    <string name="explore_block_rule_scope_word_count">字数</string>
     <string name="explore_block_rule_scope_all">全部</string>
     <string name="explore_block_rule_source_scope">作用的书源</string>
     <string name="explore_block_rule_source_scope_hint">书源URL，分号分隔，空=所有书源</string>
@@ -1948,10 +1949,11 @@
     <string name="explore_block_rule_import_invalid">无效的屏蔽规则数据</string>
     <string name="explore_block_rule_keyword_mode">关键词</string>
     <string name="explore_block_rule_regex_mode">正则</string>
+    <string name="explore_block_rule_enable_master">开启屏蔽规则</string>
     <string name="explore_block_rule_show_progress">显示屏蔽进度</string>
     <string name="explore_block_rule_progress_text">已屏蔽 %1$d 本</string>
-    <string name="explore_block_rule_active_rules">起效的规则</string>
-    <string name="explore_block_rule_active_rules_empty">当前书源无起效的规则</string>
+    <string name="explore_block_rule_active_rules">开启屏蔽规则后起效的规则</string>
+    <string name="explore_block_rule_active_rules_empty">开启屏蔽规则后当前书源无起效的规则</string>
     <string name="explore_block_rule_scope_rss_time">时间</string>
     <string name="explore_block_rule_rss_source_scope">作用的订阅源</string>
     <string name="explore_block_rule_book_target_scope">书源作用范围</string>

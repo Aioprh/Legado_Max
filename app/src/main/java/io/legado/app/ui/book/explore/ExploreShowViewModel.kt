@@ -42,7 +42,7 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     val blockRulesRefreshData = MutableLiveData<List<SearchBook>>()
     /** 屏蔽数量变化通知UI更新进度指示器 */
     val blockedCountData = MutableLiveData<Int>()
-    /** 实际匹配到书籍的规则列表，用于"起效的规则"展示 */
+    /** 实际匹配到书籍的规则列表，用于"开启屏蔽规则后起效的规则"展示 */
     val matchedRulesData = MutableLiveData<List<BlockRule>>()
     val booksCount: Int get() = books.size
     private var bookSource: BookSource? = null

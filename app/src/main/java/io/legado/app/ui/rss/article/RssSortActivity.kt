@@ -520,7 +520,7 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
         val dialog = BlockRuleConfigDialog()
         dialog.sourceUrl = viewModel.rssSource?.sourceUrl.orEmpty()
         dialog.allBooks = emptyList()
-        // 收集当前可见 fragment 的原始文章列表，用于"起效的规则"计数
+        // 收集当前可见 fragment 的原始文章列表，用于"开启屏蔽规则后起效的规则"计数
         dialog.allRssArticles = currentArticlesFragment()?.rawArticles ?: emptyList()
         dialog.onRulesChanged = {
             BlockRuleStore.invalidateCache()

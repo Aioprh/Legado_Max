@@ -1942,8 +1942,9 @@
     <string name="explore_block_rule_target_scope">Target scope</string>
     <string name="explore_block_rule_scope_title">Title</string>
     <string name="explore_block_rule_scope_author">Author</string>
-    <string name="explore_block_rule_scope_tag">Tag</string>
+    <string name="explore_block_rule_scope_kind">Category</string>
     <string name="explore_block_rule_scope_intro">Intro</string>
+    <string name="explore_block_rule_scope_word_count">Word Count</string>
     <string name="explore_block_rule_scope_all">All</string>
     <string name="explore_block_rule_source_scope">Apply to sources</string>
     <string name="explore_block_rule_source_scope_hint">Source URL, semicolon separated, empty for all</string>
@@ -1961,10 +1962,11 @@
     <string name="explore_block_rule_import_invalid">Invalid block rule data</string>
     <string name="explore_block_rule_keyword_mode">Keyword</string>
     <string name="explore_block_rule_regex_mode">Regex</string>
+    <string name="explore_block_rule_enable_master">Enable Block Rules</string>
     <string name="explore_block_rule_show_progress">Show block progress</string>
     <string name="explore_block_rule_progress_text">Blocked %1$d</string>
-    <string name="explore_block_rule_active_rules">Active rules</string>
-    <string name="explore_block_rule_active_rules_empty">No active rules for current source</string>
+    <string name="explore_block_rule_active_rules">Active rules after enabling block rules</string>
+    <string name="explore_block_rule_active_rules_empty">No active rules for current source after enabling block rules</string>
     <string name="explore_block_rule_scope_rss_time">Time</string>
     <string name="explore_block_rule_rss_source_scope">Apply to RSS sources</string>
     <string name="explore_block_rule_book_target_scope">Book Source Target Scope</string>

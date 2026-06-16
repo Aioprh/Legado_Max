@@ -50,8 +50,9 @@ data class BlockRule(
         val searchTargets = mutableListOf<String>()
         if (hasScope(SCOPE_TITLE)) searchTargets.add(book.name)
         if (hasScope(SCOPE_AUTHOR)) searchTargets.add(book.author)
-        if (hasScope(SCOPE_TAG)) searchTargets.add(book.kind.orEmpty())
+        if (hasScope(SCOPE_KIND)) searchTargets.add(book.kind.orEmpty())
         if (hasScope(SCOPE_INTRO)) searchTargets.add(book.intro.orEmpty())
+        if (hasScope(SCOPE_WORD_COUNT)) searchTargets.add(book.wordCount.orEmpty())
         if (searchTargets.isEmpty()) return false
         return searchTargets.any { text ->
             if (isRegex) {
@@ -115,8 +116,9 @@ data class BlockRule(
         val bookParts = mutableListOf<String>()
         if (hasScope(SCOPE_TITLE)) bookParts.add("标题")
         if (hasScope(SCOPE_AUTHOR)) bookParts.add("作者")
-        if (hasScope(SCOPE_TAG)) bookParts.add("标签")
+        if (hasScope(SCOPE_KIND)) bookParts.add("分类")
         if (hasScope(SCOPE_INTRO)) bookParts.add("简介")
+        if (hasScope(SCOPE_WORD_COUNT)) bookParts.add("字数")
 
         val rssParts = mutableListOf<String>()
         if (hasRssScope(SCOPE_RSS_TITLE)) rssParts.add("标题")
@@ -140,11 +142,12 @@ data class BlockRule(
 
     companion object {
         // 书源作用范围位标志（用于 targetScope 字段）
-        const val SCOPE_TITLE = 1       // 0b0001 标题
-        const val SCOPE_AUTHOR = 2      // 0b0010 作者
-        const val SCOPE_TAG = 4         // 0b0100 标签
-        const val SCOPE_INTRO = 8       // 0b1000 简介
-        const val SCOPE_BOOK_ALL = 15   // 0b1111 书源全部
+        const val SCOPE_TITLE = 1       // 0b00001 标题
+        const val SCOPE_AUTHOR = 2      // 0b00010 作者
+        const val SCOPE_KIND = 4         // 0b00100 分类
+        const val SCOPE_INTRO = 8       // 0b01000 简介
+        const val SCOPE_WORD_COUNT = 32 // 0b100000 字数
+        const val SCOPE_BOOK_ALL = 47   // 0b101111 书源全部（标题|作者|分类|简介|字数）
 
         // 订阅源作用范围位标志（用于 rssTargetScope 字段）
         const val SCOPE_RSS_TITLE = 1   // 0b0001 标题

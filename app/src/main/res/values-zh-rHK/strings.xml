@@ -1416,8 +1416,9 @@
     <string name="explore_block_rule_target_scope">作用範圍</string>
     <string name="explore_block_rule_scope_title">標題</string>
     <string name="explore_block_rule_scope_author">作者</string>
-    <string name="explore_block_rule_scope_tag">標籤</string>
+    <string name="explore_block_rule_scope_kind">分類</string>
     <string name="explore_block_rule_scope_intro">簡介</string>
+    <string name="explore_block_rule_scope_word_count">字數</string>
     <string name="explore_block_rule_scope_all">全部</string>
     <string name="explore_block_rule_source_scope">作用的書源</string>
     <string name="explore_block_rule_source_scope_hint">書源URL，分號分隔，空=所有書源</string>
@@ -1435,10 +1436,11 @@
     <string name="explore_block_rule_import_invalid">無效的封鎖規則數據</string>
     <string name="explore_block_rule_keyword_mode">關鍵詞</string>
     <string name="explore_block_rule_regex_mode">正則</string>
+    <string name="explore_block_rule_enable_master">開啟封鎖規則</string>
     <string name="explore_block_rule_show_progress">顯示封鎖進度</string>
     <string name="explore_block_rule_progress_text">已封鎖 %1$d 本</string>
-    <string name="explore_block_rule_active_rules">起效的規則</string>
-    <string name="explore_block_rule_active_rules_empty">當前書源無起效的規則</string>
+    <string name="explore_block_rule_active_rules">開啟封鎖規則後起效的規則</string>
+    <string name="explore_block_rule_active_rules_empty">開啟封鎖規則後當前書源無起效的規則</string>
     <string name="explore_block_rule_scope_rss_time">時間</string>
     <string name="explore_block_rule_rss_source_scope">作用的訂閱源</string>
     <string name="explore_block_rule_book_target_scope">書源作用範圍</string>

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.AnimatedVisibility
@@ -156,6 +157,7 @@ private fun BlockRuleConfigContent(
     var showGroupManage by remember { mutableStateOf(false) }
     var showMoreMenu by remember { mutableStateOf(false) }
     var showProgress by remember { mutableStateOf(context.getPrefBoolean(PreferKey.blockRuleShowProgress, false)) }
+    var masterEnabled by remember { mutableStateOf(context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) }
     var showActiveRules by remember { mutableStateOf(false) }
     var allSources by remember { mutableStateOf<List<BookSource>>(emptyList()) }
     var allRssSources by remember { mutableStateOf<List<RssSource>>(emptyList()) }
@@ -358,7 +360,30 @@ private fun BlockRuleConfigContent(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // 显示屏蔽进度开关 + 起效的规则按钮
+            // ===== 屏蔽规则总控开关 =====
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.explore_block_rule_enable_master),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Switch(
+                    checked = masterEnabled,
+                    onCheckedChange = { enabled ->
+                        masterEnabled = enabled
+                        context.putPrefBoolean(PreferKey.blockRuleEnabled, enabled)
+                        BlockRuleStore.invalidateCache()
+                        onRulesChanged()
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 显示屏蔽进度开关 + 开启屏蔽规则后起效的规则按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -436,7 +461,7 @@ private fun BlockRuleConfigContent(
         }
     }
 
-    // 起效的规则弹窗：显示实际匹配到书籍/文章的规则，可展开查看匹配的内容
+    // 开启屏蔽规则后起效的规则弹窗：显示实际匹配到书籍/文章的规则，可展开查看匹配的内容
     if (showActiveRules) {
         val activeMatchedRules = if (allRssArticles.isNotEmpty()) {
             BlockRuleStore.getMatchedRssRules(context, allRssArticles, sourceUrl)
@@ -886,14 +911,15 @@ private fun BlockRuleEditContent(
                             fontWeight = FontWeight.Medium
                         )
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             val bookScopeOptions = listOf(
                                 BlockRule.SCOPE_TITLE to stringResource(R.string.explore_block_rule_scope_title),
                                 BlockRule.SCOPE_AUTHOR to stringResource(R.string.explore_block_rule_scope_author),
-                                BlockRule.SCOPE_TAG to stringResource(R.string.explore_block_rule_scope_tag),
+                                BlockRule.SCOPE_KIND to stringResource(R.string.explore_block_rule_scope_kind),
                                 BlockRule.SCOPE_INTRO to stringResource(R.string.explore_block_rule_scope_intro),
+                                BlockRule.SCOPE_WORD_COUNT to stringResource(R.string.explore_block_rule_scope_word_count),
                             )
                             bookScopeOptions.forEach { (flag, label) ->
                                 FilterChip(
@@ -943,7 +969,7 @@ private fun BlockRuleEditContent(
                             fontWeight = FontWeight.Medium
                         )
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             val rssScopeOptions = listOf(

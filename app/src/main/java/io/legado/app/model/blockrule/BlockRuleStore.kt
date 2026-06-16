@@ -6,6 +6,7 @@ import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
+import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.putPrefString
 
@@ -63,6 +64,7 @@ object BlockRuleStore {
      * 遍历所有已启用的规则，移除匹配的书籍
      */
     fun filterBooks(context: Context, books: List<SearchBook>, sourceUrl: String): List<SearchBook> {
+        if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) return books
         val rules = loadEnabled(context)
         if (rules.isEmpty()) return books
         return books.filterNot { book ->
@@ -74,6 +76,7 @@ object BlockRuleStore {
      * 搜索结果过滤：每本书有独立的书源URL，按各自origin匹配作用域
      */
     fun filterSearchBooks(context: Context, books: List<SearchBook>): List<SearchBook> {
+        if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) return books
         val rules = loadEnabled(context)
         if (rules.isEmpty()) return books
         return books.filterNot { book ->
@@ -86,6 +89,7 @@ object BlockRuleStore {
      * 使用 rssScope 字段匹配订阅源作用域
      */
     fun filterRssArticles(context: Context, articles: List<RssArticle>, sourceUrl: String): List<RssArticle> {
+        if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) return articles
         val rules = loadEnabled(context)
         if (rules.isEmpty()) return articles
         return articles.filterNot { article ->
@@ -144,9 +148,8 @@ object BlockRuleStore {
         var rssScopeFlags = runCatching { rule.rssTargetScope }.getOrDefault(0)
 
         // 迁移旧版数据：旧版 targetScope 同时包含书源和订阅源的位标志
-        // 仅当 rssTargetScope 为 0（新字段未设置）且 targetScope 含旧版 RSS 特有高位（bit 16+）时才迁移。
-        // 新规则 targetScope 在 0~15 范围内（纯书源位），不应误触发迁移。
-        if (rssScopeFlags == 0 && (bookScope and BlockRule.SCOPE_BOOK_ALL.inv()) != 0) {
+        // 仅当 rssTargetScope 为 0（新字段未设置）且 targetScope 含旧版 RSS 特有高位（SCOPE_RSS_TIME_LEGACY=16）时才迁移。
+        if (rssScopeFlags == 0 && (bookScope and BlockRule.SCOPE_RSS_TIME_LEGACY) != 0) {
             // 旧版 SCOPE_TITLE 同时表示书源标题和订阅源标题
             if ((bookScope and BlockRule.SCOPE_TITLE) != 0) {
                 rssScopeFlags = rssScopeFlags or BlockRule.SCOPE_RSS_TITLE
