@@ -270,6 +270,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     private var justInitData: Boolean = false
     private var syncDialog: AlertDialog? = null
     private var needSyncReadAloudOnResume: Boolean = false
+    private var readAloudBackPressedOnce: Boolean = false // 朗读返回键计数
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -301,6 +302,19 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
             if (isAutoPage) {
                 autoPageStop()
+                return@addCallback
+            }
+            // 朗读返回键处理：未启用朗读悬窗时，第一次暂停并提示，第二次停止并退出
+            if (BaseReadAloudService.isRun && !AppConfig.readAloudFloatingUi) {
+                if (!readAloudBackPressedOnce) {
+                    readAloudBackPressedOnce = true
+                    toastOnUi(R.string.read_aloud_pause)
+                    ReadAloud.pause(this@ReadBookActivity)
+                } else {
+                    readAloudBackPressedOnce = false
+                    ReadAloud.stop(this@ReadBookActivity)
+                    finish()
+                }
                 return@addCallback
             }
             if (getPrefBoolean("disableReturnKey") && !menuLayoutIsVisible) {
@@ -1494,6 +1508,8 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     private fun toggleReadAloud(launchUi: Boolean, allowPauseWhenRunning: Boolean) {
         autoPageStop()
+        // 重置朗读返回键计数（当用户主动操作朗读时）
+        readAloudBackPressedOnce = false
         when {
             !BaseReadAloudService.isRun -> {
                 ReadAloud.upReadAloudClass()
@@ -1901,6 +1917,10 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
         }
         observeEvent<Int>(EventBus.ALOUD_STATE) {
+            // 朗读停止时重置返回键计数
+            if (it == Status.STOP) {
+                readAloudBackPressedOnce = false
+            }
             if (isCurrentBookReadAloudBook() && (it == Status.STOP || it == Status.PAUSE)) {
                 ReadBook.curTextChapter?.let { textChapter ->
                     val page = textChapter.getPageByReadPos(ReadBook.durChapterPos)
