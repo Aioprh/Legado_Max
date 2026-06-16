@@ -1,12 +1,10 @@
 package io.legado.app.ui.video.config
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -16,6 +14,8 @@ import io.legado.app.R
 import io.legado.app.model.VideoPlay
 import io.legado.app.constant.EventBus
 import io.legado.app.ui.widget.number.NumberPickerDialog
+import io.legado.app.ui.widget.components.settings.AppSettingClickItem as SettingClickItem
+import io.legado.app.ui.widget.components.settings.AppSettingSwitchItem as SettingSwitchItem
 import io.legado.app.utils.postEvent
 
 /**
@@ -264,61 +264,3 @@ fun VideoSettingsContent(
     }
 }
 
-/**
- * 设置开关项
- */
-@Composable
-fun SettingSwitchItem(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
-        )
-    }
-}
-
-/**
- * 设置点击项（带摘要）
- */
-@Composable
-fun SettingClickItem(
-    title: String,
-    summary: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 12.dp)
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            text = summary,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}

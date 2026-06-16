@@ -418,6 +418,13 @@ result = `<img src = "${url}">`;
 > 获取到的简介字符串需要用`<usehtml></usehtml>`包裹起来才能识别\
 > 按钮文本需要含有@onclick:执行内容才能被识别
 
+> 简介规则直接填整段 usehtml 字面量会被当成 CSS 选择器解析，结果为空。\
+> 需要用 `@js:` 前缀 + 反引号包成模板字符串，让分析器走 JS 模式返回完整字符串：
+
+```
+@js:`<usehtml><button>点击跳转@onclick:java.toast("按钮被点击")</button></usehtml>`
+```
+
 ```xml
 <usehtml>
 <p style="text-align:end">右对齐文本</p>
@@ -427,6 +434,23 @@ result = `<img src = "${url}">`;
 
 > 支持Markdown语法，需要用`<md></md>`包裹起来\
 > 支持使用浏览器渲染，需要用`<useweb></useweb>`包裹起来
+
+```
+@js:`
+<md>
+# 简介标题
+
+这是 **加粗**、*斜体*、[链接](https://example.com)
+
+- 列表项 1
+- 列表项 2
+
+\`\`\`
+代码块
+\`\`\`
+</md>
+`
+```
 
 > `useweb` 页面会自动注入当前源的 `jsLib`、`java`、`source`、`cache`。\
 > 因此可以直接在 `jsLib` 中定义函数，再在 `<useweb>` 页面里调用。\

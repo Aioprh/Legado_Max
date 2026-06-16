@@ -4,10 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ResolveInfo
 import android.os.Build
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,18 +19,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.fragment.app.DialogFragment
 import io.legado.app.R
-import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
+import io.legado.app.ui.widget.components.dialog.BaseComposeDialogFragment
 import io.legado.app.utils.toastOnUi
 
 /**
@@ -43,22 +37,13 @@ import io.legado.app.utils.toastOnUi
  * 功能说明：
  * 提供一个界面让用户选择要显示/隐藏的文本菜单项
  */
-class TextMenuConfigDialog : DialogFragment() {
+class TextMenuConfigDialog : BaseComposeDialogFragment() {
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        return ComposeView(requireContext()).apply {
-            setContent {
-                LegadoTheme {
-                    TextMenuConfigDialogContent(
-                        onDismiss = { dismiss() }
-                    )
-                }
-            }
-        }
+    @Composable
+    override fun DialogContent() {
+        TextMenuConfigDialogContent(
+            onDismiss = { dismiss() }
+        )
     }
 }
 
@@ -83,7 +68,6 @@ fun TextMenuConfigDialogContent(
     }
     var editingItem by remember { mutableStateOf<TextMenuConfig.MenuItemInfo?>(null) }
     var showProcessTextConfig by remember { mutableStateOf(false) }
-    
     val topBarColor = pageTopBarContainerColor()
     val cardColor = pageCardContainerColor()
 
