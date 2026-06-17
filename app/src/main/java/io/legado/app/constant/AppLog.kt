@@ -23,30 +23,39 @@ object AppLog {
     val sourceLogs get() = mSourceLogs.toList()
 
     @Synchronized
-    fun put(message: String?, throwable: Throwable? = null, toast: Boolean = false, dialogName: String? = null) {
+    fun put(
+        message: String?,
+        throwable: Throwable? = null,
+        toast: Boolean = false,
+        dialogName: String? = null,
+        category: DebugCategory = DebugCategory.APP
+    ) {
         message ?: return
         if (toast) {
             appCtx.toastOnUi(message)
         }
-        if (mLogs.size > 100) {
-            mLogs.removeLastOrNull()
-        }
-        if (throwable == null) {
-            LogUtils.d("AppLog", message)
-        } else {
-            LogUtils.d("AppLog", "$message\n${throwable.stackTraceToString()}")
-        }
-        mLogs.add(0, Triple(System.currentTimeMillis(), message, throwable))
-        if (BuildConfig.DEBUG) {
-            val stackTrace = Thread.currentThread().stackTrace
-            Log.e(stackTrace[3].className, message, throwable)
+
+        if (!shouldRouteToDebugOnly(category)) {
+            if (mLogs.size > 100) {
+                mLogs.removeLastOrNull()
+            }
+            if (throwable == null) {
+                LogUtils.d("AppLog", message)
+            } else {
+                LogUtils.d("AppLog", "$message\n${throwable.stackTraceToString()}")
+            }
+            mLogs.add(0, Triple(System.currentTimeMillis(), message, throwable))
+            if (BuildConfig.DEBUG) {
+                val stackTrace = Thread.currentThread().stackTrace
+                Log.e(stackTrace[3].className, message, throwable)
+            }
         }
 
         DebugLogScope.launch {
             DebugEventCenter.emit(
                 DebugEvent(
                     level = if (throwable != null) DebugLevel.ERROR else DebugLevel.INFO,
-                    category = DebugCategory.APP,
+                    category = category,
                     message = message,
                     detail = throwable?.stackTraceToString(),
                     throwable = throwable,
@@ -57,27 +66,36 @@ object AppLog {
     }
 
     @Synchronized
-    fun putSource(message: String?, throwable: Throwable? = null, subCategory: SourceSubCategory = SourceSubCategory.UPDATE, dialogName: String? = null) {
+    fun putSource(
+        message: String?,
+        throwable: Throwable? = null,
+        subCategory: SourceSubCategory = SourceSubCategory.UPDATE,
+        dialogName: String? = null,
+        category: DebugCategory = DebugCategory.SOURCE
+    ) {
         message ?: return
-        if (mSourceLogs.size > 200) {
-            mSourceLogs.removeLastOrNull()
-        }
-        if (throwable == null) {
-            LogUtils.d("SourceLog", message)
-        } else {
-            LogUtils.d("SourceLog", "$message\n${throwable.stackTraceToString()}")
-        }
-        mSourceLogs.add(0, Triple(System.currentTimeMillis(), message, throwable))
-        if (BuildConfig.DEBUG) {
-            val stackTrace = Thread.currentThread().stackTrace
-            Log.e(stackTrace[3].className, message, throwable)
+
+        if (!shouldRouteToDebugOnly(category)) {
+            if (mSourceLogs.size > 200) {
+                mSourceLogs.removeLastOrNull()
+            }
+            if (throwable == null) {
+                LogUtils.d("SourceLog", message)
+            } else {
+                LogUtils.d("SourceLog", "$message\n${throwable.stackTraceToString()}")
+            }
+            mSourceLogs.add(0, Triple(System.currentTimeMillis(), message, throwable))
+            if (BuildConfig.DEBUG) {
+                val stackTrace = Thread.currentThread().stackTrace
+                Log.e(stackTrace[3].className, message, throwable)
+            }
         }
 
         DebugLogScope.launch {
             DebugEventCenter.emit(
                 DebugEvent(
                     level = if (throwable != null) DebugLevel.ERROR else DebugLevel.INFO,
-                    category = DebugCategory.SOURCE,
+                    category = category,
                     subCategory = subCategory,
                     message = message,
                     detail = throwable?.stackTraceToString(),
@@ -89,18 +107,27 @@ object AppLog {
     }
 
     @Synchronized
-    fun putNotSave(message: String?, throwable: Throwable? = null, toast: Boolean = false, dialogName: String? = null) {
+    fun putNotSave(
+        message: String?,
+        throwable: Throwable? = null,
+        toast: Boolean = false,
+        dialogName: String? = null,
+        category: DebugCategory = DebugCategory.APP
+    ) {
         message ?: return
         if (toast) {
             appCtx.toastOnUi(message)
         }
-        if (mLogs.size > 100) {
-            mLogs.removeLastOrNull()
-        }
-        mLogs.add(0, Triple(System.currentTimeMillis(), message, throwable))
-        if (BuildConfig.DEBUG) {
-            val stackTrace = Thread.currentThread().stackTrace
-            Log.e(stackTrace[3].className, message, throwable)
+
+        if (!shouldRouteToDebugOnly(category)) {
+            if (mLogs.size > 100) {
+                mLogs.removeLastOrNull()
+            }
+            mLogs.add(0, Triple(System.currentTimeMillis(), message, throwable))
+            if (BuildConfig.DEBUG) {
+                val stackTrace = Thread.currentThread().stackTrace
+                Log.e(stackTrace[3].className, message, throwable)
+            }
         }
 
         // 新增：上报到调试事件中心（异步）
@@ -108,7 +135,7 @@ object AppLog {
             DebugEventCenter.emit(
                 DebugEvent(
                     level = if (throwable != null) DebugLevel.ERROR else DebugLevel.INFO,
-                    category = DebugCategory.APP,
+                    category = category,
                     message = message,
                     detail = throwable?.stackTraceToString(),
                     throwable = throwable,
@@ -124,9 +151,14 @@ object AppLog {
         mSourceLogs.clear()
     }
 
-    fun putDebug(message: String?, throwable: Throwable? = null, dialogName: String? = null) {
+    fun putDebug(
+        message: String?,
+        throwable: Throwable? = null,
+        dialogName: String? = null,
+        category: DebugCategory = DebugCategory.APP
+    ) {
         if (AppConfig.recordLog) {
-            put(message, throwable, dialogName = dialogName)
+            put(message, throwable, dialogName = dialogName, category = category)
         }
 
         // 新增：即使recordLog为false也上报调试级别日志到事件中心
@@ -134,7 +166,7 @@ object AppLog {
             DebugEventCenter.emit(
                 DebugEvent(
                     level = DebugLevel.DEBUG,
-                    category = DebugCategory.APP,
+                    category = category,
                     message = message ?: "",
                     detail = throwable?.stackTraceToString(),
                     throwable = throwable,
@@ -142,6 +174,10 @@ object AppLog {
                 )
             )
         }
+    }
+
+    private fun shouldRouteToDebugOnly(category: DebugCategory): Boolean {
+        return AppConfig.debugLogOnlyEnabled && category in AppConfig.debugLogOnlyCategories
     }
 
 }

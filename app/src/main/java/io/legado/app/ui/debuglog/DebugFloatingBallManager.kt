@@ -31,9 +31,15 @@ object DebugFloatingBallManager {
     private var currentActivity: Activity? = null
     private var floatingBallView: ComposeView? = null
     private var showToken: Int = 0
+    private var hasLoggedShow = false
+    private var hasLoggedHide = false
     
     fun updateFloatingBallState(enabled: Boolean) {
         if (enabled) {
+            // 重置日志标记，每次开启功能时允许记录一次日志
+            hasLoggedShow = false
+            hasLoggedHide = false
+            DebugLogPanelDialog.resetLogFlags()
             currentActivity?.let { activity ->
                 if (!activity.isFinishing && !activity.isDestroyed) {
                     show(activity)
@@ -52,12 +58,18 @@ object DebugFloatingBallManager {
         }
         
         if (isShowing || isAttaching) {
-            AppLog.put("DebugFloatingBall: show() called but already showing or attaching")
+            if (!hasLoggedShow) {
+                AppLog.put("DebugFloatingBall: show() called but already showing or attaching")
+                hasLoggedShow = true
+            }
             return
         }
         
         if (activity.isFinishing || activity.isDestroyed) {
-            AppLog.put("DebugFloatingBall: show() called but activity is finishing or destroyed")
+            if (!hasLoggedShow) {
+                AppLog.put("DebugFloatingBall: show() called but activity is finishing or destroyed")
+                hasLoggedShow = true
+            }
             return
         }
         
@@ -67,7 +79,10 @@ object DebugFloatingBallManager {
         
         val rootView = activity.window.decorView as? ViewGroup
         if (rootView == null) {
-            AppLog.put("DebugFloatingBall: show() failed - rootView is null")
+            if (!hasLoggedShow) {
+                AppLog.put("DebugFloatingBall: show() failed - rootView is null")
+                hasLoggedShow = true
+            }
             isAttaching = false
             return
         }
@@ -78,14 +93,20 @@ object DebugFloatingBallManager {
             
             rootView.post {
                 if (!validateShowToken(currentToken, activity)) {
-                    AppLog.put("DebugFloatingBall: show() cancelled - token invalid or activity state changed")
+                    if (!hasLoggedShow) {
+                        AppLog.put("DebugFloatingBall: show() cancelled - token invalid or activity state changed")
+                        hasLoggedShow = true
+                    }
                     isAttaching = false
                     floatingBallView = null
                     return@post
                 }
                 
                 if (composeView.parent != null) {
-                    AppLog.put("DebugFloatingBall: show() cancelled - view already has parent")
+                    if (!hasLoggedShow) {
+                        AppLog.put("DebugFloatingBall: show() cancelled - view already has parent")
+                        hasLoggedShow = true
+                    }
                     isAttaching = false
                     floatingBallView = null
                     return@post
@@ -102,16 +123,25 @@ object DebugFloatingBallManager {
                     rootView.addView(composeView, layoutParams)
                     isShowing = true
                     isAttaching = false
-                    AppLog.put("DebugFloatingBall: show() success")
+                    if (!hasLoggedShow) {
+                        AppLog.put("DebugFloatingBall: show() success")
+                        hasLoggedShow = true
+                    }
                 } catch (e: Exception) {
-                    AppLog.put("DebugFloatingBall: show() failed to add view - ${e.message}", e)
+                    if (!hasLoggedShow) {
+                        AppLog.put("DebugFloatingBall: show() failed to add view - ${e.message}", e)
+                        hasLoggedShow = true
+                    }
                     isAttaching = false
                     floatingBallView = null
                 }
             }
             
         } catch (e: Exception) {
-            AppLog.put("DebugFloatingBall: show() exception - ${e.message}", e)
+            if (!hasLoggedShow) {
+                AppLog.put("DebugFloatingBall: show() exception - ${e.message}", e)
+                hasLoggedShow = true
+            }
             isAttaching = false
             floatingBallView = null
         }
@@ -130,9 +160,15 @@ object DebugFloatingBallManager {
                 try {
                     val parent = view.parent as? ViewGroup
                     parent?.removeView(view)
-                    AppLog.put("DebugFloatingBall: hide() success")
+                    if (!hasLoggedHide) {
+                        AppLog.put("DebugFloatingBall: hide() success")
+                        hasLoggedHide = true
+                    }
                 } catch (e: Exception) {
-                    AppLog.put("DebugFloatingBall: hide() exception - ${e.message}", e)
+                    if (!hasLoggedHide) {
+                        AppLog.put("DebugFloatingBall: hide() exception - ${e.message}", e)
+                        hasLoggedHide = true
+                    }
                 }
             }
         }

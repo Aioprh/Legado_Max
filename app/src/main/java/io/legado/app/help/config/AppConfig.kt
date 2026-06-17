@@ -86,15 +86,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     var debugLogOnlyCategories: Set<DebugCategory>
         get() {
             val raw = appCtx.getPrefString(PreferKey.debugLogOnlyCategories) ?: ""
-            if (raw.isBlank()) return emptySet()
-            return raw.split(",")
-                .mapNotNull { name -> runCatching { DebugCategory.valueOf(name) }.getOrNull() }
-                .filter { it != DebugCategory.ALL }
-                .toSet()
+            return DebugLogOnlyConfig.parseCategories(raw)
         }
         set(value) {
-            val names = value.filter { it != DebugCategory.ALL }.joinToString(",") { it.name }
-            appCtx.putPrefString(PreferKey.debugLogOnlyCategories, names)
+            appCtx.putPrefString(PreferKey.debugLogOnlyCategories, DebugLogOnlyConfig.serializeCategories(value))
         }
     var editFontScale = appCtx.getPrefInt(PreferKey.editFontScale, 16)
     var editNonPrintable = appCtx.getPrefInt(PreferKey.editNonPrintable, 0)

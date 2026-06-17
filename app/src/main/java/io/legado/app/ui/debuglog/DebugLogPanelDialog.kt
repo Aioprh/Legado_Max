@@ -26,22 +26,39 @@ object DebugLogPanelDialog {
     private var dialogView: View? = null
     private var isShowing = false
     private var currentActivity: Activity? = null
+    private var hasLoggedShow = false
+    private var hasLoggedDismiss = false
+    
+    /** 重置日志标记，由 DebugFloatingBallManager 在开启功能时调用 */
+    fun resetLogFlags() {
+        hasLoggedShow = false
+        hasLoggedDismiss = false
+    }
     
     fun show(activity: Activity) {
         if (isShowing) {
-            AppLog.put("DebugLogPanelDialog: show() called but already showing")
+            if (!hasLoggedShow) {
+                AppLog.put("DebugLogPanelDialog: show() called but already showing")
+                hasLoggedShow = true
+            }
             return
         }
         
         if (activity.isFinishing || activity.isDestroyed) {
-            AppLog.put("DebugLogPanelDialog: show() called but activity is finishing or destroyed")
+            if (!hasLoggedShow) {
+                AppLog.put("DebugLogPanelDialog: show() called but activity is finishing or destroyed")
+                hasLoggedShow = true
+            }
             return
         }
         
         currentActivity = activity
         val rootView = activity.window.decorView as? ViewGroup
         if (rootView == null) {
-            AppLog.put("DebugLogPanelDialog: show() failed - rootView is null")
+            if (!hasLoggedShow) {
+                AppLog.put("DebugLogPanelDialog: show() failed - rootView is null")
+                hasLoggedShow = true
+            }
             return
         }
         
@@ -57,10 +74,16 @@ object DebugLogPanelDialog {
             rootView.addView(composeView, layoutParams)
             dialogView = composeView
             isShowing = true
-            AppLog.put("DebugLogPanelDialog: show() success")
+            if (!hasLoggedShow) {
+                AppLog.put("DebugLogPanelDialog: show() success")
+                hasLoggedShow = true
+            }
             
         } catch (e: Exception) {
-            AppLog.put("DebugLogPanelDialog: show() exception - ${e.message}", e)
+            if (!hasLoggedShow) {
+                AppLog.put("DebugLogPanelDialog: show() exception - ${e.message}", e)
+                hasLoggedShow = true
+            }
             dialogView = null
             isShowing = false
             currentActivity = null
@@ -78,9 +101,15 @@ object DebugLogPanelDialog {
                 try {
                     val parent = view.parent as? ViewGroup
                     parent?.removeView(view)
-                    AppLog.put("DebugLogPanelDialog: dismiss() success")
+                    if (!hasLoggedDismiss) {
+                        AppLog.put("DebugLogPanelDialog: dismiss() success")
+                        hasLoggedDismiss = true
+                    }
                 } catch (e: Exception) {
-                    AppLog.put("DebugLogPanelDialog: dismiss() exception - ${e.message}", e)
+                    if (!hasLoggedDismiss) {
+                        AppLog.put("DebugLogPanelDialog: dismiss() exception - ${e.message}", e)
+                        hasLoggedDismiss = true
+                    }
                 }
             }
         }
