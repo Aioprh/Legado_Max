@@ -7,6 +7,7 @@ import io.legado.app.constant.AppConst
 import io.legado.app.constant.MangaReadMode
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
+import io.legado.app.model.debug.DebugCategory
 import io.legado.app.utils.GSON
 import io.legado.app.utils.canvasrecorder.CanvasRecorderFactory
 import io.legado.app.utils.fromJsonObject
@@ -74,6 +75,27 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             && appCtx.getPrefBoolean(PreferKey.optimizeRender, false)
     var recordLog = appCtx.getPrefBoolean(PreferKey.recordLog)
     var recordUrl = appCtx.getPrefBoolean(PreferKey.recordUrl)
+
+    // ==================== 调试专属日志模式 ====================
+    /** 调试专属模式总开关，控制按 category 路由分流功能是否启用 */
+    var debugLogOnlyEnabled: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.debugLogOnlyEnabled, true)
+        set(value) { appCtx.putPrefBoolean(PreferKey.debugLogOnlyEnabled, value) }
+
+    /** 被标记为"只进调试界面"的 DebugCategory 集合（持久化为逗号分隔字符串） */
+    var debugLogOnlyCategories: Set<DebugCategory>
+        get() {
+            val raw = appCtx.getPrefString(PreferKey.debugLogOnlyCategories) ?: ""
+            if (raw.isBlank()) return emptySet()
+            return raw.split(",")
+                .mapNotNull { name -> runCatching { DebugCategory.valueOf(name) }.getOrNull() }
+                .filter { it != DebugCategory.ALL }
+                .toSet()
+        }
+        set(value) {
+            val names = value.filter { it != DebugCategory.ALL }.joinToString(",") { it.name }
+            appCtx.putPrefString(PreferKey.debugLogOnlyCategories, names)
+        }
     var editFontScale = appCtx.getPrefInt(PreferKey.editFontScale, 16)
     var editNonPrintable = appCtx.getPrefInt(PreferKey.editNonPrintable, 0)
     var editAutoWrap = appCtx.getPrefBoolean(PreferKey.editAutoWrap, true)
