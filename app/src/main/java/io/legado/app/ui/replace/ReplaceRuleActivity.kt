@@ -35,7 +35,7 @@ import io.legado.app.ui.widget.SelectActionBar
 import io.legado.app.ui.widget.recycler.DragSelectTouchHelper
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.ui.widget.recycler.VerticalDivider
-import io.legado.app.help.config.AppConfig
+
 import io.legado.app.utils.ACache
 import io.legado.app.utils.GSON
 import io.legado.app.utils.applyTint
@@ -121,9 +121,8 @@ class ReplaceRuleActivity : VMBaseActivity<ActivityReplaceRuleBinding, ReplaceRu
         binding.recyclerView.setEdgeEffectColor(primaryColor)
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
-        val showFastScroller = AppConfig.showBookshelfFastScroller
-        binding.recyclerView.setFastScrollEnabled(showFastScroller)
-        binding.recyclerView.isVerticalScrollBarEnabled = !showFastScroller
+        binding.recyclerView.setFastScrollEnabled(true)
+        binding.recyclerView.isVerticalScrollBarEnabled = false
         binding.recyclerView.addItemDecoration(VerticalDivider(this))
         val itemTouchCallback = ItemTouchCallback(adapter)
         itemTouchCallback.isCanDrag = true
