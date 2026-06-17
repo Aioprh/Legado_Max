@@ -1305,6 +1305,7 @@
     <string name="clear_webview_data">Clear WebView Data</string>
     <string name="clear_webview_data_summary">Clear all data in WebView</string>
     <string name="source_tab_list">List</string>
+    <string name="preview_dict">Preview Dict</string>
     <string name="dict_rule">Dict rule</string>
     <string name="dict_rule_search">Search Dict Rule</string>
     <string name="config_dict_rule">Config dict rule</string>

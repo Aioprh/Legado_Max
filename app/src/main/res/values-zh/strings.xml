@@ -73,8 +73,6 @@
     <string name="setting">设置</string>
     <string name="theme_setting">主题设置</string>
     <string name="theme_setting_s">与界面/颜色相关的一些设置</string>
-    <string name="navigation_bar_manage">底栏管理</string>
-    <string name="navigation_bar_manage_summary">管理底栏液态玻璃效果方案</string>
     <string name="other_setting">其它设置</string>
     <string name="other_setting_s">与功能相关的一些设置</string>
     <string name="precise_manage">精准管理</string>
