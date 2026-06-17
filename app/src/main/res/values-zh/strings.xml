@@ -1812,6 +1812,7 @@
     <string name="fvd_select_all">全选</string>
     <string name="fvd_deselect_all">全不选</string>
     <string name="fvd_valid">有效</string>
+    <string name="fvd_warning">警告</string>
     <string name="fvd_invalid">无效</string>
     <string name="fvd_validating">验证中</string>
     <string name="fvd_view_details">查看详情</string>

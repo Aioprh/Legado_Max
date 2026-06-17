@@ -17,7 +17,7 @@ import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.page.entities.TextChapter
 import io.legado.app.utils.RealPathUtil
-import io.legado.app.utils.buildMainHandler
+
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.isPad
@@ -135,12 +135,6 @@ object ChapterProvider {
 
     @JvmStatic
     var visibleRect = RectF()
-
-    private val handler by lazy {
-        buildMainHandler()
-    }
-
-    private var upViewSizeRunnable: Runnable? = null
 
     init {
         upStyle()
@@ -302,22 +296,7 @@ object ChapterProvider {
             return
         }
         if (width != viewWidth || height != viewHeight) {
-            if (width == viewWidth) {
-                // 纯高度变化（如状态栏显隐导致的微调）延迟 300ms 防抖处理
-                // 但必须立即清除预加载章节缓存，否则在延迟窗口内切换章节
-                // 会使用按旧高度排版的缓存数据，导致内容显示不全
-                ReadBook.prevTextChapter = null
-                ReadBook.nextTextChapter = null
-                upViewSizeRunnable = handler.postDelayed(300) {
-                    upViewSizeRunnable = null
-                    notifyViewSizeChange(width, height)
-                }
-            } else {
-                notifyViewSizeChange(width, height)
-            }
-        } else if (upViewSizeRunnable != null) {
-            handler.removeCallbacks(upViewSizeRunnable!!)
-            upViewSizeRunnable = null
+            notifyViewSizeChange(width, height)
         }
     }
 

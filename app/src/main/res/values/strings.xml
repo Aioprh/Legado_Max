@@ -1871,6 +1871,7 @@
     <string name="fvd_select_all">Select All</string>
     <string name="fvd_deselect_all">Deselect All</string>
     <string name="fvd_valid">Valid</string>
+    <string name="fvd_warning">Warning</string>
     <string name="fvd_invalid">Invalid</string>
     <string name="fvd_validating">Validating</string>
     <string name="fvd_view_details">View Details</string>

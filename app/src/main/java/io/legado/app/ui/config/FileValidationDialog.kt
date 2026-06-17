@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -179,11 +180,30 @@ private fun FileValidationItem(
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = stringResource(R.string.fvd_valid),
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = androidx.compose.ui.graphics.Color(0xFF4CAF50),
                     modifier = Modifier.size(24.dp)
                 )
             }
-            ValidationState.WARNING, ValidationState.ERROR -> {
+            ValidationState.WARNING -> {
+                IconButton(
+                    onClick = onInfoClick,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Help,
+                        contentDescription = stringResource(R.string.fvd_view_details),
+                        tint = androidx.compose.ui.graphics.Color(0xFFFF9800),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = stringResource(R.string.fvd_warning),
+                    tint = androidx.compose.ui.graphics.Color(0xFFFF9800),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            ValidationState.ERROR -> {
                 IconButton(
                     onClick = onInfoClick,
                     modifier = Modifier.size(32.dp)
