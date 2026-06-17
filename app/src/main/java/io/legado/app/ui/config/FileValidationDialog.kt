@@ -30,7 +30,9 @@ import io.legado.app.R
 import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.help.storage.ValidationResult
 import io.legado.app.help.storage.ValidationState
-
+/**
+ * 文件选择恢复内容验证对话框
+ */
 @Composable
 fun FileValidationDialog(
     files: List<BackupInfoHelper.BackupFileInfo>,
@@ -41,6 +43,10 @@ fun FileValidationDialog(
     onInfoClick: (ValidationResult) -> Unit
 ) {
     val checkedStates = remember { mutableStateMapOf<String, Boolean>().apply { files.forEach { put(it.fileName, true) } } }
+
+    // 计算已选数量和大小
+    val selectedCount = files.count { checkedStates[it.fileName] == true }
+    val selectedSize = files.filter { checkedStates[it.fileName] == true }.sumOf { it.size }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -82,6 +88,17 @@ fun FileValidationDialog(
                             Text(stringResource(R.string.fvd_detect_format))
                         }
                     }
+                    Text(
+                        text = stringResource(
+                            R.string.fvd_selected_info,
+                            selectedCount,
+                            files.size,
+                            BackupInfoHelper.formatSize(selectedSize)
+                        ),
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

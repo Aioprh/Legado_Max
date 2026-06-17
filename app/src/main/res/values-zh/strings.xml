@@ -1807,7 +1807,7 @@
     <string name="cover_gallery_summary">管理分组封面画廊，可设置为全局默认封面源</string>
 
     <!-- File Validation Dialog -->
-    <string name="fvd_title">选择要恢复的文件</string>
+    <string name="fvd_title">选择恢复内容</string>
     <string name="fvd_detect_format">检测格式</string>
     <string name="fvd_select_all">全选</string>
     <string name="fvd_deselect_all">全不选</string>
@@ -1819,6 +1819,7 @@
     <string name="fvd_missing_fields">缺少字段: %s</string>
     <string name="fvd_can_restore">可以正常恢复</string>
     <string name="fvd_cannot_restore">无法恢复</string>
+    <string name="fvd_selected_info">已选 %1$d/%2$d 项，%3$s</string>
     <string name="fvd_reading_backup">读取备份文件...</string>
     <string name="fvd_backup_empty">备份文件中没有可恢复的内容</string>
     <string name="fvd_format_detect_error">格式检测出错: %s</string>

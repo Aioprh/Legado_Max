@@ -1866,7 +1866,7 @@
     <string name="bcs_deselect_all">Deselect All</string>
 
     <!-- File Validation Dialog -->
-    <string name="fvd_title">Select Files to Restore</string>
+    <string name="fvd_title">Select Restore Content</string>
     <string name="fvd_detect_format">Detect Format</string>
     <string name="fvd_select_all">Select All</string>
     <string name="fvd_deselect_all">Deselect All</string>
@@ -1878,6 +1878,7 @@
     <string name="fvd_missing_fields">Missing fields: %s</string>
     <string name="fvd_can_restore">Can be restored normally</string>
     <string name="fvd_cannot_restore">Cannot be restored</string>
+    <string name="fvd_selected_info">Selected %1$d/%2$d items, %3$s</string>
     <string name="fvd_reading_backup">Reading backup file...</string>
     <string name="fvd_backup_empty">No recoverable content in backup file</string>
     <string name="fvd_format_detect_error">Format detection error: %s</string>
