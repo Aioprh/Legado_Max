@@ -14,6 +14,7 @@ import io.legado.app.databinding.ItemDownloadBinding
 import io.legado.app.help.book.isLocal
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.model.CacheBook
+import io.legado.app.utils.ConvertUtils
 import io.legado.app.utils.gone
 import io.legado.app.utils.visible
 
@@ -56,12 +57,9 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
                     if (cs == null) {
                         tvDownload.setText(R.string.loading)
                     } else {
+                        val sizeText = formatCacheSize(callBack.cacheSizes[item.bookUrl] ?: 0L)
                         tvDownload.text =
-                            context.getString(
-                                R.string.download_count,
-                                cs.size,
-                                item.totalChapterNum
-                            )
+                            "${context.getString(R.string.download_count, cs.size, item.totalChapterNum)} · $sizeText"
                     }
                 }
             } else {
@@ -69,13 +67,18 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
                     tvDownload.setText(R.string.local_book)
                 } else {
                     val cacheSize = callBack.cacheChapters[item.bookUrl]?.size ?: 0
+                    val sizeText = formatCacheSize(callBack.cacheSizes[item.bookUrl] ?: 0L)
                     tvDownload.text =
-                        context.getString(R.string.download_count, cacheSize, item.totalChapterNum)
+                        "${context.getString(R.string.download_count, cacheSize, item.totalChapterNum)} · $sizeText"
                 }
             }
             upDownloadIv(ivDownload, item)
             upExportInfo(tvMsg, progressExport, item)
         }
+    }
+
+    private fun formatCacheSize(size: Long): String {
+        return if (size > 0) ConvertUtils.formatFileSize(size) else "0"
     }
 
     override fun registerListener(holder: ItemViewHolder, binding: ItemDownloadBinding) {
@@ -140,6 +143,7 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
 
     interface CallBack {
         val cacheChapters: HashMap<String, HashSet<String>>
+        val cacheSizes: HashMap<String, Long>
         fun export(position: Int)
         fun clearCache(position: Int)
         fun exportProgress(bookUrl: String): Int?

@@ -682,6 +682,9 @@ class CacheActivity : VMBaseActivity<ActivityCacheBookBinding, CacheViewModel>()
     override val cacheChapters: HashMap<String, HashSet<String>>
         get() = viewModel.cacheChapters
 
+    override val cacheSizes: HashMap<String, Long>
+        get() = viewModel.cacheSizes
+
     override fun exportProgress(bookUrl: String): Int? {
         return ExportBookService.exportProgress[bookUrl]
     }

@@ -15,6 +15,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import java.io.File
 import kotlin.collections.set
 
 
@@ -24,6 +25,8 @@ class CacheViewModel(application: Application) : BaseViewModel(application) {
     private var loadChapterCoroutine: Coroutine<Unit>? = null
     // 缓存每本书已缓存的章节URL集合
     val cacheChapters = hashMapOf<String, HashSet<String>>()
+    // 缓存每本书的缓存文件大小
+    val cacheSizes = hashMapOf<String, Long>()
     private val bookRepository = BookRepository()
     
     // 用于检测是否是相同的书籍列表，避免重复加载
@@ -74,13 +77,18 @@ class CacheViewModel(application: Application) : BaseViewModel(application) {
                                     }
                                 }
                             }
-                            book.bookUrl to chapterCaches
+                            // 计算该书缓存文件夹大小
+                            val cacheSize = File(BookHelp.cachePath, book.getFolderName())
+                                .takeIf { it.exists() }
+                                ?.walkTopDown()?.filter { it.isFile }?.sumOf { it.length() } ?: 0L
+                            Triple(book.bookUrl, chapterCaches, cacheSize)
                         } catch (e: Exception) {
-                            book.bookUrl to hashSetOf<String>()
+                            Triple(book.bookUrl, hashSetOf<String>(), 0L)
                         }
                     }
-                }.awaitAll().forEach { (bookUrl, chapterCaches) ->
+                }.awaitAll().forEach { (bookUrl, chapterCaches, cacheSize) ->
                     cacheChapters[bookUrl] = chapterCaches
+                    cacheSizes[bookUrl] = cacheSize
                     upAdapterLiveData.sendValue(bookUrl)
                 }
 
@@ -101,6 +109,7 @@ class CacheViewModel(application: Application) : BaseViewModel(application) {
      */
     fun clearCache(bookUrl: String) {
         cacheChapters[bookUrl] = hashSetOf()
+        cacheSizes[bookUrl] = 0L
         lastLoadedBooksKey = null
     }
 
@@ -110,6 +119,7 @@ class CacheViewModel(application: Application) : BaseViewModel(application) {
      */
     fun clearAllCache() {
         cacheChapters.clear()
+        cacheSizes.clear()
         lastLoadedBooksKey = null
     }
 
