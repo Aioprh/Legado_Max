@@ -206,8 +206,12 @@ fun putSource(
 
 ### 3.3 `putNotSave()` / `putDebug()` 不动
 
-- `putNotSave()` 现有语义："不 emit 事件但写 mLogs" 保持不变
-- `putDebug()` 现有语义："`recordLog=true` 时调 `put()`，始终 emit DEBUG 级别事件" 保持不变
+按用户选择（方案 C），**不**迁移这两个方法的调用点，保持现有语义：
+
+- `putNotSave()`：写 `mLogs`，同时 emit 到 `DebugEventCenter`（category 固定为 `APP`）。本设计**不**为它新增 `category` 参数
+- `putDebug()`：当 `AppConfig.recordLog=true` 时调 `put()`，**始终** emit `DebugLevel.DEBUG` 事件。本设计**不**改动
+
+> 这意味着用户即使勾选 `APP` 分类的"调试专属"，`putNotSave` / `putDebug` 仍会写 `mLogs`（因为它们内部走的是 `put()` 的 `category=APP` 默认路径或 `recordLog` 控制的路径）。如果未来要让这两条路径也参与分流，需要额外加 `category` 参数或独立 API（见 §10）。
 
 ---
 
