@@ -1273,8 +1273,8 @@
     <string name="day_nav_bar_immersion">白天操作列顏色透明</string>
     <string name="debug_log_floating_ball">調試日誌懸浮球</string>
     <string name="debug_log_floating_ball_summary">顯示可快速查看日誌的懸浮球</string>
-    <string name="debug_mode">調試模式</string>
-    <string name="debug_mode_summary">啟用調試相關功能</string>
+    <string name="debug_mode">調試工具</string>
+    <string name="debug_mode_summary">啟用後顯示調試工具入口</string>
     <string name="debug_regex_test">正則測試</string>
     <string name="debug_request_src">請求體原始碼</string>
     <string name="debug_response_src">回應體原始碼</string>

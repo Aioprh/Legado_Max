@@ -710,7 +710,7 @@
     <string name="tone_colour">Online Speech tone</string>
     <string name="select_count">(%1$d/%2$d)</string>
     <string name="show_rss">Show RSS feeds</string>
-    <string name="debug_mode">Debug Mode</string>
+    <string name="debug_mode">Debug Tools</string>
     <string name="debug_mode_summary">Show debug tools entry when enabled</string>
     <string name="debug_log_floating_ball">Debug Log Floating Ball</string>
     <string name="debug_log_floating_ball_summary">Show debug log floating ball on any page within the app</string>
