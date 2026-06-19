@@ -13,6 +13,7 @@ import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.help.book.isNotShelf
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.webBook.SearchModel
+import io.legado.app.model.webBook.SourceSearchRecord
 import io.legado.app.utils.ConflateLiveData
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -29,7 +30,8 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
     val searchScope: SearchScope = SearchScope(AppConfig.searchScope)
     var searchFinishLiveData = MutableLiveData<Boolean>()
     var isSearchLiveData = MutableLiveData<Boolean>()
-    var searchProgressLiveData = MutableLiveData<String>()
+    /** 书源状态记录 LiveData，驱动进度显示和诊断面板 */
+    val sourceRecordsLiveData = MutableLiveData<List<SourceSearchRecord>>()
     var searchKey: String = ""
     var hasMore = true
     private var searchID = 0L
@@ -41,7 +43,6 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
 
         override fun onSearchStart() {
             isSearchLiveData.postValue(true)
-            searchProgressLiveData.postValue("")
         }
 
         override fun onSearchSuccess(searchBooks: List<SearchBook>) {
@@ -49,7 +50,6 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
         }
 
         override fun onSearchProgress(completed: Int, total: Int, resultCount: Int) {
-            searchProgressLiveData.postValue("结果${resultCount}~进度$completed/$total")
         }
 
         override fun onSearchFinish(isEmpty: Boolean, hasMore: Boolean) {
@@ -60,12 +60,13 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
 
         override fun onSearchCancel(exception: Throwable?) {
             isSearchLiveData.postValue(false)
-            if (exception != null) {
-                searchProgressLiveData.postValue("")
-            }
             exception?.let {
                 context.toastOnUi(it.localizedMessage)
             }
+        }
+
+        override fun onSourceStatesChanged(records: List<SourceSearchRecord>) {
+            sourceRecordsLiveData.postValue(records)
         }
 
     })
@@ -101,9 +102,6 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
         return bookshelf.contains(key) || bookshelf.contains(bookUrl)
     }
 
-    /**
-     * 开始搜索
-     */
     fun search(key: String) {
         execute {
             if ((searchKey == key) || key.isNotEmpty()) {
@@ -120,9 +118,6 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
-    /**
-     * 停止搜索
-     */
     fun stop() {
         searchModel.cancelSearch()
     }
@@ -135,9 +130,6 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
         searchModel.resume()
     }
 
-    /**
-     * 保存搜索关键字
-     */
     fun saveSearchKey(key: String) {
         execute {
             appDb.searchKeywordDao.get(key)?.let {
@@ -148,9 +140,6 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
-    /**
-     * 清楚搜索关键字
-     */
     fun clearHistory() {
         execute {
             appDb.searchKeywordDao.deleteAll()

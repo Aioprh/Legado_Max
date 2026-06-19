@@ -41,19 +41,6 @@ import io.legado.app.ui.blockrule.BlockRuleConfigDialog
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.utils.ColorUtils
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.applyTint
@@ -110,14 +97,8 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
     private var isManualStopSearch = false
     /** 原始未过滤的搜索结果，用于屏蔽规则变化时重新过滤 */
     private var rawSearchBooks: List<SearchBook> = emptyList()
-    /** 是否显示屏蔽进度指示器 */
-    private var showBlockProgress: Boolean
-        get() = getPrefBoolean(PreferKey.blockRuleShowProgress, false)
-        set(value) = putPrefBoolean(PreferKey.blockRuleShowProgress, value)
-    /** 当前被屏蔽的搜索结果数量，用于进度指示器 */
-    private var blockedCount by mutableIntStateOf(0)
-    /** 屏蔽进度悬浮芯片 ComposeView */
-    private var blockProgressComposeView: ComposeView? = null
+    /** 当前被屏蔽的搜索结果数量（合并去重后） */
+    private var blockedCount = 0
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.llInputHelp.setBackgroundColor(backgroundColor)
@@ -179,7 +160,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                             hasChecked = true
                         }
                     }
-            // 菜单渲染仍然只显示已启用分组
+            // 菜单只显示已启用分组
             groups?.forEach {
                 if (searchScopeNames.contains(it)) {
                     menu.add(R.id.menu_group_1, Menu.NONE, Menu.NONE, it).apply {
@@ -211,7 +192,6 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                     searchView.setQuery(it, true)
                 }
             }
-
             R.id.menu_show_search_progress -> {
                 putPrefBoolean(
                     PreferKey.showSearchProgress,
@@ -220,9 +200,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                 showSearchProgressMenuItem?.isChecked =
                     getPrefBoolean(PreferKey.showSearchProgress)
             }
-
             R.id.menu_block_rule -> showBlockRuleConfig()
-
             R.id.menu_search_scope -> alertSearchScope()
             R.id.menu_source_manage -> startActivity<BookSourceActivity>()
             R.id.menu_log -> showDialogFragment(AppLogDialog())
@@ -254,7 +232,6 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                 visibleInputHelp(false)
                 return true
             }
-
             override fun onQueryTextChange(newText: String): Boolean {
                 viewModel.stop()
                 binding.fbStartStop.invisible()
@@ -293,7 +270,6 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                     binding.recyclerView.scrollToPosition(0)
                 }
             }
-
             override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
                 super.onItemRangeMoved(fromPosition, toPosition, itemCount)
                 if (toPosition == 0) {
@@ -342,6 +318,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         }
         binding.fbStartStop.applyNavigationBarMargin(true)
         binding.tvClearHistory.setOnClickListener { alertClearHistory() }
+        binding.tvSearchProgress.setOnClickListener { showSearchSourceStatusDialog() }
     }
 
     private fun initData() {
@@ -363,17 +340,14 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
             rawSearchBooks = it
             val filtered = BlockRuleStore.filterSearchBooks(this, it)
             blockedCount = it.size - filtered.size
-            updateBlockProgressChip()
             adapter.setItems(filtered)
-        }
-        viewModel.searchProgressLiveData.observe(this) { progress ->
-            if (progress.isNullOrEmpty() || !getPrefBoolean(PreferKey.showSearchProgress)) {
-                binding.tvSearchProgress.gone()
-            } else {
-                binding.tvSearchProgress.setTextColor(primaryTextColor)
-                binding.tvSearchProgress.text = progress
-                binding.tvSearchProgress.visible()
+            // 搜索结果更新后，同步刷新进度条（确保屏蔽数与结果数口径一致）
+            viewModel.sourceRecordsLiveData.value?.let { records ->
+                updateSearchProgressChip(records)
             }
+        }
+        viewModel.sourceRecordsLiveData.observe(this) { records ->
+            updateSearchProgressChip(records)
         }
         lifecycleScope.launch {
             appDb.bookSourceDao.flowEnabledGroups().collect {
@@ -389,6 +363,80 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                     viewModel.pause()
                 }
             }
+        }
+    }
+
+    /**
+     * 更新搜索进度芯片，合并已屏蔽、慢书源、未返回失败书源信息
+     * 点击芯片打开诊断面板
+     */
+    private fun updateSearchProgressChip(records: List<io.legado.app.model.webBook.SourceSearchRecord>) {
+        if (!getPrefBoolean(PreferKey.showSearchProgress)) {
+            binding.tvSearchProgress.gone()
+            return
+        }
+
+        // 直接从 records 判断搜索是否进行中：还有 PENDING 或 RUNNING 的源就是搜索中
+        val isSearching = records.any {
+            it.status == io.legado.app.model.webBook.SourceSearchRecord.Status.PENDING
+                    || it.status == io.legado.app.model.webBook.SourceSearchRecord.Status.RUNNING
+        }
+
+        val builder = StringBuilder()
+
+        val resultCount = rawSearchBooks.size
+        builder.append("结果${resultCount}")
+
+        val completed = records.count {
+            it.status == io.legado.app.model.webBook.SourceSearchRecord.Status.SUCCESS
+                    || it.status == io.legado.app.model.webBook.SourceSearchRecord.Status.EMPTY
+                    || it.status == io.legado.app.model.webBook.SourceSearchRecord.Status.FAILED
+        }
+        val total = records.size
+        builder.append("~进度${completed}/${total}")
+
+        if (isSearching) {
+            val slowRecords = records.filter {
+                it.status == io.legado.app.model.webBook.SourceSearchRecord.Status.RUNNING
+                        && it.duration > 10000
+            }
+            if (slowRecords.isNotEmpty()) {
+                builder.append("~慢")
+                slowRecords.take(2).forEachIndexed { index, record ->
+                    if (index > 0) builder.append(",")
+                    builder.append(record.sourceName)
+                }
+                if (slowRecords.size > 2) {
+                    builder.append("+${slowRecords.size - 2}")
+                }
+            }
+        } else {
+            val failedRecords = records.filter {
+                it.status == io.legado.app.model.webBook.SourceSearchRecord.Status.FAILED
+            }
+            if (failedRecords.isNotEmpty()) {
+                builder.append("~未返回${failedRecords.size}")
+                failedRecords.take(2).forEachIndexed { index, record ->
+                    if (index > 0) builder.append(",")
+                    builder.append(record.sourceName)
+                }
+                if (failedRecords.size > 2) {
+                    builder.append("+${failedRecords.size - 2}")
+                }
+            }
+        }
+
+        if (blockedCount > 0) {
+            builder.append("~屏蔽${blockedCount}")
+        }
+
+        val text = builder.toString()
+        if (text.isNotEmpty()) {
+            binding.tvSearchProgress.setTextColor(accentColor)
+            binding.tvSearchProgress.text = text
+            binding.tvSearchProgress.visible()
+        } else {
+            binding.tvSearchProgress.gone()
         }
     }
 
@@ -561,11 +609,9 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                 searchView.query.toString() == key -> {
                     searchView.setQuery(key, true)
                 }
-
                 withContext(IO) { appDb.bookDao.findByName(key).isEmpty() } -> {
                     searchView.setQuery(key, true)
                 }
-
                 else -> {
                     searchView.setQuery(key, false)
                 }
@@ -579,7 +625,6 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
     override fun deleteHistory(searchKeyword: SearchKeyword) {
         viewModel.deleteHistory(searchKeyword)
     }
-
 
     override fun onSearchScopeOk(searchScope: SearchScope) {
         viewModel.searchScope.update(searchScope.toString())
@@ -609,10 +654,6 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         dialog.onRulesChanged = {
             applyBlockRules()
         }
-        dialog.onShowProgressChanged = {
-            showBlockProgress = it
-            updateBlockProgressChip()
-        }
         dialog.show(supportFragmentManager, "searchBlockRuleConfig")
     }
 
@@ -623,52 +664,15 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         BlockRuleStore.invalidateCache()
         val filtered = BlockRuleStore.filterSearchBooks(this, rawSearchBooks)
         blockedCount = rawSearchBooks.size - filtered.size
-        updateBlockProgressChip()
         adapter.setItems(filtered)
+        // 屏蔽规则变化后，同步刷新进度条显示
+        viewModel.sourceRecordsLiveData.value?.let { records ->
+            updateSearchProgressChip(records)
+        }
     }
 
-    /**
-     * 更新屏蔽进度悬浮芯片的显示状态
-     * 芯片位于搜索结果上方右侧，点击可打开屏蔽规则配置
-     */
-    private fun updateBlockProgressChip() {
-        val contentView = binding.contentView
-        if (showBlockProgress && blockedCount > 0) {
-            if (blockProgressComposeView == null) {
-                blockProgressComposeView = ComposeView(this).also { composeView ->
-                    composeView.setContent {
-                        LegadoTheme {
-                            Surface(
-                                modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                                shadowElevation = 4.dp,
-                                onClick = { showBlockRuleConfig() }
-                            ) {
-                                Text(
-                                    text = getString(R.string.explore_block_rule_progress_text, blockedCount),
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    fontSize = 13.sp
-                                )
-                            }
-                        }
-                    }
-                    val params = android.widget.FrameLayout.LayoutParams(
-                        android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
-                        android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        gravity = android.view.Gravity.TOP or android.view.Gravity.END
-                    }
-                    contentView.addView(composeView, params)
-                }
-            }
-        } else {
-            blockProgressComposeView?.let {
-                contentView.removeView(it)
-                blockProgressComposeView = null
-            }
-        }
+    private fun showSearchSourceStatusDialog() {
+        SearchSourceStatusDialog().show(supportFragmentManager, "searchSourceStatus")
     }
 
     override fun finish() {
@@ -680,7 +684,6 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
     }
 
     companion object {
-
         private const val ID_MENU_MORE = 99999
 
         fun start(context: Context, key: String?, searchScope: String? = null) {
@@ -703,6 +706,5 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                 putExtra("searchScope", SearchScope(source).toString())
             }
         }
-
     }
 }
