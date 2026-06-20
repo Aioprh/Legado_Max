@@ -404,6 +404,9 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     val showRSS: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.showRss, true)
 
+    val showHomepage: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.showHomepage, true)
+
     // 调试模式，开启后"我的"页面显示调试工具入口
     val debugMode: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.debugMode, false)

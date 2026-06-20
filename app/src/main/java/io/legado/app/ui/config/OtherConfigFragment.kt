@@ -268,7 +268,7 @@ class OtherConfigFragment : PreferenceFragment(),
                 setProcessTextEnable(it.getBoolean(key, true))
             }
 
-            PreferKey.showDiscovery, PreferKey.showRss -> postEvent(EventBus.NOTIFY_MAIN, true)
+            PreferKey.showHomepage, PreferKey.showDiscovery, PreferKey.showRss -> postEvent(EventBus.NOTIFY_MAIN, true)
             // 调试模式变化时发送事件，通知"我的"页面更新调试工具入口显示
             PreferKey.debugMode -> postEvent(EventBus.DEBUG_MODE_CHANGED, true)
             // 调试日志悬浮球开关变化，更新悬浮球显示状态

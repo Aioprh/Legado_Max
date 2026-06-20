@@ -306,6 +306,7 @@ dependencies {
     implementation(libs.glide.glide)
     implementation(libs.glide.okhttp)
     implementation(libs.glide.compose)
+    implementation(libs.reorderable)
     ksp(libs.glide.ksp)
     
     //Svg

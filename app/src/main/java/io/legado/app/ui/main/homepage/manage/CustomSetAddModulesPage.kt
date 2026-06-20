@@ -1,0 +1,132 @@
+/**
+ * 文件：CustomSetAddModulesPage.kt
+ *
+ * 作用：从其他集添加模块到当前集的页面。
+ *
+ * 主要功能：
+ * 1. 按书源分组展示所有模块
+ * 2. 通过开关将模块分配到当前集或从当前集移除
+ * 3. 对无限流模块进行互斥控制：每个集最多只能有一个无限流模块
+ *
+ * 该页面用于在自定义集之间共享模块，避免重复创建。
+ */
+package io.legado.app.ui.main.homepage.manage
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import io.legado.app.domain.model.HomepageModuleType
+import io.legado.app.ui.main.homepage.HomepageModuleManageUi
+import io.legado.app.ui.main.homepage.HomepageViewModel
+import io.legado.app.ui.widget.components.card.GlassCard
+import io.legado.app.ui.widget.components.card.TextCard
+
+/**
+ * 从其他集添加模块到当前集
+ *
+ * 该页面按书源分组展示所有模块，用户可通过开关将模块分配到当前集或从当前集移除。
+ * 对于无限流模块，每个集最多只能包含一个，若当前集已有无限流模块，则其他无限流模块会被禁用。
+ *
+ * @param targetSetId 目标集 ID，即当前正在编辑的集
+ * @param allModules 所有模块的 UI 数据列表
+ * @param onAssignModule 分配模块到指定集的回调，参数为（模块 ID，目标集 ID），目标集 ID 为 null 表示移出集
+ * @param onBack 返回上一页的回调
+ */
+@Composable
+fun CustomSetAddModulesPage(
+    targetSetId: String,
+    allModules: List<HomepageModuleManageUi>,
+    onAssignModule: (String, String?) -> Unit,
+    onBack: () -> Unit,
+) {
+    // 按书源分组展示所有模块
+    val groupedModules = remember(allModules) {
+        allModules.groupBy { it.sourceUrl }
+    }
+    // 检查当前集是否已有无限流模块
+    val hasInfiniteModule = remember(targetSetId, allModules) {
+        allModules.any {
+            it.customSetId == targetSetId &&
+                    HomepageViewModel.isInfinite(it.type, it.layoutConfig)
+        }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        groupedModules.forEach { (sourceUrl, modules) ->
+            // 书源分组标题
+            item(key = "header_$sourceUrl") {
+                Text(
+                    text = sourceUrl,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                )
+            }
+            // 模块列表
+            items(modules) { module ->
+                // 判断该模块是否已在当前集中
+                val isInTargetSet = module.customSetId == targetSetId
+                // 判断该模块是否为无限流模块
+                val isInfinite = HomepageViewModel.isInfinite(module.type, module.layoutConfig)
+                // 无限流模块若当前集已有无限流模块则禁用（已在当前集中的除外）
+                val isEnabled = !isInfinite || !hasInfiniteModule || isInTargetSet
+                // 根据模块类型 key 获取对应的枚举值，用于显示类型标题
+                val moduleType = HomepageModuleType.fromKey(module.type)
+
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 左侧：模块标题和类型标签
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = module.title.ifBlank { module.originalTitle.ifBlank { "未命名模块" } },
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            TextCard(
+                                text = moduleType.title,
+                                textStyle = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                        // 分配开关：开启表示加入当前集，关闭表示移出当前集
+                        Switch(
+                            checked = isInTargetSet,
+                            enabled = isEnabled,
+                            onCheckedChange = { checked ->
+                                onAssignModule(
+                                    module.id,
+                                    if (checked) targetSetId else null
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

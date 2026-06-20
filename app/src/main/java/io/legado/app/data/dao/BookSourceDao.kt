@@ -396,4 +396,10 @@ interface BookSourceDao {
             dealGroups(list)
         }.flowOn(IO)
     }
+
+    @Query("select * from book_sources where enabled = 1 and homepageModules is not null and homepageModules != '' order by customOrder asc")
+    fun flowHomepageSources(): Flow<List<BookSource>>
+
+    @Query("select * from book_sources where enabled = 1 and exploreUrl is not null and exploreUrl != '' order by customOrder asc")
+    fun flowExploreSources(): Flow<List<BookSource>>
 }

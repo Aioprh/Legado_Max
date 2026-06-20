@@ -106,7 +106,10 @@ data class BookSource(
     @ColumnInfo(defaultValue = "0")
     var customButton: Boolean = false, //由书源控制的自定义按钮
     @ColumnInfo(defaultValue = "0")
-    var nextPageLazyLoad: Boolean = false //下一页懒加载
+    var nextPageLazyLoad: Boolean = false, //下一页懒加载
+    // 首页模块定义JSON
+    @ColumnInfo(defaultValue = "''")
+    var homepageModules: String? = null
 ) : Parcelable, BaseSource {
 
     override fun getTag(): String {

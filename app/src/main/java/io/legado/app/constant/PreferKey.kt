@@ -282,4 +282,11 @@ object PreferKey {
     const val exploreShowColumnWaterfall = "exploreShowColumnWaterfall"
     /** 发现列表布局模式，由"切换布局"菜单控制 */
     const val exploreGridMode = "exploreGridMode"
+
+    /** 首页布局模式 0: 混合列表 1: 分源Tab */
+    const val homepageLayoutMode = "homepageLayoutMode"
+    /** 首页隐藏书源列表JSON */
+    const val homepageSourceHidden = "homepageSourceHidden"
+    /** 是否显示首页tab */
+    const val showHomepage = "showHomepage"
 }
