@@ -16,6 +16,9 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/06/20**
+- 参照MD3增加首页功能
+
 **2026/06/19**
 * [搜索进度条]：
     * [功能]：响应超过10秒的书源实时在进度条提示
