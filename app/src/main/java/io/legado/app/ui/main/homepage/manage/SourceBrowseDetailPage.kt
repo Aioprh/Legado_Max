@@ -273,7 +273,8 @@ private fun DiscoverTab(
     // 模块类型下拉菜单的展开状态
     var typeMenuExpanded by remember { mutableStateOf(false) }
     // 选中的发现分类索引（单选，null 表示未选择）
-    var selectedKindIndex by remember { mutableStateOf<Int?>(null) }
+    // key=sourceUrl：切换书源时重置，避免旧索引越界新分类列表
+    var selectedKindIndex by remember(sourceUrl) { mutableStateOf<Int?>(null) }
     // 分类选择底部弹窗的显示状态
     var showKindSheet by remember { mutableStateOf(false) }
     // 手动添加模块对话框的显示状态
@@ -350,7 +351,7 @@ private fun DiscoverTab(
                     .padding(horizontal = 4.dp)
             ) {
                 OutlinedTextField(
-                    value = selectedKindIndex?.let { exploreKinds[it].first } ?: "",
+                    value = selectedKindIndex?.let { exploreKinds.getOrNull(it)?.first ?: "" } ?: "",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("选择分类") },

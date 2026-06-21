@@ -85,7 +85,8 @@ fun GridRankingModule(
         pageSpacing = 12.dp,
         modifier = modifier.fillMaxWidth()
     ) { pageIndex ->
-        val page = pages[pageIndex]
+        // 防止 books 变化导致 pages 缩减时越界崩溃
+        val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
         GlassCard(
             modifier = Modifier.fillMaxWidth(),
             cornerRadius = 20.dp

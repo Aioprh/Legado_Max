@@ -28,6 +28,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabPosition
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -295,6 +298,14 @@ private fun SourceTabLayout(
             selectedTabIndex = safeTabIndex,
             edgePadding = 8.dp,
             containerColor = Color.Transparent,
+            // 自定义 indicator：防止 tabPositions 与 selectedTabIndex 不同步时越界
+            indicator = { tabPositions ->
+                if (tabPositions.isNotEmpty() && safeTabIndex < tabPositions.size) {
+                    TabRowDefaults.Indicator(
+                        Modifier.tabIndicatorOffset(tabPositions[safeTabIndex])
+                    )
+                }
+            }
         ) {
             setNames.forEachIndexed { index, setName ->
                 Tab(
