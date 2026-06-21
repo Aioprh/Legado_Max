@@ -21,15 +21,19 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="UnusedAttribute" />
 
-    <io.legado.app.ui.widget.image.CircleImageView
+    <ImageView
         android:id="@+id/iv_in_bookshelf"
-        android:layout_width="10dp"
-        android:layout_height="10dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
         android:layout_marginEnd="4dp"
         android:layout_marginTop="4dp"
-        android:scaleType="centerCrop"
+        android:background="@drawable/bg_shelf_icon"
+        android:backgroundTint="?android:attr/colorBackground"
+        android:padding="2dp"
+        android:scaleType="centerInside"
         android:scrollbars="none"
-        android:src="@color/md_green_600"
+        android:src="@drawable/ic_check"
+        android:tint="?android:attr/textColorPrimary"
         android:visibility="invisible"
         app:layout_constraintRight_toRightOf="@id/iv_cover"
         app:layout_constraintTop_toTopOf="@id/iv_cover" />

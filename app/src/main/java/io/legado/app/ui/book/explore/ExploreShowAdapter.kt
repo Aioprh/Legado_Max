@@ -3,6 +3,7 @@ package io.legado.app.ui.book.explore
 import android.content.Context
 import android.os.Bundle
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.core.view.isVisible
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
@@ -11,6 +12,7 @@ import io.legado.app.data.entities.SearchBook
 import io.legado.app.databinding.ItemExploreShowGridBinding
 import io.legado.app.databinding.ItemExploreShowWaterfallBinding
 import io.legado.app.databinding.ItemSearchBinding
+import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.CoverLoader
 import io.legado.app.utils.gone
@@ -95,7 +97,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding: ItemExploreShowGridBinding,
         item: SearchBook
     ) {
-        binding.ivInBookshelfGrid.isVisible = callBack.isInBookshelf(item)
+        binding.ivInBookshelfGrid.setShelfState(callBack.getBookShelfState(item))
         val tagKey = "${item.bookUrl}_$columnCount"
         val lastItemTag = holder.itemView.tag as? String
         if (lastItemTag == tagKey) return
@@ -118,7 +120,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding: ItemExploreShowWaterfallBinding,
         item: SearchBook
     ) {
-        binding.ivInBookshelfWaterfall.isVisible = callBack.isInBookshelf(item)
+        binding.ivInBookshelfWaterfall.setShelfState(callBack.getBookShelfState(item))
         binding.tvNameWaterfall.text = item.name
         binding.tvAuthorWaterfall.text = context.getString(R.string.author_show, item.author)
 
@@ -202,7 +204,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding.run {
             tvName.text = item.name
             tvAuthor.text = context.getString(R.string.author_show, item.author)
-            ivInBookshelf.isVisible = callBack.isInBookshelf(item)
+            ivInBookshelf.setShelfState(callBack.getBookShelfState(item))
             if (item.latestChapterTitle.isNullOrEmpty()) {
                 tvLasted.gone()
             } else {
@@ -228,8 +230,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding.run {
             bundle.keySet().forEach {
                 when (it) {
-                    "isInBookshelf" -> ivInBookshelf.isVisible =
-                        callBack.isInBookshelf(item)
+                    "isInBookshelf" -> ivInBookshelf.setShelfState(
+                        callBack.getBookShelfState(item)
+                    )
                 }
             }
         }
@@ -244,7 +247,29 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
     }
 
     interface CallBack {
-        fun isInBookshelf(book: SearchBook): Boolean
+        fun getBookShelfState(book: SearchBook): BookShelfState
         fun showBookInfo(book: SearchBook)
+    }
+}
+
+/**
+ * 根据书架状态设置 ImageView 的图标和可见性：
+ * - IN_SHELF: 显示 Check 图标（已加入书架）
+ * - SAME_NAME_AUTHOR: 显示 Shuffle 图标（同名同作者）
+ * - NOT_IN_SHELF: 隐藏
+ */
+internal fun ImageView.setShelfState(state: BookShelfState) {
+    when (state) {
+        BookShelfState.IN_SHELF -> {
+            setImageResource(R.drawable.ic_check)
+            isVisible = true
+        }
+        BookShelfState.SAME_NAME_AUTHOR -> {
+            setImageResource(R.drawable.ic_shuffle)
+            isVisible = true
+        }
+        else -> {
+            isVisible = false
+        }
     }
 }

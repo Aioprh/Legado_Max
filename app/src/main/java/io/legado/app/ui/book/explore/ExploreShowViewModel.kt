@@ -11,6 +11,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.SearchBook
+import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.book.isNotShelf
 import io.legado.app.model.blockrule.BlockRule
 import io.legado.app.model.blockrule.BlockRuleStore
@@ -198,6 +199,18 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
         val bookUrl = book.bookUrl
         val key = if (author.isNotBlank()) "$name-$author" else name
         return bookshelf.contains(key) || bookshelf.contains(bookUrl)
+    }
+
+    fun getBookShelfState(book: SearchBook): BookShelfState {
+        val name = book.name
+        val author = book.author
+        val bookUrl = book.bookUrl
+        val key = if (author.isNotBlank()) "$name-$author" else name
+        return when {
+            bookshelf.contains(bookUrl) -> BookShelfState.IN_SHELF
+            bookshelf.contains(key) -> BookShelfState.SAME_NAME_AUTHOR
+            else -> BookShelfState.NOT_IN_SHELF
+        }
     }
 
     fun addAllToShelf(groupId: Long) {

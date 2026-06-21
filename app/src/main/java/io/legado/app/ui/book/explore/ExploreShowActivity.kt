@@ -19,6 +19,7 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.databinding.ActivityExploreShowBinding
 import io.legado.app.databinding.ViewLoadMoreBinding
+import io.legado.app.domain.model.BookShelfState
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.group.GroupSelectDialog
 import io.legado.app.ui.widget.number.NumberPickerDialog
@@ -525,8 +526,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         }
     }
 
-    override fun isInBookshelf(book: SearchBook): Boolean {
-        return viewModel.isInBookShelf(book)
+    override fun getBookShelfState(book: SearchBook): BookShelfState {
+        return viewModel.getBookShelfState(book)
     }
 
     override fun showBookInfo(book: SearchBook) {

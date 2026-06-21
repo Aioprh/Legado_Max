@@ -10,7 +10,9 @@ import io.legado.app.base.adapter.DiffRecyclerAdapter
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.databinding.ItemSearchBinding
+import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.config.AppConfig
+import io.legado.app.ui.book.explore.setShelfState
 import io.legado.app.utils.gone
 import io.legado.app.utils.visible
 
@@ -83,7 +85,7 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
         binding.run {
             tvName.text = searchBook.name
             tvAuthor.text = context.getString(R.string.author_show, searchBook.author)
-            ivInBookshelf.isVisible = callBack.isInBookshelf(searchBook)
+            ivInBookshelf.setShelfState(callBack.getBookShelfState(searchBook))
             bvOriginCount.setBadgeCount(searchBook.origins.size)
             upLasted(binding, searchBook.latestChapterTitle)
             tvIntroduce.text = searchBook.trimIntro(context)
@@ -103,7 +105,7 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
                     "last" -> upLasted(binding, searchBook.latestChapterTitle)
                     "intro" -> tvIntroduce.text = searchBook.trimIntro(context)
                     "kind" -> upKind(binding, searchBook.getKindList())
-                    "isInBookshelf" -> ivInBookshelf.isVisible = callBack.isInBookshelf(searchBook)
+                    "isInBookshelf" -> ivInBookshelf.setShelfState(callBack.getBookShelfState(searchBook))
                     "cover" -> ivCover.load(
                         searchBook,
                         false
@@ -137,9 +139,9 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
     interface CallBack {
 
         /**
-         * 是否已经加入书架
+         * 获取书籍在书架中的状态
          */
-        fun isInBookshelf(book: SearchBook): Boolean
+        fun getBookShelfState(book: SearchBook): BookShelfState
 
         /**
          * 显示书籍详情

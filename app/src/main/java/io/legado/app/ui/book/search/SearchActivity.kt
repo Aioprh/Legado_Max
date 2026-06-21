@@ -32,6 +32,7 @@ import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.databinding.ActivityBookSearchBinding
+import io.legado.app.domain.model.BookShelfState
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.accentColor
@@ -605,10 +606,10 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
     }
 
     /**
-     * 是否已经加入书架
+     * 获取书籍在书架中的状态
      */
-    override fun isInBookshelf(book: SearchBook): Boolean {
-        return viewModel.isInBookShelf(book)
+    override fun getBookShelfState(book: SearchBook): BookShelfState {
+        return viewModel.getBookShelfState(book)
     }
 
     /**
