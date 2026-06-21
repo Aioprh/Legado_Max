@@ -53,6 +53,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.data.entities.SearchBook
+import io.legado.app.domain.model.BookShelfState
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.ui.main.homepage.manage.HomepageModuleManageSheet
@@ -66,6 +67,7 @@ import io.legado.app.ui.main.homepage.modules.RankingModule
 import io.legado.app.ui.main.homepage.modules.WaterfallItem
 import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
+import io.legado.app.ui.widget.components.BookBottomSheet
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.utils.showHelp
 import kotlinx.coroutines.flow.collectLatest
@@ -96,6 +98,11 @@ fun HomepageScreen(
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showLayoutMenu by remember { mutableStateOf(false) }
     val layoutMode by viewModel.layoutMode.collectAsStateWithLifecycle()
+
+    // 书籍底部弹窗状态
+    var showBookSheet by remember { mutableStateOf(false) }
+    var selectedBook by remember { mutableStateOf<SearchBook?>(null) }
+    var selectedBookShelfState by remember { mutableStateOf(BookShelfState.NOT_IN_SHELF) }
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collectLatest { effect ->
@@ -241,6 +248,11 @@ fun HomepageScreen(
                 context = context,
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = viewModel::onRefresh,
+                onBookLongClick = { book ->
+                    selectedBook = book
+                    selectedBookShelfState = viewModel.getCurrentBookShelfState(book)
+                    showBookSheet = true
+                },
             )
         } else {
             // 混合列表 模式：所有模块在一个列表中展示，无限类型模块排在底部
@@ -266,8 +278,9 @@ fun HomepageScreen(
                                 viewModel.onBookClick(book)
                             },
                             onBookLongClick = { book ->
-                                viewModel.onAddToShelf(book)
-                                Toast.makeText(context, "已加入书架: ${book.name}", Toast.LENGTH_SHORT).show()
+                                selectedBook = book
+                                selectedBookShelfState = viewModel.getCurrentBookShelfState(book)
+                                showBookSheet = true
                             },
                             onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
                                 viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
@@ -286,6 +299,18 @@ fun HomepageScreen(
         state = uiState.manageState,
         actions = manageActions,
     )
+
+    // 书籍底部弹窗
+    BookBottomSheet(
+        show = showBookSheet,
+        book = selectedBook,
+        shelfState = selectedBookShelfState,
+        onDismiss = { showBookSheet = false },
+        onAddToShelf = { book -> viewModel.onAddToShelf(book) },
+        onShowInfo = { book ->
+            viewModel.onBookClick(book)
+        }
+    )
 }
 
 /**
@@ -303,6 +328,7 @@ private fun SourceTabLayout(
     context: android.content.Context,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
+    onBookLongClick: (SearchBook) -> Unit,
 ) {
     // 按集名称分组，保持原始顺序
     val groupedModules = remember(modules) {
@@ -370,21 +396,18 @@ private fun SourceTabLayout(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(currentModules, key = { it.globalId }) { module ->
-                    HomepageModuleItem(
-                        module = module,
-                        viewModel = viewModel,
-                        onBookClick = { book ->
-                            viewModel.onBookClick(book)
-                        },
-                        onBookLongClick = { book ->
-                            viewModel.onAddToShelf(book)
-                            Toast.makeText(context, "已加入书架: ${book.name}", Toast.LENGTH_SHORT).show()
-                        },
-                        onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
-                            viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
-                        }
-                    )
-                }
+                        HomepageModuleItem(
+                            module = module,
+                            viewModel = viewModel,
+                            onBookClick = { book ->
+                                viewModel.onBookClick(book)
+                            },
+                            onBookLongClick = onBookLongClick,
+                            onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
+                                viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
+                            }
+                        )
+                    }
             }
         }
     }

@@ -79,6 +79,12 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
                 callBack.showBookInfo(it.name, it.author, it.bookUrl)
             }
         }
+        binding.root.setOnLongClickListener {
+            getItem(holder.layoutPosition)?.let {
+                callBack.onBookLongClick(it)
+            }
+            true
+        }
     }
 
     private fun bind(binding: ItemSearchBinding, searchBook: SearchBook) {
@@ -147,5 +153,10 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
          * 显示书籍详情
          */
         fun showBookInfo(name: String, author: String, bookUrl: String)
+
+        /**
+         * 长按书籍事件
+         */
+        fun onBookLongClick(book: SearchBook)
     }
 }
