@@ -134,6 +134,7 @@ fun HomepageScreen(
 
     Scaffold(
         modifier = Modifier,
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("首页", fontWeight = FontWeight.Bold) },

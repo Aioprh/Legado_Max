@@ -1,23 +1,27 @@
 package io.legado.app.ui.main.homepage
 
 import android.content.Intent
+import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
+import io.legado.app.help.config.ThemeConfig
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.explore.ExploreShowActivity
 import io.legado.app.ui.main.MainFragmentInterface
-import io.legado.app.ui.theme.LegadoTheme
+import io.legado.app.ui.theme.LegadoThemeWithBackground
 
 /**
  * 首页 Fragment
  *
  * 作为首页在 MainActivity 中的容器，使用 ComposeView 承载 Compose 界面。
- * 通过 LegadoTheme 包裹内容，确保主题颜色统一适配。
+ * 通过 LegadoThemeWithBackground 包裹内容，确保主题颜色统一适配并显示背景图片。
  * 处理书籍点击（跳转 BookInfoActivity）和模块标题点击（跳转 ExploreShowActivity）的导航逻辑。
  */
 class HomepageFragment() : Fragment(), MainFragmentInterface {
@@ -35,10 +39,13 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        val backgroundDrawable = loadBackgroundDrawable()
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
-                LegadoTheme {
+                LegadoThemeWithBackground(
+                    backgroundDrawable = backgroundDrawable
+                ) {
                     HomepageScreen(
                         onBookClick = { name, author, bookUrl, origin, coverPath ->
                             val intent = Intent(context, BookInfoActivity::class.java).apply {
@@ -62,6 +69,30 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * 加载主题设置的背景图片
+     *
+     * 从 ThemeConfig 获取当前主题的背景图片 Drawable，
+     * 如果未设置背景图则返回 null，此时 LegadoBackgroundBox 会使用纯色背景。
+     */
+    private fun loadBackgroundDrawable(): Drawable? {
+        return try {
+            val activity = requireActivity()
+            val metrics = DisplayMetrics()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val bounds = activity.windowManager.currentWindowMetrics.bounds
+                metrics.widthPixels = bounds.width()
+                metrics.heightPixels = bounds.height()
+            } else {
+                @Suppress("DEPRECATION")
+                activity.windowManager.defaultDisplay.getMetrics(metrics)
+            }
+            ThemeConfig.getBgImage(activity, metrics)
+        } catch (_: Exception) {
+            null
         }
     }
 }
