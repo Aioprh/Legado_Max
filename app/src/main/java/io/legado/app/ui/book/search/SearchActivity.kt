@@ -2,12 +2,15 @@ package io.legado.app.ui.book.search
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View.GONE
 import android.view.View.VISIBLE
+import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.LinearLayout
 import androidx.activity.viewModels
 import androidx.appcompat.widget.SearchView
 import androidx.core.os.bundleOf
@@ -45,9 +48,11 @@ import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.getPrefBoolean
+import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.putPrefBoolean
+import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
@@ -94,6 +99,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
     private var booksFlowJob: Job? = null
     private var precisionSearchMenuItem: MenuItem? = null
     private var showSearchProgressMenuItem: MenuItem? = null
+    private var searchProgressFontSizeMenuItem: MenuItem? = null
     private var isManualStopSearch = false
     /** 原始未过滤的搜索结果，用于屏蔽规则变化时重新过滤 */
     private var rawSearchBooks: List<SearchBook> = emptyList()
@@ -121,6 +127,8 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         precisionSearchMenuItem?.isChecked = getPrefBoolean(PreferKey.precisionSearch)
         showSearchProgressMenuItem = menu.findItem(R.id.menu_show_search_progress)
         showSearchProgressMenuItem?.isChecked = getPrefBoolean(PreferKey.showSearchProgress)
+        searchProgressFontSizeMenuItem = menu.findItem(R.id.menu_search_progress_font_size)
+        searchProgressFontSizeMenuItem?.isVisible = getPrefBoolean(PreferKey.showSearchProgress)
         return super.onCompatCreateOptionsMenu(menu)
     }
 
@@ -177,6 +185,9 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
             menu.setGroupCheckable(R.id.menu_group_1, true, false)
             menu.setGroupCheckable(R.id.menu_group_2, true, true)
         }
+        // 动态联动：字号调节选项仅在搜索进度开关开启时可见
+        searchProgressFontSizeMenuItem?.isVisible =
+            getPrefBoolean(PreferKey.showSearchProgress)
         return super.onMenuOpened(featureId, menu)
     }
 
@@ -199,7 +210,11 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                 )
                 showSearchProgressMenuItem?.isChecked =
                     getPrefBoolean(PreferKey.showSearchProgress)
+                // 联动更新字号调节选项可见性
+                searchProgressFontSizeMenuItem?.isVisible =
+                    getPrefBoolean(PreferKey.showSearchProgress)
             }
+            R.id.menu_search_progress_font_size -> showSearchProgressFontSizeDialog()
             R.id.menu_block_rule -> showBlockRuleConfig()
             R.id.menu_search_scope -> alertSearchScope()
             R.id.menu_source_manage -> startActivity<BookSourceActivity>()
@@ -434,6 +449,9 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         if (text.isNotEmpty()) {
             binding.tvSearchProgress.setTextColor(accentColor)
             binding.tvSearchProgress.text = text
+            // 应用用户自定义的字号
+            val fontSize = getPrefInt(PreferKey.searchProgressFontSize, 10)
+            binding.tvSearchProgress.textSize = fontSize.toFloat()
             binding.tvSearchProgress.visible()
         } else {
             binding.tvSearchProgress.gone()
@@ -673,6 +691,61 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
 
     private fun showSearchSourceStatusDialog() {
         SearchSourceStatusDialog().show(supportFragmentManager, "searchSourceStatus")
+    }
+
+    /**
+     * 搜索进度字号调节对话框
+     * 提供 SeekBar 调节字号（8sp ~ 20sp），支持实时预览和恢复默认（10sp）
+     */
+    private fun showSearchProgressFontSizeDialog() {
+        val currentFontSize = getPrefInt(PreferKey.searchProgressFontSize, 10)
+        val minFontSize = 8
+        val maxFontSize = 20
+        val defaultFontSize = 10
+        val seekMax = maxFontSize - minFontSize
+
+        // 构建调节控件布局
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 16, 32, 8)
+        }
+
+        val valueLabel = TextView(this).apply {
+            text = getString(R.string.current_value, currentFontSize)
+            textSize = 14f
+            setPadding(0, 0, 0, 12)
+            // 根据对话框背景色明暗自动选择高对比文字色，确保所有主题可读
+            setTextColor(if (ColorUtils.isColorLight(backgroundColor)) Color.BLACK else Color.WHITE)
+        }
+
+        val seekBar = SeekBar(this).apply {
+            max = seekMax
+            progress = currentFontSize - minFontSize
+            applyTint(accentColor)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                    val fontSize = progress + minFontSize
+                    valueLabel.text = getString(R.string.current_value, fontSize)
+                    // 实时预览：立即应用到搜索进度 TextView
+                    putPrefInt(PreferKey.searchProgressFontSize, fontSize)
+                    binding.tvSearchProgress.textSize = fontSize.toFloat()
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar) {}
+                override fun onStopTrackingTouch(seekBar: SeekBar) {}
+            })
+        }
+
+        container.addView(valueLabel)
+        container.addView(seekBar)
+
+        alert(titleResource = R.string.search_progress_font_size) {
+            setCustomView(container)
+            neutralButton(getString(R.string.reset_default)) {
+                putPrefInt(PreferKey.searchProgressFontSize, defaultFontSize)
+                binding.tvSearchProgress.textSize = defaultFontSize.toFloat()
+            }
+            positiveButton(android.R.string.ok)
+        }.applyTint()
     }
 
     override fun finish() {

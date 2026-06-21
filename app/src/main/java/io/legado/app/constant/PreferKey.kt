@@ -36,6 +36,7 @@ object PreferKey {
     const val hideNavigationBar = "hideNavigationBar"
     const val precisionSearch = "precisionSearch"
     const val showSearchProgress = "showSearchProgress"
+    const val searchProgressFontSize = "searchProgressFontSize"
     const val readAloudByPage = "readAloudByPage"
     const val ttsEngine = "appTtsEngine"
     const val ttsFollowSys = "ttsFollowSys"

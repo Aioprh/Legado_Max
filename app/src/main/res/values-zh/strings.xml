@@ -651,6 +651,9 @@
     <string name="dur_pos">当前位置：</string>
     <string name="precision_search">精准搜索</string>
     <string name="show_search_progress">显示搜索进度</string>
+    <string name="search_progress_font_size">调节搜索进度字号</string>
+    <string name="current_value">当前：%dsp</string>
+    <string name="reset_default">恢复默认</string>
     <string name="source_recycle_bin">规则回收站</string>
     <string name="source_recycle_bin_summary">临时存放已删除规则，默认保留 7 天</string>
     <string name="show_source_recycle_bin">显示规则回收站</string>

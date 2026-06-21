@@ -652,6 +652,9 @@
     <string name="dur_pos">Current location：</string>
     <string name="precision_search">Precise search</string>
     <string name="show_search_progress">Show Search Progress</string>
+    <string name="search_progress_font_size">Adjust Search Progress Font Size</string>
+    <string name="current_value">Current: %dsp</string>
+    <string name="reset_default">Reset Default</string>
     <string name="source_recycle_bin">Rule Recycle Bin</string>
     <string name="source_recycle_bin_summary">Temporarily stores deleted rules for 7 days</string>
     <string name="show_source_recycle_bin">Show Rule Recycle Bin</string>

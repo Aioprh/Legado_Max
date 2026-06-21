@@ -1574,4 +1574,8 @@
     <string name="explore_block_rule_scope_rss_intro">簡介</string>
     <string name="block_rule_manage">屏蔽規則</string>
     <string name="block_rule_manage_summary">管理發現、搜尋和訂閱源的屏蔽規則</string>
+    <string name="show_search_progress">顯示搜尋進度</string>
+    <string name="search_progress_font_size">調整搜尋進度字型大小</string>
+    <string name="current_value">目前：%dsp</string>
+    <string name="reset_default">恢復預設</string>
 </resources>

@@ -16,6 +16,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_search_progress_font_size"
+        android:title="@string/search_progress_font_size"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_block_rule"
         android:title="@string/explore_block_rule"
         app:showAsAction="never" />
