@@ -16,6 +16,11 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/06/21**
+- 优化首页功能和修bug
+- 搜索进度条新增调节字号的功能
+- 提示在书架的小绿点改为了勾号(书籍在书架)和对角箭头(同名不同源书籍在书架)
+
 **2026/06/20**
 - 参照MD3增加首页功能
 
