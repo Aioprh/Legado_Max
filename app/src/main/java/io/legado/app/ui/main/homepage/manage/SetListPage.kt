@@ -98,7 +98,7 @@ fun SetListPage(
     Column(modifier = Modifier.fillMaxWidth()) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(localSets, key = { it.sourceUrl }) { set ->
@@ -126,7 +126,9 @@ fun SetListPage(
         }
         Spacer(modifier = Modifier.height(8.dp))
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
