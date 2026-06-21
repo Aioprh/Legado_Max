@@ -9,13 +9,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChevronRight
@@ -217,7 +213,10 @@ fun HomepageScreen(
                 context = context,
             )
         } else {
-            // 混合列表 模式：所有模块在一个列表中展示
+            // 混合列表 模式：所有模块在一个列表中展示，无限类型模块排在底部
+            val sortedModules = uiState.modules.sortedBy { module ->
+                if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
+            }
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -225,7 +224,7 @@ fun HomepageScreen(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(uiState.modules, key = { it.globalId }) { module ->
+                items(sortedModules, key = { it.globalId }) { module ->
                     HomepageModuleItem(
                         module = module,
                         viewModel = viewModel,
@@ -312,8 +311,10 @@ private fun SourceTabLayout(
                 )
             }
         }
-        // 当前选中 Tab 的模块列表
-        val currentModules = groupedModules[setNames[safeTabIndex]] ?: emptyList()
+        // 当前选中 Tab 的模块列表，无限类型模块排在底部
+        val currentModules = (groupedModules[setNames[safeTabIndex]] ?: emptyList()).sortedBy { module ->
+            if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 8.dp),
@@ -428,12 +429,21 @@ private fun HomepageModuleItem(
                             onLongClick = { book, _ -> onBookLongClick(book) }
                         )
 
-                        HomepageModuleType.Grid, HomepageModuleType.InfiniteGrid -> GridModule(
-                            books = state.books,
-                            onClick = { book, _ -> onBookClick(book) },
-                            onLongClick = { book, _ -> onBookLongClick(book) },
-                            maxRows = if (module.type == HomepageModuleType.InfiniteGrid) null else 2
-                        )
+                        HomepageModuleType.Grid, HomepageModuleType.InfiniteGrid -> Column(modifier = Modifier.fillMaxWidth()) {
+                            GridModule(
+                                books = state.books,
+                                onClick = { book, _ -> onBookClick(book) },
+                                onLongClick = { book, _ -> onBookLongClick(book) },
+                                maxRows = if (module.type == HomepageModuleType.InfiniteGrid) null else 2
+                            )
+                            // 无限网格显示加载更多
+                            if (module.type == HomepageModuleType.InfiniteGrid && state.hasMore) {
+                                LoadMoreFooter(
+                                    isLoading = state.isLoadingMore,
+                                    onClick = { viewModel.loadMoreModule(module.globalId) }
+                                )
+                            }
+                        }
 
                         HomepageModuleType.Ranking -> RankingModule(
                             books = state.books,
@@ -449,26 +459,37 @@ private fun HomepageModuleItem(
 
                         HomepageModuleType.Waterfall -> {
                             Column(modifier = Modifier.fillMaxWidth()) {
-                                // 瀑布流布局
-                                val displayBooks = state.books.take(10)
-                                val rowCount = (displayBooks.size + 1) / 2
-                                val rowHeight = 200.dp
-                                val rowSpacing = 8.dp
-                                val gridHeight = rowHeight * rowCount + rowSpacing * (rowCount - 1).coerceAtLeast(0)
-                                LazyVerticalStaggeredGrid(
-                                    columns = StaggeredGridCells.Fixed(2),
-                                    verticalItemSpacing = rowSpacing,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(gridHeight)
+                                // 瀑布流布局 - 使用 Column+Row 实现两列，避免 LazyGrid 嵌套需要固定高度
+                                val displayBooks = state.books
+                                val leftColumn = displayBooks.filterIndexed { index, _ -> index % 2 == 0 }
+                                val rightColumn = displayBooks.filterIndexed { index, _ -> index % 2 == 1 }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    itemsIndexed(displayBooks) { _, item ->
-                                        WaterfallItem(
-                                            book = item,
-                                            onClick = { onBookClick(item.book) },
-                                            onLongClick = { onBookLongClick(item.book) }
-                                        )
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        leftColumn.forEach { item ->
+                                            WaterfallItem(
+                                                book = item,
+                                                onClick = { onBookClick(item.book) },
+                                                onLongClick = { onBookLongClick(item.book) }
+                                            )
+                                        }
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        rightColumn.forEach { item ->
+                                            WaterfallItem(
+                                                book = item,
+                                                onClick = { onBookClick(item.book) },
+                                                onLongClick = { onBookLongClick(item.book) }
+                                            )
+                                        }
                                     }
                                 }
                                 // 加载更多
