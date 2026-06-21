@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.data.entities.SearchBook
@@ -64,6 +66,7 @@ import io.legado.app.ui.main.homepage.modules.WaterfallItem
 import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.card.GlassCard
+import io.legado.app.utils.showHelp
 import kotlinx.coroutines.flow.collectLatest
 
 /**
@@ -90,6 +93,7 @@ fun HomepageScreen(
     val context = LocalContext.current
     var showManageSheet by remember { mutableStateOf(false) }
     var showLayoutMenu by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
     val layoutMode by viewModel.layoutMode.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
@@ -178,6 +182,27 @@ fun HomepageScreen(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "模块管理"
                         )
+                    }
+                    // 三点菜单（帮助等）
+                    Box {
+                        IconButton(onClick = { showOverflowMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "更多"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showOverflowMenu,
+                            onDismissRequest = { showOverflowMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("帮助") },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    (context as? AppCompatActivity)?.showHelp("homepageHelp")
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
