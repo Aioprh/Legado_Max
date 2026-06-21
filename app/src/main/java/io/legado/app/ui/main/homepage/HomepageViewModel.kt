@@ -374,6 +374,10 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                         if (module != null) loadModule(module)
                     }
                 }
+                // 所有模块加载完成后关闭刷新状态
+                if (_isRefreshing.value && modules.isNotEmpty() && modules.none { it.state is ModuleLoadState.Loading }) {
+                    _isRefreshing.value = false
+                }
             }
         }
 
@@ -567,7 +571,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
             loadJobs.clear()
             // 仅重新加载已有模块的内容，不从书源自动同步
             _moduleContentStates.value = emptyMap()
-            _isRefreshing.value = false
+            // isRefreshing 由 auto-load collector 在所有模块加载完成后自动置为 false
         }
     }
 
