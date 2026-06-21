@@ -157,6 +157,7 @@ fun HomepageModuleManageSheet(
         show = show,
         onDismissRequest = handleDismiss,
         title = title,
+        skipPartiallyExpanded = false,
         startAction = if (canGoBack) {
             {
                 IconButton(onClick = { handleBack() }) {
@@ -176,7 +177,7 @@ fun HomepageModuleManageSheet(
                 slideInHorizontally { fullWidth -> fullWidth * direction } togetherWith
                         slideOutHorizontally { fullWidth -> -fullWidth * direction }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.weight(1f).fillMaxWidth()
         ) { page ->
             when (page) {
                 // 集列表页：展示所有集，支持创建自定义集和浏览书源
@@ -246,6 +247,9 @@ fun HomepageModuleManageSheet(
                     },
                     allModules = state.allJoinedModules,
                     actions = actions,
+                    onEditModule = { moduleId, moduleDef ->
+                        editingModule = Pair(moduleId, moduleDef)
+                    },
                     onBack = { handleBack() },
                 )
 

@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.ui.main.homepage.HomepageBookItemUi
 import io.legado.app.ui.widget.components.card.GlassCard
+import io.legado.app.utils.StringUtils
 
 private const val INITIAL_COUNT = 5
 private const val MAX_COUNT = 20
@@ -145,19 +146,45 @@ private fun RankingItem(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            val subTitle = buildString {
-                append(book.kind?.split(",")?.firstOrNull() ?: "")
+            // 字数和作者在同一行显示
+            val authorLine = buildString {
+                val wc = StringUtils.wordCountFormat(book.wordCount)
+                if (wc.isNotEmpty()) append(wc)
                 if (book.author.isNotBlank()) {
                     if (isNotEmpty()) append(" · ")
                     append(book.author)
                 }
             }
-            if (subTitle.isNotBlank()) {
+            if (authorLine.isNotBlank()) {
                 Text(
-                    text = subTitle,
+                    text = authorLine,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            // 分类单独一行显示
+            val kind = book.kind?.split(",")?.firstOrNull()
+            if (!kind.isNullOrBlank()) {
+                Text(
+                    text = kind,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            // 简介，最多两行显示，超出部分省略
+            val intro = book.intro?.takeIf { it.isNotBlank() }?.replace("\\s+".toRegex(), " ")
+            if (!intro.isNullOrBlank()) {
+                Text(
+                    text = intro,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp)
                 )

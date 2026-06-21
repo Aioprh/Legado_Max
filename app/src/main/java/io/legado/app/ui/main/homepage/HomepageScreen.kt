@@ -281,6 +281,9 @@ private fun SourceTabLayout(
         }
     }
 
+    // 确保 selectedTabIndex 不越界（组合期间立即生效，防止隐藏集后索引越界崩溃）
+    val safeTabIndex = if (setNames.isEmpty()) 0 else selectedTabIndex.coerceIn(0, setNames.lastIndex)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -289,13 +292,13 @@ private fun SourceTabLayout(
         if (setNames.isEmpty()) return@Column
         // 可滚动的 Tab 栏
         ScrollableTabRow(
-            selectedTabIndex = selectedTabIndex,
+            selectedTabIndex = safeTabIndex,
             edgePadding = 8.dp,
             containerColor = Color.Transparent,
         ) {
             setNames.forEachIndexed { index, setName ->
                 Tab(
-                    selected = selectedTabIndex == index,
+                    selected = safeTabIndex == index,
                     onClick = { selectedTabIndex = index },
                     text = {
                         Text(
@@ -309,7 +312,7 @@ private fun SourceTabLayout(
             }
         }
         // 当前选中 Tab 的模块列表
-        val currentModules = groupedModules[setNames[selectedTabIndex]] ?: emptyList()
+        val currentModules = groupedModules[setNames[safeTabIndex]] ?: emptyList()
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 8.dp),
@@ -444,34 +447,36 @@ private fun HomepageModuleItem(
                         )
 
                         HomepageModuleType.Waterfall -> {
-                            // 瀑布流布局
-                            val displayBooks = state.books.take(10)
-                            val rowCount = (displayBooks.size + 1) / 2
-                            val rowHeight = 200.dp
-                            val rowSpacing = 8.dp
-                            val gridHeight = rowHeight * rowCount + rowSpacing * (rowCount - 1).coerceAtLeast(0)
-                            LazyVerticalStaggeredGrid(
-                                columns = StaggeredGridCells.Fixed(2),
-                                verticalItemSpacing = rowSpacing,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(gridHeight)
-                            ) {
-                                itemsIndexed(displayBooks) { _, item ->
-                                    WaterfallItem(
-                                        book = item,
-                                        onClick = { onBookClick(item.book) },
-                                        onLongClick = { onBookLongClick(item.book) }
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                // 瀑布流布局
+                                val displayBooks = state.books.take(10)
+                                val rowCount = (displayBooks.size + 1) / 2
+                                val rowHeight = 200.dp
+                                val rowSpacing = 8.dp
+                                val gridHeight = rowHeight * rowCount + rowSpacing * (rowCount - 1).coerceAtLeast(0)
+                                LazyVerticalStaggeredGrid(
+                                    columns = StaggeredGridCells.Fixed(2),
+                                    verticalItemSpacing = rowSpacing,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(gridHeight)
+                                ) {
+                                    itemsIndexed(displayBooks) { _, item ->
+                                        WaterfallItem(
+                                            book = item,
+                                            onClick = { onBookClick(item.book) },
+                                            onLongClick = { onBookLongClick(item.book) }
+                                        )
+                                    }
+                                }
+                                // 加载更多
+                                if (state.hasMore) {
+                                    LoadMoreFooter(
+                                        isLoading = state.isLoadingMore,
+                                        onClick = { viewModel.loadMoreModule(module.globalId) }
                                     )
                                 }
-                            }
-                            // 加载更多
-                            if (state.hasMore) {
-                                LoadMoreFooter(
-                                    isLoading = state.isLoadingMore,
-                                    onClick = { viewModel.loadMoreModule(module.globalId) }
-                                )
                             }
                         }
 

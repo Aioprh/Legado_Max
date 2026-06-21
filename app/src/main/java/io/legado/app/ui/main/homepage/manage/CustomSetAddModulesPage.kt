@@ -23,7 +23,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -53,9 +57,19 @@ fun CustomSetAddModulesPage(
     onAssignModule: (String, String?) -> Unit,
     onBack: () -> Unit,
 ) {
-    // 按书源分组展示所有模块
-    val groupedModules = remember(allModules) {
-        allModules.groupBy { it.sourceUrl }
+    // 仅显示源集模块（原始模块），避免显示副本导致重复
+    val sourceModules = remember(allModules) {
+        allModules.filter { it.customSetId?.startsWith("src_") == true }
+    }
+    // 按书源分组展示
+    val groupedModules = remember(sourceModules) {
+        sourceModules.groupBy { it.sourceUrl }
+    }
+    // 构建目标集中已有模块的索引，用于快速查找副本（通过 sourceUrl + moduleKey 匹配）
+    val targetSetModuleMap = remember(targetSetId, allModules) {
+        allModules
+            .filter { it.customSetId == targetSetId }
+            .associateBy { it.sourceUrl to it.moduleKey }
     }
     // 检查当前集是否已有无限流模块
     val hasInfiniteModule = remember(targetSetId, allModules) {
@@ -80,15 +94,27 @@ fun CustomSetAddModulesPage(
                 )
             }
             // 模块列表
-            items(modules) { module ->
-                // 判断该模块是否已在当前集中
-                val isInTargetSet = module.customSetId == targetSetId
+            items(modules, key = { it.id }) { module ->
+                // 通过 sourceUrl + moduleKey 查找目标集中的副本
+                val copyInTargetSet = targetSetModuleMap[module.sourceUrl to module.moduleKey]
+                // 判断该模块是否已在当前集中（副本存在即表示已添加）
+                val isInTargetSet = copyInTargetSet != null
                 // 判断该模块是否为无限流模块
                 val isInfinite = HomepageViewModel.isInfinite(module.type, module.layoutConfig)
                 // 无限流模块若当前集已有无限流模块则禁用（已在当前集中的除外）
                 val isEnabled = !isInfinite || !hasInfiniteModule || isInTargetSet
                 // 根据模块类型 key 获取对应的枚举值，用于显示类型标题
                 val moduleType = HomepageModuleType.fromKey(module.type)
+
+                // 乐观更新状态：用户点击后立即反映，异步操作完成后同步
+                var pendingToggle by remember(module.id) { mutableStateOf<Boolean?>(null) }
+                val effectiveChecked = pendingToggle ?: isInTargetSet
+                // 当实际状态追上乐观状态时，清除待处理标记
+                LaunchedEffect(isInTargetSet, pendingToggle) {
+                    if (pendingToggle != null && isInTargetSet == pendingToggle) {
+                        pendingToggle = null
+                    }
+                }
 
                 GlassCard(
                     modifier = Modifier.fillMaxWidth()
@@ -115,11 +141,14 @@ fun CustomSetAddModulesPage(
                         }
                         // 分配开关：开启表示加入当前集，关闭表示移出当前集
                         Switch(
-                            checked = isInTargetSet,
+                            checked = effectiveChecked,
                             enabled = isEnabled,
                             onCheckedChange = { checked ->
+                                pendingToggle = checked
+                                // 添加时传源模块ID（创建副本），移除时传目标集中副本的ID（删除副本）
+                                val moduleId = if (checked) module.id else copyInTargetSet?.id ?: module.id
                                 onAssignModule(
-                                    module.id,
+                                    moduleId,
                                     if (checked) targetSetId else null
                                 )
                             }

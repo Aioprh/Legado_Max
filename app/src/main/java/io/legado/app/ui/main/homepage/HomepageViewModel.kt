@@ -136,6 +136,18 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     val customSetsFlow = gateway.flowCustomSets()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /**
+     * 用于首页布局的自定义集列表。
+     *
+     * 每次 _configVersion 变化时，直接从数据库重新读取自定义集列表，
+     * 确保排序变更后 rawModulesFlow 能立即获取到最新的排序顺序。
+     * 这解决了 customSetsFlow (Room Flow) 异步发射延迟导致 Tab 栏不即时更新的问题。
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val customSetsForLayout = _configVersion.mapLatest {
+        gateway.flowCustomSets().first()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val orderedModuleDefsFlow = combine(localModulesFlow, _configVersion) { modules, _ ->
         modules.groupBySourceOrdered()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
@@ -144,7 +156,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         orderedModuleDefsFlow,
         _moduleContentStates,
         _bookSourcesCache,
-        customSetsFlow,
+        customSetsForLayout,
         // 将 _configVersion 纳入 combine，确保 hiddenSetUrls 变化时触发重算
         combine(_layoutConfigCache, _configVersion) { cache, _ -> cache }
     ) { grouped, contentStates, sourcesCache, customSets, configCache ->
@@ -847,6 +859,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 customSetIdFromUrl(url) to index
             }.toMap()
             gateway.batchSetCustomSetSortOrders(orders)
+            // notifyConfigChanged 触发 customSetsForLayout 重新从数据库读取最新排序
             notifyConfigChanged()
         }
     }

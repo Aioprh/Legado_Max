@@ -21,9 +21,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -117,23 +118,32 @@ fun AddCustomModuleDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                // 模块类型下拉选择
-                Row(modifier = Modifier.fillMaxWidth()) {
+                // 模块类型选择：使用 MD3 ExposedDropdownMenuBox
+                ExposedDropdownMenuBox(
+                    expanded = typeMenuExpanded,
+                    onExpandedChange = { typeMenuExpanded = it },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     OutlinedTextField(
                         value = HomepageModuleType.fromKey(type).title,
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("模块类型") },
                         singleLine = true,
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded)
+                        },
                         modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 4.dp)
+                            .menuAnchor()
+                            .fillMaxWidth()
                     )
-                    DropdownMenu(
+                    ExposedDropdownMenu(
                         expanded = typeMenuExpanded,
                         onDismissRequest = { typeMenuExpanded = false }
                     ) {
                         HomepageModuleType.entries.forEach { moduleType ->
+                            // 跳过未知类型，仅显示有效的模块类型
+                            if (moduleType == HomepageModuleType.Unknown) return@forEach
                             // 过滤掉无限流类型（当不允许选择时）
                             val isInfinite = HomepageViewModel.isInfinite(moduleType.key, null)
                             if (isInfinite && !canSelectInfinite) return@forEach

@@ -97,7 +97,8 @@ fun GridModule(
                         Text(
                             text = book.name,
                             style = MaterialTheme.typography.labelSmall,
-                            maxLines = 1,
+                            maxLines = 2,
+                            minLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(top = 4.dp),
                         )

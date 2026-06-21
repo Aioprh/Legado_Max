@@ -103,11 +103,11 @@ fun WaterfallItem(
                     }
                 }
             }
-            // 书名，单行显示，超出部分省略
+            // 书名，最多两行显示，超出部分省略
             Text(
                 text = searchBook.name,
                 style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp),
             )
@@ -120,6 +120,18 @@ fun WaterfallItem(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 2.dp),
             )
+            // 简介，最多两行显示，超出部分省略
+            val intro = searchBook.intro?.takeIf { it.isNotBlank() }?.replace("\\s+".toRegex(), " ")
+            if (!intro.isNullOrBlank()) {
+                Text(
+                    text = intro,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
         }
     }
 }

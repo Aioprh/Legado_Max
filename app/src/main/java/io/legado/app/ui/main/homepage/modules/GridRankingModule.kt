@@ -3,54 +3,69 @@
  *
  * 文件作用：提供首页排行榜模块的 UI 组件实现。
  * 主要功能：
- * - 以两列网格形式展示排行榜书籍
- * - 最多显示 10 个项目
- * - 显示排名编号，前 3 名使用特殊样式（主色 + 斜体）
+ * - 以分页卡片形式展示排行榜书籍，每页 4 行
+ * - 每行包含封面、排名编号、书名和分类/作者信息
+ * - 前 3 名使用特殊样式（主色 + 斜体）
  * - 支持点击和长按交互
+ * - 样式对齐 MD3-main 分支设计规范
  */
 package io.legado.app.ui.main.homepage.modules
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.legado.app.domain.model.BookShelfState
 import io.legado.app.ui.main.homepage.HomepageBookItemUi
 import io.legado.app.ui.theme.pageAccentColor
-import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.card.GlassCard
 
-/** 排行榜最多显示的书籍数量 */
-private const val MAX_COUNT = 10
+/** 每页显示的行数 */
+private const val ROWS_PER_PAGE = 4
+/** 最多显示的书籍数量 */
+private const val MAX_COUNT = 20
+/** 占位项高度 */
+private val PLACEHOLDER_HEIGHT = 76.dp
 
 /**
  * 网格排行榜模块
  *
- * 以网格形式显示排行榜书籍，最多显示 10 个项目。
- * 根据书籍数量动态计算网格高度，禁用滚动以避免与外层滚动冲突。
+ * 以分页卡片形式显示排行榜书籍，每页 4 行。
+ * 使用 HorizontalPager 实现左右翻页浏览，样式对齐 MD3-main 分支。
  *
  * @param books 书籍列表数据
  * @param onClick 点击书籍回调
  * @param onLongClick 长按书籍回调
  * @param modifier 布局修饰符
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GridRankingModule(
     books: List<HomepageBookItemUi>,
@@ -59,31 +74,41 @@ fun GridRankingModule(
     modifier: Modifier = Modifier,
 ) {
     if (books.isEmpty()) return
-    // 取前 MAX_COUNT 个书籍进行展示
-    val displayBooks = books.take(MAX_COUNT)
-    // 计算行数（每行两列）
-    val rowCount = (displayBooks.size + 1) / 2
-    val rowHeight = 140.dp
-    val rowSpacing = 8.dp
-    // 计算网格总高度：行高 * 行数 + 行间距 * (行数 - 1)
-    val gridHeight = rowHeight * rowCount + rowSpacing * (rowCount - 1).coerceAtLeast(0)
+    // 限制最多显示 20 个
+    val limitedBooks = books.take(MAX_COUNT)
+    val pages = limitedBooks.chunked(ROWS_PER_PAGE)
+    val pagerState = rememberPagerState(pageCount = { pages.size })
 
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(gridHeight),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(rowSpacing),
-        userScrollEnabled = false
-    ) {
-        items(displayBooks.size) { index ->
-            GridRankingItem(
-                rank = index + 1,
-                item = displayBooks[index],
-                onClick = { onClick(displayBooks[index]) },
-                onLongClick = { onLongClick(displayBooks[index]) }
-            )
+    HorizontalPager(
+        state = pagerState,
+        contentPadding = PaddingValues(end = 100.dp),
+        pageSpacing = 12.dp,
+        modifier = modifier.fillMaxWidth()
+    ) { pageIndex ->
+        val page = pages[pageIndex]
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            cornerRadius = 20.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp, horizontal = 12.dp)
+            ) {
+                for ((rowIndex, item) in page.withIndex()) {
+                    val itemIndex = pageIndex * ROWS_PER_PAGE + rowIndex
+                    GridRankingItem(
+                        rank = itemIndex + 1,
+                        item = item,
+                        onClick = { onClick(item) },
+                        onLongClick = { onLongClick(item) }
+                    )
+                }
+                // 占位逻辑：不足一页时用空占位填充，保持每页高度一致
+                repeat(ROWS_PER_PAGE - page.size) {
+                    Spacer(modifier = Modifier.height(PLACEHOLDER_HEIGHT))
+                }
+            }
         }
     }
 }
@@ -91,7 +116,7 @@ fun GridRankingModule(
 /**
  * 网格排行榜单个项目组件
  *
- * 展示单本排行榜书籍信息，包含排名编号、封面、书名和作者。
+ * 以横向行布局展示单本排行榜书籍，包含封面、排名编号和文字信息。
  * 前 3 名使用主色和斜体样式突出显示。
  *
  * @param rank 排名序号（从 1 开始）
@@ -108,59 +133,93 @@ private fun GridRankingItem(
     onLongClick: () -> Unit,
 ) {
     val book = item.book
-    GlassCard(
-        modifier = Modifier.fillMaxWidth(),
-        cornerRadius = 8.dp
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .padding(vertical = 4.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        // 1. 封面（带书架状态图标）
+        Box {
+            HomepageBookCover(
+                name = book.name,
+                author = book.author,
+                coverUrl = book.coverUrl,
+                modifier = Modifier
+                    .width(48.dp)
+                    .aspectRatio(5f / 7f),
+                cornerRadius = 4.dp
+            )
+            val shelfIcon = when (item.shelfState) {
+                BookShelfState.IN_SHELF -> Icons.Default.Check
+                BookShelfState.SAME_NAME_AUTHOR -> Icons.Default.Shuffle
+                else -> null
+            }
+            if (shelfIcon != null) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(2.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 2.dp, vertical = 2.dp)
+                ) {
+                    Icon(
+                        imageVector = shelfIcon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.height(14.dp)
+                    )
+                }
+            }
+        }
+
+        // 2. 排名编号，前3名使用主色和斜体样式
+        Text(
+            text = "$rank",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Black,
+            fontStyle = if (rank <= 3) FontStyle.Italic else FontStyle.Normal,
+            color = if (rank <= 3) pageAccentColor() else MaterialTheme.colorScheme.outline,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(32.dp)
+        )
+
+        // 3. 文字信息：书名 + 分类/作者
         Column(
             modifier = Modifier
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = onLongClick
-                )
-                .padding(8.dp)
+                .padding(start = 4.dp)
+                .weight(1f)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // 排名数字，前3名使用 primary 颜色和斜体样式突出显示
-                Text(
-                    text = "$rank",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black,
-                    fontStyle = if (rank <= 3) FontStyle.Italic else FontStyle.Normal,
-                    color = if (rank <= 3) pageAccentColor() else MaterialTheme.colorScheme.outline,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.width(28.dp)
-                )
-                HomepageBookCover(
-                    name = book.name,
-                    author = book.author,
-                    coverUrl = book.coverUrl,
-                    modifier = Modifier
-                        .width(60.dp)
-                        .aspectRatio(5f / 7f),
-                    cornerRadius = 4.dp
-                )
-            }
-            // 书名，单行显示，超出部分省略
             Text(
                 text = book.name,
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp)
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
-            // 作者，单行显示，超出部分省略
-            Text(
-                text = book.author,
-                style = MaterialTheme.typography.labelSmall,
-                color = pageSecondaryTextColor(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp)
-            )
+            val subTitle = buildString {
+                append(book.kind?.split(",")?.firstOrNull() ?: "")
+                if (book.author.isNotBlank()) {
+                    if (isNotEmpty()) append(" · ")
+                    append(book.author)
+                }
+            }
+            if (subTitle.isNotBlank()) {
+                Text(
+                    text = subTitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
     }
 }
