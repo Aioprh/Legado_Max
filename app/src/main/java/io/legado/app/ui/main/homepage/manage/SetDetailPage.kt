@@ -118,7 +118,7 @@ fun SetDetailPage(
     Column(modifier = Modifier.fillMaxWidth()) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 标准模块（可排序）
@@ -198,7 +198,9 @@ fun SetDetailPage(
         // 添加模块按钮
         OutlinedButton(
             onClick = onAddModules,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
         ) {
             Text("添加模块")
         }

@@ -16,7 +16,8 @@ object HelpDocManager {
                 HelpDoc("txtTocRuleHelp", "txt目录正则说明"),
                 HelpDoc("dictRuleHelp", "字典规则说明"),
                 HelpDoc("httpTTSHelp", "在线朗读规则"),
-                HelpDoc("debugHelp", "书源调试说明")
+                HelpDoc("debugHelp", "书源调试说明"),
+                HelpDoc("homepageHelp", "首页功能使用帮助")
             )
         ),
         HelpDocGroup(

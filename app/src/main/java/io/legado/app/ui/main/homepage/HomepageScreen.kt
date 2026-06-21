@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +35,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,9 +49,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.data.entities.SearchBook
+import io.legado.app.domain.model.BookShelfState
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.ui.main.homepage.manage.HomepageModuleManageSheet
@@ -63,7 +67,9 @@ import io.legado.app.ui.main.homepage.modules.RankingModule
 import io.legado.app.ui.main.homepage.modules.WaterfallItem
 import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
+import io.legado.app.ui.widget.components.BookBottomSheet
 import io.legado.app.ui.widget.components.card.GlassCard
+import io.legado.app.utils.showHelp
 import kotlinx.coroutines.flow.collectLatest
 
 /**
@@ -89,8 +95,14 @@ fun HomepageScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showManageSheet by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
     var showLayoutMenu by remember { mutableStateOf(false) }
     val layoutMode by viewModel.layoutMode.collectAsStateWithLifecycle()
+
+    // 书籍底部弹窗状态
+    var showBookSheet by remember { mutableStateOf(false) }
+    var selectedBook by remember { mutableStateOf<SearchBook?>(null) }
+    var selectedBookShelfState by remember { mutableStateOf(BookShelfState.NOT_IN_SHELF) }
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collectLatest { effect ->
@@ -138,14 +150,41 @@ fun HomepageScreen(
             TopAppBar(
                 title = { Text("首页", fontWeight = FontWeight.Bold) },
                 actions = {
-                    // 布局模式切换
+                    // 模块管理
+                    IconButton(onClick = { showManageSheet = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "模块管理"
+                        )
+                    }
+                    // 三点菜单（切换布局、帮助等）
                     Box {
-                        IconButton(onClick = { showLayoutMenu = true }) {
+                        IconButton(onClick = { showOverflowMenu = true }) {
                             Icon(
-                                imageVector = if (layoutMode == 1) Icons.Default.ViewModule else Icons.Default.Dashboard,
-                                contentDescription = "布局模式"
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "更多"
                             )
                         }
+                        DropdownMenu(
+                            expanded = showOverflowMenu,
+                            onDismissRequest = { showOverflowMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("切换布局") },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showLayoutMenu = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("帮助") },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    (context as? AppCompatActivity)?.showHelp("homepageHelp")
+                                }
+                            )
+                        }
+                        // 布局选择子菜单
                         DropdownMenu(
                             expanded = showLayoutMenu,
                             onDismissRequest = { showLayoutMenu = false }
@@ -171,13 +210,6 @@ fun HomepageScreen(
                                 }
                             )
                         }
-                    }
-                    // 模块管理
-                    IconButton(onClick = { showManageSheet = true }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "模块管理"
-                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -214,34 +246,47 @@ fun HomepageScreen(
                 paddingValues = paddingValues,
                 viewModel = viewModel,
                 context = context,
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = viewModel::onRefresh,
+                onBookLongClick = { book ->
+                    selectedBook = book
+                    selectedBookShelfState = viewModel.getCurrentBookShelfState(book)
+                    showBookSheet = true
+                },
             )
         } else {
             // 混合列表 模式：所有模块在一个列表中展示，无限类型模块排在底部
             val sortedModules = uiState.modules.sortedBy { module ->
                 if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
             }
-            LazyColumn(
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = { viewModel.onRefresh() },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(paddingValues)
             ) {
-                items(sortedModules, key = { it.globalId }) { module ->
-                    HomepageModuleItem(
-                        module = module,
-                        viewModel = viewModel,
-                        onBookClick = { book ->
-                            viewModel.onBookClick(book)
-                        },
-                        onBookLongClick = { book ->
-                            viewModel.onAddToShelf(book)
-                            Toast.makeText(context, "已加入书架: ${book.name}", Toast.LENGTH_SHORT).show()
-                        },
-                        onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
-                            viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
-                        }
-                    )
+                LazyColumn(
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(sortedModules, key = { it.globalId }) { module ->
+                        HomepageModuleItem(
+                            module = module,
+                            viewModel = viewModel,
+                            onBookClick = { book ->
+                                viewModel.onBookClick(book)
+                            },
+                            onBookLongClick = { book ->
+                                selectedBook = book
+                                selectedBookShelfState = viewModel.getCurrentBookShelfState(book)
+                                showBookSheet = true
+                            },
+                            onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
+                                viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -253,6 +298,18 @@ fun HomepageScreen(
         onDismiss = { showManageSheet = false },
         state = uiState.manageState,
         actions = manageActions,
+    )
+
+    // 书籍底部弹窗
+    BookBottomSheet(
+        show = showBookSheet,
+        book = selectedBook,
+        shelfState = selectedBookShelfState,
+        onDismiss = { showBookSheet = false },
+        onAddToShelf = { book -> viewModel.onAddToShelf(book) },
+        onShowInfo = { book ->
+            viewModel.onBookClick(book)
+        }
     )
 }
 
@@ -269,6 +326,9 @@ private fun SourceTabLayout(
     paddingValues: PaddingValues,
     viewModel: HomepageViewModel,
     context: android.content.Context,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    onBookLongClick: (SearchBook) -> Unit,
 ) {
     // 按集名称分组，保持原始顺序
     val groupedModules = remember(modules) {
@@ -326,26 +386,28 @@ private fun SourceTabLayout(
         val currentModules = (groupedModules[setNames[safeTabIndex]] ?: emptyList()).sortedBy { module ->
             if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
         }
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            modifier = Modifier.fillMaxSize()
         ) {
-            items(currentModules, key = { it.globalId }) { module ->
-                HomepageModuleItem(
-                    module = module,
-                    viewModel = viewModel,
-                    onBookClick = { book ->
-                        viewModel.onBookClick(book)
-                    },
-                    onBookLongClick = { book ->
-                        viewModel.onAddToShelf(book)
-                        Toast.makeText(context, "已加入书架: ${book.name}", Toast.LENGTH_SHORT).show()
-                    },
-                    onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
-                        viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
+            LazyColumn(
+                contentPadding = PaddingValues(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(currentModules, key = { it.globalId }) { module ->
+                        HomepageModuleItem(
+                            module = module,
+                            viewModel = viewModel,
+                            onBookClick = { book ->
+                                viewModel.onBookClick(book)
+                            },
+                            onBookLongClick = onBookLongClick,
+                            onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
+                                viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
+                            }
+                        )
                     }
-                )
             }
         }
     }

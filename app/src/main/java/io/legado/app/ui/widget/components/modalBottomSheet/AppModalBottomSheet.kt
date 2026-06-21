@@ -44,7 +44,6 @@ fun AppModalBottomSheet(
                     .fillMaxWidth()
                     .fillMaxHeight()
                     .padding(horizontal = 16.dp)
-                    .padding(bottom = 32.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

@@ -44,6 +44,12 @@ import io.legado.app.model.blockrule.BlockRuleStore
 import io.legado.app.ui.blockrule.BlockRuleConfigDialog
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.source.manage.BookSourceActivity
+import io.legado.app.ui.theme.LegadoTheme
+import io.legado.app.ui.widget.components.BookBottomSheet
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.applyNavigationBarPadding
@@ -106,6 +112,13 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
     private var rawSearchBooks: List<SearchBook> = emptyList()
     /** 当前被屏蔽的搜索结果数量（合并去重后） */
     private var blockedCount = 0
+
+    /** 书籍底部弹窗状态 */
+    private var showBookSheet by mutableStateOf(false)
+    private var selectedBook by mutableStateOf<SearchBook?>(null)
+    private var selectedBookShelfState by mutableStateOf(BookShelfState.NOT_IN_SHELF)
+    /** 书籍弹窗 ComposeView */
+    private var bookSheetComposeView: ComposeView? = null
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.llInputHelp.setBackgroundColor(backgroundColor)
@@ -613,6 +626,16 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
     }
 
     /**
+     * 长按书籍事件
+     */
+    override fun onBookLongClick(book: SearchBook) {
+        selectedBook = book
+        selectedBookShelfState = viewModel.getBookShelfState(book)
+        showBookSheet = true
+        updateBookSheetView()
+    }
+
+    /**
      * 显示书籍详情
      */
     override fun showBookInfo(book: Book) {
@@ -692,6 +715,52 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
 
     private fun showSearchSourceStatusDialog() {
         SearchSourceStatusDialog().show(supportFragmentManager, "searchSourceStatus")
+    }
+
+    /**
+     * 更新书籍底部弹窗的显示状态
+     */
+    private fun updateBookSheetView() {
+        val contentView = binding.root
+        if (showBookSheet) {
+            if (bookSheetComposeView == null) {
+                bookSheetComposeView = ComposeView(this).also { composeView ->
+                    composeView.setContent {
+                        LegadoTheme {
+                            BookBottomSheet(
+                                show = showBookSheet,
+                                book = selectedBook,
+                                shelfState = selectedBookShelfState,
+                                onDismiss = {
+                                    showBookSheet = false
+                                    updateBookSheetView()
+                                },
+                                onAddToShelf = { book ->
+                                    viewModel.addToBookshelf(book)
+                                },
+                                onShowInfo = { book ->
+                                    startActivity<BookInfoActivity> {
+                                        putExtra("name", book.name)
+                                        putExtra("author", book.author)
+                                        putExtra("bookUrl", book.bookUrl)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    val params = android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                    )
+                    contentView.addView(composeView, params)
+                }
+            }
+        } else {
+            bookSheetComposeView?.let {
+                contentView.removeView(it)
+                bookSheetComposeView = null
+            }
+        }
     }
 
     /**

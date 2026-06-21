@@ -48,6 +48,11 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.legado.app.ui.theme.LegadoTheme
+import io.legado.app.ui.widget.components.BookBottomSheet
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 /**
  * 发现列表
@@ -87,6 +92,13 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     private var blockProgressComposeView: ComposeView? = null
     /** 上次发起加载下一页的时间戳，用于 2 秒冷却限制 */
     private var lastLoadTime = 0L
+
+    /** 书籍底部弹窗状态 */
+    private var showBookSheet by mutableStateOf(false)
+    private var selectedBook by mutableStateOf<SearchBook?>(null)
+    private var selectedBookShelfState by mutableStateOf(BookShelfState.NOT_IN_SHELF)
+    /** 书籍弹窗 ComposeView */
+    private var bookSheetComposeView: ComposeView? = null
 
     /** 冷却期延迟重试的 Handler */
     private val handler = Handler(Looper.getMainLooper())
@@ -271,6 +283,52 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             blockProgressComposeView?.let {
                 contentView.removeView(it)
                 blockProgressComposeView = null
+            }
+        }
+    }
+
+    /**
+     * 更新书籍底部弹窗的显示状态
+     */
+    private fun updateBookSheetView() {
+        val contentView = binding.contentView
+        if (showBookSheet) {
+            if (bookSheetComposeView == null) {
+                bookSheetComposeView = ComposeView(this).also { composeView ->
+                    composeView.setContent {
+                        LegadoTheme {
+                            BookBottomSheet(
+                                show = showBookSheet,
+                                book = selectedBook,
+                                shelfState = selectedBookShelfState,
+                                onDismiss = {
+                                    showBookSheet = false
+                                    updateBookSheetView()
+                                },
+                                onAddToShelf = { book ->
+                                    viewModel.addToShelf(book)
+                                },
+                                onShowInfo = { book ->
+                                    startActivity<BookInfoActivity> {
+                                        putExtra("name", book.name)
+                                        putExtra("author", book.author)
+                                        putExtra("bookUrl", book.bookUrl)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    val params = android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                    )
+                    contentView.addView(composeView, params)
+                }
+            }
+        } else {
+            bookSheetComposeView?.let {
+                contentView.removeView(it)
+                bookSheetComposeView = null
             }
         }
     }
@@ -536,6 +594,13 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             putExtra("author", book.author)
             putExtra("bookUrl", book.bookUrl)
         }
+    }
+
+    override fun onBookLongClick(book: SearchBook) {
+        selectedBook = book
+        selectedBookShelfState = viewModel.getBookShelfState(book)
+        showBookSheet = true
+        updateBookSheetView()
     }
 
     override fun upGroup(requestCode: Int, groupId: Long) {

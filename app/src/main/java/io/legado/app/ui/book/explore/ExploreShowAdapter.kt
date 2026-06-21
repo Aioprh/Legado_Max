@@ -76,6 +76,12 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
                         callBack.showBookInfo(it)
                     }
                 }
+                holder.itemView.setOnLongClickListener {
+                    getItem(holder.bindingAdapterPosition - getHeaderCount())?.let {
+                        callBack.onBookLongClick(it)
+                    }
+                    true
+                }
             }
             is ItemExploreShowWaterfallBinding -> {
                 val actualPosition = position - getHeaderCount()
@@ -86,6 +92,12 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
                     getItem(holder.bindingAdapterPosition - getHeaderCount())?.let {
                         callBack.showBookInfo(it)
                     }
+                }
+                holder.itemView.setOnLongClickListener {
+                    getItem(holder.bindingAdapterPosition - getHeaderCount())?.let {
+                        callBack.onBookLongClick(it)
+                    }
+                    true
                 }
             }
             else -> super.onBindViewHolder(holder, position, payloads)
@@ -244,11 +256,18 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
                 callBack.showBookInfo(it)
             }
         }
+        holder.itemView.setOnLongClickListener {
+            getItem(holder.bindingAdapterPosition - getHeaderCount())?.let {
+                callBack.onBookLongClick(it)
+            }
+            true
+        }
     }
 
     interface CallBack {
         fun getBookShelfState(book: SearchBook): BookShelfState
         fun showBookInfo(book: SearchBook)
+        fun onBookLongClick(book: SearchBook)
     }
 }
 

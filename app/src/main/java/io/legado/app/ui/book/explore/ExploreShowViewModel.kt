@@ -243,4 +243,18 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
         }
     }
 
+    fun addToShelf(book: SearchBook) {
+        execute {
+            val bookEntity = book.toBook()
+            appDb.bookDao.insert(bookEntity)
+            val key = if (book.author.isNotBlank()) "${book.name}-${book.author}" else book.name
+            bookshelf.add(key)
+            bookshelf.add(book.bookUrl)
+            upAdapterLiveData.postValue("isInBookshelf")
+        }.onError {
+            AppLog.put("加入书架失败", it)
+            errorLiveData.postValue("加入书架失败: ${it.localizedMessage}")
+        }
+    }
+
 }

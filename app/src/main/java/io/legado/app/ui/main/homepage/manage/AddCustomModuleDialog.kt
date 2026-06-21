@@ -105,7 +105,7 @@ fun AddCustomModuleDialog(
                     value = title,
                     onValueChange = { title = it },
                     label = { Text("标题") },
-                    singleLine = true,
+                    maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -114,7 +114,7 @@ fun AddCustomModuleDialog(
                     value = url,
                     onValueChange = { url = it },
                     label = { Text("URL") },
-                    singleLine = true,
+                    maxLines = 5,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -163,7 +163,7 @@ fun AddCustomModuleDialog(
                     value = args,
                     onValueChange = { args = it },
                     label = { Text("参数 (args)") },
-                    singleLine = true,
+                    maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -172,7 +172,7 @@ fun AddCustomModuleDialog(
                     value = layoutConfig,
                     onValueChange = { layoutConfig = it },
                     label = { Text("布局配置 (layoutConfig)") },
-                    singleLine = true,
+                    maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
