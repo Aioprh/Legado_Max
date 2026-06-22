@@ -399,6 +399,7 @@ private fun DiscoverTab(
                     text = "选择分类",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 // 使用 FlowRow 流式布局展示分类标签，类似发现页的 FlexboxLayout

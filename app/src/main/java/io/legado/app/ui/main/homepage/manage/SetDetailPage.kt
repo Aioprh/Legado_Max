@@ -257,6 +257,7 @@ private fun ModuleItem(
                     text = module.title.ifBlank { module.originalTitle.ifBlank { "未命名模块" } },
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

@@ -55,6 +55,7 @@ fun ButtonGroupModule(
                             Text(
                                 text = kind.title,
                                 style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,

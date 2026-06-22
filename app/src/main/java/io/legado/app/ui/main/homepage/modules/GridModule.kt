@@ -97,6 +97,7 @@ fun GridModule(
                         Text(
                             text = book.name,
                             style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 2,
                             minLines = 2,
                             overflow = TextOverflow.Ellipsis,
