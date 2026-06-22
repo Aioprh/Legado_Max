@@ -20,7 +20,8 @@ object DatabaseMigrations {
             migration_31_32, migration_32_33, migration_33_34, migration_34_35,
             migration_35_36, migration_36_37, migration_37_38, migration_38_39,
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
-            migration_95_96, migration_96_97, migration_97_98, migration_98_99
+            migration_95_96, migration_96_97, migration_97_98, migration_98_99,
+            migration_99_100
         )
     }
 
@@ -611,6 +612,50 @@ object DatabaseMigrations {
             )
             db.execSQL(
                 "CREATE INDEX IF NOT EXISTS `index_source_recycle_bin_expireAt` ON `source_recycle_bin` (`expireAt`)"
+            )
+        }
+    }
+
+    // =======================================================================
+    // 99 → 100：创建首页模块相关表
+    // homepage_modules 表用于存储首页模块配置
+    // homepage_custom_sets 表用于存储用户自定义集
+    // 这是首页功能的核心数据表，如果表不存在会导致首页一直显示"加载中"
+    // =======================================================================
+    private val migration_99_100 = object : Migration(99, 100) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // 创建首页模块表
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `homepage_modules` (
+                    `id` TEXT NOT NULL PRIMARY KEY,
+                    `sourceUrl` TEXT NOT NULL,
+                    `moduleKey` TEXT NOT NULL,
+                    `type` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `args` TEXT,
+                    `layoutConfig` TEXT,
+                    `url` TEXT,
+                    `isEnabled` INTEGER NOT NULL DEFAULT 1,
+                    `sortOrder` INTEGER NOT NULL DEFAULT 0,
+                    `customSetId` TEXT,
+                    `isUserCreated` INTEGER NOT NULL DEFAULT 0,
+                    `customTitle` TEXT,
+                    `customSetTitle` TEXT,
+                    `sourceJsonHash` TEXT,
+                    `syncedAt` INTEGER NOT NULL DEFAULT 0
+                )
+                """.trimIndent()
+            )
+            // 创建首页自定义集表
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `homepage_custom_sets` (
+                    `id` TEXT NOT NULL PRIMARY KEY,
+                    `name` TEXT NOT NULL,
+                    `sortOrder` INTEGER NOT NULL DEFAULT 0
+                )
+                """.trimIndent()
             )
         }
     }
