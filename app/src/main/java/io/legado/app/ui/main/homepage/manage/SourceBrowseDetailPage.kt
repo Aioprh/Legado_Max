@@ -428,8 +428,9 @@ private fun DiscoverTab(
                                     selectedKindIndex = index
                                     showKindSheet = false
                                     // 选择分类后直接打开预填充的添加模块对话框
+                                    // 使用标题和URL的组合作为key，确保标题相同但URL不同时不会覆盖
                                     manualAddPrefill = ModuleDef(
-                                        key = "explore_${kind.first}",
+                                        key = "explore_${kind.first}_${kind.second}",
                                         type = selectedModuleType,
                                         title = kind.first,
                                         url = kind.second,
