@@ -617,10 +617,10 @@ object DatabaseMigrations {
     }
 
     // =======================================================================
-    // 99 → 100：创建首页模块相关表
+    // 99 → 100：创建首页模块相关表 + book_sources 表新增 homepageModules 列
     // homepage_modules 表用于存储首页模块配置
     // homepage_custom_sets 表用于存储用户自定义集
-    // 这是首页功能的核心数据表，如果表不存在会导致首页一直显示"加载中"
+    // book_sources 表新增 homepageModules 列，用于存储书源关联的首页模块定义
     // =======================================================================
     private val migration_99_100 = object : Migration(99, 100) {
         override fun migrate(db: SupportSQLiteDatabase) {
@@ -657,6 +657,14 @@ object DatabaseMigrations {
                 )
                 """.trimIndent()
             )
+            // book_sources 表新增 homepageModules 列
+            // 检查列是否已存在，避免重复添加导致迁移失败
+            val cursor = db.query("SELECT * FROM pragma_table_info('book_sources') WHERE name='homepageModules'")
+            val hasHomepageModules = cursor.count > 0
+            cursor.close()
+            if (!hasHomepageModules) {
+                db.execSQL("ALTER TABLE book_sources ADD COLUMN homepageModules TEXT DEFAULT ''")
+            }
         }
     }
 

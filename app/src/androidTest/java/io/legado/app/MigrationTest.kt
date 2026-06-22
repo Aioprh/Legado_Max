@@ -63,7 +63,7 @@ class MigrationTest {
     }
 
     /**
-     * 测试关键的 99 → 100 迁移（首页模块表创建）
+     * 测试关键的 99 → 100 迁移（首页模块表创建 + homepageModules 列添加）
      * 这是用户最可能遇到的升级场景
      */
     @Test
@@ -89,6 +89,10 @@ class MigrationTest {
                 // 验证首页自定义集表已创建
                 openHelper.writableDatabase.query("SELECT name FROM sqlite_master WHERE type='table' AND name='homepage_custom_sets'").use {
                     assert(it.count == 1) { "homepage_custom_sets 表应该存在" }
+                }
+                // 验证 book_sources 表新增 homepageModules 列
+                openHelper.writableDatabase.query("SELECT * FROM pragma_table_info('book_sources') WHERE name='homepageModules'").use {
+                    assert(it.count == 1) { "homepageModules 列应该存在于 book_sources 表" }
                 }
                 close()
             }
