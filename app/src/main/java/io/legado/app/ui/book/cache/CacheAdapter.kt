@@ -11,9 +11,11 @@ import io.legado.app.base.adapter.DiffRecyclerAdapter
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.entities.Book
 import io.legado.app.databinding.ItemDownloadBinding
+import androidx.core.content.ContextCompat
 import io.legado.app.help.book.isLocal
-import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.model.CacheBook
+import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.ConvertUtils
 import io.legado.app.utils.gone
 import io.legado.app.utils.visible
@@ -45,11 +47,20 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
         payloads: MutableList<Any>
     ) {
         binding.run {
+            // 基于实际背景色明暗计算文字颜色，确保所有主题下文字清晰可读
+            val isLightBg = ColorUtils.isColorLight(context.backgroundColor)
             if (payloads.isEmpty()) {
                 ivCover.load(item, false)
                 tvName.text = item.name
-                tvName.setTextColor(context.primaryTextColor)
+                tvName.setTextColor(
+                    if (isLightBg) ContextCompat.getColor(context, R.color.md_light_primary_text)
+                    else ContextCompat.getColor(context, R.color.md_dark_primary_text)
+                )
                 tvAuthor.text = context.getString(R.string.author_show, item.getRealAuthor())
+                tvAuthor.setTextColor(
+                    if (isLightBg) ContextCompat.getColor(context, R.color.md_light_secondary)
+                    else ContextCompat.getColor(context, R.color.md_dark_secondary)
+                )
                 if (item.isLocal) {
                     tvDownload.setText(R.string.local_book)
                 } else {
@@ -72,6 +83,10 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
                         "${context.getString(R.string.download_count, cacheSize, item.totalChapterNum)} · $sizeText"
                 }
             }
+            tvDownload.setTextColor(
+                if (isLightBg) ContextCompat.getColor(context, R.color.md_light_secondary)
+                else ContextCompat.getColor(context, R.color.md_dark_secondary)
+            )
             upDownloadIv(ivDownload, item)
             upExportInfo(tvMsg, progressExport, item)
         }
