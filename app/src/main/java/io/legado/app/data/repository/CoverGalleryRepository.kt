@@ -10,6 +10,8 @@ import io.legado.app.data.entities.CoverGalleryGroupWithImages
 import io.legado.app.data.entities.CoverGalleryImage
 import io.legado.app.help.CacheManager
 import io.legado.app.model.BookCover
+import io.legado.app.help.http.okHttpClient
+import io.legado.app.help.http.newCallResponse
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.createFolderIfNotExist
@@ -202,7 +204,37 @@ class CoverGalleryRepository {
         return (hash % size).absoluteValue.toInt()
     }
 
-    private fun copyImageToCovers(context: Context, uri: Uri): String {
+    private suspend fun copyImageToCovers(context: Context, uri: Uri): String {
+        // 处理网络图片链接 (http/https)：下载到本地 covers 目录
+        if (uri.scheme == "http" || uri.scheme == "https") {
+            val url = uri.toString()
+            val response = okHttpClient.newCallResponse(retry = 1) {
+                url(url)
+            }
+            val body = response.body
+                ?: throw NoCoverGalleryImageException("图片下载失败：响应体为空")
+            val bytes = body.bytes()
+            response.close()
+
+            // 从 URL 路径中提取文件名和后缀
+            val pathSegments = uri.path?.split("/")?.filter { it.isNotBlank() } ?: emptyList()
+            val rawName = pathSegments.lastOrNull().orEmpty()
+            val suffix = if (rawName.contains(".9.png", true)) {
+                ".9.png"
+            } else {
+                "." + rawName.substringAfterLast(".", "jpg")
+            }
+            val fileName = MD5Utils.md5Encode(bytes.inputStream()) + suffix
+            val targetFile = FileUtils.createFileIfNotExist(
+                context.externalFiles, "covers", fileName
+            )
+            FileOutputStream(targetFile).use {
+                it.write(bytes)
+            }
+            return targetFile.absolutePath
+        }
+
+        // 处理本地文件 (content:// / file://)
         var file = context.externalFiles
         val sourceName = DocumentFile.fromSingleUri(context, uri)?.name.orEmpty()
         val suffix = if (sourceName.contains(".9.png", true)) {
