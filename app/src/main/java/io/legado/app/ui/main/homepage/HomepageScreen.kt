@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChevronRight
@@ -42,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +75,7 @@ import io.legado.app.ui.widget.components.BookBottomSheet
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.utils.showHelp
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 /**
  * 首页主屏幕 Composable
@@ -339,12 +343,20 @@ private fun SourceTabLayout(
         modules.groupBy { it.setName }
     }
     val setNames = remember(groupedModules) { groupedModules.keys.toList() }
+    val pagerState = rememberPagerState(pageCount = { setNames.size })
     var selectedTabIndex by remember { mutableStateOf(0) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // 同步 pagerState 和 selectedTabIndex
+    LaunchedEffect(pagerState.currentPage) {
+        selectedTabIndex = pagerState.currentPage
+    }
 
     // 确保 selectedTabIndex 不越界
     LaunchedEffect(setNames.size) {
         if (selectedTabIndex >= setNames.size) {
             selectedTabIndex = 0
+            pagerState.scrollToPage(0)
         }
     }
 
@@ -374,7 +386,12 @@ private fun SourceTabLayout(
             setNames.forEachIndexed { index, setName ->
                 Tab(
                     selected = safeTabIndex == index,
-                    onClick = { selectedTabIndex = index },
+                    onClick = {
+                        selectedTabIndex = index
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    },
                     text = {
                         Text(
                             text = setName,
@@ -386,36 +403,42 @@ private fun SourceTabLayout(
                 )
             }
         }
-        // 当前选中 Tab 的模块列表，无限类型模块排在底部
-        val currentModules = (groupedModules[setNames[safeTabIndex]] ?: emptyList()).sortedBy { module ->
-            if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
-        }
-        val currentSetName = setNames[safeTabIndex]
-        // 使用 key 强制重新创建 PullToRefreshBox，确保状态更新
-        key(isRefreshing) {
-            PullToRefreshBox(
-                isRefreshing = isRefreshing,
-                onRefresh = { onRefresh(currentSetName) },
-                modifier = Modifier.fillMaxSize()
-            ) {
-            LazyColumn(
-                contentPadding = PaddingValues(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(currentModules, key = { it.globalId }) { module ->
-                        HomepageModuleItem(
-                            module = module,
-                            viewModel = viewModel,
-                            onBookClick = { book ->
-                                viewModel.onBookClick(book)
-                            },
-                            onBookLongClick = onBookLongClick,
-                            onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
-                                viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
-                            }
-                        )
-                    }
+        // 使用 HorizontalPager 实现左右滑动切换书源集
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { pageIndex ->
+            // 当前选中 Tab 的模块列表，无限类型模块排在底部
+            val currentModules = (groupedModules[setNames[pageIndex]] ?: emptyList()).sortedBy { module ->
+                if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
             }
+            val currentSetName = setNames[pageIndex]
+            // 使用 key 强制重新创建 PullToRefreshBox，确保状态更新
+            key(isRefreshing) {
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = { onRefresh(currentSetName) },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                LazyColumn(
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(currentModules, key = { it.globalId }) { module ->
+                            HomepageModuleItem(
+                                module = module,
+                                viewModel = viewModel,
+                                onBookClick = { book ->
+                                    viewModel.onBookClick(book)
+                                },
+                                onBookLongClick = onBookLongClick,
+                                onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
+                                    viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
+                                }
+                            )
+                        }
+                }
+                }
             }
         }
     }
