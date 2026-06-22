@@ -39,6 +39,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -259,13 +260,15 @@ fun HomepageScreen(
             val sortedModules = uiState.modules.sortedBy { module ->
                 if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
             }
-            PullToRefreshBox(
-                isRefreshing = uiState.isRefreshing,
-                onRefresh = { viewModel.onRefresh() },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
+            // 使用 key 强制重新创建 PullToRefreshBox，确保状态更新
+            key(uiState.isRefreshing) {
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = { viewModel.onRefresh() },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                ) {
                 LazyColumn(
                     contentPadding = PaddingValues(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -287,6 +290,7 @@ fun HomepageScreen(
                             }
                         )
                     }
+                }
                 }
             }
         }
@@ -327,7 +331,7 @@ private fun SourceTabLayout(
     viewModel: HomepageViewModel,
     context: android.content.Context,
     isRefreshing: Boolean,
-    onRefresh: () -> Unit,
+    onRefresh: (String?) -> Unit,
     onBookLongClick: (SearchBook) -> Unit,
 ) {
     // 按集名称分组，保持原始顺序
@@ -386,11 +390,14 @@ private fun SourceTabLayout(
         val currentModules = (groupedModules[setNames[safeTabIndex]] ?: emptyList()).sortedBy { module ->
             if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
         }
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = onRefresh,
-            modifier = Modifier.fillMaxSize()
-        ) {
+        val currentSetName = setNames[safeTabIndex]
+        // 使用 key 强制重新创建 PullToRefreshBox，确保状态更新
+        key(isRefreshing) {
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = { onRefresh(currentSetName) },
+                modifier = Modifier.fillMaxSize()
+            ) {
             LazyColumn(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -408,6 +415,7 @@ private fun SourceTabLayout(
                             }
                         )
                     }
+            }
             }
         }
     }

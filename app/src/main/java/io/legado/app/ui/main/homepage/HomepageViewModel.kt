@@ -125,6 +125,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     private val _bookshelf = MutableStateFlow<Set<BookShelfKey>>(emptySet())
 
     private val _isRefreshing = MutableStateFlow(false)
+    private val _refreshingSetName = MutableStateFlow<String?>(null)
     private val _isManageMode = MutableStateFlow(false)
     private val _configVersion = MutableStateFlow(0L)
     private val _moduleContentStates = MutableStateFlow<Map<String, ModuleLoadState>>(emptyMap())
@@ -374,9 +375,32 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                         if (module != null) loadModule(module)
                     }
                 }
-                // 所有模块加载完成后关闭刷新状态
-                if (_isRefreshing.value && modules.isNotEmpty() && modules.none { it.state is ModuleLoadState.Loading }) {
-                    _isRefreshing.value = false
+            }
+        }
+
+        // 监听模块状态变化，更新刷新状态
+        viewModelScope.launch {
+            _moduleContentStates.collect { states ->
+                // 如果正在刷新，检查是否所有模块都加载完成
+                if (_isRefreshing.value) {
+                    val refreshingSetName = _refreshingSetName.value
+                    val allLoaded = if (refreshingSetName != null) {
+                        // 只检查指定书源集的模块
+                        val setModules = uiState.value.modules.filter { it.setName == refreshingSetName }
+                        val setModuleIds = setModules.map { it.globalId }.toSet()
+                        // 检查指定书源集的模块是否都加载完成
+                        setModuleIds.all { id ->
+                            val state = states[id]
+                            state != null && state !is ModuleLoadState.Loading
+                        }
+                    } else {
+                        // 检查所有模块
+                        states.values.none { it is ModuleLoadState.Loading } && states.isNotEmpty()
+                    }
+                    if (allLoaded) {
+                        _isRefreshing.value = false
+                        _refreshingSetName.value = null
+                    }
                 }
             }
         }
@@ -563,14 +587,26 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
     /**
      * 刷新首页模块内容（重新加载已存在的模块数据，不自动从书源同步新模块）
+     * @param setName 可选的书源集名称，如果指定则只刷新该集的模块
      */
-    fun onRefresh() {
+    fun onRefresh(setName: String? = null) {
         viewModelScope.launch {
             _isRefreshing.value = true
+            _refreshingSetName.value = setName
             loadJobs.values.forEach { it.cancel() }
             loadJobs.clear()
             // 仅重新加载已有模块的内容，不从书源自动同步
-            _moduleContentStates.value = emptyMap()
+            if (setName != null) {
+                // 只刷新指定书源集的模块
+                val setModules = uiState.value.modules.filter { it.setName == setName }
+                val setModuleIds = setModules.map { it.globalId }.toSet()
+                _moduleContentStates.update { states ->
+                    states.filterKeys { it !in setModuleIds }
+                }
+            } else {
+                // 刷新所有模块
+                _moduleContentStates.value = emptyMap()
+            }
             // isRefreshing 由 auto-load collector 在所有模块加载完成后自动置为 false
         }
     }
