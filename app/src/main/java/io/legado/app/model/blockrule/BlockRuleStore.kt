@@ -9,6 +9,7 @@ import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.putPrefString
+import java.util.UUID
 
 /**
  * 屏蔽规则存储管理
@@ -51,9 +52,20 @@ object BlockRuleStore {
     /**
      * 保存规则列表
      * 同时更新缓存和 SharedPreferences，并同步分组信息
+     * 自动处理 id 重复的情况，确保每个规则的 id 都是唯一的
      */
     fun save(context: Context, rules: List<BlockRule>) {
-        val normalized = rules.map { sanitizeRule(it) }
+        // 检查并修复 id 重复的情况
+        val usedIds = mutableSetOf<String>()
+        val normalized = rules.map { rule ->
+            var sanitized = sanitizeRule(rule)
+            // 如果 id 已被使用，生成新的唯一 id
+            while (sanitized.id in usedIds) {
+                sanitized = sanitized.copyWithNewId()
+            }
+            usedIds.add(sanitized.id)
+            sanitized
+        }
         cachedRules = normalized
         context.putPrefString(PreferKey.blockRuleItems, GSON.toJson(normalized))
         BlockRuleGroupStore.ensureFromRules(context, normalized)
@@ -138,7 +150,7 @@ object BlockRuleStore {
         val pattern = runCatching { rule.pattern }.getOrNull().orEmpty()
         val group = runCatching { rule.group }.getOrNull().orEmpty().ifBlank { fallbackGroup }
         val id = runCatching { rule.id }.getOrNull().orEmpty().ifBlank {
-            "${System.currentTimeMillis()}_${name.hashCode().toUInt().toString(16)}"
+            UUID.randomUUID().toString()
         }
         val scope = runCatching { rule.scope }.getOrNull()?.takeIf { it.isNotBlank() }
         val rssScope = runCatching { rule.rssScope }.getOrNull()?.takeIf { it.isNotBlank() }

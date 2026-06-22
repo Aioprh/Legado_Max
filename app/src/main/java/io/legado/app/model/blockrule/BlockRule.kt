@@ -2,6 +2,7 @@ package io.legado.app.model.blockrule
 
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.SearchBook
+import java.util.UUID
 
 /**
  * 屏蔽规则数据模型
@@ -13,8 +14,8 @@ import io.legado.app.data.entities.SearchBook
  * 存储方式：SharedPreferences + JSON 序列化，由 [BlockRuleStore] 管理
  */
 data class BlockRule(
-    /** 唯一标识，默认使用时间戳 */
-    var id: String = System.currentTimeMillis().toString(),
+    /** 唯一标识，使用 UUID 确保唯一性 */
+    var id: String = UUID.randomUUID().toString(),
     /** 规则名称 */
     var name: String = "",
     /** 匹配模式：关键词或正则表达式 */
@@ -137,7 +138,7 @@ data class BlockRule(
 
     /** 复制规则并生成新的ID，用于导入时避免ID冲突 */
     fun copyWithNewId(): BlockRule {
-        return copy(id = "${System.currentTimeMillis()}_${name.hashCode()}")
+        return copy(id = UUID.randomUUID().toString())
     }
 
     companion object {

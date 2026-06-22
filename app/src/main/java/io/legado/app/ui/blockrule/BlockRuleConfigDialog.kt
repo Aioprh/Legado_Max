@@ -95,6 +95,7 @@ import io.legado.app.utils.sendToClip
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
 /**
  * 屏蔽规则配置弹窗
@@ -1050,7 +1051,7 @@ private fun BlockRuleEditContent(
 
                     onSave(
                         sourceRule.copy(
-                            id = sourceRule.id.ifBlank { System.currentTimeMillis().toString() },
+                            id = sourceRule.id.ifBlank { UUID.randomUUID().toString() },
                             name = name.ifBlank { pattern },
                             pattern = pattern,
                             isRegex = isRegex,
@@ -1626,11 +1627,15 @@ private fun importFromClipboard(context: android.content.Context, onRefresh: () 
         return
     }
     val existing = BlockRuleStore.load(context)
+    val existingIds = existing.map { it.id }.toSet()
+    val usedIds = mutableSetOf<String>()
     val newRules = imported.map { rule ->
         var normalized = BlockRuleStore.sanitizeRule(rule)
-        if (existing.any { it.id == normalized.id }) {
+        // 检查与现有规则的冲突，以及导入列表内部的冲突
+        while (normalized.id in existingIds || normalized.id in usedIds) {
             normalized = normalized.copyWithNewId()
         }
+        usedIds.add(normalized.id)
         normalized
     }
     BlockRuleStore.save(context, existing + newRules)
