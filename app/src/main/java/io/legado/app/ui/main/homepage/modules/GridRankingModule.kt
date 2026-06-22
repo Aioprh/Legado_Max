@@ -186,7 +186,7 @@ private fun GridRankingItem(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Black,
             fontStyle = if (rank <= 3) FontStyle.Italic else FontStyle.Normal,
-            color = if (rank <= 3) pageAccentColor() else MaterialTheme.colorScheme.outline,
+            color = if (rank <= 3) pageAccentColor() else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier.width(32.dp)
         )

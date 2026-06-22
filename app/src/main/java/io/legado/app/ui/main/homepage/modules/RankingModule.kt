@@ -119,7 +119,7 @@ private fun RankingItem(
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Black,
             fontStyle = if (rank <= 3) FontStyle.Italic else FontStyle.Normal,
-            color = if (rank <= 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+            color = if (rank <= 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .width(42.dp)
