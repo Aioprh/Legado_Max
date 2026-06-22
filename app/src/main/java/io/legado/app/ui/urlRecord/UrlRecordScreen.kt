@@ -156,10 +156,14 @@ fun UrlRecordScreen(
                     }
                     IconButton(onClick = { showFilterPanel = !showFilterPanel }) {
                         val hasFilters = viewModel.hasActiveFilters()
-                        Badge(
-                            containerColor = if (hasFilters) MaterialTheme.colorScheme.error 
-                                             else Color.Transparent,
-                            contentColor = Color.White
+                        BadgedBox(
+                            badge = {
+                                if (hasFilters) {
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                         ) {
                             Icon(Icons.Default.FilterList, contentDescription = "筛选")
                         }
