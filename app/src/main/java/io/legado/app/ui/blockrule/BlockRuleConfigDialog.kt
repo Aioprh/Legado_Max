@@ -1629,17 +1629,44 @@ private fun importFromClipboard(context: android.content.Context, onRefresh: () 
     val existing = BlockRuleStore.load(context)
     val existingIds = existing.map { it.id }.toSet()
     val usedIds = mutableSetOf<String>()
-    val newRules = imported.map { rule ->
+    
+    // 检查规则是否与现有规则内容相同（忽略 id）
+    fun isDuplicate(rule: BlockRule): Boolean {
+        return existing.any { existingRule ->
+            existingRule.name == rule.name &&
+            existingRule.pattern == rule.pattern &&
+            existingRule.group == rule.group &&
+            existingRule.isRegex == rule.isRegex &&
+            existingRule.targetScope == rule.targetScope &&
+            existingRule.rssTargetScope == rule.rssTargetScope &&
+            existingRule.scope == rule.scope &&
+            existingRule.rssScope == rule.rssScope
+        }
+    }
+    
+    val newRules = imported.mapNotNull { rule ->
         var normalized = BlockRuleStore.sanitizeRule(rule)
-        // 检查与现有规则的冲突，以及导入列表内部的冲突
+        
+        // 检查规则内容是否与现有规则重复，如果重复则跳过
+        if (isDuplicate(normalized)) {
+            return@mapNotNull null
+        }
+        
+        // 检查与现有规则的 id 冲突，以及导入列表内部的 id 冲突
         while (normalized.id in existingIds || normalized.id in usedIds) {
             normalized = normalized.copyWithNewId()
         }
         usedIds.add(normalized.id)
         normalized
     }
+    
+    if (newRules.isEmpty()) {
+        context.toastOnUi("导入的规则已存在，无新规则")
+        return
+    }
+    
     BlockRuleStore.save(context, existing + newRules)
-    context.toastOnUi(R.string.explore_block_rule_import_success)
+    context.toastOnUi("成功导入 ${newRules.size} 条规则")
     onRefresh()
 }
 
