@@ -1806,8 +1806,8 @@
     <string name="share_rules">分享规则</string>
     <string name="export_rules">导出规则</string>
     <string name="import_from_clipboard">从剪贴板导入</string>
-    <string name="cover_gallery">封面画廊</string>
-    <string name="cover_gallery_summary">管理分组封面画廊，可设置为全局默认封面源</string>
+    <string name="cover_gallery">封面图集</string>
+    <string name="cover_gallery_summary">管理分组封面图集，可设置为全局默认封面源</string>
 
     <!-- File Validation Dialog -->
     <string name="fvd_title">选择恢复内容</string>
