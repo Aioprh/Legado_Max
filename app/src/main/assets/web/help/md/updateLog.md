@@ -16,6 +16,12 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/06/22**
+- 优化首页功能和修bug
+- 优化屏蔽规则
+- 优化部分界面主题颜色不适配的问题
+
+
 **2026/06/21**
 - 优化首页功能和修bug
 - 搜索进度条新增调节字号的功能
