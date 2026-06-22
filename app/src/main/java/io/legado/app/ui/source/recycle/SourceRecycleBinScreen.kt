@@ -59,7 +59,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -593,9 +592,7 @@ private fun SourceRecycleBinItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.name.ifBlank { item.key },
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    style = MaterialTheme.typography.titleMedium
                 )
                 Text(
                     text = stringResource(
@@ -604,9 +601,7 @@ private fun SourceRecycleBinItem(
                         item.groupName.orEmpty().ifBlank { stringResource(R.string.no_group) }
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = secondaryTextColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    color = secondaryTextColor
                 )
                 Text(
                     text = stringResource(
@@ -615,8 +610,7 @@ private fun SourceRecycleBinItem(
                         remainingDays(item.expireAt)
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = secondaryTextColor,
-                    maxLines = 1
+                    color = secondaryTextColor
                 )
             }
             Box {
