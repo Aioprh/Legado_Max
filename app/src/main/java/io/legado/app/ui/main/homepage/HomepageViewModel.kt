@@ -303,6 +303,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
             HomepageModuleManageUi(
                 id = mod.id,
                 sourceUrl = mod.sourceUrl,
+                sourceName = sourceNames[mod.sourceUrl] ?: mod.sourceUrl,
                 moduleKey = mod.moduleKey,
                 title = mod.displayTitle,
                 customSetTitle = mod.customSetTitle,
@@ -695,12 +696,14 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         val defs = parseModuleDefs(source, json)
         val existing = allModulesCache.value.filter { it.sourceUrl == sourceUrl }
         val targetSetId = setId ?: "src_$sourceUrl"
+        val sourceName = _bookSourcesCache.value[sourceUrl]?.bookSourceName ?: sourceUrl
         return defs.map { def ->
             val globalId = ModuleDef.globalIdOf(sourceUrl, def.key, targetSetId)
             val existingMod = existing.find { it.id == globalId }
             HomepageModuleManageUi(
                 id = globalId,
                 sourceUrl = sourceUrl,
+                sourceName = sourceName,
                 moduleKey = def.key,
                 title = def.title,
                 customSetId = existingMod?.customSetId,

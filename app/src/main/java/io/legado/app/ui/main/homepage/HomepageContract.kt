@@ -160,6 +160,7 @@ data class HomepageSourceManageUi(
  *
  * @property id 模块标识
  * @property sourceUrl 书源 URL
+ * @property sourceName 书源名称
  * @property moduleKey 模块键
  * @property title 模块标题
  * @property customSetTitle 自定义集合标题
@@ -175,6 +176,7 @@ data class HomepageSourceManageUi(
 data class HomepageModuleManageUi(
     val id: String = "",
     val sourceUrl: String = "",
+    val sourceName: String = "",
     val moduleKey: String = "",
     val title: String = "",
     val customSetTitle: String? = null,

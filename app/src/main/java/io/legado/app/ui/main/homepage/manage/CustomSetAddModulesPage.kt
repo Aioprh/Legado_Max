@@ -92,14 +92,31 @@ fun CustomSetAddModulesPage(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             groupedModules.forEach { (sourceUrl, modules) ->
-                // 书源分组标题
+                // 书源分组标题：显示书源名称和URL
                 item(key = "header_$sourceUrl") {
-                    Text(
-                        text = sourceUrl,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // 从第一个模块获取书源名称
+                    val sourceName = modules.firstOrNull()?.sourceName ?: sourceUrl
+                    Column(
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-                    )
+                    ) {
+                        // 书源名称
+                        Text(
+                            text = sourceName,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        // 书源 URL
+                        Text(
+                            text = sourceUrl,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
                 // 模块列表
                 items(modules, key = { it.id }) { module ->
