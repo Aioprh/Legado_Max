@@ -138,14 +138,14 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
-     * 用于首页布局的自定义集列表。
+     * 用于首页布局和管理界面的自定义集列表（同步读取最新排序）。
      *
      * 每次 _configVersion 变化时，直接从数据库重新读取自定义集列表，
-     * 确保排序变更后 rawModulesFlow 能立即获取到最新的排序顺序。
-     * 这解决了 customSetsFlow (Room Flow) 异步发射延迟导致 Tab 栏不即时更新的问题。
+     * 确保排序变更后 rawModulesFlow 和 setsFlow 能立即获取到最新的排序顺序。
+     * 这解决了 customSetsFlow (Room Flow) 异步发射延迟导致界面不即时更新的问题。
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val customSetsForLayout = _configVersion.mapLatest {
+    private val customSetsSync = _configVersion.mapLatest {
         gateway.flowCustomSets().first()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -157,7 +157,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         orderedModuleDefsFlow,
         _moduleContentStates,
         _bookSourcesCache,
-        customSetsForLayout,
+        customSetsSync,
         // 将 _configVersion 纳入 combine，确保 hiddenSetUrls 变化时触发重算
         combine(_layoutConfigCache, _configVersion) { cache, _ -> cache }
     ) { grouped, contentStates, sourcesCache, customSets, configCache ->
@@ -252,7 +252,13 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         HomepageConfig.homepageSourceHidden = GSON.toJson(urls)
     }
 
-    val setsFlow = combine(customSetsFlow, allModulesCache, _configVersion) { sets, modules, _ ->
+    /**
+     * 集列表管理界面的数据流。
+     *
+     * 使用 customSetsSync（同步读取）替代 customSetsFlow（异步 Room Flow），
+     * 确保拖动排序后集列表能即时反映最新顺序，解决异步发射延迟问题。
+     */
+    val setsFlow = combine(customSetsSync, allModulesCache) { sets, modules ->
         val hidden = hiddenSetUrls
         sets.map { cs ->
             // 书源集（src_ 前缀）使用原始 ID 作为 URL，自定义集使用 custom:// 前缀

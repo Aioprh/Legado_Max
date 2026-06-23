@@ -250,6 +250,7 @@ fun HomepageScreen(
             // 分源Tab 模式：按集分组，Tab 切换展示
             SourceTabLayout(
                 modules = uiState.modules,
+                sets = uiState.manageState.sets,
                 paddingValues = paddingValues,
                 viewModel = viewModel,
                 context = context,
@@ -326,13 +327,14 @@ fun HomepageScreen(
 /**
  * 分源Tab 布局
  *
- * 将模块按集（setName）分组，通过 Tab 切换展示不同集的模块。
- * 适用于书源较多、希望分源浏览的场景。
+ * 使用管理状态中的集列表作为Tab来源，确保Tab顺序与集排序同步更新。
+ * 通过 Tab 切换展示不同集的模块，适用于书源较多、希望分源浏览的场景。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SourceTabLayout(
     modules: List<HomepageModuleUi>,
+    sets: List<HomepageSourceManageUi>,
     paddingValues: PaddingValues,
     viewModel: HomepageViewModel,
     context: android.content.Context,
@@ -340,12 +342,12 @@ private fun SourceTabLayout(
     onRefresh: (String?) -> Unit,
     onBookLongClick: (SearchBook) -> Unit,
 ) {
-    // 按集名称分组，保持原始顺序
-    val groupedModules = remember(modules) {
-        modules.groupBy { it.setName }
+    // 使用管理状态中的集列表作为Tab来源，确保顺序与排序同步
+    // 只显示已选中且有模块的集
+    val selectedSets = remember(sets) {
+        sets.filter { it.isSelected && it.moduleCount > 0 }
     }
-    val setNames = remember(groupedModules) { groupedModules.keys.toList() }
-    val pagerState = rememberPagerState(pageCount = { setNames.size })
+    val pagerState = rememberPagerState(pageCount = { selectedSets.size.coerceAtLeast(1) })
     var selectedTabIndex by remember { mutableStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -355,22 +357,22 @@ private fun SourceTabLayout(
     }
 
     // 确保 selectedTabIndex 不越界
-    LaunchedEffect(setNames.size) {
-        if (selectedTabIndex >= setNames.size) {
+    LaunchedEffect(selectedSets.size) {
+        if (selectedTabIndex >= selectedSets.size) {
             selectedTabIndex = 0
             pagerState.scrollToPage(0)
         }
     }
 
     // 确保 selectedTabIndex 不越界（组合期间立即生效，防止隐藏集后索引越界崩溃）
-    val safeTabIndex = if (setNames.isEmpty()) 0 else selectedTabIndex.coerceIn(0, setNames.lastIndex)
+    val safeTabIndex = if (selectedSets.isEmpty()) 0 else selectedTabIndex.coerceIn(0, selectedSets.lastIndex)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
     ) {
-        if (setNames.isEmpty()) return@Column
+        if (selectedSets.isEmpty()) return@Column
         // 可滚动的 Tab 栏
         ScrollableTabRow(
             selectedTabIndex = safeTabIndex,
@@ -385,7 +387,7 @@ private fun SourceTabLayout(
                 }
             }
         ) {
-            setNames.forEachIndexed { index, setName ->
+            selectedSets.forEachIndexed { index, set ->
                 Tab(
                     selected = safeTabIndex == index,
                     onClick = {
@@ -396,7 +398,7 @@ private fun SourceTabLayout(
                     },
                     text = {
                         Text(
-                            text = setName,
+                            text = set.sourceName,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.labelLarge
@@ -408,13 +410,28 @@ private fun SourceTabLayout(
         // 使用 HorizontalPager 实现左右滑动切换书源集
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            key = { index -> selectedSets.getOrNull(index)?.sourceUrl ?: index }
         ) { pageIndex ->
-            // 当前选中 Tab 的模块列表，无限类型模块排在底部
-            val currentModules = (groupedModules[setNames[pageIndex]] ?: emptyList()).sortedBy { module ->
-                if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
+            // 当前选中 Tab 对应的集
+            val currentSet = selectedSets.getOrNull(pageIndex)
+            // 根据集过滤模块：自定义集使用 customSetId 匹配，书源集使用 sourceUrl 匹配
+            val currentModules = remember(modules, currentSet) {
+                val filtered = modules.filter { module ->
+                    if (currentSet?.isCustomSet == true) {
+                        val setId = HomepageViewModel.customSetIdFromUrl(currentSet.sourceUrl)
+                        module.customSetId == setId
+                    } else {
+                        // 书源集：集 URL 格式为 src_<书源URL>，模块的 customSetId 也是 src_<书源URL>
+                        module.customSetId == currentSet?.sourceUrl
+                    }
+                }
+                // 无限类型模块排在底部
+                filtered.sortedBy { module ->
+                    if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
+                }
             }
-            val currentSetName = setNames[pageIndex]
+            val currentSetName = currentSet?.sourceName
             // 使用 key 强制重新创建 PullToRefreshBox，确保状态更新
             key(isRefreshing) {
                 PullToRefreshBox(
