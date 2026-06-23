@@ -50,12 +50,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.legado.app.R
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.domain.model.HomepageModuleType
@@ -153,13 +155,13 @@ fun HomepageScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("首页", fontWeight = FontWeight.Bold) },
+                title = { Text(stringResource(R.string.homepage_title), fontWeight = FontWeight.Bold) },
                 actions = {
                     // 模块管理
                     IconButton(onClick = { showManageSheet = true }) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "模块管理"
+                            contentDescription = stringResource(R.string.homepage_module_manage)
                         )
                     }
                     // 三点菜单（切换布局、帮助等）
@@ -167,7 +169,7 @@ fun HomepageScreen(
                         IconButton(onClick = { showOverflowMenu = true }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
-                                contentDescription = "更多"
+                                contentDescription = stringResource(R.string.homepage_more)
                             )
                         }
                         DropdownMenu(
@@ -175,14 +177,14 @@ fun HomepageScreen(
                             onDismissRequest = { showOverflowMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("切换布局") },
+                                text = { Text(stringResource(R.string.homepage_switch_layout)) },
                                 onClick = {
                                     showOverflowMenu = false
                                     showLayoutMenu = true
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("帮助") },
+                                text = { Text(stringResource(R.string.homepage_help)) },
                                 onClick = {
                                     showOverflowMenu = false
                                     (context as? AppCompatActivity)?.showHelp("homepageHelp")
@@ -195,7 +197,7 @@ fun HomepageScreen(
                             onDismissRequest = { showLayoutMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("混合列表") },
+                                text = { Text(stringResource(R.string.homepage_layout_mixed)) },
                                 onClick = {
                                     viewModel.setLayoutMode(0)
                                     showLayoutMenu = false
@@ -205,7 +207,7 @@ fun HomepageScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("分源Tab") },
+                                text = { Text(stringResource(R.string.homepage_layout_source_tab)) },
                                 onClick = {
                                     viewModel.setLayoutMode(1)
                                     showLayoutMenu = false
@@ -232,12 +234,12 @@ fun HomepageScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "暂无首页内容",
+                        text = stringResource(R.string.homepage_empty_title),
                         style = MaterialTheme.typography.bodyLarge,
                         color = pageSecondaryTextColor()
                     )
                     Text(
-                        text = "请点击右上角设置按钮配置首页模块",
+                        text = stringResource(R.string.homepage_empty_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = pageSecondaryTextColor().copy(alpha = 0.6f),
                         modifier = Modifier.padding(top = 4.dp)
@@ -476,7 +478,7 @@ private fun HomepageModuleItem(
             if (module.exploreUrl != null && module.type != HomepageModuleType.ButtonGroup) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "更多",
+                    contentDescription = stringResource(R.string.homepage_more),
                     tint = pageSecondaryTextColor(),
                     modifier = Modifier.padding(start = 8.dp)
                 )
@@ -504,12 +506,12 @@ private fun HomepageModuleItem(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "加载失败",
+                                text = stringResource(R.string.homepage_load_failed),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error
                             )
                             Text(
-                                text = "点击重试",
+                                text = stringResource(R.string.homepage_click_retry),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = pageAccentColor(),
                                 modifier = Modifier
@@ -644,7 +646,7 @@ private fun LoadMoreFooter(
                 strokeWidth = 2.dp
             )
             Text(
-                text = "加载中...",
+                text = stringResource(R.string.homepage_loading),
                 style = MaterialTheme.typography.labelMedium,
                 color = pageSecondaryTextColor()
             )
@@ -659,7 +661,7 @@ private fun LoadMoreFooter(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "加载更多",
+                text = stringResource(R.string.homepage_load_more),
                 style = MaterialTheme.typography.labelMedium,
                 color = pageAccentColor()
             )

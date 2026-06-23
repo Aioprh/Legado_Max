@@ -1989,4 +1989,79 @@
     <!-- Block Rule Management (Settings) -->
     <string name="block_rule_manage">Block Rules</string>
     <string name="block_rule_manage_summary">Manage block rules for discover, search and RSS</string>
+
+    <!-- Homepage Strings -->
+    <string name="homepage_title">Homepage</string>
+    <string name="homepage_module_manage">Module Management</string>
+    <string name="homepage_switch_layout">Switch Layout</string>
+    <string name="homepage_layout_mixed">Mixed List</string>
+    <string name="homepage_layout_source_tab">Source Tab</string>
+    <string name="homepage_empty_title">No Homepage Content</string>
+    <string name="homepage_empty_desc">Please click the settings button in the upper right corner to configure homepage modules</string>
+    <string name="homepage_load_failed">Load Failed</string>
+    <string name="homepage_click_retry">Click to Retry</string>
+    <string name="homepage_loading">Loading...</string>
+    <string name="homepage_load_more">Load More</string>
+    <string name="homepage_collapse">Collapse</string>
+    <string name="homepage_expand_all">Expand All</string>
+    <string name="homepage_more">More</string>
+    <string name="homepage_infinite_module">Infinite Stream Module</string>
+    <string name="homepage_loading_categories">Loading discovery categories...</string>
+    <string name="homepage_select_category">Select Category</string>
+
+    <!-- Homepage Management Strings -->
+    <string name="homepage_search_source">Search Book Source</string>
+    <string name="homepage_group_filter">Group Filter</string>
+    <string name="homepage_all_groups">All Groups</string>
+    <string name="homepage_module_count">%d modules</string>
+    <string name="homepage_new_custom_set">New Custom Set</string>
+    <string name="homepage_browse_source_modules">Browse Source Modules</string>
+    <string name="homepage_drag_sort">Drag to Sort</string>
+    <string name="homepage_view">View</string>
+
+    <!-- Source Browse Detail Strings -->
+    <string name="homepage_joined">Joined</string>
+    <string name="homepage_discover">Discover</string>
+    <string name="homepage_module_type">Module Type</string>
+    <string name="homepage_manual_add_module">Manual Add Module</string>
+
+    <!-- Homepage Module Management Strings -->
+    <string name="homepage_module_manage_title">Homepage Module Management</string>
+    <string name="homepage_set_detail">Set Detail</string>
+    <string name="homepage_browse_source">Browse Sources</string>
+    <string name="homepage_source_modules">Source Modules</string>
+    <string name="homepage_add_module">Add Module</string>
+    <string name="homepage_back">Back</string>
+    <string name="homepage_set_name">Set Name</string>
+    <string name="homepage_create">Create</string>
+    <string name="homepage_cancel">Cancel</string>
+    <string name="homepage_rename_set">Rename Set</string>
+    <string name="homepage_new_name">New Name</string>
+    <string name="homepage_confirm">Confirm</string>
+    <string name="homepage_delete_set">Delete Set</string>
+    <string name="homepage_delete_set_msg">Are you sure to delete this set? Modules in this set will be removed.</string>
+    <string name="homepage_delete">Delete</string>
+    <string name="homepage_delete_module">Delete Module</string>
+    <string name="homepage_delete_module_msg">Are you sure to delete this module?</string>
+    <string name="homepage_custom_title">Custom Title</string>
+    <string name="homepage_custom_title_hint">Custom Title (Leave blank to restore default)</string>
+    <string name="homepage_edit_module">Edit Module</string>
+    <string name="homepage_unnamed_module">Unnamed Module</string>
+    <string name="homepage_edit">Edit</string>
+    <string name="homepage_help">Help</string>
+    <string name="homepage_rename">Rename</string>
+    <string name="homepage_title_label">Title</string>
+    <string name="homepage_url">URL</string>
+    <string name="homepage_args">Parameters (args)</string>
+    <string name="homepage_layout_config">Layout Config (layoutConfig)</string>
+
+    <!-- Module Type Strings -->
+    <string name="module_type_banner">Banner</string>
+    <string name="module_type_card">Card</string>
+    <string name="module_type_grid">Grid</string>
+    <string name="module_type_ranking">Ranking</string>
+    <string name="module_type_grid_ranking">Grid Ranking</string>
+    <string name="module_type_waterfall">Waterfall</string>
+    <string name="module_type_infinite_grid">Infinite Grid</string>
+    <string name="module_type_button_group">Button Group</string>
 </resources>

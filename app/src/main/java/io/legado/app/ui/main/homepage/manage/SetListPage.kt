@@ -32,10 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import io.legado.app.R
 import io.legado.app.ui.main.homepage.HomepageSourceManageUi
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.card.GlassCard
@@ -135,13 +137,13 @@ fun SetListPage(
                 onClick = onCreateCustomSet,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("新建自定义集")
+                Text(stringResource(R.string.homepage_new_custom_set))
             }
             OutlinedButton(
                 onClick = onBrowseSources,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("浏览书源模块")
+                Text(stringResource(R.string.homepage_browse_source_modules))
             }
         }
     }
@@ -177,7 +179,7 @@ private fun SetItem(
             // 拖拽手柄图标
             Icon(
                 imageVector = Icons.Default.DragHandle,
-                contentDescription = "拖拽排序",
+                contentDescription = stringResource(R.string.homepage_drag_sort),
                 tint = pageSecondaryTextColor(),
                 modifier = Modifier.size(24.dp)
             )
@@ -193,18 +195,18 @@ private fun SetItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${set.moduleCount} 个模块",
+                    text = stringResource(R.string.homepage_module_count, set.moduleCount),
                     style = MaterialTheme.typography.bodySmall,
                     color = pageSecondaryTextColor()
                 )
             }
             // 重命名按钮
             IconButton(onClick = onRename, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Edit, contentDescription = "重命名")
+                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.homepage_rename))
             }
             // 删除按钮
             IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "删除")
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.homepage_delete))
             }
             // 启用/禁用开关
             Switch(checked = set.isSelected, onCheckedChange = onToggle)

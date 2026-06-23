@@ -36,8 +36,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.legado.app.R
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.ui.main.homepage.HomepageViewModel
@@ -93,7 +95,7 @@ fun AddCustomModuleDialog(
         title = {
             // 根据模式显示不同标题
             Text(
-                text = if (isEditMode) "编辑模块" else "添加模块",
+                text = if (isEditMode) stringResource(R.string.homepage_edit_module) else stringResource(R.string.homepage_add_module),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -104,7 +106,7 @@ fun AddCustomModuleDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("标题") },
+                    label = { Text(stringResource(R.string.homepage_title_label)) },
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -113,7 +115,7 @@ fun AddCustomModuleDialog(
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("URL") },
+                    label = { Text(stringResource(R.string.homepage_url)) },
                     maxLines = 5,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -125,10 +127,10 @@ fun AddCustomModuleDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = HomepageModuleType.fromKey(type).title,
+                        value = stringResource(HomepageModuleType.fromKey(type).titleRes),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("模块类型") },
+                        label = { Text(stringResource(R.string.homepage_module_type)) },
                         singleLine = true,
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded)
@@ -148,7 +150,7 @@ fun AddCustomModuleDialog(
                             val isInfinite = HomepageViewModel.isInfinite(moduleType.key, null)
                             if (isInfinite && !canSelectInfinite) return@forEach
                             DropdownMenuItem(
-                                text = { Text(moduleType.title) },
+                                text = { Text(stringResource(moduleType.titleRes)) },
                                 onClick = {
                                     type = moduleType.key
                                     typeMenuExpanded = false
@@ -162,7 +164,7 @@ fun AddCustomModuleDialog(
                 OutlinedTextField(
                     value = args,
                     onValueChange = { args = it },
-                    label = { Text("参数 (args)") },
+                    label = { Text(stringResource(R.string.homepage_args)) },
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -171,7 +173,7 @@ fun AddCustomModuleDialog(
                 OutlinedTextField(
                     value = layoutConfig,
                     onValueChange = { layoutConfig = it },
-                    label = { Text("布局配置 (layoutConfig)") },
+                    label = { Text(stringResource(R.string.homepage_layout_config)) },
                     maxLines = 3,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -194,13 +196,13 @@ fun AddCustomModuleDialog(
                     )
                 }
             ) {
-                Text("确认")
+                Text(stringResource(R.string.homepage_confirm))
             }
         },
         dismissButton = {
             // 取消按钮：关闭对话框
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.homepage_cancel))
             }
         }
     )

@@ -39,6 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import io.legado.app.R
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.config.AppConfig
@@ -95,7 +97,7 @@ fun RankingModule(
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = if (isExpanded) "收起" else "展开全部",
+                        text = if (isExpanded) stringResource(R.string.homepage_collapse) else stringResource(R.string.homepage_expand_all),
                         style = MaterialTheme.typography.labelMedium,
                         color = if (isExpanded) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(start = 4.dp)

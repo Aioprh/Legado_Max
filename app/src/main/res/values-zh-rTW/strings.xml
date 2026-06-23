@@ -1582,4 +1582,79 @@
     <string name="search_progress_font_size">調整搜尋進度字型大小</string>
     <string name="current_value">目前：%dsp</string>
     <string name="reset_default">恢復預設</string>
+
+    <!-- 首頁字符串 -->
+    <string name="homepage_title">首頁</string>
+    <string name="homepage_module_manage">模組管理</string>
+    <string name="homepage_switch_layout">切換佈局</string>
+    <string name="homepage_layout_mixed">混合列表</string>
+    <string name="homepage_layout_source_tab">分源Tab</string>
+    <string name="homepage_empty_title">暫無首頁內容</string>
+    <string name="homepage_empty_desc">請點擊右上角設置按鈕配置首頁模組</string>
+    <string name="homepage_load_failed">加載失敗</string>
+    <string name="homepage_click_retry">點擊重試</string>
+    <string name="homepage_loading">加載中...</string>
+    <string name="homepage_load_more">加載更多</string>
+    <string name="homepage_collapse">收起</string>
+    <string name="homepage_expand_all">展開全部</string>
+    <string name="homepage_more">更多</string>
+    <string name="homepage_infinite_module">無限流模組</string>
+    <string name="homepage_loading_categories">正在加載發現分類...</string>
+    <string name="homepage_select_category">選擇分類</string>
+
+    <!-- 首頁管理字符串 -->
+    <string name="homepage_search_source">搜尋書源</string>
+    <string name="homepage_group_filter">分組篩選</string>
+    <string name="homepage_all_groups">全部分組</string>
+    <string name="homepage_module_count">%d 個模組</string>
+    <string name="homepage_new_custom_set">新建自定義集</string>
+    <string name="homepage_browse_source_modules">瀏覽書源模組</string>
+    <string name="homepage_drag_sort">拖拽排序</string>
+    <string name="homepage_view">查看</string>
+
+    <!-- 書源瀏覽詳情字符串 -->
+    <string name="homepage_joined">已加入</string>
+    <string name="homepage_discover">發現</string>
+    <string name="homepage_module_type">模組類型</string>
+    <string name="homepage_manual_add_module">手動添加模組</string>
+
+    <!-- 首頁模組管理字符串 -->
+    <string name="homepage_module_manage_title">首頁模組管理</string>
+    <string name="homepage_set_detail">集詳情</string>
+    <string name="homepage_browse_source">瀏覽書源</string>
+    <string name="homepage_source_modules">書源模組</string>
+    <string name="homepage_add_module">添加模組</string>
+    <string name="homepage_back">返回</string>
+    <string name="homepage_set_name">集名稱</string>
+    <string name="homepage_create">創建</string>
+    <string name="homepage_cancel">取消</string>
+    <string name="homepage_rename_set">重命名集</string>
+    <string name="homepage_new_name">新名稱</string>
+    <string name="homepage_confirm">確認</string>
+    <string name="homepage_delete_set">刪除集</string>
+    <string name="homepage_delete_set_msg">確定要刪除這個集嗎？集內模組將被移除。</string>
+    <string name="homepage_delete">刪除</string>
+    <string name="homepage_delete_module">刪除模組</string>
+    <string name="homepage_delete_module_msg">確定要刪除這個模組嗎？</string>
+    <string name="homepage_custom_title">自定義標題</string>
+    <string name="homepage_custom_title_hint">自定義標題（留空恢復默認）</string>
+    <string name="homepage_edit_module">編輯模組</string>
+    <string name="homepage_unnamed_module">未命名模組</string>
+    <string name="homepage_edit">編輯</string>
+    <string name="homepage_help">幫助</string>
+    <string name="homepage_rename">重命名</string>
+    <string name="homepage_title_label">標題</string>
+    <string name="homepage_url">URL</string>
+    <string name="homepage_args">參數 (args)</string>
+    <string name="homepage_layout_config">佈局配置 (layoutConfig)</string>
+
+    <!-- 模組類型字符串 -->
+    <string name="module_type_banner">輪播</string>
+    <string name="module_type_card">卡片</string>
+    <string name="module_type_grid">網格</string>
+    <string name="module_type_ranking">排行</string>
+    <string name="module_type_grid_ranking">網格排行</string>
+    <string name="module_type_waterfall">瀑布流</string>
+    <string name="module_type_infinite_grid">無限網格</string>
+    <string name="module_type_button_group">按鈕組</string>
 </resources>

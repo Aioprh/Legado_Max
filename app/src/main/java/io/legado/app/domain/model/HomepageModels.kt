@@ -1,7 +1,9 @@
 package io.legado.app.domain.model
 
 import androidx.annotation.Keep
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
+import io.legado.app.R
 
 /** 供 Gateway 和 ViewModel 使用的不可变模块模型 */
 @Immutable
@@ -57,16 +59,16 @@ data class ModuleDef(
 }
 
 /** 首页模块类型枚举 — 定义在 Domain 层以便 UseCase 和 ViewModel 共享 */
-enum class HomepageModuleType(val key: String, val title: String) {
-    Banner("banner", "横滑轮播"),
-    Ranking("ranking", "排行榜"),
-    GridRanking("gridRanking", "网格排行榜"),
-    Grid("grid", "网格"),
-    Card("card", "推荐卡片"),
-    InfiniteGrid("infiniteGrid", "无限网格"),
-    ButtonGroup("buttonGroup", "按钮组"),
-    Waterfall("waterfall", "错位瀑布流"),
-    Unknown("", "未知");
+enum class HomepageModuleType(val key: String, @StringRes val titleRes: Int) {
+    Banner("banner", R.string.module_type_banner),
+    Ranking("ranking", R.string.module_type_ranking),
+    GridRanking("gridRanking", R.string.module_type_grid_ranking),
+    Grid("grid", R.string.module_type_grid),
+    Card("card", R.string.module_type_card),
+    InfiniteGrid("infiniteGrid", R.string.module_type_infinite_grid),
+    ButtonGroup("buttonGroup", R.string.module_type_button_group),
+    Waterfall("waterfall", R.string.module_type_waterfall),
+    Unknown("", R.string.unknown_type);
 
     companion object {
         fun fromKey(key: String?): HomepageModuleType =

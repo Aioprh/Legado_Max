@@ -32,10 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import io.legado.app.R
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.ui.main.homepage.HomepageModuleManageUi
@@ -162,7 +164,7 @@ fun SetDetailPage(
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "无限流模块",
+                        text = stringResource(R.string.homepage_infinite_module),
                         style = MaterialTheme.typography.labelMedium,
                         color = pageSecondaryTextColor(),
                         modifier = Modifier.padding(horizontal = 4.dp)
@@ -202,7 +204,7 @@ fun SetDetailPage(
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
         ) {
-            Text("添加模块")
+            Text(stringResource(R.string.homepage_add_module))
         }
     }
 }
@@ -245,7 +247,7 @@ private fun ModuleItem(
             // 拖拽手柄图标
             Icon(
                 imageVector = Icons.Default.DragHandle,
-                contentDescription = "拖拽排序",
+                contentDescription = stringResource(R.string.homepage_drag_sort),
                 tint = pageSecondaryTextColor(),
                 modifier = Modifier.size(24.dp)
             )
@@ -254,7 +256,7 @@ private fun ModuleItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     // 优先显示自定义标题，其次原始标题，最后显示默认名称
-                    text = module.title.ifBlank { module.originalTitle.ifBlank { "未命名模块" } },
+                    text = module.title.ifBlank { module.originalTitle.ifBlank { stringResource(R.string.homepage_unnamed_module) } },
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -262,7 +264,7 @@ private fun ModuleItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 TextCard(
-                    text = moduleType.title,
+                    text = stringResource(moduleType.titleRes),
                     textStyle = MaterialTheme.typography.labelSmall
                 )
             }
@@ -273,7 +275,7 @@ private fun ModuleItem(
             ) {
                 Icon(
                     imageVector = Icons.Default.Edit,
-                    contentDescription = "编辑"
+                    contentDescription = stringResource(R.string.homepage_edit)
                 )
             }
             // 删除按钮
@@ -283,7 +285,7 @@ private fun ModuleItem(
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "删除"
+                    contentDescription = stringResource(R.string.homepage_delete)
                 )
             }
             // 可见性开关

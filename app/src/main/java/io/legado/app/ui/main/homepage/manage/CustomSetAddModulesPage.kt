@@ -30,9 +30,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.legado.app.R
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.ui.main.homepage.HomepageModuleManageUi
 import io.legado.app.ui.main.homepage.HomepageViewModel
@@ -128,7 +130,7 @@ fun CustomSetAddModulesPage(
                         // 左侧：模块标题和类型标签
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = module.title.ifBlank { module.originalTitle.ifBlank { "未命名模块" } },
+                                text = module.title.ifBlank { module.originalTitle.ifBlank { stringResource(R.string.homepage_unnamed_module) } },
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface,
@@ -136,7 +138,7 @@ fun CustomSetAddModulesPage(
                                 overflow = TextOverflow.Ellipsis
                             )
                             TextCard(
-                                text = moduleType.title,
+                                text = stringResource(moduleType.titleRes),
                                 textStyle = MaterialTheme.typography.labelSmall
                             )
                         }

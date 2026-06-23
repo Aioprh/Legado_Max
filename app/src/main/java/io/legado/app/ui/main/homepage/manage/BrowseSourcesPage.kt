@@ -29,9 +29,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.legado.app.R
 import io.legado.app.ui.main.homepage.HomepageSourceManageUi
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.card.GlassCard
@@ -98,7 +100,7 @@ fun BrowseSourcesPage(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("搜索书源") },
+                placeholder = { Text(stringResource(R.string.homepage_search_source)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
@@ -110,7 +112,7 @@ fun BrowseSourcesPage(
                 IconButton(onClick = { showGroupMenu = true }) {
                     Icon(
                         imageVector = Icons.Default.FilterList,
-                        contentDescription = "分组筛选"
+                        contentDescription = stringResource(R.string.homepage_group_filter)
                     )
                 }
                 DropdownMenu(
@@ -119,7 +121,7 @@ fun BrowseSourcesPage(
                 ) {
                     // 全部分组选项
                     DropdownMenuItem(
-                        text = { Text("全部分组") },
+                        text = { Text(stringResource(R.string.homepage_all_groups)) },
                         onClick = {
                             groupFilter = null
                             showGroupMenu = false
@@ -186,7 +188,7 @@ fun BrowseSourcesPage(
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "${source.moduleCount} 个模块",
+                                text = stringResource(R.string.homepage_module_count, source.moduleCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = pageSecondaryTextColor()
                             )
@@ -194,7 +196,7 @@ fun BrowseSourcesPage(
                         // 右侧箭头图标
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "查看",
+                            contentDescription = stringResource(R.string.homepage_view),
                             tint = pageSecondaryTextColor()
                         )
                     }

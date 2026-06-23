@@ -1975,4 +1975,79 @@
     <string name="explore_block_rule_scope_rss_intro">简介</string>
     <string name="block_rule_manage">屏蔽规则</string>
     <string name="block_rule_manage_summary">管理发现、搜索和订阅源的屏蔽规则</string>
+
+    <!-- 首页字符串 -->
+    <string name="homepage_title">首页</string>
+    <string name="homepage_module_manage">模块管理</string>
+    <string name="homepage_switch_layout">切换布局</string>
+    <string name="homepage_layout_mixed">混合列表</string>
+    <string name="homepage_layout_source_tab">分源Tab</string>
+    <string name="homepage_empty_title">暂无首页内容</string>
+    <string name="homepage_empty_desc">请点击右上角设置按钮配置首页模块</string>
+    <string name="homepage_load_failed">加载失败</string>
+    <string name="homepage_click_retry">点击重试</string>
+    <string name="homepage_loading">加载中...</string>
+    <string name="homepage_load_more">加载更多</string>
+    <string name="homepage_collapse">收起</string>
+    <string name="homepage_expand_all">展开全部</string>
+    <string name="homepage_more">更多</string>
+    <string name="homepage_infinite_module">无限流模块</string>
+    <string name="homepage_loading_categories">正在加载发现分类...</string>
+    <string name="homepage_select_category">选择分类</string>
+
+    <!-- 首页管理字符串 -->
+    <string name="homepage_search_source">搜索书源</string>
+    <string name="homepage_group_filter">分组筛选</string>
+    <string name="homepage_all_groups">全部分组</string>
+    <string name="homepage_module_count">%d 个模块</string>
+    <string name="homepage_new_custom_set">新建自定义集</string>
+    <string name="homepage_browse_source_modules">浏览书源模块</string>
+    <string name="homepage_drag_sort">拖拽排序</string>
+    <string name="homepage_view">查看</string>
+
+    <!-- 书源浏览详情字符串 -->
+    <string name="homepage_joined">已加入</string>
+    <string name="homepage_discover">发现</string>
+    <string name="homepage_module_type">模块类型</string>
+    <string name="homepage_manual_add_module">手动添加模块</string>
+
+    <!-- 首页模块管理字符串 -->
+    <string name="homepage_module_manage_title">首页模块管理</string>
+    <string name="homepage_set_detail">集详情</string>
+    <string name="homepage_browse_source">浏览书源</string>
+    <string name="homepage_source_modules">书源模块</string>
+    <string name="homepage_add_module">添加模块</string>
+    <string name="homepage_back">返回</string>
+    <string name="homepage_set_name">集名称</string>
+    <string name="homepage_create">创建</string>
+    <string name="homepage_cancel">取消</string>
+    <string name="homepage_rename_set">重命名集</string>
+    <string name="homepage_new_name">新名称</string>
+    <string name="homepage_confirm">确认</string>
+    <string name="homepage_delete_set">删除集</string>
+    <string name="homepage_delete_set_msg">确定要删除这个集吗？集内模块将被移除。</string>
+    <string name="homepage_delete">删除</string>
+    <string name="homepage_delete_module">删除模块</string>
+    <string name="homepage_delete_module_msg">确定要删除这个模块吗？</string>
+    <string name="homepage_custom_title">自定义标题</string>
+    <string name="homepage_custom_title_hint">自定义标题（留空恢复默认）</string>
+    <string name="homepage_edit_module">编辑模块</string>
+    <string name="homepage_unnamed_module">未命名模块</string>
+    <string name="homepage_edit">编辑</string>
+    <string name="homepage_help">帮助</string>
+    <string name="homepage_rename">重命名</string>
+    <string name="homepage_title_label">标题</string>
+    <string name="homepage_url">URL</string>
+    <string name="homepage_args">参数 (args)</string>
+    <string name="homepage_layout_config">布局配置 (layoutConfig)</string>
+
+    <!-- 模块类型字符串 -->
+    <string name="module_type_banner">横滑轮播</string>
+    <string name="module_type_card">推荐卡片</string>
+    <string name="module_type_grid">网格</string>
+    <string name="module_type_ranking">排行榜</string>
+    <string name="module_type_grid_ranking">网格排行榜</string>
+    <string name="module_type_waterfall">错位瀑布流</string>
+    <string name="module_type_infinite_grid">无限网格</string>
+    <string name="module_type_button_group">按钮组</string>
 </resources>

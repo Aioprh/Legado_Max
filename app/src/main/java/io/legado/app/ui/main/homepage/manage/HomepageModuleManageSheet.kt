@@ -21,6 +21,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import io.legado.app.R
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.ui.main.homepage.HomepageManageActions
 import io.legado.app.ui.main.homepage.HomepageManageUiState
@@ -92,11 +94,11 @@ fun HomepageModuleManageSheet(
 
     // 根据当前页面计算弹窗标题
     val title = when (currentPage) {
-        is ManageScreen.SetList -> "首页模块管理"
-        is ManageScreen.SetDetail -> state.sets.find { it.sourceUrl == currentPage.setUrl }?.sourceName ?: "集详情"
-        is ManageScreen.BrowseSources -> "浏览书源"
-        is ManageScreen.SourceBrowseDetail -> state.sourceNames[currentPage.sourceUrl] ?: "书源模块"
-        is ManageScreen.CustomSetAddModules -> "添加模块"
+        is ManageScreen.SetList -> stringResource(R.string.homepage_module_manage_title)
+        is ManageScreen.SetDetail -> state.sets.find { it.sourceUrl == currentPage.setUrl }?.sourceName ?: stringResource(R.string.homepage_set_detail)
+        is ManageScreen.BrowseSources -> stringResource(R.string.homepage_browse_source)
+        is ManageScreen.SourceBrowseDetail -> state.sourceNames[currentPage.sourceUrl] ?: stringResource(R.string.homepage_source_modules)
+        is ManageScreen.CustomSetAddModules -> stringResource(R.string.homepage_add_module)
     }
 
     // 只有非集列表页面才支持返回操作
@@ -163,7 +165,7 @@ fun HomepageModuleManageSheet(
                 IconButton(onClick = { handleBack() }) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回"
+                        contentDescription = stringResource(R.string.homepage_back)
                     )
                 }
             }
@@ -207,7 +209,8 @@ fun HomepageModuleManageSheet(
 
                 // 集详情页：展示集内模块，支持模块的增删改查与排序
                 is ManageScreen.SetDetail -> SetDetailPage(
-                    setTitle = state.sets.find { it.sourceUrl == page.setUrl }?.sourceName ?: "集详情",
+                    setTitle = state.sets.find { it.sourceUrl == page.setUrl }?.sourceName
+                        ?: stringResource(R.string.homepage_set_detail),
                     modules = currentSetModules,
                     isCustomSet = HomepageViewModel.isCustomSetUrl(page.setUrl),
                     onToggleModule = actions.onToggleModule,
@@ -273,12 +276,12 @@ fun HomepageModuleManageSheet(
                     showCreateSetDialog = false
                     newSetName = ""
                 },
-                title = { Text("新建自定义集") },
+                title = { Text(stringResource(R.string.homepage_new_custom_set)) },
                 text = {
                     OutlinedTextField(
                         value = newSetName,
                         onValueChange = { newSetName = it },
-                        label = { Text("集名称") },
+                        label = { Text(stringResource(R.string.homepage_set_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -293,7 +296,7 @@ fun HomepageModuleManageSheet(
                             newSetName = ""
                         }
                     ) {
-                        Text("创建")
+                        Text(stringResource(R.string.homepage_create))
                     }
                 },
                 dismissButton = {
@@ -303,7 +306,7 @@ fun HomepageModuleManageSheet(
                             newSetName = ""
                         }
                     ) {
-                        Text("取消")
+                        Text(stringResource(R.string.homepage_cancel))
                     }
                 }
             )
@@ -316,12 +319,12 @@ fun HomepageModuleManageSheet(
                 onDismissRequest = {
                     renameSetId = null
                 },
-                title = { Text("重命名集") },
+                title = { Text(stringResource(R.string.homepage_rename_set)) },
                 text = {
                     OutlinedTextField(
                         value = newName,
                         onValueChange = { newName = it },
-                        label = { Text("新名称") },
+                        label = { Text(stringResource(R.string.homepage_new_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -335,12 +338,12 @@ fun HomepageModuleManageSheet(
                             renameSetId = null
                         }
                     ) {
-                        Text("确认")
+                        Text(stringResource(R.string.homepage_confirm))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { renameSetId = null }) {
-                        Text("取消")
+                        Text(stringResource(R.string.homepage_cancel))
                     }
                 }
             )
@@ -350,8 +353,8 @@ fun HomepageModuleManageSheet(
         if (deleteSetConfirmId != null) {
             AlertDialog(
                 onDismissRequest = { deleteSetConfirmId = null },
-                title = { Text("删除集") },
-                text = { Text("确定要删除这个集吗？集内模块将被移除。") },
+                title = { Text(stringResource(R.string.homepage_delete_set)) },
+                text = { Text(stringResource(R.string.homepage_delete_set_msg)) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -359,12 +362,12 @@ fun HomepageModuleManageSheet(
                             deleteSetConfirmId = null
                         }
                     ) {
-                        Text("删除")
+                        Text(stringResource(R.string.homepage_delete))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { deleteSetConfirmId = null }) {
-                        Text("取消")
+                        Text(stringResource(R.string.homepage_cancel))
                     }
                 }
             )
@@ -374,8 +377,8 @@ fun HomepageModuleManageSheet(
         if (deleteModuleConfirmId != null) {
             AlertDialog(
                 onDismissRequest = { deleteModuleConfirmId = null },
-                title = { Text("删除模块") },
-                text = { Text("确定要删除这个模块吗？") },
+                title = { Text(stringResource(R.string.homepage_delete_module)) },
+                text = { Text(stringResource(R.string.homepage_delete_module_msg)) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -383,12 +386,12 @@ fun HomepageModuleManageSheet(
                             deleteModuleConfirmId = null
                         }
                     ) {
-                        Text("删除")
+                        Text(stringResource(R.string.homepage_delete))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { deleteModuleConfirmId = null }) {
-                        Text("取消")
+                        Text(stringResource(R.string.homepage_cancel))
                     }
                 }
             )
@@ -431,12 +434,12 @@ fun HomepageModuleManageSheet(
                 onDismissRequest = {
                     customSetTitleEdit = null
                 },
-                title = { Text("自定义标题") },
+                title = { Text(stringResource(R.string.homepage_custom_title)) },
                 text = {
                     OutlinedTextField(
                         value = customTitle,
                         onValueChange = { customTitle = it },
-                        label = { Text("自定义标题（留空恢复默认）") },
+                        label = { Text(stringResource(R.string.homepage_custom_title_hint)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -451,12 +454,12 @@ fun HomepageModuleManageSheet(
                             customSetTitleEdit = null
                         }
                     ) {
-                        Text("确认")
+                        Text(stringResource(R.string.homepage_confirm))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { customSetTitleEdit = null }) {
-                        Text("取消")
+                        Text(stringResource(R.string.homepage_cancel))
                     }
                 }
             )

@@ -68,10 +68,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import io.legado.app.R
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.ui.main.homepage.HomepageManageActions
@@ -117,12 +119,12 @@ fun SourceBrowseDetailPage(
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("已加入") }
+                text = { Text(stringResource(R.string.homepage_joined)) }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("发现") }
+                text = { Text(stringResource(R.string.homepage_discover)) }
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -292,10 +294,10 @@ private fun DiscoverTab(
                 .padding(horizontal = 4.dp)
         ) {
             OutlinedTextField(
-                value = HomepageModuleType.fromKey(selectedModuleType).title,
+                value = stringResource(HomepageModuleType.fromKey(selectedModuleType).titleRes),
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("模块类型") },
+                label = { Text(stringResource(R.string.homepage_module_type)) },
                 singleLine = true,
                 trailingIcon = {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded)
@@ -312,7 +314,7 @@ private fun DiscoverTab(
                     // 跳过未知类型
                     if (moduleType == HomepageModuleType.Unknown) return@forEach
                     DropdownMenuItem(
-                        text = { Text(moduleType.title) },
+                        text = { Text(stringResource(moduleType.titleRes)) },
                         onClick = {
                             selectedModuleType = moduleType.key
                             typeMenuExpanded = false
@@ -334,7 +336,7 @@ private fun DiscoverTab(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
                     Text(
-                        text = "正在加载发现分类...",
+                        text = stringResource(R.string.homepage_loading_categories),
                         style = MaterialTheme.typography.bodySmall,
                         color = pageSecondaryTextColor(),
                         modifier = Modifier.padding(top = 8.dp)
@@ -354,7 +356,7 @@ private fun DiscoverTab(
                     value = selectedKindIndex?.let { exploreKinds.getOrNull(it)?.first ?: "" } ?: "",
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("选择分类") },
+                    label = { Text(stringResource(R.string.homepage_select_category)) },
                     singleLine = true,
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = false)
@@ -378,7 +380,7 @@ private fun DiscoverTab(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("手动添加模块")
+            Text(stringResource(R.string.homepage_manual_add_module))
         }
     }
 
@@ -396,7 +398,7 @@ private fun DiscoverTab(
                     .padding(bottom = 32.dp)
             ) {
                 Text(
-                    text = "选择分类",
+                    text = stringResource(R.string.homepage_select_category),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -510,7 +512,7 @@ private fun ModuleItem(
             // 拖拽手柄图标（仅此区域可触发长按拖拽）
             Icon(
                 imageVector = Icons.Default.DragHandle,
-                contentDescription = "拖拽排序",
+                contentDescription = stringResource(R.string.homepage_drag_sort),
                 tint = pageSecondaryTextColor(),
                 modifier = Modifier
                     .size(24.dp)
@@ -521,14 +523,14 @@ private fun ModuleItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     // 优先显示自定义标题，其次原始标题，最后显示默认名称
-                    text = module.title.ifBlank { module.originalTitle.ifBlank { "未命名模块" } },
+                    text = module.title.ifBlank { module.originalTitle.ifBlank { stringResource(R.string.homepage_unnamed_module) } },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 TextCard(
-                    text = moduleType.title,
+                    text = stringResource(moduleType.titleRes),
                     textStyle = MaterialTheme.typography.labelSmall
                 )
             }
@@ -537,14 +539,14 @@ private fun ModuleItem(
                 onClick = onEdit,
                 modifier = Modifier.size(36.dp)
             ) {
-                Icon(Icons.Default.Edit, contentDescription = "编辑")
+                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.homepage_edit))
             }
             // 删除按钮：从当前集移除该模块
             IconButton(
                 onClick = onDelete,
                 modifier = Modifier.size(36.dp)
             ) {
-                Icon(Icons.Default.Delete, contentDescription = "删除")
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.homepage_delete))
             }
             // 显隐开关：控制模块在首页是否可见
             Switch(
