@@ -93,18 +93,22 @@ fun WaterfallItem(
                         else -> null
                     }
                     if (shelfIcon != null) {
+                        // 亮色主题：白色背景+黑色图标；暗色主题：黑色背景+白色图标
+                        val isLight = !AppConfig.isNightTheme
+                        val bgColor = if (isLight) Color.White else Color.Black
+                        val iconColor = if (isLight) Color.Black else Color.White
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(4.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .background(bgColor)
                                 .padding(horizontal = 2.dp, vertical = 2.dp)
                         ) {
                             Icon(
                                 imageVector = shelfIcon,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = iconColor,
                                 modifier = Modifier.size(14.dp)
                             )
                         }

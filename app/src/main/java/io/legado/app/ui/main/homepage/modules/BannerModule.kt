@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
@@ -65,18 +66,22 @@ fun BannerModule(
                         else -> null
                     }
                     if (shelfIcon != null) {
+                        // 亮色主题：白色背景+黑色图标；暗色主题：黑色背景+白色图标
+                        val isLight = !AppConfig.isNightTheme
+                        val bgColor = if (isLight) Color.White else Color.Black
+                        val iconColor = if (isLight) Color.Black else Color.White
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(4.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .background(bgColor)
                                 .padding(horizontal = 2.dp, vertical = 2.dp)
                         ) {
                             Icon(
                                 imageVector = shelfIcon,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = iconColor,
                                 modifier = Modifier.size(14.dp)
                             )
                         }
