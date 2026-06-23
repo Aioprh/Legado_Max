@@ -35,6 +35,7 @@ import splitties.init.appCtx
  * - 当 useDefaultCover 开启时，强制使用默认封面
  * - 当无封面 URL 时，回退到默认封面
  * - 根据封面设置决定是否在封面上绘制书名和作者
+ * - 当启用封面图集时，根据 identity 参数随机选择封面图片
  */
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
@@ -44,8 +45,9 @@ fun HomepageBookCover(
     coverUrl: String?,
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 8.dp,
+    identity: String? = null,
 ) {
-    val galleryDefaultCover = BookCover.getGalleryDefaultCover()
+    val galleryDefaultCover = BookCover.getGalleryDefaultCover(identity)
     val useDefaultCover = AppConfig.useDefaultCover
     val displayCover = if (useDefaultCover) null else (galleryDefaultCover ?: coverUrl)
     val shouldDrawName = (useDefaultCover || coverUrl == null) && BookCover.drawBookName

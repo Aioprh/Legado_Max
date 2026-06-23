@@ -68,7 +68,8 @@ fun CardModule(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(5f / 7f),
-                        cornerRadius = 0.dp
+                        cornerRadius = 0.dp,
+                        identity = book.bookUrl
                     )
                     // 新版样式：显示图标
                     if (AppConfig.bookshelfIconStyle == 0) {

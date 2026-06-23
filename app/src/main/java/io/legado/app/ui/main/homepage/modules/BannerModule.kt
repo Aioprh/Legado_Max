@@ -56,7 +56,8 @@ fun BannerModule(
                             onClick = { onClick(book, null) },
                             onLongClick = onLongClick?.let { cb -> { cb(book, null) } }
                         ),
-                    cornerRadius = 12.dp
+                    cornerRadius = 12.dp,
+                    identity = book.bookUrl
                 )
                 // 新版样式：显示图标
                 if (AppConfig.bookshelfIconStyle == 0) {

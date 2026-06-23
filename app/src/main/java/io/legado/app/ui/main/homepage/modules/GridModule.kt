@@ -73,7 +73,8 @@ fun GridModule(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .aspectRatio(5f / 7f),
-                                cornerRadius = 4.dp
+                                cornerRadius = 4.dp,
+                                identity = book.bookUrl
                             )
                             // 新版样式：显示图标
                             if (AppConfig.bookshelfIconStyle == 0) {

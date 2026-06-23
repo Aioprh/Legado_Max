@@ -83,7 +83,16 @@ fun WaterfallItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(3f / 4f),
-                    cornerRadius = 4.dp
+                    cornerRadius = 4.dp,
+                    identity = buildString {
+                        append(searchBook.bookUrl)
+                        append('|')
+                        append(searchBook.origin)
+                        append('|')
+                        append(searchBook.name)
+                        append('|')
+                        append(searchBook.author)
+                    }
                 )
                 // 新版样式：显示图标
                 if (AppConfig.bookshelfIconStyle == 0) {

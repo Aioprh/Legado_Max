@@ -147,7 +147,8 @@ private fun RankingItem(
                 modifier = Modifier
                     .width(52.dp)
                     .aspectRatio(5f / 7f),
-                cornerRadius = 4.dp
+                cornerRadius = 4.dp,
+                identity = book.bookUrl
             )
             // 新版样式：显示图标
             if (AppConfig.bookshelfIconStyle == 0) {
