@@ -61,7 +61,8 @@ fun BookBottomSheet(
     onAddToShelf: (SearchBook) -> Unit,
     onShowInfo: (SearchBook) -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    // 使用 skipPartiallyExpanded = true，确保弹窗直接展开到最大高度
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
@@ -73,155 +74,152 @@ fun BookBottomSheet(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface
         ) {
+            // 整个内容区域可滚动，按钮在滚动内容内部
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 16.dp)
+                    .verticalScroll(scrollState)
             ) {
-                // 可滚动的内容区域
-                Column(
+                // 书籍信息区域
+                Row(
                     modifier = Modifier
-                        .weight(1f, fill = false)
-                        .verticalScroll(scrollState)
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // 书籍信息区域
-                    Row(
+                    // 封面图片
+                    AndroidView(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // 封面图片
-                        AndroidView(
-                            modifier = Modifier
-                                .width(90.dp)
-                                .height(120.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            factory = { ctx ->
-                                CoverImageView(ctx).apply {
-                                    load(book, AppConfig.loadCoverOnlyWifi)
-                                }
-                            },
-                            update = { view ->
-                                view.load(book, AppConfig.loadCoverOnlyWifi)
+                            .width(90.dp)
+                            .height(120.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        factory = { ctx ->
+                            CoverImageView(ctx).apply {
+                                load(book, AppConfig.loadCoverOnlyWifi)
                             }
+                        },
+                        update = { view ->
+                            view.load(book, AppConfig.loadCoverOnlyWifi)
+                        }
+                    )
+
+                    // 书籍基本信息
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .align(Alignment.Top),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // 书名
+                        Text(
+                            text = book.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
-                        // 书籍基本信息
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .align(Alignment.Top),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            // 书名
+                        // 作者
+                        if (book.author.isNotBlank()) {
                             Text(
-                                text = book.name,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-
-                            // 作者
-                            if (book.author.isNotBlank()) {
-                                Text(
-                                    text = "作者: ${book.author}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            // 书架状态提示
-                            if (shelfState == BookShelfState.IN_SHELF) {
-                                Text(
-                                    text = "✓ 已在书架中",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            } else if (shelfState == BookShelfState.SAME_NAME_AUTHOR) {
-                                Text(
-                                    text = "! 书架中有同名书籍",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.tertiary,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-                    }
-
-                    // 分隔线
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 详细信息区域
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // 分类
-                        val kindText = book.kind
-                        if (!kindText.isNullOrEmpty()) {
-                            InfoRow(label = "分类", value = kindText)
-                        }
-
-                        // 字数
-                        val wordCountText = book.wordCount
-                        if (!wordCountText.isNullOrEmpty()) {
-                            InfoRow(label = "字数", value = wordCountText)
-                        }
-
-                        // 最新章节
-                        val latestChapterText = book.latestChapterTitle
-                        if (!latestChapterText.isNullOrEmpty()) {
-                            InfoRow(label = "最新章节", value = latestChapterText)
-                        }
-
-                        // 书源
-                        if (book.originName.isNotBlank()) {
-                            InfoRow(label = "书源", value = book.originName)
-                        }
-                    }
-
-                    // 简介
-                    val introText = book.intro
-                    if (!introText.isNullOrEmpty()) {
-                        val trimmedIntro = introText.trim()
-                        if (trimmedIntro.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(1.dp)
-                                    .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            Text(
-                                text = "简介",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = trimmedIntro,
+                                text = "作者: ${book.author}",
                                 style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // 书架状态提示
+                        if (shelfState == BookShelfState.IN_SHELF) {
+                            Text(
+                                text = "✓ 已在书架中",
+                                style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.fillMaxWidth()
+                                fontWeight = FontWeight.Medium
+                            )
+                        } else if (shelfState == BookShelfState.SAME_NAME_AUTHOR) {
+                            Text(
+                                text = "! 书架中有同名书籍",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
                 }
 
-                // 固定的操作按钮区域（不滚动）
+                // 分隔线
+                Spacer(modifier = Modifier.height(12.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 详细信息区域
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 分类
+                    val kindText = book.kind
+                    if (!kindText.isNullOrEmpty()) {
+                        InfoRow(label = "分类", value = kindText)
+                    }
+
+                    // 字数
+                    val wordCountText = book.wordCount
+                    if (!wordCountText.isNullOrEmpty()) {
+                        InfoRow(label = "字数", value = wordCountText)
+                    }
+
+                    // 最新章节
+                    val latestChapterText = book.latestChapterTitle
+                    if (!latestChapterText.isNullOrEmpty()) {
+                        InfoRow(label = "最新章节", value = latestChapterText)
+                    }
+
+                    // 书源
+                    if (book.originName.isNotBlank()) {
+                        InfoRow(label = "书源", value = book.originName)
+                    }
+                }
+
+                // 简介
+                val introText = book.intro
+                if (!introText.isNullOrEmpty()) {
+                    val trimmedIntro = introText.trim()
+                    if (trimmedIntro.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "简介",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = trimmedIntro,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 操作按钮区域（在滚动内容内部，确保用户能立即看到）
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -285,14 +283,14 @@ private fun InfoRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
             text = "$label:",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.width(80.dp)
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(60.dp)
         )
         Text(
             text = value,
