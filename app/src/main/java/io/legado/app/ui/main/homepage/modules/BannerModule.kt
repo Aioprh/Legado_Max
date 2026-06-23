@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
+import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.main.homepage.HomepageBookItemUi
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -56,26 +57,29 @@ fun BannerModule(
                         ),
                     cornerRadius = 12.dp
                 )
-                val shelfIcon = when (item.shelfState) {
-                    BookShelfState.IN_SHELF -> Icons.Default.Check
-                    BookShelfState.SAME_NAME_AUTHOR -> Icons.Default.Shuffle
-                    else -> null
-                }
-                if (shelfIcon != null) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = 2.dp, vertical = 2.dp)
-                    ) {
-                        Icon(
-                            imageVector = shelfIcon,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(14.dp)
-                        )
+                // 新版样式：显示图标
+                if (AppConfig.bookshelfIconStyle == 0) {
+                    val shelfIcon = when (item.shelfState) {
+                        BookShelfState.IN_SHELF -> Icons.Default.Check
+                        BookShelfState.SAME_NAME_AUTHOR -> Icons.Default.Shuffle
+                        else -> null
+                    }
+                    if (shelfIcon != null) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(horizontal = 2.dp, vertical = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = shelfIcon,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
                 }
             }

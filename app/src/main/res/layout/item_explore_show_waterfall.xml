@@ -42,19 +42,36 @@
             app:layout_constraintRight_toRightOf="@id/iv_cover_waterfall"
             app:layout_constraintTop_toTopOf="@id/iv_cover_waterfall" />
 
-        <TextView
-            android:id="@+id/tv_name_waterfall"
+        <LinearLayout
+            android:id="@+id/ll_name_container_waterfall"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:ellipsize="end"
-            android:maxLines="2"
-            android:textColor="@color/primaryText"
-            android:textSize="13sp"
-            android:textStyle="bold"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/iv_cover_waterfall" />
+            app:layout_constraintTop_toBottomOf="@id/iv_cover_waterfall">
+
+            <io.legado.app.ui.widget.image.CircleImageView
+                android:id="@+id/iv_in_bookshelf_dot_waterfall"
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:layout_marginEnd="3dp"
+                android:scaleType="centerCrop"
+                android:src="@color/md_green_600"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tv_name_waterfall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:textColor="@color/primaryText"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tv_author_waterfall"
@@ -67,7 +84,7 @@
             android:textSize="11sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_name_waterfall" />
+            app:layout_constraintTop_toBottomOf="@id/ll_name_container_waterfall" />
 
         <io.legado.app.ui.widget.LabelsBar
             android:id="@+id/ll_kind_waterfall"

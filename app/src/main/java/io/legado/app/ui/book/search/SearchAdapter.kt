@@ -13,6 +13,8 @@ import io.legado.app.databinding.ItemSearchBinding
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.book.explore.setShelfState
+import io.legado.app.ui.book.explore.setShelfStateDot
+import io.legado.app.ui.widget.image.CircleImageView
 import io.legado.app.utils.gone
 import io.legado.app.utils.visible
 
@@ -89,9 +91,11 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
 
     private fun bind(binding: ItemSearchBinding, searchBook: SearchBook) {
         binding.run {
+            val shelfState = callBack.getBookShelfState(searchBook)
+            ivInBookshelf.setShelfState(shelfState)
+            ivInBookshelfDot.setShelfStateDot(shelfState)
             tvName.text = searchBook.name
             tvAuthor.text = context.getString(R.string.author_show, searchBook.author)
-            ivInBookshelf.setShelfState(callBack.getBookShelfState(searchBook))
             bvOriginCount.setBadgeCount(searchBook.origins.size)
             upLasted(binding, searchBook.latestChapterTitle)
             tvIntroduce.text = searchBook.trimIntro(context)
@@ -111,7 +115,11 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
                     "last" -> upLasted(binding, searchBook.latestChapterTitle)
                     "intro" -> tvIntroduce.text = searchBook.trimIntro(context)
                     "kind" -> upKind(binding, searchBook.getKindList())
-                    "isInBookshelf" -> ivInBookshelf.setShelfState(callBack.getBookShelfState(searchBook))
+                    "isInBookshelf" -> {
+                        val shelfState = callBack.getBookShelfState(searchBook)
+                        ivInBookshelf.setShelfState(shelfState)
+                        ivInBookshelfDot.setShelfStateDot(shelfState)
+                    }
                     "cover" -> ivCover.load(
                         searchBook,
                         false

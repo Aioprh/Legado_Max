@@ -51,6 +51,15 @@
         app:allowDividerBelow="false"
         app:iconSpaceReserved="false" />
 
+    <io.legado.app.lib.prefs.NameListPreference
+        android:defaultValue="0"
+        android:entries="@array/bookshelf_icon_style_entries"
+        android:entryValues="@array/bookshelf_icon_style_values"
+        android:key="bookshelfIconStyle"
+        android:title="@string/bookshelf_icon_style"
+        android:summary="@string/bookshelf_icon_style_summary"
+        app:iconSpaceReserved="false" />
+
     <io.legado.app.lib.prefs.Preference
         android:key="themeList"
         android:summary="@string/theme_list_summary"

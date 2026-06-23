@@ -2,19 +2,26 @@ package io.legado.app.ui.main.homepage.modules
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,12 +32,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.legado.app.data.entities.SearchBook
+import io.legado.app.domain.model.BookShelfState
+import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.main.homepage.HomepageBookItemUi
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.utils.StringUtils
@@ -125,28 +136,74 @@ private fun RankingItem(
                 .width(42.dp)
                 .padding(start = 2.dp, end = 10.dp),
         )
-        HomepageBookCover(
-            name = book.name,
-            author = book.author,
-            coverUrl = book.coverUrl,
-            modifier = Modifier
-                .width(52.dp)
-                .aspectRatio(5f / 7f),
-            cornerRadius = 4.dp
-        )
+        // 封面（带书架状态图标）
+        Box {
+            HomepageBookCover(
+                name = book.name,
+                author = book.author,
+                coverUrl = book.coverUrl,
+                modifier = Modifier
+                    .width(52.dp)
+                    .aspectRatio(5f / 7f),
+                cornerRadius = 4.dp
+            )
+            // 新版样式：显示图标
+            if (AppConfig.bookshelfIconStyle == 0) {
+                val shelfIcon = when (item.shelfState) {
+                    BookShelfState.IN_SHELF -> Icons.Default.Check
+                    BookShelfState.SAME_NAME_AUTHOR -> Icons.Default.Shuffle
+                    else -> null
+                }
+                if (shelfIcon != null) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(horizontal = 2.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = shelfIcon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
+        }
         Column(
             modifier = Modifier
                 .padding(start = 8.dp)
                 .weight(1f)
         ) {
-            Text(
-                text = book.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // 书名区域
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 经典样式：显示小绿点
+                if (AppConfig.bookshelfIconStyle == 1) {
+                    if (item.shelfState == BookShelfState.IN_SHELF || item.shelfState == BookShelfState.SAME_NAME_AUTHOR) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF4CAF50))
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                    }
+                }
+                Text(
+                    text = book.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
             // 字数和作者在同一行显示
             val authorLine = buildString {
                 val wc = StringUtils.wordCountFormat(book.wordCount)

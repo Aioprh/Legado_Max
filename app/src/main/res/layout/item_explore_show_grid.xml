@@ -34,18 +34,35 @@
         app:layout_constraintTop_toTopOf="@id/iv_cover_grid" />
 
     <!-- 书名：位于封面下方，最多两行 -->
-    <TextView
-        android:id="@+id/tv_name_grid"
+    <LinearLayout
+        android:id="@+id/ll_name_container_grid"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:maxLines="2"
-        android:textColor="@color/primaryText"
-        android:textSize="12sp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/iv_cover_grid" />
+        app:layout_constraintTop_toBottomOf="@id/iv_cover_grid">
+
+        <io.legado.app.ui.widget.image.CircleImageView
+            android:id="@+id/iv_in_bookshelf_dot_grid"
+            android:layout_width="6dp"
+            android:layout_height="6dp"
+            android:layout_marginEnd="3dp"
+            android:scaleType="centerCrop"
+            android:src="@color/md_green_600"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tv_name_grid"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="2"
+            android:textColor="@color/primaryText"
+            android:textSize="12sp" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

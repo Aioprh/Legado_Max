@@ -1072,5 +1072,16 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         set(value) {
             appCtx.putPrefInt(PreferKey.textBoldMode, value)
         }
+
+    /**
+     * 书架状态图标样式
+     * - 0: 新版样式（封面右上角显示图标）
+     * - 1: 经典样式（书名前显示小绿点）
+     */
+    var bookshelfIconStyle: Int
+        get() = appCtx.getPrefString(PreferKey.bookshelfIconStyle)?.toIntOrNull() ?: 0
+        set(value) {
+            appCtx.putPrefString(PreferKey.bookshelfIconStyle, value.toString())
+        }
 }
 

@@ -296,4 +296,7 @@ object PreferKey {
     const val homepageSourceHidden = "homepageSourceHidden"
     /** 是否显示首页tab */
     const val showHomepage = "showHomepage"
+
+    /** 书架状态图标样式：0=新版（图标），1=经典（绿点） */
+    const val bookshelfIconStyle = "bookshelfIconStyle"
 }

@@ -8,6 +8,7 @@
  * - 前 3 名使用特殊样式（主色 + 斜体）
  * - 支持点击和长按交互
  * - 样式对齐 MD3-main 分支设计规范
+ * - 支持新版和经典两种书架状态样式
  */
 package io.legado.app.ui.main.homepage.modules
 
@@ -23,9 +24,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -37,12 +40,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.legado.app.domain.model.BookShelfState
+import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.main.homepage.HomepageBookItemUi
 import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.widget.components.card.GlassCard
@@ -156,26 +161,29 @@ private fun GridRankingItem(
                     .aspectRatio(5f / 7f),
                 cornerRadius = 4.dp
             )
-            val shelfIcon = when (item.shelfState) {
-                BookShelfState.IN_SHELF -> Icons.Default.Check
-                BookShelfState.SAME_NAME_AUTHOR -> Icons.Default.Shuffle
-                else -> null
-            }
-            if (shelfIcon != null) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(2.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(horizontal = 2.dp, vertical = 2.dp)
-                ) {
-                    Icon(
-                        imageVector = shelfIcon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.height(14.dp)
-                    )
+            // 新版样式：显示图标
+            if (AppConfig.bookshelfIconStyle == 0) {
+                val shelfIcon = when (item.shelfState) {
+                    BookShelfState.IN_SHELF -> Icons.Default.Check
+                    BookShelfState.SAME_NAME_AUTHOR -> Icons.Default.Shuffle
+                    else -> null
+                }
+                if (shelfIcon != null) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(2.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(horizontal = 2.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = shelfIcon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.height(14.dp)
+                        )
+                    }
                 }
             }
         }
@@ -197,14 +205,32 @@ private fun GridRankingItem(
                 .padding(start = 4.dp)
                 .weight(1f)
         ) {
-            Text(
-                text = book.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+            // 书名区域
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 经典样式：显示小绿点
+                if (AppConfig.bookshelfIconStyle == 1) {
+                    if (item.shelfState == BookShelfState.IN_SHELF || item.shelfState == BookShelfState.SAME_NAME_AUTHOR) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF4CAF50))
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                    }
+                }
+                Text(
+                    text = book.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
             val subTitle = buildString {
                 append(book.kind?.split(",")?.firstOrNull() ?: "")
                 if (book.author.isNotBlank()) {

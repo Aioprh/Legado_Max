@@ -910,6 +910,10 @@
     <string name="summary">注釋</string>
     <string name="cover_config">封面設定</string>
     <string name="cover_config_summary">通用封面規則及預設封面樣式</string>
+    <string name="bookshelf_icon_style">書架圖標樣式</string>
+    <string name="bookshelf_icon_style_summary">書籍已在書架的提示圖標顯示方式</string>
+    <string name="bookshelf_icon_style_new">新版（封面右上角圖標）</string>
+    <string name="bookshelf_icon_style_classic">經典（書名前小綠點）</string>
     <string name="cover_show_name">顯示書名</string>
     <string name="cover_show_name_summary">封面上顯示書名</string>
     <string name="cover_show_author">顯示作者</string>

@@ -15,6 +15,7 @@ import io.legado.app.databinding.ItemSearchBinding
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.CoverLoader
+import io.legado.app.ui.widget.image.CircleImageView
 import io.legado.app.utils.gone
 import io.legado.app.utils.visible
 
@@ -109,7 +110,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding: ItemExploreShowGridBinding,
         item: SearchBook
     ) {
-        binding.ivInBookshelfGrid.setShelfState(callBack.getBookShelfState(item))
+        val shelfState = callBack.getBookShelfState(item)
+        binding.ivInBookshelfGrid.setShelfState(shelfState)
+        binding.ivInBookshelfDotGrid.setShelfStateDot(shelfState)
         val tagKey = "${item.bookUrl}_$columnCount"
         val lastItemTag = holder.itemView.tag as? String
         if (lastItemTag == tagKey) return
@@ -117,7 +120,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         val spacing = calcColumnSpacing()
         val halfSpacing = spacing / 2
         holder.itemView.setPadding(halfSpacing, halfSpacing, halfSpacing, halfSpacing)
-        val contentWidth = context.resources.displayMetrics.widthPixels / columnCount - spacing
+        val contentWidth = context.resources.displayMetrics.widthPixels / columnCount
         binding.ivCoverGrid.load(item, AppConfig.loadCoverOnlyWifi, overrideWidth = contentWidth, overrideHeight = contentWidth * 4 / 3)
         binding.tvNameGrid.text = item.name
     }
@@ -132,7 +135,9 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding: ItemExploreShowWaterfallBinding,
         item: SearchBook
     ) {
-        binding.ivInBookshelfWaterfall.setShelfState(callBack.getBookShelfState(item))
+        val shelfState = callBack.getBookShelfState(item)
+        binding.ivInBookshelfWaterfall.setShelfState(shelfState)
+        binding.ivInBookshelfDotWaterfall.setShelfStateDot(shelfState)
         binding.tvNameWaterfall.text = item.name
         binding.tvAuthorWaterfall.text = context.getString(R.string.author_show, item.author)
 
@@ -214,9 +219,11 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
     private fun bind(binding: ItemSearchBinding, item: SearchBook) {
         binding.run {
+            val shelfState = callBack.getBookShelfState(item)
+            ivInBookshelf.setShelfState(shelfState)
+            ivInBookshelfDot.setShelfStateDot(shelfState)
             tvName.text = item.name
             tvAuthor.text = context.getString(R.string.author_show, item.author)
-            ivInBookshelf.setShelfState(callBack.getBookShelfState(item))
             if (item.latestChapterTitle.isNullOrEmpty()) {
                 tvLasted.gone()
             } else {
@@ -242,9 +249,11 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding.run {
             bundle.keySet().forEach {
                 when (it) {
-                    "isInBookshelf" -> ivInBookshelf.setShelfState(
-                        callBack.getBookShelfState(item)
-                    )
+                    "isInBookshelf" -> {
+                        val shelfState = callBack.getBookShelfState(item)
+                        ivInBookshelf.setShelfState(shelfState)
+                        ivInBookshelfDot.setShelfStateDot(shelfState)
+                    }
                 }
             }
         }
@@ -272,23 +281,52 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 }
 
 /**
- * 根据书架状态设置 ImageView 的图标和可见性：
+ * 根据书架状态设置 ImageView 的图标和可见性（新版样式）：
  * - IN_SHELF: 显示 Check 图标（已加入书架）
  * - SAME_NAME_AUTHOR: 显示 Shuffle 图标（同名同作者）
  * - NOT_IN_SHELF: 隐藏
+ * 根据配置决定是否显示
  */
 internal fun ImageView.setShelfState(state: BookShelfState) {
-    when (state) {
-        BookShelfState.IN_SHELF -> {
-            setImageResource(R.drawable.ic_check)
-            isVisible = true
+    // 新版样式（图标）仅在配置为0时显示
+    if (AppConfig.bookshelfIconStyle == 0) {
+        when (state) {
+            BookShelfState.IN_SHELF -> {
+                setImageResource(R.drawable.ic_check)
+                isVisible = true
+            }
+            BookShelfState.SAME_NAME_AUTHOR -> {
+                setImageResource(R.drawable.ic_shuffle)
+                isVisible = true
+            }
+            else -> {
+                isVisible = false
+            }
         }
-        BookShelfState.SAME_NAME_AUTHOR -> {
-            setImageResource(R.drawable.ic_shuffle)
-            isVisible = true
+    } else {
+        isVisible = false
+    }
+}
+
+/**
+ * 根据书架状态设置 CircleImageView 的可见性（经典样式）：
+ * - IN_SHELF: 显示小绿点
+ * - SAME_NAME_AUTHOR: 显示小绿点
+ * - NOT_IN_SHELF: 隐藏
+ * 根据配置决定是否显示
+ */
+internal fun CircleImageView.setShelfStateDot(state: BookShelfState) {
+    // 经典样式（小绿点）仅在配置为1时显示
+    if (AppConfig.bookshelfIconStyle == 1) {
+        when (state) {
+            BookShelfState.IN_SHELF, BookShelfState.SAME_NAME_AUTHOR -> {
+                isVisible = true
+            }
+            else -> {
+                isVisible = false
+            }
         }
-        else -> {
-            isVisible = false
-        }
+    } else {
+        isVisible = false
     }
 }

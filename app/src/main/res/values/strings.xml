@@ -1084,6 +1084,10 @@
     <string name="summary">summary</string>
     <string name="cover_config">cover config</string>
     <string name="cover_config_summary">Generic Cover Rules and Default Cover Style</string>
+    <string name="bookshelf_icon_style">Bookshelf icon style</string>
+    <string name="bookshelf_icon_style_summary">Display style for books already on bookshelf</string>
+    <string name="bookshelf_icon_style_new">New (Icon on cover)</string>
+    <string name="bookshelf_icon_style_classic">Classic (Green dot before title)</string>
     <string name="cover_show_name">show name</string>
     <string name="cover_show_name_summary">Book title shown on cover</string>
     <string name="cover_show_author">show author</string>

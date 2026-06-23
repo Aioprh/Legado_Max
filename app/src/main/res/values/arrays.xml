@@ -249,4 +249,14 @@
 		<item>Custom SVG</item>
 	</string-array>
 
+	<string-array name="bookshelf_icon_style_entries">
+		<item>@string/bookshelf_icon_style_new</item>
+		<item>@string/bookshelf_icon_style_classic</item>
+	</string-array>
+
+	<string-array name="bookshelf_icon_style_values">
+		<item>0</item>
+		<item>1</item>
+	</string-array>
+
 </resources>
