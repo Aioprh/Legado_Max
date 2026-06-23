@@ -29,9 +29,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import io.legado.app.R
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.config.AppConfig
@@ -65,6 +67,12 @@ fun BookBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    
+    // 预先获取字符串资源，避免在onClick中调用stringResource
+    val addedToBookshelfMsg = stringResource(R.string.added_to_bookshelf, book?.name ?: "")
+    val alreadyInBookshelfText = stringResource(R.string.already_in_bookshelf)
+    val addToBookshelfText = stringResource(R.string.add_to_bookshelf)
+    val viewDetailsText = stringResource(R.string.view_details)
 
     if (show && book != null) {
         ModalBottomSheet(
@@ -123,7 +131,7 @@ fun BookBottomSheet(
                         // 作者
                         if (book.author.isNotBlank()) {
                             Text(
-                                text = "作者: ${book.author}",
+                                text = stringResource(R.string.author_show, book.author),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -132,14 +140,14 @@ fun BookBottomSheet(
                         // 书架状态提示
                         if (shelfState == BookShelfState.IN_SHELF) {
                             Text(
-                                text = "✓ 已在书架中",
+                                text = "✓ ${stringResource(R.string.already_in_bookshelf)}",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
                             )
                         } else if (shelfState == BookShelfState.SAME_NAME_AUTHOR) {
                             Text(
-                                text = "! 书架中有同名书籍",
+                                text = "! ${stringResource(R.string.same_name_book_in_shelf)}",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
@@ -166,24 +174,24 @@ fun BookBottomSheet(
                     // 分类
                     val kindText = book.kind
                     if (!kindText.isNullOrEmpty()) {
-                        InfoRow(label = "分类", value = kindText)
+                        InfoRow(label = stringResource(R.string.category), value = kindText)
                     }
 
                     // 字数
                     val wordCountText = book.wordCount
                     if (!wordCountText.isNullOrEmpty()) {
-                        InfoRow(label = "字数", value = wordCountText)
+                        InfoRow(label = stringResource(R.string.words), value = wordCountText)
                     }
 
                     // 最新章节
                     val latestChapterText = book.latestChapterTitle
                     if (!latestChapterText.isNullOrEmpty()) {
-                        InfoRow(label = "最新章节", value = latestChapterText)
+                        InfoRow(label = stringResource(R.string.latest_chapter), value = latestChapterText)
                     }
 
                     // 书源
                     if (book.originName.isNotBlank()) {
-                        InfoRow(label = "书源", value = book.originName)
+                        InfoRow(label = stringResource(R.string.book_source), value = book.originName)
                     }
                 }
 
@@ -202,7 +210,7 @@ fun BookBottomSheet(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
-                            text = "简介",
+                            text = stringResource(R.string.intro),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -230,19 +238,20 @@ fun BookBottomSheet(
                     TextButton(
                         onClick = {
                             onAddToShelf(book)
-                            Toast.makeText(context, "已加入书架: ${book.name}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, addedToBookshelfMsg, Toast.LENGTH_SHORT).show()
                             onDismiss()
                         },
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "加入书架",
+                            contentDescription = addToBookshelfText,
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (shelfState == BookShelfState.IN_SHELF) "已在书架" else "加入书架",
+                            text = if (shelfState == BookShelfState.IN_SHELF) alreadyInBookshelfText 
+                                   else addToBookshelfText,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -257,12 +266,12 @@ fun BookBottomSheet(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Info,
-                            contentDescription = "查看详情",
+                            contentDescription = viewDetailsText,
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "查看详情",
+                            text = viewDetailsText,
                             color = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -283,20 +292,23 @@ private fun InfoRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
             text = "$label:",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(60.dp)
+            maxLines = 1,
+            softWrap = false
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            maxLines = Int.MAX_VALUE,
+            softWrap = true
         )
     }
 }

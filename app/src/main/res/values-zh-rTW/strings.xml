@@ -1601,6 +1601,15 @@
     <string name="homepage_infinite_module">無限流模組</string>
     <string name="homepage_loading_categories">正在加載發現分類...</string>
     <string name="homepage_select_category">選擇分類</string>
+    
+    <!-- 書籍底部彈窗 -->
+    <string name="already_in_bookshelf">已在書架中</string>
+    <string name="same_name_book_in_shelf">書架中有同名書籍</string>
+    <string name="category">分類</string>
+    <string name="latest_chapter">最新章節</string>
+    <string name="intro">簡介</string>
+    <string name="view_details">查看詳情</string>
+    <string name="added_to_bookshelf">已加入書架：%s</string>
 
     <!-- 首頁管理字符串 -->
     <string name="homepage_search_source">搜尋書源</string>
