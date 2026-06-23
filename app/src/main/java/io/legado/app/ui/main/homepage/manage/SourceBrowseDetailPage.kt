@@ -80,6 +80,7 @@ import io.legado.app.ui.main.homepage.HomepageManageActions
 import io.legado.app.ui.main.homepage.HomepageModuleManageUi
 import io.legado.app.ui.main.homepage.HomepageViewModel
 import io.legado.app.ui.theme.pageSecondaryTextColor
+import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.ui.widget.components.card.TextCard
 import sh.calvin.reorderable.ReorderableItem
@@ -202,45 +203,51 @@ private fun JoinedModulesTab(
         }
     }
 
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(localModules, key = { it.id }) { module ->
-            ReorderableItem(reorderableState, key = module.id) { isDragging ->
-                ModuleItem(
-                    module = module,
-                    isDragging = isDragging,
-                    onToggle = { actions.onToggleModule(module.id, it) },
-                    onEdit = {
-                        // 构造模块定义对象，传递给编辑回调以打开编辑对话框
-                        onEditModule(
-                            module.id,
-                            ModuleDef(
-                                key = module.moduleKey,
-                                type = module.type,
-                                title = module.title,
-                                args = module.args,
-                                layoutConfig = module.layoutConfig,
-                                url = module.url,
-                                sourceUrl = module.sourceUrl
+    Box(modifier = Modifier.fillMaxWidth()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(localModules, key = { it.id }) { module ->
+                ReorderableItem(reorderableState, key = module.id) { isDragging ->
+                    ModuleItem(
+                        module = module,
+                        isDragging = isDragging,
+                        onToggle = { actions.onToggleModule(module.id, it) },
+                        onEdit = {
+                            // 构造模块定义对象，传递给编辑回调以打开编辑对话框
+                            onEditModule(
+                                module.id,
+                                ModuleDef(
+                                    key = module.moduleKey,
+                                    type = module.type,
+                                    title = module.title,
+                                    args = module.args,
+                                    layoutConfig = module.layoutConfig,
+                                    url = module.url,
+                                    sourceUrl = module.sourceUrl
+                                )
                             )
-                        )
-                    },
-                    onDelete = { actions.onDeleteModule(module.id) },
-                    dragModifier = Modifier
-                        .longPressDraggableHandle(
-                            onDragStarted = {
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                            },
-                            onDragStopped = {
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                            }
-                        )
-                )
+                        },
+                        onDelete = { actions.onDeleteModule(module.id) },
+                        dragModifier = Modifier
+                            .longPressDraggableHandle(
+                                onDragStarted = {
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                },
+                                onDragStopped = {
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                                }
+                            )
+                    )
+                }
             }
         }
+        VerticalScrollbar(
+            state = listState,
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
     }
 }
 

@@ -13,12 +13,14 @@
 package io.legado.app.ui.main.homepage.manage
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -38,6 +40,7 @@ import io.legado.app.R
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.ui.main.homepage.HomepageModuleManageUi
 import io.legado.app.ui.main.homepage.HomepageViewModel
+import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.ui.widget.components.card.TextCard
 
@@ -80,85 +83,93 @@ fun CustomSetAddModulesPage(
                     HomepageViewModel.isInfinite(it.type, it.layoutConfig)
         }
     }
+    val listState = rememberLazyListState()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        groupedModules.forEach { (sourceUrl, modules) ->
-            // 书源分组标题
-            item(key = "header_$sourceUrl") {
-                Text(
-                    text = sourceUrl,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-                )
-            }
-            // 模块列表
-            items(modules, key = { it.id }) { module ->
-                // 通过 sourceUrl + moduleKey 查找目标集中的副本
-                val copyInTargetSet = targetSetModuleMap[module.sourceUrl to module.moduleKey]
-                // 判断该模块是否已在当前集中（副本存在即表示已添加）
-                val isInTargetSet = copyInTargetSet != null
-                // 判断该模块是否为无限流模块
-                val isInfinite = HomepageViewModel.isInfinite(module.type, module.layoutConfig)
-                // 无限流模块若当前集已有无限流模块则禁用（已在当前集中的除外）
-                val isEnabled = !isInfinite || !hasInfiniteModule || isInTargetSet
-                // 根据模块类型 key 获取对应的枚举值，用于显示类型标题
-                val moduleType = HomepageModuleType.fromKey(module.type)
-
-                // 乐观更新状态：用户点击后立即反映，异步操作完成后同步
-                var pendingToggle by remember(module.id) { mutableStateOf<Boolean?>(null) }
-                val effectiveChecked = pendingToggle ?: isInTargetSet
-                // 当实际状态追上乐观状态时，清除待处理标记
-                LaunchedEffect(isInTargetSet, pendingToggle) {
-                    if (pendingToggle != null && isInTargetSet == pendingToggle) {
-                        pendingToggle = null
-                    }
+    Box(modifier = Modifier.fillMaxWidth()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            groupedModules.forEach { (sourceUrl, modules) ->
+                // 书源分组标题
+                item(key = "header_$sourceUrl") {
+                    Text(
+                        text = sourceUrl,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                    )
                 }
+                // 模块列表
+                items(modules, key = { it.id }) { module ->
+                    // 通过 sourceUrl + moduleKey 查找目标集中的副本
+                    val copyInTargetSet = targetSetModuleMap[module.sourceUrl to module.moduleKey]
+                    // 判断该模块是否已在当前集中（副本存在即表示已添加）
+                    val isInTargetSet = copyInTargetSet != null
+                    // 判断该模块是否为无限流模块
+                    val isInfinite = HomepageViewModel.isInfinite(module.type, module.layoutConfig)
+                    // 无限流模块若当前集已有无限流模块则禁用（已在当前集中的除外）
+                    val isEnabled = !isInfinite || !hasInfiniteModule || isInTargetSet
+                    // 根据模块类型 key 获取对应的枚举值，用于显示类型标题
+                    val moduleType = HomepageModuleType.fromKey(module.type)
 
-                GlassCard(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 左侧：模块标题和类型标签
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = module.title.ifBlank { module.originalTitle.ifBlank { stringResource(R.string.homepage_unnamed_module) } },
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            TextCard(
-                                text = stringResource(moduleType.titleRes),
-                                textStyle = MaterialTheme.typography.labelSmall
-                            )
+                    // 乐观更新状态：用户点击后立即反映，异步操作完成后同步
+                    var pendingToggle by remember(module.id) { mutableStateOf<Boolean?>(null) }
+                    val effectiveChecked = pendingToggle ?: isInTargetSet
+                    // 当实际状态追上乐观状态时，清除待处理标记
+                    LaunchedEffect(isInTargetSet, pendingToggle) {
+                        if (pendingToggle != null && isInTargetSet == pendingToggle) {
+                            pendingToggle = null
                         }
-                        // 分配开关：开启表示加入当前集，关闭表示移出当前集
-                        Switch(
-                            checked = effectiveChecked,
-                            enabled = isEnabled,
-                            onCheckedChange = { checked ->
-                                pendingToggle = checked
-                                // 添加时传源模块ID（创建副本），移除时传目标集中副本的ID（删除副本）
-                                val moduleId = if (checked) module.id else copyInTargetSet?.id ?: module.id
-                                onAssignModule(
-                                    moduleId,
-                                    if (checked) targetSetId else null
+                    }
+
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 左侧：模块标题和类型标签
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = module.title.ifBlank { module.originalTitle.ifBlank { stringResource(R.string.homepage_unnamed_module) } },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                TextCard(
+                                    text = stringResource(moduleType.titleRes),
+                                    textStyle = MaterialTheme.typography.labelSmall
                                 )
                             }
-                        )
+                            // 分配开关：开启表示加入当前集，关闭表示移出当前集
+                            Switch(
+                                checked = effectiveChecked,
+                                enabled = isEnabled,
+                                onCheckedChange = { checked ->
+                                    pendingToggle = checked
+                                    // 添加时传源模块ID（创建副本），移除时传目标集中副本的ID（删除副本）
+                                    val moduleId = if (checked) module.id else copyInTargetSet?.id ?: module.id
+                                    onAssignModule(
+                                        moduleId,
+                                        if (checked) targetSetId else null
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
+        VerticalScrollbar(
+            state = listState,
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
     }
 }

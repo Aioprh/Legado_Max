@@ -2,6 +2,7 @@ package io.legado.app.ui.main.homepage.manage
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,6 +41,7 @@ import androidx.compose.ui.zIndex
 import io.legado.app.R
 import io.legado.app.ui.main.homepage.HomepageSourceManageUi
 import io.legado.app.ui.theme.pageSecondaryTextColor
+import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -98,33 +100,39 @@ fun SetListPage(
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f, fill = false),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(localSets, key = { it.sourceUrl }) { set ->
-                ReorderableItem(reorderableState, key = set.sourceUrl) { isDragging ->
-                    SetItem(
-                        set = set,
-                        isDragging = isDragging,
-                        onToggle = { onToggleSet(set.sourceUrl, it) },
-                        onClick = { onSetClick(set.sourceUrl) },
-                        onRename = { onRenameSet(set.sourceUrl) },
-                        onDelete = { onDeleteSet(set.sourceUrl) },
-                        dragModifier = Modifier
-                            .zIndex(if (isDragging) 1f else 0f)
-                            .longPressDraggableHandle(
-                                onDragStarted = {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                },
-                                onDragStopped = {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                }
-                            )
-                    )
+        Box(modifier = Modifier.weight(1f, fill = false)) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(localSets, key = { it.sourceUrl }) { set ->
+                    ReorderableItem(reorderableState, key = set.sourceUrl) { isDragging ->
+                        SetItem(
+                            set = set,
+                            isDragging = isDragging,
+                            onToggle = { onToggleSet(set.sourceUrl, it) },
+                            onClick = { onSetClick(set.sourceUrl) },
+                            onRename = { onRenameSet(set.sourceUrl) },
+                            onDelete = { onDeleteSet(set.sourceUrl) },
+                            dragModifier = Modifier
+                                .zIndex(if (isDragging) 1f else 0f)
+                                .longPressDraggableHandle(
+                                    onDragStarted = {
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                    },
+                                    onDragStopped = {
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                                    }
+                                )
+                        )
+                    }
                 }
             }
+            VerticalScrollbar(
+                state = listState,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
         Row(

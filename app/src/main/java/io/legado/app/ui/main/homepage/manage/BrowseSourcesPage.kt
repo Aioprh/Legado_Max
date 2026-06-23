@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import io.legado.app.R
 import io.legado.app.ui.main.homepage.HomepageSourceManageUi
 import io.legado.app.ui.theme.pageSecondaryTextColor
+import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
 
 /**
@@ -65,6 +67,7 @@ fun BrowseSourcesPage(
     // 分组筛选状态
     var groupFilter by remember { mutableStateOf<String?>(null) }
     var showGroupMenu by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
 
     // 提取所有分组（书源的 bookSourceGroup 字段，支持逗号分隔的多分组）
     val allGroups = remember(sources) {
@@ -162,46 +165,53 @@ fun BrowseSourcesPage(
         }
 
         // 书源列表
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(filteredSources) { source ->
-                GlassCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { onSourceClick(source.sourceUrl) }
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+        Box(modifier = Modifier.fillMaxWidth()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(filteredSources) { source ->
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = { onSourceClick(source.sourceUrl) }
                     ) {
-                        // 书源名称和模块数量
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = source.sourceName,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = stringResource(R.string.homepage_module_count, source.moduleCount),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = pageSecondaryTextColor()
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 书源名称和模块数量
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = source.sourceName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = stringResource(R.string.homepage_module_count, source.moduleCount),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = pageSecondaryTextColor()
+                                )
+                            }
+                            // 右侧箭头图标
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = stringResource(R.string.homepage_view),
+                                tint = pageSecondaryTextColor()
                             )
                         }
-                        // 右侧箭头图标
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = stringResource(R.string.homepage_view),
-                            tint = pageSecondaryTextColor()
-                        )
                     }
                 }
             }
+            VerticalScrollbar(
+                state = listState,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
         }
     }
 }

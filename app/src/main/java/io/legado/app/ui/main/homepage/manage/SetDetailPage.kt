@@ -2,6 +2,7 @@ package io.legado.app.ui.main.homepage.manage
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -43,6 +44,7 @@ import io.legado.app.domain.model.ModuleDef
 import io.legado.app.ui.main.homepage.HomepageModuleManageUi
 import io.legado.app.ui.main.homepage.HomepageViewModel
 import io.legado.app.ui.theme.pageSecondaryTextColor
+import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.ui.widget.components.card.TextCard
 import sh.calvin.reorderable.ReorderableItem
@@ -118,83 +120,89 @@ fun SetDetailPage(
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f, fill = false),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // 标准模块（可排序）
-            items(standardModules, key = { it.id }) { module ->
-                ReorderableItem(reorderableState, key = module.id) { isDragging ->
-                    ModuleItem(
-                        module = module,
-                        isDragging = isDragging,
-                        onToggle = { onToggleModule(module.id, it) },
-                        onEdit = {
-                            // 构造模块定义对象，传递给编辑回调
-                            onEditModule(
-                                module.id,
-                                ModuleDef(
-                                    key = module.moduleKey,
-                                    type = module.type,
-                                    title = module.title,
-                                    args = module.args,
-                                    layoutConfig = module.layoutConfig,
-                                    url = module.url,
-                                    sourceUrl = module.sourceUrl
+        Box(modifier = Modifier.weight(1f, fill = false)) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // 标准模块（可排序）
+                items(standardModules, key = { it.id }) { module ->
+                    ReorderableItem(reorderableState, key = module.id) { isDragging ->
+                        ModuleItem(
+                            module = module,
+                            isDragging = isDragging,
+                            onToggle = { onToggleModule(module.id, it) },
+                            onEdit = {
+                                // 构造模块定义对象，传递给编辑回调
+                                onEditModule(
+                                    module.id,
+                                    ModuleDef(
+                                        key = module.moduleKey,
+                                        type = module.type,
+                                        title = module.title,
+                                        args = module.args,
+                                        layoutConfig = module.layoutConfig,
+                                        url = module.url,
+                                        sourceUrl = module.sourceUrl
+                                    )
                                 )
-                            )
-                        },
-                        onDelete = { onDeleteModule(module.id) },
-                        dragModifier = Modifier
-                            .zIndex(if (isDragging) 1f else 0f)
-                            .longPressDraggableHandle(
-                                onDragStarted = {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                },
-                                onDragStopped = {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                }
-                            )
-                    )
+                            },
+                            onDelete = { onDeleteModule(module.id) },
+                            dragModifier = Modifier
+                                .zIndex(if (isDragging) 1f else 0f)
+                                .longPressDraggableHandle(
+                                    onDragStarted = {
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                    },
+                                    onDragStopped = {
+                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                                    }
+                                )
+                        )
+                    }
+                }
+                // 无限流模块（固定底部，不可排序）
+                if (infiniteModules.isNotEmpty()) {
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.homepage_infinite_module),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = pageSecondaryTextColor(),
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
+                    items(infiniteModules, key = { it.id }) { module ->
+                        ModuleItem(
+                            module = module,
+                            isDragging = false,
+                            onToggle = { onToggleModule(module.id, it) },
+                            onEdit = {
+                                // 构造模块定义对象，传递给编辑回调
+                                onEditModule(
+                                    module.id,
+                                    ModuleDef(
+                                        key = module.moduleKey,
+                                        type = module.type,
+                                        title = module.title,
+                                        args = module.args,
+                                        layoutConfig = module.layoutConfig,
+                                        url = module.url,
+                                        sourceUrl = module.sourceUrl
+                                    )
+                                )
+                            },
+                            onDelete = { onDeleteModule(module.id) },
+                            dragModifier = Modifier
+                        )
+                    }
                 }
             }
-            // 无限流模块（固定底部，不可排序）
-            if (infiniteModules.isNotEmpty()) {
-                item {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.homepage_infinite_module),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = pageSecondaryTextColor(),
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
-                }
-                items(infiniteModules, key = { it.id }) { module ->
-                    ModuleItem(
-                        module = module,
-                        isDragging = false,
-                        onToggle = { onToggleModule(module.id, it) },
-                        onEdit = {
-                            // 构造模块定义对象，传递给编辑回调
-                            onEditModule(
-                                module.id,
-                                ModuleDef(
-                                    key = module.moduleKey,
-                                    type = module.type,
-                                    title = module.title,
-                                    args = module.args,
-                                    layoutConfig = module.layoutConfig,
-                                    url = module.url,
-                                    sourceUrl = module.sourceUrl
-                                )
-                            )
-                        },
-                        onDelete = { onDeleteModule(module.id) },
-                        dragModifier = Modifier
-                    )
-                }
-            }
+            VerticalScrollbar(
+                state = listState,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
         // 添加模块按钮
