@@ -934,15 +934,40 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
+    /**
+     * 删除自定义集或书源集。
+     *
+     * - 自定义集：删除集及其包含的模块
+     * - 书源集（src_ 前缀）：删除集、书源集中的模块，以及所有自定义集中来自该书源的模块副本
+     */
     fun deleteCustomSet(id: String) {
         viewModelScope.launch {
-            val moduleIds = allModulesCache.value
-                .filter { it.customSetId == id }
-                .map { it.id }
-            gateway.deleteCustomSet(id)
-            moduleIds.forEach { mid ->
-                _moduleContentStates.update { it - mid }
-                loadJobs.remove(mid)?.cancel()
+            // 判断是否为书源集（src_ 前缀）
+            val isSourceSet = id.startsWith("src_")
+            
+            if (isSourceSet) {
+                // 书源集：提取书源URL，删除所有来自该书源的模块
+                val sourceUrl = id.removePrefix("src_")
+                val moduleIds = allModulesCache.value
+                    .filter { it.sourceUrl == sourceUrl }
+                    .map { it.id }
+                gateway.deleteCustomSet(id)
+                // 删除所有来自该书源的模块（包括书源集和自定义集中的副本）
+                moduleIds.forEach { mid -> gateway.delete(mid) }
+                moduleIds.forEach { mid ->
+                    _moduleContentStates.update { it - mid }
+                    loadJobs.remove(mid)?.cancel()
+                }
+            } else {
+                // 自定义集：只删除属于该集的模块
+                val moduleIds = allModulesCache.value
+                    .filter { it.customSetId == id }
+                    .map { it.id }
+                gateway.deleteCustomSet(id)
+                moduleIds.forEach { mid ->
+                    _moduleContentStates.update { it - mid }
+                    loadJobs.remove(mid)?.cancel()
+                }
             }
             notifyConfigChanged()
         }
