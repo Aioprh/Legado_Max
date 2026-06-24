@@ -45,6 +45,7 @@ import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.main.homepage.HomepageBookItemUi
+import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.utils.StringUtils
 
@@ -132,7 +133,7 @@ private fun RankingItem(
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Black,
             fontStyle = if (rank <= 3) FontStyle.Italic else FontStyle.Normal,
-            color = if (rank <= 3) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (rank <= 3) pageAccentColor() else MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .width(42.dp)
