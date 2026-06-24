@@ -1997,7 +1997,7 @@
     
     <!-- 书籍底部弹窗 -->
     <string name="already_in_bookshelf">已在书架中</string>
-    <string name="same_name_book_in_shelf">书架中有同名书籍</string>
+    <string name="same_name_book_in_shelf">书架里有同名书籍，点击加入书架会覆盖当前版本</string>
     <string name="category">分类</string>
     <string name="latest_chapter">最新章节</string>
     <string name="intro">简介</string>

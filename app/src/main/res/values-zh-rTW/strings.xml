@@ -1604,7 +1604,7 @@
     
     <!-- 書籍底部彈窗 -->
     <string name="already_in_bookshelf">已在書架中</string>
-    <string name="same_name_book_in_shelf">書架中有同名書籍</string>
+    <string name="same_name_book_in_shelf">書架裡有同名書籍，點擊加入書架會覆蓋當前版本</string>
     <string name="category">分類</string>
     <string name="latest_chapter">最新章節</string>
     <string name="intro">簡介</string>

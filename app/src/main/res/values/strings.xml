@@ -2011,7 +2011,7 @@
     
     <!-- Book Bottom Sheet -->
     <string name="already_in_bookshelf">Already in Bookshelf</string>
-    <string name="same_name_book_in_shelf">Same name book in Bookshelf</string>
+    <string name="same_name_book_in_shelf">Same name book in Bookshelf, clicking Add to Bookshelf will overwrite the current version</string>
     <string name="category">Category</string>
     <string name="latest_chapter">Latest Chapter</string>
     <string name="intro">Intro</string>

@@ -2,9 +2,12 @@ package io.legado.app.ui.widget.components
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,6 +41,7 @@ import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.widget.image.CoverImageView
+import io.legado.app.utils.splitNotBlank
 
 /**
  * 书籍底部弹窗
@@ -142,14 +146,14 @@ fun BookBottomSheet(
                             Text(
                                 text = "✓ ${stringResource(R.string.already_in_bookshelf)}",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium
                             )
                         } else if (shelfState == BookShelfState.SAME_NAME_AUTHOR) {
                             Text(
                                 text = "! ${stringResource(R.string.same_name_book_in_shelf)}",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -171,10 +175,10 @@ fun BookBottomSheet(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // 分类
+                    // 分类（带外框）
                     val kindText = book.kind
                     if (!kindText.isNullOrEmpty()) {
-                        InfoRow(label = stringResource(R.string.category), value = kindText)
+                        CategoryRow(label = stringResource(R.string.category), value = kindText)
                     }
 
                     // 字数
@@ -310,5 +314,60 @@ private fun InfoRow(
             maxLines = Int.MAX_VALUE,
             softWrap = true
         )
+    }
+}
+
+/**
+ * 分类行组件（带外框）
+ * 显示分类标签和值，每个分类值单独有外框样式
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CategoryRow(
+    label: String,
+    value: String
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        // 标签
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            softWrap = false
+        )
+        // 分类值（每个单独有外框）
+        // 使用 splitNotBlank 方法分隔分类值（与书架标签一致，使用逗号和换行符）
+        val categories = value.splitNotBlank(",", "\n")
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            for (category in categories) {
+                Text(
+                    text = category,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .border(
+                            width = 0.5.dp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    maxLines = Int.MAX_VALUE,
+                    softWrap = true
+                )
+            }
+        }
     }
 }
