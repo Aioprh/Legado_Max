@@ -683,6 +683,8 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
                         showDialogFragment(PhotoDialog(source))
                     }
                 )
+                // 切换文档时重置滚动位置到顶部
+                binding.textView.scrollTo(0, 0)
             }
         }
     }
