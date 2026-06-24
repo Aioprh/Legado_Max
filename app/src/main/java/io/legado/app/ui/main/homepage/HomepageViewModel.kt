@@ -257,8 +257,11 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
      *
      * 使用 customSetsSync（同步读取）替代 customSetsFlow（异步 Room Flow），
      * 确保拖动排序后集列表能即时反映最新顺序，解决异步发射延迟问题。
+     * 
+     * 将 _configVersion 纳入 combine，确保 hiddenSetUrls 变化时触发重算，
+     * 解决开关切换后 isSelected 状态不更新的问题。
      */
-    val setsFlow = combine(customSetsSync, allModulesCache) { sets, modules ->
+    val setsFlow = combine(customSetsSync, allModulesCache, _configVersion) { sets, modules, _ ->
         val hidden = hiddenSetUrls
         sets.map { cs ->
             // 书源集（src_ 前缀）使用原始 ID 作为 URL，自定义集使用 custom:// 前缀
