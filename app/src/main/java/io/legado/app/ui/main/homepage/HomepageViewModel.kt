@@ -66,6 +66,18 @@ import java.util.concurrent.ConcurrentHashMap
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
+    /**
+     * 模块加载参数封装类
+     * 用于 combine 操作的参数传递
+     */
+    private data class ModuleLoadParams(
+        val modules: List<HomepageModuleUi>,
+        val layout: Int,
+        val preload: Int,
+        val sets: List<HomepageSourceManageUi>,
+        val tabIndex: Int
+    )
+
     companion object {
         private const val CUSTOM_SET_URL_PREFIX = "custom://"
         private const val HOMEPAGE_DEFAULT_GRID_ROWS = 2
@@ -131,6 +143,11 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     private val _moduleContentStates = MutableStateFlow<Map<String, ModuleLoadState>>(emptyMap())
     private val _bookSourcesCache = MutableStateFlow<Map<String, BookSource>>(emptyMap())
     private val _layoutConfigCache = MutableStateFlow<Map<String, Map<String, String>>>(emptyMap())
+    
+    /** 当前选中的书源集Tab索引（用于分源Tab模式下的预加载控制） */
+    private val _currentTabIndex = MutableStateFlow(0)
+    /** 当前选中的书源集列表（用于分源Tab模式下的预加载控制） */
+    private val _currentSets = MutableStateFlow<List<HomepageSourceManageUi>>(emptyList())
 
     private val localModulesFlow = gateway.flowEnabled()
     val allModulesCache = gateway.flowAll().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -301,6 +318,11 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         .map { HomepageConfig.homepageLayoutMode }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomepageConfig.homepageLayoutMode)
 
+    /** 首页预加载模式（0: 仅当前集, 1: 当前集+相邻集），响应式跟随配置变化 */
+    val preloadMode: StateFlow<Int> = _configVersion
+        .map { HomepageConfig.homepagePreload }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HomepageConfig.homepagePreload)
+
     val manageStateFlow = combine(
         setsFlow,
         browseSourcesFlow,
@@ -377,12 +399,32 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }
 
         // Auto-load modules when they appear in Loading state
+        // 根据预加载设置过滤要加载的模块
+        // 将 _currentSets 和 _currentTabIndex 纳入 combine，确保Tab切换时触发重新加载
         viewModelScope.launch {
-            uiState.map { it.modules }.collect { modules ->
-                modules.forEach { ui ->
+            combine(
+                uiState.map { it.modules },
+                layoutMode,
+                preloadMode,
+                _currentSets,
+                _currentTabIndex
+            ) { modules, layout, preload, sets, tabIndex ->
+                ModuleLoadParams(modules, layout, preload, sets, tabIndex)
+            }.collect { params ->
+                // 计算应该加载的模块ID集合
+                val shouldLoadIds = computeShouldLoadModuleIds(
+                    params.modules, 
+                    params.layout, 
+                    params.preload
+                )
+                
+                params.modules.forEach { ui ->
                     if (ui.state is ModuleLoadState.Loading && loadJobs[ui.globalId]?.isActive != true) {
-                        val module = gateway.getById(ui.globalId)
-                        if (module != null) loadModule(module)
+                        // 只加载应该加载的模块
+                        if (ui.globalId in shouldLoadIds) {
+                            val module = gateway.getById(ui.globalId)
+                            if (module != null) loadModule(module)
+                        }
                     }
                 }
             }
@@ -676,6 +718,72 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
+    /**
+     * 计算应该加载的模块ID集合
+     *
+     * 根据布局模式和预加载设置，确定哪些模块应该被加载：
+     * - 混合列表模式（layoutMode == 0）：加载所有模块
+     * - 分源Tab模式（layoutMode == 1）：
+     *   - 预加载关闭（preloadMode == 0）：只加载当前书源集的模块
+     *   - 预加载开启（preloadMode == 1）：加载当前书源集 + 相邻书源集的模块
+     *
+     * @param modules 所有模块列表
+     * @param layoutMode 布局模式
+     * @param preloadMode 预加载模式
+     * @return 应该加载的模块ID集合
+     */
+    private fun computeShouldLoadModuleIds(
+        modules: List<HomepageModuleUi>,
+        layoutMode: Int,
+        preloadMode: Int
+    ): Set<String> {
+        // 混合列表模式：加载所有模块
+        if (layoutMode == 0) {
+            return modules.map { it.globalId }.toSet()
+        }
+        
+        // 分源Tab模式：根据预加载设置过滤
+        val currentSets = _currentSets.value
+        val currentTabIndex = _currentTabIndex.value
+        
+        if (currentSets.isEmpty()) {
+            // 没有集信息时，不加载任何模块，等待 SourceTabLayout 更新后再加载
+            return emptySet()
+        }
+        
+        // 计算要加载的集索引范围
+        val indicesToLoad = if (preloadMode == 1) {
+            // 预加载开启：当前集 + 相邻集（前后各一个）
+            val start = (currentTabIndex - 1).coerceAtLeast(0)
+            val end = (currentTabIndex + 1).coerceAtMost(currentSets.lastIndex)
+            (start..end).toList()
+        } else {
+            // 预加载关闭：仅当前集
+            listOf(currentTabIndex.coerceIn(0, currentSets.lastIndex))
+        }
+        
+        // 获取要加载的集的 sourceUrl
+        val setUrlsToLoad = indicesToLoad.mapNotNull { index ->
+            currentSets.getOrNull(index)?.sourceUrl
+        }
+        
+        // 过滤出属于这些集的模块
+        return modules.filter { module ->
+            // 检查模块是否属于要加载的集
+            // 自定义集：module.customSetId 对应 setUrl（去掉 custom:// 前缀）
+            // 书源集：module.customSetId == setUrl
+            setUrlsToLoad.any { setUrl ->
+                if (setUrl.startsWith("custom://")) {
+                    val setId = customSetIdFromUrl(setUrl)
+                    module.customSetId == setId
+                } else {
+                    // 书源集 URL 格式为 src_<书源URL>
+                    module.customSetId == setUrl
+                }
+            }
+        }.map { it.globalId }.toSet()
+    }
+
     // ==================== Management Methods ====================
 
     fun toggleManageMode() {
@@ -686,6 +794,23 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     fun setLayoutMode(mode: Int) {
         HomepageConfig.homepageLayoutMode = mode
         notifyConfigChanged()
+    }
+
+    /** 设置首页预加载模式（0: 仅当前集, 1: 当前集+相邻集） */
+    fun setPreloadMode(mode: Int) {
+        HomepageConfig.homepagePreload = mode
+        notifyConfigChanged()
+    }
+
+    /**
+     * 更新当前选中的书源集Tab索引和集列表（用于分源Tab模式下的预加载控制）
+     *
+     * @param tabIndex 当前选中的Tab索引
+     * @param sets 当前显示的书源集列表（已选中且有模块的集）
+     */
+    fun updateCurrentTab(tabIndex: Int, sets: List<HomepageSourceManageUi>) {
+        _currentTabIndex.value = tabIndex
+        _currentSets.value = sets
     }
 
     private fun notifyConfigChanged() {

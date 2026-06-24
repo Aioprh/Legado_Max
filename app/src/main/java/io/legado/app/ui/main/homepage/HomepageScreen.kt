@@ -16,6 +16,8 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.MoreVert
@@ -105,6 +107,7 @@ fun HomepageScreen(
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showLayoutMenu by remember { mutableStateOf(false) }
     val layoutMode by viewModel.layoutMode.collectAsStateWithLifecycle()
+    val preloadMode by viewModel.preloadMode.collectAsStateWithLifecycle()
 
     // 书籍底部弹窗状态
     var showBookSheet by remember { mutableStateOf(false) }
@@ -183,6 +186,28 @@ fun HomepageScreen(
                                     showLayoutMenu = true
                                 }
                             )
+                            // 预加载开关（仅在分源Tab模式下显示）
+                            if (layoutMode == 1) {
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            text = stringResource(R.string.homepage_preload),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    },
+                                    onClick = {
+                                        viewModel.setPreloadMode(if (preloadMode == 0) 1 else 0)
+                                        showOverflowMenu = false
+                                    },
+                                    trailingIcon = {
+                                        Icon(
+                                            imageVector = if (preloadMode == 1) Icons.Default.CheckBox else Icons.Default.CheckBoxOutlineBlank,
+                                            contentDescription = null,
+                                            tint = if (preloadMode == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                        )
+                                    }
+                                )
+                            }
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.homepage_help)) },
                                 onClick = {
@@ -351,9 +376,16 @@ private fun SourceTabLayout(
     var selectedTabIndex by remember { mutableStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
 
-    // 同步 pagerState 和 selectedTabIndex
-    LaunchedEffect(pagerState.currentPage) {
-        selectedTabIndex = pagerState.currentPage
+    // 同步 pagerState.settledPage 和 selectedTabIndex
+    // 使用 settledPage 而不是 currentPage，确保只有页面稳定后才触发加载
+    LaunchedEffect(pagerState.settledPage) {
+        selectedTabIndex = pagerState.settledPage
+    }
+
+    // 更新 ViewModel 中的当前Tab索引和集列表（用于预加载控制）
+    // 使用 settledPage 确保只有页面稳定后才触发加载
+    LaunchedEffect(pagerState.settledPage, selectedSets) {
+        viewModel.updateCurrentTab(pagerState.settledPage, selectedSets)
     }
 
     // 确保 selectedTabIndex 不越界

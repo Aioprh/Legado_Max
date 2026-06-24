@@ -294,6 +294,8 @@ object PreferKey {
     const val homepageLayoutMode = "homepageLayoutMode"
     /** 首页隐藏书源列表JSON */
     const val homepageSourceHidden = "homepageSourceHidden"
+    /** 首页预加载模式：0=仅当前集，1=当前集+相邻集 */
+    const val homepagePreload = "homepagePreload"
     /** 是否显示首页tab */
     const val showHomepage = "showHomepage"
 

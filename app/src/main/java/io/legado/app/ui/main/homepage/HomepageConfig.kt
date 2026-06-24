@@ -41,4 +41,16 @@ object HomepageConfig {
     var homepageSourceHidden: String
         get() = appCtx.defaultSharedPreferences.getString(PreferKey.homepageSourceHidden, "") ?: ""
         set(value) = appCtx.defaultSharedPreferences.edit().putString(PreferKey.homepageSourceHidden, value).apply()
+
+    /**
+     * 首页预加载模式
+     *
+     * 0 = 仅加载当前书源集的模块（默认）
+     * 1 = 加载当前书源集 + 相邻书源集（前后各一个）的模块
+     *
+     * 仅在分源Tab布局模式下生效。
+     */
+    var homepagePreload: Int
+        get() = appCtx.defaultSharedPreferences.getInt(PreferKey.homepagePreload, 0)
+        set(value) = appCtx.defaultSharedPreferences.edit().putInt(PreferKey.homepagePreload, value).apply()
 }
