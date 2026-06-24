@@ -48,11 +48,11 @@ data class ValidationResult(
 }
 
 object BackupFileValidator {
-    
+
     private const val LARGE_FILE_THRESHOLD = 1024 * 1024L
-    
+
     fun isLargeFile(file: File): Boolean = file.length() > LARGE_FILE_THRESHOLD
-    
+
     suspend fun validateFiles(
         path: String,
         fileNames: List<String>,
@@ -61,7 +61,7 @@ object BackupFileValidator {
         val results = mutableListOf<ValidationResult>()
         val largeFiles = mutableListOf<String>()
         val smallFiles = mutableListOf<String>()
-        
+
         fileNames.forEach { fileName ->
             val file = File(path, fileName)
             if (file.exists()) {
@@ -72,7 +72,7 @@ object BackupFileValidator {
                 }
             }
         }
-        
+
         withContext(Dispatchers.IO) {
             coroutineScope {
                 smallFiles.map { fileName ->
@@ -87,7 +87,7 @@ object BackupFileValidator {
                     results.addAll(it)
                 }
             }
-            
+
             for (fileName in largeFiles) {
                 val result = validateFile(path, fileName)
                 withContext(Dispatchers.Main) {
@@ -96,10 +96,10 @@ object BackupFileValidator {
                 results.add(result)
             }
         }
-        
+
         return results
     }
-    
+
     suspend fun validateFile(path: String, fileName: String): ValidationResult {
         return withContext(Dispatchers.IO) {
             try {
@@ -112,7 +112,7 @@ object BackupFileValidator {
                         details = "备份文件中找不到 $fileName"
                     )
                 }
-                
+
                 if (file.isDirectory) {
                     return@withContext ValidationResult(
                         fileName = fileName,
@@ -129,7 +129,7 @@ object BackupFileValidator {
                         details = "$fileName 文件大小为 0 字节"
                     )
                 }
-                
+
                 when {
                     fileName.endsWith(".json") -> validateJsonFile(file, fileName)
                     fileName.endsWith(".xml") -> validateXmlFile(file, fileName)
@@ -151,7 +151,7 @@ object BackupFileValidator {
             }
         }
     }
-    
+
     private fun validateJsonFile(file: File, fileName: String): ValidationResult {
         return try {
             val jsonText = file.readText()
@@ -160,7 +160,14 @@ object BackupFileValidator {
                 return validateJsonObjectFile(fileName, jsonText)
             }
 
-            if (!jsonText.isJsonArray()) {
+            // servers.json 可能被加密存储，需要先尝试解密
+            var actualJsonText = jsonText
+            if (fileName == "servers.json" && !jsonText.isJsonArray()) {
+                val aes = BackupAES()
+                actualJsonText = aes.runCatching { decryptStr(jsonText) }.getOrDefault(jsonText)
+            }
+
+            if (!actualJsonText.isJsonArray()) {
                 return ValidationResult(
                     fileName = fileName,
                     state = ValidationState.ERROR,
@@ -168,12 +175,12 @@ object BackupFileValidator {
                     details = "$fileName 不是有效的 JSON 数组格式"
                 )
             }
-            
-            val structureResult = validateDataStructure(fileName, jsonText)
+
+            val structureResult = validateDataStructure(fileName, actualJsonText)
             if (structureResult.state != ValidationState.VALID) {
                 return structureResult
             }
-            
+
             ValidationResult(
                 fileName = fileName,
                 state = ValidationState.VALID,
@@ -197,47 +204,59 @@ object BackupFileValidator {
                 return ValidationResult(
                     fileName = fileName,
                     state = ValidationState.WARNING,
-                    message = "缂哄皯蹇呴渶瀛楁",
-                    details = "$fileName 缂哄皯 rules 瀛楁"
+                    message = "缺少必需字段",
+                    details = "$fileName 缺少 rules 字段"
                 )
             }
             ValidationResult(
                 fileName = fileName,
                 state = ValidationState.VALID,
-                message = "鏍煎紡姝ｇ‘"
+                message = "格式正确"
             )
         } catch (e: Exception) {
             ValidationResult(
                 fileName = fileName,
                 state = ValidationState.ERROR,
-                message = "JSON 瑙ｆ瀽澶辫触",
-                details = "瑙ｆ瀽 $fileName 鏃跺嚭閿? ${e.message}",
+                message = "JSON 解析失败",
+                details = "解析 $fileName 时出错: ${e.message}",
                 exception = e
             )
         }
     }
-    
+
     private fun validateXmlFile(file: File, fileName: String): ValidationResult {
         return try {
             val inputStream = file.inputStream()
             inputStream.use {
                 val parser = Xml.newPullParser()
                 parser.setInput(it, "utf-8")
-                
+
                 var event = parser.eventType
                 var hasValidTags = false
-                
+
+                // SharedPreferences XML 格式的有效标签类型
+                val validPrefTags = setOf("string", "int", "long", "float", "boolean", "set")
+
                 while (event != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
                     if (event == org.xmlpull.v1.XmlPullParser.START_TAG) {
-                        val name = parser.getAttributeValue(null, "name")
-                        if (!name.isNullOrBlank()) {
-                            hasValidTags = true
-                            break
+                        // 对于 videoConfig.xml（SharedPreferences 格式），检查是否有有效的配置项标签
+                        if (fileName == "videoConfig.xml" || fileName == "config.xml") {
+                            if (parser.name in validPrefTags) {
+                                hasValidTags = true
+                                break
+                            }
+                        } else {
+                            // 其他 XML 文件检查是否有 name 属性
+                            val name = parser.getAttributeValue(null, "name")
+                            if (!name.isNullOrBlank()) {
+                                hasValidTags = true
+                                break
+                            }
                         }
                     }
                     event = parser.next()
                 }
-                
+
                 if (!hasValidTags) {
                     return ValidationResult(
                         fileName = fileName,
@@ -246,7 +265,7 @@ object BackupFileValidator {
                         details = "$fileName 缺少有效的配置项"
                     )
                 }
-                
+
                 ValidationResult(
                     fileName = fileName,
                     state = ValidationState.VALID,
@@ -263,13 +282,13 @@ object BackupFileValidator {
             )
         }
     }
-    
+
     private fun validateDataStructure(fileName: String, jsonText: String): ValidationResult {
         return try {
             when (fileName) {
                 "bookshelf.json" -> validateEntityStructure<Book>(jsonText, listOf("name", "author"))
                 "bookmark.json" -> validateEntityStructure<Bookmark>(jsonText, listOf("bookName", "chapterPos"))
-                "bookGroup.json" -> validateEntityStructure<BookGroup>(jsonText, listOf("name"))
+                "bookGroup.json" -> validateEntityStructure<BookGroup>(jsonText, listOf("groupName"))
                 "bookSource.json" -> validateEntityStructure<BookSource>(jsonText, listOf("bookSourceUrl", "bookSourceName"))
                 "rssSources.json" -> validateEntityStructure<RssSource>(jsonText, listOf("sourceUrl", "sourceName"))
                 "rssStar.json" -> validateEntityStructure<RssStar>(jsonText, listOf("origin"))
@@ -279,7 +298,7 @@ object BackupFileValidator {
                 "searchHistory.json" -> validateEntityStructure<SearchKeyword>(jsonText, listOf("word"))
                 "txtTocRule.json" -> validateEntityStructure<TxtTocRule>(jsonText, listOf("name"))
                 "httpTTS.json" -> validateEntityStructure<HttpTTS>(jsonText, listOf("name"))
-                "keyboardAssists.json" -> validateEntityStructure<KeyboardAssist>(jsonText, listOf("name"))
+                "keyboardAssists.json" -> validateEntityStructure<KeyboardAssist>(jsonText, listOf("key"))
                 "dictRule.json" -> validateEntityStructure<DictRule>(jsonText, listOf("name"))
                 "servers.json" -> validateEntityStructure<Server>(jsonText, listOf("name"))
                 else -> ValidationResult(fileName, ValidationState.VALID, "格式正确")
@@ -294,7 +313,7 @@ object BackupFileValidator {
             )
         }
     }
-    
+
     private inline fun <reified T> validateEntityStructure(
         jsonText: String,
         requiredFields: List<String>
@@ -309,7 +328,7 @@ object BackupFileValidator {
                     details = "JSON 数组为空，没有数据需要验证"
                 )
             }
-            
+
             val firstItem = jsonArray.optJSONObject(0)
             if (firstItem == null) {
                 return ValidationResult(
@@ -319,14 +338,14 @@ object BackupFileValidator {
                     details = "第一条数据不是有效的 JSON 对象"
                 )
             }
-            
+
             val missingFields = mutableListOf<String>()
             requiredFields.forEach { field ->
                 if (!firstItem.has(field) || firstItem.isNull(field)) {
                     missingFields.add(field)
                 }
             }
-            
+
             if (missingFields.isNotEmpty()) {
                 ValidationResult(
                     fileName = "",
