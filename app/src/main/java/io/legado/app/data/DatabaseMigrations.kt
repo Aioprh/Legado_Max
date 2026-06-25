@@ -658,12 +658,23 @@ object DatabaseMigrations {
                 """.trimIndent()
             )
             // book_sources 表新增 homepageModules 列
-            // 检查列是否已存在，避免重复添加导致迁移失败
-            val cursor = db.query("SELECT * FROM pragma_table_info('book_sources') WHERE name='homepageModules'")
-            val hasHomepageModules = cursor.count > 0
-            cursor.close()
+            // 使用 PRAGMA table_info 检查列是否已存在，避免在旧版本 SQLite 上因重复添加导致迁移失败
+            var hasHomepageModules = false
+            try {
+                db.query("SELECT name FROM pragma_table_info('book_sources') WHERE name='homepageModules'").use { cursor ->
+                    hasHomepageModules = cursor.moveToFirst()
+                }
+            } catch (_: Exception) {
+                // 如果 PRAGMA 查询失败（极老的 SQLite 版本），尝试直接 ALTER，
+                // 让 SQLite 自身的 "duplicate column name" 错误来判断
+            }
             if (!hasHomepageModules) {
-                db.execSQL("ALTER TABLE book_sources ADD COLUMN homepageModules TEXT DEFAULT ''")
+                try {
+                    db.execSQL("ALTER TABLE book_sources ADD COLUMN homepageModules TEXT DEFAULT ''")
+                } catch (e: Exception) {
+                    // 列可能已存在（多进程并发迁移等极端场景），忽略错误继续
+                    android.util.Log.e("DatabaseMigrations", "99→100: 添加 homepageModules 列失败", e)
+                }
             }
         }
     }

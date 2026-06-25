@@ -210,87 +210,84 @@ abstract class AppDatabase : RoomDatabase() {
             }
 
             override fun onOpen(db: SupportSQLiteDatabase) {
-                @Language("sql")
-                val insertBookGroupAllSql = """
-                    insert into book_groups(groupId, groupName, 'order', show) 
-                    select ${BookGroup.IdAll}, '全部', -10, 1
-                    where not exists (select * from book_groups where groupId = ${BookGroup.IdAll})
-                """.trimIndent()
-                db.execSQL(insertBookGroupAllSql)
-                @Language("sql")
-                val insertBookGroupLocalSql = """
-                    insert into book_groups(groupId, groupName, 'order', enableRefresh, show) 
-                    select ${BookGroup.IdLocal}, '本地', -9, 0, 1
-                    where not exists (select * from book_groups where groupId = ${BookGroup.IdLocal})
-                """.trimIndent()
-                db.execSQL(insertBookGroupLocalSql)
-                @Language("sql")
-                val insertBookGroupMusicSql = """
-                    insert into book_groups(groupId, groupName, 'order', show) 
-                    select ${BookGroup.IdAudio}, '音频', -8, 1
-                    where not exists (select * from book_groups where groupId = ${BookGroup.IdAudio})
-                """.trimIndent()
-                db.execSQL(insertBookGroupMusicSql)
-                @Language("sql")
-                val insertBookGroupNetNoneGroupSql = """
-                    insert into book_groups(groupId, groupName, 'order', show) 
-                    select ${BookGroup.IdNetNone}, '网络未分组', -7, 1
-                    where not exists (select * from book_groups where groupId = ${BookGroup.IdNetNone})
-                """.trimIndent()
-                db.execSQL(insertBookGroupNetNoneGroupSql)
-                @Language("sql")
-                val insertBookGroupLocalNoneGroupSql = """
-                    insert into book_groups(groupId, groupName, 'order', show) 
-                    select ${BookGroup.IdLocalNone}, '本地未分组', -6, 0
-                    where not exists (select * from book_groups where groupId = ${BookGroup.IdLocalNone})
-                """.trimIndent()
-                db.execSQL(insertBookGroupLocalNoneGroupSql)
-                @Language("sql")
-                val insertBookGroupVideoSql = """
-                    insert into book_groups(groupId, groupName, 'order', show) 
-                    select ${BookGroup.IdVideo}, '视频', -5, 1
-                    where not exists (select * from book_groups where groupId = ${BookGroup.IdVideo})
-                    """.trimIndent()
-                db.execSQL(insertBookGroupVideoSql)
-                @Language("sql")
-                val insertBookGroupErrorSql = """
-                    insert into book_groups(groupId, groupName, 'order', show) 
-                    select ${BookGroup.IdError}, '更新失败', -1, 1
-                    where not exists (select * from book_groups where groupId = ${BookGroup.IdError})
-                """.trimIndent()
-                db.execSQL(insertBookGroupErrorSql)
-                @Language("sql")
-                val upBookSourceLoginUiSql =
-                    "update book_sources set loginUi = null where loginUi = 'null'"
-                db.execSQL(upBookSourceLoginUiSql)
-                @Language("sql")
-                val upRssSourceLoginUiSql =
-                    "update rssSources set loginUi = null where loginUi = 'null'"
-                db.execSQL(upRssSourceLoginUiSql)
-                @Language("sql")
-                val upHttpTtsLoginUiSql =
-                    "update httpTTS set loginUi = null where loginUi = 'null'"
-                db.execSQL(upHttpTtsLoginUiSql)
-                @Language("sql")
-                val upHttpTtsConcurrentRateSql =
+                // onOpen 中的操作均为最佳努力性质的维护操作，
+                // 任何单个操作失败不应阻止数据库正常使用。
+                // 逐个包裹 try-catch 确保单个失败不影响后续流程。
+
+                val bookGroupSqls = listOf(
+                    """insert into book_groups(groupId, groupName, 'order', show) 
+                        select ${BookGroup.IdAll}, '全部', -10, 1
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdAll})"""
+                        .trimIndent(),
+                    """insert into book_groups(groupId, groupName, 'order', enableRefresh, show) 
+                        select ${BookGroup.IdLocal}, '本地', -9, 0, 1
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdLocal})"""
+                        .trimIndent(),
+                    """insert into book_groups(groupId, groupName, 'order', show) 
+                        select ${BookGroup.IdAudio}, '音频', -8, 1
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdAudio})"""
+                        .trimIndent(),
+                    """insert into book_groups(groupId, groupName, 'order', show) 
+                        select ${BookGroup.IdNetNone}, '网络未分组', -7, 1
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdNetNone})"""
+                        .trimIndent(),
+                    """insert into book_groups(groupId, groupName, 'order', show) 
+                        select ${BookGroup.IdLocalNone}, '本地未分组', -6, 0
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdLocalNone})"""
+                        .trimIndent(),
+                    """insert into book_groups(groupId, groupName, 'order', show) 
+                        select ${BookGroup.IdVideo}, '视频', -5, 1
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdVideo})"""
+                        .trimIndent(),
+                    """insert into book_groups(groupId, groupName, 'order', show) 
+                        select ${BookGroup.IdError}, '更新失败', -1, 1
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdError})"""
+                        .trimIndent()
+                )
+                for (sql in bookGroupSqls) {
+                    try {
+                        db.execSQL(sql)
+                    } catch (e: Exception) {
+                        Log.e("AppDatabaseCallback", "onOpen: 插入默认分组失败", e)
+                    }
+                }
+
+                // 清理 loginUi 中的 'null' 字符串值（旧版本遗留数据）
+                val cleanupSqls = listOf(
+                    "update book_sources set loginUi = null where loginUi = 'null'",
+                    "update rssSources set loginUi = null where loginUi = 'null'",
+                    "update httpTTS set loginUi = null where loginUi = 'null'",
                     "update httpTTS set concurrentRate = '0' where concurrentRate is null"
-                db.execSQL(upHttpTtsConcurrentRateSql)
-                db.query("select * from keyboardAssists order by serialNo").use {
-                    if (it.count == 0) {
-                        DefaultData.keyboardAssists.forEach { keyboardAssist ->
-                            val contentValues = ContentValues().apply {
-                                put("type", keyboardAssist.type)
-                                put("key", keyboardAssist.key)
-                                put("value", keyboardAssist.value)
-                                put("serialNo", keyboardAssist.serialNo)
+                )
+                for (sql in cleanupSqls) {
+                    try {
+                        db.execSQL(sql)
+                    } catch (e: Exception) {
+                        Log.e("AppDatabaseCallback", "onOpen: 清理数据失败", e)
+                    }
+                }
+
+                // 初始化键盘辅助数据
+                try {
+                    db.query("select * from keyboardAssists order by serialNo").use {
+                        if (it.count == 0) {
+                            DefaultData.keyboardAssists.forEach { keyboardAssist ->
+                                val contentValues = ContentValues().apply {
+                                    put("type", keyboardAssist.type)
+                                    put("key", keyboardAssist.key)
+                                    put("value", keyboardAssist.value)
+                                    put("serialNo", keyboardAssist.serialNo)
+                                }
+                                db.insert(
+                                    "keyboardAssists",
+                                    SQLiteDatabase.CONFLICT_REPLACE,
+                                    contentValues
+                                )
                             }
-                            db.insert(
-                                "keyboardAssists",
-                                SQLiteDatabase.CONFLICT_REPLACE,
-                                contentValues
-                            )
                         }
                     }
+                } catch (e: Exception) {
+                    Log.e("AppDatabaseCallback", "onOpen: 初始化键盘辅助数据失败", e)
                 }
             }
         }
