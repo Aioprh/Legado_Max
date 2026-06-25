@@ -143,6 +143,7 @@ fun RssSourceBrowseDetailPage(
             1 -> RssDiscoverTab(
                 sourceUrl = sourceUrl,
                 targetSetId = targetSetId,
+                sourceName = sourceName,
                 actions = actions,
             )
         }
@@ -248,6 +249,7 @@ private fun JoinedModulesTab(
 private fun RssDiscoverTab(
     sourceUrl: String,
     targetSetId: String?,
+    sourceName: String,
     actions: HomepageManageActions,
 ) {
     // 异步获取订阅源的分类列表
@@ -349,10 +351,11 @@ private fun RssDiscoverTab(
         // 手动添加按钮
         OutlinedButton(
             onClick = {
-                manualAddPrefill = ModuleDef(
-                    type = selectedModuleType,
-                    sourceUrl = sourceUrl
-                )
+            manualAddPrefill = ModuleDef(
+                type = selectedModuleType,
+                title = sourceName,
+                sourceUrl = sourceUrl
+            )
                 showManualAddDialog = true
             },
             modifier = Modifier.fillMaxWidth()
@@ -408,7 +411,7 @@ private fun RssDiscoverTab(
                                     manualAddPrefill = ModuleDef(
                                         key = "rss_${kind.first}_${kind.second}",
                                         type = selectedModuleType,
-                                        title = kind.first,
+                                        title = kind.first.ifBlank { sourceName },
                                         url = kind.second,
                                         sourceUrl = sourceUrl
                                     )
@@ -416,7 +419,7 @@ private fun RssDiscoverTab(
                                 }
                             ) {
                                 Text(
-                                    text = kind.first.ifBlank { kind.second },
+                                    text = kind.first.ifBlank { sourceName },
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                                 )
