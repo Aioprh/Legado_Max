@@ -128,17 +128,18 @@ fun CardModule(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                // 简介，最多两行显示（始终保留行高以统一卡片高度）
+                // 简介，有内容时显示（无内容时收缩布局不占位）
                 val intro = book.intro?.takeIf { it.isNotBlank() }?.replace("\\s+".toRegex(), " ")
-                Text(
-                    text = intro ?: "",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    minLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 12.dp),
-                )
+                if (!intro.isNullOrBlank()) {
+                    Text(
+                        text = intro,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 12.dp),
+                    )
+                }
             }
         }
     }
