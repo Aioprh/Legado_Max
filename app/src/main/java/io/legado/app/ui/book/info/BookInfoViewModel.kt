@@ -70,11 +70,15 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
             val name = intent.getStringExtra("name") ?: ""
             val author = intent.getStringExtra("author") ?: ""
             val bookUrl = intent.getStringExtra("bookUrl") ?: ""
+            // 已在书架：保持
             appDb.bookDao.getBook(name, author)?.let {
-                inBookshelf = !it.isNotShelf
-                upBook(it)
-                return@execute
+                if (!it.isNotShelf) {
+                    inBookshelf = true
+                    upBook(it)
+                    return@execute
+                }
             }
+            // 不在书架/无记录：传入
             if (bookUrl.isNotBlank()) {
                 appDb.bookDao.getBook(bookUrl)?.let {
                     inBookshelf = !it.isNotShelf
@@ -82,17 +86,13 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                     return@execute
                 }
                 appDb.searchBookDao.getSearchBook(bookUrl)?.toBook()?.let { book ->
-                    appDb.bookDao.getBook(book.name, book.author)?.let {
-                        inBookshelf = !it.isNotShelf
-                    }
+                    inBookshelf = false
                     upBook(book)
                     return@execute
                 }
             }
             appDb.searchBookDao.getFirstByNameAuthor(name, author)?.toBook()?.let { book ->
-                appDb.bookDao.getBook(book.name, book.author)?.let {
-                    inBookshelf = !it.isNotShelf
-                }
+                inBookshelf = false
                 upBook(book)
                 return@execute
             }
@@ -705,4 +705,3 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
     }
 
 }
-
