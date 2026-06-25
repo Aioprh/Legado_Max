@@ -369,6 +369,9 @@
     <string name="imm_navigation_bar">沉浸式导航栏</string>
     <string name="imm_navigation_bar_s">导航栏颜色透明</string>
     <string name="add_to_bookshelf">放入書架</string>
+    <string name="add_to_favorites">加入收藏</string>
+    <string name="added_to_favorites">已加入收藏</string>
+    <string name="view_content">檢視內容</string>
     <string name="continue_read">繼續閲讀</string>
     <string name="cover_path">封面地址</string>
     <string name="page_anim_cover">覆蓋</string>

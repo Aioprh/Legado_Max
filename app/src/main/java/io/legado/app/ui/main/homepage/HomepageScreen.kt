@@ -60,6 +60,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
+import io.legado.app.data.appDb
+import io.legado.app.data.entities.RssStar
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.domain.model.HomepageModuleType
@@ -71,6 +73,7 @@ import io.legado.app.ui.main.homepage.modules.CardModule
 import io.legado.app.ui.main.homepage.modules.GridModule
 import io.legado.app.ui.main.homepage.modules.GridRankingModule
 import io.legado.app.ui.main.homepage.modules.HomepageModuleSkeleton
+import io.legado.app.ui.rss.read.ReadRssActivity
 import io.legado.app.ui.main.homepage.modules.RankingModule
 import io.legado.app.ui.main.homepage.modules.WaterfallItem
 import io.legado.app.ui.theme.pageAccentColor
@@ -78,8 +81,10 @@ import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.BookBottomSheet
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.utils.showHelp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 首页主屏幕 Composable
@@ -339,6 +344,11 @@ fun HomepageScreen(
     )
 
     // 书籍底部弹窗
+    val isRssArticle = remember(selectedBook) {
+        selectedBook?.let { book ->
+            appDb.rssSourceDao.has(book.origin)
+        } ?: false
+    }
     BookBottomSheet(
         show = showBookSheet,
         book = selectedBook,
@@ -347,7 +357,36 @@ fun HomepageScreen(
         onAddToShelf = { book -> viewModel.onAddToShelf(book) },
         onShowInfo = { book ->
             viewModel.onBookClick(book)
-        }
+        },
+        isRssArticle = isRssArticle,
+        onAddToFavorites = if (isRssArticle) {
+            { book ->
+                kotlinx.coroutines.MainScope().launch {
+                    withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        appDb.rssStarDao.insert(RssStar(
+                            origin = book.origin,
+                            title = book.name,
+                            link = book.bookUrl,
+                            description = book.intro,
+                            image = book.coverUrl,
+                            pubDate = book.latestChapterTitle,
+                        ))
+                    }
+                    Toast.makeText(context, R.string.added_to_favorites, Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else null,
+        onViewContent = if (isRssArticle) {
+            { book ->
+                ReadRssActivity.start(
+                    context,
+                    false,
+                    book.origin,
+                    book.name,
+                    book.bookUrl
+                )
+            }
+        } else null,
     )
 }
 

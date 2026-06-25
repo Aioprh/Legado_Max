@@ -728,7 +728,10 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
     fun onBookClick(book: SearchBook) {
         viewModelScope.launch {
-            saveSearchBooksUseCase.save(book)
+            // RSS 订阅源文章不保存搜索历史（SearchBook 有 BookSource 外键约束）
+            if (!appDb.rssSourceDao.has(book.origin)) {
+                saveSearchBooksUseCase.save(book)
+            }
             _effects.emit(
                 HomepageEffect.NavigateToBookInfo(
                     book.name,
