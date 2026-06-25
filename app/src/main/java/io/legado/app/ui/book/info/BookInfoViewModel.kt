@@ -70,9 +70,16 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
             val name = intent.getStringExtra("name") ?: ""
             val author = intent.getStringExtra("author") ?: ""
             val bookUrl = intent.getStringExtra("bookUrl") ?: ""
-            appDb.bookDao.getBook(name, author)?.let {
-                inBookshelf = !it.isNotShelf
-                upBook(it)
+            appDb.bookDao.getBook(name, author)?.let { storedBook ->
+                inBookshelf = !storedBook.isNotShelf
+                // 修复：书不在书架中时，如果从不同书源打开，使用新书源信息
+                if (!inBookshelf && bookUrl.isNotBlank() && bookUrl != storedBook.bookUrl) {
+                    appDb.searchBookDao.getSearchBook(bookUrl)?.toBook()?.let { searchBook ->
+                        upBook(searchBook)
+                        return@execute
+                    }
+                }
+                upBook(storedBook)
                 return@execute
             }
             if (bookUrl.isNotBlank()) {
