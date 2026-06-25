@@ -675,11 +675,8 @@ object ReadBook : CoroutineScope by MainScope() {
     ) {
         Coroutine.async {
             val book = book!!
-            val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, index) ?: run {
-                upMsg("章节不存在,请尝试重新获取目录")
-                AppLog.put("章节不存在: bookUrl=${book.bookUrl}, index=$index")
-                return@async
-            }
+            val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, index)
+                ?: return@async
             if (addLoading(index, forceReload)) {
                 val cachedContent = BookHelp.getContent(book, chapter)
                 cachedContent?.let {
@@ -707,7 +704,10 @@ object ReadBook : CoroutineScope by MainScope() {
             }
         }.onError {
             AppLog.put("加载正文出错\n${it.localizedMessage}", it)
-            upMsg("加载正文出错: ${it.localizedMessage}")
+            // 仅在当前阅读章节加载失败时向用户展示错误提示
+            if (index == durChapterIndex) {
+                upMsg("加载正文出错: ${it.localizedMessage}")
+            }
         }
     }
 
