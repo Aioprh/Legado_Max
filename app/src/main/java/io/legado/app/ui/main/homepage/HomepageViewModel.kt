@@ -1,6 +1,7 @@
 package io.legado.app.ui.main.homepage
 
 import android.app.Application
+import android.text.Html
 import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
@@ -580,14 +581,18 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                     }
                     // 转换为 SearchBook 以复用现有 UI
                     val books = articles.map { article ->
+                        // 描述规则：去除 HTML 标签得到纯文本
+                        val introText = article.description?.let {
+                            Html.fromHtml(it, Html.FROM_HTML_MODE_LEGACY).toString().trim()
+                        }
                         SearchBook(
                             bookUrl = article.link,
                             origin = rssSource.sourceUrl,
                             originName = rssSource.sourceName,
                             name = article.title,
                             coverUrl = article.image,
-                            intro = article.description,
-                            author = article.pubDate ?: "",
+                            intro = introText,
+                            author = rssSource.sourceName,
                             latestChapterTitle = article.pubDate,
                         )
                     }
