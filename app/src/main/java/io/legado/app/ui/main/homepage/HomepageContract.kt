@@ -153,6 +153,8 @@ data class HomepageSourceManageUi(
     val isSelected: Boolean = false,
     val moduleCount: Int = 0,
     val isCustomSet: Boolean = false,
+    /** 集类型标识：null=自定义集, "book"=书源集, "rss"=订阅源集 */
+    val sourceType: String? = null,
 )
 
 /**

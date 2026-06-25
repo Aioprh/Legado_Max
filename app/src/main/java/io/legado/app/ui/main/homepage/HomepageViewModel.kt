@@ -291,12 +291,18 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
             val isSourceSet = cs.id.startsWith("src_") || cs.id.startsWith("rss_")
             val setUrl = if (isSourceSet) cs.id else customSetUrl(cs.id)
             val count = modules.count { it.customSetId == cs.id }
+            val sourceType = when {
+                cs.id.startsWith("src_") -> "book"
+                cs.id.startsWith("rss_") -> "rss"
+                else -> null
+            }
             HomepageSourceManageUi(
                 sourceUrl = setUrl,
                 sourceName = cs.name,
                 isSelected = setUrl !in hidden,
                 moduleCount = count,
                 isCustomSet = !isSourceSet,
+                sourceType = sourceType,
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

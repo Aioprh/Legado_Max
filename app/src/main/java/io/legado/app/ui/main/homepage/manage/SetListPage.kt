@@ -43,6 +43,7 @@ import io.legado.app.ui.main.homepage.HomepageSourceManageUi
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
+import io.legado.app.ui.widget.components.card.TextCard
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -210,11 +211,30 @@ private fun SetItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = stringResource(R.string.homepage_module_count, set.moduleCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = pageSecondaryTextColor()
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.homepage_module_count, set.moduleCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = pageSecondaryTextColor()
+                    )
+                    // 集类型标识标签
+                    val typeLabel = when (set.sourceType) {
+                        "book" -> "书源集"
+                        "rss" -> "订阅源集"
+                        else -> null
+                    }
+                    if (typeLabel != null) {
+                        TextCard(
+                            text = typeLabel,
+                            textStyle = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
             }
             // 重命名按钮
             IconButton(onClick = onRename, modifier = Modifier.size(36.dp)) {
