@@ -201,9 +201,12 @@ fun BookBottomSheet(
                         InfoRow(label = stringResource(R.string.latest_chapter), value = latestChapterText)
                     }
 
-                    // 书源
+                    // 来源
                     if (book.originName.isNotBlank()) {
-                        InfoRow(label = stringResource(R.string.book_source), value = book.originName)
+                        InfoRow(
+                            label = if (isRssArticle) stringResource(R.string.rss_source) else stringResource(R.string.book_source),
+                            value = book.originName
+                        )
                     }
                 }
 
