@@ -51,14 +51,14 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
                 ) {
                     HomepageScreen(
                         onBookClick = { name, author, bookUrl, origin, coverPath ->
-                            // RSS 订阅源文章 → 使用 link 参数跳转阅读页（与订阅源页面打开方式一致）
+                            // RSS 订阅源文章 → 直接加载文章 URL（openUrl 路径，不依赖 DB 预存）
                             if (origin != null && appDb.rssSourceDao.has(origin)) {
                                 ReadRssActivity.start(
                                     context = requireContext(),
+                                    singleTop = false,
                                     origin = origin,
                                     title = name,
-                                    link = bookUrl,
-                                    sort = author.orEmpty()
+                                    url = bookUrl
                                 )
                                 return@HomepageScreen
                             }
@@ -73,17 +73,10 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
                             startActivity(intent)
                         },
                         onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
-                            // RSS 订阅源模块 → 跳转订阅源文章列表（含分类 URL）
+                            // RSS 订阅源模块 → 仅传 sourceUrl，让 RssSortActivity 正常加载全部分类
                             if (appDb.rssSourceDao.has(sourceUrl)) {
                                 val intent = Intent(context, RssSortActivity::class.java).apply {
                                     putExtra("sourceUrl", sourceUrl)
-                                    // 传递分类 URL，使 RssSortActivity 定位到对应分类
-                                    if (!exploreUrl.isNullOrBlank()) {
-                                        putExtra("sortUrl", exploreUrl)
-                                    }
-                                    if (!title.isNullOrBlank()) {
-                                        putExtra("sortName", title)
-                                    }
                                 }
                                 startActivity(intent)
                                 return@HomepageScreen
