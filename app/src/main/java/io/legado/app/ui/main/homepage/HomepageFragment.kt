@@ -73,10 +73,13 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
                             startActivity(intent)
                         },
                         onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
-                            // RSS 订阅源模块 → 仅传 sourceUrl，让 RssSortActivity 正常加载全部分类
+                            // RSS 订阅源模块 → 跳转订阅源文章列表，自动选中对应分类
                             if (appDb.rssSourceDao.has(sourceUrl)) {
                                 val intent = Intent(context, RssSortActivity::class.java).apply {
                                     putExtra("sourceUrl", sourceUrl)
+                                    if (!title.isNullOrBlank()) {
+                                        putExtra("sortName", title)
+                                    }
                                 }
                                 startActivity(intent)
                                 return@HomepageScreen

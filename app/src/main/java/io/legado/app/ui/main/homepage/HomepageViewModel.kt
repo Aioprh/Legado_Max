@@ -145,6 +145,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     private val _configVersion = MutableStateFlow(0L)
     private val _moduleContentStates = MutableStateFlow<Map<String, ModuleLoadState>>(emptyMap())
     private val _bookSourcesCache = MutableStateFlow<Map<String, BookSource>>(emptyMap())
+    private val _rssSourceNames = MutableStateFlow<Map<String, String>>(emptyMap())
     private val _layoutConfigCache = MutableStateFlow<Map<String, Map<String, String>>>(emptyMap())
     
     /** 当前选中的书源集Tab索引（用于分源Tab模式下的预加载控制） */
@@ -332,9 +333,10 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         setsFlow,
         browseSourcesFlow,
         allModulesCache,
-        _bookSourcesCache
-    ) { sets, browseSources, modules, sources ->
-        val sourceNames = sources.values.associate { it.bookSourceUrl to it.bookSourceName }
+        _bookSourcesCache,
+        _rssSourceNames
+    ) { sets, browseSources, modules, sources, rssNames ->
+        val sourceNames = sources.values.associate { it.bookSourceUrl to it.bookSourceName } + rssNames
         val allJoined = modules.map { mod ->
             HomepageModuleManageUi(
                 id = mod.id,
@@ -400,6 +402,13 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         viewModelScope.launch {
             appDb.bookSourceDao.flowExploreSources().collect { sources ->
                 _bookSourcesCache.value = sources.associateBy { it.bookSourceUrl }
+            }
+        }
+
+        // 跟踪所有订阅源名称（用于管理界面显示订阅源名称而非 URL）
+        viewModelScope.launch {
+            appDb.rssSourceDao.flowAll().collect { sources ->
+                _rssSourceNames.value = sources.associate { it.sourceUrl to it.sourceName }
             }
         }
 

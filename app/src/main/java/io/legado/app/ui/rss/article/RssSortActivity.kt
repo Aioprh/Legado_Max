@@ -441,6 +441,14 @@ class RssSortActivity : VMBaseActivity<ActivityRssArtivlesBinding, RssSortViewMo
         }
         adapter.notifyDataSetChanged()
         if (sortList.isNotEmpty()) {
+            // 支持从首页模块箭头跳转时自动选中对应分类 Tab
+            val targetSortName = intent.getStringExtra("sortName")
+            if (!targetSortName.isNullOrBlank()) {
+                val targetIndex = sortList.indexOfFirst { it.first == targetSortName }
+                if (targetIndex >= 0) {
+                    binding.viewPager.setCurrentItem(targetIndex, false)
+                }
+            }
             updateTabSelection(binding.viewPager.currentItem)
         }
     }
