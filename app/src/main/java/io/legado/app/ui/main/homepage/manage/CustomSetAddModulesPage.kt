@@ -160,10 +160,18 @@ fun CustomSetAddModulesPage(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                TextCard(
-                                    text = stringResource(moduleType.titleRes),
-                                    textStyle = MaterialTheme.typography.labelSmall
-                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    TextCard(
+                                        text = stringResource(moduleType.titleRes),
+                                        textStyle = MaterialTheme.typography.labelSmall
+                                    )
+                                    TextCard(
+                                        text = if (module.sourceType == "rss") "订阅源" else "书源",
+                                        textStyle = MaterialTheme.typography.labelSmall.copy(
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    )
+                                }
                             }
                             // 分配开关：开启表示加入当前集，关闭表示移出当前集
                             Switch(
