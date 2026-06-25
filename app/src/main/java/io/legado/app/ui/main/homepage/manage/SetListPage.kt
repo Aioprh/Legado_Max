@@ -43,6 +43,7 @@ import io.legado.app.ui.main.homepage.HomepageSourceManageUi
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
+import io.legado.app.ui.widget.components.card.TextCard
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -60,6 +61,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
  * @param onReorderSets 重新排序集的回调
  * @param onCreateCustomSet 点击"新建自定义集"按钮的回调
  * @param onBrowseSources 点击"浏览书源模块"按钮的回调
+ * @param onBrowseRssSources 点击"浏览订阅源模块"按钮的回调
  */
 @Composable
 fun SetListPage(
@@ -71,6 +73,7 @@ fun SetListPage(
     onReorderSets: (List<String>) -> Unit,
     onCreateCustomSet: () -> Unit,
     onBrowseSources: () -> Unit,
+    onBrowseRssSources: () -> Unit,
 ) {
     // 本地排序列表，拖拽时即时更新
     var localSets by remember(sets) { mutableStateOf(sets) }
@@ -153,6 +156,12 @@ fun SetListPage(
             ) {
                 Text(stringResource(R.string.homepage_browse_source_modules))
             }
+            OutlinedButton(
+                onClick = onBrowseRssSources,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(stringResource(R.string.homepage_browse_rss_source_modules))
+            }
         }
     }
 }
@@ -202,11 +211,30 @@ private fun SetItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = stringResource(R.string.homepage_module_count, set.moduleCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = pageSecondaryTextColor()
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.homepage_module_count, set.moduleCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = pageSecondaryTextColor()
+                    )
+                    // 集类型标识标签
+                    val typeLabel = when (set.sourceType) {
+                        "book" -> "书源集"
+                        "rss" -> "订阅源集"
+                        else -> null
+                    }
+                    if (typeLabel != null) {
+                        TextCard(
+                            text = typeLabel,
+                            textStyle = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
             }
             // 重命名按钮
             IconButton(onClick = onRename, modifier = Modifier.size(36.dp)) {

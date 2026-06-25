@@ -56,6 +56,9 @@ import io.legado.app.utils.splitNotBlank
  * @param onDismiss 关闭弹窗的回调
  * @param onAddToShelf 加入书架的回调
  * @param onShowInfo 查看书籍详情的回调
+ * @param isRssArticle 是否为 RSS 订阅源文章（true 时显示"加入收藏"/"查看内容"）
+ * @param onAddToFavorites 加入 RSS 收藏的回调
+ * @param onViewContent 查看 RSS 内容的回调
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +69,9 @@ fun BookBottomSheet(
     onDismiss: () -> Unit,
     onAddToShelf: (SearchBook) -> Unit,
     onShowInfo: (SearchBook) -> Unit,
+    isRssArticle: Boolean = false,
+    onAddToFavorites: ((SearchBook) -> Unit)? = null,
+    onViewContent: ((SearchBook) -> Unit)? = null,
 ) {
     // 使用 skipPartiallyExpanded = true，确保弹窗直接展开到最大高度
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -76,7 +82,9 @@ fun BookBottomSheet(
     val addedToBookshelfMsg = stringResource(R.string.added_to_bookshelf, book?.name ?: "")
     val alreadyInBookshelfText = stringResource(R.string.already_in_bookshelf)
     val addToBookshelfText = stringResource(R.string.add_to_bookshelf)
+    val addToFavoritesText = stringResource(R.string.add_to_favorites)
     val viewDetailsText = stringResource(R.string.view_details)
+    val viewContentText = stringResource(R.string.view_content)
 
     if (show && book != null) {
         ModalBottomSheet(
@@ -193,9 +201,12 @@ fun BookBottomSheet(
                         InfoRow(label = stringResource(R.string.latest_chapter), value = latestChapterText)
                     }
 
-                    // 书源
+                    // 来源
                     if (book.originName.isNotBlank()) {
-                        InfoRow(label = stringResource(R.string.book_source), value = book.originName)
+                        InfoRow(
+                            label = if (isRssArticle) stringResource(R.string.rss_source) else stringResource(R.string.book_source),
+                            value = book.originName
+                        )
                     }
                 }
 
@@ -232,52 +243,103 @@ fun BookBottomSheet(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // 操作按钮区域（在滚动内容内部，确保用户能立即看到）
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // 加入书架按钮
-                    TextButton(
-                        onClick = {
-                            onAddToShelf(book)
-                            Toast.makeText(context, addedToBookshelfMsg, Toast.LENGTH_SHORT).show()
-                            onDismiss()
-                        },
-                        modifier = Modifier.weight(1f)
+                if (isRssArticle) {
+                    // RSS 文章专用按钮
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = addToBookshelfText,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (shelfState == BookShelfState.IN_SHELF) alreadyInBookshelfText 
-                                   else addToBookshelfText,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                        // 加入收藏按钮
+                        TextButton(
+                            onClick = {
+                                onAddToFavorites?.invoke(book)
+                                onDismiss()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = addToFavoritesText,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = addToFavoritesText,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
 
-                    // 查看详情按钮
-                    TextButton(
-                        onClick = {
-                            onShowInfo(book)
-                            onDismiss()
-                        },
-                        modifier = Modifier.weight(1f)
+                        // 查看内容按钮
+                        TextButton(
+                            onClick = {
+                                onViewContent?.invoke(book)
+                                onDismiss()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = viewContentText,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = viewContentText,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                } else {
+                    // 书籍操作按钮（原有逻辑）
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = viewDetailsText,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = viewDetailsText,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        // 加入书架按钮
+                        TextButton(
+                            onClick = {
+                                onAddToShelf(book)
+                                Toast.makeText(context, addedToBookshelfMsg, Toast.LENGTH_SHORT).show()
+                                onDismiss()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = addToBookshelfText,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (shelfState == BookShelfState.IN_SHELF) alreadyInBookshelfText 
+                                       else addToBookshelfText,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        // 查看详情按钮
+                        TextButton(
+                            onClick = {
+                                onShowInfo(book)
+                                onDismiss()
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = viewDetailsText,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = viewDetailsText,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }

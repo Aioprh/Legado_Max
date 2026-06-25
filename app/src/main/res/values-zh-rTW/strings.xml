@@ -371,6 +371,9 @@
     <string name="imm_navigation_bar">沉浸式導航欄</string>
     <string name="imm_navigation_bar_s">導航欄顏色透明</string>
     <string name="add_to_bookshelf">放入書架</string>
+    <string name="add_to_favorites">加入收藏</string>
+    <string name="added_to_favorites">已加入收藏</string>
+    <string name="view_content">檢視內容</string>
     <string name="continue_read">繼續閱讀</string>
     <string name="cover_path">封面地址</string>
     <string name="page_anim_cover">覆蓋</string>
@@ -1619,6 +1622,7 @@
     <string name="homepage_module_count">%d 個模組</string>
     <string name="homepage_new_custom_set">新建自定義集</string>
     <string name="homepage_browse_source_modules">瀏覽書源模組</string>
+    <string name="homepage_browse_rss_source_modules">瀏覽訂閱源模組</string>
     <string name="homepage_drag_sort">拖拽排序</string>
     <string name="homepage_view">查看</string>
 

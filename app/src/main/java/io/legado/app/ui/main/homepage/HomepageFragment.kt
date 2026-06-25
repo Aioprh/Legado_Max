@@ -12,9 +12,12 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import io.legado.app.help.config.ThemeConfig
+import io.legado.app.data.appDb
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.explore.ExploreShowActivity
 import io.legado.app.ui.main.MainFragmentInterface
+import io.legado.app.ui.rss.article.RssSortActivity
+import io.legado.app.ui.rss.read.ReadRssActivity
 import io.legado.app.ui.theme.LegadoThemeWithBackground
 
 /**
@@ -48,6 +51,18 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
                 ) {
                     HomepageScreen(
                         onBookClick = { name, author, bookUrl, origin, coverPath ->
+                            // RSS 订阅源文章 → 直接加载文章 URL（openUrl 路径，不依赖 DB 预存）
+                            if (origin != null && appDb.rssSourceDao.has(origin)) {
+                                ReadRssActivity.start(
+                                    context = requireContext(),
+                                    singleTop = false,
+                                    origin = origin,
+                                    title = name,
+                                    url = bookUrl
+                                )
+                                return@HomepageScreen
+                            }
+                            // 书源书籍 → 跳转详情页
                             val intent = Intent(context, BookInfoActivity::class.java).apply {
                                 putExtra("name", name)
                                 putExtra("author", author)
@@ -58,6 +73,18 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
                             startActivity(intent)
                         },
                         onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
+                            // RSS 订阅源模块 → 跳转订阅源文章列表，自动选中对应分类
+                            if (appDb.rssSourceDao.has(sourceUrl)) {
+                                val intent = Intent(context, RssSortActivity::class.java).apply {
+                                    putExtra("sourceUrl", sourceUrl)
+                                    if (!title.isNullOrBlank()) {
+                                        putExtra("sortName", title)
+                                    }
+                                }
+                                startActivity(intent)
+                                return@HomepageScreen
+                            }
+                            // 书源模块 → 跳转发现页
                             if (exploreUrl.isNullOrBlank()) return@HomepageScreen
                             val intent = Intent(context, ExploreShowActivity::class.java).apply {
                                 putExtra("exploreName", title ?: "")

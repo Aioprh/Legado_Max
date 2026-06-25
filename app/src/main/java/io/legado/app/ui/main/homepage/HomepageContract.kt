@@ -153,6 +153,8 @@ data class HomepageSourceManageUi(
     val isSelected: Boolean = false,
     val moduleCount: Int = 0,
     val isCustomSet: Boolean = false,
+    /** 集类型标识：null=自定义集, "book"=书源集, "rss"=订阅源集 */
+    val sourceType: String? = null,
 )
 
 /**
@@ -187,6 +189,8 @@ data class HomepageModuleManageUi(
     val args: String? = null,
     val layoutConfig: String? = null,
     val originalTitle: String = "",
+    /** 模块来源类型："book"=书源模块, "rss"=订阅源模块 */
+    val sourceType: String = "book",
 )
 
 /**
@@ -222,6 +226,8 @@ data class HomepageManageActions(
     val onAddCustomModule: (String, String?, ModuleDef) -> Unit,
     val onAddButtonGroupFromKinds: (String, String?, String, List<String>) -> Unit,
     val onGetExploreKinds: suspend (String) -> List<Pair<String, String>>,
+    val onGetRssKinds: suspend (String) -> List<Pair<String, String>>,
+    val onAddRssCustomModule: (String, String?, ModuleDef) -> Unit,
     val onUpdateModule: (String, ModuleDef) -> Unit,
     val onDeleteModule: (String) -> Unit,
     val onReorderModules: (List<String>) -> Unit,

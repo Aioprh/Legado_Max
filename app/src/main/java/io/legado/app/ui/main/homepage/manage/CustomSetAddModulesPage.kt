@@ -62,9 +62,9 @@ fun CustomSetAddModulesPage(
     onAssignModule: (String, String?) -> Unit,
     onBack: () -> Unit,
 ) {
-    // 仅显示源集模块（原始模块），避免显示副本导致重复
+    // 仅显示源集模块（书源 src_ 或订阅源 rss_），避免显示副本导致重复
     val sourceModules = remember(allModules) {
-        allModules.filter { it.customSetId?.startsWith("src_") == true }
+        allModules.filter { it.customSetId?.let { cid -> cid.startsWith("src_") || cid.startsWith("rss_") } == true }
     }
     // 按书源分组展示
     val groupedModules = remember(sourceModules) {
@@ -160,10 +160,18 @@ fun CustomSetAddModulesPage(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                TextCard(
-                                    text = stringResource(moduleType.titleRes),
-                                    textStyle = MaterialTheme.typography.labelSmall
-                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    TextCard(
+                                        text = stringResource(moduleType.titleRes),
+                                        textStyle = MaterialTheme.typography.labelSmall
+                                    )
+                                    TextCard(
+                                        text = if (module.sourceType == "rss") "订阅源" else "书源",
+                                        textStyle = MaterialTheme.typography.labelSmall.copy(
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    )
+                                }
                             }
                             // 分配开关：开启表示加入当前集，关闭表示移出当前集
                             Switch(

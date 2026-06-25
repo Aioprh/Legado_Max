@@ -1,20 +1,22 @@
 /**
- * 文件：SourceBrowseDetailPage.kt
+ * 文件：RssSourceBrowseDetailPage.kt
  *
- * 作用：书源模块浏览详情页，用于管理指定书源下的首页模块。
+ * 作用：订阅源模块浏览详情页，用于管理指定订阅源下的首页模块。
  *
  * 主要功能：
  * 1. 通过两 Tab 结构（已加入 / 发现）分类展示和管理模块
- * 2. Tab 0（已加入）：展示当前集已加入的模块，支持长按拖拽排序、编辑、删除、显隐切换
- * 3. Tab 1（发现）：从书源发现分类创建模块，支持单选添加、多选创建按钮组、手动添加自定义模块
+ * 2. Tab 0（已加入）：展示当前订阅源已加入的模块，支持长按拖拽排序、编辑、删除、显隐切换
+ * 3. Tab 1（发现）：从订阅源分类创建模块，支持选择分类类型后添加
  *
- * 该页面是首页模块管理功能的核心交互界面之一。
+ * 参照书源 SourceBrowseDetailPage 实现，关键差异：
+ * - 订阅源使用 rss_ 前缀集 ID 以避免与书源集（src_）冲突
+ * - 发现分类通过 RssSource.sortUrls() 获取
+ * - 模块添加通过 onAddRssCustomModule 操作
  */
 package io.legado.app.ui.main.homepage.manage
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,8 +39,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,12 +50,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -87,22 +86,23 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
- * 书源模块浏览详情页，两 Tab 结构
+ * 订阅源模块浏览详情页，两 Tab 结构
  *
- * 该页面通过两个 Tab 分类管理指定书源下的首页模块：
+ * 参照书源的 SourceBrowseDetailPage 实现，通过两个 Tab 分类管理
+ * 指定订阅源下的首页模块：
  * - Tab 0：已加入当前集的模块列表
- * - Tab 1：从书源发现分类创建新模块
+ * - Tab 1：从订阅源分类创建新模块
  *
- * @param sourceUrl 书源 URL，用于定位具体书源
- * @param sourceName 书源名称，用于界面展示
- * @param targetSetId 目标集 ID，为 null 表示默认集
+ * @param sourceUrl 订阅源 URL
+ * @param sourceName 订阅源名称，用于界面展示
+ * @param targetSetId 目标集 ID（rss_ 前缀），为 null 表示默认
  * @param allModules 所有模块的 UI 数据列表
- * @param actions 首页管理操作回调集合
+ * @param actions 首页管理操作回调集合（含 onGetRssKinds / onAddRssCustomModule）
  * @param onEditModule 编辑模块的回调
  * @param onBack 返回上一页的回调
  */
 @Composable
-fun SourceBrowseDetailPage(
+fun RssSourceBrowseDetailPage(
     sourceUrl: String,
     sourceName: String,
     targetSetId: String?,
@@ -111,11 +111,13 @@ fun SourceBrowseDetailPage(
     onEditModule: (String, ModuleDef) -> Unit,
     onBack: () -> Unit,
 ) {
-    // 当前选中的 Tab 索引，默认显示"已加入"Tab
     var selectedTab by remember { mutableStateOf(0) }
 
+    // 计算当前 RSS 源的集 ID（rss_<sourceUrl>），用于「已加入」Tab 筛选
+    val rssSetId = remember(sourceUrl) { "rss_$sourceUrl" }
+    val effectiveTargetSetId = targetSetId ?: rssSetId
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 顶部 Tab 栏，提供两个分类入口
         TabRow(selectedTabIndex = selectedTab) {
             Tab(
                 selected = selectedTab == 0,
@@ -129,18 +131,19 @@ fun SourceBrowseDetailPage(
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
-        // 根据选中的 Tab 显示对应内容
         when (selectedTab) {
             0 -> JoinedModulesTab(
                 sourceUrl = sourceUrl,
-                targetSetId = targetSetId,
+                targetSetId = effectiveTargetSetId,
                 allModules = allModules,
                 actions = actions,
                 onEditModule = onEditModule,
             )
-            1 -> DiscoverTab(
+            // 「发现」Tab 传入原始 targetSetId（null 时由 addRssCustomModule 负责创建集）
+            1 -> RssDiscoverTab(
                 sourceUrl = sourceUrl,
                 targetSetId = targetSetId,
+                sourceName = sourceName,
                 actions = actions,
             )
         }
@@ -148,18 +151,7 @@ fun SourceBrowseDetailPage(
 }
 
 /**
- * Tab 0: 已加入的模块
- *
- * 展示当前集已加入的模块列表，每个模块支持以下操作：
- * - 长按拖拽排序：调整模块显示顺序
- * - 编辑：打开编辑对话框修改模块配置
- * - 删除：从当前集移除模块
- * - 显隐切换：控制模块在首页是否可见
- *
- * @param sourceUrl 书源 URL
- * @param targetSetId 目标集 ID，为 null 表示默认集
- * @param allModules 所有模块的 UI 数据列表
- * @param actions 首页管理操作回调集合
+ * Tab 0: 已加入的模块（复用书源的 JoinedModulesTab 逻辑）
  */
 @Composable
 private fun JoinedModulesTab(
@@ -169,7 +161,6 @@ private fun JoinedModulesTab(
     actions: HomepageManageActions,
     onEditModule: (String, ModuleDef) -> Unit,
 ) {
-    // 获取当前集已加入的模块：匹配书源 URL 和目标集 ID
     val joinedModules = remember(sourceUrl, targetSetId, allModules) {
         allModules.filter { module ->
             module.sourceUrl == sourceUrl &&
@@ -177,12 +168,10 @@ private fun JoinedModulesTab(
         }
     }
 
-    // 本地排序列表，拖拽时即时更新
     var localModules by remember(joinedModules) { mutableStateOf(joinedModules) }
     val listState = rememberLazyListState()
     val hapticFeedback = LocalHapticFeedback.current
 
-    // 拖拽排序状态
     val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
         localModules = localModules.toMutableList().apply {
             val fromIndex = indexOfFirst { it.id == from.key }
@@ -193,7 +182,6 @@ private fun JoinedModulesTab(
         }
     }
 
-    // 拖拽结束后持久化排序
     LaunchedEffect(reorderableState.isAnyItemDragging) {
         if (!reorderableState.isAnyItemDragging) {
             val orderedIds = localModules.map { it.id }
@@ -211,12 +199,11 @@ private fun JoinedModulesTab(
         ) {
             items(localModules, key = { it.id }) { module ->
                 ReorderableItem(reorderableState, key = module.id) { isDragging ->
-                    ModuleItem(
+                    RssModuleItem(
                         module = module,
                         isDragging = isDragging,
                         onToggle = { actions.onToggleModule(module.id, it) },
                         onEdit = {
-                            // 构造模块定义对象，传递给编辑回调以打开编辑对话框
                             onEditModule(
                                 module.id,
                                 ModuleDef(
@@ -252,47 +239,34 @@ private fun JoinedModulesTab(
 }
 
 /**
- * Tab 1: 从书源发现分类创建模块
+ * Tab 1: 从订阅源分类创建模块
  *
- * 从书源的发现分类创建新的首页模块，支持以下三种方式：
- * 1. 选择单个分类：直接创建对应模块
- * 2. 选择多个分类：创建按钮组，将多个分类聚合为一个按钮组模块
- * 3. 手动添加：打开自定义模块对话框，手动填写模块配置
- *
- * @param sourceUrl 书源 URL
- * @param targetSetId 目标集 ID，为 null 表示默认集
- * @param actions 首页管理操作回调集合
+ * 从订阅源的 sortUrl 解析分类列表，支持选择分类后
+ * 通过 AddCustomModuleDialog 添加为首页模块。
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun DiscoverTab(
+private fun RssDiscoverTab(
     sourceUrl: String,
     targetSetId: String?,
+    sourceName: String,
     actions: HomepageManageActions,
 ) {
-    // 异步获取书源的发现分类列表（支持 JS 动态生成的分类）
-    val exploreKinds by produceState<List<Pair<String, String>>>(emptyList(), sourceUrl) {
-        value = actions.onGetExploreKinds(sourceUrl)
+    // 异步获取订阅源的分类列表
+    val rssKinds by produceState<List<Pair<String, String>>>(emptyList(), sourceUrl) {
+        value = actions.onGetRssKinds(sourceUrl)
     }
-    // 是否正在加载分类
-    val isLoadingKinds = exploreKinds.isEmpty()
+    val isLoadingKinds = rssKinds.isEmpty()
 
-    // 选中的模块类型，默认为网格类型
     var selectedModuleType by remember { mutableStateOf(HomepageModuleType.Grid.key) }
-    // 模块类型下拉菜单的展开状态
     var typeMenuExpanded by remember { mutableStateOf(false) }
-    // 选中的发现分类索引（单选，null 表示未选择）
-    // key=sourceUrl：切换书源时重置，避免旧索引越界新分类列表
     var selectedKindIndex by remember(sourceUrl) { mutableStateOf<Int?>(null) }
-    // 分类选择底部弹窗的显示状态
     var showKindSheet by remember { mutableStateOf(false) }
-    // 手动添加模块对话框的显示状态
     var showManualAddDialog by remember { mutableStateOf(false) }
-    // 手动添加模块对话框的预填充数据
     var manualAddPrefill by remember { mutableStateOf<ModuleDef?>(null) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 模块类型选择：使用 MD3 ExposedDropdownMenuBox
+        // 模块类型选择
         ExposedDropdownMenuBox(
             expanded = typeMenuExpanded,
             onExpandedChange = { typeMenuExpanded = it },
@@ -318,7 +292,6 @@ private fun DiscoverTab(
                 onDismissRequest = { typeMenuExpanded = false }
             ) {
                 HomepageModuleType.entries.forEach { moduleType ->
-                    // 跳过未知类型
                     if (moduleType == HomepageModuleType.Unknown) return@forEach
                     DropdownMenuItem(
                         text = { Text(stringResource(moduleType.titleRes)) },
@@ -332,7 +305,7 @@ private fun DiscoverTab(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 发现分类选择：通过底部弹出菜单（Bottom Sheet）选择分类
+        // 分类选择
         if (isLoadingKinds) {
             Box(
                 modifier = Modifier
@@ -351,7 +324,6 @@ private fun DiscoverTab(
                 }
             }
         } else {
-            // 分类选择：使用 ExposedDropdownMenuBox 样式，点击触发底部弹出菜单
             ExposedDropdownMenuBox(
                 expanded = false,
                 onExpandedChange = { if (it) showKindSheet = true },
@@ -360,7 +332,7 @@ private fun DiscoverTab(
                     .padding(horizontal = 4.dp)
             ) {
                 OutlinedTextField(
-                    value = selectedKindIndex?.let { exploreKinds.getOrNull(it)?.first ?: "" } ?: "",
+                    value = selectedKindIndex?.let { rssKinds.getOrNull(it)?.first ?: "" } ?: "",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.homepage_select_category)) },
@@ -376,13 +348,14 @@ private fun DiscoverTab(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 手动添加按钮（不选择分类，直接添加自定义模块）
+        // 手动添加按钮
         OutlinedButton(
             onClick = {
-                manualAddPrefill = ModuleDef(
-                    type = selectedModuleType,
-                    sourceUrl = sourceUrl
-                )
+            manualAddPrefill = ModuleDef(
+                type = selectedModuleType,
+                title = sourceName,
+                sourceUrl = sourceUrl
+            )
                 showManualAddDialog = true
             },
             modifier = Modifier.fillMaxWidth()
@@ -391,7 +364,7 @@ private fun DiscoverTab(
         }
     }
 
-    // 分类选择底部弹出菜单（Bottom Sheet）
+    // 分类选择底部弹窗
     if (showKindSheet) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
@@ -411,7 +384,6 @@ private fun DiscoverTab(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                // 使用 FlowRow 流式布局展示分类标签，类似发现页的 FlexboxLayout
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -423,7 +395,7 @@ private fun DiscoverTab(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        exploreKinds.forEachIndexed { index, kind ->
+                        rssKinds.forEachIndexed { index, kind ->
                             val isSelected = selectedKindIndex == index
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
@@ -436,12 +408,10 @@ private fun DiscoverTab(
                                 onClick = {
                                     selectedKindIndex = index
                                     showKindSheet = false
-                                    // 选择分类后直接打开预填充的添加模块对话框
-                                    // 使用标题和URL的组合作为key，确保标题相同但URL不同时不会覆盖
                                     manualAddPrefill = ModuleDef(
-                                        key = "explore_${kind.first}_${kind.second}",
+                                        key = "rss_${kind.first}_${kind.second}",
                                         type = selectedModuleType,
-                                        title = kind.first,
+                                        title = kind.first.ifBlank { sourceName },
                                         url = kind.second,
                                         sourceUrl = sourceUrl
                                     )
@@ -449,7 +419,7 @@ private fun DiscoverTab(
                                 }
                             ) {
                                 Text(
-                                    text = kind.first,
+                                    text = kind.first.ifBlank { sourceName },
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                                 )
@@ -461,14 +431,15 @@ private fun DiscoverTab(
         }
     }
 
-    // 手动添加模块对话框：用于填写自定义模块的完整配置，预填充所选分类信息
+    // 添加模块对话框（预填充分类信息）
     if (showManualAddDialog) {
         AddCustomModuleDialog(
             show = true,
             prefill = manualAddPrefill ?: ModuleDef(type = selectedModuleType, sourceUrl = sourceUrl),
             isEditMode = false,
             onConfirm = { moduleDef ->
-                actions.onAddCustomModule(sourceUrl, targetSetId, moduleDef)
+                // 使用 RSS 专用添加操作（确保集 ID 使用 rss_ 前缀）
+                actions.onAddRssCustomModule(sourceUrl, targetSetId, moduleDef)
                 showManualAddDialog = false
                 manualAddPrefill = null
                 selectedKindIndex = null
@@ -482,20 +453,11 @@ private fun DiscoverTab(
 }
 
 /**
- * 单个模块项的 UI 组件。
- *
- * 以卡片形式展示模块的标题和类型，并提供拖拽排序、编辑、删除和可见性切换等操作按钮。
- *
- * @param module 模块的 UI 数据
- * @param isDragging 当前项是否正在被拖拽
- * @param onToggle 切换可见性的回调
- * @param onEdit 编辑模块的回调
- * @param onDelete 删除模块的回调
- * @param dragModifier 拖拽手柄的 Modifier，用于长按拖拽排序
+ * 单个模块项的 UI 组件（订阅源版本）
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ModuleItem(
+private fun RssModuleItem(
     module: HomepageModuleManageUi,
     isDragging: Boolean,
     onToggle: (Boolean) -> Unit,
@@ -503,7 +465,6 @@ private fun ModuleItem(
     onDelete: () -> Unit,
     dragModifier: Modifier,
 ) {
-    // 根据模块类型 key 获取对应的枚举值
     val moduleType = HomepageModuleType.fromKey(module.type)
     GlassCard(
         modifier = Modifier
@@ -516,7 +477,6 @@ private fun ModuleItem(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 拖拽手柄图标（仅此区域可触发长按拖拽）
             Icon(
                 imageVector = Icons.Default.DragHandle,
                 contentDescription = stringResource(R.string.homepage_drag_sort),
@@ -526,11 +486,11 @@ private fun ModuleItem(
                     .then(dragModifier)
             )
             Spacer(modifier = Modifier.size(8.dp))
-            // 模块标题和类型标签
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    // 优先显示自定义标题，其次原始标题，最后显示默认名称
-                    text = module.title.ifBlank { module.originalTitle.ifBlank { stringResource(R.string.homepage_unnamed_module) } },
+                    text = module.title.ifBlank {
+                        module.originalTitle.ifBlank { stringResource(R.string.homepage_unnamed_module) }
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
@@ -549,25 +509,13 @@ private fun ModuleItem(
                     )
                 }
             }
-            // 编辑按钮：打开编辑对话框，传入当前模块的完整配置
-            IconButton(
-                onClick = onEdit,
-                modifier = Modifier.size(36.dp)
-            ) {
+            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
                 Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.homepage_edit))
             }
-            // 删除按钮：从当前集移除该模块
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(36.dp)
-            ) {
+            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.homepage_delete))
             }
-            // 显隐开关：控制模块在首页是否可见
-            Switch(
-                checked = module.isVisible,
-                onCheckedChange = onToggle
-            )
+            Switch(checked = module.isVisible, onCheckedChange = onToggle)
         }
     }
 }
