@@ -60,6 +60,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
  * @param onReorderSets 重新排序集的回调
  * @param onCreateCustomSet 点击"新建自定义集"按钮的回调
  * @param onBrowseSources 点击"浏览书源模块"按钮的回调
+ * @param onBrowseRssSources 点击"浏览订阅源模块"按钮的回调
  */
 @Composable
 fun SetListPage(
@@ -71,6 +72,7 @@ fun SetListPage(
     onReorderSets: (List<String>) -> Unit,
     onCreateCustomSet: () -> Unit,
     onBrowseSources: () -> Unit,
+    onBrowseRssSources: () -> Unit,
 ) {
     // 本地排序列表，拖拽时即时更新
     var localSets by remember(sets) { mutableStateOf(sets) }
@@ -152,6 +154,12 @@ fun SetListPage(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(stringResource(R.string.homepage_browse_source_modules))
+            }
+            OutlinedButton(
+                onClick = onBrowseRssSources,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(stringResource(R.string.homepage_browse_rss_source_modules))
             }
         }
     }

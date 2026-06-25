@@ -141,6 +141,8 @@ fun HomepageScreen(
             onAddCustomModule = viewModel::addCustomModule,
             onAddButtonGroupFromKinds = viewModel::addButtonGroupFromKinds,
             onGetExploreKinds = viewModel::getExploreKinds,
+            onGetRssKinds = viewModel::getRssKinds,
+            onAddRssCustomModule = viewModel::addRssCustomModule,
             onUpdateModule = viewModel::updateModule,
             onDeleteModule = viewModel::deleteModule,
             onReorderModules = viewModel::reorderModules,

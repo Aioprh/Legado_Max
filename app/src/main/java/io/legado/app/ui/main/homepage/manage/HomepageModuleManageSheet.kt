@@ -59,9 +59,16 @@ fun HomepageModuleManageSheet(
     // 当前选中的集 URL（用于显示集详情页）
     var selectingSetUrl by remember { mutableStateOf<String?>(null) }
     // 当前正在浏览的书源 URL（用于显示书源模块详情页）
+    // 注意：browsingSourceUrl 仅用于书源浏览场景，订阅源浏览通过独立的
+    // showRssSourceBrowser 状态驱动，直接启动外部 Activity，避免书源/订阅源
+    // 因 sourceUrl 可能重复而产生导航状态污染。
     var browsingSourceUrl by remember { mutableStateOf<String?>(null) }
     // 是否显示书源浏览页
     var showSourceBrowser by remember { mutableStateOf(false) }
+    // 是否显示订阅源浏览页（独立状态，不与书源 URL 状态共享）
+    var showRssSourceBrowser by remember { mutableStateOf(false) }
+    // 当前正在浏览的订阅源 URL（用于显示订阅源模块详情页）
+    var browsingRssSourceUrl by remember { mutableStateOf<String?>(null) }
     // 当前正在为哪个自定义集添加模块（值为自定义集 ID）
     var showCustomSetAddModules by remember { mutableStateOf<String?>(null) }
 
@@ -87,7 +94,9 @@ fun HomepageModuleManageSheet(
     val currentPage: ManageScreen = when {
         showCustomSetAddModules != null -> ManageScreen.CustomSetAddModules(showCustomSetAddModules!!)
         browsingSourceUrl != null -> ManageScreen.SourceBrowseDetail(browsingSourceUrl!!, selectingSetUrl)
+        browsingRssSourceUrl != null -> ManageScreen.RssSourceBrowseDetail(browsingRssSourceUrl!!)
         showSourceBrowser -> ManageScreen.BrowseSources
+        showRssSourceBrowser -> ManageScreen.BrowseRssSources
         selectingSetUrl != null -> ManageScreen.SetDetail(selectingSetUrl!!)
         else -> ManageScreen.SetList
     }
@@ -97,7 +106,9 @@ fun HomepageModuleManageSheet(
         is ManageScreen.SetList -> stringResource(R.string.homepage_module_manage_title)
         is ManageScreen.SetDetail -> state.sets.find { it.sourceUrl == currentPage.setUrl }?.sourceName ?: stringResource(R.string.homepage_set_detail)
         is ManageScreen.BrowseSources -> stringResource(R.string.homepage_browse_source)
+        is ManageScreen.BrowseRssSources -> stringResource(R.string.homepage_browse_rss_source_modules)
         is ManageScreen.SourceBrowseDetail -> state.sourceNames[currentPage.sourceUrl] ?: stringResource(R.string.homepage_source_modules)
+        is ManageScreen.RssSourceBrowseDetail -> state.sourceNames[currentPage.sourceUrl] ?: stringResource(R.string.homepage_browse_rss_source_modules)
         is ManageScreen.CustomSetAddModules -> stringResource(R.string.homepage_add_module)
     }
 
@@ -108,9 +119,11 @@ fun HomepageModuleManageSheet(
     val handleBack: () -> Unit = {
         when (currentPage) {
             is ManageScreen.SourceBrowseDetail -> browsingSourceUrl = null
+            is ManageScreen.RssSourceBrowseDetail -> browsingRssSourceUrl = null
             is ManageScreen.CustomSetAddModules -> showCustomSetAddModules = null
             is ManageScreen.SetDetail -> selectingSetUrl = null
             is ManageScreen.BrowseSources -> showSourceBrowser = false
+            is ManageScreen.BrowseRssSources -> showRssSourceBrowser = false
             is ManageScreen.SetList -> {}
         }
     }
@@ -119,7 +132,9 @@ fun HomepageModuleManageSheet(
     val handleDismiss: () -> Unit = {
         selectingSetUrl = null
         browsingSourceUrl = null
+        browsingRssSourceUrl = null
         showSourceBrowser = false
+        showRssSourceBrowser = false
         showCustomSetAddModules = null
         showCreateSetDialog = false
         renameSetId = null
@@ -205,6 +220,7 @@ fun HomepageModuleManageSheet(
                     onReorderSets = actions.onReorderSets,
                     onCreateCustomSet = { showCreateSetDialog = true },
                     onBrowseSources = { showSourceBrowser = true },
+                    onBrowseRssSources = { showRssSourceBrowser = true },
                 )
 
                 // 集详情页：展示集内模块，支持模块的增删改查与排序
@@ -223,6 +239,10 @@ fun HomepageModuleManageSheet(
                         if (isCurrentSetCustom && currentSetId != null) {
                             // 自定义集：跳转到从其他集添加模块页面
                             showCustomSetAddModules = currentSetId
+                        } else if (page.setUrl.startsWith("rss_")) {
+                            // 订阅源集：跳转到订阅源模块详情页
+                            val sourceUrl = page.setUrl.removePrefix("rss_")
+                            browsingRssSourceUrl = sourceUrl
                         } else {
                             // 书源集：跳转到书源模块详情页，选择分类添加模块
                             // 从集 URL 中提取书源 URL（集 ID 格式为 src_<书源URL>）
@@ -237,6 +257,25 @@ fun HomepageModuleManageSheet(
                 is ManageScreen.BrowseSources -> BrowseSourcesPage(
                     sources = state.browseSources,
                     onSourceClick = { sourceUrl -> browsingSourceUrl = sourceUrl },
+                    onBack = { handleBack() },
+                )
+
+                // 订阅源浏览页：展示所有订阅源，点击进入订阅源模块详情
+                is ManageScreen.BrowseRssSources -> BrowseRssSourcesPage(
+                    onSourceClick = { sourceUrl -> browsingRssSourceUrl = sourceUrl },
+                    onBack = { handleBack() },
+                )
+
+                // 订阅源模块详情页：展示某订阅源下已加入的模块与可发现的分类
+                is ManageScreen.RssSourceBrowseDetail -> RssSourceBrowseDetailPage(
+                    sourceUrl = page.sourceUrl,
+                    sourceName = state.sourceNames[page.sourceUrl] ?: page.sourceUrl,
+                    targetSetId = null,
+                    allModules = state.allJoinedModules,
+                    actions = actions,
+                    onEditModule = { moduleId, moduleDef ->
+                        editingModule = Pair(moduleId, moduleDef)
+                    },
                     onBack = { handleBack() },
                 )
 
@@ -490,6 +529,16 @@ private sealed interface ManageScreen {
     /** 书源浏览页（深度 1） */
     data object BrowseSources : ManageScreen {
         override val depth: Int = 1
+    }
+
+    /** 订阅源浏览页（深度 1） */
+    data object BrowseRssSources : ManageScreen {
+        override val depth: Int = 1
+    }
+
+    /** 订阅源模块详情页（深度 2） */
+    data class RssSourceBrowseDetail(val sourceUrl: String) : ManageScreen {
+        override val depth: Int = 2
     }
 
     /** 书源模块详情页（深度 2） */

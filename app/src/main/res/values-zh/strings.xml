@@ -2012,6 +2012,7 @@
     <string name="homepage_module_count">%d 个模块</string>
     <string name="homepage_new_custom_set">新建自定义集</string>
     <string name="homepage_browse_source_modules">浏览书源模块</string>
+    <string name="homepage_browse_rss_source_modules">浏览订阅源模块</string>
     <string name="homepage_drag_sort">拖拽排序</string>
     <string name="homepage_view">查看</string>
 

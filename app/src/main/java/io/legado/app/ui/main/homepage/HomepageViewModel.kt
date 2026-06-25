@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.repository.HomepageModulesRepository
 import io.legado.app.domain.gateway.HomepageModulesGateway
@@ -21,6 +22,8 @@ import io.legado.app.domain.usecase.SaveSearchBooksUseCase
 import io.legado.app.help.book.isNotShelf
 import io.legado.app.data.entities.rule.ExploreKind
 import io.legado.app.help.source.exploreKinds
+import io.legado.app.help.source.sortUrls
+import io.legado.app.model.rss.Rss
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.fromJsonObject
@@ -184,7 +187,8 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
         sortedSetIds.flatMap { setId ->
             // 计算集 URL（与 setsFlow 中的逻辑保持一致）
-            val isSourceSet = setId.startsWith("src_")
+            // 书源集（src_）和订阅源集（rss_）都视为源集
+            val isSourceSet = setId.startsWith("src_") || setId.startsWith("rss_")
             val setUrl = if (isSourceSet) setId else customSetUrl(setId)
             // 跳过已隐藏的集
             if (setUrl in hidden) return@flatMap emptyList()
@@ -281,8 +285,9 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     val setsFlow = combine(customSetsSync, allModulesCache, _configVersion) { sets, modules, _ ->
         val hidden = hiddenSetUrls
         sets.map { cs ->
-            // 书源集（src_ 前缀）使用原始 ID 作为 URL，自定义集使用 custom:// 前缀
-            val isSourceSet = cs.id.startsWith("src_")
+            // 书源集（src_ 前缀）和订阅源集（rss_ 前缀）使用原始 ID 作为 URL
+            // 自定义集使用 custom:// 前缀
+            val isSourceSet = cs.id.startsWith("src_") || cs.id.startsWith("rss_")
             val setUrl = if (isSourceSet) cs.id else customSetUrl(cs.id)
             val count = modules.count { it.customSetId == cs.id }
             HomepageSourceManageUi(
@@ -548,16 +553,42 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }
         loadJobs[module.id] = viewModelScope.launch {
             kotlin.runCatching {
-                val isRanking =
-                    module.type == HomepageModuleType.Ranking.key || module.type == HomepageModuleType.GridRanking.key
-                val books = if (isRanking) exploreBooksUseCase.executeForRanking(
-                    module.sourceUrl,
-                    module.url,
-                    module.args
-                )
-                else exploreBooksUseCase.execute(module.sourceUrl, module.url, module.args).books
-                val hasMore = isInfinite(module.type, module.layoutConfig) && books.isNotEmpty()
-                books to hasMore
+                // 检查是否为订阅源模块
+                val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
+                if (rssSource != null) {
+                    // 订阅源加载：获取文章列表
+                    val sortUrl = module.url ?: rssSource.sourceUrl
+                    val sortName = module.title.ifBlank { rssSource.sourceName }
+                    val (articles, _) = withContext(Dispatchers.IO) {
+                        Rss.getArticlesAwait(sortName, sortUrl, rssSource, page = 1)
+                    }
+                    // 转换为 SearchBook 以复用现有 UI
+                    val books = articles.map { article ->
+                        SearchBook(
+                            bookUrl = article.link,
+                            origin = rssSource.sourceUrl,
+                            originName = rssSource.sourceName,
+                            name = article.title,
+                            coverUrl = article.image,
+                            intro = article.description,
+                            author = article.pubDate ?: "",
+                            latestChapterTitle = article.pubDate,
+                        )
+                    }
+                    books to false
+                } else {
+                    // 书源加载（原有逻辑）
+                    val isRanking =
+                        module.type == HomepageModuleType.Ranking.key || module.type == HomepageModuleType.GridRanking.key
+                    val books = if (isRanking) exploreBooksUseCase.executeForRanking(
+                        module.sourceUrl,
+                        module.url,
+                        module.args
+                    )
+                    else exploreBooksUseCase.execute(module.sourceUrl, module.url, module.args).books
+                    val hasMore = isInfinite(module.type, module.layoutConfig) && books.isNotEmpty()
+                    books to hasMore
+                }
             }.onSuccess { (books, hasMore) ->
                 val shelf = _bookshelf.value
                 _moduleContentStates.update {
@@ -982,6 +1013,76 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }.getOrDefault(emptyList())
     }
 
+    /**
+     * 获取订阅源的分类列表（支持 JS 动态生成的分类）
+     *
+     * 使用 RssSource.sortUrls() 解析 sortUrl 字段中的分类定义，
+     * 若 sortUrl 为空或无效则返回含空标题的默认条目。
+     *
+     * @param sourceUrl 订阅源 URL
+     * @return 分类列表，每项为 (分类标题, 分类URL) 对
+     */
+    suspend fun getRssKinds(sourceUrl: String): List<Pair<String, String>> {
+        val source = appDb.rssSourceDao.getByKey(sourceUrl) ?: return emptyList()
+        return runCatching {
+            source.sortUrls()
+        }.getOrDefault(listOf(Pair("", sourceUrl)))
+    }
+
+    /**
+     * 确保订阅源对应的集存在（不存在则自动创建）
+     * 集 ID 格式：rss_<订阅源URL>，集名称为订阅源名称
+     * @return 集 ID
+     */
+    private suspend fun ensureRssSetForSource(sourceUrl: String, sourceName: String): String {
+        val setId = "rss_$sourceUrl"
+        if (gateway.getCustomSetById(setId) == null) gateway.upsertCustomSet(
+            CustomSetItem(id = setId, name = sourceName)
+        )
+        return setId
+    }
+
+    /**
+     * 添加订阅源首页模块
+     *
+     * 与 addCustomModule 完全一致的结构，差异仅为：
+     * - 使用 rss_ 前缀创建集 ID 以避免与书源集（src_）冲突
+     * - 从 RssSource 表获取源名称
+     *
+     * @param sourceUrl 订阅源 URL
+     * @param setId 目标集 ID，为 null 时自动创建
+     * @param def 模块定义
+     */
+    fun addRssCustomModule(sourceUrl: String, setId: String?, def: ModuleDef) {
+        viewModelScope.launch {
+            // 确保订阅源集存在（自动创建以订阅源命名的集）
+            val effectiveSetId = setId ?: run {
+                val rssSource = appDb.rssSourceDao.getByKey(sourceUrl)
+                ensureRssSetForSource(sourceUrl, rssSource?.sourceName?.ifBlank { null } ?: sourceUrl)
+            }
+            val key = def.key.ifBlank { "rss_${System.currentTimeMillis()}" }
+            val globalId = ModuleDef.globalIdOf(sourceUrl, key, effectiveSetId)
+            gateway.upsertAll(listOf(
+                ModuleItem(
+                    id = globalId,
+                    sourceUrl = sourceUrl,
+                    moduleKey = key,
+                    type = def.type,
+                    title = def.title,
+                    args = def.args,
+                    layoutConfig = def.layoutConfig,
+                    url = def.url,
+                    isEnabled = true,
+                    customSetId = effectiveSetId,
+                    isUserCreated = true,
+                    sortOrder = allModulesCache.value.count { it.customSetId == effectiveSetId },
+                    syncedAt = System.currentTimeMillis()
+                )
+            ))
+            notifyConfigChanged()
+        }
+    }
+
     fun updateModule(globalId: String, def: ModuleDef) {
         viewModelScope.launch {
             val existing = gateway.getById(globalId) ?: return@launch
@@ -1070,12 +1171,12 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
      */
     fun deleteCustomSet(id: String) {
         viewModelScope.launch {
-            // 判断是否为书源集（src_ 前缀）
-            val isSourceSet = id.startsWith("src_")
+            // 判断是否为书源集（src_ 前缀）或订阅源集（rss_ 前缀）
+            val isSourceSet = id.startsWith("src_") || id.startsWith("rss_")
             
             if (isSourceSet) {
-                // 书源集：提取书源URL，删除所有来自该书源的模块
-                val sourceUrl = id.removePrefix("src_")
+                // 源集：提取源URL，删除所有来自该源的模块
+                val sourceUrl = id.removePrefix("src_").removePrefix("rss_")
                 val moduleIds = allModulesCache.value
                     .filter { it.sourceUrl == sourceUrl }
                     .map { it.id }
@@ -1114,8 +1215,9 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         viewModelScope.launch {
             val existing = gateway.getById(moduleId) ?: return@launch
             if (customSetId == null) {
-                // 从自定义集移除：直接删除该模块（它是源集模块的副本）
-                if (existing.customSetId?.startsWith("src_") == true) {
+                // 从自有集移除：直接删除该模块（它是源集模块的副本）
+                val inSourceSet = existing.customSetId?.let { it.startsWith("src_") || it.startsWith("rss_") } == true
+                if (inSourceSet) {
                     // 模块在书源集中，仅禁用
                     gateway.setEnabled(moduleId, false)
                 } else {

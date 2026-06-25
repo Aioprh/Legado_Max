@@ -2026,6 +2026,7 @@
     <string name="homepage_module_count">%d modules</string>
     <string name="homepage_new_custom_set">New Custom Set</string>
     <string name="homepage_browse_source_modules">Browse Source Modules</string>
+    <string name="homepage_browse_rss_source_modules">Browse Subscription Source Modules</string>
     <string name="homepage_drag_sort">Drag to Sort</string>
     <string name="homepage_view">View</string>
 

@@ -62,9 +62,9 @@ fun CustomSetAddModulesPage(
     onAssignModule: (String, String?) -> Unit,
     onBack: () -> Unit,
 ) {
-    // 仅显示源集模块（原始模块），避免显示副本导致重复
+    // 仅显示源集模块（书源 src_ 或订阅源 rss_），避免显示副本导致重复
     val sourceModules = remember(allModules) {
-        allModules.filter { it.customSetId?.startsWith("src_") == true }
+        allModules.filter { it.customSetId?.let { cid -> cid.startsWith("src_") || cid.startsWith("rss_") } == true }
     }
     // 按书源分组展示
     val groupedModules = remember(sourceModules) {

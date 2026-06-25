@@ -1492,6 +1492,7 @@
     <string name="homepage_module_count">%d 個模組</string>
     <string name="homepage_new_custom_set">新建自定義集</string>
     <string name="homepage_browse_source_modules">瀏覽書源模組</string>
+    <string name="homepage_browse_rss_source_modules">瀏覽訂閲源模組</string>
     <string name="homepage_drag_sort">拖拽排序</string>
     <string name="homepage_view">查看</string>
 
