@@ -493,10 +493,18 @@ private fun RssModuleItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                TextCard(
-                    text = stringResource(moduleType.titleRes),
-                    textStyle = MaterialTheme.typography.labelSmall
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextCard(
+                        text = stringResource(moduleType.titleRes),
+                        textStyle = MaterialTheme.typography.labelSmall
+                    )
+                    TextCard(
+                        text = if (module.sourceType == "rss") "订阅源" else "书源",
+                        textStyle = MaterialTheme.typography.labelSmall.copy(
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                }
             }
             IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
                 Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.homepage_edit))

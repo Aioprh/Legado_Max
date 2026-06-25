@@ -358,6 +358,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 args = mod.args,
                 layoutConfig = mod.layoutConfig,
                 originalTitle = mod.title,
+                sourceType = if (rssNames.containsKey(mod.sourceUrl)) "rss" else "book",
             )
         }
         HomepageManageUiState(

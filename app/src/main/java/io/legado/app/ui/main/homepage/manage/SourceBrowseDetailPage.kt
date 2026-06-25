@@ -536,10 +536,18 @@ private fun ModuleItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                TextCard(
-                    text = stringResource(moduleType.titleRes),
-                    textStyle = MaterialTheme.typography.labelSmall
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextCard(
+                        text = stringResource(moduleType.titleRes),
+                        textStyle = MaterialTheme.typography.labelSmall
+                    )
+                    TextCard(
+                        text = if (module.sourceType == "rss") "订阅源" else "书源",
+                        textStyle = MaterialTheme.typography.labelSmall.copy(
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                }
             }
             // 编辑按钮：打开编辑对话框，传入当前模块的完整配置
             IconButton(

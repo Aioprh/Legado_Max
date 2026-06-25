@@ -189,6 +189,8 @@ data class HomepageModuleManageUi(
     val args: String? = null,
     val layoutConfig: String? = null,
     val originalTitle: String = "",
+    /** 模块来源类型："book"=书源模块, "rss"=订阅源模块 */
+    val sourceType: String = "book",
 )
 
 /**
