@@ -174,7 +174,7 @@ fun HomepageModuleManageSheet(
         show = show,
         onDismissRequest = handleDismiss,
         title = title,
-        skipPartiallyExpanded = false,
+        skipPartiallyExpanded = true,
         startAction = if (canGoBack) {
             {
                 IconButton(onClick = { handleBack() }) {
