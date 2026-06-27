@@ -109,6 +109,18 @@ sealed interface ModuleLoadState {
     data class Buttons(val kinds: List<ExploreKind>) : ModuleLoadState
 
     /**
+     * 排行榜多 Tab 状态（支持 Ranking / GridRanking 多分类）
+     *
+     * @property tabs 各分类 Tab 的数据
+     * @property selectedIndex 当前选中的 Tab 索引
+     */
+    @Stable
+    data class RankingTabs(
+        val tabs: List<RankingTabData>,
+        val selectedIndex: Int = 0
+    ) : ModuleLoadState
+
+    /**
      * 错误状态
      *
      * @property message 错误信息
@@ -116,6 +128,22 @@ sealed interface ModuleLoadState {
     @Stable
     data class Error(val message: String) : ModuleLoadState
 }
+
+/**
+ * 排行榜 Tab 数据 — 多分类排行榜中每个 Tab 的独立状态
+ *
+ * @property title 分类标题（Tab 标签文字）
+ * @property exploreUrl 分类探索 URL（点击箭头跳转目标）
+ * @property books 该分类下的书籍列表，null 表示尚未加载
+ * @property errorMessage 加载错误，非 null 表示加载失败
+ */
+@Stable
+data class RankingTabData(
+    val title: String,
+    val exploreUrl: String?,
+    val books: List<HomepageBookItemUi>? = null,
+    val errorMessage: String? = null,
+)
 
 // ==================== 管理模式 UI 状态 ====================
 
@@ -230,6 +258,8 @@ data class HomepageManageActions(
     val onGetRssKinds: suspend (String) -> List<Pair<String, String>>,
     val onAddRssCustomModule: (String, String?, ModuleDef) -> Unit,
     val onAddRssButtonGroupFromKinds: (String, String?, String, List<String>) -> Unit,
+    val onAddRankingGroupFromKinds: (String, String?, String, List<Pair<String, String>>, String) -> Unit,
+    val onAddRssRankingGroupFromKinds: (String, String?, String, List<Pair<String, String>>, String) -> Unit,
     val onUpdateModule: (String, ModuleDef) -> Unit,
     val onDeleteModule: (String) -> Unit,
     val onReorderModules: (List<String>) -> Unit,

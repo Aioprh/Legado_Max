@@ -295,8 +295,13 @@ private fun DiscoverTab(
     // 手动添加模块对话框的预填充数据
     var manualAddPrefill by remember { mutableStateOf<ModuleDef?>(null) }
 
-    // 是否处于按钮组多选模式
+    // 是否处于多选模式（按钮组 / 排行榜 / 网格排行榜）
+    val isMultiSelectMode = selectedModuleType == HomepageModuleType.ButtonGroup.key
+            || selectedModuleType == HomepageModuleType.Ranking.key
+            || selectedModuleType == HomepageModuleType.GridRanking.key
     val isButtonGroupMode = selectedModuleType == HomepageModuleType.ButtonGroup.key
+    val isRankingMode = selectedModuleType == HomepageModuleType.Ranking.key
+            || selectedModuleType == HomepageModuleType.GridRanking.key
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // 模块类型选择：使用 MD3 ExposedDropdownMenuBox
@@ -367,7 +372,7 @@ private fun DiscoverTab(
                     .padding(horizontal = 4.dp)
             ) {
                 OutlinedTextField(
-                    value = if (isButtonGroupMode) {
+                    value = if (isMultiSelectMode) {
                         when {
                             selectedKindIndices.isEmpty() -> ""
                             selectedKindIndices.size <= 3 -> selectedKindIndices.mapNotNull { exploreKinds.getOrNull(it)?.first }
@@ -379,7 +384,7 @@ private fun DiscoverTab(
                     },
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text(if (isButtonGroupMode) stringResource(R.string.homepage_select_category) else stringResource(R.string.homepage_select_category)) },
+                    label = { Text(stringResource(R.string.homepage_select_category)) },
                     singleLine = true,
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = false)
@@ -390,7 +395,7 @@ private fun DiscoverTab(
                 )
             }
             // 按钮组模式下，显示多选提示
-            if (isButtonGroupMode) {
+            if (isMultiSelectMode) {
                 Text(
                     text = stringResource(R.string.homepage_multi_select_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -449,7 +454,7 @@ private fun DiscoverTab(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         exploreKinds.forEachIndexed { index, kind ->
-                            val isSelected = if (isButtonGroupMode) {
+                            val isSelected = if (isMultiSelectMode) {
                                 selectedKindIndices.contains(index)
                             } else {
                                 selectedKindIndex == index
@@ -463,7 +468,7 @@ private fun DiscoverTab(
                                 border = if (isSelected) null
                                 else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 onClick = {
-                                    if (isButtonGroupMode) {
+                                    if (isMultiSelectMode) {
                                         // 多选模式：切换选中状态
                                         selectedKindIndices = if (isSelected) {
                                             selectedKindIndices - index
@@ -488,14 +493,14 @@ private fun DiscoverTab(
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(
-                                        start = if (isButtonGroupMode) 4.dp else 12.dp,
+                                        start = if (isMultiSelectMode) 4.dp else 12.dp,
                                         end = 12.dp,
                                         top = 4.dp,
                                         bottom = 4.dp
                                     )
                                 ) {
                                     // 多选模式下显示复选框
-                                    if (isButtonGroupMode) {
+                                    if (isMultiSelectMode) {
                                         Checkbox(
                                             checked = isSelected,
                                             onCheckedChange = null, // 点击由 Surface 的 onClick 处理
@@ -511,21 +516,29 @@ private fun DiscoverTab(
                         }
                     }
                 }
-                // 按钮组模式下，显示创建按钮（选中至少一个分类后可用）
-                if (isButtonGroupMode && selectedKindIndices.isNotEmpty()) {
+                // 多选模式下，显示创建按钮（选中至少一个分类后可用）
+                if (isMultiSelectMode && selectedKindIndices.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = {
                             val selectedKinds = selectedKindIndices.mapNotNull { exploreKinds.getOrNull(it) }
-                            val title = selectedKinds.joinToString("、") { it.first }
-                            val kindTitles = selectedKinds.map { it.first }
-                            actions.onAddButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
+                            if (isRankingMode) {
+                                val title = selectedKinds.joinToString("、") { it.first }
+                                actions.onAddRankingGroupFromKinds(sourceUrl, targetSetId, title, selectedKinds, selectedModuleType)
+                            } else {
+                                val title = selectedKinds.joinToString("、") { it.first }
+                                val kindTitles = selectedKinds.map { it.first }
+                                actions.onAddButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
+                            }
                             showKindSheet = false
                             selectedKindIndices = emptySet()
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(stringResource(R.string.homepage_create_button_group, selectedKindIndices.size))
+                        Text(if (isRankingMode)
+                            stringResource(R.string.homepage_create_ranking_group, selectedKindIndices.size)
+                        else
+                            stringResource(R.string.homepage_create_button_group, selectedKindIndices.size))
                     }
                 }
             }

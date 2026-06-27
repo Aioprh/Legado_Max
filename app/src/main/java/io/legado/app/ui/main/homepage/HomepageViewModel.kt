@@ -553,26 +553,24 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         if (module.type == HomepageModuleType.ButtonGroup.key) {
             loadJobs[module.id] = viewModelScope.launch {
                 kotlin.runCatching {
-                    // 检查是否为订阅源
-                    val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
-                    if (rssSource != null) {
-                        // 订阅源按钮组：从 sortUrls 获取分类，按标题匹配
-                        val allKinds = rssSource.sortUrls().map { (title, url) ->
-                            ExploreKind(title = title, url = url)
-                        }
-                        val selectedTitles =
-                            module.args?.let { GSON.fromJsonArray<String>(it).getOrNull() }
-                        if (selectedTitles.isNullOrEmpty()) allKinds.take(HOMEPAGE_MAX_BUTTON_GROUP_KINDS)
-                        else selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
+                    // 从 args 提取分类标题（兼容新旧两种格式）
+                    val selectedTitles = parseKindTitlesFromArgs(module.args)
+                    if (selectedTitles.isNullOrEmpty()) {
+                        emptyList<ExploreKind>()
                     } else {
-                        // 书源按钮组：从 exploreKinds 获取分类
-                        val source = appDb.bookSourceDao.getBookSource(module.sourceUrl)
-                            ?: throw Exception("Source not found")
-                        val allKinds = withContext(Dispatchers.IO) { source.exploreKinds() }
-                        val selectedTitles =
-                            module.args?.let { GSON.fromJsonArray<String>(it).getOrNull() }
-                        if (selectedTitles.isNullOrEmpty()) allKinds.take(HOMEPAGE_MAX_BUTTON_GROUP_KINDS)
-                        else selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
+                        // 检查是否为订阅源
+                        val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
+                        if (rssSource != null) {
+                            val allKinds = rssSource.sortUrls().map { (title, url) ->
+                                ExploreKind(title = title, url = url)
+                            }
+                            selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
+                        } else {
+                            val source = appDb.bookSourceDao.getBookSource(module.sourceUrl)
+                                ?: throw Exception("Source not found")
+                            val allKinds = withContext(Dispatchers.IO) { source.exploreKinds() }
+                            selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
+                        }
                     }
                 }.onSuccess { kinds ->
                     _moduleContentStates.update { it + (module.id to ModuleLoadState.Buttons(kinds)) }
@@ -580,6 +578,72 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                     _moduleContentStates.update { it + (module.id to ModuleLoadState.Error(e.stackTraceStr)) }
                 }
             }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
+            return
+        }
+        // 排行榜多分类模式：args 包含多个 {t:标题, u:URL} 对象
+        val isRanking = module.type == HomepageModuleType.Ranking.key || module.type == HomepageModuleType.GridRanking.key
+        val rankingCategoryPairs = if (isRanking) parseRankingCategories(module.args) else null
+        if (rankingCategoryPairs != null) {
+            val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
+            val categoryList = rankingCategoryPairs
+            // 初始化：每个 Tab 先创建空占位，再逐个加载
+            val initialTabs = categoryList.map { (title, url) ->
+                RankingTabData(title = title, exploreUrl = url.ifBlank { null })
+            }
+            _moduleContentStates.update { it + (module.id to ModuleLoadState.RankingTabs(initialTabs)) }
+            // 逐个加载各分类
+            categoryList.forEachIndexed { index, (title, url) ->
+                loadJobs["${module.id}_tab_$index"] = viewModelScope.launch {
+                    kotlin.runCatching {
+                        val books = if (rssSource != null) {
+                            // 订阅源排行榜
+                            val (articles, _) = withContext(Dispatchers.IO) {
+                                Rss.getArticlesAwait(title.ifBlank { rssSource.sourceName }, url, rssSource, page = 1)
+                            }
+                            articles.map { article ->
+                                SearchBook(
+                                    bookUrl = article.link,
+                                    origin = rssSource.sourceUrl,
+                                    originName = rssSource.sourceName,
+                                    name = article.title,
+                                    coverUrl = article.image,
+                                    intro = article.description?.let { Html.fromHtml(it, Html.FROM_HTML_MODE_LEGACY).toString().trim() },
+                                    author = rssSource.sourceName,
+                                    latestChapterTitle = article.pubDate,
+                                )
+                            }
+                        } else {
+                            exploreBooksUseCase.executeForRanking(module.sourceUrl, url, null)
+                        }
+                        val shelf = _bookshelf.value
+                        val bookItems = books.map { book ->
+                            HomepageBookItemUi(
+                                book = book,
+                                shelfState = resolveBookShelfStateUseCase.execute(
+                                    name = book.name, author = book.author, url = book.bookUrl, shelf = shelf
+                                )
+                            )
+                        }
+                        bookItems
+                    }.onSuccess { bookItems ->
+                        _moduleContentStates.update { states ->
+                            val current = states[module.id] as? ModuleLoadState.RankingTabs ?: return@update states
+                            val updatedTabs = current.tabs.toMutableList().also {
+                                it[index] = it[index].copy(books = bookItems)
+                            }
+                            states + (module.id to current.copy(tabs = updatedTabs))
+                        }
+                    }.onFailure { e ->
+                        _moduleContentStates.update { states ->
+                            val current = states[module.id] as? ModuleLoadState.RankingTabs ?: return@update states
+                            val updatedTabs = current.tabs.toMutableList().also {
+                                it[index] = it[index].copy(errorMessage = e.stackTraceStr)
+                            }
+                            states + (module.id to current.copy(tabs = updatedTabs))
+                        }
+                    }
+                }.also { it.invokeOnCompletion { loadJobs.remove("${module.id}_tab_$index") } }
+            }
             return
         }
         loadJobs[module.id] = viewModelScope.launch {
@@ -702,6 +766,13 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
     fun onKindUrlClick(sourceUrl: String, url: String, title: String) =
         _effects.tryEmit(HomepageEffect.NavigateToExploreShow(title, sourceUrl, url))
+
+    fun selectRankingTab(globalId: String, index: Int) {
+        _moduleContentStates.update { states ->
+            val current = states[globalId] as? ModuleLoadState.RankingTabs ?: return@update states
+            states + (globalId to current.copy(selectedIndex = index))
+        }
+    }
 
     /**
      * 刷新首页模块内容（重新加载已存在的模块数据，不自动从书源同步新模块）
@@ -1021,7 +1092,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                     moduleKey = key,
                     type = HomepageModuleType.ButtonGroup.key,
                     title = title,
-                    args = GSON.toJson(kindTitles),
+                    args = GSON.toJson(kindTitles.map { mapOf("t" to it, "u" to "") }),
                     isEnabled = true,
                     customSetId = effectiveSetId,
                     isUserCreated = true,
@@ -1152,7 +1223,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                     moduleKey = key,
                     type = HomepageModuleType.ButtonGroup.key,
                     title = title,
-                    args = GSON.toJson(kindTitles),
+                    args = GSON.toJson(kindTitles.map { mapOf("t" to it, "u" to "") }),
                     isEnabled = true,
                     customSetId = effectiveSetId,
                     isUserCreated = true,
@@ -1161,6 +1232,126 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 )
             ))
             notifyConfigChanged()
+        }
+    }
+
+    /**
+     * 从分类创建书源排行榜组（Ranking / GridRanking）
+     *
+     * @param sourceUrl 书源 URL
+     * @param setId 目标集 ID
+     * @param title 排行榜组标题
+     * @param categories 选中的分类列表，每项为 (标题, URL)
+     * @param rankingType 排行榜类型 ranking 或 gridRanking
+     */
+    fun addRankingGroupFromKinds(
+        sourceUrl: String,
+        setId: String?,
+        title: String,
+        categories: List<Pair<String, String>>,
+        rankingType: String = HomepageModuleType.Ranking.key
+    ) {
+        viewModelScope.launch {
+            val effectiveSetId = setId ?: run {
+                val source = _bookSourcesCache.value[sourceUrl]
+                ensureSetForSource(sourceUrl, source?.bookSourceName ?: sourceUrl)
+            }
+            val key = "rg_${System.currentTimeMillis()}"
+            val globalId = ModuleDef.globalIdOf(sourceUrl, key, effectiveSetId)
+            val args = categories.map { mapOf("t" to it.first, "u" to it.second) }
+            gateway.upsertAll(listOf(
+                ModuleItem(
+                    id = globalId,
+                    sourceUrl = sourceUrl,
+                    moduleKey = key,
+                    type = rankingType,
+                    title = title,
+                    args = GSON.toJson(args),
+                    isEnabled = true,
+                    customSetId = effectiveSetId,
+                    isUserCreated = true,
+                    sortOrder = allModulesCache.value.count { it.customSetId == effectiveSetId },
+                    syncedAt = System.currentTimeMillis()
+                )
+            ))
+            notifyConfigChanged()
+        }
+    }
+
+    /**
+     * 从分类创建订阅源排行榜组（Ranking / GridRanking）
+     */
+    fun addRssRankingGroupFromKinds(
+        sourceUrl: String,
+        setId: String?,
+        title: String,
+        categories: List<Pair<String, String>>,
+        rankingType: String = HomepageModuleType.Ranking.key
+    ) {
+        viewModelScope.launch {
+            val effectiveSetId = setId ?: run {
+                val rssSource = appDb.rssSourceDao.getByKey(sourceUrl)
+                ensureRssSetForSource(sourceUrl, rssSource?.sourceName?.ifBlank { null } ?: sourceUrl)
+            }
+            val key = "rg_${System.currentTimeMillis()}"
+            val globalId = ModuleDef.globalIdOf(sourceUrl, key, effectiveSetId)
+            val args = categories.map { mapOf("t" to it.first, "u" to it.second) }
+            gateway.upsertAll(listOf(
+                ModuleItem(
+                    id = globalId,
+                    sourceUrl = sourceUrl,
+                    moduleKey = key,
+                    type = rankingType,
+                    title = title,
+                    args = GSON.toJson(args),
+                    isEnabled = true,
+                    customSetId = effectiveSetId,
+                    isUserCreated = true,
+                    sortOrder = allModulesCache.value.count { it.customSetId == effectiveSetId },
+                    syncedAt = System.currentTimeMillis()
+                )
+            ))
+            notifyConfigChanged()
+        }
+    }
+
+    /**
+     * 解析排行榜模块 args 中的多分类数据
+     * @return 解析成功返回 (标题, URL) 列表，至少 2 个元素才认为是多分类模式；否则返回 null
+     */
+    private fun parseRankingCategories(args: String?): List<Pair<String, String>>? {
+        if (args.isNullOrBlank()) return null
+        return try {
+            val list = GSON.fromJsonArray<Map<String, String>>(args).getOrNull() ?: return null
+            val result = list.mapNotNull { map ->
+                val t = map["t"] ?: return@mapNotNull null
+                val u = map["u"] ?: ""
+                Pair(t, u)
+            }
+            if (result.size >= 1) result else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 兼容新旧两种 args 格式提取分类标题
+     * 新: [{"t":"title1","u":"url1"},...]  旧: ["title1","title2"]
+     */
+    private fun parseKindTitlesFromArgs(args: String?): List<String>? {
+        if (args.isNullOrBlank()) return null
+        // 先尝试新格式 [{t, u}]
+        try {
+            val list = GSON.fromJsonArray<Map<String, String>>(args).getOrNull()
+            if (list != null && list.isNotEmpty()) {
+                return list.mapNotNull { it["t"] }
+            }
+        } catch (_: Exception) { }
+        // 回退旧格式 ["title1","title2"]
+        return try {
+            GSON.fromJsonArray<String>(args).getOrNull()
+        } catch (_: Exception) {
+            null
         }
     }
 

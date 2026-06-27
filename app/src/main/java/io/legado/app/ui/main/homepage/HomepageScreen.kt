@@ -1,7 +1,9 @@
 package io.legado.app.ui.main.homepage
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,11 +11,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckBox
@@ -32,6 +38,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabPosition
 import androidx.compose.material3.TabRowDefaults
@@ -149,6 +156,8 @@ fun HomepageScreen(
             onGetRssKinds = viewModel::getRssKinds,
             onAddRssCustomModule = viewModel::addRssCustomModule,
             onAddRssButtonGroupFromKinds = viewModel::addRssButtonGroupFromKinds,
+            onAddRankingGroupFromKinds = viewModel::addRankingGroupFromKinds,
+            onAddRssRankingGroupFromKinds = viewModel::addRssRankingGroupFromKinds,
             onUpdateModule = viewModel::updateModule,
             onDeleteModule = viewModel::deleteModule,
             onReorderModules = viewModel::reorderModules,
@@ -546,6 +555,16 @@ private fun HomepageModuleItem(
     onModuleHeaderClick: (title: String?, sourceUrl: String, exploreUrl: String?) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        // 排行榜多 Tab 模式下，获取当前选中 Tab 的 exploreUrl
+        val rankingTabState = module.state as? ModuleLoadState.RankingTabs
+        val isRankingTabs = rankingTabState != null
+        val rankingCurrentExploreUrl = rankingTabState
+            ?.tabs?.getOrNull(rankingTabState.selectedIndex)?.exploreUrl
+        // 箭头显示逻辑：多 Tab 时在 Tab 栏 → 标题行不显示；单 Tab 或无 Tab 时在标题行显示
+        val hasArrow = ((module.exploreUrl != null || rankingCurrentExploreUrl != null)
+                && module.type != HomepageModuleType.ButtonGroup
+                && (!isRankingTabs || (rankingTabState?.tabs?.size ?: 0) <= 1))
+
         // Module header
         Row(
             modifier = Modifier
@@ -554,7 +573,11 @@ private fun HomepageModuleItem(
                 .then(
                     if (module.type != HomepageModuleType.ButtonGroup) {
                         Modifier.clickable {
-                            onModuleHeaderClick(module.title, module.sourceUrl, module.exploreUrl)
+                            onModuleHeaderClick(
+                                module.title,
+                                module.sourceUrl,
+                                rankingCurrentExploreUrl ?: module.exploreUrl
+                            )
                         }
                     } else {
                         Modifier
@@ -572,7 +595,7 @@ private fun HomepageModuleItem(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            if (module.exploreUrl != null && module.type != HomepageModuleType.ButtonGroup) {
+            if (hasArrow) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = stringResource(R.string.homepage_more),
@@ -720,6 +743,22 @@ private fun HomepageModuleItem(
                         }
                     )
                 }
+
+                is ModuleLoadState.RankingTabs -> {
+                    RankingTabsModule(
+                        tabs = state.tabs,
+                        selectedIndex = state.selectedIndex,
+                        moduleType = module.type,
+                        onTabSelected = { index ->
+                            viewModel.selectRankingTab(module.globalId, index)
+                        },
+                        onBookClick = onBookClick,
+                        onBookLongClick = onBookLongClick,
+                        onArrowClick = { tab ->
+                            onModuleHeaderClick(tab.title, module.sourceUrl, tab.exploreUrl)
+                        }
+                    )
+                }
             }
         }
     }
@@ -768,6 +807,121 @@ private fun LoadMoreFooter(
                 tint = pageAccentColor(),
                 modifier = Modifier.padding(start = 4.dp)
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RankingTabsModule(
+    tabs: List<RankingTabData>,
+    selectedIndex: Int,
+    moduleType: HomepageModuleType,
+    onTabSelected: (Int) -> Unit,
+    onBookClick: (SearchBook) -> Unit,
+    onBookLongClick: (SearchBook) -> Unit,
+    onArrowClick: (RankingTabData) -> Unit,
+) {
+    val currentTab = tabs.getOrNull(selectedIndex) ?: return
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // 多个 Tab 时显示 Tab 栏 + 固定箭头
+        if (tabs.size > 1) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val scrollState = rememberScrollState()
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(scrollState),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    tabs.forEachIndexed { index, tab ->
+                        Surface(
+                            color = if (selectedIndex == index)
+                                MaterialTheme.colorScheme.primaryContainer
+                            else MaterialTheme.colorScheme.surface,
+                            contentColor = if (selectedIndex == index)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onSurface,
+                            shape = RoundedCornerShape(8.dp),
+                            border = if (selectedIndex == index) null
+                            else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            onClick = { onTabSelected(index) }
+                        ) {
+                            Text(
+                                text = tab.title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+                // 固定位置箭头
+                if (currentTab.exploreUrl != null) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = stringResource(R.string.homepage_more),
+                        tint = pageSecondaryTextColor(),
+                        modifier = Modifier
+                            .padding(start = 4.dp, end = 8.dp)
+                            .size(18.dp)
+                            .clickable { onArrowClick(currentTab) }
+                    )
+                }
+            }
+        }
+
+        // 内容区域
+        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+            when {
+                currentTab.books != null -> {
+                    val books = currentTab.books!!
+                    when (moduleType) {
+                        HomepageModuleType.Ranking -> RankingModule(
+                            books = books,
+                            onClick = { book, _ -> onBookClick(book) },
+                            onLongClick = { book, _ -> onBookLongClick(book) }
+                        )
+                        HomepageModuleType.GridRanking -> GridRankingModule(
+                            books = books,
+                            onClick = { item -> onBookClick(item.book) },
+                            onLongClick = { item -> onBookLongClick(item.book) }
+                        )
+                        else -> RankingModule(
+                            books = books,
+                            onClick = { book, _ -> onBookClick(book) },
+                            onLongClick = { book, _ -> onBookLongClick(book) }
+                        )
+                    }
+                }
+                currentTab.errorMessage != null -> {
+                    GlassCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 12.dp) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = stringResource(R.string.homepage_load_failed),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    // 加载中
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                    }
+                }
+            }
         }
     }
 }

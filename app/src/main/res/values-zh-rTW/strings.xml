@@ -1607,6 +1607,7 @@
     <string name="homepage_select_category">選擇分類</string>
     <string name="homepage_multi_select_hint">點選可多選分類，每個分類生成一個按鈕</string>
     <string name="homepage_create_button_group">建立按鈕組（%d個）</string>
+    <string name="homepage_create_ranking_group">建立排行榜組（%d個）</string>
     <string name="homepage_selected_categories_count">已選 %d 個分類</string>
     
     <!-- 書籍底部彈窗 -->

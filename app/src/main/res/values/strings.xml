@@ -2014,6 +2014,7 @@
     <string name="homepage_select_category">Select Category</string>
     <string name="homepage_multi_select_hint">Tap to select multiple categories; each becomes a button</string>
     <string name="homepage_create_button_group">Create Button Group (%d)</string>
+    <string name="homepage_create_ranking_group">Create Ranking Group (%d)</string>
     <string name="homepage_selected_categories_count">%d categories selected</string>
     
     <!-- Book Bottom Sheet -->

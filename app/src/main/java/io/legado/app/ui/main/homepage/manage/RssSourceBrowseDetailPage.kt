@@ -271,8 +271,13 @@ private fun RssDiscoverTab(
     var showManualAddDialog by remember { mutableStateOf(false) }
     var manualAddPrefill by remember { mutableStateOf<ModuleDef?>(null) }
 
-    // 是否处于按钮组多选模式
+    // 是否处于多选模式（按钮组 / 排行榜 / 网格排行榜）
+    val isMultiSelectMode = selectedModuleType == HomepageModuleType.ButtonGroup.key
+            || selectedModuleType == HomepageModuleType.Ranking.key
+            || selectedModuleType == HomepageModuleType.GridRanking.key
     val isButtonGroupMode = selectedModuleType == HomepageModuleType.ButtonGroup.key
+    val isRankingMode = selectedModuleType == HomepageModuleType.Ranking.key
+            || selectedModuleType == HomepageModuleType.GridRanking.key
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // 模块类型选择
@@ -341,7 +346,7 @@ private fun RssDiscoverTab(
                     .padding(horizontal = 4.dp)
             ) {
                 OutlinedTextField(
-                    value = if (isButtonGroupMode) {
+                    value = if (isMultiSelectMode) {
                         when {
                             selectedKindIndices.isEmpty() -> ""
                             selectedKindIndices.size <= 3 -> selectedKindIndices.mapNotNull { rssKinds.getOrNull(it)?.first?.ifBlank { sourceName } }
@@ -364,7 +369,7 @@ private fun RssDiscoverTab(
                 )
             }
             // 按钮组模式下，显示多选提示
-            if (isButtonGroupMode) {
+            if (isMultiSelectMode) {
                 Text(
                     text = stringResource(R.string.homepage_multi_select_hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -423,7 +428,7 @@ private fun RssDiscoverTab(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         rssKinds.forEachIndexed { index, kind ->
-                            val isSelected = if (isButtonGroupMode) {
+                            val isSelected = if (isMultiSelectMode) {
                                 selectedKindIndices.contains(index)
                             } else {
                                 selectedKindIndex == index
@@ -437,7 +442,7 @@ private fun RssDiscoverTab(
                                 border = if (isSelected) null
                                 else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 onClick = {
-                                    if (isButtonGroupMode) {
+                                    if (isMultiSelectMode) {
                                         selectedKindIndices = if (isSelected) {
                                             selectedKindIndices - index
                                         } else {
@@ -460,13 +465,13 @@ private fun RssDiscoverTab(
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(
-                                        start = if (isButtonGroupMode) 4.dp else 12.dp,
+                                        start = if (isMultiSelectMode) 4.dp else 12.dp,
                                         end = 12.dp,
                                         top = 4.dp,
                                         bottom = 4.dp
                                     )
                                 ) {
-                                    if (isButtonGroupMode) {
+                                    if (isMultiSelectMode) {
                                         Checkbox(
                                             checked = isSelected,
                                             onCheckedChange = null,
@@ -482,21 +487,29 @@ private fun RssDiscoverTab(
                         }
                     }
                 }
-                // 按钮组模式下，显示创建按钮
-                if (isButtonGroupMode && selectedKindIndices.isNotEmpty()) {
+                // 多选模式下，显示创建按钮
+                if (isMultiSelectMode && selectedKindIndices.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = {
                             val selectedKinds = selectedKindIndices.mapNotNull { rssKinds.getOrNull(it) }
                             val title = selectedKinds.joinToString("、") { it.first.ifBlank { sourceName } }
-                            val kindTitles = selectedKinds.map { it.first.ifBlank { sourceName } }
-                            actions.onAddRssButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
+                            if (isRankingMode) {
+                                val categories = selectedKinds.map { it.first.ifBlank { sourceName } to it.second }
+                                actions.onAddRssRankingGroupFromKinds(sourceUrl, targetSetId, title, categories, selectedModuleType)
+                            } else {
+                                val kindTitles = selectedKinds.map { it.first.ifBlank { sourceName } }
+                                actions.onAddRssButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
+                            }
                             showKindSheet = false
                             selectedKindIndices = emptySet()
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(stringResource(R.string.homepage_create_button_group, selectedKindIndices.size))
+                        Text(if (isRankingMode)
+                            stringResource(R.string.homepage_create_ranking_group, selectedKindIndices.size)
+                        else
+                            stringResource(R.string.homepage_create_button_group, selectedKindIndices.size))
                     }
                 }
             }
