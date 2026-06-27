@@ -7,6 +7,7 @@ import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.RssArticle
+import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.repository.HomepageModulesRepository
 import io.legado.app.domain.gateway.HomepageModulesGateway
@@ -586,63 +587,15 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         if (rankingCategoryPairs != null) {
             val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
             val categoryList = rankingCategoryPairs
-            // 初始化：每个 Tab 先创建空占位，再逐个加载
+            // 初始化：每个 Tab 先创建空占位（books = null），仅首 Tab 立即加载
             val initialTabs = categoryList.map { (title, url) ->
                 RankingTabData(title = title, exploreUrl = url.ifBlank { null })
             }
             _moduleContentStates.update { it + (module.id to ModuleLoadState.RankingTabs(initialTabs)) }
-            // 逐个加载各分类
-            categoryList.forEachIndexed { index, (title, url) ->
-                loadJobs["${module.id}_tab_$index"] = viewModelScope.launch {
-                    kotlin.runCatching {
-                        val books = if (rssSource != null) {
-                            // 订阅源排行榜
-                            val (articles, _) = withContext(Dispatchers.IO) {
-                                Rss.getArticlesAwait(title.ifBlank { rssSource.sourceName }, url, rssSource, page = 1)
-                            }
-                            articles.map { article ->
-                                SearchBook(
-                                    bookUrl = article.link,
-                                    origin = rssSource.sourceUrl,
-                                    originName = rssSource.sourceName,
-                                    name = article.title,
-                                    coverUrl = article.image,
-                                    intro = article.description?.let { Html.fromHtml(it, Html.FROM_HTML_MODE_LEGACY).toString().trim() },
-                                    author = rssSource.sourceName,
-                                    latestChapterTitle = article.pubDate,
-                                )
-                            }
-                        } else {
-                            exploreBooksUseCase.executeForRanking(module.sourceUrl, url.ifBlank { null }, null)
-                        }
-                        val shelf = _bookshelf.value
-                        val bookItems = books.map { book ->
-                            HomepageBookItemUi(
-                                book = book,
-                                shelfState = resolveBookShelfStateUseCase.execute(
-                                    name = book.name, author = book.author, url = book.bookUrl, shelf = shelf
-                                )
-                            )
-                        }
-                        bookItems
-                    }.onSuccess { bookItems ->
-                        _moduleContentStates.update { states ->
-                            val current = states[module.id] as? ModuleLoadState.RankingTabs ?: return@update states
-                            val updatedTabs = current.tabs.toMutableList().also {
-                                it[index] = it[index].copy(books = bookItems)
-                            }
-                            states + (module.id to current.copy(tabs = updatedTabs))
-                        }
-                    }.onFailure { e ->
-                        _moduleContentStates.update { states ->
-                            val current = states[module.id] as? ModuleLoadState.RankingTabs ?: return@update states
-                            val updatedTabs = current.tabs.toMutableList().also {
-                                it[index] = it[index].copy(errorMessage = e.stackTraceStr)
-                            }
-                            states + (module.id to current.copy(tabs = updatedTabs))
-                        }
-                    }
-                }.also { it.invokeOnCompletion { loadJobs.remove("${module.id}_tab_$index") } }
+            // 立即加载第一个分类 Tab
+            if (categoryList.isNotEmpty()) {
+                val (title, url) = categoryList[0]
+                loadRankingTab(module.id, module.sourceUrl, rssSource, 0, title, url)
             }
             return
         }
@@ -767,11 +720,111 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     fun onKindUrlClick(sourceUrl: String, url: String, title: String) =
         _effects.tryEmit(HomepageEffect.NavigateToExploreShow(title, sourceUrl, url))
 
+    /**
+     * 切换排行榜 Tab 时按需加载当前选中分类的内容（懒加载优化）
+     *
+     * 仅加载选中的分类 Tab。如果预加载功能开启（preloadMode == 1），
+     * 还会预先加载相邻分类 Tab 的内容以提升切换体验。
+     */
     fun selectRankingTab(globalId: String, index: Int) {
+        // 更新 selectedIndex
+        val prevState = _moduleContentStates.value[globalId] as? ModuleLoadState.RankingTabs ?: return
         _moduleContentStates.update { states ->
             val current = states[globalId] as? ModuleLoadState.RankingTabs ?: return@update states
             states + (globalId to current.copy(selectedIndex = index))
         }
+        // 按需加载：只加载当前选中的 Tab
+        val tab = prevState.tabs.getOrNull(index) ?: return
+
+        viewModelScope.launch {
+            val module = gateway.getById(globalId) ?: return@launch
+            val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
+            // 重新获取最新状态（可能已被 refresh 清空）
+            val state = _moduleContentStates.value[globalId] as? ModuleLoadState.RankingTabs ?: return@launch
+            val currentTab = state.tabs.getOrNull(index) ?: return@launch
+            // 加载当前 Tab（如果尚未加载）
+            if (currentTab.books == null && currentTab.errorMessage == null) {
+                val tabJobKey = "${globalId}_tab_$index"
+                if (loadJobs[tabJobKey]?.isActive != true) {
+                    loadRankingTab(globalId, module.sourceUrl, rssSource, index, currentTab.title, currentTab.exploreUrl ?: "")
+                }
+            }
+            // 预加载相邻 Tab（预加载开启时）
+            if (preloadMode.value == 1) {
+                listOf(index - 1, index + 1).forEach { adjacentIndex ->
+                    val adjacentTab = state.tabs.getOrNull(adjacentIndex) ?: return@forEach
+                    if (adjacentTab.books == null && adjacentTab.errorMessage == null) {
+                        val adjJobKey = "${globalId}_tab_$adjacentIndex"
+                        if (loadJobs[adjJobKey]?.isActive != true) {
+                            loadRankingTab(globalId, module.sourceUrl, rssSource, adjacentIndex, adjacentTab.title, adjacentTab.exploreUrl ?: "")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 加载排行榜单个分类 Tab 的书籍数据
+     */
+    private fun loadRankingTab(
+        moduleId: String,
+        sourceUrl: String,
+        rssSource: RssSource?,
+        index: Int,
+        title: String,
+        url: String,
+    ) {
+        val jobKey = "${moduleId}_tab_$index"
+        loadJobs[jobKey] = viewModelScope.launch {
+            kotlin.runCatching {
+                val books = if (rssSource != null) {
+                    val (articles, _) = withContext(Dispatchers.IO) {
+                        Rss.getArticlesAwait(title.ifBlank { rssSource.sourceName }, url, rssSource, page = 1)
+                    }
+                    articles.map { article ->
+                        SearchBook(
+                            bookUrl = article.link,
+                            origin = rssSource.sourceUrl,
+                            originName = rssSource.sourceName,
+                            name = article.title,
+                            coverUrl = article.image,
+                            intro = article.description?.let { Html.fromHtml(it, Html.FROM_HTML_MODE_LEGACY).toString().trim() },
+                            author = rssSource.sourceName,
+                            latestChapterTitle = article.pubDate,
+                        )
+                    }
+                } else {
+                    exploreBooksUseCase.executeForRanking(sourceUrl, url.ifBlank { null }, null)
+                }
+                val shelf = _bookshelf.value
+                val bookItems = books.map { book ->
+                    HomepageBookItemUi(
+                        book = book,
+                        shelfState = resolveBookShelfStateUseCase.execute(
+                            name = book.name, author = book.author, url = book.bookUrl, shelf = shelf
+                        )
+                    )
+                }
+                bookItems
+            }.onSuccess { bookItems ->
+                _moduleContentStates.update { states ->
+                    val current = states[moduleId] as? ModuleLoadState.RankingTabs ?: return@update states
+                    val updatedTabs = current.tabs.toMutableList().also {
+                        it[index] = it[index].copy(books = bookItems)
+                    }
+                    states + (moduleId to current.copy(tabs = updatedTabs))
+                }
+            }.onFailure { e ->
+                _moduleContentStates.update { states ->
+                    val current = states[moduleId] as? ModuleLoadState.RankingTabs ?: return@update states
+                    val updatedTabs = current.tabs.toMutableList().also {
+                        it[index] = it[index].copy(errorMessage = e.stackTraceStr)
+                    }
+                    states + (moduleId to current.copy(tabs = updatedTabs))
+                }
+            }
+        }.also { it.invokeOnCompletion { loadJobs.remove(jobKey) } }
     }
 
     /**
