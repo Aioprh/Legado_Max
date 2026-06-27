@@ -19,6 +19,9 @@
 - [链接1](https://legado.gyks.cf/)
 - [链接2](https://legado.ccccocccc.cc/index.php?i=2)
 
+**2026/06/28**
+- CodeEditActivity界面增加语法选择功能
+
 **2026/06/27**
 - 修复：release 版本 R8 混淆导致部分设备书籍正文持续显示'加载数据中'
 - 首页按钮组模块：支持多选分类创建按钮组

@@ -408,6 +408,7 @@ class CodeEditActivity :
      */
     private fun showGrammarSelectDialog() {
         val grammars = listOf(
+            SelectItem("默认", viewModel.initialLanguageName),
             SelectItem("JavaScript", "source.js"),
             SelectItem("HTML", "text.html.basic"),
             SelectItem("Markdown", "text.html.markdown")

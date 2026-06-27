@@ -44,6 +44,7 @@ class CodeEditViewModel(application: Application) : BaseViewModel(application) {
     var cursorPosition = 0
     var language: TextMateLanguage? = null
     var languageName = "source.js"
+    var initialLanguageName = "source.js"  // 保存初始语言，用于恢复默认
     private val themeRegistry: ThemeRegistry = ThemeRegistry.getInstance()
     var writable = true
     var title: String? = null
@@ -91,6 +92,7 @@ class CodeEditViewModel(application: Application) : BaseViewModel(application) {
             } else {
                 intent.getStringExtra("languageName")?.let { languageName = it }
             }
+            initialLanguageName = languageName  // 保存初始语言
             language = TextMateLanguage.create(languageName, AppConfig.editAutoComplete)
             cursorPosition = intent.getIntExtra("cursorPosition", 0)
             title = intent.getStringExtra("title")
