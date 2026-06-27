@@ -553,13 +553,27 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         if (module.type == HomepageModuleType.ButtonGroup.key) {
             loadJobs[module.id] = viewModelScope.launch {
                 kotlin.runCatching {
-                    val source = appDb.bookSourceDao.getBookSource(module.sourceUrl)
-                        ?: throw Exception("Source not found")
-                    val allKinds = withContext(Dispatchers.IO) { source.exploreKinds() }
-                    val selectedTitles =
-                        module.args?.let { GSON.fromJsonArray<String>(it).getOrNull() }
-                    if (selectedTitles.isNullOrEmpty()) allKinds.take(HOMEPAGE_MAX_BUTTON_GROUP_KINDS)
-                    else selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
+                    // 检查是否为订阅源
+                    val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
+                    if (rssSource != null) {
+                        // 订阅源按钮组：从 sortUrls 获取分类，按标题匹配
+                        val allKinds = rssSource.sortUrls().map { (title, url) ->
+                            ExploreKind(title = title, url = url)
+                        }
+                        val selectedTitles =
+                            module.args?.let { GSON.fromJsonArray<String>(it).getOrNull() }
+                        if (selectedTitles.isNullOrEmpty()) allKinds.take(HOMEPAGE_MAX_BUTTON_GROUP_KINDS)
+                        else selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
+                    } else {
+                        // 书源按钮组：从 exploreKinds 获取分类
+                        val source = appDb.bookSourceDao.getBookSource(module.sourceUrl)
+                            ?: throw Exception("Source not found")
+                        val allKinds = withContext(Dispatchers.IO) { source.exploreKinds() }
+                        val selectedTitles =
+                            module.args?.let { GSON.fromJsonArray<String>(it).getOrNull() }
+                        if (selectedTitles.isNullOrEmpty()) allKinds.take(HOMEPAGE_MAX_BUTTON_GROUP_KINDS)
+                        else selectedTitles.mapNotNull { t -> allKinds.find { it.title == t } }
+                    }
                 }.onSuccess { kinds ->
                     _moduleContentStates.update { it + (module.id to ModuleLoadState.Buttons(kinds)) }
                 }.onFailure { e ->
@@ -1096,6 +1110,49 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                     args = def.args,
                     layoutConfig = def.layoutConfig,
                     url = def.url,
+                    isEnabled = true,
+                    customSetId = effectiveSetId,
+                    isUserCreated = true,
+                    sortOrder = allModulesCache.value.count { it.customSetId == effectiveSetId },
+                    syncedAt = System.currentTimeMillis()
+                )
+            ))
+            notifyConfigChanged()
+        }
+    }
+
+    /**
+     * 从分类创建订阅源按钮组模块
+     *
+     * 与 addButtonGroupFromKinds 类似，但使用订阅源专用的集管理逻辑。
+     *
+     * @param sourceUrl 订阅源 URL
+     * @param setId 目标集 ID，为 null 时自动创建 rss_ 前缀集
+     * @param title 按钮组标题
+     * @param kindTitles 选中的分类标题列表
+     */
+    fun addRssButtonGroupFromKinds(
+        sourceUrl: String,
+        setId: String?,
+        title: String,
+        kindTitles: List<String>
+    ) {
+        viewModelScope.launch {
+            // 确保订阅源集存在（自动创建以订阅源命名的集）
+            val effectiveSetId = setId ?: run {
+                val rssSource = appDb.rssSourceDao.getByKey(sourceUrl)
+                ensureRssSetForSource(sourceUrl, rssSource?.sourceName?.ifBlank { null } ?: sourceUrl)
+            }
+            val key = "bg_${System.currentTimeMillis()}"
+            val globalId = ModuleDef.globalIdOf(sourceUrl, key, effectiveSetId)
+            gateway.upsertAll(listOf(
+                ModuleItem(
+                    id = globalId,
+                    sourceUrl = sourceUrl,
+                    moduleKey = key,
+                    type = HomepageModuleType.ButtonGroup.key,
+                    title = title,
+                    args = GSON.toJson(kindTitles),
                     isEnabled = true,
                     customSetId = effectiveSetId,
                     isUserCreated = true,

@@ -148,6 +148,7 @@ fun HomepageScreen(
             onGetExploreKinds = viewModel::getExploreKinds,
             onGetRssKinds = viewModel::getRssKinds,
             onAddRssCustomModule = viewModel::addRssCustomModule,
+            onAddRssButtonGroupFromKinds = viewModel::addRssButtonGroupFromKinds,
             onUpdateModule = viewModel::updateModule,
             onDeleteModule = viewModel::deleteModule,
             onReorderModules = viewModel::reorderModules,
@@ -550,9 +551,15 @@ private fun HomepageModuleItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp)
-                .clickable {
-                    onModuleHeaderClick(module.title, module.sourceUrl, module.exploreUrl)
-                },
+                .then(
+                    if (module.type != HomepageModuleType.ButtonGroup) {
+                        Modifier.clickable {
+                            onModuleHeaderClick(module.title, module.sourceUrl, module.exploreUrl)
+                        }
+                    } else {
+                        Modifier
+                    }
+                ),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -708,8 +715,8 @@ private fun HomepageModuleItem(
                     ButtonGroupModule(
                         kinds = state.kinds,
                         sourceUrl = module.sourceUrl,
-                        onKindClick = { sourceUrl, url ->
-                            viewModel.onKindUrlClick(sourceUrl, url, module.title)
+                        onKindClick = { sourceUrl, url, kindTitle ->
+                            viewModel.onKindUrlClick(sourceUrl, url, kindTitle)
                         }
                     )
                 }

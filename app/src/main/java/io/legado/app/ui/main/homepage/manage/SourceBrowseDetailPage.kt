@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -256,7 +257,7 @@ private fun JoinedModulesTab(
  *
  * 从书源的发现分类创建新的首页模块，支持以下三种方式：
  * 1. 选择单个分类：直接创建对应模块
- * 2. 选择多个分类：创建按钮组，将多个分类聚合为一个按钮组模块
+ * 2. 选择多个分类（仅按钮组）：创建按钮组，将多个分类聚合为一个按钮组模块
  * 3. 手动添加：打开自定义模块对话框，手动填写模块配置
  *
  * @param sourceUrl 书源 URL
@@ -281,8 +282,11 @@ private fun DiscoverTab(
     var selectedModuleType by remember { mutableStateOf(HomepageModuleType.Grid.key) }
     // 模块类型下拉菜单的展开状态
     var typeMenuExpanded by remember { mutableStateOf(false) }
-    // 选中的发现分类索引（单选，null 表示未选择）
-    // key=sourceUrl：切换书源时重置，避免旧索引越界新分类列表
+    // 选中的发现分类索引集合（多选，用于按钮组）
+    // key=sourceUrl+selectedModuleType：切换书源或模块类型时重置
+    var selectedKindIndices by remember(sourceUrl, selectedModuleType) { mutableStateOf(setOf<Int>()) }
+    // 单选的分类索引（非按钮组模式，null 表示未选择）
+    // key=sourceUrl：切换书源时重置
     var selectedKindIndex by remember(sourceUrl) { mutableStateOf<Int?>(null) }
     // 分类选择底部弹窗的显示状态
     var showKindSheet by remember { mutableStateOf(false) }
@@ -290,6 +294,9 @@ private fun DiscoverTab(
     var showManualAddDialog by remember { mutableStateOf(false) }
     // 手动添加模块对话框的预填充数据
     var manualAddPrefill by remember { mutableStateOf<ModuleDef?>(null) }
+
+    // 是否处于按钮组多选模式
+    val isButtonGroupMode = selectedModuleType == HomepageModuleType.ButtonGroup.key
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // 模块类型选择：使用 MD3 ExposedDropdownMenuBox
@@ -360,10 +367,19 @@ private fun DiscoverTab(
                     .padding(horizontal = 4.dp)
             ) {
                 OutlinedTextField(
-                    value = selectedKindIndex?.let { exploreKinds.getOrNull(it)?.first ?: "" } ?: "",
+                    value = if (isButtonGroupMode) {
+                        when {
+                            selectedKindIndices.isEmpty() -> ""
+                            selectedKindIndices.size <= 3 -> selectedKindIndices.mapNotNull { exploreKinds.getOrNull(it)?.first }
+                                .joinToString("、")
+                            else -> stringResource(R.string.homepage_selected_categories_count, selectedKindIndices.size)
+                        }
+                    } else {
+                        selectedKindIndex?.let { exploreKinds.getOrNull(it)?.first } ?: ""
+                    },
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text(stringResource(R.string.homepage_select_category)) },
+                    label = { Text(if (isButtonGroupMode) stringResource(R.string.homepage_select_category) else stringResource(R.string.homepage_select_category)) },
                     singleLine = true,
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = false)
@@ -371,6 +387,15 @@ private fun DiscoverTab(
                     modifier = Modifier
                         .menuAnchor()
                         .fillMaxWidth()
+                )
+            }
+            // 按钮组模式下，显示多选提示
+            if (isButtonGroupMode) {
+                Text(
+                    text = stringResource(R.string.homepage_multi_select_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = pageSecondaryTextColor(),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
         }
@@ -411,7 +436,7 @@ private fun DiscoverTab(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                // 使用 FlowRow 流式布局展示分类标签，类似发现页的 FlexboxLayout
+                // 使用 FlowRow 流式布局展示分类标签
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -424,7 +449,11 @@ private fun DiscoverTab(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         exploreKinds.forEachIndexed { index, kind ->
-                            val isSelected = selectedKindIndex == index
+                            val isSelected = if (isButtonGroupMode) {
+                                selectedKindIndices.contains(index)
+                            } else {
+                                selectedKindIndex == index
+                            }
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
                                 color = if (isSelected) MaterialTheme.colorScheme.primary
@@ -434,27 +463,69 @@ private fun DiscoverTab(
                                 border = if (isSelected) null
                                 else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 onClick = {
-                                    selectedKindIndex = index
-                                    showKindSheet = false
-                                    // 选择分类后直接打开预填充的添加模块对话框
-                                    // 使用标题和URL的组合作为key，确保标题相同但URL不同时不会覆盖
-                                    manualAddPrefill = ModuleDef(
-                                        key = "explore_${kind.first}_${kind.second}",
-                                        type = selectedModuleType,
-                                        title = kind.first,
-                                        url = kind.second,
-                                        sourceUrl = sourceUrl
-                                    )
-                                    showManualAddDialog = true
+                                    if (isButtonGroupMode) {
+                                        // 多选模式：切换选中状态
+                                        selectedKindIndices = if (isSelected) {
+                                            selectedKindIndices - index
+                                        } else {
+                                            selectedKindIndices + index
+                                        }
+                                    } else {
+                                        // 单选模式：选中后关闭弹窗并打开添加模块对话框
+                                        selectedKindIndex = index
+                                        showKindSheet = false
+                                        manualAddPrefill = ModuleDef(
+                                            key = "explore_${kind.first}_${kind.second}",
+                                            type = selectedModuleType,
+                                            title = kind.first,
+                                            url = kind.second,
+                                            sourceUrl = sourceUrl
+                                        )
+                                        showManualAddDialog = true
+                                    }
                                 }
                             ) {
-                                Text(
-                                    text = kind.first,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(
+                                        start = if (isButtonGroupMode) 4.dp else 12.dp,
+                                        end = 12.dp,
+                                        top = 4.dp,
+                                        bottom = 4.dp
+                                    )
+                                ) {
+                                    // 多选模式下显示复选框
+                                    if (isButtonGroupMode) {
+                                        Checkbox(
+                                            checked = isSelected,
+                                            onCheckedChange = null, // 点击由 Surface 的 onClick 处理
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = kind.first,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
                             }
                         }
+                    }
+                }
+                // 按钮组模式下，显示创建按钮（选中至少一个分类后可用）
+                if (isButtonGroupMode && selectedKindIndices.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            val selectedKinds = selectedKindIndices.mapNotNull { exploreKinds.getOrNull(it) }
+                            val title = selectedKinds.joinToString("、") { it.first }
+                            val kindTitles = selectedKinds.map { it.first }
+                            actions.onAddButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
+                            showKindSheet = false
+                            selectedKindIndices = emptySet()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.homepage_create_button_group, selectedKindIndices.size))
                     }
                 }
             }

@@ -205,6 +205,7 @@ data class HomepageModuleManageUi(
  * @property onJoinModule 加入模块
  * @property onAddCustomModule 添加自定义模块
  * @property onAddButtonGroupFromKinds 从分类创建按钮组模块
+ * @property onAddRssButtonGroupFromKinds 从RSS分类创建按钮组模块
  * @property onGetExploreKinds 获取探索分类列表
  * @property onUpdateModule 更新模块
  * @property onDeleteModule 删除模块
@@ -228,6 +229,7 @@ data class HomepageManageActions(
     val onGetExploreKinds: suspend (String) -> List<Pair<String, String>>,
     val onGetRssKinds: suspend (String) -> List<Pair<String, String>>,
     val onAddRssCustomModule: (String, String?, ModuleDef) -> Unit,
+    val onAddRssButtonGroupFromKinds: (String, String?, String, List<String>) -> Unit,
     val onUpdateModule: (String, ModuleDef) -> Unit,
     val onDeleteModule: (String) -> Unit,
     val onReorderModules: (List<String>) -> Unit,

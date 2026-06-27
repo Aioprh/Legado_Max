@@ -39,6 +39,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -243,6 +245,7 @@ private fun JoinedModulesTab(
  *
  * 从订阅源的 sortUrl 解析分类列表，支持选择分类后
  * 通过 AddCustomModuleDialog 添加为首页模块。
+ * 当模块类型为按钮组时，支持多选分类，每个分类生成一个按钮。
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -260,10 +263,16 @@ private fun RssDiscoverTab(
 
     var selectedModuleType by remember { mutableStateOf(HomepageModuleType.Grid.key) }
     var typeMenuExpanded by remember { mutableStateOf(false) }
+    // 多选分类索引集合（按钮组模式）
+    var selectedKindIndices by remember(sourceUrl, selectedModuleType) { mutableStateOf(setOf<Int>()) }
+    // 单选分类索引（非按钮组模式）
     var selectedKindIndex by remember(sourceUrl) { mutableStateOf<Int?>(null) }
     var showKindSheet by remember { mutableStateOf(false) }
     var showManualAddDialog by remember { mutableStateOf(false) }
     var manualAddPrefill by remember { mutableStateOf<ModuleDef?>(null) }
+
+    // 是否处于按钮组多选模式
+    val isButtonGroupMode = selectedModuleType == HomepageModuleType.ButtonGroup.key
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // 模块类型选择
@@ -332,7 +341,16 @@ private fun RssDiscoverTab(
                     .padding(horizontal = 4.dp)
             ) {
                 OutlinedTextField(
-                    value = selectedKindIndex?.let { rssKinds.getOrNull(it)?.first ?: "" } ?: "",
+                    value = if (isButtonGroupMode) {
+                        when {
+                            selectedKindIndices.isEmpty() -> ""
+                            selectedKindIndices.size <= 3 -> selectedKindIndices.mapNotNull { rssKinds.getOrNull(it)?.first?.ifBlank { sourceName } }
+                                .joinToString("、")
+                            else -> stringResource(R.string.homepage_selected_categories_count, selectedKindIndices.size)
+                        }
+                    } else {
+                        selectedKindIndex?.let { rssKinds.getOrNull(it)?.first?.ifBlank { sourceName } } ?: ""
+                    },
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.homepage_select_category)) },
@@ -345,17 +363,26 @@ private fun RssDiscoverTab(
                         .fillMaxWidth()
                 )
             }
+            // 按钮组模式下，显示多选提示
+            if (isButtonGroupMode) {
+                Text(
+                    text = stringResource(R.string.homepage_multi_select_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = pageSecondaryTextColor(),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
         }
         Spacer(modifier = Modifier.height(8.dp))
 
         // 手动添加按钮
         OutlinedButton(
             onClick = {
-            manualAddPrefill = ModuleDef(
-                type = selectedModuleType,
-                title = sourceName,
-                sourceUrl = sourceUrl
-            )
+                manualAddPrefill = ModuleDef(
+                    type = selectedModuleType,
+                    title = sourceName,
+                    sourceUrl = sourceUrl
+                )
                 showManualAddDialog = true
             },
             modifier = Modifier.fillMaxWidth()
@@ -396,7 +423,11 @@ private fun RssDiscoverTab(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         rssKinds.forEachIndexed { index, kind ->
-                            val isSelected = selectedKindIndex == index
+                            val isSelected = if (isButtonGroupMode) {
+                                selectedKindIndices.contains(index)
+                            } else {
+                                selectedKindIndex == index
+                            }
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
                                 color = if (isSelected) MaterialTheme.colorScheme.primary
@@ -406,25 +437,66 @@ private fun RssDiscoverTab(
                                 border = if (isSelected) null
                                 else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 onClick = {
-                                    selectedKindIndex = index
-                                    showKindSheet = false
-                                    manualAddPrefill = ModuleDef(
-                                        key = "rss_${kind.first}_${kind.second}",
-                                        type = selectedModuleType,
-                                        title = kind.first.ifBlank { sourceName },
-                                        url = kind.second,
-                                        sourceUrl = sourceUrl
-                                    )
-                                    showManualAddDialog = true
+                                    if (isButtonGroupMode) {
+                                        selectedKindIndices = if (isSelected) {
+                                            selectedKindIndices - index
+                                        } else {
+                                            selectedKindIndices + index
+                                        }
+                                    } else {
+                                        selectedKindIndex = index
+                                        showKindSheet = false
+                                        manualAddPrefill = ModuleDef(
+                                            key = "rss_${kind.first}_${kind.second}",
+                                            type = selectedModuleType,
+                                            title = kind.first.ifBlank { sourceName },
+                                            url = kind.second,
+                                            sourceUrl = sourceUrl
+                                        )
+                                        showManualAddDialog = true
+                                    }
                                 }
                             ) {
-                                Text(
-                                    text = kind.first.ifBlank { sourceName },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(
+                                        start = if (isButtonGroupMode) 4.dp else 12.dp,
+                                        end = 12.dp,
+                                        top = 4.dp,
+                                        bottom = 4.dp
+                                    )
+                                ) {
+                                    if (isButtonGroupMode) {
+                                        Checkbox(
+                                            checked = isSelected,
+                                            onCheckedChange = null,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = kind.first.ifBlank { sourceName },
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
                             }
                         }
+                    }
+                }
+                // 按钮组模式下，显示创建按钮
+                if (isButtonGroupMode && selectedKindIndices.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = {
+                            val selectedKinds = selectedKindIndices.mapNotNull { rssKinds.getOrNull(it) }
+                            val title = selectedKinds.joinToString("、") { it.first.ifBlank { sourceName } }
+                            val kindTitles = selectedKinds.map { it.first.ifBlank { sourceName } }
+                            actions.onAddRssButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
+                            showKindSheet = false
+                            selectedKindIndices = emptySet()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.homepage_create_button_group, selectedKindIndices.size))
                     }
                 }
             }

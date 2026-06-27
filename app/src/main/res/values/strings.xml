@@ -2012,6 +2012,9 @@
     <string name="homepage_infinite_module">Infinite Stream Module</string>
     <string name="homepage_loading_categories">Loading discovery categories...</string>
     <string name="homepage_select_category">Select Category</string>
+    <string name="homepage_multi_select_hint">Tap to select multiple categories; each becomes a button</string>
+    <string name="homepage_create_button_group">Create Button Group (%d)</string>
+    <string name="homepage_selected_categories_count">%d categories selected</string>
     
     <!-- Book Bottom Sheet -->
     <string name="already_in_bookshelf">Already in Bookshelf</string>

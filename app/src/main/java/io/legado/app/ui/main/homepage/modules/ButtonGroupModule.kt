@@ -21,7 +21,7 @@ import io.legado.app.ui.widget.components.card.GlassCard
 fun ButtonGroupModule(
     kinds: List<ExploreKind>,
     sourceUrl: String,
-    onKindClick: (String, String) -> Unit,
+    onKindClick: (sourceUrl: String, url: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (kinds.isEmpty()) return
@@ -41,7 +41,7 @@ fun ButtonGroupModule(
             ) {
                 rowKinds.forEach { kind ->
                     GlassCard(
-                        onClick = { onKindClick(sourceUrl, kind.url ?: "") },
+                        onClick = { onKindClick(sourceUrl, kind.url ?: "", kind.title) },
                         cornerRadius = 8.dp,
                         modifier = Modifier.weight(1f)
                     ) {
