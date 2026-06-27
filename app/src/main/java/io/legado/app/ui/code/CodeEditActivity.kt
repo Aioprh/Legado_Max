@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputEditText
 import io.github.rosemoe.sora.event.PublishSearchResultEvent
 import io.github.rosemoe.sora.event.SelectionChangeEvent
+import io.github.rosemoe.sora.langs.textmate.TextMateLanguage
 import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
 import io.github.rosemoe.sora.util.regex.RegexBackrefGrammar
 import io.github.rosemoe.sora.widget.CodeEditor
@@ -40,6 +41,7 @@ import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.showHelp
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 /**
@@ -385,6 +387,7 @@ class CodeEditActivity :
             R.id.menu_save -> save(false)
             R.id.menu_format_code -> viewModel.formatCode(editor)
             R.id.menu_change_theme -> showDialogFragment(ChangeThemeDialog())
+            R.id.menu_grammar -> showGrammarSelectDialog()
             R.id.menu_config_settings -> showDialogFragment(SettingsDialog(this, this))
             R.id.menu_auto_wrap -> {
                 item.isChecked = !AppConfig.editAutoWrap
@@ -396,6 +399,34 @@ class CodeEditActivity :
             R.id.menu_search_rule -> showRuleSearchDialog()
         }
         return super.onCompatOptionsItemSelected(item)
+    }
+
+    /**
+     * 显示语法选择对话框
+     * 提供常用语言列表，选择后切换编辑器语法高亮
+     * 使用单选对话框，当前选中的语言会显示打钩标记
+     */
+    private fun showGrammarSelectDialog() {
+        val grammars = listOf(
+            SelectItem("JavaScript", "source.js"),
+            SelectItem("HTML", "text.html.basic"),
+            SelectItem("Markdown", "text.html.markdown")
+        )
+        val titles = grammars.map { it.title }.toTypedArray()
+        val currentIndex = grammars.indexOfFirst { it.value == viewModel.languageName }
+        with(AndroidAlertBuilder(this)) {
+            setTitle(R.string.grammar_select)
+            singleChoiceItems(titles, currentIndex) { _, which ->
+                val selected = grammars[which]
+                if (selected.value != viewModel.languageName) {
+                    viewModel.languageName = selected.value
+                    viewModel.language = TextMateLanguage.create(selected.value, AppConfig.editAutoComplete)
+                    editor.setEditorLanguage(viewModel.language)
+                }
+                this@CodeEditActivity.toastOnUi(selected.title)
+            }
+            show()
+        }
     }
 
     /**

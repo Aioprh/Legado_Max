@@ -43,7 +43,7 @@ class CodeEditViewModel(application: Application) : BaseViewModel(application) {
     var initialText = ""
     var cursorPosition = 0
     var language: TextMateLanguage? = null
-    private var languageName = "source.js"
+    var languageName = "source.js"
     private val themeRegistry: ThemeRegistry = ThemeRegistry.getInstance()
     var writable = true
     var title: String? = null
