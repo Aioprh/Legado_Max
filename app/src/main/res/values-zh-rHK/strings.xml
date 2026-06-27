@@ -1478,6 +1478,7 @@
     <string name="homepage_infinite_module">無限流模組</string>
     <string name="homepage_loading_categories">正在加載發現分類...</string>
     <string name="homepage_select_category">選擇分類</string>
+    <string name="homepage_search_or_select_category">搜尋或選擇分類</string>
     <string name="homepage_multi_select_hint">點選可多選分類，每個分類生成一個按鈕</string>
     <string name="homepage_create_button_group">建立按鈕組（%d個）</string>
     <string name="homepage_create_ranking_group">建立排行榜組（%d個）</string>

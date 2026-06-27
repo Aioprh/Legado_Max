@@ -12,34 +12,23 @@
  */
 package io.legado.app.ui.main.homepage.manage
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,16 +37,14 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import io.legado.app.ui.widget.components.explore.ExploreKindSelectSheet
+import io.legado.app.data.entities.rule.ExploreKind
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -255,56 +242,49 @@ private fun JoinedModulesTab(
 /**
  * Tab 1: 从书源发现分类创建模块
  *
- * 从书源的发现分类创建新的首页模块，支持以下三种方式：
- * 1. 选择单个分类：直接创建对应模块
- * 2. 选择多个分类（仅按钮组）：创建按钮组，将多个分类聚合为一个按钮组模块
- * 3. 手动添加：打开自定义模块对话框，手动填写模块配置
+ * 对标 MD3-main 分支的视觉风格与交互模式：
+ * - 模块类型选择使用 GlassCard 包裹的 CompactDropdownSettingItem 风格
+ * - 分类选择通过 ExploreKindSelectSheet 底部弹窗完成
+ * - 支持单选（直接打开添加对话框）和多选（按钮组/排行榜模式）
+ * - 选中状态通过背景色动效反馈（primaryContainer），无 Checkbox
  *
  * @param sourceUrl 书源 URL
  * @param targetSetId 目标集 ID，为 null 表示默认集
  * @param actions 首页管理操作回调集合
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DiscoverTab(
     sourceUrl: String,
     targetSetId: String?,
     actions: HomepageManageActions,
 ) {
-    // 异步获取书源的发现分类列表（支持 JS 动态生成的分类）
-    val exploreKinds by produceState<List<Pair<String, String>>>(emptyList(), sourceUrl) {
+    // 异步获取书源的发现分类列表（含样式信息，用于 flexBasisPercent 整行支持）
+    val exploreKinds by produceState<List<ExploreKind>>(emptyList(), sourceUrl) {
         value = actions.onGetExploreKinds(sourceUrl)
     }
-    // 是否正在加载分类
     val isLoadingKinds = exploreKinds.isEmpty()
 
-    // 选中的模块类型，默认为网格类型
+    // 选中的模块类型
     var selectedModuleType by remember { mutableStateOf(HomepageModuleType.Grid.key) }
-    // 模块类型下拉菜单的展开状态
     var typeMenuExpanded by remember { mutableStateOf(false) }
-    // 选中的发现分类索引集合（多选，用于按钮组）
-    // key=sourceUrl+selectedModuleType：切换书源或模块类型时重置
-    var selectedKindIndices by remember(sourceUrl, selectedModuleType) { mutableStateOf(setOf<Int>()) }
-    // 单选的分类索引（非按钮组模式，null 表示未选择）
-    // key=sourceUrl：切换书源时重置
-    var selectedKindIndex by remember(sourceUrl) { mutableStateOf<Int?>(null) }
-    // 分类选择底部弹窗的显示状态
+    // 已选中的分类 URL 集合（以 URL 区分同名分类）
+    var selectedKindUrls by remember(sourceUrl, selectedModuleType) { mutableStateOf(setOf<String>()) }
+    // 分类选择弹窗
     var showKindSheet by remember { mutableStateOf(false) }
-    // 手动添加模块对话框的显示状态
+    // 手动添加对话框
     var showManualAddDialog by remember { mutableStateOf(false) }
-    // 手动添加模块对话框的预填充数据
     var manualAddPrefill by remember { mutableStateOf<ModuleDef?>(null) }
 
-    // 是否处于多选模式（按钮组 / 排行榜 / 网格排行榜）
+    // 是否多选模式（按钮组 / 排行榜）
     val isMultiSelectMode = selectedModuleType == HomepageModuleType.ButtonGroup.key
             || selectedModuleType == HomepageModuleType.Ranking.key
             || selectedModuleType == HomepageModuleType.GridRanking.key
-    val isButtonGroupMode = selectedModuleType == HomepageModuleType.ButtonGroup.key
     val isRankingMode = selectedModuleType == HomepageModuleType.Ranking.key
             || selectedModuleType == HomepageModuleType.GridRanking.key
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 模块类型选择：使用 MD3 ExposedDropdownMenuBox
+        // ---- 模块类型选择 ----
         ExposedDropdownMenuBox(
             expanded = typeMenuExpanded,
             onExpandedChange = { typeMenuExpanded = it },
@@ -330,7 +310,6 @@ private fun DiscoverTab(
                 onDismissRequest = { typeMenuExpanded = false }
             ) {
                 HomepageModuleType.entries.forEach { moduleType ->
-                    // 跳过未知类型
                     if (moduleType == HomepageModuleType.Unknown) return@forEach
                     DropdownMenuItem(
                         text = { Text(stringResource(moduleType.titleRes)) },
@@ -344,7 +323,7 @@ private fun DiscoverTab(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 发现分类选择：通过底部弹出菜单（Bottom Sheet）选择分类
+        // ---- 分类选择触发区（对标 MD3-main SelectionItemCard 风格） ----
         if (isLoadingKinds) {
             Box(
                 modifier = Modifier
@@ -363,7 +342,11 @@ private fun DiscoverTab(
                 }
             }
         } else {
-            // 分类选择：使用 ExposedDropdownMenuBox 样式，点击触发底部弹出菜单
+            // 点击触发 ExploreKindSelectSheet
+            // 从 URL 还原显示标题
+            val selectedDisplayTitles = remember(selectedKindUrls, exploreKinds) {
+                selectedKindUrls.mapNotNull { url -> exploreKinds.find { k -> (k.url ?: k.title) == url }?.title }
+            }
             ExposedDropdownMenuBox(
                 expanded = false,
                 onExpandedChange = { if (it) showKindSheet = true },
@@ -374,13 +357,12 @@ private fun DiscoverTab(
                 OutlinedTextField(
                     value = if (isMultiSelectMode) {
                         when {
-                            selectedKindIndices.isEmpty() -> ""
-                            selectedKindIndices.size <= 3 -> selectedKindIndices.mapNotNull { exploreKinds.getOrNull(it)?.first }
-                                .joinToString("、")
-                            else -> stringResource(R.string.homepage_selected_categories_count, selectedKindIndices.size)
+                            selectedDisplayTitles.isEmpty() -> ""
+                            selectedDisplayTitles.size <= 3 -> selectedDisplayTitles.joinToString("、")
+                            else -> stringResource(R.string.homepage_selected_categories_count, selectedDisplayTitles.size)
                         }
                     } else {
-                        selectedKindIndex?.let { exploreKinds.getOrNull(it)?.first } ?: ""
+                        selectedDisplayTitles.firstOrNull() ?: ""
                     },
                     onValueChange = {},
                     readOnly = true,
@@ -394,7 +376,7 @@ private fun DiscoverTab(
                         .fillMaxWidth()
                 )
             }
-            // 按钮组模式下，显示多选提示
+            // 多选模式提示
             if (isMultiSelectMode) {
                 Text(
                     text = stringResource(R.string.homepage_multi_select_hint),
@@ -406,7 +388,7 @@ private fun DiscoverTab(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 手动添加按钮（不选择分类，直接添加自定义模块）
+        // ---- 手动添加按钮 ----
         OutlinedButton(
             onClick = {
                 manualAddPrefill = ModuleDef(
@@ -421,131 +403,48 @@ private fun DiscoverTab(
         }
     }
 
-    // 分类选择底部弹出菜单（Bottom Sheet）
-    if (showKindSheet) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { showKindSheet = false },
-            sheetState = sheetState
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 32.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.homepage_select_category),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 16.dp)
+    // ---- 分类选择底部弹窗（对标 MD3-main ExploreKindSelectSheet） ----
+    ExploreKindSelectSheet(
+        show = showKindSheet,
+        onDismissRequest = { showKindSheet = false },
+        kinds = exploreKinds,
+        multiple = isMultiSelectMode,
+        initialSelectedUrls = selectedKindUrls,
+        onSelected = { kinds ->
+            if (isMultiSelectMode) {
+                // 多选模式：更新选中 URL 集合并关闭弹窗
+                selectedKindUrls = kinds.map { it.url ?: it.title }.toSet()
+                showKindSheet = false
+                // 立即创建按钮组 / 排行榜组
+                if (kinds.isNotEmpty()) {
+                    val title = kinds.joinToString("、") { it.title }
+                    val kindPairs = kinds.map { it.title to (it.url ?: "") }
+                    if (isRankingMode) {
+                        actions.onAddRankingGroupFromKinds(sourceUrl, targetSetId, title, kindPairs, selectedModuleType)
+                    } else {
+                        val kindTitles = kinds.map { it.title }
+                        actions.onAddButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
+                    }
+                    selectedKindUrls = emptySet()
+                }
+            } else {
+                // 单选模式：打开添加模块对话框预填充
+                val kind = kinds.firstOrNull() ?: return@ExploreKindSelectSheet
+                selectedKindUrls = setOf(kind.url ?: kind.title)
+                showKindSheet = false
+                manualAddPrefill = ModuleDef(
+                    key = "explore_${kind.title}_${kind.url}",
+                    type = selectedModuleType,
+                    title = kind.title,
+                    url = kind.url ?: "",
+                    sourceUrl = sourceUrl
                 )
-                // 使用 FlowRow 流式布局展示分类标签
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 400.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        exploreKinds.forEachIndexed { index, kind ->
-                            val isSelected = if (isMultiSelectMode) {
-                                selectedKindIndices.contains(index)
-                            } else {
-                                selectedKindIndex == index
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surface,
-                                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurface,
-                                border = if (isSelected) null
-                                else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                onClick = {
-                                    if (isMultiSelectMode) {
-                                        // 多选模式：切换选中状态
-                                        selectedKindIndices = if (isSelected) {
-                                            selectedKindIndices - index
-                                        } else {
-                                            selectedKindIndices + index
-                                        }
-                                    } else {
-                                        // 单选模式：选中后关闭弹窗并打开添加模块对话框
-                                        selectedKindIndex = index
-                                        showKindSheet = false
-                                        manualAddPrefill = ModuleDef(
-                                            key = "explore_${kind.first}_${kind.second}",
-                                            type = selectedModuleType,
-                                            title = kind.first,
-                                            url = kind.second,
-                                            sourceUrl = sourceUrl
-                                        )
-                                        showManualAddDialog = true
-                                    }
-                                }
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(
-                                        start = if (isMultiSelectMode) 4.dp else 12.dp,
-                                        end = 12.dp,
-                                        top = 4.dp,
-                                        bottom = 4.dp
-                                    )
-                                ) {
-                                    // 多选模式下显示复选框
-                                    if (isMultiSelectMode) {
-                                        Checkbox(
-                                            checked = isSelected,
-                                            onCheckedChange = null, // 点击由 Surface 的 onClick 处理
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    }
-                                    Text(
-                                        text = kind.first,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                // 多选模式下，显示创建按钮（选中至少一个分类后可用）
-                if (isMultiSelectMode && selectedKindIndices.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = {
-                            val selectedKinds = selectedKindIndices.mapNotNull { exploreKinds.getOrNull(it) }
-                            if (isRankingMode) {
-                                val title = selectedKinds.joinToString("、") { it.first }
-                                actions.onAddRankingGroupFromKinds(sourceUrl, targetSetId, title, selectedKinds, selectedModuleType)
-                            } else {
-                                val title = selectedKinds.joinToString("、") { it.first }
-                                val kindTitles = selectedKinds.map { it.first }
-                                actions.onAddButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
-                            }
-                            showKindSheet = false
-                            selectedKindIndices = emptySet()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (isRankingMode)
-                            stringResource(R.string.homepage_create_ranking_group, selectedKindIndices.size)
-                        else
-                            stringResource(R.string.homepage_create_button_group, selectedKindIndices.size))
-                    }
-                }
+                showManualAddDialog = true
             }
         }
-    }
+    )
 
-    // 手动添加模块对话框：用于填写自定义模块的完整配置，预填充所选分类信息
+    // ---- 手动添加模块对话框 ----
     if (showManualAddDialog) {
         AddCustomModuleDialog(
             show = true,
@@ -555,7 +454,7 @@ private fun DiscoverTab(
                 actions.onAddCustomModule(sourceUrl, targetSetId, moduleDef)
                 showManualAddDialog = false
                 manualAddPrefill = null
-                selectedKindIndex = null
+                selectedKindUrls = emptySet()
             },
             onDismiss = {
                 showManualAddDialog = false

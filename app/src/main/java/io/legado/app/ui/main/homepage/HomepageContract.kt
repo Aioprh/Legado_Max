@@ -254,7 +254,7 @@ data class HomepageManageActions(
     val onJoinModule: (String, String?, ModuleDef) -> Unit,
     val onAddCustomModule: (String, String?, ModuleDef) -> Unit,
     val onAddButtonGroupFromKinds: (String, String?, String, List<String>) -> Unit,
-    val onGetExploreKinds: suspend (String) -> List<Pair<String, String>>,
+    val onGetExploreKinds: suspend (String) -> List<ExploreKind>,
     val onGetRssKinds: suspend (String) -> List<Pair<String, String>>,
     val onAddRssCustomModule: (String, String?, ModuleDef) -> Unit,
     val onAddRssButtonGroupFromKinds: (String, String?, String, List<String>) -> Unit,

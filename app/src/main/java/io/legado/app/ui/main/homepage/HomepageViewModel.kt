@@ -1113,12 +1113,12 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
      * @param sourceUrl 书源 URL
      * @return 发现分类列表，每项为 (分类标题, 分类URL) 对
      */
-    suspend fun getExploreKinds(sourceUrl: String): List<Pair<String, String>> {
+    suspend fun getExploreKinds(sourceUrl: String): List<ExploreKind> {
         val source = _bookSourcesCache.value[sourceUrl] ?: return emptyList()
         return runCatching {
             withContext(Dispatchers.IO) {
                 source.exploreKinds()
-            }.map { it.title to (it.url ?: "") }
+            }
         }.getOrDefault(emptyList())
     }
 

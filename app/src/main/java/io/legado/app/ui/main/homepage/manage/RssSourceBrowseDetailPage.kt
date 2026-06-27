@@ -15,32 +15,23 @@
  */
 package io.legado.app.ui.main.homepage.manage
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,15 +40,14 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import io.legado.app.ui.widget.components.explore.ExploreKindSelectSheet
+import io.legado.app.data.entities.rule.ExploreKind
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -243,11 +233,10 @@ private fun JoinedModulesTab(
 /**
  * Tab 1: 从订阅源分类创建模块
  *
- * 从订阅源的 sortUrl 解析分类列表，支持选择分类后
- * 通过 AddCustomModuleDialog 添加为首页模块。
+ * 对标 MD3-main 分支的视觉风格与交互模式。
  * 当模块类型为按钮组时，支持多选分类，每个分类生成一个按钮。
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RssDiscoverTab(
     sourceUrl: String,
@@ -256,31 +245,33 @@ private fun RssDiscoverTab(
     actions: HomepageManageActions,
 ) {
     // 异步获取订阅源的分类列表
+    // RSS 分类列表（Pair 格式），需转换为 ExploreKind 以传入选择弹窗
     val rssKinds by produceState<List<Pair<String, String>>>(emptyList(), sourceUrl) {
         value = actions.onGetRssKinds(sourceUrl)
     }
     val isLoadingKinds = rssKinds.isEmpty()
+    // 转换为 ExploreKind（RSS 无样式，使用默认值）
+    val rssExploreKinds = remember(rssKinds) {
+        rssKinds.map { (title, url) -> ExploreKind(title = title, url = url) }
+    }
 
     var selectedModuleType by remember { mutableStateOf(HomepageModuleType.Grid.key) }
     var typeMenuExpanded by remember { mutableStateOf(false) }
-    // 多选分类索引集合（按钮组模式）
-    var selectedKindIndices by remember(sourceUrl, selectedModuleType) { mutableStateOf(setOf<Int>()) }
-    // 单选分类索引（非按钮组模式）
-    var selectedKindIndex by remember(sourceUrl) { mutableStateOf<Int?>(null) }
+    // 已选中的分类 URL 集合（以 URL 区分同名分类）
+    var selectedKindUrls by remember(sourceUrl, selectedModuleType) { mutableStateOf(setOf<String>()) }
     var showKindSheet by remember { mutableStateOf(false) }
     var showManualAddDialog by remember { mutableStateOf(false) }
     var manualAddPrefill by remember { mutableStateOf<ModuleDef?>(null) }
 
-    // 是否处于多选模式（按钮组 / 排行榜 / 网格排行榜）
+    // 是否多选模式
     val isMultiSelectMode = selectedModuleType == HomepageModuleType.ButtonGroup.key
             || selectedModuleType == HomepageModuleType.Ranking.key
             || selectedModuleType == HomepageModuleType.GridRanking.key
-    val isButtonGroupMode = selectedModuleType == HomepageModuleType.ButtonGroup.key
     val isRankingMode = selectedModuleType == HomepageModuleType.Ranking.key
             || selectedModuleType == HomepageModuleType.GridRanking.key
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 模块类型选择
+        // ---- 模块类型选择 ----
         ExposedDropdownMenuBox(
             expanded = typeMenuExpanded,
             onExpandedChange = { typeMenuExpanded = it },
@@ -319,7 +310,7 @@ private fun RssDiscoverTab(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 分类选择
+        // ---- 分类选择触发区 ----
         if (isLoadingKinds) {
             Box(
                 modifier = Modifier
@@ -338,6 +329,9 @@ private fun RssDiscoverTab(
                 }
             }
         } else {
+            val selectedDisplayTitles = remember(selectedKindUrls, rssExploreKinds) {
+                selectedKindUrls.mapNotNull { url -> rssExploreKinds.find { k -> (k.url ?: k.title) == url }?.title }
+            }
             ExposedDropdownMenuBox(
                 expanded = false,
                 onExpandedChange = { if (it) showKindSheet = true },
@@ -348,13 +342,12 @@ private fun RssDiscoverTab(
                 OutlinedTextField(
                     value = if (isMultiSelectMode) {
                         when {
-                            selectedKindIndices.isEmpty() -> ""
-                            selectedKindIndices.size <= 3 -> selectedKindIndices.mapNotNull { rssKinds.getOrNull(it)?.first?.ifBlank { sourceName } }
-                                .joinToString("、")
-                            else -> stringResource(R.string.homepage_selected_categories_count, selectedKindIndices.size)
+                            selectedDisplayTitles.isEmpty() -> ""
+                            selectedDisplayTitles.size <= 3 -> selectedDisplayTitles.filter { it.isNotBlank() }.joinToString("、")
+                            else -> stringResource(R.string.homepage_selected_categories_count, selectedDisplayTitles.size)
                         }
                     } else {
-                        selectedKindIndex?.let { rssKinds.getOrNull(it)?.first?.ifBlank { sourceName } } ?: ""
+                        selectedDisplayTitles.firstOrNull()?.ifBlank { sourceName } ?: ""
                     },
                     onValueChange = {},
                     readOnly = true,
@@ -368,7 +361,6 @@ private fun RssDiscoverTab(
                         .fillMaxWidth()
                 )
             }
-            // 按钮组模式下，显示多选提示
             if (isMultiSelectMode) {
                 Text(
                     text = stringResource(R.string.homepage_multi_select_hint),
@@ -380,7 +372,7 @@ private fun RssDiscoverTab(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 手动添加按钮
+        // ---- 手动添加按钮 ----
         OutlinedButton(
             onClick = {
                 manualAddPrefill = ModuleDef(
@@ -396,138 +388,55 @@ private fun RssDiscoverTab(
         }
     }
 
-    // 分类选择底部弹窗
-    if (showKindSheet) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        ModalBottomSheet(
-            onDismissRequest = { showKindSheet = false },
-            sheetState = sheetState
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 32.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.homepage_select_category),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(bottom = 16.dp)
+    // ---- 分类选择底部弹窗（对标 MD3-main ExploreKindSelectSheet） ----
+    ExploreKindSelectSheet(
+        show = showKindSheet,
+        onDismissRequest = { showKindSheet = false },
+        kinds = rssExploreKinds,
+        multiple = isMultiSelectMode,
+        initialSelectedUrls = selectedKindUrls,
+        onSelected = { kinds ->
+            if (isMultiSelectMode) {
+                selectedKindUrls = kinds.map { it.url ?: it.title }.toSet()
+                showKindSheet = false
+                if (kinds.isNotEmpty()) {
+                    val title = kinds.joinToString("、") { it.title.ifBlank { sourceName } }
+                    if (isRankingMode) {
+                        val categories = kinds.map { it.title.ifBlank { sourceName } to (it.url ?: "") }
+                        actions.onAddRssRankingGroupFromKinds(sourceUrl, targetSetId, title, categories, selectedModuleType)
+                    } else {
+                        val kindTitles = kinds.map { it.title.ifBlank { sourceName } }
+                        actions.onAddRssButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
+                    }
+                    selectedKindUrls = emptySet()
+                }
+            } else {
+                val kind = kinds.firstOrNull() ?: return@ExploreKindSelectSheet
+                selectedKindUrls = setOf(kind.url ?: kind.title)
+                showKindSheet = false
+                manualAddPrefill = ModuleDef(
+                    key = "rss_${kind.title}_${kind.url}",
+                    type = selectedModuleType,
+                    title = kind.title.ifBlank { sourceName },
+                    url = kind.url ?: "",
+                    sourceUrl = sourceUrl
                 )
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 400.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        rssKinds.forEachIndexed { index, kind ->
-                            val isSelected = if (isMultiSelectMode) {
-                                selectedKindIndices.contains(index)
-                            } else {
-                                selectedKindIndex == index
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surface,
-                                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurface,
-                                border = if (isSelected) null
-                                else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                onClick = {
-                                    if (isMultiSelectMode) {
-                                        selectedKindIndices = if (isSelected) {
-                                            selectedKindIndices - index
-                                        } else {
-                                            selectedKindIndices + index
-                                        }
-                                    } else {
-                                        selectedKindIndex = index
-                                        showKindSheet = false
-                                        manualAddPrefill = ModuleDef(
-                                            key = "rss_${kind.first}_${kind.second}",
-                                            type = selectedModuleType,
-                                            title = kind.first.ifBlank { sourceName },
-                                            url = kind.second,
-                                            sourceUrl = sourceUrl
-                                        )
-                                        showManualAddDialog = true
-                                    }
-                                }
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(
-                                        start = if (isMultiSelectMode) 4.dp else 12.dp,
-                                        end = 12.dp,
-                                        top = 4.dp,
-                                        bottom = 4.dp
-                                    )
-                                ) {
-                                    if (isMultiSelectMode) {
-                                        Checkbox(
-                                            checked = isSelected,
-                                            onCheckedChange = null,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                    }
-                                    Text(
-                                        text = kind.first.ifBlank { sourceName },
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                // 多选模式下，显示创建按钮
-                if (isMultiSelectMode && selectedKindIndices.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = {
-                            val selectedKinds = selectedKindIndices.mapNotNull { rssKinds.getOrNull(it) }
-                            val title = selectedKinds.joinToString("、") { it.first.ifBlank { sourceName } }
-                            if (isRankingMode) {
-                                val categories = selectedKinds.map { it.first.ifBlank { sourceName } to it.second }
-                                actions.onAddRssRankingGroupFromKinds(sourceUrl, targetSetId, title, categories, selectedModuleType)
-                            } else {
-                                val kindTitles = selectedKinds.map { it.first.ifBlank { sourceName } }
-                                actions.onAddRssButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
-                            }
-                            showKindSheet = false
-                            selectedKindIndices = emptySet()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (isRankingMode)
-                            stringResource(R.string.homepage_create_ranking_group, selectedKindIndices.size)
-                        else
-                            stringResource(R.string.homepage_create_button_group, selectedKindIndices.size))
-                    }
-                }
+                showManualAddDialog = true
             }
         }
-    }
+    )
 
-    // 添加模块对话框（预填充分类信息）
+    // ---- 手动添加模块对话框 ----
     if (showManualAddDialog) {
         AddCustomModuleDialog(
             show = true,
             prefill = manualAddPrefill ?: ModuleDef(type = selectedModuleType, sourceUrl = sourceUrl),
             isEditMode = false,
             onConfirm = { moduleDef ->
-                // 使用 RSS 专用添加操作（确保集 ID 使用 rss_ 前缀）
                 actions.onAddRssCustomModule(sourceUrl, targetSetId, moduleDef)
                 showManualAddDialog = false
                 manualAddPrefill = null
-                selectedKindIndex = null
+                selectedKindUrls = emptySet()
             },
             onDismiss = {
                 showManualAddDialog = false
