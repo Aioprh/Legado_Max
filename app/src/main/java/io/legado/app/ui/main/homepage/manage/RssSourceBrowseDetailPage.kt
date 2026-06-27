@@ -74,6 +74,7 @@ import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.ui.widget.components.card.TextCard
+import io.legado.app.utils.GSON
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -402,13 +403,9 @@ private fun RssDiscoverTab(
                 showKindSheet = false
                 if (kinds.isNotEmpty()) {
                     val title = kinds.joinToString("、") { it.title.ifBlank { sourceName } }
-                    val argsJson = if (isRankingMode) {
-                        val entries = kinds.joinToString(",") { """{"t":"${it.title.ifBlank { sourceName }}","u":"${it.url ?: ""}"}""" }
-                        "[$entries]"
-                    } else {
-                        val entries = kinds.joinToString(",") { """{"t":"${it.title.ifBlank { sourceName }}","u":""}""" }
-                        "[$entries]"
-                    }
+                    val argsJson = GSON.toJson(
+                        kinds.map { mapOf("t" to it.title.ifBlank { sourceName }, "u" to (it.url ?: "")) }
+                    )
                     manualAddPrefill = ModuleDef(
                         type = selectedModuleType,
                         title = title,
