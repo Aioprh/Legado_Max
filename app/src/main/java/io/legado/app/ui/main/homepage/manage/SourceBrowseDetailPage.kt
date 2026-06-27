@@ -412,20 +412,25 @@ private fun DiscoverTab(
         initialSelectedUrls = selectedKindUrls,
         onSelected = { kinds ->
             if (isMultiSelectMode) {
-                // 多选模式：更新选中 URL 集合并关闭弹窗
+                // 多选模式：更新选中 URL 集合，打开预填充的编辑对话框
                 selectedKindUrls = kinds.map { it.url ?: it.title }.toSet()
                 showKindSheet = false
-                // 立即创建按钮组 / 排行榜组
                 if (kinds.isNotEmpty()) {
                     val title = kinds.joinToString("、") { it.title }
-                    val kindPairs = kinds.map { it.title to (it.url ?: "") }
-                    if (isRankingMode) {
-                        actions.onAddRankingGroupFromKinds(sourceUrl, targetSetId, title, kindPairs, selectedModuleType)
+                    val argsJson = if (isRankingMode) {
+                        val entries = kinds.joinToString(",") { """{"t":"${it.title}","u":"${it.url ?: ""}"}""" }
+                        "[$entries]"
                     } else {
-                        val kindTitles = kinds.map { it.title }
-                        actions.onAddButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
+                        val entries = kinds.joinToString(",") { """{"t":"${it.title}","u":""}""" }
+                        "[$entries]"
                     }
-                    selectedKindUrls = emptySet()
+                    manualAddPrefill = ModuleDef(
+                        type = selectedModuleType,
+                        title = title,
+                        sourceUrl = sourceUrl,
+                        args = argsJson
+                    )
+                    showManualAddDialog = true
                 }
             } else {
                 // 单选模式：打开添加模块对话框预填充

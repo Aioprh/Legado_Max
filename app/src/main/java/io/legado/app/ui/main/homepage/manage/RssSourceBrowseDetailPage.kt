@@ -397,18 +397,25 @@ private fun RssDiscoverTab(
         initialSelectedUrls = selectedKindUrls,
         onSelected = { kinds ->
             if (isMultiSelectMode) {
+                // 多选模式：更新选中 URL 集合，打开预填充的编辑对话框
                 selectedKindUrls = kinds.map { it.url ?: it.title }.toSet()
                 showKindSheet = false
                 if (kinds.isNotEmpty()) {
                     val title = kinds.joinToString("、") { it.title.ifBlank { sourceName } }
-                    if (isRankingMode) {
-                        val categories = kinds.map { it.title.ifBlank { sourceName } to (it.url ?: "") }
-                        actions.onAddRssRankingGroupFromKinds(sourceUrl, targetSetId, title, categories, selectedModuleType)
+                    val argsJson = if (isRankingMode) {
+                        val entries = kinds.joinToString(",") { """{"t":"${it.title.ifBlank { sourceName }}","u":"${it.url ?: ""}"}""" }
+                        "[$entries]"
                     } else {
-                        val kindTitles = kinds.map { it.title.ifBlank { sourceName } }
-                        actions.onAddRssButtonGroupFromKinds(sourceUrl, targetSetId, title, kindTitles)
+                        val entries = kinds.joinToString(",") { """{"t":"${it.title.ifBlank { sourceName }}","u":""}""" }
+                        "[$entries]"
                     }
-                    selectedKindUrls = emptySet()
+                    manualAddPrefill = ModuleDef(
+                        type = selectedModuleType,
+                        title = title,
+                        sourceUrl = sourceUrl,
+                        args = argsJson
+                    )
+                    showManualAddDialog = true
                 }
             } else {
                 val kind = kinds.firstOrNull() ?: return@ExploreKindSelectSheet

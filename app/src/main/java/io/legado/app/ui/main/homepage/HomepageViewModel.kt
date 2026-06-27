@@ -613,7 +613,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                                 )
                             }
                         } else {
-                            exploreBooksUseCase.executeForRanking(module.sourceUrl, url, null)
+                            exploreBooksUseCase.executeForRanking(module.sourceUrl, url.ifBlank { null }, null)
                         }
                         val shelf = _bookshelf.value
                         val bookItems = books.map { book ->
