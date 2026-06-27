@@ -875,8 +875,9 @@ private fun RankingTabsModule(
             }
         }
 
-        // 内容区域
+        // 内容区域（按 selectedIndex 做 key，切换 Tab 时重置分页/滚动状态）
         Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+            androidx.compose.runtime.key(selectedIndex) {
             when {
                 currentTab.books != null -> {
                     val books = currentTab.books!!
@@ -922,6 +923,7 @@ private fun RankingTabsModule(
                     }
                 }
             }
+            } // key(selectedIndex)
         }
     }
 }
