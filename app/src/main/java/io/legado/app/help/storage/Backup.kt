@@ -158,6 +158,7 @@ object Backup {
             BookCover.configFileName,
             "config.xml",
             "videoConfig.xml",
+            "homepage.json",
             CoverGalleryRepository.backupDirName
         )
     }
@@ -497,6 +498,15 @@ object Backup {
         }
         if (selectedFiles.contains("dictRule.json")) {
             writeListToJson(appDb.dictRuleDao.all, "dictRule.json", backupPath, onProgress)
+        }
+        if (selectedFiles.contains("homepage.json")) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName("homepage.json"))
+            val data = mapOf(
+                "modules" to appDb.homepageModuleDao.all,
+                "customSets" to appDb.homepageCustomSetDao.all
+            )
+            FileUtils.createFileIfNotExist(backupPath + File.separator + "homepage.json")
+                .writeText(GSON.toJson(data))
         }
         if (selectedFiles.contains(CoverGalleryRepository.backupDirName)) {
             onProgress?.invoke(BackupInfoHelper.getDisplayName(CoverGalleryRepository.backupDirName))

@@ -301,6 +301,7 @@ object BackupFileValidator {
                 "keyboardAssists.json" -> validateEntityStructure<KeyboardAssist>(jsonText, listOf("key"))
                 "dictRule.json" -> validateEntityStructure<DictRule>(jsonText, listOf("name"))
                 "servers.json" -> validateEntityStructure<Server>(jsonText, listOf("name"))
+                "homepage.json" -> validateHomepageFile(jsonText)
                 else -> ValidationResult(fileName, ValidationState.VALID, "格式正确")
             }
         } catch (e: Exception) {
@@ -311,6 +312,24 @@ object BackupFileValidator {
                 details = "验证 $fileName 数据结构时出错: ${e.message}",
                 exception = e
             )
+        }
+    }
+
+    private fun validateHomepageFile(jsonText: String): ValidationResult {
+        return try {
+            val obj = org.json.JSONObject(jsonText)
+            val modules = obj.optJSONArray("modules")
+            val customSets = obj.optJSONArray("customSets")
+            val hasModules = modules != null && modules.length() > 0
+            val hasSets = customSets != null && customSets.length() > 0
+            if (!hasModules && !hasSets) {
+                ValidationResult("", ValidationState.WARNING, "数据为空", "首页数据中没有模块或书源集")
+            } else {
+                ValidationResult("", ValidationState.VALID,
+                    "模块 ${modules?.length() ?: 0} 个，书源集 ${customSets?.length() ?: 0} 个")
+            }
+        } catch (e: Exception) {
+            ValidationResult("", ValidationState.ERROR, "格式无效", e.message ?: "")
         }
     }
 

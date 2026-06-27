@@ -13,6 +13,9 @@ interface HomepageCustomSetDao {
     @Query("SELECT * FROM homepage_custom_sets ORDER BY sortOrder ASC")
     fun flowAll(): Flow<List<HomepageCustomSet>>
 
+    @get:Query("SELECT * FROM homepage_custom_sets ORDER BY sortOrder ASC")
+    val all: List<HomepageCustomSet>
+
     @Query("SELECT * FROM homepage_custom_sets WHERE id = :id")
     suspend fun getById(id: String): HomepageCustomSet?
 
@@ -32,4 +35,7 @@ interface HomepageCustomSetDao {
 
     @Query("DELETE FROM homepage_custom_sets WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("DELETE FROM homepage_custom_sets")
+    suspend fun deleteAll()
 }

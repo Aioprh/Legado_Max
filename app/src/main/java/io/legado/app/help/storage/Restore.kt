@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Xml
 import androidx.core.content.edit
 import androidx.documentfile.provider.DocumentFile
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -25,6 +26,8 @@ import io.legado.app.data.entities.CoverGalleryGroup
 import io.legado.app.data.entities.CoverGalleryImage
 import io.legado.app.data.entities.DictRule
 import io.legado.app.data.entities.HttpTTS
+import io.legado.app.data.entities.HomepageCustomSet
+import io.legado.app.data.entities.HomepageModule
 import io.legado.app.data.entities.KeyboardAssist
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
@@ -291,6 +294,28 @@ object Restore {
             appDb.rssStarDao.deleteAll()
             fileToListT<RssStar>(path, "rssStar.json")?.let {
                 appDb.rssStarDao.insert(*it.toTypedArray())
+            }
+        }
+
+        // 恢复首页数据
+        if ("homepage.json" in selectedSet) {
+            progress("homepage.json")
+            val file = File(path, "homepage.json")
+            if (file.exists()) {
+                val json = file.readText()
+                val obj = GSON.fromJsonObject<Map<String, JsonElement>>(json).getOrNull()
+                if (obj != null) {
+                    appDb.homepageModuleDao.deleteAll()
+                    (obj["modules"] as? JsonArray)?.let { array ->
+                        val modules = GSON.fromJsonArray<HomepageModule>(array.toString()).getOrNull()
+                        modules?.let { appDb.homepageModuleDao.upsertAll(it) }
+                    }
+                    appDb.homepageCustomSetDao.deleteAll()
+                    (obj["customSets"] as? JsonArray)?.let { array ->
+                        val sets = GSON.fromJsonArray<HomepageCustomSet>(array.toString()).getOrNull()
+                        sets?.forEach { set -> appDb.homepageCustomSetDao.upsert(set) }
+                    }
+                }
             }
         }
 
@@ -633,6 +658,26 @@ object Restore {
         appDb.rssStarDao.deleteAll()
         fileToListT<RssStar>(path, "rssStar.json")?.let {
             appDb.rssStarDao.insert(*it.toTypedArray())
+        }
+
+        // 恢复首页数据
+        progress("homepage.json")
+        val homepageFile = File(path, "homepage.json")
+        if (homepageFile.exists()) {
+            val json = homepageFile.readText()
+            val obj = GSON.fromJsonObject<Map<String, JsonElement>>(json).getOrNull()
+            if (obj != null) {
+                appDb.homepageModuleDao.deleteAll()
+                (obj["modules"] as? JsonArray)?.let { array ->
+                    val modules = GSON.fromJsonArray<HomepageModule>(array.toString()).getOrNull()
+                    modules?.let { appDb.homepageModuleDao.upsertAll(it) }
+                }
+                appDb.homepageCustomSetDao.deleteAll()
+                (obj["customSets"] as? JsonArray)?.let { array ->
+                    val sets = GSON.fromJsonArray<HomepageCustomSet>(array.toString()).getOrNull()
+                    sets?.forEach { set -> appDb.homepageCustomSetDao.upsert(set) }
+                }
+            }
         }
 
         // 恢复替换规则

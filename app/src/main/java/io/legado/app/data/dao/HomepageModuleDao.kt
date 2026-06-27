@@ -42,6 +42,9 @@ interface HomepageModuleDao {
     @Query("DELETE FROM homepage_modules WHERE id = :id")
     suspend fun delete(id: String)
 
+    @Query("DELETE FROM homepage_modules")
+    suspend fun deleteAll()
+
     @Query("DELETE FROM homepage_modules WHERE customSetId = :setId")
     suspend fun deleteByCustomSetId(setId: String)
 
@@ -50,4 +53,7 @@ interface HomepageModuleDao {
 
     @Query("SELECT * FROM homepage_modules ORDER BY sortOrder ASC")
     fun flowAll(): Flow<List<HomepageModule>>
+
+    @get:Query("SELECT * FROM homepage_modules ORDER BY sortOrder ASC")
+    val all: List<HomepageModule>
 }

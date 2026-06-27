@@ -43,6 +43,7 @@ object BackupSelectorConfig {
         BackupItem("themeConfig", "themeConfig.json", "主题配置", "配置"),
         BackupItem("coverRule", "coverRule.json", "封面规则", "配置"),
         BackupItem("directLinkRule", "directLinkRule.json", "直链规则", "配置"),
+        BackupItem("homepage", "homepage.json", "首页", "数据库"),
         BackupItem("appConfig", "config.xml", "应用配置", "配置"),
         BackupItem("videoConfig", "videoConfig.xml", "视频配置", "配置"),
         BackupItem("backgroundImages", "bg", "背景图片", "其他"),

@@ -53,7 +53,7 @@ object BackupInfoHelper {
         CategoryDef(
             "源相关",
             "📗",
-            listOf("bookSource", "rssSource", "rssStar", "sourceSub", "runtimeSourceCache")
+            listOf("bookSource", "rssSource", "rssStar", "sourceSub", "runtimeSourceCache", "homepage")
         ),
         CategoryDef(
             "规则相关",
@@ -107,7 +107,8 @@ object BackupInfoHelper {
         DirectLinkUpload.ruleFileName to "直链上传配置",
         "backgroundImages" to "阅读背景",
         "config.xml" to "应用配置",
-        "videoConfig.xml" to "视频配置"
+        "videoConfig.xml" to "视频配置",
+        "homepage.json" to "首页"
     )
 
     fun getDisplayName(fileName: String): String {
@@ -164,7 +165,8 @@ object BackupInfoHelper {
             "httpTTS.json" to { appDb.httpTTSDao.all.size },
             "keyboardAssists.json" to { appDb.keyboardAssistsDao.all.size },
             "dictRule.json" to { appDb.dictRuleDao.all.size },
-            "servers.json" to { appDb.serverDao.all.size }
+            "servers.json" to { appDb.serverDao.all.size },
+            "homepage.json" to { appDb.homepageModuleDao.all.size + appDb.homepageCustomSetDao.all.size }
         )
         dbItems.forEach { (fileName, countProvider) ->
             addItem(fileName, countProvider() * 200L)
