@@ -36,10 +36,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.legado.app.R
+import io.legado.app.constant.AppPattern
 import io.legado.app.data.appDb
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
+import io.legado.app.utils.cnCompare
+import io.legado.app.utils.splitNotBlank
 
 /**
  * 订阅源浏览列表页面。
@@ -68,17 +71,15 @@ fun BrowseRssSourcesPage(
 
     val allGroups = remember(allSources) {
         allSources.mapNotNull { it.sourceGroup }
-            .flatMap { it.split(",") }
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
+            .flatMap { it.splitNotBlank(AppPattern.splitGroupRegex).toList() }
             .distinct()
-            .sorted()
+            .sortedWith { o1, o2 -> o1.cnCompare(o2) }
     }
 
     val filteredSources = remember(allSources, searchQuery, groupFilter) {
         allSources.filter { source ->
             val groupMatch = groupFilter == null ||
-                source.sourceGroup?.split(",")?.any { it.trim() == groupFilter } == true
+                source.sourceGroup?.splitNotBlank(AppPattern.splitGroupRegex)?.any { it == groupFilter } == true
             val searchMatch = searchQuery.isBlank() ||
                 source.sourceName.contains(searchQuery, ignoreCase = true) ||
                 source.sourceUrl.contains(searchQuery, ignoreCase = true)

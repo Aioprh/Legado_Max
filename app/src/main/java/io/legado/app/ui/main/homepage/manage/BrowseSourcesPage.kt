@@ -35,10 +35,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
+import io.legado.app.constant.AppPattern
+import io.legado.app.help.config.SourceConfig
 import io.legado.app.ui.main.homepage.HomepageSourceManageUi
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.VerticalScrollbar
 import io.legado.app.ui.widget.components.card.GlassCard
+import io.legado.app.utils.cnCompare
+import io.legado.app.utils.splitNotBlank
 
 /**
  * 书源浏览列表页面。
@@ -69,13 +73,27 @@ fun BrowseSourcesPage(
     var showGroupMenu by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
-    // 提取所有分组（书源的 bookSourceGroup 字段，支持逗号分隔的多分组）
+    // 提取所有分组（书源的 bookSourceGroup 字段，使用与 BookSourceDao.dealGroups() 一致的分隔符和排序）
     val allGroups = remember(sources) {
-        sources.flatMap { it.sourceGroup?.split(",") ?: emptyList() }
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
+        sources.flatMap { source ->
+            source.sourceGroup
+                ?.splitNotBlank(AppPattern.splitGroupRegex)
+                ?.toList() ?: emptyList()
+        }
             .distinct()
-            .sorted()
+            .let { groups ->
+                val savedOrder = SourceConfig.getBookSourceGroupOrder()
+                if (savedOrder.isEmpty()) {
+                    groups.sortedWith { o1, o2 -> o1.cnCompare(o2) }
+                } else {
+                    val orderMap = savedOrder.withIndex().associate { it.value to it.index }
+                    groups.sortedWith { o1, o2 ->
+                        val order1 = orderMap[o1] ?: Int.MAX_VALUE
+                        val order2 = orderMap[o2] ?: Int.MAX_VALUE
+                        order1.compareTo(order2)
+                    }
+                }
+            }
     }
 
     // 根据搜索和筛选条件过滤书源列表
@@ -83,7 +101,7 @@ fun BrowseSourcesPage(
         sources.filter { source ->
             // 分组筛选
             val groupMatch = groupFilter == null ||
-                source.sourceGroup?.split(",")?.any { it.trim() == groupFilter } == true
+                source.sourceGroup?.splitNotBlank(AppPattern.splitGroupRegex)?.any { it == groupFilter } == true
             // 搜索筛选
             val searchMatch = searchQuery.isBlank() ||
                 source.sourceName.contains(searchQuery, ignoreCase = true)
