@@ -68,7 +68,12 @@ class HomepageModulesRepository(
         return entity.toCustomSetItem()
     }
 
-    override suspend fun renameCustomSet(id: String, name: String) = customSetDao.rename(id, name)
+    override suspend fun renameCustomSet(id: String, name: String) {
+        // 使用 upsert 支持所有集类型（自定义集、书源集、订阅源集）
+        val existing = customSetDao.getById(id)
+        val sortOrder = existing?.sortOrder ?: (System.currentTimeMillis() / 1000).toInt()
+        customSetDao.upsert(HomepageCustomSet(id = id, name = name, sortOrder = sortOrder))
+    }
     override suspend fun deleteCustomSet(id: String) {
         moduleDao.deleteByCustomSetId(id)
         customSetDao.delete(id)

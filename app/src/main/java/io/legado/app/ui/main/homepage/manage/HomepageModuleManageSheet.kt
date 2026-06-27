@@ -203,9 +203,11 @@ fun HomepageModuleManageSheet(
                     onToggleSet = actions.onToggleSet,
                     onSetClick = { setUrl -> selectingSetUrl = setUrl },
                     onRenameSet = { setUrl ->
-                        // 仅自定义集可重命名
-                        if (HomepageViewModel.isCustomSetUrl(setUrl)) {
-                            renameSetId = HomepageViewModel.customSetIdFromUrl(setUrl)
+                        // 自定义集按 customSetId 重命名，书源集/订阅源集按 setUrl 重命名
+                        renameSetId = if (HomepageViewModel.isCustomSetUrl(setUrl)) {
+                            HomepageViewModel.customSetIdFromUrl(setUrl)
+                        } else {
+                            setUrl
                         }
                     },
                     onDeleteSet = { setUrl ->
