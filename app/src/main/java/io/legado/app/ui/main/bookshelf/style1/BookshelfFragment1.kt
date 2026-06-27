@@ -198,12 +198,16 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             if (data != bookGroups) {
                 bookGroups.clear()
                 bookGroups.addAll(data)
+                // 在 notifyDataSetChanged 之前保存位置，因为 notifyDataSetChanged
+                // 会触发 ViewPager/TabLayout 自动选中 position 0，
+                // 进而调用 onTabSelected(0) 覆盖 saveTabPosition
+                val lastPosition = AppConfig.saveTabPosition
                 adapter.notifyDataSetChanged()
                 if (AppConfig.dropdownSelectGroup) {
                     updateTitleSelect()
-                    selectLastGroup()
+                    selectLastGroup(lastPosition)
                 } else {
-                    selectLastTab()
+                    selectLastTab(lastPosition)
                     // 设置长按分组标签编辑分组
                     for (i in 0 until adapter.count) {
                         tabLayout?.getTabAt(i)?.view?.setOnLongClickListener {
@@ -227,20 +231,26 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         }
     }
 
-    private fun selectLastGroup() {
+    private fun selectLastGroup(lastPosition: Int) {
         titleSelect?.post {
-            val position = AppConfig.saveTabPosition.coerceIn(0, bookGroups.size - 1)
+            val position = lastPosition.coerceIn(0, bookGroups.size - 1)
             currentPosition = position
+            AppConfig.saveTabPosition = position
             tvGroupName?.text = bookGroups.getOrNull(position)?.groupName ?: ""
             binding.viewPagerBookshelf.setCurrentItem(position, false)
         }
     }
 
     // TabLayout 模式：选择上次保存的分组
-    private fun selectLastTab() {
+    // 注意：removeOnTabSelectedListener 后再 select() 不会触发 onTabSelected，
+    // 因此需要显式设置 currentPosition 和 saveTabPosition
+    private fun selectLastTab(lastPosition: Int) {
         tabLayout?.post {
+            val position = lastPosition.coerceIn(0, bookGroups.size - 1)
             tabLayout?.removeOnTabSelectedListener(this)
-            tabLayout?.getTabAt(AppConfig.saveTabPosition)?.select()
+            currentPosition = position
+            AppConfig.saveTabPosition = position
+            tabLayout?.getTabAt(position)?.select()
             tabLayout?.addOnTabSelectedListener(this)
         }
     }
