@@ -65,6 +65,21 @@
 -keep class io.legado.app.help.storage.ChapterCacheInfo{*;}
 -keep class io.legado.app.ui.book.cacheSelector.BookCacheIndex{*;}
 -keep class io.legado.app.ui.book.cacheSelector.ChapterCacheInfo{*;}
+
+# Room 数据库（防止 R8 在 release 构建中剥离生成的 _Impl 类）
+-keep class io.legado.app.data.AppDatabase {*;}
+-keep class io.legado.app.data.AppDatabase_Impl {*;}
+-keep,allowobfuscation @androidx.room.Dao interface * {*;}
+-keep,allowobfuscation @androidx.room.DatabaseView class * {*;}
+-keep class * extends androidx.room.migration.Migration {*;}
+-keep class io.legado.app.data.DatabaseMigrations {*;}
+# 保留 Room 生成的 DAO 实现（BookDao_Impl 等）
+-keep class io.legado.app.data.dao.**_Impl {*;}
+# 保留 DatabaseView 的 ViewInfo 内部类（BookSourcePart）
+-keep class io.legado.app.data.entities.BookSourcePart {*;}
+# 确保 Room 能通过反射找到生成的实现类
+-keepnames class io.legado.app.data.AppDatabase_Impl
+-keepnames class io.legado.app.data.dao.**_Impl
 # hutool-core hutool-crypto
 -keep class
 !cn.hutool.core.util.RuntimeUtil,

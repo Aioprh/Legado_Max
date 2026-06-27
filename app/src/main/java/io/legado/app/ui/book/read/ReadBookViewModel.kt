@@ -84,6 +84,7 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
      * 初始化
      */
     fun initData(intent: Intent, success: (() -> Unit)? = null) {
+        AppLog.put("ReadBookViewModel.initData 开始, bookUrl=${intent.getStringExtra("bookUrl")}")
         execute {
             ReadBook.inBookshelf = intent.getBooleanExtra("inBookshelf", true)
             ReadBook.chapterChanged = intent.getBooleanExtra("chapterChanged", false)

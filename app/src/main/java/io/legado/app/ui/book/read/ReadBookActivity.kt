@@ -327,9 +327,10 @@ class ReadBookActivity : BaseReadBookActivity(),
     override fun onPostCreate(savedInstanceState: Bundle?) {
         super.onPostCreate(savedInstanceState)
         viewModel.initReadBookConfig(intent)
-        Looper.myQueue().addIdleHandler {
+        // 使用 handler.post 替代 IdleHandler 以确保在所有设备上可靠触发
+        // 部分华为/荣耀 Android 10 设备上 Looper.IdleHandler 可能永不触发
+        handler.post {
             viewModel.initData(intent)
-            false
         }
         justInitData = true
     }
