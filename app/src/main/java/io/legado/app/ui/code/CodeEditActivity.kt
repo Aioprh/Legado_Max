@@ -394,6 +394,12 @@ class CodeEditActivity :
                 upEdit(autoWarp = !AppConfig.editAutoWrap)
                 putPrefBoolean(PreferKey.editAutoWrap, !AppConfig.editAutoWrap)
             }
+            R.id.menu_help -> {
+                val actions = helpActions()
+                selector(R.string.help, actions.map { it.title }) { _, which ->
+                    onHelpActionSelect(actions[which].value)
+                }
+            }
             R.id.menu_log -> showDialogFragment<AppLogDialog>()
             R.id.menu_switch_rule -> showSwitchRuleDialog()
             R.id.menu_search_rule -> showRuleSearchDialog()
