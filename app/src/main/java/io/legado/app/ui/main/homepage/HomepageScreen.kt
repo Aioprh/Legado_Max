@@ -450,10 +450,16 @@ private fun SourceTabLayout(
     // 确保 selectedTabIndex 不越界（组合期间立即生效，防止隐藏集后索引越界崩溃）
     val safeTabIndex = if (selectedSets.isEmpty()) 0 else selectedTabIndex.coerceIn(0, selectedSets.lastIndex)
 
+    val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
+            .padding(
+                top = (paddingValues.calculateTopPadding() - 16.dp).coerceAtLeast(0.dp),
+                bottom = paddingValues.calculateBottomPadding(),
+                start = paddingValues.calculateLeftPadding(layoutDirection),
+                end = paddingValues.calculateRightPadding(layoutDirection),
+            )
     ) {
         if (selectedSets.isEmpty()) return@Column
         // 可滚动的 Tab 栏
