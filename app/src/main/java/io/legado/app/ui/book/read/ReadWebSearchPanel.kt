@@ -573,8 +573,21 @@ class ReadWebSearchPanel @JvmOverloads constructor(
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) = Unit
 
+            override fun onSelectedChanged(
+                viewHolder: RecyclerView.ViewHolder?,
+                actionState: Int
+            ) {
+                super.onSelectedChanged(viewHolder, actionState)
+                // 拖拽结束后立即持久化，确保 clearView 未调用时（如对话框在
+                // 拖拽动画过程中被关闭导致 RecyclerView 从窗口分离）也能保存排序结果
+                if (actionState == ItemTouchHelper.ACTION_STATE_IDLE) {
+                    persistItems()
+                }
+            }
+
             override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
+                // clearView 中的调用作为双保险，与 onSelectedChanged 重复调用无副作用
                 persistItems()
             }
         }
