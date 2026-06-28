@@ -84,7 +84,7 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
      * 初始化
      */
     fun initData(intent: Intent, success: (() -> Unit)? = null) {
-        AppLog.put("ReadBookViewModel.initData 开始, bookUrl=${intent.getStringExtra("bookUrl")}")
+        AppLog.putReaderDebug("ReadBookViewModel.initData 开始, bookUrl=${intent.getStringExtra("bookUrl")}")
         execute {
             ReadBook.inBookshelf = intent.getBooleanExtra("inBookshelf", true)
             ReadBook.chapterChanged = intent.getBooleanExtra("chapterChanged", false)
@@ -364,7 +364,7 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
                 alertSync?.invoke(progress)
             } else if (progress.durChapterIndex < book.simulatedTotalChapterNum()) {
                 ReadBook.setProgress(progress)
-                AppLog.put("自动同步阅读进度成功《${book.name}》 ${progress.durChapterTitle}")
+                AppLog.putReaderDebug("自动同步阅读进度成功《${book.name}》 ${progress.durChapterTitle}")
                 context.toastOnUi("已同步最新阅读进度")
             }
         }

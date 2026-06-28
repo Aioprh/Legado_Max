@@ -422,21 +422,21 @@ object ReadBook : CoroutineScope by MainScope() {
             curTextChapter = nextTextChapter
             nextTextChapter = null
             if (curTextChapter == null) {
-                AppLog.putDebug("moveToNextChapter-章节未加载,开始加载")
+                AppLog.putReaderDebug("moveToNextChapter-章节未加载,开始加载")
                 if (upContentInPlace) callBack?.upContent()
                 loadContent(durChapterIndex, upContent, resetPageOffset = false)
             } else if (upContent && upContentInPlace) {
-                AppLog.putDebug("moveToNextChapter-章节已加载,刷新视图")
+                AppLog.putReaderDebug("moveToNextChapter-章节已加载,刷新视图")
                 callBack?.upContent()
             }
             loadContent(durChapterIndex.plus(1), upContent, false)
             saveRead()
             callBack?.upMenuView()
-            AppLog.putDebug("moveToNextChapter-curPageChanged()")
+            AppLog.putReaderDebug("moveToNextChapter-curPageChanged()")
             curPageChanged()
             return true
         } else {
-            AppLog.putDebug("跳转下一章失败,没有下一章")
+            AppLog.putReaderDebug("跳转下一章失败,没有下一章")
             return false
         }
     }
@@ -453,21 +453,21 @@ object ReadBook : CoroutineScope by MainScope() {
             curTextChapter = nextTextChapter
             nextTextChapter = null
             if (curTextChapter == null) {
-                AppLog.putDebug("moveToNextChapter-章节未加载,开始加载")
+                AppLog.putReaderDebug("moveToNextChapter-章节未加载,开始加载")
                 if (upContentInPlace) callBack?.upContentAwait()
                 loadContentAwait(durChapterIndex, upContent, resetPageOffset = false)
             } else if (upContent && upContentInPlace) {
-                AppLog.putDebug("moveToNextChapter-章节已加载,刷新视图")
+                AppLog.putReaderDebug("moveToNextChapter-章节已加载,刷新视图")
                 callBack?.upContentAwait()
             }
             loadContent(durChapterIndex.plus(1), upContent, false)
             saveRead()
             callBack?.upMenuView()
-            AppLog.putDebug("moveToNextChapter-curPageChanged()")
+            AppLog.putReaderDebug("moveToNextChapter-curPageChanged()")
             curPageChanged()
             return true
         } else {
-            AppLog.putDebug("跳转下一章失败,没有下一章")
+            AppLog.putReaderDebug("跳转下一章失败,没有下一章")
             return false
         }
     }
@@ -691,7 +691,7 @@ object ReadBook : CoroutineScope by MainScope() {
                 } ?: let {
                     val bookSource = bookSource
                     if (bookSource != null && bookSource.nextPageLazyLoad) {
-                        AppLog.put("懒加载: 走懒加载分支 章节${chapter.index}")
+                        AppLog.putReaderDebug("懒加载: 走懒加载分支 章节${chapter.index}")
                         loadContentLazy(book, chapter, upContent, resetPageOffset, success)
                     } else {
                         download(
@@ -722,15 +722,15 @@ object ReadBook : CoroutineScope by MainScope() {
             val bookSource = bookSource!!
             val lazyCallback = object : LazyContentCallback {
                 override fun onPageLoading(pageIndex: Int) {
-                    AppLog.put("懒加载: 章节${chapter.index} 第${pageIndex + 1}页 开始加载")
+                    AppLog.putReaderDebug("懒加载: 章节${chapter.index} 第${pageIndex + 1}页 开始加载")
                 }
                 override fun onPageLoaded(pageIndex: Int, content: String) {
-                    AppLog.put("懒加载回调: 章节${chapter.index} 第${pageIndex + 1}页 加载完成，准备追加到排版")
+                    AppLog.putReaderDebug("懒加载回调: 章节${chapter.index} 第${pageIndex + 1}页 加载完成，准备追加到排版")
                     curTextChapter?.let { textChapter ->
                         // 按段落分割，确保段落间距正常排版
                         val paragraphs = content.split("\n").filter { it.isNotBlank() }
                         textChapter.appendContent(paragraphs)
-                        AppLog.put("懒加载回调: 已追加到 TextChapter")
+                        AppLog.putReaderDebug("懒加载回调: 已追加到 TextChapter")
                         kotlinx.coroutines.GlobalScope.launch(Main) {
                             callBack?.upContent(0, false)
                         }
@@ -777,15 +777,15 @@ object ReadBook : CoroutineScope by MainScope() {
                 } else if (bookSource != null && bookSource.nextPageLazyLoad) {
                     val lazyCallback = object : LazyContentCallback {
                         override fun onPageLoading(pageIndex: Int) {
-                            AppLog.put("懒加载: 章节${chapter.index} 第${pageIndex + 1}页 开始加载")
+                            AppLog.putReaderDebug("懒加载: 章节${chapter.index} 第${pageIndex + 1}页 开始加载")
                         }
                         override fun onPageLoaded(pageIndex: Int, content: String) {
-                            AppLog.put("懒加载回调: 章节${chapter.index} 第${pageIndex + 1}页 加载完成，准备追加到排版")
+                            AppLog.putReaderDebug("懒加载回调: 章节${chapter.index} 第${pageIndex + 1}页 加载完成，准备追加到排版")
                             curTextChapter?.let { textChapter ->
                         // 按段落分割，确保段落间距正常排版
                         val paragraphs = content.split("\n").filter { it.isNotBlank() }
                         textChapter.appendContent(paragraphs)
-                                AppLog.put("懒加载回调: 已追加到 TextChapter")
+                                AppLog.putReaderDebug("懒加载回调: 已追加到 TextChapter")
                                 kotlinx.coroutines.GlobalScope.launch(Main) {
                                     callBack?.upContent(0, false)
                                 }
@@ -1090,7 +1090,7 @@ object ReadBook : CoroutineScope by MainScope() {
             if (lazyContent != null) {
                 textChapter.lazyContent = lazyContent
                 textChapter.useLazyLoading = true
-                AppLog.put("懒加载: 已设置 lazyContent 到 TextChapter, 章节${chapter.index}")
+                AppLog.putReaderDebug("懒加载: 已设置 lazyContent 到 TextChapter, 章节${chapter.index}")
             }
             when (val offset = chapter.index - durChapterIndex) {
                 0 -> {

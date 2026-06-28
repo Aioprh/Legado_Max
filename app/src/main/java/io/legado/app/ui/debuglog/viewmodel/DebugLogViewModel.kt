@@ -202,7 +202,8 @@ class DebugLogViewModel(application: Application) : BaseViewModel(application) {
             DebugCategory.TOAST to logs.count { it.category == DebugCategory.TOAST },
             DebugCategory.CHECK to logs.count { it.category == DebugCategory.CHECK },
             DebugCategory.CRASH to logs.count { it.category == DebugCategory.CRASH },
-            DebugCategory.RULE to logs.count { it.category == DebugCategory.RULE }
+            DebugCategory.RULE to logs.count { it.category == DebugCategory.RULE },
+            DebugCategory.READER to logs.count { it.category == DebugCategory.READER }
         )
     }.stateIn(
         scope = viewModelScope,

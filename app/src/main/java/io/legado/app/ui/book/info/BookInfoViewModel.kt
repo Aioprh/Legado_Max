@@ -130,11 +130,11 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
             bookData.postValue(book)
             upCoverByRule(book)
             if (book.tocUrl.isEmpty() && !book.isLocal) {
-                AppLog.put("[TOC] upBook: tocUrl为空, 走loadBookInfo分支")
+                AppLog.putReaderDebug("[TOC] upBook: tocUrl为空, 走loadBookInfo分支")
                 loadBookInfo(book, runPreUpdateJs = inBookshelf)
             } else {
                 val chapterList = appDb.bookChapterDao.getChapterList(book.bookUrl)
-                AppLog.put("[TOC] upBook: DB已有${chapterList.size}章, isTocPartialLoad=${AppConfig.isTocPartialLoad}")
+                AppLog.putReaderDebug("[TOC] upBook: DB已有${chapterList.size}章, isTocPartialLoad=${AppConfig.isTocPartialLoad}")
                 if (chapterList.isNotEmpty()) {
                     chapterListData.postValue(chapterList)
                 } else {
@@ -213,11 +213,11 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                 context.toastOnUi(R.string.error_no_source)
                 return
             }
-            AppLog.put("[TOC] loadBookInfo开始: bookUrl=${book.bookUrl}")
+            AppLog.putReaderDebug("[TOC] loadBookInfo开始: bookUrl=${book.bookUrl}")
             WebBook.getBookInfo(scope, bookSource, book, canReName = canReName)
                 .onSuccess(IO) {
                     try {
-                    AppLog.put("[TOC] loadBookInfo成功: bookUrl=${book.bookUrl}, isWebFile=${it.isWebFile}, tocUrl=${it.tocUrl}")
+                    AppLog.putReaderDebug("[TOC] loadBookInfo成功: bookUrl=${book.bookUrl}, isWebFile=${it.isWebFile}, tocUrl=${it.tocUrl}")
                     val dbBook = appDb.bookDao.getBook(book.name, book.author)
                     if (!inBookshelf && dbBook != null && !dbBook.isNotShelf && dbBook.origin == book.origin) {
                         dbBook.updateTo(it)
@@ -228,22 +228,22 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                         it.save()
                     }
                     if (it.isWebFile) {
-                        AppLog.put("[TOC] loadBookInfo: isWebFile=true, 走loadWebFile分支")
+                        AppLog.putReaderDebug("[TOC] loadBookInfo: isWebFile=true, 走loadWebFile分支")
                         loadWebFile(it)
                     } else {
-                        AppLog.put("[TOC] loadBookInfo: 即将调用loadChapter, isLocal=${it.isLocal}, bookSource=${bookSource != null}")
+                        AppLog.putReaderDebug("[TOC] loadBookInfo: 即将调用loadChapter, isLocal=${it.isLocal}, bookSource=${bookSource != null}")
                         try {
                             loadChapter(it, runPreUpdateJs, isFromBookInfo = true)
-                            AppLog.put("[TOC] loadChapter调用完成")
+                            AppLog.putReaderDebug("[TOC] loadChapter调用完成")
                         } catch (e: Throwable) {
-                            AppLog.put("[TOC] loadChapter调用异常: ${e.localizedMessage}", e)
+                            AppLog.putReaderDebug("[TOC] loadChapter调用异常: ${e.localizedMessage}", e)
                         }
                     }
                     } catch (e: Throwable) {
-                        AppLog.put("[TOC] loadBookInfo onSuccess异常: ${e.localizedMessage}", e)
+                        AppLog.putReaderDebug("[TOC] loadBookInfo onSuccess异常: ${e.localizedMessage}", e)
                     }
                 }.onError {
-                    AppLog.put("[TOC] loadBookInfo失败: bookUrl=${book.bookUrl}, error=${it.localizedMessage}", it)
+                    AppLog.putReaderDebug("[TOC] loadBookInfo失败: bookUrl=${book.bookUrl}, error=${it.localizedMessage}", it)
                     context.toastOnUi(R.string.error_get_book_info)
                 }
         }
@@ -255,9 +255,9 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         scope: CoroutineScope = viewModelScope,
         isFromBookInfo: Boolean = false
     ) {
-        AppLog.put("[TOC] loadChapter入口A")
-        AppLog.put("[TOC] loadChapter入口B: bookUrl=" + book.bookUrl)
-        AppLog.put("[TOC] loadChapter入口C: isLocal=" + book.isLocal)
+        AppLog.putReaderDebug("[TOC] loadChapter入口A")
+        AppLog.putReaderDebug("[TOC] loadChapter入口B: bookUrl=" + book.bookUrl)
+        AppLog.putReaderDebug("[TOC] loadChapter入口C: isLocal=" + book.isLocal)
         if (book.isLocal) {
             execute(scope) {
                 LocalBook.getChapterList(book).let {
@@ -279,14 +279,14 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
             val oldBook = book.copy()
             if (AppConfig.isTocPartialLoad) {
                 tocLoading.postValue(true)
-                AppLog.put("[TOC] 部分加载开始, bookUrl=${book.bookUrl}")
+                AppLog.putReaderDebug("[TOC] 部分加载开始, bookUrl=${book.bookUrl}")
                 execute(scope) {
                     var firstEmitChapterSize: Int? = null
                     var hasShownNextTocLazyLoadToast = false
                     WebBook.getChapterListFlow(bookSource, book, runPreUpdateJs, isFromBookInfo = isFromBookInfo)
                         .collect { partial ->
                             val chapters = partial.chapters
-                            AppLog.put("[TOC] Flow emit: count=${chapters.size}, isComplete=${partial.isComplete}, bookUrl=${book.bookUrl}")
+                            AppLog.putReaderDebug("[TOC] Flow emit: count=${chapters.size}, isComplete=${partial.isComplete}, bookUrl=${book.bookUrl}")
                             if (chapters.isEmpty()) return@collect
                             val firstSize = firstEmitChapterSize
                             if (firstSize == null) {

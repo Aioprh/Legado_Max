@@ -35,5 +35,8 @@ enum class DebugCategory(val displayName: String) {
     CHECK("校验"),
 
     /** 应用崩溃：来自CrashHandler的崩溃信息 */
-    CRASH("崩溃")
+    CRASH("崩溃"),
+
+    /** 阅读器调试：阅读器模块专属调试日志，仅通过调试悬浮球通道输出 */
+    READER("阅读器")
 }

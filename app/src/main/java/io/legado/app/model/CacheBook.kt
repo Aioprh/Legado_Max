@@ -350,7 +350,7 @@ object CacheBook {
             onDownloadSet.remove(chapter.index)
             successDownloadSet.add(chapter.primaryStr())
             errorDownloadMap.remove(chapter.primaryStr())
-            AppLog.put("✅《${book.name}》章节《${chapter.title}》缓存成功")
+            AppLog.putReaderDebug("✅《${book.name}》章节《${chapter.title}》缓存成功")
         }
 
         /**
@@ -378,7 +378,7 @@ object CacheBook {
             //重试3次
             if ((errorDownloadMap[chapter.primaryStr()] ?: 0) < 3 && !isStopped) {
                 waitDownloadSet.add(chapter.index)
-                AppLog.put("《${book.name}》章节《${chapter.title}》缓存失败，准备重试\n${error.localizedMessage}")
+                AppLog.putReaderDebug("《${book.name}》章节《${chapter.title}》缓存失败，准备重试\n${error.localizedMessage}")
             } else {
                 AppLog.put(
                     "❌《${book.name}》章节《${chapter.title}》缓存失败\n${error.localizedMessage}",
@@ -449,7 +449,7 @@ object CacheBook {
                 return
             }
             if (bookSource.nextPageLazyLoad) {
-                AppLog.put("书源「${bookSource.bookSourceName}」已开启下一页懒加载，仅支持通过阅读动作下载\n源URL: ${bookSource.bookSourceUrl}\n书名: ${book.name}")
+                AppLog.putReaderDebug("书源「${bookSource.bookSourceName}」已开启下一页懒加载，仅支持通过阅读动作下载\n源URL: ${bookSource.bookSourceUrl}\n书名: ${book.name}")
                 appCtx.toastOnUi(
                     "该书源已开启下一页懒加载，仅支持通过阅读动作下载",
                     ToastContext(

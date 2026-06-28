@@ -176,6 +176,34 @@ object AppLog {
         }
     }
 
+    /**
+     * 阅读器模块专属调试日志
+     *
+     * 仅输出到调试悬浮球 (DebugEventCenter)，绝不写入常规日志面板 (mLogs/mSourceLogs)。
+     * 适用于阅读器内部调试信息，如翻页流程、目录加载、章节缓存等。
+     * 与全局日志系统完全隔离，两类日志输出通道互不干扰。
+     */
+    fun putReaderDebug(
+        message: String?,
+        throwable: Throwable? = null,
+        dialogName: String? = null
+    ) {
+        message ?: return
+
+        DebugLogScope.launch {
+            DebugEventCenter.emit(
+                DebugEvent(
+                    level = if (throwable != null) DebugLevel.WARN else DebugLevel.DEBUG,
+                    category = DebugCategory.READER,
+                    message = message,
+                    detail = throwable?.stackTraceToString(),
+                    throwable = throwable,
+                    dialogName = dialogName
+                )
+            )
+        }
+    }
+
     private fun shouldRouteToDebugOnly(category: DebugCategory): Boolean {
         return AppConfig.debugLogOnlyEnabled && category in AppConfig.debugLogOnlyCategories
     }

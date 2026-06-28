@@ -38,7 +38,7 @@ object DebugLogPanelDialog {
     fun show(activity: Activity) {
         if (isShowing) {
             if (!hasLoggedShow) {
-                AppLog.put("DebugLogPanelDialog: show() called but already showing")
+                AppLog.putReaderDebug("DebugLogPanelDialog: show() called but already showing")
                 hasLoggedShow = true
             }
             return
@@ -46,7 +46,7 @@ object DebugLogPanelDialog {
         
         if (activity.isFinishing || activity.isDestroyed) {
             if (!hasLoggedShow) {
-                AppLog.put("DebugLogPanelDialog: show() called but activity is finishing or destroyed")
+                AppLog.putReaderDebug("DebugLogPanelDialog: show() called but activity is finishing or destroyed")
                 hasLoggedShow = true
             }
             return
@@ -56,7 +56,7 @@ object DebugLogPanelDialog {
         val rootView = activity.window.decorView as? ViewGroup
         if (rootView == null) {
             if (!hasLoggedShow) {
-                AppLog.put("DebugLogPanelDialog: show() failed - rootView is null")
+                AppLog.putReaderDebug("DebugLogPanelDialog: show() failed - rootView is null")
                 hasLoggedShow = true
             }
             return
@@ -75,13 +75,13 @@ object DebugLogPanelDialog {
             dialogView = composeView
             isShowing = true
             if (!hasLoggedShow) {
-                AppLog.put("DebugLogPanelDialog: show() success")
+                AppLog.putReaderDebug("DebugLogPanelDialog: show() success")
                 hasLoggedShow = true
             }
             
         } catch (e: Exception) {
             if (!hasLoggedShow) {
-                AppLog.put("DebugLogPanelDialog: show() exception - ${e.message}", e)
+                AppLog.putReaderDebug("DebugLogPanelDialog: show() exception - ${e.message}")
                 hasLoggedShow = true
             }
             dialogView = null
@@ -102,12 +102,12 @@ object DebugLogPanelDialog {
                     val parent = view.parent as? ViewGroup
                     parent?.removeView(view)
                     if (!hasLoggedDismiss) {
-                        AppLog.put("DebugLogPanelDialog: dismiss() success")
+                        AppLog.putReaderDebug("DebugLogPanelDialog: dismiss() success")
                         hasLoggedDismiss = true
                     }
                 } catch (e: Exception) {
                     if (!hasLoggedDismiss) {
-                        AppLog.put("DebugLogPanelDialog: dismiss() exception - ${e.message}", e)
+                        AppLog.putReaderDebug("DebugLogPanelDialog: dismiss() exception - ${e.message}")
                         hasLoggedDismiss = true
                     }
                 }

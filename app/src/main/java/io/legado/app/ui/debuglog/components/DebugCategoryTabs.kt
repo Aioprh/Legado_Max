@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Code
@@ -99,4 +100,5 @@ private fun getIconForCategory(category: DebugCategory) = when (category) {
     DebugCategory.TOAST -> Icons.Default.Notifications
     DebugCategory.CHECK -> Icons.Default.CheckCircle
     DebugCategory.CRASH -> Icons.Default.Error
+    DebugCategory.READER -> Icons.Default.Book
 }

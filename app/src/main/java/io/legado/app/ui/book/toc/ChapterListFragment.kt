@@ -94,20 +94,20 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
 
     @SuppressLint("SetTextI18n")
     private fun initBook(book: Book) {
-        AppLog.put("[TOC-Frag] initBook: bookUrl=${book.bookUrl}, totalChapterNum=${book.totalChapterNum}, isLocal=${book.isLocal}")
+        AppLog.putReaderDebug("[TOC-Frag] initBook: bookUrl=${book.bookUrl}, totalChapterNum=${book.totalChapterNum}, isLocal=${book.isLocal}")
         viewScope.launch {
             shouldAutoScrollToCurrent = true
             durChapterIndex = book.durChapterIndex
             upChapterList(null)
             initCacheFileNames(book)
-            AppLog.put("[TOC-Frag] initBook after upChapterList: adapter.itemCount=${adapter.itemCount}")
+            AppLog.putReaderDebug("[TOC-Frag] initBook after upChapterList: adapter.itemCount=${adapter.itemCount}")
             // 如果数据库为空且不是本地书，可能正在渐进加载中，延迟重试
             if (adapter.itemCount == 0 && !book.isLocal) {
                 delay(2000)
-                AppLog.put("[TOC-Frag] 延迟重试: adapter.itemCount=${adapter.itemCount}")
+                AppLog.putReaderDebug("[TOC-Frag] 延迟重试: adapter.itemCount=${adapter.itemCount}")
                 if (adapter.itemCount == 0) {
                     upChapterList(null)
-                    AppLog.put("[TOC-Frag] 重试后: adapter.itemCount=${adapter.itemCount}")
+                    AppLog.putReaderDebug("[TOC-Frag] 重试后: adapter.itemCount=${adapter.itemCount}")
                 }
             }
         }
@@ -171,7 +171,7 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             }
         }
         observeEventSticky<String>(EventBus.TOC_PARTIAL_LOADED) { bookUrl ->
-            AppLog.put("[TOC-Frag] 收到TOC_PARTIAL_LOADED事件: bookUrl=$bookUrl")
+            AppLog.putReaderDebug("[TOC-Frag] 收到TOC_PARTIAL_LOADED事件: bookUrl=$bookUrl")
             if (viewModel.bookUrl == bookUrl) {
                 binding.tvTocLoading.visible()
                 upChapterList(null)
@@ -196,12 +196,12 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 } else {
                     (currentBook?.simulatedTotalChapterNum() ?: Int.MAX_VALUE) - 1
                 }
-                AppLog.put("[TOC-Frag] upChapterList: bookUrl=${viewModel.bookUrl}, totalChapterNum=${book?.totalChapterNum}, end=$end")
+                AppLog.putReaderDebug("[TOC-Frag] upChapterList: bookUrl=${viewModel.bookUrl}, totalChapterNum=${book?.totalChapterNum}, end=$end")
                 when {
                     searchKey.isNullOrBlank() ->
                         appDb.bookChapterDao.getChapterList(viewModel.bookUrl, 0, end).also {
                             chapterList = it
-                            AppLog.put("[TOC-Frag] DB查询结果: count=${it.size}")
+                            AppLog.putReaderDebug("[TOC-Frag] DB查询结果: count=${it.size}")
                         }
 
                     else -> appDb.bookChapterDao.search(viewModel.bookUrl, searchKey, 0, end)

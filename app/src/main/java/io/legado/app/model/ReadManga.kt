@@ -336,11 +336,11 @@ object ReadManga : CoroutineScope by MainScope() {
             }
             loadContent(durChapterIndex + 1)
             saveRead()
-            AppLog.putDebug("moveToNextChapter-curPageChanged()")
+            AppLog.putReaderDebug("moveToNextChapter-curPageChanged()")
             curPageChanged()
             return true
         } else {
-            AppLog.putDebug("跳转下一章失败,没有下一章")
+            AppLog.putReaderDebug("跳转下一章失败,没有下一章")
             return false
         }
     }
