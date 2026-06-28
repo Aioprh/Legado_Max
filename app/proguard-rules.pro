@@ -99,9 +99,11 @@
 -keep class androidx.core.graphics.Insets {*;}
 -dontwarn androidx.core.view.WindowInsetsCompat$Impl*
 # TitleBar 的 WindowInsets 回调可能在 R8 内联后失效，整体保留
--keep class io.legado.app.ui.widget.TitleBar {
-    <init>(...);
-    *** onAttachedToWindow();
+-keep class io.legado.app.ui.widget.TitleBar {*;}
+# BaseActivity 的 FullScreen 设置函数，确保 WindowInsets 正确分发
+-keep class io.legado.app.utils.ActivityExtensionsKt {
+    *** fullScreen(...);
+    *** setStatusBarColorAuto(...);
 }
 # hutool-core hutool-crypto
 -keep class
