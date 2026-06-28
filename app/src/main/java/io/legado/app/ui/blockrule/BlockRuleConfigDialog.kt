@@ -73,7 +73,7 @@ import androidx.fragment.app.DialogFragment
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
-import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.SearchBook
@@ -161,13 +161,14 @@ private fun BlockRuleConfigContent(
     var showProgress by remember { mutableStateOf(context.getPrefBoolean(PreferKey.blockRuleShowProgress, false)) }
     var masterEnabled by remember { mutableStateOf(context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) }
     var showActiveRules by remember { mutableStateOf(false) }
-    var allSources by remember { mutableStateOf<List<BookSource>>(emptyList()) }
+    var allSources by remember { mutableStateOf<List<BookSourcePart>>(emptyList()) }
     var allRssSources by remember { mutableStateOf<List<RssSource>>(emptyList()) }
 
     // 加载所有书源和订阅源，用于规则列表中名称显示
+    // 使用 BookSourcePart（轻量视图）替代全量 BookSource，避免大量书源时 OOM
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            allSources = appDb.bookSourceDao.getAllSources()
+            allSources = appDb.bookSourceDao.allPart
             allRssSources = appDb.rssSourceDao.all
         }
     }
@@ -652,7 +653,7 @@ private fun ActiveRssRuleItem(
 @Composable
 private fun BlockRuleItem(
     rule: BlockRule,
-    allSources: List<BookSource>,
+    allSources: List<BookSourcePart>,
     allRssSources: List<RssSource>,
     onToggleEnabled: () -> Unit,
     onEdit: () -> Unit,
@@ -759,7 +760,7 @@ private fun BlockRuleEditContent(
     // 加载书源总数和订阅源总数，用于判断是否全选
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            totalSourceCount = appDb.bookSourceDao.getAllSources().size
+            totalSourceCount = appDb.bookSourceDao.allCount()
             totalRssSourceCount = appDb.rssSourceDao.all.size
         }
     }
@@ -1256,7 +1257,7 @@ private fun BookSourceSelectorDialog(
     onConfirm: (Set<String>) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var allSources by remember { mutableStateOf<List<BookSource>>(emptyList()) }
+    var allSources by remember { mutableStateOf<List<BookSourcePart>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedUrls by remember { mutableStateOf(initialSelectedUrls) }
@@ -1264,7 +1265,7 @@ private fun BookSourceSelectorDialog(
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            val sources = appDb.bookSourceDao.getAllSources()
+            val sources = appDb.bookSourceDao.allPart
             withContext(Dispatchers.Main) {
                 allSources = sources
                 if (defaultSelectAllPending) {
