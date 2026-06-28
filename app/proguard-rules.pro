@@ -80,6 +80,29 @@
 # 确保 Room 能通过反射找到生成的实现类
 -keepnames class io.legado.app.data.AppDatabase_Impl
 -keepnames class io.legado.app.data.dao.**_Impl
+
+# 状态栏 / 导航栏间距处理（防止 R8 剥离 WindowInsets 监听逻辑，
+# 导致 release 版本顶栏紧贴系统状态栏）
+-keep class io.legado.app.utils.ViewExtensionsKt {
+    *** applyStatusBarPadding(...);
+    *** setOnApplyWindowInsetsListenerCompat(...);
+    *** applyNavigationBarPadding(...);
+}
+-keep class io.legado.app.utils.WindowInsetsExtensionsKt {*;}
+-keep class io.legado.app.utils.ContextExtensionsKt {
+    *** getStatusBarHeight(...);
+    *** getNavigationBarHeight(...);
+}
+# 确保 WindowInsetsCompat 相关类不被优化移除
+-keep class androidx.core.view.WindowInsetsCompat {*;}
+-keep class androidx.core.view.WindowInsetsCompat$* {*;}
+-keep class androidx.core.graphics.Insets {*;}
+-dontwarn androidx.core.view.WindowInsetsCompat$Impl*
+# TitleBar 的 WindowInsets 回调可能在 R8 内联后失效，整体保留
+-keep class io.legado.app.ui.widget.TitleBar {
+    <init>(...);
+    *** onAttachedToWindow();
+}
 # hutool-core hutool-crypto
 -keep class
 !cn.hutool.core.util.RuntimeUtil,
