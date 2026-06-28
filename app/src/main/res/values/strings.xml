@@ -1533,7 +1533,7 @@
     <string name="font_size">Font Size %d</string>
     <string name="view_code">View Code</string>
     <string name="show_bookname">Show Book Name</string>
-    <string name="show_score">开启评分</string>
+    <string name="show_score">Show Rating</string>
 
 
     <!-- Video Settings -->

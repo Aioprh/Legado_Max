@@ -1255,6 +1255,7 @@
     <string name="bookmark_search_chapter_name">搜尋章節名稱</string>
     <string name="bookmark_search_content">搜尋書籤內容</string>
     <string name="change_theme">選擇主題</string>
+    <string name="grammar_select">語法選擇</string>
     <string name="check_source_compose">校驗書源</string>
     <string name="clear_all_records">清除所有記錄</string>
     <string name="clear_old_30_days">清除 30 天前的記錄</string>
@@ -1294,6 +1295,7 @@
     <string name="filter_by_domain">按域名篩選</string>
     <string name="float_window">懸浮窗</string>
     <string name="format_code">格式化</string>
+    <string name="show_score">開啟評分</string>
     <string name="highlight_rule_config">高亮規則配置</string>
     <string name="highlight_rule_config_summary">配置閱讀內容高亮規則</string>
     <string name="highlight_rule_scope">作用範圍，書名或書源URL</string>
