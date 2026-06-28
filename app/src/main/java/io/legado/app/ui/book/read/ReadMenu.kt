@@ -49,9 +49,12 @@ import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.loadAnimation
 import io.legado.app.utils.modifyBegin
+import io.legado.app.utils.openFileUri
 import io.legado.app.utils.openUrl
 import io.legado.app.utils.putPrefBoolean
+import io.legado.app.utils.sendToClip
 import io.legado.app.utils.startActivity
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.visible
 import splitties.views.onClick
 import splitties.views.onLongClick
@@ -409,6 +412,7 @@ class ReadMenu @JvmOverloads constructor(
         }
         val chapterViewClickListener = OnClickListener {
             if (ReadBook.isLocalBook) {
+                openLocalBookWithChapterClip()
                 return@OnClickListener
             }
             if (AppConfig.readUrlInBrowser) {
@@ -429,6 +433,8 @@ class ReadMenu @JvmOverloads constructor(
         }
         val chapterViewLongClickListener = OnLongClickListener {
             if (ReadBook.isLocalBook) {
+                val book = ReadBook.book ?: return@OnLongClickListener true
+                context.sendToClip(book.bookUrl)
                 return@OnLongClickListener true
             }
             context.alert(R.string.open_fun) {
@@ -617,8 +623,16 @@ class ReadMenu @JvmOverloads constructor(
         val book = ReadBook.book ?: return
         binding.titleBar.title = book.name
         if (ReadBook.isLocalBook) {
-            binding.tvChapterName.gone()
-            binding.tvChapterUrl.gone()
+            // 本地书：显示章节名（或书名兜底）和完整文件路径
+            Coroutine.async {
+                val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex)
+                post {
+                    binding.tvChapterName.text = chapter?.title ?: book.name
+                    binding.tvChapterUrl.text = book.bookUrl
+                    binding.tvChapterName.visible()
+                    binding.tvChapterUrl.visible()
+                }
+            }
             return
         }
         Coroutine.async {
@@ -646,7 +660,9 @@ class ReadMenu @JvmOverloads constructor(
                 binding.tvChapterUrl.text = it.chapter.getAbsoluteURL()
                 binding.tvChapterUrl.visible()
             } else {
-                binding.tvChapterUrl.gone()
+                // 本地书显示文件路径
+                binding.tvChapterUrl.text = ReadBook.book?.bookUrl
+                binding.tvChapterUrl.visible()
             }
             upSeekBar()
             binding.tvPre.isEnabled = ReadBook.durChapterIndex != 0
@@ -701,6 +717,30 @@ class ReadMenu @JvmOverloads constructor(
                 .clear(R.id.ll_brightness, ConstraintModify.Anchor.RIGHT)
                 .leftToLeftOf(R.id.ll_brightness, R.id.vw_menu_root)
                 .commit()
+        }
+    }
+
+    /**
+     * 本地书：调起系统应用打开文件，并后台查询当前章节名复制到剪贴板
+     */
+    private fun openLocalBookWithChapterClip() {
+        val book = ReadBook.book ?: return
+        // 先调起系统应用打开文件（不阻塞）
+        kotlin.runCatching {
+            context.openFileUri(Uri.parse(book.bookUrl))
+        }.onFailure {
+            context.toastOnUi("打开文件失败: ${it.localizedMessage}")
+        }
+        // 后台查询章节名并复制
+        Coroutine.async {
+            val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex)
+            post {
+                if (chapter != null && chapter.title.isNotBlank()) {
+                    context.sendToClip(chapter.title)
+                } else {
+                    context.toastOnUi("章节名获取失败，请尝试不同的目录规则")
+                }
+            }
         }
     }
 
