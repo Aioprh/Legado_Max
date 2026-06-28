@@ -876,7 +876,8 @@ private fun RankingTabsModule(
         }
 
         // 内容区域（按 selectedIndex 做 key，切换 Tab 时重置分页/滚动状态）
-        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+        // 注意：外层 HomepageModuleItem 已应用 padding(horizontal = 16.dp)，此处不再重复
+        Box {
             androidx.compose.runtime.key(selectedIndex) {
             when {
                 currentTab.books != null -> {
