@@ -160,24 +160,27 @@ class TitleBar @JvmOverloads constructor(
         }
 
         if (!isInEditMode) {
-//            if (fitStatusBar) {
-//                setPadding(paddingLeft, context.statusBarHeight, paddingRight, paddingBottom)
-//            }
-//
-//            if (fitNavigationBar) {
-//                setPadding(paddingLeft, paddingTop, paddingRight, context.navigationBarHeight)
-//            }
-
             if (fitStatusBar || fitNavigationBar) {
                 setOnApplyWindowInsetsListenerCompat { _, windowInsets ->
                     val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-                    if (fitStatusBar) {
+                    if (fitStatusBar && insets.top > 0) {
                         topPadding = insets.top
                     }
-                    if (fitNavigationBar) {
+                    if (fitNavigationBar && insets.bottom > 0) {
                         bottomPadding = insets.bottom
                     }
                     windowInsets
+                }
+                // 兜底：部分设备（低版本 Android / 鸿蒙）上 WindowInsets 可能不派发，
+                // 此时 insets.top 始终为 0。作为后备，在视图挂载后主动检查并补充状态栏高度。
+                post {
+                    if (fitStatusBar && topPadding == 0) {
+                        val resourceId =
+                            resources.getIdentifier("status_bar_height", "dimen", "android")
+                        if (resourceId > 0) {
+                            topPadding = resources.getDimensionPixelSize(resourceId)
+                        }
+                    }
                 }
             }
 
