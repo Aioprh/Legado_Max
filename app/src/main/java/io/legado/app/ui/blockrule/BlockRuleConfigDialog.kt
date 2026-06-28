@@ -74,7 +74,7 @@ import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSourcePart
-import io.legado.app.data.entities.RssSource
+import io.legado.app.data.entities.RssSourceLite
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.ui.theme.LegadoTheme
@@ -162,14 +162,14 @@ private fun BlockRuleConfigContent(
     var masterEnabled by remember { mutableStateOf(context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) }
     var showActiveRules by remember { mutableStateOf(false) }
     var allSources by remember { mutableStateOf<List<BookSourcePart>>(emptyList()) }
-    var allRssSources by remember { mutableStateOf<List<RssSource>>(emptyList()) }
+    var allRssSources by remember { mutableStateOf<List<RssSourceLite>>(emptyList()) }
 
     // 加载所有书源和订阅源，用于规则列表中名称显示
     // 使用 BookSourcePart（轻量视图）替代全量 BookSource，避免大量书源时 OOM
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             allSources = appDb.bookSourceDao.allPart
-            allRssSources = appDb.rssSourceDao.all
+            allRssSources = appDb.rssSourceDao.allLite
         }
     }
 
@@ -654,7 +654,7 @@ private fun ActiveRssRuleItem(
 private fun BlockRuleItem(
     rule: BlockRule,
     allSources: List<BookSourcePart>,
-    allRssSources: List<RssSource>,
+    allRssSources: List<RssSourceLite>,
     onToggleEnabled: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -761,7 +761,7 @@ private fun BlockRuleEditContent(
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             totalSourceCount = appDb.bookSourceDao.allCount()
-            totalRssSourceCount = appDb.rssSourceDao.all.size
+            totalRssSourceCount = appDb.rssSourceDao.size
         }
     }
 
@@ -1445,7 +1445,7 @@ private fun RssSourceSelectorDialog(
     onConfirm: (Set<String>) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var allSources by remember { mutableStateOf<List<RssSource>>(emptyList()) }
+    var allSources by remember { mutableStateOf<List<RssSourceLite>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedUrls by remember { mutableStateOf(initialSelectedUrls) }
@@ -1453,7 +1453,7 @@ private fun RssSourceSelectorDialog(
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
-            val sources = appDb.rssSourceDao.all
+            val sources = appDb.rssSourceDao.allLite
             withContext(Dispatchers.Main) {
                 allSources = sources
                 if (defaultSelectAllPending) {

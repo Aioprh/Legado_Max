@@ -62,7 +62,7 @@ fun BrowseRssSourcesPage(
     onSourceClick: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    val allSources by appDb.rssSourceDao.flowAll().collectAsStateWithLifecycle(emptyList())
+    val allSources by appDb.rssSourceDao.flowAllLite().collectAsStateWithLifecycle(emptyList())
 
     var searchQuery by remember { mutableStateOf("") }
     var groupFilter by remember { mutableStateOf<String?>(null) }

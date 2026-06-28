@@ -6,8 +6,10 @@ import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.BookSourceExploreLite
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.RssSource
+import io.legado.app.data.entities.RssSourceLite
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.repository.HomepageModulesRepository
 import io.legado.app.domain.gateway.HomepageModulesGateway
@@ -105,9 +107,9 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }
 
         /** 从书源的 homepageModules JSON 解析模块定义列表 */
-        private fun parseModuleDefs(source: BookSource, json: String): List<ModuleDef> =
+        private fun parseModuleDefs(sourceUrl: String, json: String): List<ModuleDef> =
             GSON.fromJsonArray<ModuleDef>(json).getOrDefault(emptyList())
-                .map { it.copy(sourceUrl = source.bookSourceUrl) }
+                .map { it.copy(sourceUrl = sourceUrl) }
 
         /** 计算 JSON 字符串的 MD5 哈希值，用于增量同步的变更检测 */
         private fun jsonHash(json: String): String {
@@ -146,7 +148,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     private val _isManageMode = MutableStateFlow(false)
     private val _configVersion = MutableStateFlow(0L)
     private val _moduleContentStates = MutableStateFlow<Map<String, ModuleLoadState>>(emptyMap())
-    private val _bookSourcesCache = MutableStateFlow<Map<String, BookSource>>(emptyMap())
+    private val _bookSourcesCache = MutableStateFlow<Map<String, BookSourceExploreLite>>(emptyMap())
     private val _rssSourceNames = MutableStateFlow<Map<String, String>>(emptyMap())
     private val _layoutConfigCache = MutableStateFlow<Map<String, Map<String, String>>>(emptyMap())
     
@@ -408,15 +410,17 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
         // 跟踪所有启用了发现功能的书源（用于浏览书源模块列表）
         // 注意：此处仅填充缓存，不自动同步模块。模块仅在用户主动添加后才出现。
+        // 使用 BookSourceExploreLite DTO 替代全量 BookSource，避免大量书源时 OOM
         viewModelScope.launch {
-            appDb.bookSourceDao.flowExploreSources().collect { sources ->
+            appDb.bookSourceDao.flowExploreSourcesLite().collect { sources ->
                 _bookSourcesCache.value = sources.associateBy { it.bookSourceUrl }
             }
         }
 
         // 跟踪所有订阅源名称（用于管理界面显示订阅源名称而非 URL）
+        // 使用 RssSourceLite DTO 替代全量 RssSource，仅加载必要字段
         viewModelScope.launch {
-            appDb.rssSourceDao.flowAll().collect { sources ->
+            appDb.rssSourceDao.flowAllLite().collect { sources ->
                 _rssSourceNames.value = sources.associate { it.sourceUrl to it.sourceName }
             }
         }
@@ -506,7 +510,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     private suspend fun syncModulesFromSource(source: BookSource) {
         val json = source.homepageModules ?: return
         ensureSetForSource(source.bookSourceUrl, source.bookSourceName)
-        val parsedDefs = parseModuleDefs(source, json)
+        val parsedDefs = parseModuleDefs(source.bookSourceUrl, json)
         val newHash = jsonHash(json)
 
         val existingModules = gateway.flowBySource(source.bookSourceUrl).first()
@@ -1020,7 +1024,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     fun getSourceModules(sourceUrl: String, setId: String?): List<HomepageModuleManageUi> {
         val source = _bookSourcesCache.value[sourceUrl] ?: return emptyList()
         val json = source.homepageModules ?: return emptyList()
-        val defs = parseModuleDefs(source, json)
+        val defs = parseModuleDefs(sourceUrl, json)
         val existing = allModulesCache.value.filter { it.sourceUrl == sourceUrl }
         val targetSetId = setId ?: "src_$sourceUrl"
         val sourceName = _bookSourcesCache.value[sourceUrl]?.bookSourceName ?: sourceUrl
@@ -1047,7 +1051,8 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     fun syncSourceModules(sourceUrl: String) {
         viewModelScope.launch {
             val source = _bookSourcesCache.value[sourceUrl] ?: return@launch
-            syncModulesFromSource(source)
+            val fullSource = appDb.bookSourceDao.getBookSource(source.bookSourceUrl) ?: return@launch
+            syncModulesFromSource(fullSource)
             notifyConfigChanged()
         }
     }
@@ -1170,7 +1175,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         val source = _bookSourcesCache.value[sourceUrl] ?: return emptyList()
         return runCatching {
             withContext(Dispatchers.IO) {
-                source.exploreKinds()
+                appDb.bookSourceDao.getBookSource(sourceUrl)?.exploreKinds() ?: emptyList()
             }
         }.getOrDefault(emptyList())
     }

@@ -9,6 +9,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import io.legado.app.constant.AppPattern
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.BookSourceExploreLite
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.help.config.SourceConfig
 import io.legado.app.utils.cnCompare
@@ -402,4 +403,7 @@ interface BookSourceDao {
 
     @Query("select * from book_sources where enabled = 1 and exploreUrl is not null and exploreUrl != '' order by customOrder asc")
     fun flowExploreSources(): Flow<List<BookSource>>
+
+    @Query("SELECT bookSourceUrl, bookSourceName, bookSourceGroup, exploreUrl, homepageModules FROM book_sources WHERE enabled = 1 AND exploreUrl IS NOT NULL AND exploreUrl != '' ORDER BY customOrder ASC")
+    fun flowExploreSourcesLite(): Flow<List<BookSourceExploreLite>>
 }
