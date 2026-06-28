@@ -637,6 +637,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             ensureValidDefaultEngine()
             saveEngines(context, engines)
             refreshEngineButtons()
+            loadSearch(searchEdit.text.toString())
         }
 
         private fun confirmDelete(position: Int, engine: SearchEngine) {
