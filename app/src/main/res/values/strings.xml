@@ -1515,6 +1515,7 @@
     <string name="edit_theme_monokai">Monokai Bright</string>
     <string name="edit_theme_monokai_dimmed">Monokai Soft</string>
     <string name="change_theme">Select Theme</string>
+    <string name="grammar_select">Select Grammar</string>
     <string name="edit_theme_modern_dark">Modern Dark</string>
     <string name="edit_theme_modern_light">Modern Light</string>
     <string name="edit_theme_solarized_dark">Solarized Dark</string>

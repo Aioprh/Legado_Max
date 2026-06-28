@@ -294,34 +294,36 @@ private fun BlockRuleConfigContent(
                 }) {
                     Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.explore_block_rule_add))
                 }
-                IconButton(onClick = { showMoreMenu = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "更多")
-                }
-                DropdownMenu(
-                    expanded = showMoreMenu,
-                    onDismissRequest = { showMoreMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.explore_block_rule_group_manage)) },
-                        onClick = {
-                            showMoreMenu = false
-                            showGroupManage = true
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.explore_block_rule_import_success).replace("成功", "")) },
-                        onClick = {
-                            showMoreMenu = false
-                            importFromClipboard(context) { refresh() }
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.explore_block_rule_export_success).replace("已复制到剪贴板", "导出")) },
-                        onClick = {
-                            showMoreMenu = false
-                            exportToClipboard(context, filteredRules)
-                        }
-                    )
+                Box {
+                    IconButton(onClick = { showMoreMenu = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "更多")
+                    }
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.explore_block_rule_group_manage)) },
+                            onClick = {
+                                showMoreMenu = false
+                                showGroupManage = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.explore_block_rule_import_success).replace("成功", "")) },
+                            onClick = {
+                                showMoreMenu = false
+                                importFromClipboard(context) { refresh() }
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.explore_block_rule_export_success).replace("已复制到剪贴板", "导出")) },
+                            onClick = {
+                                showMoreMenu = false
+                                exportToClipboard(context, filteredRules)
+                            }
+                        )
+                    }
                 }
             }
 

@@ -1898,6 +1898,7 @@
     <string name="replace_all">全部</string>
     <string name="format_code">格式化</string>
     <string name="change_theme">选择主题</string>
+    <string name="grammar_select">语法选择</string>
     <string name="config_settings">配置</string>
     <string name="auto_wrap">自动换行</string>
     <string name="font_size">字体大小 %d</string>
