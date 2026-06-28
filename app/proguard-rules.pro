@@ -83,28 +83,29 @@
 
 # 状态栏 / 导航栏间距处理（防止 R8 剥离 WindowInsets 监听逻辑，
 # 导致 release 版本顶栏紧贴系统状态栏）
--keep class io.legado.app.utils.ViewExtensionsKt {
-    *** applyStatusBarPadding(...);
-    *** setOnApplyWindowInsetsListenerCompat(...);
-    *** applyNavigationBarPadding(...);
-}
+-keep class io.legado.app.utils.ViewExtensionsKt {*;}
 -keep class io.legado.app.utils.WindowInsetsExtensionsKt {*;}
 -keep class io.legado.app.utils.ContextExtensionsKt {
     *** getStatusBarHeight(...);
     *** getNavigationBarHeight(...);
 }
-# 确保 WindowInsetsCompat 相关类不被优化移除
--keep class androidx.core.view.WindowInsetsCompat {*;}
--keep class androidx.core.view.WindowInsetsCompat$* {*;}
--keep class androidx.core.graphics.Insets {*;}
--dontwarn androidx.core.view.WindowInsetsCompat$Impl*
-# TitleBar 的 WindowInsets 回调可能在 R8 内联后失效，整体保留
--keep class io.legado.app.ui.widget.TitleBar {*;}
-# BaseActivity 的 FullScreen 设置函数，确保 WindowInsets 正确分发
 -keep class io.legado.app.utils.ActivityExtensionsKt {
     *** fullScreen(...);
     *** setStatusBarColorAuto(...);
 }
+# TitleBar 整体保留（init 中 WindowInsets 回调的 lambda 编译为合成方法）
+-keep class io.legado.app.ui.widget.TitleBar {*;}
+
+# 确保 AndroidX WindowInsets 相关类不被 R8 优化移除
+-keep class androidx.core.view.WindowInsetsCompat {*;}
+-keep class androidx.core.view.WindowInsetsCompat$* {*;}
+-keep class androidx.core.graphics.Insets {*;}
+-keep interface androidx.core.view.OnApplyWindowInsetsListener {*;}
+-keep class androidx.core.view.ViewCompat {
+    *** setOnApplyWindowInsetsListener(...);
+    *** requestApplyInsets(...);
+}
+-dontwarn androidx.core.view.WindowInsetsCompat$Impl*
 # hutool-core hutool-crypto
 -keep class
 !cn.hutool.core.util.RuntimeUtil,
