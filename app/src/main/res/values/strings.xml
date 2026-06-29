@@ -1361,6 +1361,7 @@
     <string name="backup_selector_summary">Select items to backup</string>
     <string name="book_cache_selector">Book Cache Selector</string>
     <string name="book_cache_selector_summary">Select books to backup cache</string>
+    <string name="selected_items_total">Selected:</string>
     <string name="view_backup_info_t">View Backup Info</string>
     <string name="view_backup_info_s">View backup file contents and sizes</string>
     <string name="view_backup_info">Backup Info</string>

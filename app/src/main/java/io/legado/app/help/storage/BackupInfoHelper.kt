@@ -335,4 +335,29 @@ object BackupInfoHelper {
             else -> String.format("%.2f MB", size / (1024.0 * 1024))
         }
     }
+
+    /**
+     * 获取指定备份项的数据数量
+     */
+    fun getItemCount(key: String): Int {
+        return when (key) {
+            "bookshelf" -> appDb.bookDao.all.size
+            "bookmark" -> appDb.bookmarkDao.all.size
+            "bookGroup" -> appDb.bookGroupDao.all.size
+            "bookSource" -> appDb.bookSourceDao.all.size
+            "rssSources" -> appDb.rssSourceDao.all.size
+            "rssStar" -> appDb.rssStarDao.all.size
+            "replaceRule" -> appDb.replaceRuleDao.all.size
+            "readRecord" -> appDb.readRecordDao.all.size
+            "searchHistory" -> appDb.searchKeywordDao.all.size
+            "txtTocRule" -> appDb.txtTocRuleDao.all.size
+            "httpTTS" -> appDb.httpTTSDao.all.size
+            "keyboardAssists" -> appDb.keyboardAssistsDao.all.size
+            "dictRule" -> appDb.dictRuleDao.all.size
+            "servers" -> appDb.serverDao.all.size
+            "homepage" -> appDb.homepageModuleDao.all.size + appDb.homepageCustomSetDao.all.size
+            "runtimeSourceCache" -> appDb.cacheDao.getRuntimeSourceCaches(System.currentTimeMillis()).size
+            else -> 0
+        }
+    }
 }

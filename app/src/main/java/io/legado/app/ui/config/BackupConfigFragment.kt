@@ -50,6 +50,7 @@ import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.widget.dialog.BackupInfoDialog
+import io.legado.app.ui.widget.dialog.BackupSelectorDialog
 import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.FileUtils
@@ -295,34 +296,10 @@ class BackupConfigFragment : PreferenceFragment(),
     }
 
     /**
-     * 显示备份选择器
+     * 显示备份选择器 - Compose版本
      */
     private fun showBackupSelector() {
-        val items = BackupSelectorConfig.allItems
-        val titles = items.map { "[${it.group}] ${it.title}" }.toTypedArray()
-        val checkedItems = BooleanArray(items.size) { index ->
-            BackupSelectorConfig.isSelected(items[index].key)
-        }
-        
-        alert(R.string.backup_selector) {
-            multiChoiceItems(titles, checkedItems) { _, which, isChecked ->
-                BackupSelectorConfig.setSelected(items[which].key, isChecked)
-            }
-            positiveButton(R.string.select_all) {
-                BackupSelectorConfig.selectAll()
-                showBackupSelector()
-            }
-            negativeButton(R.string.un_select_all) {
-                BackupSelectorConfig.deselectAll()
-                showBackupSelector()
-            }
-            neutralButton(R.string.ok) {
-                BackupSelectorConfig.save()
-            }
-            onDismiss {
-                BackupSelectorConfig.save()
-            }
-        }
+        showDialogFragment(BackupSelectorDialog())
     }
 
     /**

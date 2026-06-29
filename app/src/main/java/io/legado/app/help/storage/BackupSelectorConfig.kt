@@ -4,6 +4,8 @@ import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.data.repository.CoverGalleryRepository
+import io.legado.app.ui.widget.components.dialog.MultiSelectItem
+import io.legado.app.ui.widget.components.dialog.MultiSelectGroup
 import splitties.init.appCtx
 
 @Suppress("ConstPropertyName")
@@ -15,39 +17,40 @@ object BackupSelectorConfig {
         val key: String,
         val fileName: String,
         val title: String,
-        val group: String
+        val group: String,
+        val iconEmoji: String? = null // Emoji图标
     )
 
     val allItems = listOf(
-        BackupItem("coverGallery", CoverGalleryRepository.backupDirName, "封面图集", "配置"),
-        BackupItem("bookshelf", "bookshelf.json", "书架", "数据库"),
-        BackupItem("bookChapter", "bookChapter.json", "章节目录", "数据库"),
-        BackupItem("bookmark", "bookmark.json", "书签", "数据库"),
-        BackupItem("bookGroup", "bookGroup.json", "书籍分组", "数据库"),
-        BackupItem("bookSource", "bookSource.json", "书源", "数据库"),
-        BackupItem("rssSources", "rssSources.json", "订阅源", "数据库"),
-        BackupItem("rssStar", "rssStar.json", "订阅收藏", "数据库"),
-        BackupItem("replaceRule", "replaceRule.json", "替换规则", "数据库"),
-        BackupItem("highlightRule", "highlightRule.json", "高亮规则", "配置"),
-        BackupItem("readRecord", "readRecord.json", "阅读记录", "数据库"),
-        BackupItem("readRecordDetail", "readRecordDetail.json", "阅读记录详情", "数据库"),
-        BackupItem("searchHistory", "searchHistory.json", "搜索历史", "数据库"),
-        BackupItem("txtTocRule", "txtTocRule.json", "TXT目录规则", "数据库"),
-        BackupItem("httpTTS", "httpTTS.json", "TTS配置", "数据库"),
-        BackupItem("keyboardAssists", "keyboardAssists.json", "键盘辅助", "数据库"),
-        BackupItem("dictRule", "dictRule.json", "词典规则", "数据库"),
-        BackupItem("servers", "servers.json", "服务器配置", "数据库"),
-        BackupItem("runtimeSourceCache", "runtimeSourceCache.json", "书源运行数据", "数据库"),
-        BackupItem("readConfig", "readConfig.json", "阅读样式配置", "配置"),
-        BackupItem("readShareConfig", "readShareConfig.json", "阅读分享配置", "配置"),
-        BackupItem("themeConfig", "themeConfig.json", "主题配置", "配置"),
-        BackupItem("coverRule", "coverRule.json", "封面规则", "配置"),
-        BackupItem("directLinkRule", "directLinkRule.json", "直链规则", "配置"),
-        BackupItem("homepage", "homepage.json", "首页", "数据库"),
-        BackupItem("appConfig", "config.xml", "应用配置", "配置"),
-        BackupItem("videoConfig", "videoConfig.xml", "视频配置", "配置"),
-        BackupItem("backgroundImages", "bg", "背景图片", "其他"),
-        BackupItem("bookCache", "book_cache", "书籍缓存", "其他")
+        BackupItem("coverGallery", CoverGalleryRepository.backupDirName, "封面图集", "配置", "🖼️"),
+        BackupItem("bookshelf", "bookshelf.json", "书架", "数据库", "📚"),
+        BackupItem("bookChapter", "bookChapter.json", "章节目录", "数据库", "📖"),
+        BackupItem("bookmark", "bookmark.json", "书签", "数据库", "🔖"),
+        BackupItem("bookGroup", "bookGroup.json", "书籍分组", "数据库", "📁"),
+        BackupItem("bookSource", "bookSource.json", "书源", "数据库", "📗"),
+        BackupItem("rssSources", "rssSources.json", "订阅源", "数据库", "📰"),
+        BackupItem("rssStar", "rssStar.json", "订阅收藏", "数据库", "⭐"),
+        BackupItem("replaceRule", "replaceRule.json", "替换规则", "数据库", "🔧"),
+        BackupItem("highlightRule", "highlightRule.json", "高亮规则", "配置", "✨"),
+        BackupItem("readRecord", "readRecord.json", "阅读记录", "数据库", "📊"),
+        BackupItem("readRecordDetail", "readRecordDetail.json", "阅读记录详情", "数据库", "📝"),
+        BackupItem("searchHistory", "searchHistory.json", "搜索历史", "数据库", "🔍"),
+        BackupItem("txtTocRule", "txtTocRule.json", "TXT目录规则", "数据库", "📋"),
+        BackupItem("httpTTS", "httpTTS.json", "TTS配置", "数据库", "🔊"),
+        BackupItem("keyboardAssists", "keyboardAssists.json", "键盘辅助", "数据库", "⌨️"),
+        BackupItem("dictRule", "dictRule.json", "词典规则", "数据库", "📖"),
+        BackupItem("servers", "servers.json", "服务器配置", "数据库", "🖥️"),
+        BackupItem("runtimeSourceCache", "runtimeSourceCache.json", "书源运行数据", "数据库", "⚡"),
+        BackupItem("readConfig", "readConfig.json", "阅读样式配置", "配置", "🎨"),
+        BackupItem("readShareConfig", "readShareConfig.json", "阅读分享配置", "配置", "📤"),
+        BackupItem("themeConfig", "themeConfig.json", "主题配置", "配置", "🎨"),
+        BackupItem("coverRule", "coverRule.json", "封面规则", "配置", "🖼️"),
+        BackupItem("directLinkRule", "directLinkRule.json", "直链规则", "配置", "🔗"),
+        BackupItem("homepage", "homepage.json", "首页", "数据库", "🏠"),
+        BackupItem("appConfig", "config.xml", "应用配置", "配置", "⚙️"),
+        BackupItem("videoConfig", "videoConfig.xml", "视频配置", "配置", "🎬"),
+        BackupItem("backgroundImages", "bg", "背景图片", "其他", "🌄"),
+        BackupItem("bookCache", "book_cache", "书籍缓存", "其他", "💾")
     )
 
     val groups = allItems.map { it.group }.distinct()
@@ -99,5 +102,102 @@ object BackupSelectorConfig {
     fun save() {
         val json = GSON.toJson(selectedMap.toMap())
         FileUtils.createFileIfNotExist(configPath).writeText(json)
+    }
+
+    /**
+     * 获取分组的 Emoji 图标
+     */
+    fun getGroupIcon(group: String): String? {
+        return when (group) {
+            "数据库" -> "📊"
+            "配置" -> "⚙️"
+            "其他" -> "📦"
+            else -> null
+        }
+    }
+
+    /**
+     * 获取带有详细信息的 MultiSelectGroup 列表
+     */
+    fun getMultiSelectGroups(): List<MultiSelectGroup> {
+        val overview = BackupInfoHelper.getBackupOverview()
+        
+        return groupItems.map { (groupName, items) ->
+            MultiSelectGroup(
+                name = groupName,
+                iconEmoji = getGroupIcon(groupName),
+                items = items.map { item ->
+                    val fileInfo = overview.items.find { it.fileName == item.fileName }
+                    val countInfo = getCountInfo(item.key)
+                    
+                    MultiSelectItem(
+                        key = item.key,
+                        title = item.title,
+                        subtitle = item.fileName,
+                        size = fileInfo?.let { BackupInfoHelper.formatSize(it.size) },
+                        count = countInfo,
+                        group = item.group,
+                        iconEmoji = item.iconEmoji,
+                        selected = isSelected(item.key)
+                    )
+                }
+            )
+        }
+    }
+
+    /**
+     * 计算选中项的总大小
+     */
+    fun calculateTotalSize(selectedItems: List<MultiSelectItem>): String {
+        val overview = BackupInfoHelper.getBackupOverview()
+        var totalSize = 0L
+        
+        selectedItems.forEach { item ->
+            val fileName = allItems.find { it.key == item.key }?.fileName
+            if (fileName != null) {
+                val fileInfo = overview.items.find { it.fileName == fileName }
+                if (fileInfo != null) {
+                    totalSize += fileInfo.size
+                }
+            }
+        }
+        
+        return BackupInfoHelper.formatSize(totalSize)
+    }
+
+    /**
+     * 获取带有数量和大小的 MultiSelectItem
+     */
+    fun getMultiSelectItemWithDetails(key: String): MultiSelectItem {
+        val item = allItems.find { it.key == key } ?: return MultiSelectItem(
+            key = key,
+            title = key,
+            group = "其他"
+        )
+        
+        val overview = BackupInfoHelper.getBackupOverview()
+        val fileInfo = overview.items.find { it.fileName == item.fileName }
+        
+        // 获取数量信息
+        val countInfo = getCountInfo(key)
+        
+        return MultiSelectItem(
+            key = item.key,
+            title = item.title,
+            subtitle = item.fileName,
+            size = fileInfo?.let { BackupInfoHelper.formatSize(it.size) },
+            count = countInfo,
+            group = item.group,
+            iconEmoji = item.iconEmoji,
+            selected = isSelected(item.key)
+        )
+    }
+
+    /**
+     * 获取数据数量信息
+     */
+    private fun getCountInfo(key: String): String? {
+        val count = BackupInfoHelper.getItemCount(key)
+        return if (count > 0) "$count 个" else null
     }
 }

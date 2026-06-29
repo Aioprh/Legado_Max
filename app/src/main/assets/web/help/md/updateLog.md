@@ -19,6 +19,11 @@
 - [链接1](https://legado.gyks.cf/)
 - [链接2](https://legado.ccccocccc.cc/index.php?i=2)
 
+**2026/06/29**
+- 优化文档
+- 封面规则的封面设置Dialog增加编辑内容按钮
+- 备份选择器Dialog优化
+
 **2026/06/28**
 - CodeEditActivity界面增加语法选择功能
 - 修复屏蔽规则弹窗打开时 OOM 崩溃
