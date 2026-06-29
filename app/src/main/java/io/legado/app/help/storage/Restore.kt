@@ -38,7 +38,8 @@ import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.RssStar
 import io.legado.app.data.entities.RuleSub
 import io.legado.app.data.entities.SearchKeyword
-import io.legado.app.ui.book.read.ReadWebSearchPanel
+import io.legado.app.ui.book.read.websearch.SearchEngine
+import io.legado.app.ui.book.read.websearch.SearchEngineHelper
 import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.help.AppCacheManager
@@ -315,9 +316,9 @@ object Restore {
             if (enginesFile.exists()) {
                 try {
                     val enginesJson = enginesFile.readText()
-                    val engines = GSON.fromJsonArray<ReadWebSearchPanel.SearchEngine>(enginesJson).getOrNull()
+                    val engines = GSON.fromJsonArray<SearchEngine>(enginesJson).getOrNull()
                     if (engines != null) {
-                        ReadWebSearchPanel.saveSearchEngines(appCtx, engines)
+                        SearchEngineHelper.saveSearchEngines(appCtx, engines)
                     }
                 } catch (e: Exception) {
                     AppLog.put("恢复搜索引擎规则出错\n${e.localizedMessage}", e)
@@ -701,9 +702,9 @@ object Restore {
         if (enginesFile.exists()) {
             try {
                 val enginesJson = enginesFile.readText()
-                val engines = GSON.fromJsonArray<ReadWebSearchPanel.SearchEngine>(enginesJson).getOrNull()
+                val engines = GSON.fromJsonArray<SearchEngine>(enginesJson).getOrNull()
                 if (engines != null) {
-                    ReadWebSearchPanel.saveSearchEngines(appCtx, engines)
+                    SearchEngineHelper.saveSearchEngines(appCtx, engines)
                 }
             } catch (e: Exception) {
                 AppLog.put("恢复搜索引擎规则出错\n${e.localizedMessage}", e)

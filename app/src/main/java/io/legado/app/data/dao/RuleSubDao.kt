@@ -21,6 +21,9 @@ interface RuleSubDao {
     @Query("select * from ruleSubs where url = :url")
     fun findByUrl(url: String): RuleSub?
 
+    @Query("delete from ruleSubs")
+    fun deleteAll()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(vararg ruleSub: RuleSub)
 

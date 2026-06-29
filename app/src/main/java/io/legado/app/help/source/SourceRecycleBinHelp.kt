@@ -9,8 +9,9 @@ import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.SourceRecycleBin
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.book.read.ReadWebSearchPanel
 import io.legado.app.ui.book.read.config.HighlightRule
+import io.legado.app.ui.book.read.websearch.SearchEngine
+import io.legado.app.ui.book.read.websearch.SearchEngineHelper
 import io.legado.app.ui.book.read.config.HighlightRuleStore
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
@@ -110,7 +111,7 @@ object SourceRecycleBinHelp {
         }
     }
 
-    fun recycleSearchEngines(searchEngines: List<ReadWebSearchPanel.SearchEngine>, now: Long = System.currentTimeMillis()) {
+    fun recycleSearchEngines(searchEngines: List<SearchEngine>, now: Long = System.currentTimeMillis()) {
         recycle(searchEngines, now) {
             SourceRecycleBin(
                 type = TYPE_SEARCH_ENGINE,
@@ -185,8 +186,8 @@ object SourceRecycleBinHelp {
                 HighlightRuleStore.save(appCtx, rules)
             }
             TYPE_SEARCH_ENGINE -> {
-                val engine = GSON.fromJsonObject<ReadWebSearchPanel.SearchEngine>(item.payload).getOrNull() ?: return
-                val engines = ReadWebSearchPanel.loadSearchEngines(appCtx).toMutableList()
+                val engine = GSON.fromJsonObject<SearchEngine>(item.payload).getOrNull() ?: return
+                val engines = SearchEngineHelper.loadSearchEngines(appCtx).toMutableList()
                 val index = engines.indexOfFirst { it.url == engine.url }
                 if (index >= 0) {
                     if (!overwrite) return
@@ -194,7 +195,7 @@ object SourceRecycleBinHelp {
                 } else {
                     engines.add(engine)
                 }
-                ReadWebSearchPanel.saveSearchEngines(appCtx, engines)
+                SearchEngineHelper.saveSearchEngines(appCtx, engines)
             }
         }
         appDb.sourceRecycleBinDao.delete(item)
@@ -209,7 +210,7 @@ object SourceRecycleBinHelp {
             TYPE_HTTP_TTS -> item.key.toLongOrNull()?.let { appDb.httpTTSDao.get(it) != null } == true
             TYPE_DICT_RULE -> appDb.dictRuleDao.getByName(item.key) != null
             TYPE_HIGHLIGHT_RULE -> HighlightRuleStore.load(appCtx).any { it.id == item.key }
-            TYPE_SEARCH_ENGINE -> ReadWebSearchPanel.loadSearchEngines(appCtx).any { it.url == item.key }
+            TYPE_SEARCH_ENGINE -> SearchEngineHelper.loadSearchEngines(appCtx).any { it.url == item.key }
             else -> false
         }
     }

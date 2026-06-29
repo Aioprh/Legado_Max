@@ -53,7 +53,7 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookHelp
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
 import io.legado.app.ui.book.read.config.HighlightRuleStore
-import io.legado.app.ui.book.read.ReadWebSearchPanel
+import io.legado.app.ui.book.read.websearch.SearchEngineHelper
 import io.legado.app.data.repository.CoverGalleryRepository
 
 /**
@@ -478,7 +478,7 @@ object Backup {
         }
         if (selectedFiles.contains("webSearchEngines.json")) {
             onProgress?.invoke(BackupInfoHelper.getDisplayName("webSearchEngines.json"))
-            val engines = ReadWebSearchPanel.loadSearchEngines(appCtx)
+            val engines = SearchEngineHelper.loadSearchEngines(appCtx)
             FileUtils.createFileIfNotExist(backupPath + File.separator + "webSearchEngines.json")
                 .writeText(GSON.toJson(engines))
         }
