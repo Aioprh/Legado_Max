@@ -38,6 +38,7 @@ import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.RssStar
 import io.legado.app.data.entities.RuleSub
 import io.legado.app.data.entities.SearchKeyword
+import io.legado.app.ui.book.read.ReadWebSearchPanel
 import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.help.AppCacheManager
@@ -304,6 +305,23 @@ object Restore {
             appDb.ruleSubDao.deleteAll()
             fileToListT<RuleSub>(path, "sourceSub.json")?.let {
                 appDb.ruleSubDao.insert(*it.toTypedArray())
+            }
+        }
+
+        // 恢复搜索引擎规则
+        if ("webSearchEngines.json" in selectedSet) {
+            progress("webSearchEngines.json")
+            val enginesFile = File(path, "webSearchEngines.json")
+            if (enginesFile.exists()) {
+                try {
+                    val enginesJson = enginesFile.readText()
+                    val engines = GSON.fromJsonArray<ReadWebSearchPanel.SearchEngine>(enginesJson).getOrNull()
+                    if (engines != null) {
+                        ReadWebSearchPanel.saveSearchEngines(appCtx, engines)
+                    }
+                } catch (e: Exception) {
+                    AppLog.put("恢复搜索引擎规则出错\n${e.localizedMessage}", e)
+                }
             }
         }
 
@@ -675,6 +693,21 @@ object Restore {
         appDb.ruleSubDao.deleteAll()
         fileToListT<RuleSub>(path, "sourceSub.json")?.let {
             appDb.ruleSubDao.insert(*it.toTypedArray())
+        }
+
+        // 恢复搜索引擎规则
+        progress("webSearchEngines.json")
+        val enginesFile = File(path, "webSearchEngines.json")
+        if (enginesFile.exists()) {
+            try {
+                val enginesJson = enginesFile.readText()
+                val engines = GSON.fromJsonArray<ReadWebSearchPanel.SearchEngine>(enginesJson).getOrNull()
+                if (engines != null) {
+                    ReadWebSearchPanel.saveSearchEngines(appCtx, engines)
+                }
+            } catch (e: Exception) {
+                AppLog.put("恢复搜索引擎规则出错\n${e.localizedMessage}", e)
+            }
         }
 
         // 恢复首页数据

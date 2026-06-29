@@ -54,7 +54,7 @@ import io.legado.app.utils.visible
 import java.net.URLEncoder
 import java.util.Collections
 import kotlin.math.roundToInt
-
+// 读取网页搜索面板
 class ReadWebSearchPanel @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null

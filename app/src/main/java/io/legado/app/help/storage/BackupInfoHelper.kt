@@ -85,6 +85,7 @@ object BackupInfoHelper {
         "rssSources.json" to "订阅源",
         "rssStar.json" to "订阅收藏",
         "sourceSub.json" to "源订阅",
+        "webSearchEngines.json" to "搜索引擎规则",
         "replaceRule.json" to "替换规则",
         HighlightRuleStore.backupFileName to "高亮规则",
         "readRecord.json" to "阅读记录",
