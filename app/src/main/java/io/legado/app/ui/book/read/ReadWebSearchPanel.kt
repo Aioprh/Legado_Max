@@ -132,6 +132,8 @@ class ReadWebSearchPanel @JvmOverloads constructor(
     // 搜索引擎数据
     private var engines = SearchEngineHelper.loadSearchEngines(context)
     private var selectedEngineIndex = 0
+    private var isSwitchingEngine = false
+    private var lastLoadedEngineUrl: String? = null
 
     // 拖动状态
     private var startRawY = 0f
@@ -283,6 +285,13 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         pooledWebView = WebViewPool.acquire(context)
         webView.apply {
             webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    if (isSwitchingEngine) {
+                        webView.clearHistory()
+                        isSwitchingEngine = false
+                    }
+                }
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     return shouldOverrideUrlLoading(request?.url)
                 }
@@ -357,6 +366,7 @@ class ReadWebSearchPanel @JvmOverloads constructor(
             setOnClickListener {
                 selectedEngineIndex = index
                 updateEngineButtons()
+                SearchEngineHelper.saveDefaultEngineUrl(context, engine.url)
                 loadSearch(searchEdit.text.toString())
             }
             layoutParams = LinearLayout.LayoutParams(
@@ -392,6 +402,10 @@ class ReadWebSearchPanel @JvmOverloads constructor(
         searchEdit.setText(normalizedQuery)
         searchEdit.setSelection(searchEdit.text.length)
         val engine = engines.getOrNull(selectedEngineIndex) ?: return
+        if (lastLoadedEngineUrl != engine.url) {
+            isSwitchingEngine = true
+            lastLoadedEngineUrl = engine.url
+        }
         webView.loadUrl(engine.buildUrl(normalizedQuery))
     }
 
