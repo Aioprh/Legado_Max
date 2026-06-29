@@ -12,6 +12,7 @@
         android:layout_height="wrap_content"
         android:theme="?attr/actionBarStyle"
         app:title="@string/cover_config"
+        app:menu="@menu/dialog_cover_rule_config"
         app:popupTheme="@style/AppTheme.PopupOverlay"
         app:titleTextAppearance="@style/ToolbarTitle" />
 
