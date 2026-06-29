@@ -7,6 +7,9 @@ import androidx.room.Query
 import io.legado.app.data.entities.HomepageCustomSet
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * 首页自定义设置数据访问接口
+ */
 @Dao
 interface HomepageCustomSetDao {
 

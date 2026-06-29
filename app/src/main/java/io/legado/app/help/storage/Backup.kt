@@ -141,6 +141,7 @@ object Backup {
             "bookSource.json",
             "rssSources.json",
             "rssStar.json",
+            "sourceSub.json",
             "replaceRule.json",
             HighlightRuleStore.backupFileName,
             "readRecord.json",
@@ -469,6 +470,9 @@ object Backup {
         }
         if (selectedFiles.contains("rssStar.json")) {
             writeListToJson(appDb.rssStarDao.all, "rssStar.json", backupPath, onProgress)
+        }
+        if (selectedFiles.contains("sourceSub.json")) {
+            writeListToJson(appDb.ruleSubDao.all, "sourceSub.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("replaceRule.json")) {
             writeListToJson(appDb.replaceRuleDao.all, "replaceRule.json", backupPath, onProgress)

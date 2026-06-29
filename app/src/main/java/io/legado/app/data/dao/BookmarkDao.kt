@@ -4,7 +4,9 @@ import androidx.room.*
 import io.legado.app.data.entities.Bookmark
 import kotlinx.coroutines.flow.Flow
 
-
+/**
+ * 书签数据访问接口
+ */
 @Dao
 interface BookmarkDao {
 

@@ -11,6 +11,9 @@ import io.legado.app.data.entities.CoverGalleryGroupWithImages
 import io.legado.app.data.entities.CoverGalleryImage
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * 封面库数据访问接口
+ */
 @Dao
 interface CoverGalleryDao {
 

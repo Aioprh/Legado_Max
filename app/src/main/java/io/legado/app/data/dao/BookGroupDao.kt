@@ -11,6 +11,9 @@ import io.legado.app.constant.BookType
 import io.legado.app.data.entities.BookGroup
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * 书组数据访问接口
+ */
 @Dao
 interface BookGroupDao {
 

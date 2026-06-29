@@ -15,7 +15,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 
-
+/**
+ * 替换规则数据访问接口
+ */
 @Dao
 interface ReplaceRuleDao {
 

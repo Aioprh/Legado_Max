@@ -30,6 +30,7 @@ object BackupSelectorConfig {
         BackupItem("bookSource", "bookSource.json", "书源", "数据库", "📗"),
         BackupItem("rssSources", "rssSources.json", "订阅源", "数据库", "📰"),
         BackupItem("rssStar", "rssStar.json", "订阅收藏", "数据库", "⭐"),
+        BackupItem("sourceSub", "sourceSub.json", "源订阅链接", "数据库", "🔗"),
         BackupItem("replaceRule", "replaceRule.json", "替换规则", "数据库", "🔧"),
         BackupItem("highlightRule", "highlightRule.json", "高亮规则", "配置", "✨"),
         BackupItem("readRecord", "readRecord.json", "阅读记录", "数据库", "📊"),

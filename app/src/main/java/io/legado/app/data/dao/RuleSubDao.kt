@@ -3,7 +3,9 @@ package io.legado.app.data.dao
 import androidx.room.*
 import io.legado.app.data.entities.RuleSub
 import kotlinx.coroutines.flow.Flow
-
+/**
+ * 源订阅链接（用于自动更新书源/订阅源/替换规则）
+ */
 @Dao
 interface RuleSubDao {
 

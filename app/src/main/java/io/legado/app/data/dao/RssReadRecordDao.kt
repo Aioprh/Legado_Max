@@ -3,6 +3,9 @@ package io.legado.app.data.dao
 import androidx.room.*
 import io.legado.app.data.entities.RssReadRecord
 
+/**
+ * RSS阅读记录数据访问接口
+ */
 @Dao
 interface RssReadRecordDao {
 

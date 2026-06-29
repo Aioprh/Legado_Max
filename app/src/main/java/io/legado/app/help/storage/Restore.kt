@@ -36,6 +36,7 @@ import io.legado.app.data.repository.ReadRecordRepository
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.RssStar
+import io.legado.app.data.entities.RuleSub
 import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.TxtTocRule
@@ -294,6 +295,15 @@ object Restore {
             appDb.rssStarDao.deleteAll()
             fileToListT<RssStar>(path, "rssStar.json")?.let {
                 appDb.rssStarDao.insert(*it.toTypedArray())
+            }
+        }
+
+        // 恢复源订阅链接
+        if ("sourceSub.json" in selectedSet) {
+            progress("sourceSub.json")
+            appDb.ruleSubDao.deleteAll()
+            fileToListT<RuleSub>(path, "sourceSub.json")?.let {
+                appDb.ruleSubDao.insert(*it.toTypedArray())
             }
         }
 
@@ -658,6 +668,13 @@ object Restore {
         appDb.rssStarDao.deleteAll()
         fileToListT<RssStar>(path, "rssStar.json")?.let {
             appDb.rssStarDao.insert(*it.toTypedArray())
+        }
+
+        // 恢复源订阅
+        progress("sourceSub.json")
+        appDb.ruleSubDao.deleteAll()
+        fileToListT<RuleSub>(path, "sourceSub.json")?.let {
+            appDb.ruleSubDao.insert(*it.toTypedArray())
         }
 
         // 恢复首页数据

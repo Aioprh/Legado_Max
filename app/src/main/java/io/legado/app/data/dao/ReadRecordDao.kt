@@ -6,6 +6,9 @@ import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * 阅读记录数据访问接口
+ */
 @Dao
 interface ReadRecordDao {
 

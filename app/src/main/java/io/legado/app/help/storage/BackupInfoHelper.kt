@@ -84,6 +84,7 @@ object BackupInfoHelper {
         "bookSource.json" to "书源",
         "rssSources.json" to "订阅源",
         "rssStar.json" to "订阅收藏",
+        "sourceSub.json" to "源订阅",
         "replaceRule.json" to "替换规则",
         HighlightRuleStore.backupFileName to "高亮规则",
         "readRecord.json" to "阅读记录",
@@ -156,6 +157,7 @@ object BackupInfoHelper {
             "bookSource.json" to { appDb.bookSourceDao.all.size },
             "rssSources.json" to { appDb.rssSourceDao.all.size },
             "rssStar.json" to { appDb.rssStarDao.all.size },
+            "sourceSub.json" to { appDb.ruleSubDao.all.size },
             "replaceRule.json" to { appDb.replaceRuleDao.all.size },
             "readRecord.json" to { appDb.readRecordDao.all.size },
             "readRecordDetail.json" to { appDb.readRecordDao.getDetailsCount() },
@@ -347,6 +349,7 @@ object BackupInfoHelper {
             "bookSource" -> appDb.bookSourceDao.all.size
             "rssSources" -> appDb.rssSourceDao.all.size
             "rssStar" -> appDb.rssStarDao.all.size
+            "sourceSub" -> appDb.ruleSubDao.all.size
             "replaceRule" -> appDb.replaceRuleDao.all.size
             "readRecord" -> appDb.readRecordDao.all.size
             "searchHistory" -> appDb.searchKeywordDao.all.size
