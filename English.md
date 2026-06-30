@@ -16,6 +16,21 @@ Legado Max inherits from Legado Sigma and adds more functions on this basis.
 
 [![](https://img.shields.io/badge/-Contents:-696969.svg)](#contents) [![](https://img.shields.io/badge/-Function-F5F5F5.svg)](#Function-) [![](https://img.shields.io/badge/-Download-F5F5F5.svg)](#Download-) [![](https://img.shields.io/badge/-Community-F5F5F5.svg)](#Community-) [![](https://img.shields.io/badge/-API-F5F5F5.svg)](#API-) [![](https://img.shields.io/badge/-Other-F5F5F5.svg)](#Other-) [![](https://img.shields.io/badge/-Grateful-F5F5F5.svg)](#Grateful-) [![](https://img.shields.io/badge/-Interface-F5F5F5.svg)](#Interface-)
 
+## ⚠️ Important Notice
+
+**About This Branch**
+
+1. **Development Context**: This branch was completed by the developer with the assistance of AI programming tools.
+
+2. **Developer Background**: The developer does not have a computer science background and has not formally studied Kotlin, Java, or fundamental subjects such as computer organization and architecture.
+
+3. **Code Quality**: Given the above, the code may have deficiencies in architectural design, standardization, and performance optimization. Please be aware of this before use.
+
+4. **Usage Disclaimer**:
+    - This project is a personal reading tool developed for the developer's own use. It is open-sourced solely for learning and technical exchange purposes.
+    - The developer makes no warranties or guarantees regarding user experience, data security, or device compatibility.
+    - If you have high expectations for code quality or are concerned about the above issues, please carefully evaluate before deciding to use this project.
+
 >New user?
 >
 >The software does not provide content, you need to add it manually, such as importing book sources, etc. 

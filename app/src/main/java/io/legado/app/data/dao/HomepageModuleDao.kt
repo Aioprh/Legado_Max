@@ -45,6 +45,9 @@ interface HomepageModuleDao {
     @Query("DELETE FROM homepage_modules WHERE id = :id")
     suspend fun delete(id: String)
 
+    @Query("DELETE FROM homepage_modules WHERE sourceUrl = :sourceUrl AND moduleKey = :moduleKey")
+    suspend fun deleteBySourceAndKey(sourceUrl: String, moduleKey: String)
+
     @Query("DELETE FROM homepage_modules")
     suspend fun deleteAll()
 

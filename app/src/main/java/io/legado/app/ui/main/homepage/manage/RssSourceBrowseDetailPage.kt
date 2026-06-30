@@ -154,11 +154,11 @@ private fun JoinedModulesTab(
     actions: HomepageManageActions,
     onEditModule: (String, ModuleDef) -> Unit,
 ) {
+    // 获取当前集已加入的模块
+    // 统一按集归属过滤（与 SetList.moduleCount 一致）；未指定集时默认使用订阅源集
     val joinedModules = remember(sourceUrl, targetSetId, allModules) {
-        allModules.filter { module ->
-            module.sourceUrl == sourceUrl &&
-                    (targetSetId == null || module.customSetId == targetSetId)
-        }
+        val setId = targetSetId ?: "rss_$sourceUrl"
+        allModules.filter { module -> module.customSetId == setId }
     }
 
     var localModules by remember(joinedModules) { mutableStateOf(joinedModules) }

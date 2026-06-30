@@ -19,6 +19,7 @@ interface HomepageModulesGateway {
     suspend fun setCustomSetId(id: String, setId: String?)
     suspend fun setCustomSetTitle(id: String, title: String?)
     suspend fun delete(id: String)
+    suspend fun deleteBySourceAndKey(sourceUrl: String, moduleKey: String)
     suspend fun deleteStale(sourceUrl: String, currentIds: List<String>)
 
     // Custom set queries

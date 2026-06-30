@@ -10,6 +10,7 @@ import io.legado.app.databinding.ItemBookshelfGrid2Binding
 import io.legado.app.databinding.ItemBookshelfGridBinding
 import io.legado.app.databinding.ItemBookshelfGridGroup2Binding
 import io.legado.app.databinding.ItemBookshelfGridGroupBinding
+import io.legado.app.databinding.ItemBookshelfListGroupBinding
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.gone
@@ -28,9 +29,14 @@ class BooksAdapterGrid(context: Context, callBack: CallBack) :
     ): RecyclerView.ViewHolder {
         return when (viewType) {
             1 -> {
-                when (showBookname) {
-                    2 -> GroupViewHolder2(ItemBookshelfGridGroup2Binding.inflate(inflater, parent, false))
-                    else -> GroupViewHolder(ItemBookshelfGridGroupBinding.inflate(inflater, parent, false))
+                // 根据folderLayout选择文件夹布局：列表模式下使用列表布局避免封面尺寸异常
+                if (AppConfig.folderLayout >= 2) {
+                    when (showBookname) {
+                        2 -> GroupViewHolder2(ItemBookshelfGridGroup2Binding.inflate(inflater, parent, false))
+                        else -> GroupViewHolder(ItemBookshelfGridGroupBinding.inflate(inflater, parent, false))
+                    }
+                } else {
+                    GroupListViewHolder(ItemBookshelfListGroupBinding.inflate(inflater, parent, false))
                 }
             }
             else -> {
@@ -64,6 +70,11 @@ class BooksAdapterGrid(context: Context, callBack: CallBack) :
             }
 
             is GroupViewHolder2 -> (getItem(position) as? BookGroup)?.let {
+                holder.registerListener(it)
+                holder.onBind(it, position, payloads)
+            }
+
+            is GroupListViewHolder -> (getItem(position) as? BookGroup)?.let {
                 holder.registerListener(it)
                 holder.onBind(it, position, payloads)
             }
@@ -258,6 +269,53 @@ class BooksAdapterGrid(context: Context, callBack: CallBack) :
                                     tvName.text = it
                                 }
                             }
+                            "cover" -> ivCover.load(item.cover)
+                        }
+                    }
+                }
+            }
+        }
+
+        fun registerListener(item: Any) {
+            binding.root.setOnClickListener {
+                callBack.onItemClick(item)
+            }
+            binding.root.onLongClick {
+                callBack.onItemLongClick(item)
+            }
+        }
+
+    }
+
+    /**
+     * 列表模式下的文件夹 ViewHolder（folderLayout < 2 时使用）
+     * 使用 item_bookshelf_list_group 布局，封面固定 66x90dp，避免网格适配器中封面撑满全屏
+     */
+    inner class GroupListViewHolder(val binding: ItemBookshelfListGroupBinding) :
+        RecyclerView.ViewHolder(binding.root) {
+
+        fun onBind(item: BookGroup, position: Int) = binding.run {
+            tvName.text = item.groupName
+            ivCover.load(item.cover)
+            // 隐藏书籍专属视图
+            flHasNew.gone()
+            ivAuthor.gone()
+            ivLast.gone()
+            ivRead.gone()
+            tvAuthor.gone()
+            tvLast.gone()
+            tvRead.gone()
+        }
+
+        fun onBind(item: BookGroup, position: Int, payloads: MutableList<Any>) = binding.run {
+            if (payloads.isEmpty()) {
+                onBind(item, position)
+            } else {
+                for (i in payloads.indices) {
+                    val bundle = payloads[i] as Bundle
+                    bundle.keySet().forEach {
+                        when (it) {
+                            "groupName" -> tvName.text = item.groupName
                             "cover" -> ivCover.load(item.cover)
                         }
                     }
