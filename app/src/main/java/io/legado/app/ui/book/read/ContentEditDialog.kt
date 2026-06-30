@@ -1,7 +1,9 @@
 package io.legado.app.ui.book.read
 
+import android.app.Activity
 import android.app.Application
 import android.content.DialogInterface
+import android.content.Intent
 import android.os.Bundle
 import android.text.Spannable
 import android.text.SpannableString
@@ -9,6 +11,7 @@ import android.text.style.BackgroundColorSpan
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.viewModels
@@ -30,6 +33,7 @@ import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.ReadBook
 import io.legado.app.model.webBook.WebBook
+import io.legado.app.ui.code.CodeEditActivity
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
@@ -45,6 +49,16 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
 
     val binding by viewBinding(DialogContentEditBinding::bind)
     val viewModel by viewModels<ContentEditViewModel>()
+
+    private val editCodeLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.getStringExtra("text")?.let {
+                binding.contentView.setText(it)
+            }
+        }
+    }
 
     private var searchKeyword: String = ""
     private var currentIndex: Int = -1
@@ -94,6 +108,7 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
         binding.toolBar.setOnMenuItemClickListener {
             when (it.itemId) {
                 R.id.menu_search -> toggleSearchPanel()
+                R.id.menu_fullscreen_edit -> openCodeEditor()
                 R.id.menu_save -> {
                     save()
                     dismiss()
@@ -122,6 +137,18 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                 binding.etSearch.setText(searchKeyword)
             }
         }
+    }
+
+    private fun openCodeEditor() {
+        val text = binding.contentView.text?.toString() ?: return
+        val title = binding.toolBar.title?.toString() ?: "content"
+        val intent = Intent(requireContext(), CodeEditActivity::class.java).apply {
+            putExtra("text", text)
+            putExtra("title", title)
+            putExtra("sourceType", "chapterContent")
+            putExtra("sourceKey", ReadBook.book?.bookUrl ?: "")
+        }
+        editCodeLauncher.launch(intent)
     }
 
     private fun initSearchPanel() {
