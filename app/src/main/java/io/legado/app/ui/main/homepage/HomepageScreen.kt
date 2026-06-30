@@ -90,6 +90,7 @@ import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.utils.showHelp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -521,31 +522,31 @@ private fun SourceTabLayout(
                 }
             }
             val currentSetName = currentSet?.sourceName
-            // 使用 key 强制重新创建 PullToRefreshBox，确保状态更新
-            key(isRefreshing) {
-                PullToRefreshBox(
-                    isRefreshing = isRefreshing,
-                    onRefresh = { onRefresh(currentSetName) },
-                    modifier = Modifier.fillMaxSize()
-                ) {
+            // 直接从 ViewModel 观察刷新状态，确保每页独立接收状态变更
+            // 绕过 HorizontalPager 页面缓存导致的状态传播延迟
+            val pageIsRefreshing by viewModel.uiState.map { it.isRefreshing }.collectAsStateWithLifecycle(false)
+            PullToRefreshBox(
+                isRefreshing = pageIsRefreshing,
+                onRefresh = { onRefresh(currentSetName) },
+                modifier = Modifier.fillMaxSize()
+            ) {
                 LazyColumn(
                     contentPadding = PaddingValues(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(currentModules, key = { it.globalId }) { module ->
-                            HomepageModuleItem(
-                                module = module,
-                                viewModel = viewModel,
-                                onBookClick = { book ->
-                                    viewModel.onBookClick(book)
-                                },
-                                onBookLongClick = onBookLongClick,
-                                onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
-                                    viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
-                                }
-                            )
-                        }
-                }
+                        HomepageModuleItem(
+                            module = module,
+                            viewModel = viewModel,
+                            onBookClick = { book ->
+                                viewModel.onBookClick(book)
+                            },
+                            onBookLongClick = onBookLongClick,
+                            onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
+                                viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
+                            }
+                        )
+                    }
                 }
             }
         }

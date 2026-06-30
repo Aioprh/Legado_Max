@@ -145,6 +145,8 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
     private val _isRefreshing = MutableStateFlow(false)
     private val _refreshingSetName = MutableStateFlow<String?>(null)
+    /** 刷新期间需要加载的模块 ID 集合，确保加载与完成检测使用同一份清单 */
+    private val _refreshingModuleIds = MutableStateFlow<Set<String>>(emptySet())
     private val _isManageMode = MutableStateFlow(false)
     private val _configVersion = MutableStateFlow(0L)
     private val _moduleContentStates = MutableStateFlow<Map<String, ModuleLoadState>>(emptyMap())
@@ -447,8 +449,13 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 
                 params.modules.forEach { ui ->
                     if (ui.state is ModuleLoadState.Loading && loadJobs[ui.globalId]?.isActive != true) {
-                        // 只加载应该加载的模块
-                        if (ui.globalId in shouldLoadIds) {
+                        // 刷新期间只加载目标集的模块，正常浏览时由预加载机制控制
+                        val shouldLoad = if (_isRefreshing.value) {
+                            ui.globalId in _refreshingModuleIds.value
+                        } else {
+                            ui.globalId in shouldLoadIds
+                        }
+                        if (shouldLoad) {
                             val module = gateway.getById(ui.globalId)
                             if (module != null) loadModule(module)
                         }
@@ -460,25 +467,25 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         // 监听模块状态变化，更新刷新状态
         viewModelScope.launch {
             _moduleContentStates.collect { states ->
-                // 如果正在刷新，检查是否所有模块都加载完成
+                // 如果正在刷新，检查是否目标模块都加载完成
                 if (_isRefreshing.value) {
-                    val refreshingSetName = _refreshingSetName.value
-                    val allLoaded = if (refreshingSetName != null) {
-                        // 只检查指定书源集的模块
-                        val setModules = uiState.value.modules.filter { it.setName == refreshingSetName }
-                        val setModuleIds = setModules.map { it.globalId }.toSet()
-                        // 检查指定书源集的模块是否都加载完成
-                        setModuleIds.all { id ->
+                    val targetIds = _refreshingModuleIds.value
+                    val allLoaded = if (targetIds.isNotEmpty()) {
+                        // 检查刷新目标模块是否都加载完成（统一使用 _refreshingModuleIds）
+                        targetIds.all { id ->
                             val state = states[id]
                             state != null && state !is ModuleLoadState.Loading
                         }
                     } else {
-                        // 检查所有模块
+                        // 未指定目标时检查全部
                         states.values.none { it is ModuleLoadState.Loading } && states.isNotEmpty()
                     }
                     if (allLoaded) {
+                        // 最小刷新动画时长，防止 PullToRefreshBox 动画被提前中断
+                        kotlinx.coroutines.delay(400)
                         _isRefreshing.value = false
                         _refreshingSetName.value = null
+                        _refreshingModuleIds.value = emptySet()
                     }
                 }
             }
@@ -846,11 +853,13 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 // 只刷新指定书源集的模块
                 val setModules = uiState.value.modules.filter { it.setName == setName }
                 val setModuleIds = setModules.map { it.globalId }.toSet()
+                _refreshingModuleIds.value = setModuleIds
                 _moduleContentStates.update { states ->
                     states.filterKeys { it !in setModuleIds }
                 }
             } else {
                 // 刷新所有模块
+                _refreshingModuleIds.value = uiState.value.modules.map { it.globalId }.toSet()
                 _moduleContentStates.value = emptyMap()
             }
             // isRefreshing 由 auto-load collector 在所有模块加载完成后自动置为 false
