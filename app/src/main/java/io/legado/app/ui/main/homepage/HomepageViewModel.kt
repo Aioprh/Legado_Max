@@ -1453,11 +1453,43 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
+    /**
+     * 删除模块。
+     *
+     * - 从源集（src_/rss_）删除：同时删除所有自定义集中的副本
+     * - 从自定义集删除：仅删除当前副本，不影响源集及其他自定义集中的模块
+     */
     fun deleteModule(globalId: String) {
         viewModelScope.launch {
-            gateway.delete(globalId)
-            _moduleContentStates.update { it - globalId }
-            loadJobs.remove(globalId)?.cancel()
+            val module = allModulesCache.value.find { it.id == globalId }
+            if (module != null) {
+                val isSourceModule = module.customSetId?.let {
+                    it.startsWith("src_") || it.startsWith("rss_")
+                } == true
+                if (isSourceModule) {
+                    // 从源集删除：删除所有相同 (sourceUrl, moduleKey) 的模块（含源集和所有副本）
+                    gateway.deleteBySourceAndKey(module.sourceUrl, module.moduleKey)
+                    // 清除所有被删模块的 content state
+                    val deletedIds = allModulesCache.value
+                        .filter { it.sourceUrl == module.sourceUrl && it.moduleKey == module.moduleKey }
+                        .map { it.id }
+                    _moduleContentStates.update { states ->
+                        var result = states
+                        deletedIds.forEach { result = result - it }
+                        result
+                    }
+                    deletedIds.forEach { loadJobs.remove(it)?.cancel() }
+                } else {
+                    // 从自定义集删除：仅删除当前模块
+                    gateway.delete(globalId)
+                    _moduleContentStates.update { it - globalId }
+                    loadJobs.remove(globalId)?.cancel()
+                }
+            } else {
+                gateway.delete(globalId)
+                _moduleContentStates.update { it - globalId }
+                loadJobs.remove(globalId)?.cancel()
+            }
             notifyConfigChanged()
         }
     }

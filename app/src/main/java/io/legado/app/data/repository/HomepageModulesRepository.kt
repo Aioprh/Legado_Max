@@ -43,6 +43,8 @@ class HomepageModulesRepository(
         moduleDao.setCustomSetTitle(id, title)
 
     override suspend fun delete(id: String) = moduleDao.delete(id)
+    override suspend fun deleteBySourceAndKey(sourceUrl: String, moduleKey: String) =
+        moduleDao.deleteBySourceAndKey(sourceUrl, moduleKey)
     override suspend fun deleteStale(sourceUrl: String, currentIds: List<String>) =
         moduleDao.deleteStale(sourceUrl, currentIds)
 
