@@ -255,6 +255,7 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                 }
                 tvChapterName.setTextColor(textColor)
                 tvChapterName.text = getDisplayTitle(item)
+                tvChapterName.isSingleLine = !AppConfig.tocShowFullChapterName
                 if (item.isVolume) {
                     if (isCurrentVol) {
                         tvChapterItem.setBackgroundColor(context.getCompatColor(R.color.btn_bg_press))
@@ -298,6 +299,7 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                 upHasCache(binding, isDur, cached)
             } else {
                 tvChapterName.text = getDisplayTitle(item)
+                tvChapterName.isSingleLine = !AppConfig.tocShowFullChapterName
                 upHasCache(binding, isDur, cached)
             }
         }

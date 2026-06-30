@@ -1269,6 +1269,7 @@
     <string name="click_image_way">點擊圖片方式</string>
     <string name="collapse_all">全部摺疊</string>
     <string name="collapse_volume_name">摺疊卷名</string>
+    <string name="show_full_chapter_name">完全顯示章節名稱</string>
     <string name="config_settings">配置</string>
     <string name="contributors_summary_sigma">gedoor、Luoyacheng、Horis、Xwite、GEd520、youfengknight 等，詳情請在 GitHub 中查看</string>
     <string name="copy_crash_log_summary">發生崩潰時複製崩潰日誌</string>

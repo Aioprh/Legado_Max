@@ -648,6 +648,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.tocCollapseVolumeName, value)
         }
 
+    var tocShowFullChapterName: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.tocShowFullChapterName)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.tocShowFullChapterName, value)
+        }
+
     var enableReadRecord: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.enableReadRecord, true)
         set(value) {

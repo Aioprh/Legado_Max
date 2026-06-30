@@ -166,6 +166,7 @@ object PreferKey {
     const val tocUiUseReplace = "tocUiUseReplace"
     const val tocCountWords = "tocCountWords"
     const val tocCollapseVolumeName = "tocCollapseVolumeName"
+    const val tocShowFullChapterName = "tocShowFullChapterName"
     const val enableReadRecord = "enableReadRecord"
     const val localBookImportSort = "localBookImportSort"
     const val customWelcome = "customWelcome"
