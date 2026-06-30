@@ -6,6 +6,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -21,7 +22,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import io.legado.app.R
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.ui.main.homepage.HomepageManageActions
@@ -170,6 +173,11 @@ fun HomepageModuleManageSheet(
     val currentSetId = selectingSetUrl?.takeIf { HomepageViewModel.isCustomSetUrl(it) }
         ?.let { HomepageViewModel.customSetIdFromUrl(it) }
 
+    // AnimatedContent 内的 LazyColumn 需要有限高度约束才能正常渲染。
+    // 使用屏幕高度的 80% 作为容器高度（与 ExploreKindSelectSheet 策略一致），
+    // 配合 AppModalBottomSheet 的 verticalScroll 实现内容溢出时滚动。
+    val contentHeight = LocalConfiguration.current.screenHeightDp.dp * 0.8f
+
     AppModalBottomSheet(
         show = show,
         onDismissRequest = handleDismiss,
@@ -194,7 +202,7 @@ fun HomepageModuleManageSheet(
                 slideInHorizontally { fullWidth -> fullWidth * direction } togetherWith
                         slideOutHorizontally { fullWidth -> -fullWidth * direction }
             },
-            modifier = Modifier.weight(1f).fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(contentHeight)
         ) { page ->
             when (page) {
                 // 集列表页：展示所有集，支持创建自定义集和浏览书源
