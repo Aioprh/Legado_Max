@@ -1376,6 +1376,7 @@
     <string name="respondTime">respondTime: %1$d ms</string>
     <string name="load_word_count">Load word count</string>
     <string name="collapse_volume_name">Collapse volume names</string>
+    <string name="show_full_chapter_name">Show full chapter name</string>
     <string name="replace_exclude_scope">Exclude range, optional title or source URL</string>
     <string name="format_js_rule">Format Rule (formatJs)</string>
     <string name="adjust_pos">Adjustment position</string>

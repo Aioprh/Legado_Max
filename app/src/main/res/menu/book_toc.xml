@@ -54,6 +54,12 @@
             android:title="@string/collapse_volume_name"
             app:showAsAction="never" />
 
+        <item
+            android:id="@+id/menu_show_full_chapter_name"
+            android:checkable="true"
+            android:title="@string/show_full_chapter_name"
+            app:showAsAction="never" />
+
     </group>
 
     <group

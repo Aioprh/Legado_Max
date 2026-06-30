@@ -20,11 +20,13 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.DialogHighlightRuleConfigBinding
 import io.legado.app.databinding.ItemHighlightPresetRuleBinding
 import io.legado.app.help.source.SourceRecycleBinHelp
+import io.legado.app.help.book.isLocal
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
+import io.legado.app.model.ReadBook
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
@@ -235,7 +237,18 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
 
     private fun editRule(rule: HighlightRule?) {
         val defaultGroup = rule?.group ?: currentGroup
-        HighlightRuleEditDialog(rule, defaultGroup) { newRule ->
+        // 新增规则时，预填当前书籍的书名和书源URL作为作用范围
+        val defaultScope = if (rule == null) {
+            ReadBook.book?.let { book ->
+                val parts = mutableListOf<String>()
+                parts.add(book.name)
+                if (book.origin.isNotBlank() && !book.isLocal) {
+                    parts.add(book.origin)
+                }
+                parts.joinToString(";")
+            }
+        } else null
+        HighlightRuleEditDialog(rule, defaultGroup, defaultScope) { newRule ->
             val index = rules.indexOfFirst { it.id == newRule.id }
             if (index >= 0) {
                 rules[index] = newRule
