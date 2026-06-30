@@ -158,12 +158,11 @@ private fun JoinedModulesTab(
     actions: HomepageManageActions,
     onEditModule: (String, ModuleDef) -> Unit,
 ) {
-    // 获取当前集已加入的模块：匹配书源 URL 和目标集 ID
+    // 获取当前集已加入的模块
+    // 统一按集归属过滤（与 SetList.moduleCount 一致）；未指定集时默认使用书源集
     val joinedModules = remember(sourceUrl, targetSetId, allModules) {
-        allModules.filter { module ->
-            module.sourceUrl == sourceUrl &&
-                    (targetSetId == null || module.customSetId == targetSetId)
-        }
+        val setId = targetSetId ?: "src_$sourceUrl"
+        allModules.filter { module -> module.customSetId == setId }
     }
 
     // 本地排序列表，拖拽时即时更新
