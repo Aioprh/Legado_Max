@@ -1795,7 +1795,7 @@
     <string name="open_editor">Open Editor</string>
     <string name="info">Info</string>
     <string name="content_query">Content Query</string>
-    <string name="switch_rule">Switch Rule</string>
+    <string name="switch_rule">Switch</string>
     <string name="query_rule">Query Rule</string>
     <string name="source_content_query">Source Content Query</string>
     <string name="copy_matched_source_urls">Copy Matched Source URLs</string>

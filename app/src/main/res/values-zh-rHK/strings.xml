@@ -148,8 +148,12 @@
     <string name="pause">暫停</string>
     <string name="resume">繼續</string>
     <string name="set_timer">定時</string>
+    <string name="set_timer_by_time">按時間定時</string>
+    <string name="set_timer_by_chapter">按章節定時</string>
     <string name="read_aloud_pause">朗讀暫停</string>
     <string name="read_aloud_timer">讀緊（剩餘 %d 分鐘）</string>
+    <string name="read_aloud_timer_chapter">讀緊（剩餘 %d 章）</string>
+    <string name="timer_chapter">%d 章</string>
     <string name="playing_timer">播緊（剩餘 %d 分鐘）</string>
     <string name="ps_hide_navigation_bar">閲讀介面隱藏導航欄</string>
     <string name="pt_hide_navigation_bar">隱藏導航欄</string>
@@ -1371,7 +1375,8 @@
     <string name="welcome_show_time">歡迎頁顯示時間</string>
     <string name="welcome_show_time_summary">設為 0 則不顯示歡迎頁</string>
     <string name="content_query">內容查詢</string>
-    <string name="switch_rule">切換規則</string>
+    <string name="switch_rule">切換</string>
+    <string name="source_content_query">源內容查詢</string>
     <string name="query_rule">查詢規則</string>
     <string name="expand_all">全部展開</string>
     <string name="copy_matched_source_urls">複製符合的源 URL</string>
