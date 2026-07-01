@@ -4,6 +4,7 @@ import androidx.fragment.app.viewModels
 import com.google.gson.JsonObject
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.source.BaseContentSearchDialog
+import io.legado.app.ui.source.ContentSearchType
 import io.legado.app.ui.source.SourceFieldItem
 import io.legado.app.utils.GSON
 import io.legado.app.utils.share
@@ -116,6 +117,8 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
     override fun getDialogTitle() = "书源内容查询"
 
     override fun getSearchHint() = "输入关键词搜索所有书源"
+
+    override fun getContentSearchType() = ContentSearchType.BOOK_SOURCE
 
     override fun loadSourceItems(allSources: Boolean, callback: (List<SourceFieldItem>) -> Unit) {
         viewModel.loadSources(!allSources) { sourceList ->

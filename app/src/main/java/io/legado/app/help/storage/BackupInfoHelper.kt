@@ -152,30 +152,30 @@ object BackupInfoHelper {
         }
 
         val dbItems = listOf(
-            "bookshelf.json" to { appDb.bookDao.all.size },
-            "bookmark.json" to { appDb.bookmarkDao.all.size },
-            "bookGroup.json" to { appDb.bookGroupDao.all.size },
-            "bookSource.json" to { appDb.bookSourceDao.all.size },
-            "rssSources.json" to { appDb.rssSourceDao.all.size },
-            "rssStar.json" to { appDb.rssStarDao.all.size },
-            "sourceSub.json" to { appDb.ruleSubDao.all.size },
-            "replaceRule.json" to { appDb.replaceRuleDao.all.size },
-            "readRecord.json" to { appDb.readRecordDao.all.size },
+            "bookshelf.json" to { appDb.bookDao.allBookCount },
+            "bookmark.json" to { appDb.bookmarkDao.count },
+            "bookGroup.json" to { appDb.bookGroupDao.count },
+            "bookSource.json" to { appDb.bookSourceDao.allCount() },
+            "rssSources.json" to { appDb.rssSourceDao.size },
+            "rssStar.json" to { appDb.rssStarDao.count },
+            "sourceSub.json" to { appDb.ruleSubDao.count },
+            "replaceRule.json" to { appDb.replaceRuleDao.count },
+            "readRecord.json" to { appDb.readRecordDao.count },
             "readRecordDetail.json" to { appDb.readRecordDao.getDetailsCount() },
             "readRecordSession.json" to { appDb.readRecordDao.getSessionsCount() },
-            "searchHistory.json" to { appDb.searchKeywordDao.all.size },
-            "txtTocRule.json" to { appDb.txtTocRuleDao.all.size },
-            "httpTTS.json" to { appDb.httpTTSDao.all.size },
-            "keyboardAssists.json" to { appDb.keyboardAssistsDao.all.size },
-            "dictRule.json" to { appDb.dictRuleDao.all.size },
-            "servers.json" to { appDb.serverDao.all.size },
-            "homepage.json" to { appDb.homepageModuleDao.all.size + appDb.homepageCustomSetDao.all.size }
+            "searchHistory.json" to { appDb.searchKeywordDao.count },
+            "txtTocRule.json" to { appDb.txtTocRuleDao.count },
+            "httpTTS.json" to { appDb.httpTTSDao.count },
+            "keyboardAssists.json" to { appDb.keyboardAssistsDao.count },
+            "dictRule.json" to { appDb.dictRuleDao.count },
+            "servers.json" to { appDb.serverDao.count },
+            "homepage.json" to { appDb.homepageModuleDao.count + appDb.homepageCustomSetDao.count }
         )
         dbItems.forEach { (fileName, countProvider) ->
             addItem(fileName, countProvider() * 200L)
         }
 
-        val runtimeCacheCount = appDb.cacheDao.getRuntimeSourceCaches(System.currentTimeMillis()).size
+        val runtimeCacheCount = appDb.cacheDao.getRuntimeSourceCacheCount(System.currentTimeMillis())
         addItem("runtimeSourceCache.json", runtimeCacheCount * 500L)
 
         val highlightRuleSize = GSON.toJson(HighlightRuleStore.createBackupData(appCtx)).length.toLong()
@@ -199,7 +199,7 @@ object BackupInfoHelper {
                 val bookFolder = File(cacheDir, book.getFolderName())
                 if (bookFolder.exists()) {
                     bookCacheSize += bookFolder.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-                    chapterCount += appDb.bookChapterDao.getChapterList(book.bookUrl).size
+                    chapterCount += appDb.bookChapterDao.getChapterCount(book.bookUrl)
                 }
             }
         }
@@ -344,23 +344,23 @@ object BackupInfoHelper {
      */
     fun getItemCount(key: String): Int {
         return when (key) {
-            "bookshelf" -> appDb.bookDao.all.size
-            "bookmark" -> appDb.bookmarkDao.all.size
-            "bookGroup" -> appDb.bookGroupDao.all.size
-            "bookSource" -> appDb.bookSourceDao.all.size
-            "rssSources" -> appDb.rssSourceDao.all.size
-            "rssStar" -> appDb.rssStarDao.all.size
-            "sourceSub" -> appDb.ruleSubDao.all.size
-            "replaceRule" -> appDb.replaceRuleDao.all.size
-            "readRecord" -> appDb.readRecordDao.all.size
-            "searchHistory" -> appDb.searchKeywordDao.all.size
-            "txtTocRule" -> appDb.txtTocRuleDao.all.size
-            "httpTTS" -> appDb.httpTTSDao.all.size
-            "keyboardAssists" -> appDb.keyboardAssistsDao.all.size
-            "dictRule" -> appDb.dictRuleDao.all.size
-            "servers" -> appDb.serverDao.all.size
-            "homepage" -> appDb.homepageModuleDao.all.size + appDb.homepageCustomSetDao.all.size
-            "runtimeSourceCache" -> appDb.cacheDao.getRuntimeSourceCaches(System.currentTimeMillis()).size
+            "bookshelf" -> appDb.bookDao.allBookCount
+            "bookmark" -> appDb.bookmarkDao.count
+            "bookGroup" -> appDb.bookGroupDao.count
+            "bookSource" -> appDb.bookSourceDao.allCount()
+            "rssSources" -> appDb.rssSourceDao.size
+            "rssStar" -> appDb.rssStarDao.count
+            "sourceSub" -> appDb.ruleSubDao.count
+            "replaceRule" -> appDb.replaceRuleDao.count
+            "readRecord" -> appDb.readRecordDao.count
+            "searchHistory" -> appDb.searchKeywordDao.count
+            "txtTocRule" -> appDb.txtTocRuleDao.count
+            "httpTTS" -> appDb.httpTTSDao.count
+            "keyboardAssists" -> appDb.keyboardAssistsDao.count
+            "dictRule" -> appDb.dictRuleDao.count
+            "servers" -> appDb.serverDao.count
+            "homepage" -> appDb.homepageModuleDao.count + appDb.homepageCustomSetDao.count
+            "runtimeSourceCache" -> appDb.cacheDao.getRuntimeSourceCacheCount(System.currentTimeMillis())
             else -> 0
         }
     }

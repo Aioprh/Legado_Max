@@ -10,6 +10,9 @@ interface KeyboardAssistsDao {
     @get:Query("select * from keyboardAssists order by serialNo")
     val all: List<KeyboardAssist>
 
+    @get:Query("select count(*) from keyboardAssists")
+    val count: Int
+
     @Query("select * from keyboardAssists where type = :type order by serialNo")
     fun getByType(type: Int): List<KeyboardAssist>
 

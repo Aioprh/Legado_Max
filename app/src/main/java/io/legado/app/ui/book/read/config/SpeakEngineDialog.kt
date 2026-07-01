@@ -70,7 +70,8 @@ class SpeakEngineDialog() : BaseDialogFragment(R.layout.dialog_recycler_view),
     private val adapter by lazy { Adapter(requireContext()) }
     private var ttsEngine: String? = ReadAloud.ttsEngine
     private val sysTtsViews = arrayListOf<RadioButton>()
-    private val callBack: CallBack? get() = parentFragment as? CallBack
+    private val callBack: CallBack?
+        get() = parentFragment as? CallBack ?: (activity as? CallBack)
     private var currentSelect = -1
     private val importDocResult = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
@@ -183,6 +184,7 @@ class SpeakEngineDialog() : BaseDialogFragment(R.layout.dialog_recycler_view),
             }
 
             R.id.menu_import_onLine -> importAlert()
+            R.id.menu_content_query -> showDialogFragment(SpeakEngineContentSearchDialog())
             R.id.menu_export_all -> exportDirResult.launch {
                 mode = HandleFileContract.EXPORT
                 fileData = HandleFileContract.FileData(

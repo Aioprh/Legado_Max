@@ -51,6 +51,9 @@ interface ReplaceRuleDao {
     @get:Query("SELECT * FROM replace_rules ORDER BY sortOrder ASC")
     val all: List<ReplaceRule>
 
+    @get:Query("select count(*) from replace_rules")
+    val count: Int
+
     @get:Query("select distinct `group` from replace_rules where trim(`group`) <> ''")
     val allGroupsUnProcessed: List<String>
 

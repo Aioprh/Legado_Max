@@ -11,6 +11,9 @@ interface SearchKeywordDao {
     @get:Query("SELECT * FROM search_keywords")
     val all: List<SearchKeyword>
 
+    @get:Query("SELECT count(*) FROM search_keywords")
+    val count: Int
+
     @Query("SELECT * FROM search_keywords ORDER BY usage DESC")
     fun flowByUsage(): Flow<List<SearchKeyword>>
 

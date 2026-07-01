@@ -17,6 +17,9 @@ interface BookmarkDao {
     )
     val all: List<Bookmark>
 
+    @get:Query("select count(*) from bookmarks")
+    val count: Int
+
     @Query("select * from bookmarks order by bookName collate localized, bookAuthor collate localized, chapterIndex, chapterPos")
     fun flowAll(): Flow<List<Bookmark>>
 

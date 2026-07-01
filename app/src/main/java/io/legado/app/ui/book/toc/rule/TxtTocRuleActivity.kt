@@ -50,7 +50,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
-
+// 目录规则管理页面
 class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleViewModel>(),
     SearchView.OnQueryTextListener,
     TxtTocRuleAdapter.CallBack,
@@ -190,6 +190,7 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
             R.id.menu_import_onLine -> showImportDialog()
             R.id.menu_import_qr -> qrCodeResult.launch()
             R.id.menu_import_default -> viewModel.importDefault()
+            R.id.menu_content_query -> showDialogFragment(TxtTocRuleContentSearchDialog())
             R.id.menu_help -> showHelp("txtTocRuleHelp")
 
         }

@@ -62,4 +62,7 @@ interface HomepageModuleDao {
 
     @get:Query("SELECT * FROM homepage_modules ORDER BY sortOrder ASC")
     val all: List<HomepageModule>
+
+    @get:Query("SELECT count(*) FROM homepage_modules")
+    val count: Int
 }

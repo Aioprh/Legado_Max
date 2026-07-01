@@ -167,8 +167,12 @@
     <string name="pause">Pause</string>
     <string name="resume">Resume</string>
     <string name="set_timer">Timer</string>
+    <string name="set_timer_by_time">Time Timer</string>
+    <string name="set_timer_by_chapter">Chapter Timer</string>
     <string name="read_aloud_pause">Speak Paused</string>
     <string name="read_aloud_timer">Speaking(%d min left)</string>
+    <string name="read_aloud_timer_chapter">Speaking(%d chapters left)</string>
+    <string name="timer_chapter">%d chapters</string>
     <string name="playing_timer">Playing(%d min left)</string>
     <string name="ps_hide_navigation_bar">Hide virtual buttons when reading</string>
     <string name="pt_hide_navigation_bar">Hide navigation bar</string>
@@ -1793,6 +1797,7 @@
     <string name="content_query">Content Query</string>
     <string name="switch_rule">Switch Rule</string>
     <string name="query_rule">Query Rule</string>
+    <string name="source_content_query">Source Content Query</string>
     <string name="copy_matched_source_urls">Copy Matched Source URLs</string>
     <string name="export_matched_sources">Export Matched Sources</string>
     <string name="url_source_code">URL Source Code</string>

@@ -186,6 +186,7 @@ class DictRuleActivity : VMBaseActivity<ActivityDictRuleBinding, DictRuleViewMod
             R.id.menu_import_onLine -> showImportDialog()
             R.id.menu_import_qr -> qrCodeResult.launch()
             R.id.menu_import_default -> viewModel.importDefault()
+            R.id.menu_content_query -> showDialogFragment(DictRuleContentSearchDialog())
             R.id.menu_help -> showHelp("dictRuleHelp")
         }
         return super.onCompatOptionsItemSelected(item)

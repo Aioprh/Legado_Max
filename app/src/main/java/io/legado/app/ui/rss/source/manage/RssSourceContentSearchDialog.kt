@@ -4,6 +4,7 @@ import androidx.fragment.app.viewModels
 import io.legado.app.data.entities.RssSource
 import io.legado.app.ui.rss.source.edit.RssSourceEditActivity
 import io.legado.app.ui.source.BaseContentSearchDialog
+import io.legado.app.ui.source.ContentSearchType
 import io.legado.app.ui.source.SourceFieldItem
 import io.legado.app.utils.GSON
 import io.legado.app.utils.share
@@ -74,6 +75,8 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
     override fun getDialogTitle() = "订阅源内容查询"
 
     override fun getSearchHint() = "输入关键词搜索所有订阅源"
+
+    override fun getContentSearchType() = ContentSearchType.RSS_SOURCE
 
     override fun loadSourceItems(allSources: Boolean, callback: (List<SourceFieldItem>) -> Unit) {
         viewModel.loadSources(allSources) { sources ->

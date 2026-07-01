@@ -101,6 +101,10 @@ abstract class BaseReadAloudService : BaseService(),
         var timeMinute: Int = 0
             private set
 
+        @JvmStatic
+        var chapterCount: Int = 0
+            private set
+
         @Volatile
         @JvmStatic
         var lastTtsProgress: Int = 0
@@ -550,6 +554,8 @@ abstract class BaseReadAloudService : BaseService(),
         pause = true
         lastTtsProgress = 0
         lastTtsChapterIndex = -1
+        timeMinute = 0
+        chapterCount = 0
         persistSessionProgress()
         activeBookUrl = null
         activeBookName = null
@@ -591,6 +597,7 @@ abstract class BaseReadAloudService : BaseService(),
             IntentAction.next -> nextChapter()
             IntentAction.addTimer -> addTimer()
             IntentAction.setTimer -> setTimer(intent.getIntExtra("minute", 0))
+            IntentAction.setTimerByChapter -> setTimerByChapter(intent.getIntExtra("chapter", 0))
             IntentAction.stop -> stopReadAloud()
         }
         return super.onStartCommand(intent, flags, startId)
@@ -726,6 +733,13 @@ abstract class BaseReadAloudService : BaseService(),
 
     private fun setTimer(minute: Int) {
         timeMinute = minute
+        chapterCount = 0 // 设置时间定时时清除章节定时
+        doDs()
+    }
+
+    private fun setTimerByChapter(chapter: Int) {
+        chapterCount = chapter
+        timeMinute = 0 // 设置章节定时时清除时间定时
         doDs()
     }
 
@@ -751,13 +765,14 @@ abstract class BaseReadAloudService : BaseService(),
             while (isActive) {
                 delay(60000)
                 if (!pause) {
-                    if (timeMinute >= 0) {
+                    // 时间定时处理
+                    if (timeMinute > 0) {
                         timeMinute--
-                    }
-                    if (timeMinute == 0) {
-                        ReadAloud.stop(this@BaseReadAloudService)
-                        postEvent(EventBus.READ_ALOUD_DS, timeMinute)
-                        break
+                        if (timeMinute == 0) {
+                            ReadAloud.stop(this@BaseReadAloudService)
+                            postEvent(EventBus.READ_ALOUD_DS, timeMinute)
+                            break
+                        }
                     }
                 }
                 postEvent(EventBus.READ_ALOUD_DS, timeMinute)
@@ -868,7 +883,10 @@ abstract class BaseReadAloudService : BaseService(),
                 R.string.read_aloud_timer,
                 timeMinute
             )
-
+            chapterCount > 0 -> getString(
+                R.string.read_aloud_timer_chapter,
+                chapterCount
+            )
             else -> getString(R.string.read_aloud_t)
         }
         nTitle += ": ${activeBookName ?: getString(R.string.read_aloud)}"
@@ -948,7 +966,10 @@ abstract class BaseReadAloudService : BaseService(),
                 R.string.read_aloud_timer,
                 timeMinute
             )
-
+            chapterCount > 0 -> getString(
+                R.string.read_aloud_timer_chapter,
+                chapterCount
+            )
             else -> getString(R.string.read_aloud_t)
         }
         nTitle += ": ${activeBookName ?: getString(R.string.read_aloud)}"
@@ -1052,6 +1073,19 @@ abstract class BaseReadAloudService : BaseService(),
         AppLog.putDebug("${ReadBook.curTextChapter?.chapter?.title} 朗读结束跳转下一章并朗读")
         resumeReadAloudInternal()
         AppLog.putDebug("${activeChapterTitle} 朗读结束跳转下一章并朗读")
+        
+        // 检查章节定时：如果设置了章节定时，每次切换到下一章时减少计数
+        if (chapterCount > 0) {
+            chapterCount--
+            postEvent(EventBus.READ_ALOUD_DS, timeMinute) // 发送事件更新UI显示
+            upReadAloudNotification()
+            if (chapterCount == 0) {
+                // 章节计数达到0，停止朗读
+                stopReadAloud()
+                return
+            }
+        }
+        
         changeChapter((sessionBook?.durChapterIndex ?: return) + 1, toLastParagraph = false)
     }
 

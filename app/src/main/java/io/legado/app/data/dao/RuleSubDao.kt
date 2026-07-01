@@ -12,6 +12,9 @@ interface RuleSubDao {
     @get:Query("select * from ruleSubs order by customOrder")
     val all: List<RuleSub>
 
+    @get:Query("select count(*) from ruleSubs")
+    val count: Int
+
     @Query("select * from ruleSubs order by customOrder")
     fun flowAll(): Flow<List<RuleSub>>
 

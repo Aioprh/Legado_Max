@@ -11,8 +11,10 @@ import android.widget.SeekBar
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.constant.EventBus
+import io.legado.app.data.appDb
 import io.legado.app.databinding.DialogReadAloudBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
@@ -25,9 +27,21 @@ import io.legado.app.utils.*
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 
-class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
+class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
+    SpeakEngineDialog.CallBack {
     private val callBack: CallBack? get() = activity as? CallBack
     private val binding by viewBinding(DialogReadAloudBinding::bind)
+    private val speakEngineSummary: String
+        get() {
+            val ttsEngine = ReadAloud.ttsEngine
+                ?: return getString(R.string.system_tts)
+            if (StringUtils.isNumeric(ttsEngine)) {
+                return appDb.httpTTSDao.getName(ttsEngine.toLong())
+                    ?: getString(R.string.system_tts)
+            }
+            return GSON.fromJsonObject<SelectItem<String>>(ttsEngine).getOrNull()?.title
+                ?: getString(R.string.system_tts)
+        }
 
     override fun onStart() {
         super.onStart()
@@ -67,6 +81,9 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
             ivStop.setColorFilter(textColor)
             ivTimer.setColorFilter(textColor)
             tvTimer.setTextColor(textColor)
+            ivSpeakEngine.setColorFilter(textColor)
+            tvSpeakEngine.setTextColor(textColor)
+            ivSpeakEngineArrow.setColorFilter(textColor)
             ivTtsSpeechReduce.setColorFilter(textColor)
             tvTtsSpeed.setTextColor(textColor)
             tvTtsSpeedValue.setTextColor(textColor)
@@ -92,6 +109,7 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
         upTtsSpeechRateEnabled(!cbTtsFollowSys.isChecked)
         upSeekTimer()
         upSkipActionState()
+        upSpeakEngineSummary()
     }
 
     private fun initEvent() = binding.run {
@@ -101,6 +119,9 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
         }
         llSetting.setOnClickListener {
             ReadAloudConfigDialog().show(childFragmentManager, "readAloudConfigDialog")
+        }
+        llSpeakEngine.setOnClickListener {
+            SpeakEngineDialog().show(childFragmentManager, "speakEngineDialog")
         }
         tvPre.setOnClickListener { ReadBook.moveToPrevChapter(upContent = true, toLast = false) }
         tvNext.setOnClickListener { ReadBook.moveToNextChapter(true) }
@@ -151,10 +172,16 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
             toastOnUi("保存设定时间成功！")
         }
         tvTimer.setOnClickListener {
-            val times = intArrayOf(0, 5, 10, 15, 30, 60, 90, 180)
-            val timeKeys = times.map { "$it 分钟" }
-            context?.selector("设定时间", timeKeys) { _, index ->
-                ReadAloud.setTimer(requireContext(), times[index])
+            // 首先让用户选择定时模式
+            val timerModes = arrayOf(
+                getString(R.string.set_timer_by_time),
+                getString(R.string.set_timer_by_chapter)
+            )
+            context?.selector(getString(R.string.set_timer), timerModes.toList()) { _, modeIndex ->
+                when (modeIndex) {
+                    0 -> showTimeTimerDialog() // 按时间定时
+                    1 -> showChapterTimerDialog() // 按章节定时
+                }
             }
         }
         //设置保存的默认值
@@ -227,11 +254,19 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
     }
 
     private fun upTimerText(timeMinute: Int) {
-        if (timeMinute < 0) {
-            binding.tvTimer.text = requireContext().getString(R.string.timer_m, 0)
+        binding.tvTimer.text = if (BaseReadAloudService.chapterCount > 0) {
+            requireContext().getString(R.string.timer_chapter, BaseReadAloudService.chapterCount)
         } else {
-            binding.tvTimer.text = requireContext().getString(R.string.timer_m, timeMinute)
+            if (timeMinute < 0) {
+                requireContext().getString(R.string.timer_m, 0)
+            } else {
+                requireContext().getString(R.string.timer_m, timeMinute)
+            }
         }
+    }
+
+    override fun upSpeakEngineSummary() {
+        binding.tvSpeakEngine.text = speakEngineSummary
     }
 
     @SuppressLint("SetTextI18n")
@@ -245,6 +280,77 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
             ReadAloud.pause(requireContext())
             ReadAloud.resume(requireContext())
         }
+    }
+
+    private fun showTimeTimerDialog() {
+        val times = intArrayOf(0, 5, 10, 15, 30, 60, 90, 180)
+        val timeKeys = times.map { 
+            if (it == 0) getString(R.string.cancel) else getString(R.string.timer_m, it)
+        }
+        context?.selector(getString(R.string.set_timer_by_time), timeKeys) { _, index ->
+            ReadAloud.setTimer(requireContext(), times[index])
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun showChapterTimerDialog() {
+        // 获取当前书籍的章节信息
+        val book = ReadBook.book
+        if (book == null) {
+            toastOnUi("无法获取书籍信息")
+            return
+        }
+        
+        // 计算剩余章节数：总章节数 - 当前章节索引
+        val currentChapterIndex = book.durChapterIndex
+        val totalChapters = appDb.bookChapterDao.getChapterCount(book.bookUrl)
+        val remainingChapters = totalChapters - currentChapterIndex
+        
+        // 显示输入对话框
+        val inputEdit = android.widget.EditText(requireContext()).apply {
+            hint = "剩余 $remainingChapters 章"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            setSingleLine()
+            setPadding(40, 20, 40, 20)
+        }
+        
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.set_timer_by_chapter)
+            .setMessage("当前章节: ${currentChapterIndex + 1}/$totalChapters\n剩余: $remainingChapters 章")
+            .setView(inputEdit)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                validateAndSetChapterTimer(inputEdit.text.toString(), remainingChapters)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+    
+    private fun validateAndSetChapterTimer(inputText: String, remainingChapters: Int) {
+        if (inputText.isEmpty()) {
+            toastOnUi("请输入章节数")
+            return
+        }
+        
+        val chapterCount = inputText.toIntOrNull()
+        if (chapterCount == null || chapterCount < 0) {
+            toastOnUi("请输入有效的章节数")
+            return
+        }
+        
+        if (chapterCount == 0) {
+            // 取消定时
+            ReadAloud.setTimerByChapter(requireContext(), 0)
+            toastOnUi("已取消章节定时")
+            return
+        }
+        
+        if (chapterCount > remainingChapters) {
+            toastOnUi("剩余章节不足（剩余 $remainingChapters 章）")
+            return
+        }
+        
+        ReadAloud.setTimerByChapter(requireContext(), chapterCount)
+        toastOnUi("将在朗读 $chapterCount 章后停止")
     }
 
     override fun observeLiveBus() {

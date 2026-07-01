@@ -17,6 +17,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -25,8 +26,16 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.databinding.DialogRuleSearchBinding
 import io.legado.app.databinding.ItemRuleSearchHeaderBinding
 import io.legado.app.databinding.ItemRuleSearchResultBinding
+import io.legado.app.lib.dialogs.SelectItem
+import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.accentColor
+import io.legado.app.ui.book.read.config.SpeakEngineContentSearchDialog
+import io.legado.app.ui.book.source.manage.SourceContentSearchDialog
+import io.legado.app.ui.book.toc.rule.TxtTocRuleContentSearchDialog
+import io.legado.app.ui.dict.rule.DictRuleContentSearchDialog
+import io.legado.app.ui.replace.ReplaceRuleContentSearchDialog
+import io.legado.app.ui.rss.source.manage.RssSourceContentSearchDialog
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.gone
@@ -90,6 +99,8 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
 
     abstract fun exportSources(sourceUrls: List<String>)
 
+    open fun getContentSearchType(): ContentSearchType? = null
+
     // ========== 生命周期 ==========
 
     override fun onStart() {
@@ -101,6 +112,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         binding.toolBar.setBackgroundColor(primaryColor)
         binding.toolBar.title = getDialogTitle()
         binding.toolBar.inflateMenu(R.menu.dialog_help_search)
+        binding.toolBar.menu.findItem(R.id.menu_close)?.setTitle(R.string.switch_rule)
         binding.toolBar.menu.applyTint(requireContext())
         binding.toolBar.setOnMenuItemClickListener { menuItem ->
             when (menuItem.itemId) {
@@ -121,7 +133,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
                     true
                 }
                 R.id.menu_close -> {
-                    dismissAllowingStateLoss()
+                    showContentSearchSwitcher()
                     true
                 }
                 else -> false
@@ -139,6 +151,21 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
 
         setupSearchInput()
         loadSources()
+    }
+
+    private fun showContentSearchSwitcher() {
+        val currentType = getContentSearchType()
+        val items = ContentSearchType.entries.map { type ->
+            SelectItem(if (type == currentType) "${type.title} ✓" else type.title, type)
+        }
+        requireContext().selector(R.string.switch_rule, items) { dialog, item, _ ->
+            dialog.dismiss()
+            val targetType = item.value
+            if (targetType == currentType) return@selector
+            val fragmentManager = parentFragmentManager
+            dismissAllowingStateLoss()
+            targetType.createDialog().show(fragmentManager, targetType.tag)
+        }
     }
 
     // ========== Toggle 栏 ==========
@@ -1021,6 +1048,21 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
 
         override fun getItemCount() = history.size
     }
+}
+
+enum class ContentSearchType(
+    val title: String,
+    val tag: String,
+    private val dialogFactory: () -> BaseContentSearchDialog
+) {
+    BOOK_SOURCE("书源内容查询", "SourceContentSearchDialog", { SourceContentSearchDialog() }),
+    RSS_SOURCE("订阅源内容查询", "RssSourceContentSearchDialog", { RssSourceContentSearchDialog() }),
+    TXT_TOC_RULE("TXT目录规则内容查询", "TxtTocRuleContentSearchDialog", { TxtTocRuleContentSearchDialog() }),
+    REPLACE_RULE("替换净化规则内容查询", "ReplaceRuleContentSearchDialog", { ReplaceRuleContentSearchDialog() }),
+    DICT_RULE("字典规则内容查询", "DictRuleContentSearchDialog", { DictRuleContentSearchDialog() }),
+    SPEAK_ENGINE("朗读引擎规则内容查询", "SpeakEngineContentSearchDialog", { SpeakEngineContentSearchDialog() });
+
+    fun createDialog(): DialogFragment = dialogFactory()
 }
 
 /**

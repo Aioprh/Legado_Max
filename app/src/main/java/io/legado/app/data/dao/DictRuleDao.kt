@@ -13,6 +13,9 @@ interface DictRuleDao {
     @get:Query("select * from dictRules order by sortNumber")
     val all: List<DictRule>
 
+    @get:Query("select count(*) from dictRules")
+    val count: Int
+
     @get:Query("select * from dictRules where enabled = 1 order by sortNumber")
     val enabled: List<DictRule>
 
