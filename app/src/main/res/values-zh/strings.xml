@@ -1957,6 +1957,8 @@
     <string name="explore_block_rule_scope_intro">简介</string>
     <string name="explore_block_rule_scope_word_count">字数</string>
     <string name="explore_block_rule_scope_all">全部</string>
+    <string name="show_category_tab">显示分类Tab</string>
+    <string name="explore_preload">预加载</string>
     <string name="explore_block_rule_source_scope">作用的书源</string>
     <string name="explore_block_rule_source_scope_hint">书源URL，分号分隔，空=所有书源</string>
     <string name="explore_block_rule_exclude_scope">排除的书源</string>

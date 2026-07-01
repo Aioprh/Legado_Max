@@ -4,9 +4,18 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.view.GestureDetector
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
+import android.content.Context
+import android.content.res.Configuration
+import android.view.Gravity
+import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.core.os.bundleOf
 import androidx.recyclerview.widget.GridLayoutManager
@@ -26,6 +35,10 @@ import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.recycler.LoadMoreView
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.applyNavigationBarPadding
+import io.legado.app.utils.dpToPx
+import io.legado.app.utils.getCompatColor
+import io.legado.app.utils.gone
+import io.legado.app.utils.visible
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.putPrefBoolean
@@ -53,6 +66,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import io.legado.app.data.entities.rule.ExploreKind
+import io.legado.app.lib.theme.accentColor
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 
 /**
  * 发现列表
@@ -80,6 +97,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     private var menuPage: MenuItem? = null
     private var menuSwitchLayout: MenuItem? = null
     private var menuSelectColumn: MenuItem? = null
+    private var menuShowCategoryTab: MenuItem? = null
+    private var menuPreload: MenuItem? = null
     /** 当前书源 URL，用于按书源隔离布局配置 */
     private val sourceUrl: String by lazy { intent.getStringExtra("sourceUrl") ?: "" }
     /** 是否显示屏蔽进度指示器 */
@@ -116,6 +135,32 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         get() = getPrefInt("${PreferKey.exploreShowColumnWaterfall}_${sourceUrl}", 2)
         set(value) = putPrefInt("${PreferKey.exploreShowColumnWaterfall}_${sourceUrl}", value)
 
+    /** 是否显示分类Tab，按书源持久化 */
+    private var showCategoryTab: Boolean
+        get() = getPrefBoolean("${PreferKey.exploreShowCategoryTab}_${sourceUrl}", false)
+        set(value) = putPrefBoolean("${PreferKey.exploreShowCategoryTab}_${sourceUrl}", value)
+
+    /** 预加载模式，按书源持久化：0=仅当前分类，1=当前分类+相邻分类 */
+    private var preloadMode: Int
+        get() = getPrefInt("${PreferKey.exploreShowPreload}_${sourceUrl}", 0)
+        set(value) = putPrefInt("${PreferKey.exploreShowPreload}_${sourceUrl}", value)
+
+    /** 分类Tab列表 */
+    private val exploreKinds = mutableListOf<ExploreKind>()
+    private val tabRows = mutableListOf<LinearLayout>()
+    private val tabScrollViews = mutableListOf<HorizontalScrollView>()
+    private var maxTagsPerRow = 10
+    private val orientation by lazy { resources.configuration.orientation }
+    /** 当前选中的分类索引 */
+    private var currentCategoryIndex by mutableIntStateOf(0)
+    /** 手势检测器，用于左右滑动切换分类 */
+    private lateinit var gestureDetector: GestureDetector
+    /** 最小滑动距离阈值（dp） */
+    private val minSwipeDistance = 100
+    /** 每个分类的滚动位置缓存（分类URL -> 滚动位置和偏移量） */
+    private data class ScrollState(val position: Int, val offset: Int)
+    private val scrollPositionCache = mutableMapOf<String, ScrollState>()
+
     /**
      * 布局模式，由"切换布局"菜单轮换，按书源持久化
      * 0=列表, 1=网格, 2=瀑布流
@@ -127,12 +172,25 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.titleBar.title = intent.getStringExtra("exploreName")
         initRecyclerView()
+        // 初始化手势检测器
+        initGestureDetector()
         viewModel.booksData.observe(this) { upData(it) }
         viewModel.addBooksData.observe(this) { upDataTop(it) }
         viewModel.blockRulesRefreshData.observe(this) { refreshDataAfterBlock(it) }
         viewModel.blockedCountData.observe(this) { count ->
             blockedCount = count
             updateBlockProgressChip()
+        }
+        // 观察分类列表变化，更新Tab显示
+        viewModel.exploreKindsData.observe(this) { kinds ->
+            exploreKinds.clear()
+            exploreKinds.addAll(kinds)
+            if (showCategoryTab && exploreKinds.isNotEmpty()) {
+                setupMultiLineTabs()
+                binding.tabsContainer.visible()
+            } else {
+                binding.tabsContainer.gone()
+            }
         }
         viewModel.initData(intent)
         viewModel.errorLiveData.observe(this) {
@@ -161,6 +219,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         menuPage = menu.findItem(R.id.menu_page)
         menuSwitchLayout = menu.findItem(R.id.menu_switch_layout)
         menuSelectColumn = menu.findItem(R.id.menu_select_column)
+        menuShowCategoryTab = menu.findItem(R.id.menu_show_category_tab)
+        menuPreload = menu.findItem(R.id.menu_preload)
         if (layoutMode != LAYOUT_LIST) {
             menuSelectColumn?.isVisible = true
             val count = if (layoutMode == LAYOUT_WATERFALL) columnCountWaterfall else columnCountGrid
@@ -170,6 +230,10 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             applyLayoutManager(count)
         }
         updateSwitchLayoutTitle()
+        // 初始化分类Tab和预加载菜单状态
+        menuShowCategoryTab?.isChecked = showCategoryTab
+        menuPreload?.isVisible = showCategoryTab
+        menuPreload?.isChecked = preloadMode == 1
         return super.onCompatCreateOptionsMenu(menu)
     }
 
@@ -221,6 +285,21 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             }
             R.id.menu_select_column -> {
                 handleSelectColumn()
+            }
+            R.id.menu_show_category_tab -> {
+                showCategoryTab = !showCategoryTab
+                item.isChecked = showCategoryTab
+                menuPreload?.isVisible = showCategoryTab
+                if (showCategoryTab && exploreKinds.isNotEmpty()) {
+                    setupMultiLineTabs()
+                    binding.tabsContainer.visible()
+                } else {
+                    binding.tabsContainer.gone()
+                }
+            }
+            R.id.menu_preload -> {
+                preloadMode = if (preloadMode == 0) 1 else 0
+                item.isChecked = preloadMode == 1
             }
         }
         return super.onCompatOptionsItemSelected(item)
@@ -480,8 +559,17 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             }
         }
         binding.recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+                // 在滚动停止时保存位置，确保保存最终位置
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    saveCurrentScrollPosition()
+                }
+            }
+            
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
+                // 检查是否滚动到底部，触发加载更多
                 if (!recyclerView.canScrollVertically(1)) {
                     scrollToBottom()
                 } else if (!recyclerView.canScrollVertically(-1) && dy < 0) {
@@ -489,6 +577,174 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 }
             }
         })
+    }
+
+    /**
+     * 保存当前分类的滚动位置（包含位置和偏移量）
+     */
+    private fun saveCurrentScrollPosition() {
+        if (!showCategoryTab || exploreKinds.isEmpty()) return
+        val currentKind = exploreKinds.getOrNull(currentCategoryIndex)
+        if (currentKind != null && currentKind.url != null) {
+            val scrollState = getCurrentScrollState()
+            scrollPositionCache[currentKind.url] = scrollState
+        }
+    }
+
+    /**
+     * 获取当前滚动状态（位置和偏移量）
+     */
+    private fun getCurrentScrollState(): ScrollState {
+        val layoutManager = binding.recyclerView.layoutManager ?: return ScrollState(0, 0)
+        return when (layoutManager) {
+            is StaggeredGridLayoutManager -> {
+                val positions = IntArray(layoutManager.spanCount)
+                layoutManager.findFirstVisibleItemPositions(positions)
+                val position = positions.minOrNull() ?: 0
+                // 获取第一个可见项的视图以计算偏移量
+                val firstView = layoutManager.findViewByPosition(position)
+                val offset = if (firstView != null) {
+                    // 计算视图顶部相对于RecyclerView顶部的偏移量
+                    firstView.top - binding.recyclerView.paddingTop
+                } else 0
+                ScrollState(position, offset)
+            }
+            is LinearLayoutManager -> {
+                val position = layoutManager.findFirstVisibleItemPosition()
+                // 获取第一个可见项的视图以计算偏移量
+                val firstView = layoutManager.findViewByPosition(position)
+                val offset = if (firstView != null) {
+                    // 计算视图顶部相对于RecyclerView顶部的偏移量
+                    firstView.top - binding.recyclerView.paddingTop
+                } else 0
+                ScrollState(position, offset)
+            }
+            else -> ScrollState(0, 0)
+        }
+    }
+
+    /**
+     * 恢复指定分类的滚动位置（使用位置和偏移量精确恢复）
+     */
+    private fun restoreScrollPosition(categoryUrl: String?) {
+        if (categoryUrl == null) {
+            binding.recyclerView.scrollToPosition(0)
+            return
+        }
+        val savedState = scrollPositionCache[categoryUrl]
+        if (savedState != null && savedState.position > 0 && savedState.position < adapter.itemCount) {
+            val layoutManager = binding.recyclerView.layoutManager
+            // 使用 scrollToPositionWithOffset 精确恢复位置
+            when (layoutManager) {
+                is StaggeredGridLayoutManager -> {
+                    layoutManager.scrollToPositionWithOffset(savedState.position, savedState.offset)
+                }
+                is LinearLayoutManager -> {
+                    layoutManager.scrollToPositionWithOffset(savedState.position, savedState.offset)
+                }
+                else -> {
+                    binding.recyclerView.scrollToPosition(savedState.position)
+                }
+            }
+        } else {
+            binding.recyclerView.scrollToPosition(0)
+        }
+    }
+
+    /**
+     * 初始化手势检测器，用于左右滑动切换分类
+     */
+    private fun initGestureDetector() {
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(
+                e1: MotionEvent?,
+                e2: MotionEvent,
+                velocityX: Float,
+                velocityY: Float
+            ): Boolean {
+                // 只有在显示分类Tab时才支持手势切换
+                if (!showCategoryTab || exploreKinds.isEmpty()) return false
+                
+                val dx = e2.x - (e1?.x ?: 0f)
+                val dy = e2.y - (e1?.y ?: 0f)
+                
+                // 判断是否为水平滑动（水平距离大于垂直距离）
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > minSwipeDistance.dpToPx()) {
+                    // 判断滑动方向
+                    if (dx > 0) {
+                        // 向右滑动，切换到前一个分类
+                        switchToPreviousCategory()
+                        return true
+                    } else {
+                        // 向左滑动，切换到后一个分类
+                        switchToNextCategory()
+                        return true
+                    }
+                }
+                return false
+            }
+        })
+        
+        // 为RecyclerView添加触摸拦截
+        binding.recyclerView.addOnItemTouchListener(object : RecyclerView.SimpleOnItemTouchListener() {
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                // 将触摸事件传递给手势检测器
+                gestureDetector.onTouchEvent(e)
+                return false
+            }
+        })
+    }
+
+    /**
+     * 切换到前一个分类
+     */
+    private fun switchToPreviousCategory() {
+        if (currentCategoryIndex > 0) {
+            // 保存当前分类的滚动位置
+            saveCurrentScrollPosition()
+            val newIndex = currentCategoryIndex - 1
+            val kind = exploreKinds[newIndex]
+            val url = kind.url ?: return
+            // 模拟Tab点击
+            currentCategoryIndex = newIndex
+            updateTabSelection(newIndex)
+            adapter.clearItems()
+            loadMoreView.hasMore()
+            loadMoreView.startLoad()
+            viewModel.switchCategory(
+                newUrl = url,
+                exploreName = kind.title,
+                preload = preloadMode == 1,
+                allKinds = exploreKinds
+            )
+            binding.titleBar.title = kind.title
+        }
+    }
+
+    /**
+     * 切换到后一个分类
+     */
+    private fun switchToNextCategory() {
+        if (currentCategoryIndex < exploreKinds.size - 1) {
+            // 保存当前分类的滚动位置
+            saveCurrentScrollPosition()
+            val newIndex = currentCategoryIndex + 1
+            val kind = exploreKinds[newIndex]
+            val url = kind.url ?: return
+            // 模拟Tab点击
+            currentCategoryIndex = newIndex
+            updateTabSelection(newIndex)
+            adapter.clearItems()
+            loadMoreView.hasMore()
+            loadMoreView.startLoad()
+            viewModel.switchCategory(
+                newUrl = url,
+                exploreName = kind.title,
+                preload = preloadMode == 1,
+                allKinds = exploreKinds
+            )
+            binding.titleBar.title = kind.title
+        }
     }
 
     /**
@@ -544,6 +800,13 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             val oldCount = adapter.getActualItemCount()
             if (oldCount == 0) {
                 adapter.setItems(books)
+                // 数据加载完成后，延迟恢复滚动位置（等待布局完成）
+                if (showCategoryTab && exploreKinds.isNotEmpty()) {
+                    val currentKind = exploreKinds.getOrNull(currentCategoryIndex)
+                    binding.recyclerView.post {
+                        restoreScrollPosition(currentKind?.url)
+                    }
+                }
             } else {
                 val newItems = books.subList(oldCount, books.size)
                 adapter.addItems(newItems)
@@ -607,6 +870,185 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         if (requestCode == REQUEST_CODE_ADD_ALL_TO_SHELF) {
             toastOnUi(getString(R.string.adding_books, viewModel.booksCount))
             viewModel.addAllToShelf(groupId)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // 清除所有缓存，避免内存泄漏
+        scrollPositionCache.clear()
+        viewModel.clearPreloadCache()
+    }
+
+    /**
+     * 设置多行Tab布局（参考订阅源界面的实现）
+     * 最多3行，横屏最多2行，采用订阅源界面的视觉样式
+     */
+    private fun setupMultiLineTabs() {
+        val tabsContainer = binding.tabsContainer
+        tabsContainer.removeAllViews()
+        tabRows.clear()
+        tabScrollViews.clear()
+        if (exploreKinds.isEmpty()) {
+            tabsContainer.gone()
+            return
+        }
+        // 动态计算每行标签数量，最多3行
+        var rowCount = when {
+            exploreKinds.size <= 10 -> 1
+            exploreKinds.size <= 20 -> 2
+            else -> 3
+        }
+        if (rowCount > 1 && orientation == Configuration.ORIENTATION_LANDSCAPE) rowCount-- // 横屏最多2行
+        maxTagsPerRow = (exploreKinds.size + rowCount - 1) / rowCount
+        exploreKinds.chunked(maxTagsPerRow).forEachIndexed { rowIndex, rowItems ->
+            // 创建横向滚动容器
+            val scrollView = HorizontalScrollView(this).apply {
+                overScrollMode = View.OVER_SCROLL_NEVER
+                isHorizontalScrollBarEnabled = false
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    // 只有非最后一行才有底部间距
+                    bottomMargin = if (rowIndex < rowCount - 1) 2.dpToPx() else 0
+                }
+                tabScrollViews.add(this)
+            }
+            // 创建行容器
+            val rowLayout = LinearLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+            }
+            // 添加标签到行
+            rowItems.forEachIndexed { indexInRow, kind ->
+                val globalIndex = rowIndex * maxTagsPerRow + indexInRow
+                val tabView = createTabView(kind.title, globalIndex, kind.url ?: "")
+                rowLayout.addView(tabView)
+            }
+            scrollView.addView(rowLayout)
+            tabsContainer.addView(scrollView)
+            tabRows.add(rowLayout)
+        }
+        // 初始选中状态：找到当前URL对应的分类索引
+        val currentUrl = intent.getStringExtra("exploreUrl") ?: ""
+        currentCategoryIndex = exploreKinds.indexOfFirst { it.url == currentUrl }.coerceAtLeast(0)
+        updateTabSelection(currentCategoryIndex)
+    }
+
+    /**
+     * 创建单个Tab视图
+     */
+    private fun createTabView(title: String, position: Int, url: String): TextView {
+        return TextView(this).apply {
+            text = title
+            gravity = Gravity.CENTER
+            textSize = 14f
+            background = createTabBackground(accentColor, context)
+            setPadding(12.dpToPx(), 6.dpToPx(), 12.dpToPx(), 6.dpToPx())
+            tag = position
+            setTextColor(context.getCompatColor(R.color.primaryText))
+            // 宽度自适应内容
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginEnd = 6.dpToPx()
+            }
+            setOnClickListener {
+                setTextColor(context.getCompatColor(R.color.secondaryText)) // 点击变色
+                if (position != currentCategoryIndex) {
+                    // 保存当前分类的滚动位置
+                    saveCurrentScrollPosition()
+                    currentCategoryIndex = position
+                    updateTabSelection(position)
+                    // 切换分类：清空当前列表，重新加载新分类数据
+                    adapter.clearItems()
+                    // 重置加载状态，确保自动加载功能正常
+                    loadMoreView.hasMore()
+                    loadMoreView.startLoad()
+                    // 传入预加载参数和所有分类列表
+                    viewModel.switchCategory(
+                        newUrl = url,
+                        exploreName = title,
+                        preload = preloadMode == 1,
+                        allKinds = exploreKinds
+                    )
+                    binding.titleBar.title = title
+                }
+            }
+        }
+    }
+
+    /**
+     * 创建Tab背景（参考订阅源界面的视觉样式）
+     */
+    private fun createTabBackground(accentColor: Int, context: Context): android.graphics.drawable.Drawable {
+        val radius = 16f.dpToPx()
+        val strokeWidth = 1f.dpToPx()
+
+        val selectedDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setStroke(strokeWidth.toInt(), accentColor)
+        }
+
+        val defaultDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+        }
+
+        return StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_selected), selectedDrawable)
+            addState(intArrayOf(), defaultDrawable)
+        }
+    }
+
+    /**
+     * 更新选中状态
+     */
+    private fun updateTabSelection(position: Int) {
+        if (!isDestroyed && !isFinishing) {
+            tabRows.forEachIndexed { rowIndex, row ->
+                for (i in 0 until row.childCount) {
+                    val tabIndex = rowIndex * maxTagsPerRow + i
+                    val tabView = row.getChildAt(i) as? TextView
+                    tabView?.isSelected = tabIndex == position
+                }
+            }
+            // 确保选中标签在视图内
+            ensureTabVisible(position)
+        }
+    }
+
+    /**
+     * 确保选中标签在视图内可见
+     */
+    private fun ensureTabVisible(position: Int) {
+        if (position < 0 || position >= exploreKinds.size) return
+        val rowIndex = position / maxTagsPerRow
+        if (rowIndex >= tabScrollViews.size) return
+        val scrollView = tabScrollViews[rowIndex]
+        val rowLayout = tabRows[rowIndex]
+        val indexInRow = position % maxTagsPerRow
+        if (indexInRow >= rowLayout.childCount) return
+
+        val tabView = rowLayout.getChildAt(indexInRow)
+        scrollView.post {
+            val tabLeft = tabView.left
+            val tabRight = tabView.right
+            val scrollViewWidth = scrollView.width
+            val padding = 12.dpToPx()
+            when {
+                tabLeft - padding < scrollView.scrollX ->
+                    scrollView.smoothScrollTo(tabLeft - padding, 0)
+                tabRight + padding > scrollView.scrollX + scrollViewWidth ->
+                    scrollView.smoothScrollTo(tabRight - scrollViewWidth + padding, 0)
+            }
         }
     }
 }

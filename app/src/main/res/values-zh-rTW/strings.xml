@@ -1560,6 +1560,8 @@
     <string name="explore_block_rule_scope_intro">簡介</string>
     <string name="explore_block_rule_scope_word_count">字數</string>
     <string name="explore_block_rule_scope_all">全部</string>
+    <string name="show_category_tab">顯示分類Tab</string>
+    <string name="explore_preload">預載入</string>
     <string name="explore_block_rule_source_scope">作用的書源</string>
     <string name="explore_block_rule_source_scope_hint">書源URL，分號分隔，空=所有書源</string>
     <string name="explore_block_rule_exclude_scope">排除的書源</string>

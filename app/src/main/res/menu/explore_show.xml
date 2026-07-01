@@ -32,4 +32,19 @@
         android:title="@string/explore_block_rule"
         app:showAsAction="never" />
 
+    <!-- 显示分类Tab：在发现详情页显示分类Tab导航栏 -->
+    <item
+        android:id="@+id/menu_show_category_tab"
+        android:title="@string/show_category_tab"
+        android:checkable="true"
+        app:showAsAction="never" />
+
+    <!-- 预加载：预加载相邻分类内容 -->
+    <item
+        android:id="@+id/menu_preload"
+        android:title="@string/explore_preload"
+        android:checkable="true"
+        android:visible="false"
+        app:showAsAction="never" />
+
 </menu>

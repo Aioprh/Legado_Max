@@ -1971,6 +1971,8 @@
     <string name="explore_block_rule_scope_intro">Intro</string>
     <string name="explore_block_rule_scope_word_count">Word Count</string>
     <string name="explore_block_rule_scope_all">All</string>
+    <string name="show_category_tab">Show Category Tab</string>
+    <string name="explore_preload">Preload</string>
     <string name="explore_block_rule_source_scope">Apply to sources</string>
     <string name="explore_block_rule_source_scope_hint">Source URL, semicolon separated, empty for all</string>
     <string name="explore_block_rule_exclude_scope">Exclude sources</string>

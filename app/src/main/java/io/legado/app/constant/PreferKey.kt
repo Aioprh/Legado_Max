@@ -302,4 +302,9 @@ object PreferKey {
 
     /** 书架状态图标样式：0=新版（图标），1=经典（绿点） */
     const val bookshelfIconStyle = "bookshelfIconStyle"
+
+    /** 发现详情页显示分类Tab开关 */
+    const val exploreShowCategoryTab = "exploreShowCategoryTab"
+    /** 发现详情页预加载模式：0=仅当前分类，1=当前分类+相邻分类 */
+    const val exploreShowPreload = "exploreShowPreload"
 }
