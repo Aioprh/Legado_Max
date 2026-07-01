@@ -14,6 +14,7 @@ import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.databinding.DialogReadAloudBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
@@ -26,9 +27,21 @@ import io.legado.app.utils.*
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
 
-class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
+class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
+    SpeakEngineDialog.CallBack {
     private val callBack: CallBack? get() = activity as? CallBack
     private val binding by viewBinding(DialogReadAloudBinding::bind)
+    private val speakEngineSummary: String
+        get() {
+            val ttsEngine = ReadAloud.ttsEngine
+                ?: return getString(R.string.system_tts)
+            if (StringUtils.isNumeric(ttsEngine)) {
+                return appDb.httpTTSDao.getName(ttsEngine.toLong())
+                    ?: getString(R.string.system_tts)
+            }
+            return GSON.fromJsonObject<SelectItem<String>>(ttsEngine).getOrNull()?.title
+                ?: getString(R.string.system_tts)
+        }
 
     override fun onStart() {
         super.onStart()
@@ -68,6 +81,9 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
             ivStop.setColorFilter(textColor)
             ivTimer.setColorFilter(textColor)
             tvTimer.setTextColor(textColor)
+            ivSpeakEngine.setColorFilter(textColor)
+            tvSpeakEngine.setTextColor(textColor)
+            ivSpeakEngineArrow.setColorFilter(textColor)
             ivTtsSpeechReduce.setColorFilter(textColor)
             tvTtsSpeed.setTextColor(textColor)
             tvTtsSpeedValue.setTextColor(textColor)
@@ -93,6 +109,7 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
         upTtsSpeechRateEnabled(!cbTtsFollowSys.isChecked)
         upSeekTimer()
         upSkipActionState()
+        upSpeakEngineSummary()
     }
 
     private fun initEvent() = binding.run {
@@ -102,6 +119,9 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
         }
         llSetting.setOnClickListener {
             ReadAloudConfigDialog().show(childFragmentManager, "readAloudConfigDialog")
+        }
+        llSpeakEngine.setOnClickListener {
+            SpeakEngineDialog().show(childFragmentManager, "speakEngineDialog")
         }
         tvPre.setOnClickListener { ReadBook.moveToPrevChapter(upContent = true, toLast = false) }
         tvNext.setOnClickListener { ReadBook.moveToNextChapter(true) }
@@ -243,6 +263,10 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud) {
                 requireContext().getString(R.string.timer_m, timeMinute)
             }
         }
+    }
+
+    override fun upSpeakEngineSummary() {
+        binding.tvSpeakEngine.text = speakEngineSummary
     }
 
     @SuppressLint("SetTextI18n")

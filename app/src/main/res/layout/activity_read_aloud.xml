@@ -70,6 +70,46 @@
 
             </LinearLayout>
 
+            <LinearLayout
+                android:id="@+id/ll_speak_engine"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="14dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp">
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/iv_speak_engine"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@string/speak_engine"
+                    android:src="@drawable/ic_volume_up" />
+
+                <TextView
+                    android:id="@+id/tv_speak_engine"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    tools:text="系统 TTS" />
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/iv_speak_engine_arrow"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:contentDescription="@string/speak_engine"
+                    android:src="@drawable/ic_arrow_drop_down" />
+
+            </LinearLayout>
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
