@@ -19,6 +19,7 @@ import io.legado.app.R
 import io.legado.app.base.BaseActivity
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.Status
+import io.legado.app.data.appDb
 import io.legado.app.databinding.ActivityReadAloudBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
@@ -36,6 +37,7 @@ import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -83,6 +85,10 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         seekTimer.progress = if (BaseReadAloudService.timeMinute > 0) BaseReadAloudService.timeMinute else AppConfig.ttsTimer
         updateSpeedText(AppConfig.ttsSpeechRate)
         updateTimerText(BaseReadAloudService.timeMinute)
+        // 如果设置了章节定时，禁用时间滑块
+        if (BaseReadAloudService.chapterCount > 0) {
+            seekTimer.isEnabled = false
+        }
         updatePlayState()
         updateSkipActionState()
     }
@@ -258,10 +264,86 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     }
 
     private fun showTimerDialog() {
+        // 首先让用户选择定时模式
+        val timerModes = arrayOf(
+            getString(R.string.set_timer_by_time),
+            getString(R.string.set_timer_by_chapter)
+        )
+        selector(getString(R.string.set_timer), timerModes.toList()) { _, modeIndex ->
+            when (modeIndex) {
+                0 -> showTimeTimerDialog() // 按时间定时
+                1 -> showChapterTimerDialog() // 按章节定时
+            }
+        }
+    }
+
+    private fun showTimeTimerDialog() {
         val times = intArrayOf(0, 5, 10, 15, 30, 60, 90, 180)
-        selector(getString(R.string.set_timer), times.map { "$it min" }) { _, index ->
+        selector(getString(R.string.set_timer_by_time), times.map { 
+            if (it == 0) getString(R.string.cancel) else getString(R.string.timer_m, it)
+        }) { _, index ->
             ReadAloud.setTimer(this@ReadAloudActivity, times[index])
         }
+    }
+
+    private fun showChapterTimerDialog() {
+        // 获取当前书籍的章节信息
+        val book = ReadBook.book
+        if (book == null) {
+            toastOnUi("无法获取书籍信息")
+            return
+        }
+        
+        // 计算剩余章节数：总章节数 - 当前章节索引
+        val currentChapterIndex = book.durChapterIndex
+        val totalChapters = appDb.bookChapterDao.getChapterCount(book.bookUrl)
+        val remainingChapters = totalChapters - currentChapterIndex
+        
+        // 显示输入对话框
+        val inputEdit = android.widget.EditText(this).apply {
+            hint = "剩余 $remainingChapters 章"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            setSingleLine()
+            setPadding(40, 20, 40, 20)
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle(R.string.set_timer_by_chapter)
+            .setMessage("当前章节: ${currentChapterIndex + 1}/$totalChapters\n剩余: $remainingChapters 章")
+            .setView(inputEdit)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                validateAndSetChapterTimer(inputEdit.text.toString(), remainingChapters)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+    
+    private fun validateAndSetChapterTimer(inputText: String, remainingChapters: Int) {
+        if (inputText.isEmpty()) {
+            toastOnUi("请输入章节数")
+            return
+        }
+        
+        val chapterCount = inputText.toIntOrNull()
+        if (chapterCount == null || chapterCount < 0) {
+            toastOnUi("请输入有效的章节数")
+            return
+        }
+        
+        if (chapterCount == 0) {
+            // 取消定时
+            ReadAloud.setTimerByChapter(this, 0)
+            toastOnUi("已取消章节定时")
+            return
+        }
+        
+        if (chapterCount > remainingChapters) {
+            toastOnUi("剩余章节不足（剩余 $remainingChapters 章）")
+            return
+        }
+        
+        ReadAloud.setTimerByChapter(this, chapterCount)
+        toastOnUi("将在朗读 $chapterCount 章后停止")
     }
 
     @SuppressLint("SetTextI18n")
@@ -270,7 +352,11 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     }
 
     private fun updateTimerText(value: Int) {
-        binding.tvTimer.text = getString(R.string.timer_m, if (value < 0) 0 else value)
+        binding.tvTimer.text = if (BaseReadAloudService.chapterCount > 0) {
+            getString(R.string.timer_chapter, BaseReadAloudService.chapterCount)
+        } else {
+            getString(R.string.timer_m, if (value < 0) 0 else value)
+        }
     }
 
     private fun updatePlayState() {
@@ -305,6 +391,8 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         observeEvent<Int>(EventBus.READ_ALOUD_DS) {
             binding.seekTimer.progress = it
             updateTimerText(it)
+            // 根据定时模式启用/禁用时间滑块
+            binding.seekTimer.isEnabled = BaseReadAloudService.chapterCount == 0
         }
         observeEvent<Int>(EventBus.TTS_PROGRESS) {
             if (BaseReadAloudService.shouldIgnoreProgressSync(
