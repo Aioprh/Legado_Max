@@ -251,6 +251,7 @@ class ReplaceRuleActivity : VMBaseActivity<ActivityReplaceRuleBinding, ReplaceRu
             }
 
             R.id.menu_import_qr -> qrCodeResult.launch()
+            R.id.menu_content_query -> showDialogFragment(ReplaceRuleContentSearchDialog())
             R.id.menu_help -> showHelp("replaceRuleHelp")
             R.id.menu_group_null -> {
                 searchView.setQuery(getString(R.string.no_group), true)
