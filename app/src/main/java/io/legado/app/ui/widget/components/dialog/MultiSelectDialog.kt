@@ -1,5 +1,6 @@
 package io.legado.app.ui.widget.components.dialog
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,6 +10,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -49,7 +52,7 @@ data class MultiSelectGroup(
  * - 全选/全不选快捷按钮
  * - 主题适配
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MultiSelectDialogContent(
     title: String,                      // 对话框标题
@@ -82,125 +85,146 @@ fun MultiSelectDialogContent(
             dismissOnClickOutside = true
         )
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-            shape = MaterialTheme.shapes.large,
-            color = cardColor
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .heightIn(max = maxHeight * 0.92f),
+                shape = MaterialTheme.shapes.large,
+                color = cardColor
             ) {
-                // 标题栏
-                TopAppBar(
-                    title = {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // 标题栏
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(topBarColor)
+                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                    ) {
                         Text(
                             text = title,
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
-                    },
-                    actions = {
-                        // 右侧显示已选数量
+                        if (!description.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = description,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "已选 ${selectedItems.size}/${groups.sumOf { it.items.size }}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(end = 16.dp)
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = topBarColor,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface
-                    )
-                )
-                
-                // 项目列表
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .padding(vertical = 8.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    // 分组展示
-                    groups.forEach { group ->
-                        // 分组标题
-                        item {
-                            GroupHeader(
-                                groupName = group.name,
-                                iconEmoji = group.iconEmoji
-                            )
-                        }
-                        
-                        // 分组内的项目
-                        items(group.items, key = { it.key }) { item ->
-                            MultiSelectItemRow(
-                                item = item,
-                                isSelected = item.key in selectedKeys,
-                                onSelectionChange = { isSelected ->
-                                    onSelectionChange(item.key, isSelected)
-                                }
-                            )
-                        }
-                        
-                        // 分组间距
-                        item {
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
                     }
-                }
-                
-                // 总大小显示（在操作按钮上方）
-                if (totalSize != null) {
-                    Row(
+
+                    // 项目列表
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                            .weight(1f, fill = false)
+                            .padding(vertical = 8.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
+                        // 分组展示
+                        groups.forEach { group ->
+                            // 分组标题
+                            item {
+                                GroupHeader(
+                                    groupName = group.name,
+                                    iconEmoji = group.iconEmoji
+                                )
+                            }
+
+                            // 分组内的项目
+                            items(group.items, key = { it.key }) { item ->
+                                MultiSelectItemRow(
+                                    item = item,
+                                    isSelected = item.key in selectedKeys,
+                                    onSelectionChange = { isSelected ->
+                                        onSelectionChange(item.key, isSelected)
+                                    }
+                                )
+                            }
+
+                            // 分组间距
+                            item {
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
+                    }
+
+                    // 总大小显示（在操作按钮上方）
+                    if (totalSize != null) {
                         Text(
-                            text = "总大小: ",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = totalSize,
+                            text = "总大小: $totalSize",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            textAlign = TextAlign.Center
                         )
                     }
-                }
-                
-                // 操作按钮
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onSelectAll,
-                        modifier = Modifier.weight(1f)
+
+                    // 操作按钮
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(stringResource(R.string.select_all))
-                    }
-                    
-                    OutlinedButton(
-                        onClick = onDeselectAll,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.un_select_all))
-                    }
-                    
-                    Button(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.ok))
+                        OutlinedButton(
+                            onClick = onSelectAll,
+                            modifier = Modifier
+                                .weight(1f)
+                                .defaultMinSize(minWidth = 96.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.select_all),
+                                maxLines = 2,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = onDeselectAll,
+                            modifier = Modifier
+                                .weight(1f)
+                                .defaultMinSize(minWidth = 96.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.un_select_all),
+                                maxLines = 2,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        Button(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .weight(1f)
+                                .defaultMinSize(minWidth = 96.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.ok),
+                                maxLines = 2,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
@@ -229,12 +253,15 @@ private fun GroupHeader(
                 modifier = Modifier.padding(end = 8.dp)
             )
         }
-        
+
         Text(
             text = groupName,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
         )
         
         Divider(
@@ -284,7 +311,7 @@ private fun MultiSelectItemRow(
                         modifier = Modifier.padding(end = 6.dp)
                     )
                 }
-                
+
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.bodyLarge,
@@ -293,7 +320,10 @@ private fun MultiSelectItemRow(
                         MaterialTheme.colorScheme.onSurface
                     } else {
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    }
+                    },
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
             }
             
@@ -307,10 +337,13 @@ private fun MultiSelectItemRow(
                     Text(
                         text = item.subtitle,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                 }
-                
+
                 // 数量信息
                 if (item.count != null) {
                     Surface(
@@ -321,18 +354,20 @@ private fun MultiSelectItemRow(
                             text = item.count,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            maxLines = 1,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                         )
                     }
                 }
-                
+
                 // 大小信息
                 if (item.size != null) {
                     Text(
                         text = item.size,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
                     )
                 }
             }
