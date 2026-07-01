@@ -326,8 +326,9 @@ jobs:
             | 测试版 | beta | 测试版，包含新功能，专属于max版的安装包 |
             | 兼容版 | compact | 可覆盖原版和lyc版 |
             | 共存版 | plus | 独立安装，与主版本共存 |
-            三个包报名都不同，在安卓系统中不同包名视为不同软件，都可以独立存在。
             
+            三个包名都不同，在安卓系统中不同包名视为不同软件，都可以独立存在。
+
             ### 更新内容
             ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
           prerelease: true
