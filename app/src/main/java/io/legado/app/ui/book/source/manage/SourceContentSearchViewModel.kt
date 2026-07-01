@@ -10,7 +10,7 @@ import io.legado.app.utils.stackTraceStr
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.writeToOutputStream
 import java.io.File
-
+// 搜索来源内容逻辑
 class SourceContentSearchViewModel(application: Application) : BaseViewModel(application) {
 
     fun loadSources(enabledOnly: Boolean, callback: (List<Triple<String, String, JsonObject>>) -> Unit) {
