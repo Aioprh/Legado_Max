@@ -304,6 +304,7 @@ jobs:
           name: legado_app_${{ env.VERSION }}
           tag_name: ${{ env.VERSION }}
           body: |
+            ⚠️ **每次安装前请备份！**
             ### 更新内容
             ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
           prerelease: false
@@ -317,6 +318,14 @@ jobs:
           name: legado_app_${{ env.VERSIONL }}
           tag_name: beta-${{ env.VERSIONL }}
           body: |
+            ⚠️ **重要提醒：安装前请务必备份您的数据！**
+
+            📦 **APK版本说明：**
+            | 版本类型 | 文件名标识 | 说明 |
+            |---------|-----------|------|
+            | 兼容版 | compact | 可覆盖原版和lyc版 |
+            | 共存版 | plus | 独立安装，与主版本共存 |
+            
             ### 更新内容
             ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
           prerelease: true
