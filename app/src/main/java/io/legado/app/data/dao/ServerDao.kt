@@ -13,6 +13,9 @@ interface ServerDao {
     @get:Query("select * from servers order by sortNumber")
     val all: List<Server>
 
+    @get:Query("select count(*) from servers")
+    val count: Int
+
     @Query("select * from servers where id = :id")
     fun get(id: Long): Server?
 

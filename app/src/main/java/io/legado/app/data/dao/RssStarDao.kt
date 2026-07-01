@@ -10,6 +10,9 @@ interface RssStarDao {
     @get:Query("select * from rssStars order by starTime desc")
     val all: List<RssStar>
 
+    @get:Query("select count(*) from rssStars")
+    val count: Int
+
     @Query("select `group` from rssStars group by `group` order by `group`")
     fun flowGroups(): Flow<List<String>>
 

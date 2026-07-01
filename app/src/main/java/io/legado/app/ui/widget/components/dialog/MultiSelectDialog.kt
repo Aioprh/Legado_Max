@@ -27,6 +27,7 @@ data class MultiSelectItem(
     val title: String,                  // 主标题
     val subtitle: String? = null,       // 副标题 (如文件名)
     val size: String? = null,           // 大小信息 (如 "2.5 MB")
+    val rawSize: Long? = null,
     val count: String? = null,          // 数量信息 (如 "128 个")
     val group: String,                  // 分组名称
     val iconEmoji: String? = null,      // Emoji图标 (如 "📚")

@@ -306,8 +306,7 @@ class BackupConfigFragment : PreferenceFragment(),
      * 显示书籍缓存选择器
      */
     private fun showBookCacheSelector() {
-        val booksWithCache = BookCacheSelectorConfig.getBooksWithCache()
-        if (booksWithCache.isEmpty()) {
+        if (!BookCacheSelectorConfig.hasBooksWithCache()) {
             appCtx.toastOnUi(R.string.no_book_cache)
             return
         }

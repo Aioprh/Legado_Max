@@ -137,6 +137,7 @@ object BackupSelectorConfig {
                         title = item.title,
                         subtitle = item.fileName,
                         size = fileInfo?.let { BackupInfoHelper.formatSize(it.size) },
+                        rawSize = fileInfo?.size,
                         count = countInfo,
                         group = item.group,
                         iconEmoji = item.iconEmoji,
@@ -151,20 +152,7 @@ object BackupSelectorConfig {
      * 计算选中项的总大小
      */
     fun calculateTotalSize(selectedItems: List<MultiSelectItem>): String {
-        val overview = BackupInfoHelper.getBackupOverview()
-        var totalSize = 0L
-        
-        selectedItems.forEach { item ->
-            val fileName = allItems.find { it.key == item.key }?.fileName
-            if (fileName != null) {
-                val fileInfo = overview.items.find { it.fileName == fileName }
-                if (fileInfo != null) {
-                    totalSize += fileInfo.size
-                }
-            }
-        }
-        
-        return BackupInfoHelper.formatSize(totalSize)
+        return BackupInfoHelper.formatSize(selectedItems.sumOf { it.rawSize ?: 0L })
     }
 
     /**
@@ -188,6 +176,7 @@ object BackupSelectorConfig {
             title = item.title,
             subtitle = item.fileName,
             size = fileInfo?.let { BackupInfoHelper.formatSize(it.size) },
+            rawSize = fileInfo?.size,
             count = countInfo,
             group = item.group,
             iconEmoji = item.iconEmoji,

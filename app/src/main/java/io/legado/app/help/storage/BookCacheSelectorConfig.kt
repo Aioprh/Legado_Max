@@ -36,19 +36,31 @@ object BookCacheSelectorConfig {
      * 获取所有有缓存的书籍
      */
     fun getBooksWithCache(): List<Book> {
-        val cacheDir = File(BookHelp.cachePath)
-        if (!cacheDir.exists() || !cacheDir.isDirectory) {
+        val folderNames = getCacheFolderNames()
+        if (folderNames.isEmpty()) {
             return emptyList()
         }
-        
-        val folderNames = cacheDir.listFiles()
-            ?.filter { it.isDirectory }
-            ?.map { it.name }
-            ?: return emptyList()
-        
+
         return appDb.bookDao.all.filter { book ->
             book.getFolderName() in folderNames
         }
+    }
+
+    fun hasBooksWithCache(): Boolean {
+        return getCacheFolderNames().isNotEmpty()
+    }
+
+    private fun getCacheFolderNames(): Set<String> {
+        val cacheDir = File(BookHelp.cachePath)
+        if (!cacheDir.exists() || !cacheDir.isDirectory) {
+            return emptySet()
+        }
+        return cacheDir.listFiles()
+            ?.asSequence()
+            ?.filter { it.isDirectory }
+            ?.map { it.name }
+            ?.toSet()
+            ?: emptySet()
     }
 
     /**

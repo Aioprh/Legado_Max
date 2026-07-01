@@ -19,6 +19,9 @@ interface HomepageCustomSetDao {
     @get:Query("SELECT * FROM homepage_custom_sets ORDER BY sortOrder ASC")
     val all: List<HomepageCustomSet>
 
+    @get:Query("SELECT count(*) FROM homepage_custom_sets")
+    val count: Int
+
     @Query("SELECT * FROM homepage_custom_sets WHERE id = :id")
     suspend fun getById(id: String): HomepageCustomSet?
 

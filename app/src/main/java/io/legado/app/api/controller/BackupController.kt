@@ -313,52 +313,52 @@ object BackupController {
                 HighlightRuleStore.load(appCtx).size
             },
             BackupItemDef("bookshelf.json", "书架书籍", "书架上的所有书籍信息") {
-                appDb.bookDao.all.size
+                appDb.bookDao.allBookCount
             },
             BackupItemDef("bookmark.json", "书签", "书籍阅读书签") {
-                appDb.bookmarkDao.all.size
+                appDb.bookmarkDao.count
             },
             BackupItemDef("bookGroup.json", "书籍分组", "书架分组信息") {
-                appDb.bookGroupDao.all.size
+                appDb.bookGroupDao.count
             },
             BackupItemDef("bookSource.json", "书源", "网络小说书源") {
-                appDb.bookSourceDao.all.size
+                appDb.bookSourceDao.allCount()
             },
             BackupItemDef("rssSources.json", "订阅源", "订阅源") {
-                appDb.rssSourceDao.all.size
+                appDb.rssSourceDao.size
             },
             BackupItemDef("rssStar.json", "订阅收藏", "订阅收藏内容") {
-                appDb.rssStarDao.all.size
+                appDb.rssStarDao.count
             },
             BackupItemDef("replaceRule.json", "替换规则", "正文替换净化规则") {
-                appDb.replaceRuleDao.all.size
+                appDb.replaceRuleDao.count
             },
             BackupItemDef("readRecord.json", "阅读记录", "阅读时长统计记录") {
-                appDb.readRecordDao.all.size
+                appDb.readRecordDao.count
             },
             BackupItemDef("readRecordDetail.json", "阅读详情", "每本书每天的阅读统计") {
                 appDb.readRecordDao.getDetailsCount()
             },
             BackupItemDef("searchHistory.json", "搜索历史", "搜索关键词历史") {
-                appDb.searchKeywordDao.all.size
+                appDb.searchKeywordDao.count
             },
             BackupItemDef("txtTocRule.json", "TXT目录规则", "本地TXT目录解析规则") {
-                appDb.txtTocRuleDao.all.size
+                appDb.txtTocRuleDao.count
             },
             BackupItemDef("httpTTS.json", "TTS配置", "在线朗读引擎配置") {
-                appDb.httpTTSDao.all.size
+                appDb.httpTTSDao.count
             },
             BackupItemDef("keyboardAssists.json", "键盘辅助", "键盘快捷输入配置") {
-                appDb.keyboardAssistsDao.all.size
+                appDb.keyboardAssistsDao.count
             },
             BackupItemDef("dictRule.json", "词典规则", "长按查词规则") {
-                appDb.dictRuleDao.all.size
+                appDb.dictRuleDao.count
             },
             BackupItemDef("servers.json", "服务器配置", "远程服务器配置（加密）") {
-                appDb.serverDao.all.size
+                appDb.serverDao.count
             },
             BackupItemDef("runtimeSourceCache.json", "书源运行数据", "书源登录信息和运行变量") {
-                appDb.cacheDao.getRuntimeSourceCaches(System.currentTimeMillis()).size
+                appDb.cacheDao.getRuntimeSourceCacheCount(System.currentTimeMillis())
             }
         )
 
@@ -389,7 +389,7 @@ object BackupController {
                     val bookFolder = File(cacheDir, folderName)
                     if (bookFolder.exists()) {
                         bookCacheSize += bookFolder.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-                        chapterCount += appDb.bookChapterDao.getChapterList(book.bookUrl).size
+                        chapterCount += appDb.bookChapterDao.getChapterCount(book.bookUrl)
                     }
                 }
             }

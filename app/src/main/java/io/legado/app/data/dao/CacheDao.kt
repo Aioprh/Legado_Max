@@ -36,6 +36,17 @@ interface CacheDao {
     fun getRuntimeSourceCaches(now: Long): List<Cache>
 
     @Query(
+        """select count(*) from caches
+        where (`key` like 'v_%'
+        or `key` like 'userInfo_%'
+        or `key` like 'loginHeader_%'
+        or `key` like 'sourceVariable_%'
+        or `key` like 'infoMap_%')
+        and (deadline = 0 or deadline > :now)"""
+    )
+    fun getRuntimeSourceCacheCount(now: Long): Int
+
+    @Query(
         """select * from caches
         where substr(`key`, 1, 2) = 'v_'
         or substr(`key`, 1, 9) = 'userInfo_'
