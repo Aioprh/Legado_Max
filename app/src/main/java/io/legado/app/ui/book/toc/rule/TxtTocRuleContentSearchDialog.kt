@@ -3,6 +3,7 @@ package io.legado.app.ui.book.toc.rule
 import androidx.fragment.app.viewModels
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.ui.source.BaseContentSearchDialog
+import io.legado.app.ui.source.ContentSearchType
 import io.legado.app.ui.source.SourceFieldItem
 import io.legado.app.utils.GSON
 import io.legado.app.utils.share
@@ -41,6 +42,8 @@ class TxtTocRuleContentSearchDialog : BaseContentSearchDialog() {
     override fun getDialogTitle() = "TXT目录规则内容查询"
 
     override fun getSearchHint() = "输入关键词搜索TXT目录规则"
+
+    override fun getContentSearchType() = ContentSearchType.TXT_TOC_RULE
 
     override fun loadSourceItems(allSources: Boolean, callback: (List<SourceFieldItem>) -> Unit) {
         viewModel.loadRules(allSources) { rules ->

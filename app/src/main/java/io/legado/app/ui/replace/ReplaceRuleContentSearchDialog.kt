@@ -4,6 +4,7 @@ import androidx.fragment.app.viewModels
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.ui.replace.edit.ReplaceEditActivity
 import io.legado.app.ui.source.BaseContentSearchDialog
+import io.legado.app.ui.source.ContentSearchType
 import io.legado.app.ui.source.SourceFieldItem
 import io.legado.app.utils.GSON
 import io.legado.app.utils.share
@@ -53,6 +54,8 @@ class ReplaceRuleContentSearchDialog : BaseContentSearchDialog() {
     override fun getDialogTitle() = "替换净化规则内容查询"
 
     override fun getSearchHint() = "输入关键词搜索替换净化规则"
+
+    override fun getContentSearchType() = ContentSearchType.REPLACE_RULE
 
     override fun loadSourceItems(allSources: Boolean, callback: (List<SourceFieldItem>) -> Unit) {
         viewModel.loadRules(allSources) { rules ->

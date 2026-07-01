@@ -3,6 +3,7 @@ package io.legado.app.ui.book.read.config
 import androidx.fragment.app.viewModels
 import io.legado.app.data.entities.HttpTTS
 import io.legado.app.ui.source.BaseContentSearchDialog
+import io.legado.app.ui.source.ContentSearchType
 import io.legado.app.ui.source.SourceFieldItem
 import io.legado.app.utils.GSON
 import io.legado.app.utils.share
@@ -52,6 +53,8 @@ class SpeakEngineContentSearchDialog : BaseContentSearchDialog() {
     override fun getDialogTitle() = "朗读引擎规则内容查询"
 
     override fun getSearchHint() = "输入关键词搜索朗读引擎规则"
+
+    override fun getContentSearchType() = ContentSearchType.SPEAK_ENGINE
 
     override fun loadSourceItems(allSources: Boolean, callback: (List<SourceFieldItem>) -> Unit) {
         viewModel.loadEngines { engines ->
