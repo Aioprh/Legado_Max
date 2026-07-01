@@ -38,6 +38,12 @@
         app:showAsAction="never" />
 
     <item
+    android:id="@+id/menu_content_query"
+    android:icon="@drawable/ic_search"
+    android:title="@string/content_query"
+    app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_export"
         android:title="@string/export"
         app:showAsAction="never" />

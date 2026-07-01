@@ -184,6 +184,7 @@ class SpeakEngineDialog() : BaseDialogFragment(R.layout.dialog_recycler_view),
             }
 
             R.id.menu_import_onLine -> importAlert()
+            R.id.menu_content_query -> showDialogFragment(SpeakEngineContentSearchDialog())
             R.id.menu_export_all -> exportDirResult.launch {
                 mode = HandleFileContract.EXPORT
                 fileData = HandleFileContract.FileData(
