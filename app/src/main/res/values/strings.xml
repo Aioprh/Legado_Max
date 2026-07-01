@@ -1797,6 +1797,7 @@
     <string name="content_query">Content Query</string>
     <string name="switch_rule">Switch Rule</string>
     <string name="query_rule">Query Rule</string>
+    <string name="source_content_query">Source Content Query</string>
     <string name="copy_matched_source_urls">Copy Matched Source URLs</string>
     <string name="export_matched_sources">Export Matched Sources</string>
     <string name="url_source_code">URL Source Code</string>
