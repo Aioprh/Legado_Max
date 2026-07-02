@@ -982,7 +982,6 @@ abstract class BaseReadAloudService : BaseService(),
     }
 
     private fun createNotification(): NotificationCompat.Builder {
-        val useChapterSkip = getPrefBoolean("mediaButtonPerNext", false)
         var nTitle: String = when {
             pause -> getString(R.string.read_aloud_pause)
             timeMinute > 0 -> getString(
@@ -1022,12 +1021,8 @@ abstract class BaseReadAloudService : BaseService(),
         // 按钮定义：上一章、播放、停止、下一章、定时
         builder.addAction(
             R.drawable.ic_skip_previous,
-            getString(
-                if (useChapterSkip) R.string.previous_chapter else R.string.read_aloud_prev_paragraph
-            ),
-            aloudServicePendingIntent(
-                if (useChapterSkip) IntentAction.prev else IntentAction.prevParagraph
-            )
+            getString(R.string.previous_chapter),
+            aloudServicePendingIntent(IntentAction.prev)
         )
         if (pause) {
             builder.addAction(
@@ -1044,12 +1039,8 @@ abstract class BaseReadAloudService : BaseService(),
         }
         builder.addAction(
             R.drawable.ic_skip_next,
-            getString(
-                if (useChapterSkip) R.string.next_chapter else R.string.read_aloud_next_paragraph
-            ),
-            aloudServicePendingIntent(
-                if (useChapterSkip) IntentAction.next else IntentAction.nextParagraph
-            )
+            getString(R.string.next_chapter),
+            aloudServicePendingIntent(IntentAction.next)
         )
         builder.addAction(
             R.drawable.ic_stop_black_24dp,
