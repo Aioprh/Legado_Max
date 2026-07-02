@@ -532,7 +532,22 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
             else -> {
                 binding.recyclerView.itemAnimator = androidx.recyclerview.widget.DefaultItemAnimator()
                 binding.recyclerView.setPadding(8.dpToPx(), 0, 8.dpToPx(), 0)
-                GridLayoutManager(requireContext(), count)
+                // 确保 adapter.columnCount 与 GridLayoutManager spanCount 同步
+                // 否则 getSpanSize() 中 header/footer 占用的列数可能小于实际列数
+                adapter.columnCount = count
+                GridLayoutManager(requireContext(), count).apply {
+                    spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                        override fun getSpanSize(position: Int): Int {
+                            return if (position < adapter.getHeaderCount()
+                                || position >= adapter.getActualItemCount() + adapter.getHeaderCount()
+                            ) {
+                                count
+                            } else {
+                                1
+                            }
+                        }
+                    }
+                }
             }
         }
     }
