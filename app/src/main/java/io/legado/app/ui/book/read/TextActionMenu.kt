@@ -203,9 +203,9 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
      * @param endX 选择结束点X坐标
      * @param endBottomY 选择结束点底部Y坐标
      * 
-     * 显示策略：
-     * 1. 展开模式：优先在起始点上方显示，空间不足则在下方显示
-     * 2. 折叠模式：需要测量菜单高度，确保菜单不会超出屏幕
+     * 显示策略（不依赖 contentView.measure，避免 RecyclerView+FlexboxLayout 测量不准）：
+     * - 上方空间充裕（>300px）→ Gravity.BOTTOM，菜单向上生长，绝不遮挡选中文字
+     * - 接近页眉 → Gravity.TOP at startBottomY，菜单紧贴选中文字起始位置下方
      */
     fun show(
         view: View,
@@ -217,67 +217,22 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
         endBottomY: Int
     ) {
         upMenu()
-        if (expandTextMenu) {
-            // 展开模式：菜单显示在屏幕底部
-            when {
-                startTopY > 500 -> {
-                    // 起始点上方空间充足，在起始点上方显示
-                    showAtLocation(
-                        view,
-                        Gravity.BOTTOM or Gravity.START,
-                        startX,
-                        windowHeight - startTopY
-                    )
-                }
-
-                endBottomY - startBottomY > 500 -> {
-                    // 起始点下方空间充足，在起始点下方显示
-                    showAtLocation(view, Gravity.TOP or Gravity.START, startX, startBottomY)
-                }
-
-                else -> {
-                    // 空间不足，在结束点下方显示
-                    showAtLocation(view, Gravity.TOP or Gravity.START, endX, endBottomY)
-                }
-            }
-        } else {
-            // 折叠模式：需要考虑菜单高度
-            contentView.measure(
-                View.MeasureSpec.UNSPECIFIED,
-                View.MeasureSpec.UNSPECIFIED,
+        if (startTopY > 300) {
+            // 上方空间充裕：菜单底部对齐选中文字顶部，向上生长，绝不遮挡
+            showAtLocation(
+                view,
+                Gravity.BOTTOM or Gravity.START,
+                startX,
+                windowHeight - startTopY
             )
-            val popupHeight = contentView.measuredHeight
-            when {
-                startBottomY > 500 -> {
-                    // 起始点上方空间充足，在起始点上方显示（需要减去菜单高度）
-                    showAtLocation(
-                        view,
-                        Gravity.TOP or Gravity.START,
-                        startX,
-                        startTopY - popupHeight
-                    )
-                }
-
-                endBottomY - startBottomY > 500 -> {
-                    // 起始点下方空间充足，在起始点下方显示
-                    showAtLocation(
-                        view,
-                        Gravity.TOP or Gravity.START,
-                        startX,
-                        startBottomY
-                    )
-                }
-
-                else -> {
-                    // 空间不足，在结束点下方显示
-                    showAtLocation(
-                        view,
-                        Gravity.TOP or Gravity.START,
-                        endX,
-                        endBottomY
-                    )
-                }
-            }
+        } else {
+            // 接近页眉：菜单紧贴选中文字起始位置下方，向下生长
+            showAtLocation(
+                view,
+                Gravity.TOP or Gravity.START,
+                startX,
+                startBottomY
+            )
         }
     }
 
