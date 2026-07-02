@@ -1807,7 +1807,7 @@
     <string name="open_editor">打开编辑器</string>
     <string name="info">信息</string>
     <string name="content_query">内容查询</string>
-    <string name="switch_rule">切换</string>
+    <string name="switch_rule">切换规则</string>
     <string name="query_rule">查询规则</string>
     <string name="source_content_query">源内容查询</string>
     <string name="copy_matched_source_urls">拷贝匹配的源URL</string>
