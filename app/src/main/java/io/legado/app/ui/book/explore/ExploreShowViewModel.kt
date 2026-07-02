@@ -43,6 +43,9 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     var bookSource: BookSource? = null
     var currentSourceUrl: String = ""
 
+    /** 各分类的滚动位置缓存（key = exploreUrl, value = adapter position），跨 Fragment 重建恢复 */
+    val scrollPositions = ConcurrentHashMap<String, Int>()
+
     /** 布局模式，按书源持久化 */
     var layoutMode: Int
         get() = appCtx.getPrefInt("${PreferKey.exploreGridMode}_${currentSourceUrl}", 0)

@@ -117,6 +117,25 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
         initData()
     }
 
+    /**
+     * 保存 RecyclerView 当前滚动位置到 Activity ViewModel，跨 Fragment 重建恢复
+     */
+    private fun saveScrollToViewModel() {
+        val lm = binding.recyclerView.layoutManager ?: return
+        val pos = when (lm) {
+            is LinearLayoutManager -> lm.findFirstVisibleItemPosition().coerceAtLeast(0)
+            is StaggeredGridLayoutManager -> {
+                val positions = IntArray(lm.spanCount)
+                lm.findFirstVisibleItemPositions(positions)
+                positions.minOrNull()?.coerceAtLeast(0) ?: 0
+            }
+            else -> return
+        }
+        if (pos > 0) {
+            activityViewModel.scrollPositions[viewModel.stableExploreUrl] = pos
+        }
+    }
+
     private fun initView() = binding.run {
         recyclerView.setEdgeEffectColor(primaryColor)
         recyclerView.applyNavigationBarPadding()
@@ -205,6 +224,7 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
     }
 
     override fun onPause() {
+        saveScrollToViewModel()
         isResumed = false
         super.onPause()
     }
@@ -258,6 +278,15 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
             if (oldCount == 0 || fullRefresh) {
                 adapter.setItems(books)
                 fullRefresh = false  // 设置完成后重置标记
+                // 恢复跨 Fragment 重建保存的滚动位置
+                val savedPos = activityViewModel.scrollPositions.remove(viewModel.stableExploreUrl)
+                if (savedPos != null && savedPos > 0) {
+                    val lm = binding.recyclerView.layoutManager
+                    when (lm) {
+                        is LinearLayoutManager -> lm.scrollToPositionWithOffset(savedPos, 0)
+                        is StaggeredGridLayoutManager -> lm.scrollToPositionWithOffset(savedPos, 0)
+                    }
+                }
             } else if (oldCount > books.size) {
                 // 屏蔽规则过滤后书籍数量减少，重置整个列表
                 // 参考 RssArticlesFragment 的实现方式
