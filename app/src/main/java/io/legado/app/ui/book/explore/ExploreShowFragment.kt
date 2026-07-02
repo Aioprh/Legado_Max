@@ -495,6 +495,9 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
         
         val count = activityViewModel.columnCount
         
+        // 保存当前滚动位置，切换布局后恢复
+        val savedPosition = saveScrollPosition()
+        
         // 清除旧的ItemDecoration和padding，避免重复添加
         while (binding.recyclerView.itemDecorationCount > 0) {
             binding.recyclerView.removeItemDecorationAt(0)
@@ -549,6 +552,34 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
                     }
                 }
             }
+        }
+        
+        // 恢复滚动位置（延迟到布局完成）
+        if (savedPosition > 0) {
+            binding.recyclerView.post {
+                val lm = binding.recyclerView.layoutManager
+                when (lm) {
+                    is LinearLayoutManager -> lm.scrollToPositionWithOffset(savedPosition, 0)
+                    is StaggeredGridLayoutManager -> lm.scrollToPositionWithOffset(savedPosition, 0)
+                }
+            }
+        }
+    }
+
+    /**
+     * 保存当前 RecyclerView 滚动位置
+     * @return 第一个可见 item 的 adapter 位置，无数据时返回 0
+     */
+    private fun saveScrollPosition(): Int {
+        val lm = binding.recyclerView.layoutManager ?: return 0
+        return when (lm) {
+            is LinearLayoutManager -> lm.findFirstVisibleItemPosition().coerceAtLeast(0)
+            is StaggeredGridLayoutManager -> {
+                val positions = IntArray(lm.spanCount)
+                lm.findFirstVisibleItemPositions(positions)
+                positions.minOrNull()?.coerceAtLeast(0) ?: 0
+            }
+            else -> 0
         }
     }
 
