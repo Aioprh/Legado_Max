@@ -172,6 +172,31 @@ data class Book(
 
     fun getDisplayIntro() = if (customIntro.isNullOrEmpty()) intro else customIntro
 
+    /**
+     * 获取简介的纯文本内容，用于书架列表等仅支持纯文本的场景
+     * 处理带格式标记的简介：<usehtml>、<md>、<useweb>
+     */
+    fun getDisplayIntroPlainText(): String {
+        val displayIntro = getDisplayIntro() ?: return ""
+        return when {
+            displayIntro.startsWith("<useweb>") -> {
+                // 去除 <useweb> 前缀，使用 HtmlFormatter 提取纯文本
+                val html = displayIntro.removePrefix("<useweb>")
+                io.legado.app.utils.HtmlFormatter.format(html)
+            }
+            displayIntro.startsWith("<usehtml>") -> {
+                val html = displayIntro.removePrefix("<usehtml>")
+                io.legado.app.utils.HtmlFormatter.format(html)
+            }
+            displayIntro.startsWith("<md>") -> {
+                val md = displayIntro.removePrefix("<md>")
+                // Markdown 转为纯文本：去除常见 Markdown 格式标记
+                io.legado.app.utils.StringUtils.removeMdFormat(md)
+            }
+            else -> displayIntro
+        }
+    }
+
     //自定义简介有自动更新的需求时，可通过更新intro再调用upCustomIntro()完成
     @Suppress("unused")
     fun upCustomIntro() {

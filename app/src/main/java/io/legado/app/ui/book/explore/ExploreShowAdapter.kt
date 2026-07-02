@@ -39,6 +39,18 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
 
     var columnCount: Int = 2
 
+    /**
+     * 网格布局下 header/footer 应占满整行，防止头部 View（loadMoreViewTop）
+     * 占用一个网格单元格导致第一本书位置空出
+     */
+    override fun getSpanSize(viewType: Int, position: Int): Int {
+        return if (position < getHeaderCount() || position >= getActualItemCount() + getHeaderCount()) {
+            columnCount
+        } else {
+            super.getSpanSize(viewType, position)
+        }
+    }
+
     override fun getItemViewType(item: SearchBook, position: Int): Int {
         return when (layoutMode) {
             2 -> VIEW_TYPE_WATERFALL

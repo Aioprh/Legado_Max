@@ -10,9 +10,7 @@ import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.Menu
 import android.view.View
-import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.TextView
 import androidx.annotation.ColorInt
 import androidx.annotation.StyleRes
 import androidx.appcompat.widget.Toolbar
@@ -22,15 +20,11 @@ import androidx.core.view.children
 import com.google.android.material.appbar.AppBarLayout
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
-import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.elevation
-import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.transparentNavBar
-import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.activity
 import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
-import io.legado.app.utils.setTintMutate
 import splitties.views.bottomPadding
 import splitties.views.topPadding
 
@@ -198,12 +192,6 @@ class TitleBar @JvmOverloads constructor(
                 setBackgroundColor(context.primaryColor)
                 elevation = context.elevation
             }
-            // 修复沉浸式导航栏Bug：根据实际背景色自动调整标题栏文字和图标颜色
-            // 确保在任何背景色上文字和图标始终清晰可读
-            updateTitleBarAppearance()
-            // 延迟再应用一次：menu 项（搜索图标、菜单图标等）在 Activity
-            // onCreateOptionsMenu 阶段才被添加到 toolbar，init 时 menu 为空
-            post { updateTitleBarAppearance() }
 
             stateListAnimator = null
         }
@@ -281,68 +269,6 @@ class TitleBar @JvmOverloads constructor(
 //            val topPadding = if (!isInMultiWindowMode && fullScreen) context.statusBarHeight else 0
 //            setPadding(paddingLeft, topPadding, paddingRight, paddingBottom)
 //        }
-    }
-
-    /**
-     * 根据实际背景色自动调整标题栏文字和图标颜色
-     * 修复沉浸式导航栏Bug：确保在任何背景色上文字和图标始终清晰可读
-     */
-    internal fun updateTitleBarAppearance() {
-        // 透明背景时：实际显示的是内容区背景色（backgroundColor），而非 primaryColor
-        // 不透明背景时：显示的是 primaryColor
-        val actualBgColor = if (!opaque && context.transparentNavBar) {
-            context.backgroundColor
-        } else {
-            context.primaryColor
-        }
-        val textColor = if (ColorUtils.isColorLight(actualBgColor)) {
-            context.getPrimaryTextColor(true)   // 浅色背景 → 使用深色文字
-        } else {
-            context.getPrimaryTextColor(false)  // 深色背景 → 使用浅色文字
-        }
-        setTextColor(textColor)
-        // 导航/溢出图标用 colorFilter（不受 applyTint 影响）
-        toolbar.navigationIcon?.colorFilter = PorterDuffColorFilter(textColor, PorterDuff.Mode.SRC_ATOP)
-        toolbar.overflowIcon?.colorFilter = PorterDuffColorFilter(textColor, PorterDuff.Mode.SRC_ATOP)
-        // 菜单图标用 setTintMutate 覆盖 applyTint 设置的 tint
-        toolbar.menu.children.forEach {
-            it.icon?.setTintMutate(textColor)
-            // 修复菜单项文本颜色（如"主题模式"显示在操作栏中的文字）
-            it.actionView?.let { view ->
-                fixTextViewColorRecursive(view, textColor)
-            }
-        }
-        // 修复 ActionBar 中直接显示文字的菜单项（非 icon 模式）
-        fixActionMenuItemTextColors(textColor)
-    }
-
-    /**
-     * 修复 ActionBar 中显示文字的菜单项颜色
-     * 遍历 Toolbar 找到 ActionMenuView → ActionMenuItemView 并设置文字颜色
-     */
-    private fun fixActionMenuItemTextColors(@ColorInt textColor: Int) {
-        for (i in 0 until toolbar.childCount) {
-            val child = toolbar.getChildAt(i)
-            if (child is ViewGroup) {
-                for (j in 0 until child.childCount) {
-                    val item = child.getChildAt(j)
-                    if (item is TextView && item.id == View.NO_ID) {
-                        item.setTextColor(textColor)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun fixTextViewColorRecursive(view: View, @ColorInt textColor: Int) {
-        if (view is TextView) {
-            view.setTextColor(textColor)
-        }
-        if (view is ViewGroup) {
-            for (i in 0 until view.childCount) {
-                fixTextViewColorRecursive(view.getChildAt(i), textColor)
-            }
-        }
     }
 
     private fun attachToActivity() {

@@ -339,6 +339,37 @@ object StringUtils {
     }
 
     /**
+     * 移除 Markdown 格式标记，转为纯文本
+     * 用于书架列表等仅支持纯文本的场景
+     */
+    fun removeMdFormat(md: String): String {
+        if (md.isBlank()) return md
+        return md
+            // 移除图片 ![alt](url)
+            .replace(Regex("!\\[.*?]\\(.*?\\)"), "")
+            // 移除链接 [text](url)，保留文本
+            .replace(Regex("\\[(.*?)]\\(.*?\\)"), "$1")
+            // 移除标题标记 # ## ### 等
+            .replace(Regex("(?m)^#{1,6}\\s+"), "")
+            // 移除粗体/斜体 **text** 或 __text__
+            .replace(Regex("\\*{1,3}(.+?)\\*{1,3}"), "$1")
+            .replace(Regex("_{1,3}(.+?)_{1,3}"), "$1")
+            // 移除行内代码 `code`
+            .replace(Regex("`{1,3}(.+?)`{1,3}"), "$1")
+            // 移除引用标记 >
+            .replace(Regex("(?m)^>\\s?"), "")
+            // 移除无序列表标记 - * +
+            .replace(Regex("(?m)^[-*+]\\s+"), "")
+            // 移除有序列表标记 1. 2. 等
+            .replace(Regex("(?m)^\\d+\\.\\s+"), "")
+            // 移除水平线 --- ***
+            .replace(Regex("(?m)^[-*_]{3,}\\s*$"), "")
+            // 清理多余空行
+            .replace(Regex("\\n{3,}"), "\n\n")
+            .trim()
+    }
+
+    /**
      * 解压字符串
      */
     @Throws(IOException::class)

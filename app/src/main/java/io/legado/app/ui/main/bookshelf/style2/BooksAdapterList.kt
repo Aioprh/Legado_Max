@@ -161,7 +161,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             // 显示简介（使用配置的行数）
             if (AppConfig.showMoreInfoInList && AppConfig.showIntroInList) {
                 binding.tvIntro.visible()
-                binding.tvIntro.text = item.intro ?: item.customIntro ?: ""
+                binding.tvIntro.text = item.getDisplayIntroPlainText()
                 // 根据配置设置简介的最大行数
                 binding.tvIntro.maxLines = AppConfig.introLinesInList
             } else {
