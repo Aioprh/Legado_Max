@@ -43,6 +43,11 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
         fun cacheBooks(exploreUrl: String, books: List<SearchBook>) {
             preloadCache[exploreUrl] = books
         }
+
+        @Synchronized
+        fun clearDataCache() {
+            preloadCache.clear()
+        }
     }
 
     val booksData = MutableLiveData<List<SearchBook>>()
