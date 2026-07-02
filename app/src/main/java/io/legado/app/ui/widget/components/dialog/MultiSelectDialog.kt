@@ -99,34 +99,43 @@ fun MultiSelectDialogContent(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     // 标题栏
-                    Column(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(topBarColor)
-                            .padding(horizontal = 20.dp, vertical = 16.dp)
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
                     ) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (!description.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(4.dp))
+                        // 左侧：标题和描述
+                        Column(
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
                             Text(
-                                text = description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = title,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
+                            if (!description.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = description,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // 右侧：已选数量
                         Text(
                             text = "已选 ${selectedItems.size}/${groups.sumOf { it.items.size }}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(start = 16.dp)
                         )
                     }
 
