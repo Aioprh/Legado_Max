@@ -561,7 +561,8 @@ object ReadBook : CoroutineScope by MainScope() {
         callBack?.pageChanged()
         curTextChapter?.maybePrefetchNextPage(durPageIndex)
         curTextChapter?.let {
-            if (BaseReadAloudService.isActiveBook(book?.bookUrl) && it.isCompleted) {
+            //开了听书悬浮窗后，翻页应该只影响阅读界面，不能抢正在朗读的位置
+            if (!AppConfig.readAloudFloatingUi && BaseReadAloudService.isActiveBook(book?.bookUrl) && it.isCompleted) {
                 if (suppressReadAloudRestartChapterIndex == it.chapter.index) {
                     suppressReadAloudRestartChapterIndex = null
                 } else {

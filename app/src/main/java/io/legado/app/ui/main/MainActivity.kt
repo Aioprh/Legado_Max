@@ -80,6 +80,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     override val binding by viewBinding(ActivityMainBinding::inflate)
     override val viewModel by viewModels<MainViewModel>()
+    override fun showReadAloudMiniBar(): Boolean = true
+
     private val idBookshelf = 0
     private val idBookshelf1 = 11
     private val idBookshelf2 = 12

@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.LinearLayout
@@ -39,7 +40,6 @@ import io.legado.app.utils.dpToPx
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.observeEvent
-import io.legado.app.utils.postEvent
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -47,7 +47,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
-
+// 新朗读界面
 class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false),
     SpeakEngineDialog.CallBack {
 
@@ -57,6 +57,7 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
             ReadBook.openChapter(it[0] as Int, it[1] as Int)
             updateBookInfo()
             updatePreviewText()
+            updateChapterActionState()
         }
     }
     private var downY = 0f
@@ -91,6 +92,7 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         updatePreviewText()
         updatePlayState()
         updateSkipActionState()
+        updateChapterActionState()
     }
 
     private fun initData() = binding.run {
@@ -109,22 +111,13 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         }
         updatePlayState()
         updateSkipActionState()
+        updateChapterActionState()
     }
 
     private fun initEvent() = binding.run {
         ivBack.setOnClickListener { finish() }
         llChapterQuick.setOnClickListener { openChapterList() }
         ivChapterQuick.setOnClickListener { openChapterList() }
-        llTimerQuick.setOnClickListener { showTimerDialog() }
-        ivTimerQuick.setOnClickListener { showTimerDialog() }
-        llBackRead.setOnClickListener {
-            postEvent(EventBus.SHOW_READ_MENU, true)
-            finish()
-        }
-        ivBackRead.setOnClickListener {
-            postEvent(EventBus.SHOW_READ_MENU, true)
-            finish()
-        }
         ivMore.setOnClickListener { showDialogFragment<ReadAloudConfigDialog>() }
         llMoreSetting.setOnClickListener { showDialogFragment<ReadAloudConfigDialog>() }
         ivMoreSetting.setOnClickListener { showDialogFragment<ReadAloudConfigDialog>() }
@@ -145,6 +138,16 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
                 ReadAloud.nextChapter(this@ReadAloudActivity)
             } else {
                 ReadAloud.nextParagraph(this@ReadAloudActivity)
+            }
+        }
+        tvPrevChapter.setOnClickListener {
+            if (hasPreviousChapter()) {
+                ReadAloud.prevChapter(this@ReadAloudActivity)
+            }
+        }
+        tvNextChapter.setOnClickListener {
+            if (hasNextChapter()) {
+                ReadAloud.nextChapter(this@ReadAloudActivity)
             }
         }
         llStop.setOnClickListener { finish() }
@@ -375,11 +378,13 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
     }
 
     private fun updateTimerText(value: Int) {
-        binding.tvTimer.text = if (BaseReadAloudService.chapterCount > 0) {
+        val timerText = if (BaseReadAloudService.chapterCount > 0) {
             getString(R.string.timer_chapter, BaseReadAloudService.chapterCount)
         } else {
             getString(R.string.timer_m, if (value < 0) 0 else value)
         }
+        binding.tvTimer.text = timerText
+        binding.tvTimerLabelRight.text = timerText
     }
 
     private fun updatePlayState() {
@@ -404,11 +409,65 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         )
     }
 
+    // 更新章节操作按钮状态
+    private fun updateChapterActionState() {
+        val hasPrevious = hasPreviousChapter()
+        val hasNext = hasNextChapter()
+        setChapterActionEnabled(hasPrevious, binding.tvPrevChapter)
+        setChapterActionEnabled(hasNext, binding.tvNextChapter)
+    }
+
+    private fun setChapterActionEnabled(enabled: Boolean, vararg views: View) {
+        views.forEach {
+            it.isEnabled = enabled
+        }
+        views.firstOrNull()?.alpha = if (enabled) 1f else 0.38f
+        views.drop(1).forEach { it.alpha = 1f }
+    }
+
+    private fun hasPreviousChapter(): Boolean {
+        return currentReadAloudChapterIndex() > 0
+    }
+
+    private fun hasNextChapter(): Boolean {
+        val chapterIndex = currentReadAloudChapterIndex()
+        val chapterSize = currentReadAloudChapterSize()
+        return chapterIndex >= 0 && chapterSize > 0 && chapterIndex < chapterSize - 1
+    }
+
+    private fun currentReadAloudChapterIndex(): Int {
+        BaseReadAloudService.activeChapterIndex.takeIf { it >= 0 }?.let {
+            return it
+        }
+        val book = ReadBook.book ?: return -1
+        val activeBookUrl = BaseReadAloudService.activeBookUrl
+        return if (activeBookUrl == null || activeBookUrl == book.bookUrl) {
+            book.durChapterIndex
+        } else {
+            -1
+        }
+    }
+
+    private fun currentReadAloudChapterSize(): Int {
+        BaseReadAloudService.activeChapterSize.takeIf { it > 0 }?.let {
+            return it
+        }
+        val book = ReadBook.book ?: return 0
+        val activeBookUrl = BaseReadAloudService.activeBookUrl
+        return if (activeBookUrl == null || activeBookUrl == book.bookUrl) {
+            ReadBook.simulatedChapterSize.takeIf { it > 0 }
+                ?: appDb.bookChapterDao.getChapterCount(book.bookUrl)
+        } else {
+            0
+        }
+    }
+
     override fun observeLiveBus() {
         observeEvent<Int>(EventBus.ALOUD_STATE) {
             updatePlayState()
             updateBookInfo()
             updatePreviewText()
+            updateChapterActionState()
             if (it == Status.STOP) finish()
         }
         observeEvent<Int>(EventBus.READ_ALOUD_DS) {
@@ -427,6 +486,7 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
             }
             updateBookInfo()
             updatePreviewText()
+            updateChapterActionState()
         }
     }
 
@@ -501,12 +561,10 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         ivStop.background = null
         ivSpeedControl.background = null
         ivMoreSetting.background = null
-        ivBackRead.background = null
         ivChapterQuick.background = null
-        ivTimerQuick.background = null
 
-        listOf(tvPageTitle, tvChapterName, tvPreview, tvTimer, tvSpeedValue, tvTimerLabelLeft, tvTimerLabelRight, tvSpeakEngine).forEach { it.setTextColor(textColor) }
-        listOf(tvBookName, tvSpeedLabel, tvStop, tvMoreSetting, tvBackRead, tvChapterQuick, tvTimerQuick).forEach {
+        listOf(tvPageTitle, tvChapterName, tvPreview, tvTimer, tvSpeedValue, tvTimerLabelLeft, tvTimerLabelRight, tvSpeakEngine, tvPrevChapter, tvNextChapter).forEach { it.setTextColor(textColor) }
+        listOf(tvBookName, tvSpeedLabel, tvStop, tvMoreSetting, tvChapterQuick).forEach {
             it.setTextColor(secondary)
         }
         ivBack.setColorFilter(textColor)
@@ -516,9 +574,7 @@ class ReadAloudActivity : BaseActivity<ActivityReadAloudBinding>(imageBg = false
         ivSpeakEngineArrow.setColorFilter(textColor)
         ivStop.setColorFilter(secondary)
         ivSpeedControl.setColorFilter(secondary)
-        ivBackRead.setColorFilter(secondary)
         ivChapterQuick.setColorFilter(secondary)
-        ivTimerQuick.setColorFilter(secondary)
         ivMoreSetting.setColorFilter(secondary)
         ivPlayPrev.setColorFilter(textColor)
         ivPlayNext.setColorFilter(textColor)

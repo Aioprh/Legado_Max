@@ -32,6 +32,17 @@
         app:showAsAction="never" />
 
     <item
+    android:id="@+id/menu_config_settings"
+    android:title="@string/config_settings"
+    app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_auto_wrap"
+        android:title="@string/auto_wrap"
+        android:checkable="true"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_switch_rule"
         android:title="@string/switch_rule"
         app:showAsAction="never" />
@@ -39,17 +50,6 @@
     <item
         android:id="@+id/menu_search_rule"
         android:title="@string/query_rule"
-        app:showAsAction="never" />
-
-    <item
-        android:id="@+id/menu_config_settings"
-        android:title="@string/config_settings"
-        app:showAsAction="never" />
-
-    <item
-        android:id="@+id/menu_auto_wrap"
-        android:title="@string/auto_wrap"
-        android:checkable="true"
         app:showAsAction="never" />
 
     <item
