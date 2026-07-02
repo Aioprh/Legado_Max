@@ -29,12 +29,12 @@
         <LinearLayout
             android:id="@+id/read_aloud_content"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingStart="20dp"
-            android:paddingTop="46dp"
+            android:paddingTop="34dp"
             android:paddingEnd="20dp"
-            android:paddingBottom="40dp">
+            android:paddingBottom="32dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -110,17 +110,12 @@
 
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.65" />
-
             <androidx.cardview.widget.CardView
                 android:id="@+id/hero_card"
                 android:layout_width="match_parent"
-                android:layout_height="296dp"
-                android:layout_marginTop="26dp"
-                app:cardCornerRadius="34dp"
+                android:layout_height="268dp"
+                android:layout_marginTop="22dp"
+                app:cardCornerRadius="28dp"
                 app:cardElevation="0dp"
                 app:cardUseCompatPadding="false"
                 app:cardPreventCornerOverlap="false"
@@ -181,22 +176,17 @@
             <TextView
                 android:id="@+id/tv_preview"
                 android:layout_width="match_parent"
-                android:layout_height="60dp"
+                android:layout_height="64dp"
                 android:layout_marginTop="16dp"
                 android:ellipsize="end"
                 android:maxLines="3"
                 android:textSize="14sp"
                 tools:text="如今魏忠贤倒台，他反倒成了主持清算的内阁首辅，垂手站在前列，眼皮半垂，..." />
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="22dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -219,9 +209,10 @@
 
                 <TextView
                     android:id="@+id/tv_timer_label_right"
-                    android:layout_width="wrap_content"
+                    android:layout_width="52dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/set_timer"
+                    android:gravity="end"
+                    android:text="@string/timer_m"
                     android:textSize="12sp" />
 
             </LinearLayout>
@@ -235,12 +226,12 @@
 
                 <LinearLayout
                     android:id="@+id/timer_badge"
-                    android:layout_width="wrap_content"
+                    android:layout_width="104dp"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:paddingStart="16dp"
+                    android:gravity="center"
+                    android:paddingStart="12dp"
                     android:paddingTop="8dp"
-                    android:paddingEnd="16dp"
+                    android:paddingEnd="12dp"
                     android:paddingBottom="8dp">
 
                     <androidx.appcompat.widget.AppCompatImageView
@@ -263,12 +254,13 @@
 
                 <TextView
                     android:id="@+id/tv_speed_value"
-                    android:layout_width="wrap_content"
+                    android:layout_width="104dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="12dp"
-                    android:paddingStart="16dp"
+                    android:gravity="center"
+                    android:paddingStart="12dp"
                     android:paddingTop="8dp"
-                    android:paddingEnd="16dp"
+                    android:paddingEnd="12dp"
                     android:paddingBottom="8dp"
                     android:textSize="12sp"
                     android:textStyle="bold"
@@ -280,44 +272,30 @@
                 android:id="@+id/control_row"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="26dp"
+                android:layout_marginTop="24dp"
+                android:baselineAligned="false"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <LinearLayout
-                    android:id="@+id/ll_chapter_quick"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical">
-
-                    <io.legado.app.ui.widget.image.ImageButton
-                        android:id="@+id/iv_chapter_quick"
-                        android:layout_width="38dp"
-                        android:layout_height="38dp"
-                        android:contentDescription="@string/chapter_list"
-                        android:padding="7dp"
-                        android:src="@drawable/ic_toc" />
-
-                    <TextView
-                        android:id="@+id/tv_chapter_quick"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="5dp"
-                        android:text="@string/chapter_list"
-                        android:textSize="11sp" />
-
-                </LinearLayout>
-
-                <View
+                <TextView
+                    android:id="@+id/tv_prev_chapter"
                     android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
+                    android:layout_height="48dp"
+                    android:layout_weight="0.85"
+                    android:clickable="true"
+                    android:contentDescription="@string/previous_chapter"
+                    android:ellipsize="end"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:text="@string/previous_chapter"
+                    android:textSize="13sp" />
 
                 <LinearLayout
                     android:id="@+id/ll_play_prev"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="0.95"
                     android:layout_gravity="center"
                     android:gravity="center_horizontal"
                     android:orientation="vertical">
@@ -332,29 +310,27 @@
 
                 </LinearLayout>
 
-                <View
+                <FrameLayout
                     android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
-
-                <io.legado.app.ui.widget.image.ImageButton
-                    android:id="@+id/iv_play_pause"
-                    android:layout_width="88dp"
                     android:layout_height="88dp"
-                    android:layout_gravity="center"
-                    android:contentDescription="@string/audio_play"
-                    android:padding="25dp"
-                    android:src="@drawable/ic_play_24dp" />
+                    android:layout_weight="1.45">
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
+                    <io.legado.app.ui.widget.image.ImageButton
+                        android:id="@+id/iv_play_pause"
+                        android:layout_width="88dp"
+                        android:layout_height="88dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/audio_play"
+                        android:padding="25dp"
+                        android:src="@drawable/ic_play_24dp" />
+
+                </FrameLayout>
 
                 <LinearLayout
                     android:id="@+id/ll_play_next"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="0.95"
                     android:layout_gravity="center"
                     android:gravity="center_horizontal"
                     android:orientation="vertical">
@@ -369,35 +345,19 @@
 
                 </LinearLayout>
 
-                <View
+                <TextView
+                    android:id="@+id/tv_next_chapter"
                     android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
-
-                <LinearLayout
-                    android:id="@+id/ll_timer_quick"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical">
-
-                    <io.legado.app.ui.widget.image.ImageButton
-                        android:id="@+id/iv_timer_quick"
-                        android:layout_width="38dp"
-                        android:layout_height="38dp"
-                        android:contentDescription="@string/set_timer"
-                        android:padding="7dp"
-                        android:src="@drawable/ic_timer_black_24dp" />
-
-                    <TextView
-                        android:id="@+id/tv_timer_quick"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="5dp"
-                        android:text="@string/set_timer"
-                        android:textSize="11sp" />
-
-                </LinearLayout>
+                    android:layout_height="48dp"
+                    android:layout_weight="0.85"
+                    android:clickable="true"
+                    android:contentDescription="@string/next_chapter"
+                    android:ellipsize="end"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:text="@string/next_chapter"
+                    android:textSize="13sp" />
 
             </LinearLayout>
 
@@ -405,32 +365,36 @@
                 android:id="@+id/action_row"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="22dp"
+                android:baselineAligned="false"
                 android:gravity="center"
                 android:orientation="horizontal">
 
                 <LinearLayout
-                    android:id="@+id/ll_back_read"
+                    android:id="@+id/ll_chapter_quick"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:clickable="true"
+                    android:contentDescription="@string/chapter_list"
+                    android:focusable="true"
                     android:gravity="center_horizontal"
                     android:orientation="vertical">
 
                     <io.legado.app.ui.widget.image.ImageButton
-                        android:id="@+id/iv_back_read"
+                        android:id="@+id/iv_chapter_quick"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
-                        android:contentDescription="@string/main_menu"
+                        android:contentDescription="@string/chapter_list"
                         android:padding="8dp"
-                        android:src="@drawable/ic_menu" />
+                        android:src="@drawable/ic_toc" />
 
                     <TextView
-                        android:id="@+id/tv_back_read"
+                        android:id="@+id/tv_chapter_quick"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="7dp"
-                        android:text="@string/main_menu"
+                        android:text="@string/chapter_list"
                         android:textSize="12sp" />
 
                 </LinearLayout>

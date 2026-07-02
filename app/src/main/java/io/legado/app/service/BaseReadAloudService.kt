@@ -115,6 +115,17 @@ abstract class BaseReadAloudService : BaseService(),
         var lastTtsChapterIndex: Int = -1
             private set
 
+        //多线程变量可见性，Kotlin1.9+支持
+        @Volatile
+        @JvmStatic
+        var activeChapterIndex: Int = -1
+            private set
+
+        @Volatile
+        @JvmStatic
+        var activeChapterSize: Int = 0
+            private set
+
         @Volatile
         @JvmStatic
         var activeBookUrl: String? = null
@@ -203,6 +214,8 @@ abstract class BaseReadAloudService : BaseService(),
         activeBookAuthor = book.author
         activeBookCover = BookCover.getDisplayCover(book)
         activeChapterTitle = ReadBook.curTextChapter?.title ?: book.durChapterTitle
+        activeChapterIndex = book.durChapterIndex
+        activeChapterSize = sessionChapterSize
         activePreviewText = null
     }
 
@@ -355,8 +368,12 @@ abstract class BaseReadAloudService : BaseService(),
             book.durChapterTime = System.currentTimeMillis()
             activeChapterTitle = textChapter?.title ?: activeChapterTitle ?: book.durChapterTitle
             activeChapterTitle?.let { book.durChapterTitle = it }
+            activeChapterIndex = chapterIndex
+            activeChapterSize = sessionChapterSize
             lastTtsChapterIndex = chapterIndex
         } ?: run {
+            activeChapterIndex = -1
+            activeChapterSize = 0
             lastTtsChapterIndex = -1
         }
         updateActivePreviewText()
@@ -382,6 +399,8 @@ abstract class BaseReadAloudService : BaseService(),
         if (textChapter.chapter.index == pendingChapterSwitchIndex) {
             pendingChapterSwitchIndex = null
         }
+        activeChapterIndex = textChapter.chapter.index
+        activeChapterSize = sessionChapterSize
         activeChapterTitle = textChapter.title
         readAloudNumber = textChapter.getReadLength(pageIndex) + startPos
         readAloudByPage = getPrefBoolean(PreferKey.readAloudByPage)
@@ -554,6 +573,8 @@ abstract class BaseReadAloudService : BaseService(),
         pause = true
         lastTtsProgress = 0
         lastTtsChapterIndex = -1
+        activeChapterIndex = -1
+        activeChapterSize = 0
         timeMinute = 0
         chapterCount = 0
         persistSessionProgress()
@@ -609,6 +630,8 @@ abstract class BaseReadAloudService : BaseService(),
         needResumeOnCallStateIdle = false
         lastTtsProgress = 0
         lastTtsChapterIndex = -1
+        activeChapterIndex = -1
+        activeChapterSize = 0
         pendingChapterSwitchIndex = null
         playStop()
         postEvent(EventBus.ALOUD_STATE, Status.STOP)
