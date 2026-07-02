@@ -2,7 +2,6 @@
 
 package io.legado.app.ui.main.bookshelf.style1
 
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -25,12 +24,8 @@ import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.FragmentBookshelf1Binding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.accentColor
-import io.legado.app.lib.theme.backgroundColor
-import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
-import io.legado.app.lib.theme.transparentNavBar
-import io.legado.app.utils.ColorUtils
 import io.legado.app.ui.book.group.GroupEditDialog
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
@@ -122,21 +117,6 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
                 tab.isTabIndicatorFullWidth = false
                 tab.tabMode = TabLayout.MODE_SCROLLABLE
                 tab.setSelectedTabIndicatorColor(requireContext().accentColor)
-                // 修复沉浸式导航栏Bug：根据主题色设置Tab文字颜色
-                // 确保浅色背景下Tab文字清晰可见
-                val isTransparent = requireContext().transparentNavBar
-                val actualBgColor = if (isTransparent) {
-                    requireContext().backgroundColor   // 透明TitleBar → 实际背景是内容区
-                } else {
-                    requireContext().primaryColor
-                }
-                val isLightBg = ColorUtils.isColorLight(actualBgColor)
-                val normalColor = if (isLightBg) {
-                    requireContext().getPrimaryTextColor(true)   // 深色文字
-                } else {
-                    requireContext().getPrimaryTextColor(false)  // 浅色文字
-                }
-                tab.tabTextColors = ColorStateList.valueOf(normalColor)
                 tab.setupWithViewPager(binding.viewPagerBookshelf)
             }
         }

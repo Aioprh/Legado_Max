@@ -149,24 +149,17 @@ fun Activity.setNavigationBarColorAuto(@ColorInt color: Int) {
     window.navigationBarColor = color
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         window.insetsController?.let {
-            // 获取当前状态栏外观设置，防止设置导航栏外观时意外影响状态栏
-            val currentStatusBarAppearance = it.systemBarsAppearance
-            val statusBarLight = (currentStatusBarAppearance and WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS) != 0
-            val navBarAppearance = if (isLightBor) {
-                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            if (isLightBor) {
+                it.setSystemBarsAppearance(
+                    WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+                    WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                )
             } else {
-                0
+                it.setSystemBarsAppearance(
+                    0,
+                    WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                )
             }
-            val statusBarAppearance = if (statusBarLight) {
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-            } else {
-                0
-            }
-            // 同时设置状态栏和导航栏外观，避免互相影响
-            it.setSystemBarsAppearance(
-                statusBarAppearance or navBarAppearance,
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-            )
         }
     }
     @Suppress("DEPRECATION")

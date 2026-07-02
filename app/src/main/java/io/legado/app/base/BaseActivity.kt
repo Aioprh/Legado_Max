@@ -151,15 +151,11 @@ abstract class BaseActivity<VB : ViewBinding>(
     final override fun onCreateOptionsMenu(menu: Menu): Boolean {
         val bool = onCompatCreateOptionsMenu(menu)
         menu.applyTint(this, toolBarTheme)
-        // 修复沉浸式导航栏Bug：applyTint 可能设置错误颜色，需要重新修正
-        findViewById<TitleBar>(R.id.title_bar)?.updateTitleBarAppearance()
         return bool
     }
 
     override fun onMenuOpened(featureId: Int, menu: Menu): Boolean {
         menu.applyOpenTint(this, showOpenMenuIcon)
-        // 修复沉浸式导航栏Bug：溢出菜单图标也需要重新修正
-        findViewById<TitleBar>(R.id.title_bar)?.updateTitleBarAppearance()
         return super.onMenuOpened(featureId, menu)
     }
 
