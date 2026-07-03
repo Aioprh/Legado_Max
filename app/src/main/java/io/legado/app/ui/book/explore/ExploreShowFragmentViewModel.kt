@@ -203,6 +203,9 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
 
     fun getBooksCount(): Int = books.size
 
+    /** 获取当前分类的书籍列表（用于全部加入书架） */
+    fun getSearchBooks(): List<SearchBook> = books.toList()
+
     private fun parsePageFromUrl(url: String?): Int {
         val pageValue = url?.let {
             pageQueryRegex.find(it)?.groupValues?.getOrNull(2)?.toIntOrNull()

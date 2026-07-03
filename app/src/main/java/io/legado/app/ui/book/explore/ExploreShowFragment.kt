@@ -510,6 +510,12 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
     fun getBooksCount(): Int = viewModel.getBooksCount()
 
     /**
+     * 获取当前分类的书籍列表（用于全部加入书架）
+     * 由 ExploreShowActivity 调用
+     */
+    fun getSearchBooks(): List<io.legado.app.data.entities.SearchBook> = viewModel.getSearchBooks()
+
+    /**
      * 获取所有书籍列表（用于屏蔽规则配置）
      * 由 ExploreShowActivity 调用
      */
