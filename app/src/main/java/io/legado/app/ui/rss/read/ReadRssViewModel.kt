@@ -22,6 +22,7 @@ import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.webView.WebJsExtensions.Companion.JS_URL
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.rss.Rss
+import io.legado.app.constant.AppLog
 import io.legado.app.model.debug.ToastContext
 import io.legado.app.model.debug.ToastSourceType
 import io.legado.app.model.debug.ToastRuleType
@@ -136,7 +137,6 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun refresh(finish: () -> Unit) {
-        val rssArticle = rssArticle ?: return finish.invoke()
         val rssSource = rssSource ?: let {
             appCtx.toastOnUi(
                 "订阅源不存在",
@@ -147,6 +147,14 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application) {
             )
             return finish.invoke()
         }
+        // 启动页源（有 startHtml）没有 rssArticle，需要重新加载启动页
+        val startHtml = rssSource.startHtml
+        if (startHtml != null && rssArticle == null) {
+            loadStartHtml(startHtml)
+            // 不调用 finish()，让 WebView 的 onProgressChanged 来隐藏进度条
+            return
+        }
+        val rssArticle = rssArticle ?: return finish.invoke()
         if (!rssArticle.description.isNullOrBlank()) {
             contentLiveData.postValue(rssArticle.description!!)
         } else {
@@ -292,6 +300,10 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application) {
             }
             processedHtml = clHtml(processedHtml, source.startStyle ?: source.style)
             htmlLiveData.postValue(processedHtml)
+        }.onError {
+            // 加载启动页失败时，记录错误日志并显示 Toast
+            AppLog.put("加载启动页失败", it)
+            appCtx.toastOnUi("加载启动页失败: ${it.message}")
         }
     }
 
