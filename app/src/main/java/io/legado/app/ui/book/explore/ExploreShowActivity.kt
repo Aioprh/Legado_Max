@@ -113,6 +113,17 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         viewModel.exploreKindsData.observe(this) { kinds ->
             exploreKinds.clear()
             exploreKinds.addAll(kinds)
+            // 支持回调 java.open("explore", url, title) 传入的自定义 URL
+            // 当 URL 不匹配任何已有分类时，在列表开头插入一个合成分类
+            val targetUrl = intent.getStringExtra("exploreUrl")
+            val targetTitle = intent.getStringExtra("exploreName")
+            if (!targetUrl.isNullOrBlank() && exploreKinds.none { it.url == targetUrl }) {
+                exploreKinds.add(0, ExploreKind(
+                    title = targetTitle.takeUnless { it.isNullOrBlank() } ?: urlToTitle(targetUrl),
+                    url = targetUrl,
+                    style = null
+                ))
+            }
             if (viewModel.showCategoryTab && exploreKinds.isNotEmpty()) {
                 setupMultiLineTabs()
                 binding.tabsContainer.visible()
@@ -121,7 +132,6 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             }
             adapter.notifyDataSetChanged()
             // 支持从首页模块箭头跳转时自动选中对应分类 Tab
-            val targetUrl = intent.getStringExtra("exploreUrl")
             if (!targetUrl.isNullOrBlank() && exploreKinds.isNotEmpty()) {
                 val targetIndex = exploreKinds.indexOfFirst { it.url == targetUrl }
                 if (targetIndex >= 0) {
@@ -466,6 +476,13 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     private fun updateCurrentBlockedCount() {
         blockedCount = currentExploreFragment()?.getBlockedCount() ?: 0
         updateBlockProgressChip()
+    }
+
+    /**
+     * 从 URL 提取简单标题，用于未匹配分类时合成 Tab 标题
+     */
+    private fun urlToTitle(url: String): String {
+        return url.substringAfter("://").substringBefore("/").substringBefore("?")
     }
 
     private fun currentExploreFragment(): ExploreShowFragment? {
