@@ -1913,7 +1913,8 @@ class ReadBookActivity : BaseReadBookActivity(),
                     9 -> readView.invalidateTextPage()
                     10 -> ChapterProvider.upLayout()
                     11 -> readView.submitRenderTask()
-                    12 -> upPageAnim()
+                    12 -> readView.upPageTouchClick()
+                    13 -> upPageAnim()
                 }
             }
         }
