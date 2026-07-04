@@ -274,6 +274,7 @@ class BookInfoActivity :
         binding.arcView?.setBgColor(backgroundColor)
         binding.llInfo.setBackgroundColor(backgroundColor)
         binding.llAuthorOtherWorks?.setBackgroundColor(backgroundColor)
+        binding.vSpacerBottom?.setBackgroundColor(backgroundColor)
         binding.ivCoverC.setCardBackgroundColor(backgroundColor)
         binding.flAction.setBackgroundColor(bottomBackground)
         binding.vwBg.applyNavigationBarPadding()
