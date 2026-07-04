@@ -19,7 +19,7 @@
 - [链接1](https://legado.gyks.cf/)
 - [链接2](https://legado.ccccocccc.cc/index.php?i=2)
 
-**2026/07/03**
+**2026/07/04**
 - 修复发现页查询对话框加载中退出导致的崩溃
 - feat[book-info]: 添加“作者其他作品功能”到书籍详情页，参考NG版本
 - 优化“作者其他作品功能”
