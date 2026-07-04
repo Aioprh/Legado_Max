@@ -1308,7 +1308,15 @@
     <string name="highlight_rule_exclude_scope">排除範圍，書名或書源URL</string>
     <string name="highlight_rule_exclude_scope_hint">要排除的書名或書源URL，分號分隔</string>
     <string name="history">歷史記錄</string>
+    <string name="book_read_record">閱讀記錄</string>
+    <string name="view_read_record">查看</string>
+    <string name="no_read_record">暫無閱讀記錄</string>
+    <string name="book_author_other_works">作者其他作品</string>
+    <string name="book_author_other_works_loading">正在載入作者其他作品...</string>
+    <string name="book_author_other_works_empty">未找到作者其他作品</string>
+    <string name="book_author_other_works_error">搜尋失敗: %1$s</string>
     <string name="immersion_nav_bar">沉浸式操作欄</string>
+    <string name="show_author_other_works_in_book_info">顯示作者其他作品</string>
     <string name="key_page_anim_speed_title">按鍵翻頁動畫速度</string>
     <string name="manga_disable_page_anim">停用漫畫翻頁動畫</string>
     <string name="manga_hide_footer_info">隱藏漫畫頁腳資訊</string>

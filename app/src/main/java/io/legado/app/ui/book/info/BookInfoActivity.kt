@@ -36,6 +36,7 @@ import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.SearchBook
 import io.legado.app.databinding.ActivityBookInfoBinding
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.AppWebDav
@@ -83,6 +84,8 @@ import io.legado.app.ui.book.manga.ReadMangaActivity
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.ReadBookActivity.Companion.RESULT_DELETED
 import io.legado.app.ui.book.search.SearchActivity
+import io.legado.app.ui.book.search.SearchAdapter
+import io.legado.app.domain.model.BookShelfState
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.association.OnLineImportActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
@@ -110,6 +113,7 @@ import io.legado.app.utils.openUrl
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setHtml
 import io.legado.app.utils.setMarkdown
+import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
@@ -125,13 +129,16 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.core.os.bundleOf
 
 class BookInfoActivity :
     VMBaseActivity<ActivityBookInfoBinding, BookInfoViewModel>(toolBarTheme = Theme.Dark, showOpenMenuIcon = false),
     GroupSelectDialog.CallBack,
     ChangeBookSourceDialog.CallBack,
     ChangeCoverDialog.CallBack,
-    VariableDialog.Callback {
+    VariableDialog.Callback,
+    SearchAdapter.CallBack {
 
     private val tocActivityResult = registerForActivityResult(TocActivityResult()) {
         it?.let {
@@ -203,6 +210,7 @@ class BookInfoActivity :
     private val waitDialog by lazy { WaitDialog(this) }
     private var editMenuItem: MenuItem? = null
     private var menuCustomBtn: MenuItem? = null
+    private var authorOtherWorksRawBooks = emptyList<SearchBook>()
     private val book get() = viewModel.getBook(false)
     private var readRecordJob: Job? = null
 
@@ -245,6 +253,10 @@ class BookInfoActivity :
         })
     }
 
+    private val authorOtherWorksAdapter by lazy {
+        SearchAdapter(this, this)
+    }
+
     @SuppressLint("PrivateResource")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.titleBar.setBackgroundResource(R.color.transparent)
@@ -256,8 +268,12 @@ class BookInfoActivity :
         binding.vwBg.applyNavigationBarPadding()
         binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
         binding.tvToc.text = getString(R.string.toc_s, getString(R.string.loading))
+        initAuthorOtherWorksView()
         viewModel.bookData.observe(this) { showBook(it) }
         viewModel.chapterListData.observe(this) { upLoading(false, it) }
+        viewModel.authorOtherWorksData.observe(this) {
+            showAuthorOtherWorks(it)
+        }
         viewModel.waitDialogData.observe(this) { upWaitDialogStatus(it) }
         viewModel.initData(intent)
         initViewEvent()
@@ -293,6 +309,8 @@ class BookInfoActivity :
             LocalConfig.bookInfoDeleteAlert
         menu.findItem(R.id.menu_show_read_record)?.isChecked =
             AppConfig.bookInfoShowReadRecord
+        menu.findItem(R.id.menu_show_author_other_works)?.isChecked =
+            AppConfig.bookInfoShowAuthorOtherWorks
         return super.onMenuOpened(featureId, menu)
     }
 
@@ -417,6 +435,10 @@ class BookInfoActivity :
                 AppConfig.bookInfoShowReadRecord = !item.isChecked
                 viewModel.getBook()?.let { upReadRecord(it) }
             }
+            R.id.menu_show_author_other_works -> {
+                AppConfig.bookInfoShowAuthorOtherWorks = !item.isChecked
+                viewModel.getBook()?.let { upAuthorOtherWorksVisibility(it) }
+            }
             R.id.menu_upload -> {
                 viewModel.getBook()?.let { book ->
                     book.getRemoteUrl()?.let {
@@ -520,6 +542,16 @@ class BookInfoActivity :
         upTvBookshelf()
         upKinds(book)
         upGroup(book.group)
+        viewModel.prepareAuthorOtherWorks(book)
+        upAuthorOtherWorksVisibility(book)
+    }
+
+    private fun upAuthorOtherWorksVisibility(book: Book) {
+        if (!AppConfig.bookInfoShowAuthorOtherWorks || book.isLocal || book.getRealAuthor().isBlank()) {
+            binding.llAuthorOtherWorks?.gone()
+        } else {
+            binding.llAuthorOtherWorks?.visible()
+        }
     }
 
     inner class CustomWebViewClient(
@@ -1268,6 +1300,84 @@ class BookInfoActivity :
     private fun destroyWeb() {
         pooledWebView?.let { WebViewPool.release(it) }
         pooledWebView = null
+    }
+
+    private fun initAuthorOtherWorksView() = binding.run {
+        rvAuthorOtherWorks?.layoutManager = LinearLayoutManager(this@BookInfoActivity)
+        rvAuthorOtherWorks?.adapter = authorOtherWorksAdapter
+        rvAuthorOtherWorks?.itemAnimator = null
+        rvAuthorOtherWorks?.isNestedScrollingEnabled = false
+        rvAuthorOtherWorks?.setEdgeEffectColor(accentColor)
+        ivAuthorOtherWorksRefresh?.setOnClickListener {
+            viewModel.searchAuthorOtherWorks()
+        }
+    }
+
+    private fun showAuthorOtherWorks(state: BookInfoViewModel.AuthorOtherWorksState) = binding.run {
+        ivAuthorOtherWorksRefresh?.isEnabled = state !is BookInfoViewModel.AuthorOtherWorksState.Loading
+        when (state) {
+            BookInfoViewModel.AuthorOtherWorksState.Idle -> {
+                rvAuthorOtherWorks?.gone()
+                tvAuthorOtherWorksState?.gone()
+                resetAuthorOtherWorksDisplay()
+            }
+
+            BookInfoViewModel.AuthorOtherWorksState.Loading -> {
+                rvAuthorOtherWorks?.gone()
+                tvAuthorOtherWorksState?.visible()
+                tvAuthorOtherWorksState?.text = getString(R.string.book_author_other_works_loading)
+                resetAuthorOtherWorksDisplay()
+            }
+
+            BookInfoViewModel.AuthorOtherWorksState.Empty -> {
+                rvAuthorOtherWorks?.gone()
+                tvAuthorOtherWorksState?.visible()
+                tvAuthorOtherWorksState?.text = getString(R.string.book_author_other_works_empty)
+                resetAuthorOtherWorksDisplay()
+            }
+
+            is BookInfoViewModel.AuthorOtherWorksState.Success -> {
+                tvAuthorOtherWorksState?.gone()
+                rvAuthorOtherWorks?.visible()
+                updateAuthorOtherWorksDisplay(state.books)
+            }
+
+            is BookInfoViewModel.AuthorOtherWorksState.Error -> {
+                rvAuthorOtherWorks?.gone()
+                tvAuthorOtherWorksState?.visible()
+                tvAuthorOtherWorksState?.text =
+                    getString(R.string.book_author_other_works_error, state.message)
+                resetAuthorOtherWorksDisplay()
+            }
+        }
+    }
+
+    private fun resetAuthorOtherWorksDisplay() {
+        authorOtherWorksRawBooks = emptyList()
+        authorOtherWorksAdapter.setItems(emptyList())
+    }
+
+    private fun updateAuthorOtherWorksDisplay(books: List<SearchBook>) {
+        authorOtherWorksRawBooks = books
+        authorOtherWorksAdapter.setItems(books)
+    }
+
+    // SearchAdapter.CallBack 实现
+    override fun getBookShelfState(book: SearchBook): BookShelfState {
+        return viewModel.getBookShelfState(book)
+    }
+
+    override fun showBookInfo(name: String, author: String, bookUrl: String) {
+        val intent = Intent(this, BookInfoActivity::class.java)
+        intent.putExtra("name", name)
+        intent.putExtra("author", author)
+        intent.putExtra("bookUrl", bookUrl)
+        startActivity(intent)
+    }
+
+    override fun onBookLongClick(book: SearchBook) {
+        // 长按展开分组功能暂时简化，直接显示详情
+        showBookInfo(book.name, book.author, book.bookUrl)
     }
 
 }

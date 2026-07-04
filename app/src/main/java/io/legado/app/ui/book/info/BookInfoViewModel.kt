@@ -17,6 +17,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
+import io.legado.app.data.entities.SearchBook
 import io.legado.app.exception.NoBooksDirException
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.AppWebDav
@@ -52,18 +53,50 @@ import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.mapLatest
+import io.legado.app.domain.model.BookShelfState
+import java.util.concurrent.ConcurrentHashMap
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class BookInfoViewModel(application: Application) : BaseViewModel(application) {
     val bookData = MutableLiveData<Book>()
     val chapterListData = MutableLiveData<List<BookChapter>>()
+    val authorOtherWorksData = MutableLiveData<AuthorOtherWorksState>(AuthorOtherWorksState.Idle)
     val webFiles = mutableListOf<WebFile>()
     var inBookshelf = false
     var hasCustomBtn = false
     var bookSource: BookSource? = null
     private var changeSourceCoroutine: Coroutine<*>? = null
+    private var authorOtherWorksBookKey: String? = null
+    private val bookshelf: MutableSet<String> = ConcurrentHashMap.newKeySet()
     val waitDialogData = MutableLiveData<Boolean>()
     val actionLive = MutableLiveData<String>()
     val tocLoading = MutableLiveData<Boolean>()
+
+    init {
+        execute {
+            appDb.bookDao.flowAll().mapLatest { books ->
+                val keys = arrayListOf<String>()
+                books.filterNot { it.isNotShelf }
+                    .forEach {
+                        keys.add("${it.name}-${it.author}")
+                        keys.add(it.name)
+                        keys.add(it.bookUrl)
+                    }
+                keys
+            }.catch {
+                AppLog.put("书籍详情页获取书籍列表失败\n${it.localizedMessage}", it)
+            }.collect {
+                bookshelf.clear()
+                bookshelf.addAll(it)
+            }
+        }.onError {
+            AppLog.put("加载书架数据失败", it)
+        }
+    }
 
     fun initData(intent: Intent) {
         execute {
@@ -709,6 +742,97 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         // 压缩包形式的txt epub umd pdf文件
         val isSupportDecompress: Boolean = AppPattern.archiveFileRegex.matches(name)
 
+    }
+
+    // 作者其他作品相关方法
+    fun prepareAuthorOtherWorks(book: Book) {
+        val key = "${book.name}\n${book.author}\n${book.origin}"
+        if (authorOtherWorksBookKey != key) {
+            authorOtherWorksBookKey = key
+            authorOtherWorksData.value = AuthorOtherWorksState.Idle
+            loadCachedAuthorOtherWorks(book)
+        }
+    }
+
+    private fun loadCachedAuthorOtherWorks(book: Book) {
+        val source = bookSource ?: return
+        val author = normalizeAuthor(book.author)
+        if (author.isBlank()) return
+        // 当前分支 SearchBookDao 没有 getByOriginAuthor 方法，直接跳过缓存加载
+        // 作者其他作品功能将在用户点击刷新按钮时搜索
+    }
+
+    fun searchAuthorOtherWorks() {
+        val book = bookData.value ?: return
+        val source = bookSource ?: let {
+            authorOtherWorksData.value = AuthorOtherWorksState.Error(context.getString(R.string.error_no_source))
+            return
+        }
+        val author = normalizeAuthor(book.author)
+        if (author.isBlank()) {
+            authorOtherWorksData.value = AuthorOtherWorksState.Empty
+            return
+        }
+        authorOtherWorksData.value = AuthorOtherWorksState.Loading
+        execute {
+            val items = WebBook.searchBookAwait(
+                bookSource = source,
+                key = author,
+                page = 1,
+                filter = { _, itemAuthor, _ ->
+                    normalizeAuthor(itemAuthor) == author
+                }
+            ).onEach {
+                it.releaseHtmlData()
+            }.let { filterAuthorOtherWorks(book, it) }
+            if (items.isNotEmpty()) {
+                appDb.searchBookDao.insert(*items.toTypedArray())
+            }
+            items
+        }.onSuccess {
+            authorOtherWorksData.postValue(
+                if (it.isEmpty()) AuthorOtherWorksState.Empty else AuthorOtherWorksState.Success(it)
+            )
+        }.onError {
+            AppLog.put("搜索作者其他作品失败\n${it.localizedMessage}", it)
+            authorOtherWorksData.postValue(
+                AuthorOtherWorksState.Error(it.localizedMessage ?: it.javaClass.simpleName)
+            )
+        }
+    }
+
+    private fun filterAuthorOtherWorks(book: Book, books: List<SearchBook>): List<SearchBook> {
+        val author = normalizeAuthor(book.author)
+        val currentName = book.name.trim()
+        return books.filter {
+            normalizeAuthor(it.author) == author && it.name.trim() != currentName
+        }.distinctBy {
+            "${it.name.trim()}-${it.author.trim()}"
+        }
+    }
+
+    private fun normalizeAuthor(author: String): String {
+        return author.trim()
+    }
+
+    fun getBookShelfState(book: SearchBook): BookShelfState {
+        val name = book.name
+        val author = book.author
+        val bookUrl = book.bookUrl
+        val key = if (author.isNotBlank()) "$name-$author" else name
+        return when {
+            bookshelf.contains(bookUrl) -> BookShelfState.IN_SHELF
+            bookshelf.contains(key) -> BookShelfState.SAME_NAME_AUTHOR
+            else -> BookShelfState.NOT_IN_SHELF
+        }
+    }
+
+    sealed class AuthorOtherWorksState {
+        object Idle : AuthorOtherWorksState()
+        object Loading : AuthorOtherWorksState()
+        object Empty : AuthorOtherWorksState()
+        data class Success(val books: List<SearchBook>) : AuthorOtherWorksState()
+        data class Error(val message: String) : AuthorOtherWorksState()
     }
 
 }

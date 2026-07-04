@@ -666,6 +666,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.bookInfoShowReadRecord, value)
         }
 
+    var bookInfoShowAuthorOtherWorks: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.bookInfoShowAuthorOtherWorks, true)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.bookInfoShowAuthorOtherWorks, value)
+        }
+
     val autoChangeSource: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.autoChangeSource, true)
 
