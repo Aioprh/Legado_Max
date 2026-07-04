@@ -23,6 +23,7 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
     DiffRecyclerAdapter<SearchBook, ItemSearchBinding>(context) {
 
     override val keepScrollPosition = true
+    var showOriginCount: Boolean = true
 
     override val diffItemCallback: DiffUtil.ItemCallback<SearchBook>
         get() = object : DiffUtil.ItemCallback<SearchBook>() {
@@ -96,7 +97,11 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
             ivInBookshelfDot.setShelfStateDot(shelfState)
             tvName.text = searchBook.name
             tvAuthor.text = context.getString(R.string.author_show, searchBook.author)
-            bvOriginCount.setBadgeCount(searchBook.origins.size)
+            if (showOriginCount) {
+                bvOriginCount.setBadgeCount(searchBook.origins.size)
+            } else {
+                bvOriginCount.gone()
+            }
             upLasted(binding, searchBook.latestChapterTitle)
             tvIntroduce.text = searchBook.trimIntro(context)
             upKind(binding, searchBook.getKindList())

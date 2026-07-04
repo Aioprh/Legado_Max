@@ -100,6 +100,9 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
 
     fun initData(intent: Intent) {
         execute {
+            inBookshelf = false
+            hasCustomBtn = false
+            bookSource = null
             val name = intent.getStringExtra("name") ?: ""
             val author = intent.getStringExtra("author") ?: ""
             val bookUrl = intent.getStringExtra("bookUrl") ?: ""
@@ -758,8 +761,19 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         val source = bookSource ?: return
         val author = normalizeAuthor(book.author)
         if (author.isBlank()) return
-        // 当前分支 SearchBookDao 没有 getByOriginAuthor 方法，直接跳过缓存加载
-        // 作者其他作品功能将在用户点击刷新按钮时搜索
+        execute {
+            val cachedBooks = appDb.searchBookDao.getByOriginAuthor(source.bookSourceUrl, author)
+            if (cachedBooks.isEmpty()) {
+                return@execute emptyList<SearchBook>()
+            }
+            filterAuthorOtherWorks(book, cachedBooks)
+        }.onSuccess { items ->
+            if (items.isNotEmpty()) {
+                authorOtherWorksData.postValue(AuthorOtherWorksState.Success(items))
+            }
+        }.onError {
+            AppLog.put("加载缓存的作者其他作品失败\n${it.localizedMessage}", it)
+        }
     }
 
     fun searchAuthorOtherWorks() {

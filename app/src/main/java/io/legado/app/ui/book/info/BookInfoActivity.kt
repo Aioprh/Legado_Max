@@ -130,7 +130,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.core.os.bundleOf
 
 class BookInfoActivity :
     VMBaseActivity<ActivityBookInfoBinding, BookInfoViewModel>(toolBarTheme = Theme.Dark, showOpenMenuIcon = false),
@@ -277,6 +276,12 @@ class BookInfoActivity :
         viewModel.waitDialogData.observe(this) { upWaitDialogStatus(it) }
         viewModel.initData(intent)
         initViewEvent()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        viewModel.initData(intent)
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
@@ -1308,6 +1313,7 @@ class BookInfoActivity :
         rvAuthorOtherWorks?.itemAnimator = null
         rvAuthorOtherWorks?.isNestedScrollingEnabled = false
         rvAuthorOtherWorks?.setEdgeEffectColor(accentColor)
+        authorOtherWorksAdapter.showOriginCount = false
         ivAuthorOtherWorksRefresh?.setOnClickListener {
             viewModel.searchAuthorOtherWorks()
         }
@@ -1369,8 +1375,6 @@ class BookInfoActivity :
 
     override fun showBookInfo(name: String, author: String, bookUrl: String) {
         val intent = Intent(this, BookInfoActivity::class.java)
-        intent.putExtra("name", name)
-        intent.putExtra("author", author)
         intent.putExtra("bookUrl", bookUrl)
         startActivity(intent)
     }
