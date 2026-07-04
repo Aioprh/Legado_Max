@@ -415,6 +415,9 @@ class ReadRecordRepositoryTest {
             return flowOf(records.sortedByDescending { it.lastRead }.map { it.copy() })
         }
 
+        override val count: Int
+            get() = records.size
+
         override val all: List<ReadRecord>
             get() = records.map { it.copy() }
 
