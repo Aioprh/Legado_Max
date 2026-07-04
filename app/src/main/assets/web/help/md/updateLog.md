@@ -19,7 +19,12 @@
 - [链接1](https://legado.gyks.cf/)
 - [链接2](https://legado.ccccocccc.cc/index.php?i=2)
 
-**2026/07/02**
+**2026/07/03**
+- 修复发现页查询对话框加载中退出导致的崩溃
+- feat[book-info]: 添加“作者其他作品功能”到书籍详情页，参考NG版本
+- 优化“作者其他作品功能”
+
+**2026/07/03**
 - 修复因重构ExploreShowActivity 导致回调操作中java.open()函数失效的bug
 - 修复发现页全部加入书架不生效的bug
 - 修复订阅源的启动页无法刷新的bug
