@@ -130,6 +130,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import io.legado.app.ui.theme.LegadoTheme
+import io.legado.app.ui.widget.components.BookBottomSheet
 
 class BookInfoActivity :
     VMBaseActivity<ActivityBookInfoBinding, BookInfoViewModel>(toolBarTheme = Theme.Dark, showOpenMenuIcon = false),
@@ -210,6 +216,11 @@ class BookInfoActivity :
     private var editMenuItem: MenuItem? = null
     private var menuCustomBtn: MenuItem? = null
     private var authorOtherWorksRawBooks = emptyList<SearchBook>()
+    /** 书籍底部弹窗状态 */
+    private var showBookSheet by mutableStateOf(false)
+    private var selectedBook by mutableStateOf<SearchBook?>(null)
+    private var selectedBookShelfState by mutableStateOf(BookShelfState.NOT_IN_SHELF)
+    private var bookSheetComposeView: ComposeView? = null
     private val book get() = viewModel.getBook(false)
     private var readRecordJob: Job? = null
 
@@ -1380,8 +1391,57 @@ class BookInfoActivity :
     }
 
     override fun onBookLongClick(book: SearchBook) {
-        // 长按展开分组功能暂时简化，直接显示详情
-        showBookInfo(book.name, book.author, book.bookUrl)
+        selectedBook = book
+        selectedBookShelfState = viewModel.getBookShelfState(book)
+        showBookSheet = true
+        updateBookSheetView()
+    }
+
+    /**
+     * 更新书籍底部弹窗的显示状态
+     * 与首页、发现页、搜索页的长按弹窗行为完全一致
+     */
+    private fun updateBookSheetView() {
+        val contentView = binding.root
+        if (showBookSheet) {
+            if (bookSheetComposeView == null) {
+                bookSheetComposeView = ComposeView(this).also { composeView ->
+                    composeView.setContent {
+                        LegadoTheme {
+                            BookBottomSheet(
+                                show = showBookSheet,
+                                book = selectedBook,
+                                shelfState = selectedBookShelfState,
+                                onDismiss = {
+                                    showBookSheet = false
+                                    updateBookSheetView()
+                                },
+                                onAddToShelf = { book ->
+                                    viewModel.addAuthorOtherWorkToBookshelf(book)
+                                },
+                                onShowInfo = { book ->
+                                    startActivity<BookInfoActivity> {
+                                        putExtra("name", book.name)
+                                        putExtra("author", book.author)
+                                        putExtra("bookUrl", book.bookUrl)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    val params = android.widget.FrameLayout.LayoutParams(
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                        android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+                    )
+                    contentView.addView(composeView, params)
+                }
+            }
+        } else {
+            bookSheetComposeView?.let {
+                contentView.removeView(it)
+                bookSheetComposeView = null
+            }
+        }
     }
 
 }

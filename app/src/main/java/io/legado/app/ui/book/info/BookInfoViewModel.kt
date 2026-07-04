@@ -841,6 +841,22 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
+    /**
+     * 将作者其他作品中的书籍加入书架
+     */
+    fun addAuthorOtherWorkToBookshelf(book: SearchBook) {
+        execute {
+            val bookEntity = book.toBook()
+            appDb.bookDao.insert(bookEntity)
+            bookshelf.add(book.bookUrl)
+            val key = if (book.author.isNotBlank()) "${book.name}-${book.author}" else book.name
+            bookshelf.add(key)
+            bookshelf.add(book.name)
+        }.onError {
+            AppLog.put("加入书架失败", it)
+        }
+    }
+
     sealed class AuthorOtherWorksState {
         object Idle : AuthorOtherWorksState()
         object Loading : AuthorOtherWorksState()
