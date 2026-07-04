@@ -1581,6 +1581,7 @@
     <string name="no_read_record">No Read Record</string>
     <string name="book_author_other_works">Author\'s other works</string>
     <string name="book_author_other_works_loading">Loading author\'s other works...</string>
+    <string name="book_author_other_works_idle">Tap refresh to search author\'s other works</string>
     <string name="book_author_other_works_empty">No author\'s other works found.</string>
     <string name="book_author_other_works_error">Search failed: %1$s</string>
     <string name="total_read_time_s">Total Read %1$s</string>

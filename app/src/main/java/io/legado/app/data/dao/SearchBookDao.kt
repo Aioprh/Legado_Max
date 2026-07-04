@@ -62,6 +62,9 @@ interface SearchBookDao {
     @Query("select * from searchBooks where origin = :origin and author = :author")
     fun getByOriginAuthor(origin: String, author: String): List<SearchBook>
 
+    @Query("delete from searchBooks where origin = :origin and author = :author")
+    fun clearByOriginAuthor(origin: String, author: String)
+
     @Query("delete from searchBooks where name = :name and author = :author")
     fun clear(name: String, author: String)
 

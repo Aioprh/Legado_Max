@@ -1336,7 +1336,8 @@ class BookInfoActivity :
         when (state) {
             BookInfoViewModel.AuthorOtherWorksState.Idle -> {
                 rvAuthorOtherWorks?.gone()
-                tvAuthorOtherWorksState?.gone()
+                tvAuthorOtherWorksState?.visible()
+                tvAuthorOtherWorksState?.text = getString(R.string.book_author_other_works_idle)
                 resetAuthorOtherWorksDisplay()
             }
 
@@ -1388,6 +1389,7 @@ class BookInfoActivity :
     override fun showBookInfo(name: String, author: String, bookUrl: String) {
         val intent = Intent(this, BookInfoActivity::class.java)
         intent.putExtra("bookUrl", bookUrl)
+        intent.putExtra("fromAuthorOtherWorks", true)
         startActivity(intent)
     }
 
@@ -1425,6 +1427,7 @@ class BookInfoActivity :
                                         putExtra("name", book.name)
                                         putExtra("author", book.author)
                                         putExtra("bookUrl", book.bookUrl)
+                                        putExtra("fromAuthorOtherWorks", true)
                                     }
                                 }
                             )

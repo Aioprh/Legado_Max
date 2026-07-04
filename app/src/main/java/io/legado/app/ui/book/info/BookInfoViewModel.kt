@@ -71,6 +71,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
     var bookSource: BookSource? = null
     private var changeSourceCoroutine: Coroutine<*>? = null
     private var authorOtherWorksBookKey: String? = null
+    private var fromAuthorOtherWorks = false
     private val bookshelf: MutableSet<String> = ConcurrentHashMap.newKeySet()
     val waitDialogData = MutableLiveData<Boolean>()
     val actionLive = MutableLiveData<String>()
@@ -103,6 +104,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
             inBookshelf = false
             hasCustomBtn = false
             bookSource = null
+            fromAuthorOtherWorks = intent.getBooleanExtra("fromAuthorOtherWorks", false)
             val name = intent.getStringExtra("name") ?: ""
             val author = intent.getStringExtra("author") ?: ""
             val bookUrl = intent.getStringExtra("bookUrl") ?: ""
@@ -664,11 +666,13 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
 
     fun delBook(deleteOriginal: Boolean = false, success: (() -> Unit)? = null) {
         execute {
-            bookData.value?.let {
-                it.delete()
+            bookData.value?.let { book ->
+                book.delete()
                 inBookshelf = false
-                if (it.isLocal) {
-                    LocalBook.deleteBook(it, deleteOriginal)
+                // 清除该书对应书源+作者的作者其他作品缓存
+                appDb.searchBookDao.clearByOriginAuthor(book.origin, book.author)
+                if (book.isLocal) {
+                    LocalBook.deleteBook(book, deleteOriginal)
                 }
             }
         }.onSuccess {
@@ -761,6 +765,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         val source = bookSource ?: return
         val author = normalizeAuthor(book.author)
         if (author.isBlank()) return
+        if (!inBookshelf && !fromAuthorOtherWorks) return
         execute {
             val cachedBooks = appDb.searchBookDao.getByOriginAuthor(source.bookSourceUrl, author)
             if (cachedBooks.isEmpty()) {

@@ -1318,6 +1318,7 @@
     <string name="no_read_record">暫無閱讀記錄</string>
     <string name="book_author_other_works">作者其他作品</string>
     <string name="book_author_other_works_loading">正在載入作者其他作品...</string>
+    <string name="book_author_other_works_idle">點擊重新整理搜尋作者其他作品</string>
     <string name="book_author_other_works_empty">未找到作者其他作品</string>
     <string name="book_author_other_works_error">搜尋失敗: %1$s</string>
     <string name="immersion_nav_bar">沉浸式操作列</string>

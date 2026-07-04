@@ -1455,6 +1455,7 @@
     <string name="no_read_record">暂无阅读记录</string>
     <string name="book_author_other_works">作者其他作品</string>
     <string name="book_author_other_works_loading">正在加载作者其他作品...</string>
+    <string name="book_author_other_works_idle">点击刷新搜索作者其他作品</string>
     <string name="book_author_other_works_empty">未找到作者其他作品</string>
     <string name="book_author_other_works_error">搜索失败: %1$s</string>
     <string name="total_read_time_s">总阅读时间 %1$s</string>
