@@ -420,11 +420,14 @@ private fun DiscoverTab(
                     val argsJson = GSON.toJson(
                         kinds.map { mapOf("t" to it.title, "u" to (it.url ?: "")) }
                     )
+                    // 多选模式下也填入第一个分类的url，确保URL输入框有内容
+                    val firstKindUrl = kinds.firstOrNull()?.url ?: ""
                     manualAddPrefill = ModuleDef(
                         type = selectedModuleType,
                         title = title,
                         sourceUrl = sourceUrl,
-                        args = argsJson
+                        args = argsJson,
+                        url = firstKindUrl
                     )
                     showManualAddDialog = true
                 }
