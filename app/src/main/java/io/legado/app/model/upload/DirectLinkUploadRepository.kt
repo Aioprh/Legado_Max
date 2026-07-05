@@ -27,6 +27,13 @@ class DirectLinkUploadRepository {
     fun getRules(): Flow<List<DirectLinkUploadRule>> = ruleDao.flowAll()
 
     /**
+     * 获取所有规则（一次性）
+     * 
+     * @return 规则列表
+     */
+    suspend fun getAllRules(): List<DirectLinkUploadRule> = ruleDao.getAll()
+
+    /**
      * 根据ID获取规则
      * 
      * @param id 规则ID
@@ -44,7 +51,7 @@ class DirectLinkUploadRepository {
         // 先尝试获取标记为默认的规则
         val default = ruleDao.getDefault()
         if (default != null) return default
-        
+
         // 如果没有默认规则，返回第一个规则
         val all = ruleDao.getAll()
         return all.firstOrNull()
@@ -189,7 +196,7 @@ class DirectLinkUploadRepository {
     suspend fun migrateFromOldConfig() {
         // 获取旧配置
         val oldRule = DirectLinkUpload.getConfig()
-        
+
         // 如果有旧配置且数据库中没有规则，则迁移
         if (oldRule != null && ruleDao.getCount() == 0) {
             val newRule = DirectLinkUploadRule(
@@ -201,7 +208,7 @@ class DirectLinkUploadRepository {
                 sortOrder = 0
             )
             ruleDao.insert(newRule)
-            
+
             // 删除旧配置
             DirectLinkUpload.delConfig()
         }
@@ -210,13 +217,13 @@ class DirectLinkUploadRepository {
     /**
      * 导入默认规则
      * 从assets中的默认规则文件导入
-     * 只在没有规则时导入
+     * 按 uploadUrl 去重，只导入不存在的默认规则
      */
     suspend fun importDefaultRules() {
-        // 如果已有规则，不导入
-        if (ruleDao.getCount() > 0) return
-        
-        // 获取默认规则列表
+        // 获取现有规则的 uploadUrl 集合
+        val existingUrls = ruleDao.getAll().map { it.uploadUrl }.toSet()
+
+        // 获取默认规则列表，过滤掉已存在的
         val defaultRules = DirectLinkUpload.defaultRules.mapIndexed { index, rule ->
             DirectLinkUploadRule(
                 uploadUrl = rule.uploadUrl,
@@ -226,10 +233,12 @@ class DirectLinkUploadRepository {
                 sortOrder = index,
                 isDefault = index == 0  // 第一个规则设为默认
             )
+        }.filter { it.uploadUrl !in existingUrls }
+
+        // 批量插入不存在的默认规则
+        if (defaultRules.isNotEmpty()) {
+            ruleDao.insert(*defaultRules.toTypedArray())
         }
-        
-        // 批量插入
-        ruleDao.insert(*defaultRules.toTypedArray())
     }
 }
 

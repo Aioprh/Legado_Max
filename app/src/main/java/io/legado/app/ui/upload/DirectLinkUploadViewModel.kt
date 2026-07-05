@@ -37,7 +37,8 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
     init {
         viewModelScope.launch {
             repository.migrateFromOldConfig()
-            repository.importDefaultRules()
+            // 移除自动导入默认规则，避免用户删除所有规则后重新进入页面时自动恢复
+            // repository.importDefaultRules()
             loadStats()
         }
     }
@@ -86,12 +87,12 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
     ) {
         execute {
             _uploadState.value = UploadState.Uploading(0)
-            
+
             val uploadRule = rule ?: repository.getDefaultRule()
                 ?: throw IllegalStateException("没有可用的上传规则")
 
             val startTime = System.currentTimeMillis()
-            
+
             try {
                 val downloadUrl = DirectLinkUpload.upLoad(
                     fileName = fileName,
@@ -106,7 +107,7 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
                 )
 
                 val duration = System.currentTimeMillis() - startTime
-                
+
                 val history = UploadHistory(
                     fileName = fileName,
                     fileSize = getFileSize(file),
@@ -117,15 +118,15 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
                     ruleSummary = uploadRule.summary,
                     success = true
                 )
-                
+
                 repository.addHistory(history)
                 repository.incrementUploadCount(uploadRule.id)
-                
+
                 _uploadState.value = UploadState.Success(downloadUrl)
                 loadStats()
             } catch (e: Exception) {
                 val duration = System.currentTimeMillis() - startTime
-                
+
                 val history = UploadHistory(
                     fileName = fileName,
                     fileSize = getFileSize(file),
@@ -137,9 +138,9 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
                     success = false,
                     errorMsg = e.localizedMessage
                 )
-                
+
                 repository.addHistory(history)
-                
+
                 _uploadState.value = UploadState.Error(e.localizedMessage ?: "上传失败")
             }
         }.onError {
@@ -150,7 +151,7 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
     fun testRule(rule: DirectLinkUploadRule) {
         execute {
             _uploadState.value = UploadState.Testing
-            
+
             val result = DirectLinkUpload.upLoad(
                 fileName = "test.json",
                 file = "{}",
@@ -162,7 +163,7 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
                     compress = rule.compress
                 )
             )
-            
+
             _uploadState.value = UploadState.TestSuccess(result)
         }.onError {
             _uploadState.value = UploadState.TestError(it.localizedMessage ?: "测试失败")
@@ -220,14 +221,20 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
 
     /**
      * 从剪贴板粘贴规则
-     * 解析JSON格式的规则并添加到数据库
+     * 解析JSON格式的规则并添加到数据库，相同 uploadUrl 的去重
      * 
      * @param json JSON格式的规则字符串
-     * @return 是否粘贴成功
      */
-    fun pasteRule(json: String): Boolean {
-        return try {
+    fun pasteRule(json: String) {
+        execute {
             val rule = GSON.fromJson(json, DirectLinkUploadRule::class.java)
+
+            // 去重检查：相同 uploadUrl 视为同一规则
+            val existingRules = repository.getAllRules()
+            if (existingRules.any { it.uploadUrl == rule.uploadUrl }) {
+                throw IllegalStateException("该规则已存在，请勿重复粘贴")
+            }
+
             // 重置ID和管理字段
             val newRule = rule.copy(
                 id = 0,
@@ -237,11 +244,10 @@ class DirectLinkUploadViewModel(application: Application) : BaseViewModel(applic
                 createTime = System.currentTimeMillis(),
                 updateTime = System.currentTimeMillis()
             )
-            addRule(newRule)
-            true
-        } catch (e: Exception) {
-            _uiState.value = UiState.Error("粘贴规则失败: ${e.localizedMessage}")
-            false
+            repository.addRule(newRule)
+            _uiState.value = UiState.Success("粘贴规则成功")
+        }.onError {
+            _uiState.value = UiState.Error(it.localizedMessage ?: "粘贴规则失败")
         }
     }
 

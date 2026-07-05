@@ -1691,7 +1691,7 @@
     <string name="debug_ua_safari_ios">Safari iOS</string>
     <string name="debug_ua_firefox">Firefox</string>
     <string name="debug_ua_custom">Custom</string>
-    
+
     <!-- CURL Test -->
     <string name="debug_curl_test">CURL Test</string>
     <string name="debug_curl_test_desc">Parse and execute CURL commands</string>
@@ -1709,7 +1709,7 @@
     <string name="debug_message">Message</string>
     <string name="debug_duration">Duration</string>
     <string name="debug_error">Error</string>
-    
+
     <!-- Ping Test -->
     <string name="debug_ping_test">Ping Test</string>
     <string name="debug_ping_test_desc">Test domain or IP connectivity</string>
@@ -1747,7 +1747,7 @@
     <string name="debug_ping_hide">Hide</string>
     <string name="debug_ping_success">Success</string>
     <string name="debug_ping_failed">Failed</string>
-    
+
     <!-- Regex Test Dialog -->
     <string name="test_input">Test Input</string>
     <string name="match_result">Match Result</string>
@@ -1793,7 +1793,7 @@
     <string name="clear_all_records">Clear all records</string>
     <string name="search_url_record_hint">Search URL/Domain/Source</string>
     <string name="filter_by_domain">Filter by Domain</string>
-    
+
     <!-- TTS Debug -->
     <string name="play_audio">Play Audio</string>
     <string name="view_js_lib">View JS Library</string>
@@ -2035,7 +2035,7 @@
     <string name="homepage_create_button_group">Create Button Group (%d)</string>
     <string name="homepage_create_ranking_group">Create Ranking Group (%d)</string>
     <string name="homepage_selected_categories_count">%d categories selected</string>
-    
+
     <!-- Book Bottom Sheet -->
     <string name="already_in_bookshelf">Already in Bookshelf</string>
     <string name="same_name_book_in_shelf">Same name book in Bookshelf, clicking Add to Bookshelf will overwrite the current version</string>
