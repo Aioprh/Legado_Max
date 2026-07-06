@@ -3,7 +3,6 @@ package io.legado.app.ui.book.explore
 import android.app.Application
 import android.content.Intent
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.AppLog
@@ -34,15 +33,7 @@ import java.util.concurrent.ConcurrentHashMap
  * 参考 RssSortViewModel 的实现
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class ExploreShowViewModel(
-    application: Application,
-    private val savedStateHandle: SavedStateHandle
-) : BaseViewModel(application) {
-
-    companion object {
-        private const val KEY_SCROLL_POSITIONS = "scroll_positions"
-        private const val KEY_CURRENT_TAB_POSITION = "current_tab_position"
-    }
+class ExploreShowViewModel(application: Application) : BaseViewModel(application) {
 
     val bookshelf: MutableSet<String> = ConcurrentHashMap.newKeySet()
     val upAdapterLiveData = MutableLiveData<String>()
@@ -53,16 +44,7 @@ class ExploreShowViewModel(
     var currentSourceUrl: String = ""
 
     /** 各分类的滚动位置缓存（key = exploreUrl, value = adapter position），跨 Fragment 重建恢复 */
-    val scrollPositions: ConcurrentHashMap<String, Int> by lazy {
-        // 从 SavedStateHandle 恢复滚动位置
-        val saved = savedStateHandle.get<Map<String, Int>>(KEY_SCROLL_POSITIONS) ?: emptyMap()
-        ConcurrentHashMap(saved)
-    }
-
-    /** ViewPager 当前选中的 Tab 位置，用于 Activity 重建后恢复 */
-    var currentTabPosition: Int
-        get() = savedStateHandle.get(KEY_CURRENT_TAB_POSITION) ?: 0
-        set(value) = savedStateHandle.set(KEY_CURRENT_TAB_POSITION, value)
+    val scrollPositions = ConcurrentHashMap<String, Int>()
 
     /** 布局模式，按书源持久化 */
     var layoutMode: Int
@@ -208,19 +190,9 @@ class ExploreShowViewModel(
         }
     }
 
-    /**
-     * 保存滚动位置到 SavedStateHandle，在 Activity 进入后台时调用
-     */
-    fun saveScrollPositions() {
-        if (scrollPositions.isNotEmpty()) {
-            savedStateHandle[KEY_SCROLL_POSITIONS] = scrollPositions.toMap()
-        }
-    }
-
     override fun onCleared() {
-        // 在 ViewModel 清除前保存滚动位置到 SavedStateHandle，以便 Activity 重建后恢复
-        saveScrollPositions()
-        ExploreShowFragmentViewModel.clearDataCache()
         super.onCleared()
+        scrollPositions.clear()
+        ExploreShowFragmentViewModel.clearDataCache()
     }
 }

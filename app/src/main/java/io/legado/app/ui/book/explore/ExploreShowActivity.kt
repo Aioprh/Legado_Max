@@ -103,8 +103,6 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         binding.viewPager.addOnPageChangeListener(object : ViewPager.SimpleOnPageChangeListener() {
             override fun onPageSelected(position: Int) {
                 updateTabSelection(position)
-                // 保存当前 Tab 位置到 ViewModel
-                viewModel.currentTabPosition = position
                 currentExploreFragment()?.let {
                     updatePageMenu(it.getCurrentPage(), it.showPageMenu())
                 }
@@ -133,17 +131,11 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 binding.tabsContainer.gone()
             }
             adapter.notifyDataSetChanged()
-            // 优先恢复之前保存的 Tab 位置（Activity 重建场景）
-            val savedTabPosition = viewModel.currentTabPosition
-            if (savedTabPosition > 0 && savedTabPosition < exploreKinds.size) {
-                binding.viewPager.setCurrentItem(savedTabPosition, false)
-                updateTabSelection(savedTabPosition)
-            } else if (!targetUrl.isNullOrBlank() && exploreKinds.isNotEmpty()) {
-                // 支持从首页模块箭头跳转时自动选中对应分类 Tab
+            // 支持从首页模块箭头跳转时自动选中对应分类 Tab
+            if (!targetUrl.isNullOrBlank() && exploreKinds.isNotEmpty()) {
                 val targetIndex = exploreKinds.indexOfFirst { it.url == targetUrl }
                 if (targetIndex >= 0) {
                     binding.viewPager.setCurrentItem(targetIndex, false)
-                    viewModel.currentTabPosition = targetIndex
                 }
             }
             updateTabSelection(binding.viewPager.currentItem)
@@ -155,13 +147,6 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 toastOnUi(getString(R.string.add_books_success, count))
             }
         }
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        // 在 Activity 进入后台时保存滚动位置和当前 Tab 位置到 SavedStateHandle
-        viewModel.saveScrollPositions()
-        viewModel.currentTabPosition = binding.viewPager.currentItem
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
