@@ -407,7 +407,6 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
      * 更新书籍底部弹窗的显示状态
      */
     private fun updateBookSheetView() {
-        if (!isAdded || view == null) return
         val contentView = binding.refreshLayout
         if (showBookSheet) {
             if (bookSheetComposeView == null) {
@@ -454,7 +453,6 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
      * 更新屏蔽进度悬浮芯片的显示状态
      */
     private fun updateBlockProgressChip() {
-        if (!isAdded || view == null) return
         val contentView = binding.refreshLayout
         if (activityViewModel.showBlockProgress && _blockedCount > 0) {
             if (blockProgressComposeView == null) {

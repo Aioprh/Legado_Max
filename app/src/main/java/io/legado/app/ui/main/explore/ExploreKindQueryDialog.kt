@@ -23,7 +23,6 @@ import io.legado.app.utils.setLayout
 import io.legado.app.utils.visible
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.withContext
 
 /**
  * 发现分类查询对话框
@@ -102,17 +101,15 @@ class ExploreKindQueryDialog() : BaseDialogFragment(R.layout.dialog_explore_kind
      */
     private fun loadData() {
         binding.rotateLoading.visible()
-        Coroutine.async(viewLifecycleOwner.lifecycleScope, IO) {
+        Coroutine.async(lifecycleScope, IO) {
             val bookSource = appDb.bookSourceDao.getBookSource(sourceUrl)
             bookSource?.exploreKinds() ?: emptyList()
         }.onSuccess { kindList ->
-            if (!isAdded || view == null) return@onSuccess
             kinds = kindList
             filteredKinds = kindList
             adapter.setItems(filteredKinds)
             updateEmptyView()
         }.onFinally {
-            if (!isAdded || view == null) return@onFinally
             binding.rotateLoading.gone()
         }
     }
