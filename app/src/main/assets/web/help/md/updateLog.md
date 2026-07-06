@@ -19,10 +19,19 @@
 - [链接1](https://legado.gyks.cf/)
 - [链接2](https://legado.ccccocccc.cc/index.php?i=2)
 
+**2026/07/06**
+- 回退有关“refactor(explore-show): 重构为ViewPager+Fragment架构
+  ”的更改
+- 拉取来自EdisonYo的修复直链bug
+
+**2026/07/05**
+- 优化首页功能
+- [优化]：同步原版最后的优化
+
 **2026/07/04**
 - 修复发现页查询对话框加载中退出导致的崩溃
 - feat[book-info]: 添加“作者其他作品功能”到书籍详情页，参考NG版本
-- 优化“作者其他作品功能”
+- 优化“作者其他作品”功能
 
 **2026/07/03**
 - 修复因重构ExploreShowActivity 导致回调操作中java.open()函数失效的bug
