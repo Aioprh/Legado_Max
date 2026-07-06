@@ -56,8 +56,6 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
     var order = System.currentTimeMillis()
     private var nextPageUrl: String? = null
     private var initialExploreUrl: String = ""
-    /** 分类的唯一标识 URL（不含页码参数，稳定不变） */
-    val stableExploreUrl: String get() = initialExploreUrl
     var exploreKindName: String = ""
     var exploreUrl: String = ""
     var page = 1
