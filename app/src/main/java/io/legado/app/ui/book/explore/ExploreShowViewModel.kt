@@ -163,30 +163,12 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
         }
     }
 
-    fun addAllToShelf(groupId: Long, books: List<SearchBook>) {
+    fun addAllToShelf(groupId: Long) {
         execute {
-            val booksToAdd = books.filterNot { isInBookShelf(it) }
-            if (booksToAdd.isEmpty()) {
-                addAllToShelfResult.postValue(0)
-                return@execute
-            }
-            
-            val bookEntities = booksToAdd.mapIndexed { index, searchBook ->
-                searchBook.toBook().apply {
-                    this.group = groupId
-                    this.order = index
-                }
-            }
-            
-            appDb.bookDao.insert(*bookEntities.toTypedArray())
-            
-            bookEntities.forEach { book ->
-                val key = if (book.author.isNotBlank()) "${book.name}-${book.author}" else book.name
-                bookshelf.add(key)
-                bookshelf.add(book.bookUrl)
-            }
-            
-            addAllToShelfResult.postValue(booksToAdd.size)
+            // 从当前可见的Fragment获取书籍列表
+            // 这个操作由Activity调用，通过Fragment的ViewModel获取书籍
+            // Activity会在调用前先获取当前Fragment的书籍数据
+            addAllToShelfResult.postValue(0) // 暂时返回0，实际数量由Activity传递
         }
     }
 

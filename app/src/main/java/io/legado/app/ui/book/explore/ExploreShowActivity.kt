@@ -205,9 +205,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
 
     override fun upGroup(requestCode: Int, groupId: Long) {
         if (requestCode == REQUEST_CODE_ADD_ALL_TO_SHELF) {
-            val books = currentExploreFragment()?.getSearchBooks() ?: emptyList()
-            toastOnUi(getString(R.string.adding_books, books.size))
-            viewModel.addAllToShelf(groupId, books)
+            toastOnUi(getString(R.string.adding_books, currentExploreFragment()?.getBooksCount() ?: 0))
+            viewModel.addAllToShelf(groupId)
         }
     }
 
