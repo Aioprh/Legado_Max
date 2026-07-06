@@ -118,6 +118,7 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
     }
 
     private fun initView() = binding.run {
+        refreshLayout.setColorSchemeColors(accentColor)
         recyclerView.setEdgeEffectColor(primaryColor)
         recyclerView.applyNavigationBarPadding()
 
@@ -145,6 +146,11 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
         topLayoutParams.height = 0
         loadMoreViewTop.layoutParams = topLayoutParams
 
+        // 不需要下拉刷新功能，只使用 LoadMoreView 显示加载状态
+        // refreshLayout.setOnRefreshListener {
+        //     viewModel.loadBooks(1)
+        // }
+
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
@@ -159,6 +165,7 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
         // 预加载模式：立即开始加载
         if (activityViewModel.isPreload) {
             refreshLayout.post {
+                // 不使用 refreshLayout.isRefreshing，只使用 loadMoreView 显示加载状态
                 viewModel.loadBooks()
             }
             return@run
@@ -167,6 +174,7 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
         // 非预加载模式：等待Fragment可见后加载
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                // 不使用 refreshLayout.isRefreshing，只使用 loadMoreView 显示加载状态
                 viewModel.loadBooks()
                 this@launch.cancel()
             }
@@ -187,6 +195,8 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
             loadMoreViewTop.error(it)
         }
         viewModel.loadFinallyLiveData.observe(viewLifecycleOwner) { hasMore ->
+            // 不再使用 refreshLayout 的刷新状态
+            // binding.refreshLayout.isRefreshing = false
             if (!hasMore) {
                 loadMoreView.noMore()
             }
@@ -228,7 +238,6 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
     }
 
     private fun scrollToTop(forceLoad: Boolean = false) {
-        if (viewModel.isLoading) return
         if ((oldPage > 1 && !loadMoreView.isLoading && !loadMoreViewTop.isLoading) || forceLoad) {
             loadMoreViewTop.hasMore()
             oldPage--
@@ -246,8 +255,7 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
     }
 
     private fun upData(books: List<io.legado.app.data.entities.SearchBook>) {
-        // stopLoad() 延迟到数据更新之后调用，防止 RecyclerView 布局过程中的
-        // 滚动回调触发 scrollToBottom() 时，isLoading 已被过早复位导致重复加载
+        loadMoreView.stopLoad()
         if (books.isEmpty() && adapter.isEmpty()) {
             loadMoreView.noMore(getString(R.string.empty))
         } else if (adapter.getActualItemCount() == books.size) {
@@ -273,8 +281,6 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
                 isClearAll = false
             }
         }
-        // 数据更新完成后停止加载动画（noMore() 分支内部已调用 stopLoad()，此处对 else 分支确保 isLoading 复位）
-        loadMoreView.stopLoad()
         // 更新屏蔽计数
         _blockedCount = viewModel.getBlockedCount()
         updateBlockProgressChip()
@@ -282,29 +288,19 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
     }
 
     private fun upDataTop(books: List<io.legado.app.data.entities.SearchBook>) {
-        // 先添加数据到列表顶部（此时 isLoading 仍为 true，防止 addItems() 触发的
-        // RecyclerView 布局回调重复进入 scrollToTop() 导致加载图标卡死）
+        loadMoreViewTop.stopLoad()
         adapter.addItems(0, books)
-
-        // 滚动到合适的位置
         val layoutManager = binding.recyclerView.layoutManager as? LinearLayoutManager
         if (layoutManager != null && layoutManager.findFirstVisibleItemPosition() <= 1) {
             layoutManager.scrollToPositionWithOffset(books.size, 0)
         }
-
-        // 数据更新完成后停止加载动画
-        loadMoreViewTop.stopLoad()
-
-        // 如果已经是第一页，隐藏loadMoreViewTop
         if (oldPage <= 1) {
             val layoutParams = loadMoreViewTop.layoutParams as? FrameLayout.LayoutParams
             if (layoutParams != null) {
                 layoutParams.height = 0
                 loadMoreViewTop.layoutParams = layoutParams
             }
-            loadMoreViewTop.noMore()  // 没有更多上一页数据
         }
-        // 还有上一页数据时，hasMore会保持之前在scrollToTop()中通过hasMore()方法设置的true状态
     }
 
     fun getCurrentPage(): Int {
