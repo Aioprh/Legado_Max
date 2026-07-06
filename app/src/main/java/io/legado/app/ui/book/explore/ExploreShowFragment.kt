@@ -93,7 +93,6 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
     private var lastLoadTime = 0L
     private val handler = Handler(Looper.getMainLooper())
     private var loadRetryScheduled = false
-    private var fullRefresh = true  // 添加fullRefresh标记，参考订阅源实现
 
     /** 书籍底部弹窗状态 */
     private var showBookSheet by mutableStateOf(false)
@@ -220,9 +219,6 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
     }
 
     private fun scrollToBottom(forceLoad: Boolean = false) {
-        if (viewModel.isLoading) return
-        fullRefresh = false  // 滚动加载时设置为false，参考订阅源实现
-        
         val now = SystemClock.elapsedRealtime()
         val currentCount = activityViewModel.columnCount
         if (activityViewModel.layoutMode != ExploreShowActivity.LAYOUT_LIST && currentCount > 3 && now - lastLoadTime < ExploreShowActivity.LOAD_COOLDOWN_MS) {
@@ -262,10 +258,8 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
             loadMoreView.noMore()
         } else {
             val oldCount = adapter.getActualItemCount()
-            // 使用fullRefresh标记，参考订阅源实现
-            if (oldCount == 0 || fullRefresh) {
+            if (oldCount == 0) {
                 adapter.setItems(books)
-                fullRefresh = false  // 设置完成后重置标记
             } else if (oldCount > books.size) {
                 // 屏蔽规则过滤后书籍数量减少，重置整个列表
                 // 参考 RssArticlesFragment 的实现方式
@@ -320,8 +314,6 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
             .setValue(currentPage)
             .show { targetPage ->
                 if (targetPage != currentPage) {
-                    fullRefresh = true  // 页数跳转时设置为true，参考订阅源实现
-                    
                     // loadMoreViewTop已经在initView中添加为header，不需要重复添加
                     // 只需要根据目标页数控制其显示状态
                     if (targetPage != 1) {
@@ -342,9 +334,6 @@ class ExploreShowFragment() : VMBaseFragment<ExploreShowFragmentViewModel>(R.lay
                     viewModel.skipPage(targetPage)
                     isClearAll = true
                     adapter.clearItems()
-                    // 重置loadMoreView状态，防止自动触发loadMore导致页数错误
-                    loadMoreView.hasMore()
-                    loadMoreView.startLoad()
                     viewModel.loadBooks(targetPage)
                     binding.recyclerView.scrollToPosition(0)
                 }

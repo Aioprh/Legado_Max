@@ -76,8 +76,8 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
                 books.addAll(filtered)
                 booksData.postValue(books.toList())
                 appDb.searchBookDao.insert(*searchBooks.toTypedArray())
-                // 发送当前加载的页数给UI显示（参考订阅源RssArticlesViewModel的实现）
                 pageLiveData.postValue(page)
+                page = page + 1
                 val hasMore = searchBooks.isNotEmpty()
                 loadFinallyLiveData.postValue(hasMore)
                 isLoading = false
