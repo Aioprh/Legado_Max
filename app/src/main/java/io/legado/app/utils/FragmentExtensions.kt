@@ -146,8 +146,7 @@ fun Fragment.startActivityForBook(
         else -> ReadBookActivity::class.java
     }
     val intent = Intent(requireActivity(), cls)
-    // 移除 FLAG_ACTIVITY_NEW_TASK 以避免导航栈混乱
-    // Fragment 有 Activity 上下文，不需要使用此 flag
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     intent.putExtra("bookUrl", book.bookUrl)
     intent.apply(configIntent)
     startActivity(intent)
