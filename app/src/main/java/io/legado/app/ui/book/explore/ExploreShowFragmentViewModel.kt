@@ -25,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap
 class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(application) {
     companion object {
         private const val MAX_CACHE_SIZE = 10
-        private const val MAX_BOOKS_PER_CATEGORY = 300 // 单个分类最大累积书籍数量，防止OOM
         private val pageQueryRegex = Regex("""([?&]page=)(\d+)""", RegexOption.IGNORE_CASE)
 
         /** 共享分类数据缓存（LRU，最多 MAX_CACHE_SIZE 条），key = exploreUrl */
@@ -42,13 +41,7 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
 
         @Synchronized
         fun cacheBooks(exploreUrl: String, books: List<SearchBook>) {
-            // 缓存时限制单个分类的最大书籍数量，防止预加载缓存占用过多内存
-            val limitedBooks = if (books.size > MAX_BOOKS_PER_CATEGORY) {
-                books.take(MAX_BOOKS_PER_CATEGORY)
-            } else {
-                books
-            }
-            preloadCache[exploreUrl] = limitedBooks
+            preloadCache[exploreUrl] = books
         }
 
         @Synchronized
@@ -79,32 +72,6 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
     private var bookSource: BookSource? = null
     var sourceUrl: String = ""
 
-    /**
-     * 当书籍数据累积超过限制时，清理旧数据防止OOM
-     * 保留最近添加的书籍，避免无限累积
-     */
-    private fun trimBooksIfNeeded() {
-        if (allBooks.size > MAX_BOOKS_PER_CATEGORY) {
-            // 将 LinkedHashSet 转为列表，移除最旧的书籍（LinkedHashSet按插入顺序）
-            val allBooksList = allBooks.toList()
-            val booksList = books.toList()
-            
-            // 计算需要保留的数量
-            val keepCount = MAX_BOOKS_PER_CATEGORY
-            val dropCount = allBooksList.size - keepCount
-            
-            // 重新构建 Set，只保留最近的书籍
-            allBooks = linkedSetOf<SearchBook>().apply {
-                addAll(allBooksList.drop(dropCount))
-            }
-            
-            // 同步更新 filtered books
-            books = linkedSetOf<SearchBook>().apply {
-                addAll(booksList.drop(dropCount))
-            }
-        }
-    }
-
     fun init(bundle: Bundle?, source: BookSource?) {
         bundle?.let {
             exploreKindName = it.getString("exploreKindName") ?: ""
@@ -122,12 +89,11 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
         page = targetPage.coerceAtLeast(1)
         order = System.currentTimeMillis()
         nextPageUrl = null
-
+        
         // 第一页优先使用缓存，避免重复网络请求
         if (targetPage == 1) {
             getCachedBooks(initialExploreUrl)?.let { cached ->
                 allBooks.addAll(cached)
-                trimBooksIfNeeded() // 添加后检查并清理
                 val filtered = BlockRuleStore.filterBooks(getApplication(), cached, sourceUrl)
                 books.addAll(filtered)
                 booksData.postValue(books.toList())
@@ -138,15 +104,14 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
                 return
             }
         }
-
+        
         val source = bookSource ?: return
         val url = buildExploreUrl(page)
-
+        
         WebBook.exploreBook(viewModelScope, source, url, page)
             .timeout(if (BuildConfig.DEBUG) 0L else 60000L)
             .onSuccess(IO) { searchBooks ->
                 allBooks.addAll(searchBooks)
-                trimBooksIfNeeded() // 添加后检查并清理
                 val filtered = BlockRuleStore.filterBooks(getApplication(), searchBooks, sourceUrl)
                 books.addAll(filtered)
                 booksData.postValue(books.toList())
@@ -172,12 +137,11 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
         page++
         val source = bookSource ?: return
         val url = buildExploreUrl(page)
-
+        
         WebBook.exploreBook(viewModelScope, source, url, page)
             .timeout(if (BuildConfig.DEBUG) 0L else 60000L)
             .onSuccess(IO) { searchBooks ->
                 allBooks.addAll(searchBooks)
-                trimBooksIfNeeded() // 添加后检查并清理
                 val filtered = BlockRuleStore.filterBooks(getApplication(), searchBooks, sourceUrl)
                 books.addAll(filtered)
                 booksData.postValue(books.toList())
@@ -199,12 +163,11 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
         val prevPage = page - 1
         val source = bookSource ?: return
         val url = buildExploreUrl(prevPage)
-
+        
         WebBook.exploreBook(viewModelScope, source, url, prevPage)
             .timeout(if (BuildConfig.DEBUG) 0L else 60000L)
             .onSuccess(IO) { searchBooks ->
                 allBooks.addAll(searchBooks)
-                trimBooksIfNeeded() // 添加后检查并清理
                 val filtered = BlockRuleStore.filterBooks(getApplication(), searchBooks, sourceUrl)
                 val newBooks = linkedSetOf<SearchBook>()
                 newBooks.addAll(filtered)
@@ -262,27 +225,10 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
 
     /**
      * 屏蔽规则变化后重新过滤当前书籍列表
-     * 优化：直接在 allBooks 的 iterator 上过滤，避免创建临时列表
      */
     fun applyBlockRules() {
-        // 获取已启用且作用域匹配的规则
-        val rules = BlockRuleStore.loadEnabled(getApplication())
-            .filter { it.matchesScope(sourceUrl) }
-
-        if (rules.isEmpty()) {
-            // 无规则时，直接恢复 allBooks 到 books
-            books = linkedSetOf<SearchBook>().apply { addAll(allBooks) }
-        } else {
-            // 在 allBooks 的 iterator 上过滤，减少临时对象创建
-            books = linkedSetOf<SearchBook>().apply {
-                allBooks.forEach { book ->
-                    if (!rules.any { rule -> rule.matches(book) }) {
-                        add(book)
-                    }
-                }
-            }
-        }
-
+        val filtered = BlockRuleStore.filterBooks(getApplication(), allBooks.toList(), sourceUrl)
+        books = linkedSetOf<SearchBook>().apply { addAll(filtered) }
         booksData.postValue(books.toList())
     }
 
