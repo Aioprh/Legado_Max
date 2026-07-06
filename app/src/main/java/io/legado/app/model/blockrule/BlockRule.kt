@@ -3,6 +3,33 @@ package io.legado.app.model.blockrule
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.SearchBook
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * 正则表达式缓存管理
+ *
+ * 避免每次匹配都重新编译正则表达式，大幅减少内存和CPU消耗。
+ * 使用 ConcurrentHashMap 保证线程安全。
+ */
+object RegexCache {
+    private val cache = ConcurrentHashMap<String, Regex>()
+
+    /**
+     * 获取或编译正则表达式
+     * 缓存命中直接返回，未命中则编译并缓存
+     */
+    fun getOrCompile(pattern: String): Regex {
+        return cache.getOrPut(pattern) { Regex(pattern) }
+    }
+
+    /**
+     * 清除缓存
+     * 在屏蔽规则变更时调用，避免旧规则残留
+     */
+    fun clear() {
+        cache.clear()
+    }
+}
 
 /**
  * 屏蔽规则数据模型
@@ -43,6 +70,15 @@ data class BlockRule(
     fun hasRssScope(flag: Int): Boolean = (rssTargetScope and flag) != 0
 
     /**
+     * 获取缓存的正则表达式对象
+     * 避免每次匹配都重新编译正则，大幅减少内存和CPU消耗
+     */
+    private fun getCompiledRegex(): Regex? {
+        if (!isRegex || pattern.isBlank()) return null
+        return RegexCache.getOrCompile(pattern)
+    }
+
+    /**
      * 判断书籍是否匹配该屏蔽规则
      * 根据书源作用范围（位掩码）选择匹配字段，仅当 targetScope != 0 时生效
      */
@@ -55,9 +91,11 @@ data class BlockRule(
         if (hasScope(SCOPE_INTRO)) searchTargets.add(book.intro.orEmpty())
         if (hasScope(SCOPE_WORD_COUNT)) searchTargets.add(book.wordCount.orEmpty())
         if (searchTargets.isEmpty()) return false
+
+        val regex = getCompiledRegex()
         return searchTargets.any { text ->
-            if (isRegex) {
-                runCatching { Regex(pattern).containsMatchIn(text) }.getOrDefault(false)
+            if (regex != null) {
+                runCatching { regex.containsMatchIn(text) }.getOrDefault(false)
             } else {
                 text.contains(pattern)
             }
@@ -103,9 +141,11 @@ data class BlockRule(
         if (hasRssScope(SCOPE_RSS_TITLE)) searchTargets.add(article.title)
         if (hasRssScope(SCOPE_RSS_TIME)) searchTargets.add(article.pubDate.orEmpty())
         if (searchTargets.isEmpty()) return false
+
+        val regex = getCompiledRegex()
         return searchTargets.any { text ->
-            if (isRegex) {
-                runCatching { Regex(pattern).containsMatchIn(text) }.getOrDefault(false)
+            if (regex != null) {
+                runCatching { regex.containsMatchIn(text) }.getOrDefault(false)
             } else {
                 text.contains(pattern)
             }

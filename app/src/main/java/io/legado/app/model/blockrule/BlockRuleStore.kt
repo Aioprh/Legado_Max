@@ -74,38 +74,65 @@ object BlockRuleStore {
     /**
      * 核心过滤方法：返回被屏蔽规则过滤后的书籍列表
      * 遍历所有已启用的规则，移除匹配的书籍
+     * 优化：先过滤作用域匹配的规则，减少不必要的匹配计算
      */
     fun filterBooks(context: Context, books: List<SearchBook>, sourceUrl: String): List<SearchBook> {
         if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) return books
         val rules = loadEnabled(context)
         if (rules.isEmpty()) return books
+
+        // 先过滤出对当前书源生效的规则，避免对每本书都检查作用域
+        val applicableRules = rules.filter { it.matchesScope(sourceUrl) }
+        if (applicableRules.isEmpty()) return books
+
         return books.filterNot { book ->
-            rules.any { rule -> rule.matches(book) && rule.matchesScope(sourceUrl) }
+            applicableRules.any { rule -> rule.matches(book) }
         }
     }
 
     /**
      * 搜索结果过滤：每本书有独立的书源URL，按各自origin匹配作用域
+     * 优化：使用groupBy减少规则匹配次数
      */
     fun filterSearchBooks(context: Context, books: List<SearchBook>): List<SearchBook> {
         if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) return books
         val rules = loadEnabled(context)
         if (rules.isEmpty()) return books
-        return books.filterNot { book ->
-            rules.any { rule -> rule.matches(book) && rule.matchesScope(book.origin) }
+
+        // 按书源URL分组，避免对每本书都检查作用域
+        val booksBySource = books.groupBy { it.origin }
+        val result = mutableListOf<SearchBook>()
+
+        for ((sourceUrl, sourceBooks) in booksBySource) {
+            val applicableRules = rules.filter { it.matchesScope(sourceUrl) }
+            if (applicableRules.isEmpty()) {
+                result.addAll(sourceBooks)
+            } else {
+                result.addAll(sourceBooks.filterNot { book ->
+                    applicableRules.any { rule -> rule.matches(book) }
+                })
+            }
         }
+
+        return result
     }
 
     /**
      * RSS文章过滤：标题匹配 SCOPE_RSS_TITLE，时间匹配 SCOPE_RSS_TIME
      * 使用 rssScope 字段匹配订阅源作用域
+     * 优化：先过滤作用域匹配的规则，减少不必要的匹配计算
      */
     fun filterRssArticles(context: Context, articles: List<RssArticle>, sourceUrl: String): List<RssArticle> {
         if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) return articles
         val rules = loadEnabled(context)
         if (rules.isEmpty()) return articles
+
+        // 先过滤出对当前订阅源生效的规则，避免对每篇文章都检查作用域
+        val applicableRules = rules.filter { it.matchesRssScope(sourceUrl) }
+        if (applicableRules.isEmpty()) return articles
+
         return articles.filterNot { article ->
-            rules.any { rule -> rule.matchesRssArticle(article) && rule.matchesRssScope(sourceUrl) }
+            applicableRules.any { rule -> rule.matchesRssArticle(article) }
         }
     }
 
@@ -136,6 +163,7 @@ object BlockRuleStore {
     /** 清除缓存，下次加载时重新从 SharedPreferences 读取 */
     fun invalidateCache() {
         cachedRules = null
+        RegexCache.clear() // 同时清除正则表达式缓存，避免旧规则残留
     }
 
     /**
