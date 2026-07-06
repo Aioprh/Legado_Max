@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -54,6 +56,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -310,16 +313,17 @@ fun HomepageScreen(
             val sortedModules = uiState.modules.sortedBy { module ->
                 if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
             }
-            // 使用 key 强制重新创建 PullToRefreshBox，确保状态更新
-            key(uiState.isRefreshing) {
-                PullToRefreshBox(
-                    isRefreshing = uiState.isRefreshing,
-                    onRefresh = { viewModel.onRefresh() },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                ) {
+            // 使用 rememberLazyListState 保存滚动位置，避免 Fragment 重建时丢失
+            val listState = rememberLazyListState()
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = { viewModel.onRefresh() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
                 LazyColumn(
+                    state = listState,
                     contentPadding = PaddingValues(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -340,7 +344,6 @@ fun HomepageScreen(
                             }
                         )
                     }
-                }
                 }
             }
         }
@@ -522,6 +525,11 @@ private fun SourceTabLayout(
                 }
             }
             val currentSetName = currentSet?.sourceName
+            // 使用 rememberSaveable 保存每个页面的滚动位置
+            val listStateKey = "homepage_tab_${currentSet?.sourceUrl ?: pageIndex}"
+            val listState = rememberSaveable(saver = LazyListState.Saver) {
+                LazyListState()
+            }
             // 直接从 ViewModel 观察刷新状态，确保每页独立接收状态变更
             // 绕过 HorizontalPager 页面缓存导致的状态传播延迟
             val pageIsRefreshing by viewModel.uiState.map { it.isRefreshing }.collectAsStateWithLifecycle(false)
@@ -531,6 +539,7 @@ private fun SourceTabLayout(
                 modifier = Modifier.fillMaxSize()
             ) {
                 LazyColumn(
+                    state = listState,
                     contentPadding = PaddingValues(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
