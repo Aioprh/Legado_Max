@@ -171,10 +171,4 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
             addAllToShelfResult.postValue(0) // 暂时返回0，实际数量由Activity传递
         }
     }
-
-    override fun onCleared() {
-        super.onCleared()
-        scrollPositions.clear()
-        ExploreShowFragmentViewModel.clearDataCache()
-    }
 }
