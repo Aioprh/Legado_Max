@@ -24,25 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(application) {
     companion object {
-        private const val MAX_CACHE_SIZE = 10
         private val pageQueryRegex = Regex("""([?&]page=)(\d+)""", RegexOption.IGNORE_CASE)
-
-        /** 共享分类数据缓存（LRU，最多 MAX_CACHE_SIZE 条），key = exploreUrl */
-        private val preloadCache = object : LinkedHashMap<String, List<SearchBook>>(
-            MAX_CACHE_SIZE, 0.75f, true
-        ) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<SearchBook>>?): Boolean {
-                return size > MAX_CACHE_SIZE
-            }
-        }
-
-        @Synchronized
-        fun getCachedBooks(exploreUrl: String): List<SearchBook>? = preloadCache[exploreUrl]
-
-        @Synchronized
-        fun cacheBooks(exploreUrl: String, books: List<SearchBook>) {
-            preloadCache[exploreUrl] = books
-        }
     }
 
     val booksData = MutableLiveData<List<SearchBook>>()
@@ -83,21 +65,6 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
         order = System.currentTimeMillis()
         nextPageUrl = null
         
-        // 第一页优先使用缓存，避免重复网络请求
-        if (targetPage == 1) {
-            getCachedBooks(initialExploreUrl)?.let { cached ->
-                allBooks.addAll(cached)
-                val filtered = BlockRuleStore.filterBooks(getApplication(), cached, sourceUrl)
-                books.addAll(filtered)
-                booksData.postValue(books.toList())
-                appDb.searchBookDao.insert(*cached.toTypedArray())
-                pageLiveData.postValue(page)
-                loadFinallyLiveData.postValue(cached.isNotEmpty())
-                isLoading = false
-                return
-            }
-        }
-        
         val source = bookSource ?: return
         val url = buildExploreUrl(page)
         
@@ -113,9 +80,6 @@ class ExploreShowFragmentViewModel(application: Application) : BaseViewModel(app
                 pageLiveData.postValue(page)
                 val hasMore = searchBooks.isNotEmpty()
                 loadFinallyLiveData.postValue(hasMore)
-                if (targetPage == 1 && searchBooks.isNotEmpty()) {
-                    cacheBooks(initialExploreUrl, searchBooks)
-                }
                 isLoading = false
             }.onError {
                 loadFinallyLiveData.postValue(false)
