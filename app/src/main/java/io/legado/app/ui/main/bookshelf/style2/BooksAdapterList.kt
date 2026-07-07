@@ -172,11 +172,17 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             }
         }
 
-        /** 更新 FlexboxLayout 中的标签视图（同时显示分类和字数） */
+        /** 更新 FlexboxLayout 中的标签视图（先显示字数后显示分类） */
         private fun updateTagViews(flexboxLayout: FlexboxLayout, item: Book) {
             flexboxLayout.removeAllViews()
 
-            // 显示分类标签
+            // 先显示字数标签
+            if (item.wordCount?.isNotBlank() == true) {
+                val wordCountTag = createTagView(item.wordCount!!)
+                flexboxLayout.addView(wordCountTag)
+            }
+
+            // 后显示分类标签
             val tagsText = item.customTag ?: item.kind ?: ""
             if (tagsText.isNotBlank()) {
                 val tags = tagsText.splitNotBlank(",", "\n")
@@ -184,12 +190,6 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                     val tagView = createTagView(tag)
                     flexboxLayout.addView(tagView)
                 }
-            }
-
-            // 显示字数标签
-            if (item.wordCount?.isNotBlank() == true) {
-                val wordCountTag = createTagView(item.wordCount!!)
-                flexboxLayout.addView(wordCountTag)
             }
         }
 
