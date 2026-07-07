@@ -18,6 +18,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.splitNotBlank
+import io.legado.app.utils.toTimeAgo
 import io.legado.app.utils.visible
 import io.legado.app.utils.dpToPx
 import splitties.views.onLongClick
@@ -96,6 +97,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             ivLast.visible()
             ivRead.visible()
             upRefresh(this, item)
+            upLastUpdateTime(binding, item)
             // 显示简介和标签（仅在列表视图启用"显示更多信息"时）
             upMoreInfo(binding, item)
         }
@@ -118,6 +120,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                             )
 
                             "refresh" -> upRefresh(this, item)
+                            "lastUpdateTime" -> upLastUpdateTime(binding, item)
                             "moreInfo" -> upMoreInfo(binding, item)
                         }
                     }
@@ -206,6 +209,17 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             }
         }
 
+        private fun upLastUpdateTime(binding: ItemBookshelfListBinding, item: Book) {
+            if (AppConfig.showLastUpdateTime && !item.isLocal) {
+                val time = item.latestChapterTime.toTimeAgo()
+                if (binding.tvLastUpdateTime.text != time) {
+                    binding.tvLastUpdateTime.text = time
+                }
+            } else {
+                binding.tvLastUpdateTime.text = ""
+            }
+        }
+
     }
 
     /**
@@ -234,6 +248,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             ivAuthor.visible()
             ivLast.visible()
             upRefresh(this, item)
+            upLastUpdateTime(binding, item)
         }
 
         fun onBind(item: Book, position: Int, payloads: MutableList<Any>) = binding.run {
@@ -254,6 +269,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                             )
 
                             "refresh" -> upRefresh(this, item)
+                            "lastUpdateTime" -> upLastUpdateTime(binding, item)
                         }
                     }
                 }
@@ -281,6 +297,17 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                 } else {
                     binding.bvUnread.invisible()
                 }
+            }
+        }
+
+        private fun upLastUpdateTime(binding: ItemBookshelfList2Binding, item: Book) {
+            if (AppConfig.showLastUpdateTime && !item.isLocal) {
+                val time = item.latestChapterTime.toTimeAgo()
+                if (binding.tvLastUpdateTime.text != time) {
+                    binding.tvLastUpdateTime.text = time
+                }
+            } else {
+                binding.tvLastUpdateTime.text = ""
             }
         }
 
