@@ -114,7 +114,7 @@ class BooksAdapterList(
         // 显示标签（使用 FlexboxLayout，每个标签有外框）
         if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
             binding.flexboxTags.visible()
-            updateTagViews(binding.flexboxTags, item.customTag ?: item.kind ?: "")
+            updateTagViews(binding.flexboxTags, item)
         } else {
             binding.flexboxTags.gone()
         }
@@ -129,16 +129,24 @@ class BooksAdapterList(
         }
     }
 
-    /** 更新 FlexboxLayout 中的标签视图 */
-    private fun updateTagViews(flexboxLayout: FlexboxLayout, tagsText: String) {
+    /** 更新 FlexboxLayout 中的标签视图（同时显示分类和字数） */
+    private fun updateTagViews(flexboxLayout: FlexboxLayout, item: Book) {
         flexboxLayout.removeAllViews()
-        if (tagsText.isBlank()) return
 
-        // 使用 splitNotBlank 方法分隔标签（与书籍详情页一致，使用逗号和换行符）
-        val tags = tagsText.splitNotBlank(",", "\n")
-        for (tag in tags) {
-            val tagView = createTagView(tag)
-            flexboxLayout.addView(tagView)
+        // 显示分类标签
+        val tagsText = item.customTag ?: item.kind ?: ""
+        if (tagsText.isNotBlank()) {
+            val tags = tagsText.splitNotBlank(",", "\n")
+            for (tag in tags) {
+                val tagView = createTagView(tag)
+                flexboxLayout.addView(tagView)
+            }
+        }
+
+        // 显示字数标签
+        if (item.wordCount?.isNotBlank() == true) {
+            val wordCountTag = createTagView(item.wordCount!!)
+            flexboxLayout.addView(wordCountTag)
         }
     }
 
