@@ -363,9 +363,10 @@ fun RegexTestScreen(
                     OutlinedTextField(
                         value = pattern,
                         onValueChange = { pattern = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(stringResource(R.string.debug_regex_pattern_hint)) },
-                        singleLine = true
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 60.dp),
+                        placeholder = { Text(stringResource(R.string.debug_regex_pattern_hint)) }
                     )
                     
                     Spacer(modifier = Modifier.height(12.dp))
@@ -458,9 +459,10 @@ fun RegexTestScreen(
                     OutlinedTextField(
                         value = replacement,
                         onValueChange = { replacement = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(stringResource(R.string.replace_to)) },
-                        singleLine = true
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 60.dp),
+                        placeholder = { Text(stringResource(R.string.replace_to)) }
                     )
                 }
             }
