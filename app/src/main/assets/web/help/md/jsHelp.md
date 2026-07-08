@@ -206,9 +206,9 @@ java.head(url: String, headerMap: Map<String, String>, timeout: Int? = null): Co
 * @param url html内如果有相对路径的资源不传入url访问不了
 * @param js 用来取返回值的js语句, 没有就返回整个源代码
 * @param cacheFirst 优先使用缓存,为true能提高访问速度
-* @param delayTime 延迟执行js的时间
+* @param delayTime 延迟执行js的时间，不填默认为0
 * @return 返回js获取的内容
-java.webView(html: String?, url: String?, js: String?, cacheFirst: Boolean = false): String?
+java.webView(html: String?, url: String?, js: String?, cacheFirst: Boolean = false, delayTime: Long = 0): String?
 
 * 使用webView获取跳转url
 java.webViewGetOverrideUrl(html: String?, url: String?, js: String?, overrideUrlRegex: String, cacheFirst: Boolean = false, delayTime: Long = 0): String?
