@@ -22,6 +22,7 @@
 **2026/7/08**
 - 修复调试中data:图片字符过长造成当前Activity崩溃回退的bug
 - 增加日志球开关判断，解决 toString 全量拼接导致 OOM造成目录显示失败的问题，降低内存开销
+- 优化备份选择器架构，提高查询效率
 
 **2026/07/06**
 - 回退有关“refactor(explore-show): 重构为ViewPager+Fragment架构

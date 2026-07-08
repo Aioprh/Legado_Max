@@ -1,13 +1,16 @@
 package io.legado.app.help.storage
 
+import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
-import io.legado.app.data.repository.CoverGalleryRepository
-import io.legado.app.ui.widget.components.dialog.MultiSelectItem
-import io.legado.app.ui.widget.components.dialog.MultiSelectGroup
 import splitties.init.appCtx
 
+/**
+ * 备份选择器配置。
+ *
+ * 这个文件只维护可备份项定义和用户选择结果的读写，不依赖具体 UI 组件。
+ */
 @Suppress("ConstPropertyName")
 object BackupSelectorConfig {
 
@@ -77,8 +80,20 @@ object BackupSelectorConfig {
         return selectedMap[key] ?: true
     }
 
+    fun getSelectedKeys(): Set<String> {
+        return allItems
+            .filter { isSelected(it.key) }
+            .map { it.key }
+            .toSet()
+    }
+
     fun setSelected(key: String, selected: Boolean) {
         selectedMap[key] = selected
+    }
+
+    // 供选择器弹窗在确认时一次性提交内存中的完整选择结果。
+    fun setSelectedKeys(keys: Set<String>) {
+        allItems.forEach { selectedMap[it.key] = it.key in keys }
     }
 
     fun selectAll() {
@@ -116,79 +131,5 @@ object BackupSelectorConfig {
             "其他" -> "📦"
             else -> null
         }
-    }
-
-    /**
-     * 获取带有详细信息的 MultiSelectGroup 列表
-     */
-    fun getMultiSelectGroups(): List<MultiSelectGroup> {
-        val overview = BackupInfoHelper.getBackupOverview()
-        
-        return groupItems.map { (groupName, items) ->
-            MultiSelectGroup(
-                name = groupName,
-                iconEmoji = getGroupIcon(groupName),
-                items = items.map { item ->
-                    val fileInfo = overview.items.find { it.fileName == item.fileName }
-                    val countInfo = getCountInfo(item.key)
-                    
-                    MultiSelectItem(
-                        key = item.key,
-                        title = item.title,
-                        subtitle = item.fileName,
-                        size = fileInfo?.let { BackupInfoHelper.formatSize(it.size) },
-                        rawSize = fileInfo?.size,
-                        count = countInfo,
-                        group = item.group,
-                        iconEmoji = item.iconEmoji,
-                        selected = isSelected(item.key)
-                    )
-                }
-            )
-        }
-    }
-
-    /**
-     * 计算选中项的总大小
-     */
-    fun calculateTotalSize(selectedItems: List<MultiSelectItem>): String {
-        return BackupInfoHelper.formatSize(selectedItems.sumOf { it.rawSize ?: 0L })
-    }
-
-    /**
-     * 获取带有数量和大小的 MultiSelectItem
-     */
-    fun getMultiSelectItemWithDetails(key: String): MultiSelectItem {
-        val item = allItems.find { it.key == key } ?: return MultiSelectItem(
-            key = key,
-            title = key,
-            group = "其他"
-        )
-        
-        val overview = BackupInfoHelper.getBackupOverview()
-        val fileInfo = overview.items.find { it.fileName == item.fileName }
-        
-        // 获取数量信息
-        val countInfo = getCountInfo(key)
-        
-        return MultiSelectItem(
-            key = item.key,
-            title = item.title,
-            subtitle = item.fileName,
-            size = fileInfo?.let { BackupInfoHelper.formatSize(it.size) },
-            rawSize = fileInfo?.size,
-            count = countInfo,
-            group = item.group,
-            iconEmoji = item.iconEmoji,
-            selected = isSelected(item.key)
-        )
-    }
-
-    /**
-     * 获取数据数量信息
-     */
-    private fun getCountInfo(key: String): String? {
-        val count = BackupInfoHelper.getItemCount(key)
-        return if (count > 0) "$count 个" else null
     }
 }
