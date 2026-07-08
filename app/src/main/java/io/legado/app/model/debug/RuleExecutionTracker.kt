@@ -48,7 +48,7 @@ class RuleExecutionTracker(
             index = stepIndex,
             ruleType = ruleType,
             ruleContent = ruleContent,
-            input = input?.toString()?.take(200)
+            input = input.toDebugString(200)
         )
     }
 
@@ -59,7 +59,7 @@ class RuleExecutionTracker(
         regexGroups: List<String>? = null
     ) {
         currentStep?.let { step ->
-            step.output = output?.toString()?.take(200)
+            step.output = output.toDebugString(200)
             step.matchCount = matchCount
             step.duration = System.currentTimeMillis() - step.startTime
             step.jsContext = jsContext

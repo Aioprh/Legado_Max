@@ -22,6 +22,7 @@ import io.legado.app.help.http.BackstageWebView
 import io.legado.app.help.http.CookieStore
 import io.legado.app.help.source.getShareScope
 import io.legado.app.model.Debug
+import io.legado.app.model.debug.toDebugString
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.GSON
 import io.legado.app.utils.GSONStrict
@@ -1030,8 +1031,9 @@ class AnalyzeRule(
     fun evalJS(jsStr: String, result: Any? = null): Any? {
         val startTime = System.currentTimeMillis()
         val containsReplace = jsStr.contains("replace")
+        val isLoggingEnabled = FlowLogRecorder.isEnabled
         
-        if (containsReplace) {
+        if (containsReplace && isLoggingEnabled) {
             FlowLogRecorder.logReplace(
                 source = source,
                 message = "执行JS替换",
@@ -1042,7 +1044,8 @@ class AnalyzeRule(
             )
         }
         
-        val jsContext = buildJsExecutionContext(result)
+        // 只在需要记录日志时才构建 jsContext，避免不必要的内存开销
+        val jsContext = if (isLoggingEnabled) buildJsExecutionContext(result) else null
         
         val bindings = buildScriptBindings { bindings ->
             bindings["java"] = this
@@ -1085,45 +1088,49 @@ class AnalyzeRule(
                 currentRuleTypeThreadLocal.set(previousRuleType)
             }
         } catch (e: Exception) {
+            if (isLoggingEnabled) {
+                val duration = System.currentTimeMillis() - startTime
+                FlowLogRecorder.logJsContext(
+                    source = source,
+                    jsCode = jsStr,
+                    context = jsContext!!,
+                    result = null,
+                    duration = duration,
+                    error = e,
+                    book = book as? Book,
+                    bookChapter = chapter,
+                    bookSource = source as? BookSource
+                )
+            }
+            throw e
+        }
+        
+        if (isLoggingEnabled) {
             val duration = System.currentTimeMillis() - startTime
             FlowLogRecorder.logJsContext(
                 source = source,
                 jsCode = jsStr,
-                context = jsContext,
-                result = null,
-                duration = duration,
-                error = e,
-                book = book as? Book,
-                bookChapter = chapter,
-                bookSource = source as? BookSource
-            )
-            throw e
-        }
-        
-        val duration = System.currentTimeMillis() - startTime
-        FlowLogRecorder.logJsContext(
-            source = source,
-            jsCode = jsStr,
-            context = jsContext,
-            result = jsResult?.toString()?.take(200),
-            duration = duration,
-            book = book as? Book,
-            bookChapter = chapter,
-            bookSource = source as? BookSource
-        )
-        
-        if (containsReplace) {
-            FlowLogRecorder.logReplace(
-                source = source,
-                message = "JS替换完成",
-                rule = jsStr.take(200),
-                result = jsResult?.toString()?.take(100),
-                originalValue = result?.toString()?.take(100),
+                context = jsContext!!,
+                result = jsResult.toDebugString(200),
                 duration = duration,
                 book = book as? Book,
                 bookChapter = chapter,
                 bookSource = source as? BookSource
             )
+            
+            if (containsReplace) {
+                FlowLogRecorder.logReplace(
+                    source = source,
+                    message = "JS替换完成",
+                    rule = jsStr.take(200),
+                    result = jsResult.toDebugString(100),
+                    originalValue = result.toDebugString(100),
+                    duration = duration,
+                    book = book as? Book,
+                    bookChapter = chapter,
+                    bookSource = source as? BookSource
+                )
+            }
         }
         
         return jsResult
@@ -1131,8 +1138,8 @@ class AnalyzeRule(
     
     private fun buildJsExecutionContext(result: Any?): io.legado.app.model.debug.JsExecutionContext {
         return io.legado.app.model.debug.JsExecutionContext(
-            result = result?.toString()?.take(200),
-            src = content?.toString()?.take(200),
+            result = result.toDebugString(200),
+            src = content.toDebugString(200),
             baseUrl = baseUrl,
             book = book?.let { baseBook ->
                 val bookEntity = baseBook as? io.legado.app.data.entities.Book
