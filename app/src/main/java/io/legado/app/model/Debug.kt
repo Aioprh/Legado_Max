@@ -40,6 +40,20 @@ object Debug {
     @SuppressLint("ConstantLocale")
     private val debugTimeFormat = SimpleDateFormat("[mm:ss.SSS]", Locale.getDefault())
     private var startTime: Long = System.currentTimeMillis()
+    private val dataUrlBase64Regex =
+        Regex("""data:([^;,\s"'<>)]*)?;base64,[A-Za-z0-9+/=_-]+""", RegexOption.IGNORE_CASE)
+
+    private fun sanitizeDebugMessage(msg: String): String {
+        if (!msg.contains("data:", ignoreCase = true) ||
+            !msg.contains("base64,", ignoreCase = true)
+        ) {
+            return msg
+        }
+        return dataUrlBase64Regex.replace(msg) {
+            val mediaType = it.groups[1]?.value?.takeIf { type -> type.isNotBlank() } ?: "unknown"
+            "data:$mediaType [base64图片字符过长省略输出], length=${it.value.length}]"
+        }
+    }
 
     /**
      * 记录日志
@@ -60,15 +74,16 @@ object Debug {
         state: Int = 1,
         category: DebugCategory? = null
     ) {
+        val safeMsg = sanitizeDebugMessage(msg)
         if (BuildConfig.DEBUG) {
-            Log.d("sourceDebug", msg)
+            Log.d("sourceDebug", safeMsg)
         }
         //调试信息始终要执行
         callback?.let {
             if ((debugSource != sourceUrl || !print)) return
-            var printMsg = msg
+            var printMsg = safeMsg
             if (isHtml) {
-                printMsg = HtmlFormatter.format(msg)
+                printMsg = HtmlFormatter.format(safeMsg)
             }
             if (showTime) {
                 val time = debugTimeFormat.format(Date(System.currentTimeMillis() - startTime))
@@ -79,7 +94,7 @@ object Debug {
 
         // 在锁外异步上报到调试事件中心，避免持锁期间启动协程
         if (DebugEventCenter.isEnabled) {
-            val capturedMsg = msg
+            val capturedMsg = safeMsg
             val capturedSourceUrl = sourceUrl
             val capturedState = state
             val capturedIsHtml = isHtml
@@ -126,10 +141,10 @@ object Debug {
         }
         }
 
-        if (isChecking && sourceUrl != null && (msg).length < 30) {
-            var printMsg = msg
+        if (isChecking && sourceUrl != null && safeMsg.length < 30) {
+            var printMsg = safeMsg
             if (isHtml) {
-                printMsg = HtmlFormatter.format(msg)
+                printMsg = HtmlFormatter.format(safeMsg)
             }
             if (showTime && debugTimeMap[sourceUrl] != null) {
                 val time =
