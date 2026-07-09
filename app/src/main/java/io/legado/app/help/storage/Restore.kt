@@ -368,7 +368,7 @@ object Restore {
                 }
             }
             }?.onFailure {
-                AppLog.put("鎭㈠楂樹寒瑙勫垯鍑洪敊\n${it.localizedMessage}", it)
+                AppLog.put("恢复高亮规则出错\n${it.localizedMessage}", it)
             }
         }
         if ("searchHistory.json" in selectedSet) {
@@ -751,7 +751,7 @@ object Restore {
                 }
             }
         }?.onFailure {
-            AppLog.put("鎭㈠楂樹寒瑙勫垯鍑洪敊\n${it.localizedMessage}", it)
+            AppLog.put("恢复高亮规则出错\n${it.localizedMessage}", it)
         }
         progress("searchHistory.json")
         appDb.searchKeywordDao.deleteAll()
@@ -1134,7 +1134,7 @@ object Restore {
             }
             map
         }.onFailure {
-            AppLog.put("$fileName.xml\n璇诲彇閰嶇疆鍑洪敊\n${it.localizedMessage}", it)
+            AppLog.put("$fileName.xml\n读取配置出错\n${it.localizedMessage}", it)
         }.getOrNull()
     }
 
