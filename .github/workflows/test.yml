@@ -104,8 +104,8 @@ jobs:
             echo "DEBUG: UPDATED_CONTENT (from updateLog.md)="
             echo "$UPDATED_CONTENT"
           elif [ "$IS_MERGE_PR" = true ]; then
-              UPDATED_CONTENT="$COMMIT_MSG"
-              echo "DEBUG: UPDATED_CONTENT (from commit msg)=$UPDATED_CONTENT"
+            UPDATED_CONTENT="$COMMIT_MSG"
+            echo "DEBUG: UPDATED_CONTENT (from commit msg)=$UPDATED_CONTENT"
           else
             if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
               BEFORE_SHA="${{ github.event.before }}"
@@ -139,7 +139,8 @@ jobs:
           echo "body=$CONTENT_JSON" >> $GITHUB_OUTPUT
       - id: set-matrix
         run: |
-          echo 'build_matrix={"product":["app"],"type":["release","releaseS","releaseLegacy"]}' >> $GITHUB_OUTPUT
+          # 新增 debug 构建类型
+          echo 'build_matrix={"product":["app"],"type":["release","releaseS","releaseLegacy","debug"]}' >> $GITHUB_OUTPUT
 
   build:
     needs: prepare
@@ -194,7 +195,10 @@ jobs:
       - name: Build With Gradle
         continue-on-error: true
         run: |
-          if [ "${{ env.type }}" == 'release' ]; then
+          if [ "${{ env.type }}" == 'debug' ]; then
+            typeName="Debug调试包"
+            gradleTask="assembleAppMaxDebug"
+          elif [ "${{ env.type }}" == 'release' ]; then
             typeName="原包名"
             gradleTask="assembleAppMaxRelease"
           elif [ "${{ env.type }}" == 'releaseS' ]; then
@@ -212,7 +216,9 @@ jobs:
           echo "修改APK文件名"
           mkdir -p ${{ github.workspace }}/apk/
           for file in `ls ${{ github.workspace }}/app/build/outputs/apk/*/*/*.apk`; do
-            if [ "${{ env.type }}" == 'release' ]; then
+            if [ "${{ env.type }}" == 'debug' ]; then
+              mv "$file" ${{ github.workspace }}/apk/legado_Debug调试包_${{ env.VERSIONL }}.apk
+            elif [ "${{ env.type }}" == 'release' ]; then
               mv "$file" ${{ github.workspace }}/apk/legado_测试版_${{ env.VERSIONL }}_$typeName.apk
             elif [ "${{ env.type }}" == 'releaseS' ]; then
               mv "$file" ${{ github.workspace }}/apk/legado_正式版_${{ env.VERSIONL }}_$typeName.apk
@@ -281,6 +287,8 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: apk/
+          # 过滤掉debug产物，不参与发布
+          pattern: 'legado.app.release*'
 
       - working-directory: apk/
         run: |
@@ -326,7 +334,7 @@ jobs:
             | 测试版 | beta | 测试版，包含新功能，专属于max版的安装包 |
             | 兼容版 | compact | 可覆盖原版和lyc版 |
             | 共存版 | plus | 独立安装，与主版本共存 |
-            
+            | 调试包 | debug | 独立安装，与其他共存，适用于调试用，无代码混淆，函数名完整，方便抓取崩溃、报错日志定位问题。此版本能正常抓包 |
             三个包名都不同，在安卓系统中不同包名视为不同软件，都可以独立存在。
 
             ### 更新内容
@@ -352,6 +360,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: apk/
+          pattern: 'legado.app.release*'
       - working-directory: apk/
         run: mv */*.apk . ;rm -rf */
       - name: Upload To Lanzou
@@ -369,6 +378,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: apk/
+          pattern: 'legado.app.release*'
       - id: set-tags
         working-directory: apk/
         run: |
@@ -419,7 +429,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: 'legado.app.*'
+          pattern: 'legado.app.release*'
           path: apk/
           merge-multiple: true
       - working-directory: apk/
