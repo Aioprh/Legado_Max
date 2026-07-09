@@ -30,6 +30,9 @@ Uses Gradle wrapper (`gradlew.bat` on Windows). JDK 17 required.
 ./gradlew test                      # Unit tests
 ./gradlew connectedAndroidTest      # Instrumented tests
 
+# Grammar Test
+.\gradlew.bat :app:compileAppMaxDebugKotlin
+
 # Lint
 ./gradlew lint
 

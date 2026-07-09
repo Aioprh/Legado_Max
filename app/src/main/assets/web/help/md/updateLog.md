@@ -19,6 +19,9 @@
 - [链接1](https://legado.gyks.cf/)
 - [链接2](https://legado.ccccocccc.cc/index.php?i=2)
 
+**2026/7/09**
+- 替换净化增加添加分组和移除分组功能
+
 **2026/7/08**
 - 修复调试中data:图片字符过长造成当前Activity崩溃回退的bug
 - 增加日志球开关判断，解决 toString 全量拼接导致 OOM造成目录显示失败的问题，降低内存开销
