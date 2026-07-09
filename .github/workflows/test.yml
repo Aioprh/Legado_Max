@@ -287,7 +287,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: apk/
-          # 过滤掉debug产物，不参与发布
+          # 注释pattern，允许下载debug包上传GitHub Release
           # pattern: 'legado.app.release*'
 
       - working-directory: apk/
@@ -296,6 +296,10 @@ jobs:
           rm -rf */
 
           for file in `ls *.apk`; do
+            # 跳过Debug调试包，不执行重命名
+            if [[ "$file" == *Debug调试包* ]]; then
+              continue
+            fi
             if [[ "$file" == *原包名* ]]; then
               mv "$file" $(echo $file | sed -e s/原包名/release/ -e s/测试版/beta/)
             elif [[ "$file" == *旧版覆盖* ]]; then
@@ -335,7 +339,7 @@ jobs:
             | 兼容版 | compact | 可覆盖原版和lyc版 |
             | 共存版 | plus | 独立安装，与主版本共存 |
             | 调试包 | debug | 独立安装，与其他共存，适用于调试用，无代码混淆，函数名完整，方便抓取崩溃、报错日志定位问题。此版本能正常抓包 |
-            三个包名都不同，在安卓系统中不同包名视为不同软件，都可以独立存在。
+            四个包名都不同，在安卓系统中不同包名视为不同软件，都可以独立存在。
 
             ### 更新内容
             ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
