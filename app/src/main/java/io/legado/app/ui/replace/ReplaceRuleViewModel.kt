@@ -3,6 +3,7 @@ package io.legado.app.ui.replace
 import android.app.Application
 import android.text.TextUtils
 import io.legado.app.base.BaseViewModel
+import io.legado.app.constant.AppPattern
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.help.source.SourceRecycleBinHelp
@@ -86,6 +87,39 @@ class ReplaceRuleViewModel(application: Application) : BaseViewModel(application
         execute {
             val array = Array(rules.size) {
                 rules[it].copy(isEnabled = false)
+            }
+            appDb.replaceRuleDao.update(*array)
+        }
+    }
+
+    fun selectionAddToGroups(rules: List<ReplaceRule>, groups: String) {
+        execute {
+            val addGroups = groups.splitNotBlank(AppPattern.splitGroupRegex)
+            val array = Array(rules.size) {
+                rules[it].copy().apply {
+                    group = group
+                        ?.splitNotBlank(AppPattern.splitGroupRegex)
+                        ?.toMutableSet()
+                        ?.apply { addAll(addGroups) }
+                        ?.let { ruleGroups -> TextUtils.join(",", ruleGroups) }
+                    if (group.isNullOrBlank()) group = TextUtils.join(",", addGroups)
+                }
+            }
+            appDb.replaceRuleDao.update(*array)
+        }
+    }
+
+    fun selectionRemoveFromGroups(rules: List<ReplaceRule>, groups: String) {
+        execute {
+            val removeGroups = groups.splitNotBlank(AppPattern.splitGroupRegex).toSet()
+            val array = Array(rules.size) {
+                rules[it].copy().apply {
+                    group = group
+                        ?.splitNotBlank(AppPattern.splitGroupRegex)
+                        ?.toMutableSet()
+                        ?.apply { removeAll(removeGroups) }
+                        ?.let { ruleGroups -> TextUtils.join(",", ruleGroups) }
+                }
             }
             appDb.replaceRuleDao.update(*array)
         }

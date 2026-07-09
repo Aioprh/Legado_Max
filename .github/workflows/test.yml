@@ -288,7 +288,7 @@ jobs:
         with:
           path: apk/
           # 过滤掉debug产物，不参与发布
-          pattern: 'legado.app.release*'
+          # pattern: 'legado.app.release*'
 
       - working-directory: apk/
         run: |
@@ -360,7 +360,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: apk/
-          pattern: 'legado.app.release*'
+          # pattern: 'legado.app.release*'
       - working-directory: apk/
         run: mv */*.apk . ;rm -rf */
       - name: Upload To Lanzou
@@ -378,7 +378,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: apk/
-          pattern: 'legado.app.release*'
+          # pattern: 'legado.app.release*'
       - id: set-tags
         working-directory: apk/
         run: |
@@ -429,7 +429,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          pattern: 'legado.app.release*'
+          # pattern: 'legado.app.release*'
           path: apk/
           merge-multiple: true
       - working-directory: apk/

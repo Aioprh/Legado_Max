@@ -39,6 +39,7 @@ import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.ACache
 import io.legado.app.utils.GSON
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.launch
 import io.legado.app.help.ExportResultHandler
@@ -268,6 +269,8 @@ class ReplaceRuleActivity : VMBaseActivity<ActivityReplaceRuleBinding, ReplaceRu
         when (item?.itemId) {
             R.id.menu_enable_selection -> viewModel.enableSelection(adapter.selection)
             R.id.menu_disable_selection -> viewModel.disableSelection(adapter.selection)
+            R.id.menu_add_group -> selectionAddToGroups()
+            R.id.menu_remove_group -> selectionRemoveFromGroups()
             R.id.menu_top_sel -> viewModel.topSelect(adapter.selection)
             R.id.menu_bottom_sel -> viewModel.bottomSelect(adapter.selection)
             R.id.menu_export_selection -> exportResult.launch {
@@ -280,6 +283,50 @@ class ReplaceRuleActivity : VMBaseActivity<ActivityReplaceRuleBinding, ReplaceRu
             }
         }
         return false
+    }
+
+    @SuppressLint("InflateParams")
+    private fun selectionAddToGroups() {
+        val allGroups = appDb.replaceRuleDao.allGroups()
+        alert(titleResource = R.string.add_group) {
+            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
+                editView.setHint(R.string.group_name)
+                editView.setFilterValues(allGroups)
+                editView.dropDownHeight = 180.dpToPx()
+            }
+            customView { alertBinding.root }
+            okButton {
+                alertBinding.editView.text?.toString()?.let {
+                    if (it.isNotEmpty()) {
+                        setResult(RESULT_OK)
+                        viewModel.selectionAddToGroups(adapter.selection, it)
+                    }
+                }
+            }
+            cancelButton()
+        }
+    }
+
+    @SuppressLint("InflateParams")
+    private fun selectionRemoveFromGroups() {
+        val allGroups = appDb.replaceRuleDao.allGroups()
+        alert(titleResource = R.string.remove_group) {
+            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
+                editView.setHint(R.string.group_name)
+                editView.setFilterValues(allGroups)
+                editView.dropDownHeight = 180.dpToPx()
+            }
+            customView { alertBinding.root }
+            okButton {
+                alertBinding.editView.text?.toString()?.let {
+                    if (it.isNotEmpty()) {
+                        setResult(RESULT_OK)
+                        viewModel.selectionRemoveFromGroups(adapter.selection, it)
+                    }
+                }
+            }
+            cancelButton()
+        }
     }
 
     private fun upGroupMenu() = groupMenu?.transaction { menu ->
