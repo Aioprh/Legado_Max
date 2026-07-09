@@ -66,9 +66,9 @@ import io.legado.app.help.TextViewTagHandler.Companion.HR_PLACE_STR
 import io.legado.app.model.analyzeRule.AnalyzeUrl.Companion.paramPattern
 import io.legado.app.ui.book.read.page.entities.column.BaseColumn
 import io.legado.app.ui.book.read.page.entities.column.TextBaseColumn
-import io.legado.app.ui.book.read.config.HighlightRule
-import io.legado.app.ui.book.read.config.HighlightRuleRepository
-import io.legado.app.ui.book.read.config.HighlightRuleStyle
+import io.legado.app.ui.book.read.config.highlight.HighlightRule
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleRepository
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStyle
 import io.legado.app.ui.book.read.page.provider.ChapterProvider.reviewChar
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject

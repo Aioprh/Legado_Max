@@ -9,10 +9,10 @@ import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.SourceRecycleBin
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.book.read.config.HighlightRule
+import io.legado.app.ui.book.read.config.highlight.HighlightRule
 import io.legado.app.ui.book.read.websearch.SearchEngine
 import io.legado.app.ui.book.read.websearch.SearchEngineHelper
-import io.legado.app.ui.book.read.config.HighlightRuleStore
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStore
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
 import splitties.init.appCtx

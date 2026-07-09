@@ -36,6 +36,8 @@ import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.ui.book.read.config.highlight.HighlightRule
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleConfigViewModel
 
 /**
  * 阅读高亮规则的配置弹窗。
@@ -47,7 +49,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     PopupMenu.OnMenuItemClickListener {
 
     private val binding by viewBinding(DialogHighlightRuleConfigBinding::bind)
-    private val viewModel by viewModels<HighlightRuleConfigViewModel>()
+    private val viewModel: HighlightRuleConfigViewModel by viewModels()
     private val adapter by lazy { HighlightRuleAdapter(requireContext()) }
     private var primaryTextColor = 0
     private var secondaryTextColor = 0

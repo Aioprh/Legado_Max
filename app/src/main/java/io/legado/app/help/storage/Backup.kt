@@ -52,7 +52,7 @@ import io.legado.app.data.entities.Cache
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookHelp
 import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
-import io.legado.app.ui.book.read.config.HighlightRuleStore
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStore
 import io.legado.app.ui.book.read.websearch.SearchEngineHelper
 import io.legado.app.data.repository.CoverGalleryRepository
 
@@ -488,7 +488,7 @@ object Backup {
         if (selectedFiles.contains(HighlightRuleStore.backupFileName)) {
             onProgress?.invoke(BackupInfoHelper.getDisplayName(HighlightRuleStore.backupFileName))
             FileUtils.createFileIfNotExist(backupPath + File.separator + HighlightRuleStore.backupFileName)
-                .writeText(GSON.toJson(HighlightRuleStore.createBackupData(appCtx)))
+                .writeText(GSON.toJson(HighlightRuleStore.backupData(appCtx)))
         }
         if (selectedFiles.contains("readRecord.json")) {
             writeListToJson(appDb.readRecordDao.all, "readRecord.json", backupPath, onProgress)

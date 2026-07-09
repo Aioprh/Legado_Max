@@ -23,6 +23,10 @@ import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.ui.book.read.config.highlight.HighlightRule
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleGroupStore
+import io.legado.app.ui.book.read.config.HighlightRulePreview
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStore
 
 /**
  * 预置规则选择弹窗。

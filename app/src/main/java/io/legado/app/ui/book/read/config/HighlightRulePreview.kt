@@ -4,6 +4,15 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
+import io.legado.app.ui.book.read.config.BgColorSpan
+import io.legado.app.ui.book.read.config.BgImageSpan
+import io.legado.app.ui.book.read.config.DoubleUnderlineSpan
+import io.legado.app.ui.book.read.config.SvgUnderlineSpan
+import io.legado.app.ui.book.read.config.SolidUnderlineSpan
+import io.legado.app.ui.book.read.config.DashUnderlineSpan
+import io.legado.app.ui.book.read.config.WaveUnderlineSpan
+import io.legado.app.ui.book.read.config.highlight.HighlightRule
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStyle
 
 /**
  * 高亮规则配置页的预览文本构建器。

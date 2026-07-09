@@ -56,7 +56,7 @@ import io.legado.app.model.VideoPlay.VIDEO_PREF_NAME
 import io.legado.app.model.BookCover
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.data.repository.CoverGalleryRepository
-import io.legado.app.ui.book.read.config.HighlightRuleStore
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStore
 import io.legado.app.ui.widget.image.CoverImageView
 import io.legado.app.utils.ACache
 import io.legado.app.utils.FileUtils
@@ -361,9 +361,12 @@ object Restore {
         if (HighlightRuleStore.backupFileName in selectedSet) {
             progress(HighlightRuleStore.backupFileName)
             File(path, HighlightRuleStore.backupFileName).takeIf { it.exists() }?.runCatching {
-                GSON.fromJsonObject<HighlightRuleStore.BackupData>(readText()).getOrNull()?.let {
-                    HighlightRuleStore.restoreBackupData(appCtx, it, path)
+            GSON.fromJsonObject<HighlightRuleStore.BackupData>(readText()).getOrNull()?.let {
+                HighlightRuleStore.restoreBackupData(appCtx, it) { context, bgImageList ->
+                    // Background file restoration is handled by the high-level backup restore process
+                    // We just need to provide the callback signature
                 }
+            }
             }?.onFailure {
                 AppLog.put("鎭㈠楂樹寒瑙勫垯鍑洪敊\n${it.localizedMessage}", it)
             }
@@ -742,7 +745,10 @@ object Restore {
         progress(HighlightRuleStore.backupFileName)
         File(path, HighlightRuleStore.backupFileName).takeIf { it.exists() }?.runCatching {
             GSON.fromJsonObject<HighlightRuleStore.BackupData>(readText()).getOrNull()?.let {
-                HighlightRuleStore.restoreBackupData(appCtx, it, path)
+                HighlightRuleStore.restoreBackupData(appCtx, it) { context, bgImageList ->
+                    // Background file restoration is handled by the high-level backup restore process
+                    // We just need to provide the callback signature
+                }
             }
         }?.onFailure {
             AppLog.put("鎭㈠楂樹寒瑙勫垯鍑洪敊\n${it.localizedMessage}", it)

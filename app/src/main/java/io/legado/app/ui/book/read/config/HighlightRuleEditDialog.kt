@@ -30,6 +30,10 @@ import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.ui.book.read.config.highlight.HighlightRule
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleBackgroundManager
+import io.legado.app.ui.book.read.config.HighlightRuleEditViewModel
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleGroupStore
 
 /**
  * 高亮规则单条编辑弹窗。
@@ -45,7 +49,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_edit, true), ColorPickerDialogListener {
 
     private val binding by viewBinding(DialogHighlightRuleEditBinding::bind)
-    private val viewModel by viewModels<HighlightRuleEditViewModel>()
+    private val viewModel: HighlightRuleEditViewModel by viewModels()
     private var editingRule: HighlightRule
         get() = viewModel.editingRule
         set(value) {

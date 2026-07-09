@@ -18,6 +18,8 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.constant.EventBus
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleGroupStore
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleRepository
 import io.legado.app.databinding.DialogHighlightRuleGroupManageBinding
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.accentColor
