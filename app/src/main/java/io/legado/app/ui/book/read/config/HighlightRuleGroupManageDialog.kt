@@ -50,6 +50,7 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
     private var secondaryTextColor = 0
     private var accentColor = 0
     private var cardBgColor = 0
+    private var actionBgColor = 0
 
     override fun onStart() {
         super.onStart()
@@ -96,6 +97,11 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
             ColorUtils.blendColors(bg, 0xFF000000.toInt(), 0.08f)
         } else {
             ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.06f)
+        }
+        actionBgColor = if (isLight) {
+            ColorUtils.blendColors(bg, 0xFF000000.toInt(), 0.12f)
+        } else {
+            ColorUtils.blendColors(bg, 0xFFFFFFFF.toInt(), 0.10f)
         }
 
         binding.sheetContainer.background?.mutate()?.setTint(bg)
@@ -262,6 +268,7 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
         ) {
             binding.itemRoot.background?.mutate()?.setTint(cardBgColor)
             binding.tvEdit.background?.mutate()?.setTint(accentColor)
+            binding.tvDelete.background?.mutate()?.setTint(actionBgColor)
 
             binding.tvTitle.text = item
             binding.tvTitle.setTextColor(primaryTextColor)

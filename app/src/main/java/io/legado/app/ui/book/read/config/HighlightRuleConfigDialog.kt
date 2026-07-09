@@ -74,7 +74,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
         binding.recyclerView.clipToPadding = false
-        binding.recyclerView.setPadding(0, 12.dpToPx(), 0, 28.dpToPx())
+        binding.recyclerView.setPadding(16.dpToPx(), 8.dpToPx(), 16.dpToPx(), 28.dpToPx())
 
         binding.ivClose.setOnClickListener { dismissAllowingStateLoss() }
         binding.ivMenu.setOnClickListener { showMenu(it) }
@@ -393,14 +393,14 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             val density = binding.root.context.resources.displayMetrics.density
             binding.root.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 24f * density
+                cornerRadius = 12f * density
                 setColor(cardBgColor)
                 setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
             }
             binding.tvPattern.background?.mutate()?.setTint(accentColor)
             binding.tvPreview.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 20f * density
+                cornerRadius = 10f * density
                 setColor(previewBgColor)
                 setStroke((1f * density).toInt().coerceAtLeast(1), previewStrokeColor)
             }

@@ -26,15 +26,15 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="12dp"
+            android:paddingStart="16dp"
             android:paddingTop="10dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="8dp">
+            android:paddingEnd="16dp"
+            android:paddingBottom="6dp">
 
             <ImageView
                 android:id="@+id/iv_back"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
                 android:background="@drawable/shape_highlight_rule_icon_button"
                 android:contentDescription="@string/back"
                 android:padding="8dp"
@@ -45,37 +45,40 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:gravity="center"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/tv_page_title"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:gravity="start"
                     android:text="分组管理"
                     android:textColor="@color/primaryText"
-                    android:textSize="24sp"
+                    android:textSize="20sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tv_page_subtitle"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:gravity="center"
+                    android:gravity="start"
                     android:text="管理高亮规则分组，支持新增、重命名和删除。"
                     android:textColor="@color/secondaryText"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <TextView
                 android:id="@+id/tv_add_group"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
+                android:layout_height="34dp"
                 android:background="@drawable/shape_highlight_rule_save"
                 android:gravity="center"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:text="新增"
                 android:textColor="@color/white"
                 android:textSize="13sp"
@@ -86,13 +89,16 @@
             android:id="@+id/ll_view_all"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="16dp"
             android:layout_marginTop="8dp"
-            android:layout_marginEnd="12dp"
-            android:background="@drawable/shape_highlight_rule_card"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/shape_highlight_rule_group_row"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:padding="14dp">
+            android:paddingStart="12dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="10dp">
 
             <TextView
                 android:layout_width="0dp"
@@ -121,7 +127,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
-                android:paddingTop="10dp"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
                 android:paddingBottom="28dp" />
 
             <TextView

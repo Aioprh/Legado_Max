@@ -26,15 +26,15 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="12dp"
+            android:paddingStart="16dp"
             android:paddingTop="10dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="8dp">
+            android:paddingEnd="16dp"
+            android:paddingBottom="6dp">
 
             <ImageView
                 android:id="@+id/iv_back"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
                 android:background="@drawable/shape_highlight_rule_icon_button"
                 android:contentDescription="@string/back"
                 android:padding="8dp"
@@ -45,32 +45,35 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:gravity="center"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/tv_page_title"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:gravity="start"
                     android:text="@string/highlight_rule_preset"
                     android:textColor="@color/primaryText"
-                    android:textSize="24sp"
+                    android:textSize="20sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tv_page_subtitle"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:gravity="center"
+                    android:gravity="start"
                     android:text="点右侧加号，只把这一条预置规则加入当前列表。"
                     android:textColor="@color/secondaryText"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <View
-                android:layout_width="36dp"
-                android:layout_height="36dp" />
+                android:layout_width="34dp"
+                android:layout_height="34dp" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
