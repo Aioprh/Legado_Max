@@ -10,16 +10,15 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
+import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.constant.EventBus
-import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.DialogHighlightRuleConfigBinding
 import io.legado.app.databinding.ItemHighlightPresetRuleBinding
-import io.legado.app.help.source.SourceRecycleBinHelp
 import io.legado.app.help.book.isLocal
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.accentColor
@@ -32,22 +31,24 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getClipText
-import io.legado.app.utils.getPrefString
 import io.legado.app.utils.observeEvent
-import io.legado.app.utils.postEvent
-import io.legado.app.utils.putPrefString
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
+/**
+ * 阅读高亮规则的配置弹窗。
+ *
+ * 负责展示规则列表、分组筛选、菜单入口、导入导出和编辑弹窗调度；
+ * 规则状态和保存动作由 `HighlightRuleConfigViewModel` 承担。
+ */
 class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_rule_config),
     PopupMenu.OnMenuItemClickListener {
 
     private val binding by viewBinding(DialogHighlightRuleConfigBinding::bind)
+    private val viewModel by viewModels<HighlightRuleConfigViewModel>()
     private val adapter by lazy { HighlightRuleAdapter(requireContext()) }
-    private val rules = ArrayList<HighlightRule>()
-    private var currentGroup: String? = null
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
     private var accentColor = 0
@@ -166,27 +167,8 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     }
 
     private fun loadRules() {
-        rules.clear()
-        rules.addAll(HighlightRuleStore.load(requireContext()))
-        loadCurrentGroup()
+        viewModel.loadRules()
         applyGroupFilter()
-    }
-
-    private fun loadCurrentGroup() {
-        val saved = requireContext().getPrefString(PreferKey.highlightRuleCurrentGroup)
-        if (!saved.isNullOrBlank()) {
-            val groups = HighlightRuleGroupStore.load(requireContext())
-            if (groups.contains(saved)) {
-                currentGroup = saved
-            } else {
-                currentGroup = null
-                saveCurrentGroup()
-            }
-        }
-    }
-
-    private fun saveCurrentGroup() {
-        requireContext().putPrefString(PreferKey.highlightRuleCurrentGroup, currentGroup.orEmpty())
     }
 
     private fun applyGroupFilter() {
@@ -194,25 +176,20 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         adapter.setItems(filtered)
         updateEmptyState()
         updateSubtitle()
-        saveCurrentGroup()
     }
 
     private fun getFilteredRules(): List<HighlightRule> {
-        return if (currentGroup == null) {
-            rules.toList()
-        } else {
-            rules.filter { it.group == currentGroup }
-        }
+        return viewModel.filteredRules()
     }
 
     private fun updateSubtitle() {
-        val groupText = currentGroup ?: "全部分组"
+        val groupText = viewModel.currentGroup ?: "全部分组"
         val count = getFilteredRules().size
         binding.tvPageSubtitle.text = "$groupText · $count 条规则"
     }
 
     fun switchToGroup(group: String?) {
-        currentGroup = group
+        viewModel.switchToGroup(group)
         applyGroupFilter()
     }
 
@@ -227,16 +204,15 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         alert("恢复默认") {
             setMessage("恢复后会重新生成预置规则，自定义规则会被覆盖。")
             okButton {
-                rules.clear()
-                rules.addAll(HighlightRuleStore.reset(requireContext()))
-                syncRules()
+                viewModel.resetRules()
+                applyGroupFilter()
             }
             cancelButton()
         }
     }
 
     private fun editRule(rule: HighlightRule?) {
-        val defaultGroup = rule?.group ?: currentGroup
+        val defaultGroup = rule?.group ?: viewModel.currentGroup
         // 新增规则时，预填当前书籍的书名和书源URL作为作用范围
         val defaultScope = if (rule == null) {
             ReadBook.book?.let { book ->
@@ -249,13 +225,8 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             }
         } else null
         HighlightRuleEditDialog(rule, defaultGroup, defaultScope) { newRule ->
-            val index = rules.indexOfFirst { it.id == newRule.id }
-            if (index >= 0) {
-                rules[index] = newRule
-            } else {
-                rules.add(newRule)
-            }
-            syncRules()
+            viewModel.upsertRule(newRule)
+            applyGroupFilter()
         }.show(childFragmentManager, "highlightRuleEdit")
     }
 
@@ -263,43 +234,42 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         alert("删除") {
             setMessage("确定删除“${rule.name}”吗？")
             okButton {
-                SourceRecycleBinHelp.recycleHighlightRules(listOf(rule))
-                rules.removeAll { it.id == rule.id }
-                syncRules()
+                viewModel.deleteRule(rule)
+                applyGroupFilter()
             }
             cancelButton()
         }
     }
 
     private fun showPresetRules() {
-        HighlightPresetRuleDialog(currentGroup) { rule ->
-            rules.add(rule)
-            syncRules()
+        HighlightPresetRuleDialog(viewModel.currentGroup) { rule ->
+            viewModel.addRule(rule)
+            applyGroupFilter()
         }.show(childFragmentManager, "highlightPresetRule")
     }
 
     private fun showGroupManager() {
         HighlightRuleGroupManageDialog(
             onChanged = { oldGroup, newGroup ->
-                if (oldGroup != null && currentGroup == oldGroup) {
-                    currentGroup = newGroup
+                if (oldGroup != null && viewModel.currentGroup == oldGroup) {
+                    viewModel.switchToGroup(newGroup)
                 }
                 loadRules()
             },
             onSelectGroup = { group ->
-                currentGroup = group
+                viewModel.switchToGroup(group)
                 applyGroupFilter()
             }
         ).show(childFragmentManager, "highlightRuleGroupManage")
     }
 
     private fun showRuleSelector() {
-        if (rules.isEmpty()) {
+        if (viewModel.rules.isEmpty()) {
             context?.toastOnUi("暂无可选择规则")
             return
         }
-        val selected = BooleanArray(rules.size)
-        val names = rules.map {
+        val selected = BooleanArray(viewModel.rules.size)
+        val names = viewModel.rules.map {
             "${it.name.ifBlank { "未命名规则" }} / ${it.group}"
         }.toTypedArray()
         alert("选择规则") {
@@ -307,7 +277,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
                 selected[which] = isChecked
             }
             positiveButton("分享选中") {
-                val picked = rules.filterIndexed { index, _ -> selected[index] }
+                val picked = viewModel.rules.filterIndexed { index, _ -> selected[index] }
                 if (picked.isEmpty()) {
                     requireContext().toastOnUi("请先选择规则")
                 } else {
@@ -315,14 +285,12 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
                 }
             }
             neutralButton("删除选中") {
-                val ids = rules.filterIndexed { index, _ -> selected[index] }.map { it.id }
+                val ids = viewModel.rules.filterIndexed { index, _ -> selected[index] }.map { it.id }.toSet()
                 if (ids.isEmpty()) {
                     requireContext().toastOnUi("请先选择规则")
                 } else {
-                    val deleteRules = rules.filter { ids.contains(it.id) }
-                    SourceRecycleBinHelp.recycleHighlightRules(deleteRules)
-                    rules.removeAll { ids.contains(it.id) }
-                    syncRules()
+                    viewModel.deleteRules(ids)
+                    applyGroupFilter()
                 }
             }
             negativeButton("取消")
@@ -340,15 +308,8 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             context?.toastOnUi(R.string.highlight_rule_import_invalid)
             return
         }
-        val targetGroup = currentGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP
-        imported.forEach { rule ->
-            var normalized = HighlightRuleStore.sanitizeRule(rule, targetGroup)
-            if (rules.any { it.id == normalized.id }) {
-                normalized = normalized.copyWithNewId()
-            }
-            rules.add(normalized)
-        }
-        syncRules()
+        viewModel.importRules(imported)
+        applyGroupFilter()
         context?.toastOnUi(R.string.highlight_rule_import_success)
     }
 
@@ -374,12 +335,9 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         startActivity(Intent.createChooser(intent, "分享规则"))
     }
 
-    private fun syncRules() {
-        HighlightRuleStore.save(requireContext(), rules)
-        applyGroupFilter()
-        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
-    }
-
+    /**
+     * 高亮规则列表适配器。
+     */
     private inner class HighlightRuleAdapter(context: Context) :
         RecyclerAdapter<HighlightRule, ItemHighlightPresetRuleBinding>(context) {
 
@@ -458,8 +416,8 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             )
             binding.switchEnable.setOnCheckedChangeListener { _, isChecked ->
                 if (item.enabled != isChecked) {
-                    item.enabled = isChecked
-                    syncRules()
+                    viewModel.setRuleEnabled(item, isChecked)
+                    applyGroupFilter()
                 }
             }
 

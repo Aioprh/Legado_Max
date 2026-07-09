@@ -67,13 +67,20 @@ import io.legado.app.model.analyzeRule.AnalyzeUrl.Companion.paramPattern
 import io.legado.app.ui.book.read.page.entities.column.BaseColumn
 import io.legado.app.ui.book.read.page.entities.column.TextBaseColumn
 import io.legado.app.ui.book.read.config.HighlightRule
-import io.legado.app.ui.book.read.config.HighlightRuleStore
+import io.legado.app.ui.book.read.config.HighlightRuleRepository
+import io.legado.app.ui.book.read.config.HighlightRuleStyle
 import io.legado.app.ui.book.read.page.provider.ChapterProvider.reviewChar
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.getPrefBoolean
 import splitties.init.appCtx
 
+/**
+ * 章节文本排版器。
+ *
+ * 负责把章节内容、HTML 样式、链接、搜索状态和高亮规则转换成 TextPage/TextLine；
+ * 高亮规则在这里完成正则匹配和 Span 标记，最终样式绘制交给 TextLine。
+ */
 class TextChapterLayout(
     scope: CoroutineScope,
     private val textChapter: TextChapter,
@@ -124,7 +131,7 @@ class TextChapterLayout(
     private val adaptSpecialStyle = AppConfig.adaptSpecialStyle
     private val pageAnim = book.getPageAnim()
     private val compiledHighlightRules by lazy {
-        HighlightRuleStore.loadEnabled(appCtx).mapNotNull { rule ->
+        HighlightRuleRepository.loadEnabledRules(appCtx).mapNotNull { rule ->
             kotlin.runCatching {
                 CompiledHighlightRule(
                     rule = rule,
@@ -1344,7 +1351,7 @@ class TextChapterLayout(
     }
 
     private fun applyHighlightRulesFromStore(spannable: SpannableStringBuilder): SpannableStringBuilder {
-        HighlightRuleStore.loadEnabled(appCtx).forEach { rule ->
+        HighlightRuleRepository.loadEnabledRules(appCtx).forEach { rule ->
             // 按书籍作用域过滤，不匹配则跳过
             if (!rule.matchesScope(book.name, book.origin)) return@forEach
             val regex = kotlin.runCatching { Regex(rule.pattern) }.getOrNull() ?: return@forEach
@@ -1374,7 +1381,8 @@ class TextChapterLayout(
             val start = match.range.first
             val end = match.range.last + 1
             if (start >= end) return@forEach
-            rule.textColor?.let { color ->
+            val style = HighlightRuleStyle.from(rule)
+            style.textColor?.let { color ->
                 spannable.setSpan(
                     ForegroundColorSpan(color),
                     start,
@@ -1382,19 +1390,9 @@ class TextChapterLayout(
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
-            if (rule.underlineMode != 0 || !rule.bgImage.isNullOrBlank() || rule.bgColor != null) {
+            if (style.hasDecoration) {
                 spannable.setSpan(
-                    HighlightStyleSpan(
-                        underlineMode = rule.underlineMode,
-                        underlineColor = rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt(),
-                        underlineWidth = rule.underlineWidth,
-                        underlineOffset = rule.underlineOffset,
-                        underlineSvgPath = rule.underlineSvgPath.orEmpty(),
-                        bgColor = rule.bgColor,
-                        bgImage = rule.bgImage.orEmpty(),
-                        bgImageFit = rule.bgImageFit,
-                        bgImageScale = rule.bgImageScale
-                    ),
+                    HighlightStyleSpan(style),
                     start,
                     end,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
@@ -1887,6 +1885,9 @@ class TextChapterLayout(
         return code == 8203 || code == 8204 || code == 8205 || code == 8288
     }
 
+    /**
+     * 已预编译正则的高亮规则，避免排版时重复编译 pattern。
+     */
     private data class CompiledHighlightRule(
         val rule: HighlightRule,
         val regex: Regex,

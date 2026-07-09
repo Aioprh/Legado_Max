@@ -1,0 +1,96 @@
+package io.legado.app.ui.book.read.config
+
+import android.app.Application
+import io.legado.app.base.BaseViewModel
+import io.legado.app.constant.EventBus
+import io.legado.app.help.source.SourceRecycleBinHelp
+import io.legado.app.utils.postEvent
+
+/**
+ * 高亮规则配置页的状态管理层。
+ *
+ * 管理规则列表、当前分组、增删改、导入、启用状态切换和保存同步，
+ * 让配置弹窗只负责界面渲染与用户交互。
+ */
+class HighlightRuleConfigViewModel(application: Application) : BaseViewModel(application) {
+
+    val rules = ArrayList<HighlightRule>()
+    var currentGroup: String? = null
+        private set
+
+    fun loadRules() {
+        rules.clear()
+        rules.addAll(HighlightRuleRepository.loadRules(context))
+        currentGroup = HighlightRuleRepository.loadCurrentGroup(context)
+    }
+
+    fun filteredRules(): List<HighlightRule> {
+        return currentGroup?.let { group ->
+            rules.filter { it.group == group }
+        } ?: rules.toList()
+    }
+
+    fun switchToGroup(group: String?) {
+        currentGroup = group
+        HighlightRuleRepository.saveCurrentGroup(context, currentGroup)
+    }
+
+    fun resetRules() {
+        rules.clear()
+        rules.addAll(HighlightRuleRepository.resetRules(context))
+        syncRules()
+    }
+
+    fun upsertRule(rule: HighlightRule) {
+        val index = rules.indexOfFirst { it.id == rule.id }
+        if (index >= 0) {
+            rules[index] = rule
+        } else {
+            rules.add(rule)
+        }
+        syncRules()
+    }
+
+    fun addRule(rule: HighlightRule) {
+        rules.add(rule)
+        syncRules()
+    }
+
+    fun deleteRule(rule: HighlightRule) {
+        SourceRecycleBinHelp.recycleHighlightRules(listOf(rule))
+        rules.removeAll { it.id == rule.id }
+        syncRules()
+    }
+
+    fun deleteRules(ids: Set<String>) {
+        val deleteRules = rules.filter { it.id in ids }
+        SourceRecycleBinHelp.recycleHighlightRules(deleteRules)
+        rules.removeAll { it.id in ids }
+        syncRules()
+    }
+
+    fun setRuleEnabled(rule: HighlightRule, enabled: Boolean) {
+        val index = rules.indexOfFirst { it.id == rule.id }
+        if (index < 0 || rules[index].enabled == enabled) return
+        rules[index] = rules[index].copy(enabled = enabled)
+        syncRules()
+    }
+
+    fun importRules(imported: List<HighlightRule>) {
+        val targetGroup = currentGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP
+        imported.forEach { rule ->
+            var normalized = HighlightRuleRepository.sanitizeRule(rule, targetGroup)
+            if (rules.any { it.id == normalized.id }) {
+                normalized = normalized.copyWithNewId()
+            }
+            rules.add(normalized)
+        }
+        syncRules()
+    }
+
+    fun syncRules() {
+        HighlightRuleRepository.saveRules(context, rules)
+        HighlightRuleRepository.saveCurrentGroup(context, currentGroup)
+        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
+    }
+}

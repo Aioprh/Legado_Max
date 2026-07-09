@@ -4,33 +4,41 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
+
+/**
+ * 高亮规则配置页的预览文本构建器。
+ *
+ * 根据规则正则和统一样式模型生成可直接显示在 TextView 中的预览内容，
+ * 用于编辑页和规则列表卡片，不参与阅读页最终绘制。
+ */
 object HighlightRulePreview {
 
     fun build(rule: HighlightRule): CharSequence {
         val text = rule.normalizedSampleText()
         val spannable = SpannableStringBuilder(text)
         val regex = kotlin.runCatching { Regex(rule.pattern) }.getOrNull() ?: return spannable
+        val style = HighlightRuleStyle.from(rule)
         regex.findAll(text).forEachIndexed { index, match ->
             val start = match.range.first
             val end = match.range.last + 1
-            val textColor = rule.textColor ?: 0xFF111111.toInt()
-            val accentColor = rule.underlineColor ?: rule.textColor ?: 0xFF63C37D.toInt()
-            val underlineWidth = rule.underlineWidth
-            val underlineOffset = rule.underlineOffset
-            val hasBgImage = !rule.bgImage.isNullOrBlank()
-            val bgColor = rule.bgColor
+            val textColor = style.resolvedTextColor
+            val accentColor = style.resolvedAccentColor
+            val underlineWidth = style.underlineWidth
+            val underlineOffset = style.underlineOffset
+            val hasBgImage = style.bgImage.isNotBlank()
+            val bgColor = style.bgColor
 
             if (hasBgImage) {
                 spannable.setSpan(
                     BgImageSpan(
                         textColor,
-                        rule.bgImage!!,
-                        rule.bgImageFit,
-                        rule.bgImageScale,
-                        rule.underlineMode,
+                        style.bgImage,
+                        style.bgImageFit,
+                        style.bgImageScale,
+                        style.underlineMode,
                         accentColor,
                         underlineWidth,
-                        rule.underlineSvgPath.orEmpty(),
+                        style.underlineSvgPath,
                         underlineOffset
                     ),
                     start,
@@ -42,10 +50,10 @@ object HighlightRulePreview {
                     BgColorSpan(
                         textColor,
                         bgColor,
-                        rule.underlineMode,
+                        style.underlineMode,
                         accentColor,
                         underlineWidth,
-                        rule.underlineSvgPath.orEmpty(),
+                        style.underlineSvgPath,
                         underlineOffset
                     ),
                     start,
@@ -53,7 +61,7 @@ object HighlightRulePreview {
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             } else {
-                when (rule.underlineMode) {
+                when (style.underlineMode) {
                     4 -> {
                         spannable.setSpan(
                             DoubleUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
@@ -63,7 +71,7 @@ object HighlightRulePreview {
                         )
                     }
                     5 -> {
-                        val svgPath = rule.underlineSvgPath
+                        val svgPath = style.underlineSvgPath
                         if (!svgPath.isNullOrBlank()) {
                             spannable.setSpan(
                                 SvgUnderlineSpan(textColor, accentColor, underlineWidth, svgPath),
@@ -81,7 +89,7 @@ object HighlightRulePreview {
                         }
                     }
                     else -> {
-                        when (rule.underlineMode) {
+                        when (style.underlineMode) {
                             1 -> {
                                 spannable.setSpan(
                                     SolidUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
@@ -117,8 +125,8 @@ object HighlightRulePreview {
                         }
                     }
                 }
-                if (index == 0 && rule.underlineMode != 4 && rule.underlineMode != 5) {
-                    val baseColor = rule.textColor ?: rule.underlineColor ?: 0xFF63C37D.toInt()
+                if (index == 0 && style.underlineMode != 4 && style.underlineMode != 5) {
+                    val baseColor = rule.textColor ?: style.underlineColor ?: 0xFF63C37D.toInt()
                     spannable.setSpan(
                         BackgroundColorSpan((0x33 shl 24) or (baseColor and 0x00FFFFFF)),
                         start,

@@ -3,9 +3,13 @@ package io.legado.app.ui.book.read.page.provider
 import android.text.TextPaint
 import android.text.style.CharacterStyle
 import android.text.style.UpdateAppearance
+import io.legado.app.ui.book.read.config.HighlightRuleStyle
 
 /**
- * 用于在阅读排版阶段传递局部下划线样式
+ * 阅读排版阶段传递高亮规则样式的轻量 Span。
+ *
+ * 只携带下划线、背景色和背景图等样式参数，不直接绘制；
+ * 最终绘制由 TextLine 根据列对象上的样式字段完成。
  */
 class HighlightStyleSpan(
     val underlineMode: Int,
@@ -18,6 +22,18 @@ class HighlightStyleSpan(
     val bgImageFit: Int = 0,
     val bgImageScale: Float = 1f,
 ) : CharacterStyle(), UpdateAppearance {
+
+    constructor(style: HighlightRuleStyle) : this(
+        underlineMode = style.underlineMode,
+        underlineColor = style.resolvedAccentColor,
+        underlineWidth = style.underlineWidth,
+        underlineOffset = style.underlineOffset,
+        underlineSvgPath = style.underlineSvgPath,
+        bgColor = style.bgColor,
+        bgImage = style.bgImage,
+        bgImageFit = style.bgImageFit,
+        bgImageScale = style.bgImageScale,
+    )
 
     override fun updateDrawState(tp: TextPaint) = Unit
 
