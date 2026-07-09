@@ -27,3 +27,4 @@ package-lock.json
 .docs
 .workbuddy/
 /gradle/gradle-daemon-jvm.properties
+.learn/

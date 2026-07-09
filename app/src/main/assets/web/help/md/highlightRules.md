@@ -23,7 +23,7 @@
 ```kotlin
 @Entity(tableName = "replace_rules")
 data class ReplaceRule(
-    var id: Long,                    // 主键
+    var id: Long,                    // 主键（即按它来识别是否重复添加）
     var name: String,                // 规则名称
     var group: String?,              // 分组
     var pattern: String,             // 匹配模式（要替换的内容）

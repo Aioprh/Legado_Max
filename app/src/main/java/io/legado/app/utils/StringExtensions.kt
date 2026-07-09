@@ -159,15 +159,15 @@ fun String.parseIpsFromString(): List<InetAddress>? =
 
 
 fun String.quoteReplacementJs(): String {
-    if (!this.contains('\\')) {
+    if (!this.contains('\\') && !this.contains('$')) {
         return this
     }
     val sb = StringBuilder()
     for (c in this) {
-        if (c == '\\') {
-            sb.append("\\\\")
-        } else {
-            sb.append(c)
+        when (c) {
+            '\\' -> sb.append("\\\\")
+            '$' -> sb.append("\\$")
+            else -> sb.append(c)
         }
     }
     return sb.toString()

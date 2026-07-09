@@ -232,12 +232,13 @@ fun RegexTestScreen(
             // 计算替换后的文本
             val replacedText = if (replacement.isNotEmpty()) {
                 if (useRegex) {
-                    // 正则替换
+                    // 正则替换 - 转义美元符号以避免 Illegal group reference 错误
                     val regexOptions = mutableSetOf<RegexOption>()
                     if (ignoreCase) regexOptions.add(RegexOption.IGNORE_CASE)
                     if (multiline) regexOptions.add(RegexOption.MULTILINE)
                     if (dotAll) regexOptions.add(RegexOption.DOT_MATCHES_ALL)
-                    input.replace(kotlin.text.Regex(pattern, regexOptions), replacement)
+                    val escapedReplacement = replacement.replace("$", "\\\$")
+                    input.replace(kotlin.text.Regex(pattern, regexOptions), escapedReplacement)
                 } else {
                     // 普通文本替换
                     input.replace(pattern, replacement)
@@ -363,9 +364,10 @@ fun RegexTestScreen(
                     OutlinedTextField(
                         value = pattern,
                         onValueChange = { pattern = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(stringResource(R.string.debug_regex_pattern_hint)) },
-                        singleLine = true
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 60.dp),
+                        placeholder = { Text(stringResource(R.string.debug_regex_pattern_hint)) }
                     )
                     
                     Spacer(modifier = Modifier.height(12.dp))
@@ -458,9 +460,10 @@ fun RegexTestScreen(
                     OutlinedTextField(
                         value = replacement,
                         onValueChange = { replacement = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(stringResource(R.string.replace_to)) },
-                        singleLine = true
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 60.dp),
+                        placeholder = { Text(stringResource(R.string.replace_to)) }
                     )
                 }
             }
