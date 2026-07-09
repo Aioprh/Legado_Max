@@ -12,6 +12,7 @@ import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import androidx.annotation.ColorInt
 import androidx.core.widget.doAfterTextChanged
+import androidx.fragment.app.viewModels
 import com.jaredrummler.android.colorpicker.ColorPickerDialog
 import com.jaredrummler.android.colorpicker.ColorPickerDialogListener
 import io.legado.app.R
@@ -28,9 +29,14 @@ import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
-import io.legado.app.ui.book.read.page.entities.TextLine
 import io.legado.app.ui.file.HandleFileContract
 
+/**
+ * 高亮规则单条编辑弹窗。
+ *
+ * 负责绑定输入控件、颜色选择器、背景图选择器和预览刷新；
+ * 当前编辑规则和分组列表由 `HighlightRuleEditViewModel` 保存。
+ */
 class HighlightRuleEditDialog @JvmOverloads constructor(
     private val sourceRule: HighlightRule? = null,
     private val defaultGroup: String? = null,
@@ -39,19 +45,29 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_edit, true), ColorPickerDialogListener {
 
     private val binding by viewBinding(DialogHighlightRuleEditBinding::bind)
-    private lateinit var editingRule: HighlightRule
-    private lateinit var groupItems: List<String>
+    private val viewModel by viewModels<HighlightRuleEditViewModel>()
+    private var editingRule: HighlightRule
+        get() = viewModel.editingRule
+        set(value) {
+            viewModel.editingRule = value
+        }
+    private val groupItems: List<String>
+        get() = viewModel.groupItems
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
     private var accentColor = 0
-    private var isRegexMode = false
+    private var isRegexMode: Boolean
+        get() = viewModel.isRegexMode
+        set(value) {
+            viewModel.isRegexMode = value
+        }
 
     private val selectImageResult = registerForActivityResult(HandleFileContract()) { result ->
         result.uri?.let { uri ->
             // 选择图片时，清除背景颜色
             editingRule.bgColor = null
             val rawPath = RealPathUtil.getPath(requireContext(), uri) ?: uri.toString()
-            val savedPath = TextLine.copyBgImageToInternal(requireContext(), rawPath)
+            val savedPath = HighlightRuleBackgroundManager.copyToInternal(requireContext(), rawPath)
             editingRule.bgImage = savedPath ?: rawPath
             binding.etBgImage.setText(savedPath ?: rawPath)
             updateBgPreview()
@@ -69,11 +85,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         initTheme()
-        editingRule = sourceRule?.copy() ?: HighlightRule(
-            group = defaultGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP,
-            scope = defaultScope
-        )
-        groupItems = HighlightRuleGroupStore.load(requireContext())
+        viewModel.initialize(sourceRule, defaultGroup, defaultScope)
         attachBottomSheetDismiss(
             binding.dragHandle,
             binding.sheetContainer
@@ -508,7 +520,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         // 如果有背景图片，显示图片预览
         val bgImage = editingRule.bgImage.orEmpty()
         if (bgImage.isNotBlank()) {
-            val bitmap = TextLine.getBgBitmap(bgImage)
+            val bitmap = HighlightRuleBackgroundManager.getBitmap(bgImage)
             if (bitmap != null) {
                 val drawable = android.graphics.drawable.BitmapDrawable(resources, bitmap)
                 binding.viewBgImagePreview.background = drawable

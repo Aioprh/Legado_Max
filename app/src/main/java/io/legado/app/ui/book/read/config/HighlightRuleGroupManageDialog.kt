@@ -11,6 +11,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.TextView
+import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
@@ -24,7 +25,6 @@ import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.utils.ColorUtils
-import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.sendToClip
@@ -32,15 +32,20 @@ import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
+/**
+ * 高亮规则分组管理弹窗。
+ *
+ * 负责分组列表展示、输入弹窗、分组菜单和选择回调；
+ * 分组与规则数据变更由 `HighlightRuleGroupManageViewModel` 执行。
+ */
 class HighlightRuleGroupManageDialog @JvmOverloads constructor(
     private val onChanged: (oldGroup: String?, newGroup: String?) -> Unit = { _, _ -> },
     private val onSelectGroup: (String?) -> Unit = {},
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_group_manage) {
 
     private val binding by viewBinding(DialogHighlightRuleGroupManageBinding::bind)
+    private val viewModel by viewModels<HighlightRuleGroupManageViewModel>()
     private val adapter by lazy { GroupAdapter(requireContext()) }
-    private val groups = ArrayList<String>()
-    private val rules = ArrayList<HighlightRule>()
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
     private var accentColor = 0
@@ -111,13 +116,10 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
     }
 
     private fun loadData() {
-        groups.clear()
-        groups.addAll(HighlightRuleGroupStore.load(requireContext()))
-        rules.clear()
-        rules.addAll(HighlightRuleStore.load(requireContext()))
-        adapter.setItems(groups.toList())
-        binding.tvEmptyMsg.visibility = if (groups.isEmpty()) View.VISIBLE else View.GONE
-        binding.tvAllCount.text = "${rules.size} 条规则"
+        viewModel.loadData()
+        adapter.setItems(viewModel.groups.toList())
+        binding.tvEmptyMsg.visibility = if (viewModel.groups.isEmpty()) View.VISIBLE else View.GONE
+        binding.tvAllCount.text = "${viewModel.rules.size} 条规则"
     }
 
     private fun showGroupInputDialog(source: String?) {
@@ -146,24 +148,17 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
                     requireContext().toastOnUi("分组名称不能为空")
                     return@okButton
                 }
-                if (groups.contains(newName) && newName != source) {
+                if (viewModel.groups.contains(newName) && newName != source) {
                     requireContext().toastOnUi("分组名称已存在")
                     return@okButton
                 }
                 if (source == null) {
-                    groups.add(newName)
-                    HighlightRuleGroupStore.save(requireContext(), groups)
-                    loadData()
+                    viewModel.addGroup(newName)
+                    refreshGroups()
                     onChanged(null, null)
                 } else {
-                    val index = groups.indexOf(source)
-                    if (index >= 0) groups[index] = newName
-                    rules.replaceAll { rule ->
-                        if (rule.group == source) rule.copy(group = newName) else rule
-                    }
-                    HighlightRuleGroupStore.save(requireContext(), groups)
-                    HighlightRuleStore.save(requireContext(), rules)
-                    loadData()
+                    viewModel.renameGroup(source, newName)
+                    refreshGroups()
                     onChanged(source, newName)
                 }
             }
@@ -179,17 +174,8 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
         alert("删除分组") {
             setMessage("删除后，该分组下的规则会移动到默认分组。")
             okButton {
-                groups.remove(group)
-                rules.replaceAll { rule ->
-                    if (rule.group == group) {
-                        rule.copy(group = HighlightRuleGroupStore.DEFAULT_GROUP)
-                    } else {
-                        rule
-                    }
-                }
-                HighlightRuleGroupStore.save(requireContext(), groups)
-                HighlightRuleStore.save(requireContext(), rules)
-                loadData()
+                viewModel.deleteGroup(group)
+                refreshGroups()
                 onChanged(group, null)
             }
             cancelButton()
@@ -197,13 +183,13 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
     }
 
     private fun exportGroup(group: String) {
-        val targetRules = rules.filter { it.group == group }
+        val targetRules = viewModel.rulesInGroup(group)
         if (targetRules.isEmpty()) {
-            context?.toastOnUi("璇ュ垎缁勬殏鏃犺鍒欏彲瀵煎嚭")
+            context?.toastOnUi("该分组暂无规则可导出")
             return
         }
-        requireContext().sendToClip(GSON.toJson(targetRules))
-        context?.toastOnUi("宸插鍒?${targetRules.size} 鏉¤鍒?")
+        requireContext().sendToClip(HighlightRuleRepository.encodeRules(targetRules))
+        context?.toastOnUi("已复制 ${targetRules.size} 条规则")
     }
 
     private fun showItemMenu(group: String, anchor: View) {
@@ -225,9 +211,18 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
     }
 
     private fun groupCount(group: String): Int {
-        return rules.count { it.group == group }
+        return viewModel.groupCount(group)
     }
 
+    private fun refreshGroups() {
+        adapter.setItems(viewModel.groups.toList())
+        binding.tvEmptyMsg.visibility = if (viewModel.groups.isEmpty()) View.VISIBLE else View.GONE
+        binding.tvAllCount.text = "${viewModel.rules.size} 条规则"
+    }
+
+    /**
+     * 高亮规则分组列表适配器。
+     */
     private inner class GroupAdapter(context: android.content.Context) :
         RecyclerAdapter<String, ViewBindingHolder>(context) {
 
@@ -280,6 +275,9 @@ class HighlightRuleGroupManageDialog @JvmOverloads constructor(
         }
     }
 
+    /**
+     * 分组列表项的手写 ViewBinding 包装。
+     */
     class ViewBindingHolder(view: View) : androidx.viewbinding.ViewBinding {
         override fun getRoot(): View = itemRoot
         val itemRoot: View = view

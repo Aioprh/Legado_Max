@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.read.config
 
 import android.content.Context
+import android.graphics.Bitmap
 import io.legado.app.ui.book.read.page.entities.TextLine
 import java.io.File
 
@@ -57,5 +58,13 @@ object HighlightRuleBackgroundManager {
     fun cleanupUnused(context: Context, rules: List<HighlightRule>) {
         val usedPaths = rules.mapNotNull { it.bgImage }.toSet()
         TextLine.cleanupUnusedBgImages(context, usedPaths)
+    }
+
+    fun copyToInternal(context: Context, sourcePath: String): String? {
+        return TextLine.copyBgImageToInternal(context, sourcePath)
+    }
+
+    fun getBitmap(path: String): Bitmap? {
+        return TextLine.getBgBitmap(path)
     }
 }

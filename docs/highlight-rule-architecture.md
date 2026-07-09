@@ -61,6 +61,11 @@
   - 新增/编辑单条规则。
   - 处理规则名称、正则、分组、目标范围、书籍 scope、文字色、下划线、SVG 下划线、背景色、背景图、预览文本。
   - 背景图选择后会复制到内部目录。
+  - 当前编辑规则、分组列表和编辑页临时状态由 `HighlightRuleEditViewModel` 保存。
+
+- `app/src/main/java/io/legado/app/ui/book/read/config/HighlightRuleEditViewModel.kt`
+  - 单条高亮规则编辑页 ViewModel。
+  - 保存正在编辑的 `HighlightRule`、可选分组列表和正则切换状态。
 
 - `app/src/main/java/io/legado/app/ui/book/read/config/HighlightPresetRuleDialog.kt`
   - 预置规则选择弹窗。
@@ -68,6 +73,11 @@
 - `app/src/main/java/io/legado/app/ui/book/read/config/HighlightRuleGroupManageDialog.kt`
   - 分组管理弹窗。
   - 支持新增、重命名、删除分组，以及导出分组规则。
+  - 分组列表和规则列表由 `HighlightRuleGroupManageViewModel` 管理。
+
+- `app/src/main/java/io/legado/app/ui/book/read/config/HighlightRuleGroupManageViewModel.kt`
+  - 分组管理页 ViewModel。
+  - 维护分组列表和规则列表，负责新增、重命名、删除分组时的数据同步。
 
 - `app/src/main/java/io/legado/app/ui/book/read/config/HighlightRuleBottomSheet.kt`
   - 底部弹窗拖拽关闭的公共 helper。
