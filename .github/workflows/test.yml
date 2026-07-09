@@ -296,8 +296,9 @@ jobs:
           rm -rf */
 
           for file in `ls *.apk`; do
-            # 跳过Debug调试包，不执行重命名
+            # Debug包重命名为 z_debug 开头，排到列表最后
             if [[ "$file" == *Debug调试包* ]]; then
+              mv "$file" $(echo "$file" | sed -e 's/Debug调试包/z_debug/')
               continue
             fi
             if [[ "$file" == *原包名* ]]; then
