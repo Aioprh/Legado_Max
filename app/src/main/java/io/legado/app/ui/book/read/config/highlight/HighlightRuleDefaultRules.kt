@@ -1,4 +1,4 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.content.Context
 import io.legado.app.constant.PreferKey
@@ -17,8 +17,8 @@ object HighlightRuleDefaultRules {
             HighlightRule(
                 id = "dialog_default",
                 name = "对话高亮",
-                pattern = "“[^”\\n]{1,120}”|\"[^\"\\n]{1,120}\"|「[^」\\n]{1,120}」|『[^』\\n]{1,120}』",
-                sampleText = "她轻声说：“今晚就出发。”",
+                pattern = """"[^"\\n]{1,120}"|"\"[^\"\\n]{1,120}\"|「[^」\\n]{1,120}」|『[^』\\n]{1,120}』""",
+                sampleText = "她轻声说：\"今晚就出发。\"",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = context.getPrefBoolean(PreferKey.highlightRuleDialog, true),
                 textColor = 0xFFFF8C00.toInt()
@@ -94,7 +94,7 @@ object HighlightRuleDefaultRules {
                 id = "poetry_default",
                 name = "诗词引用",
                 pattern = "(?m)^[\\p{IsHan}，。！？；：、]{5,24}$",
-                sampleText = "床前明月光，\n疑是地上霜。",
+                sampleText = "床前明月光，\\n疑是地上霜。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
                 textColor = 0xFF2F4F4F.toInt(),

@@ -296,8 +296,9 @@ jobs:
           rm -rf */
 
           for file in `ls *.apk`; do
-            # 跳过Debug调试包，不执行重命名
+            # Debug包重命名为 z_debug 开头，排到列表最后
             if [[ "$file" == *Debug调试包* ]]; then
+              mv "$file" $(echo "$file" | sed -e 's/Debug调试包/z_debug/')
               continue
             fi
             if [[ "$file" == *原包名* ]]; then
@@ -339,6 +340,7 @@ jobs:
             | 兼容版 | compact | 可覆盖原版和lyc版 |
             | 共存版 | plus | 独立安装，与主版本共存 |
             | 调试包 | debug | 独立安装，与其他共存，适用于调试用，无代码混淆，函数名完整，方便抓取崩溃、报错日志定位问题。此版本能正常抓包 |
+            
             四个包名都不同，在安卓系统中不同包名视为不同软件，都可以独立存在。
 
             ### 更新内容

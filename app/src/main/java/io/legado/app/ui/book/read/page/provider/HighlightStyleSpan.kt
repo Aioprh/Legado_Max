@@ -3,7 +3,7 @@ package io.legado.app.ui.book.read.page.provider
 import android.text.TextPaint
 import android.text.style.CharacterStyle
 import android.text.style.UpdateAppearance
-import io.legado.app.ui.book.read.config.HighlightRuleStyle
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStyle
 
 /**
  * 阅读排版阶段传递高亮规则样式的轻量 Span。

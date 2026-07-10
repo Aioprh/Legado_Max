@@ -30,6 +30,10 @@ import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.ui.book.read.config.highlight.HighlightRule
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleBackgroundManager
+import io.legado.app.ui.book.read.config.HighlightRuleEditViewModel
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleGroupStore
 
 /**
  * 高亮规则单条编辑弹窗。
@@ -45,7 +49,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 ) : BaseDialogFragment(R.layout.dialog_highlight_rule_edit, true), ColorPickerDialogListener {
 
     private val binding by viewBinding(DialogHighlightRuleEditBinding::bind)
-    private val viewModel by viewModels<HighlightRuleEditViewModel>()
+    private val viewModel: HighlightRuleEditViewModel by viewModels()
     private var editingRule: HighlightRule
         get() = viewModel.editingRule
         set(value) {
@@ -94,32 +98,76 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.tvPageTitle.text =
             getString(if (sourceRule == null) R.string.highlight_rule_add else R.string.highlight_rule_edit)
 
-        binding.spGroup.adapter = ArrayAdapter(
+        binding.spGroup.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
             groupItems
-        ).apply {
+        ) {
+            override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+            override fun getDropDownView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getDropDownView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+        }.apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
-        binding.spTarget.adapter = ArrayAdapter(
+        binding.spTarget.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
             listOf("作用于全部", "作用于标题", "作用于正文")
-        ).apply {
+        ) {
+            override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+            override fun getDropDownView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getDropDownView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+        }.apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
-        binding.spUnderlineMode.adapter = ArrayAdapter(
+        binding.spUnderlineMode.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
             listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "标题强调条", "自定义SVG")
-        ).apply {
+        ) {
+            override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+            override fun getDropDownView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getDropDownView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+        }.apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
-        binding.spBgImageFit.adapter = ArrayAdapter(
+        binding.spBgImageFit.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
             listOf("平铺", "拉伸填充", "居中裁剪")
-        ).apply {
+        ) {
+            override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+            override fun getDropDownView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getDropDownView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+        }.apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
 
@@ -223,6 +271,11 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etScope.setHintTextColor(secondaryTextColor)
         binding.etExcludeScope.setTextColor(primaryTextColor)
         binding.etExcludeScope.setHintTextColor(secondaryTextColor)
+        
+        // 将预览文本颜色设置为主题颜色
+        binding.tvPreview.setTextColor(primaryTextColor)
+        binding.tvPatternError.setTextColor(requireContext().getColor(R.color.error))
+        binding.tvBgImageScale.setTextColor(secondaryTextColor)
 
         binding.tvRegexToggle.setTextColor(primaryTextColor)
         binding.tvRegexToggle.background?.mutate()?.setTint(bg)
@@ -254,6 +307,42 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.tvOffsetMinus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvOffsetPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etUnderlineOffset.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+
+        // 递归遍历三个卡片容器，将静态标签的文字颜色替换为动态主题色
+        applyThemeToStaticLabels()
+    }
+
+    /**
+     * 递归遍历卡片容器中的所有 TextView，将 XML 中使用 @color/primaryText 和 @color/secondaryText
+     * 的静态标签替换为动态主题颜色。
+     * 已在 initTheme() 中显式设置过颜色的控件不会受影响（因为它们的 currentTextColor
+     * 已经不是静态颜色值了）。
+     */
+    private fun applyThemeToStaticLabels() {
+        val staticPrimary = requireContext().getColor(R.color.primaryText)
+        val staticSecondary = requireContext().getColor(R.color.secondaryText)
+        listOf(binding.cardInfo, binding.cardStyle, binding.cardPreview).forEach { card ->
+            applyThemeColorRecursive(card, staticPrimary, staticSecondary)
+        }
+    }
+
+    private fun applyThemeColorRecursive(
+        view: View,
+        staticPrimary: Int,
+        staticSecondary: Int
+    ) {
+        if (view is android.widget.TextView) {
+            val currentColor = view.currentTextColor
+            if (currentColor == staticPrimary) {
+                view.setTextColor(primaryTextColor)
+            } else if (currentColor == staticSecondary) {
+                view.setTextColor(secondaryTextColor)
+            }
+        } else if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                applyThemeColorRecursive(view.getChildAt(i), staticPrimary, staticSecondary)
+            }
+        }
     }
 
     private fun makeCardDrawable(

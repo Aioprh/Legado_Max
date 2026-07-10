@@ -2,6 +2,9 @@ package io.legado.app.ui.book.read.config
 
 import android.app.Application
 import io.legado.app.base.BaseViewModel
+import io.legado.app.ui.book.read.config.highlight.HighlightRule
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleGroupStore
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleRepository
 
 /**
  * 高亮规则分组管理弹窗的状态管理层。

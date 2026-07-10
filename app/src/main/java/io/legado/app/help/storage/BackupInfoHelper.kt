@@ -7,7 +7,7 @@ import io.legado.app.help.book.BookHelp
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.model.BookCover
-import io.legado.app.ui.book.read.config.HighlightRuleStore
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStore
 import io.legado.app.utils.GSON
 import splitties.init.appCtx
 import java.io.File
@@ -178,7 +178,7 @@ object BackupInfoHelper {
         val runtimeCacheCount = appDb.cacheDao.getRuntimeSourceCacheCount(System.currentTimeMillis())
         addItem("runtimeSourceCache.json", runtimeCacheCount * 500L)
 
-        val highlightRuleSize = GSON.toJson(HighlightRuleStore.createBackupData(appCtx)).length.toLong()
+        val highlightRuleSize = GSON.toJson(HighlightRuleStore.backupData(appCtx)).length.toLong()
         addItem(HighlightRuleStore.backupFileName, highlightRuleSize)
 
         addBookCacheItems(::addItem)

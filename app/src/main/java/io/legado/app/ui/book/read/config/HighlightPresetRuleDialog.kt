@@ -23,7 +23,14 @@ import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.ui.book.read.config.highlight.HighlightRule
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleGroupStore
+import io.legado.app.ui.book.read.config.HighlightRulePreview
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStore
 
+/**
+ * 预置规则选择弹窗。
+ */
 class HighlightPresetRuleDialog @JvmOverloads constructor(
     private val defaultGroup: String? = null,
     private val onAddRule: (HighlightRule) -> Unit = {},
@@ -113,13 +120,13 @@ class HighlightPresetRuleDialog @JvmOverloads constructor(
             val density = binding.root.context.resources.displayMetrics.density
             binding.root.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 24f * density
+                cornerRadius = 12f * density
                 setColor(cardBgColor)
                 setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
             }
             binding.tvPreview.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 20f * density
+                cornerRadius = 10f * density
                 setColor(previewBgColor)
                 setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
             }

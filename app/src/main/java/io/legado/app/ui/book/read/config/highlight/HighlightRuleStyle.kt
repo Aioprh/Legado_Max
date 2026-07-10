@@ -1,7 +1,7 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 /**
- * 高亮规则的统一样式快照。
+ * 高亮规则的统一样式快照。样式模型
  *
  * 从 `HighlightRule` 中抽取预览和阅读渲染共同需要的样式字段，
  * 避免配置页预览与阅读页实际绘制各自解析一套样式。

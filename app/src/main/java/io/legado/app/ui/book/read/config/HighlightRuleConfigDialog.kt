@@ -36,6 +36,8 @@ import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.ui.book.read.config.highlight.HighlightRule
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleConfigViewModel
 
 /**
  * 阅读高亮规则的配置弹窗。
@@ -47,7 +49,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     PopupMenu.OnMenuItemClickListener {
 
     private val binding by viewBinding(DialogHighlightRuleConfigBinding::bind)
-    private val viewModel by viewModels<HighlightRuleConfigViewModel>()
+    private val viewModel: HighlightRuleConfigViewModel by viewModels()
     private val adapter by lazy { HighlightRuleAdapter(requireContext()) }
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
@@ -74,7 +76,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
         binding.recyclerView.clipToPadding = false
-        binding.recyclerView.setPadding(0, 12.dpToPx(), 0, 28.dpToPx())
+        binding.recyclerView.setPadding(16.dpToPx(), 8.dpToPx(), 16.dpToPx(), 28.dpToPx())
 
         binding.ivClose.setOnClickListener { dismissAllowingStateLoss() }
         binding.ivMenu.setOnClickListener { showMenu(it) }
@@ -393,14 +395,14 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             val density = binding.root.context.resources.displayMetrics.density
             binding.root.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 24f * density
+                cornerRadius = 12f * density
                 setColor(cardBgColor)
                 setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
             }
             binding.tvPattern.background?.mutate()?.setTint(accentColor)
             binding.tvPreview.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 20f * density
+                cornerRadius = 10f * density
                 setColor(previewBgColor)
                 setStroke((1f * density).toInt().coerceAtLeast(1), previewStrokeColor)
             }

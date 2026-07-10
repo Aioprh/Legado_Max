@@ -1,0 +1,8 @@
+# Highlight rule files directory
+# This directory contains all highlight rule related files for better organization
+# 
+# File organization:
+# - Model layer: HighlightRule.kt, HighlightRuleStyle.kt
+# - Data layer: Store, Repository, GroupStore, BackgroundManager, DefaultRules
+# - UI layer: Dialogs and ViewModels  
+# - Span layer: Various span implementations

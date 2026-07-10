@@ -16,7 +16,7 @@ import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
-import io.legado.app.ui.book.read.config.HighlightRuleStore
+import io.legado.app.ui.book.read.config.highlight.HighlightRuleStore
 import io.legado.app.utils.GSON
 import io.legado.app.utils.isJsonArray
 import kotlinx.coroutines.Dispatchers

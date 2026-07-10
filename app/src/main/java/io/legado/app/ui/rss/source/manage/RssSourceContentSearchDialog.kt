@@ -4,16 +4,16 @@ import androidx.fragment.app.viewModels
 import io.legado.app.data.entities.RssSource
 import io.legado.app.ui.rss.source.edit.RssSourceEditActivity
 import io.legado.app.ui.source.BaseContentSearchDialog
+import io.legado.app.ui.source.ContentSearchEngine
 import io.legado.app.ui.source.ContentSearchType
+import io.legado.app.ui.source.JsonSearchItem
 import io.legado.app.ui.source.SourceFieldItem
 import io.legado.app.utils.GSON
 import io.legado.app.utils.share
 import io.legado.app.utils.startActivity
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 
 /**
- * 订阅源内容查询对话窗
+ * 订阅源内容查询界面，用于按规则字段或完整 JSON 搜索订阅源配置。
  */
 class RssSourceContentSearchDialog : BaseContentSearchDialog() {
 
@@ -95,7 +95,8 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
                                 tabName = TAB_NAMES[tabKey] ?: tabKey,
                                 fieldKey = fieldKey,
                                 fieldName = fieldName,
-                                value = value
+                                value = value,
+                                sourceGroup = source.sourceGroup
                             ))
                         }
                     }
@@ -106,13 +107,21 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
     }
 
     override suspend fun performSearch(query: String, allItems: List<SourceFieldItem>): List<SourceFieldItem> {
-        val queryLower = query.lowercase()
-        val contextChars = 50
-
         return if (searchByRuleField) {
-            searchRuleFields(queryLower, query.length, contextChars, allItems)
+            ContentSearchEngine.searchFields(query, allItems)
         } else {
-            searchJsonFull(queryLower, query.length, contextChars, allItems)
+            ContentSearchEngine.searchJson(
+                query = query,
+                sourceItems = allItems,
+                jsonItems = allRssSources.mapNotNull { source ->
+                    val json = cachedJsonStrings[source.sourceUrl] ?: return@mapNotNull null
+                    JsonSearchItem(
+                        sourceName = source.sourceName,
+                        sourceUrl = source.sourceUrl,
+                        json = json
+                    )
+                }
+            )
         }
     }
 
@@ -128,86 +137,6 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
         viewModel.exportSources(sourceUrls) { file ->
             activity?.share(file)
         }
-    }
-
-    private suspend fun searchRuleFields(
-        queryLower: String,
-        queryLen: Int,
-        contextChars: Int,
-        allItems: List<SourceFieldItem>
-    ): List<SourceFieldItem> {
-        val results = mutableListOf<SourceFieldItem>()
-
-        for (item in allItems) {
-            currentCoroutineContext().ensureActive()
-            if (item.value.lowercase().contains(queryLower)) {
-                var startIndex = 0
-                val valueLower = item.value.lowercase()
-                while (true) {
-                    val matchIndex = valueLower.indexOf(queryLower, startIndex)
-                    if (matchIndex == -1) break
-
-                    val start = maxOf(0, matchIndex - contextChars)
-                    val end = minOf(item.value.length, matchIndex + queryLen + contextChars)
-                    val contextText = buildString {
-                        if (start > 0) append("...")
-                        append(item.value.substring(start, end))
-                        if (end < item.value.length) append("...")
-                    }
-
-                    results.add(item.copy(value = contextText))
-                    startIndex = matchIndex + 1
-                }
-            }
-        }
-
-        return results
-    }
-
-    private suspend fun searchJsonFull(
-        queryLower: String,
-        queryLen: Int,
-        contextChars: Int,
-        allItems: List<SourceFieldItem>
-    ): List<SourceFieldItem> {
-        val results = mutableListOf<SourceFieldItem>()
-        val sourceUrls = allItems.map { it.sourceUrl }.distinct()
-
-        for (sourceUrl in sourceUrls) {
-            currentCoroutineContext().ensureActive()
-            val source = allRssSources.find { it.sourceUrl == sourceUrl } ?: continue
-            val jsonStr = cachedJsonStrings[source.sourceUrl] ?: continue
-            if (!jsonStr.lowercase().contains(queryLower)) continue
-
-            var startIndex = 0
-            val jsonLower = jsonStr.lowercase()
-            while (true) {
-                val matchIndex = jsonLower.indexOf(queryLower, startIndex)
-                if (matchIndex == -1) break
-
-                val start = maxOf(0, matchIndex - contextChars)
-                val end = minOf(jsonStr.length, matchIndex + queryLen + contextChars)
-                val contextText = buildString {
-                    if (start > 0) append("...")
-                    append(jsonStr.substring(start, end))
-                    if (end < jsonStr.length) append("...")
-                }
-
-                results.add(SourceFieldItem(
-                    sourceName = source.sourceName,
-                    sourceUrl = source.sourceUrl,
-                    tabKey = "json",
-                    tabName = "JSON",
-                    fieldKey = "json",
-                    fieldName = "JSON全文",
-                    value = contextText,
-                    fullValue = jsonStr
-                ))
-                startIndex = matchIndex + 1
-            }
-        }
-
-        return results
     }
 
     private fun getFieldValue(source: RssSource, fieldKey: String): String? {
