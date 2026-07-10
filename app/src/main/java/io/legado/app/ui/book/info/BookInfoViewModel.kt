@@ -141,6 +141,29 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                 upBook(book)
                 return@execute
             }
+            
+            // 如果前面的查找都失败，但是有bookUrl，创建临时书籍对象
+            if (bookUrl.isNotBlank() && name.isNotBlank()) {
+                val tempBook = Book(
+                    bookUrl = bookUrl,
+                    name = name,
+                    author = author,
+                    origin = intent.getStringExtra("origin") ?: ""
+                ).apply {
+                    // 从搜索记录中获取更多信息
+                    appDb.searchBookDao.getSearchBook(bookUrl)?.let { searchBook ->
+                        coverUrl = searchBook.coverUrl
+                        intro = searchBook.intro
+                        latestChapterTitle = searchBook.latestChapterTitle
+                        tocUrl = searchBook.tocUrl
+                        originName = searchBook.originName
+                        kind = searchBook.kind
+                    }
+                }
+                upBook(tempBook)
+                return@execute
+            }
+            
             throw NoStackTraceException("未找到书籍")
         }.onError {
             AppLog.put(it.localizedMessage, it)
@@ -664,13 +687,19 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         return book
     }
 
-    fun delBook(deleteOriginal: Boolean = false, success: (() -> Unit)? = null) {
+    fun delBook(
+        deleteOriginal: Boolean = false,
+        clearSearchBooks: Boolean = true,
+        success: (() -> Unit)? = null
+    ) {
         execute {
             bookData.value?.let { book ->
                 book.delete()
                 inBookshelf = false
-                // 清除该书对应书源+作者的作者其他作品缓存
-                appDb.searchBookDao.clearByOriginAuthor(book.origin, book.author)
+                if (clearSearchBooks) {
+                    // 清除该书对应书源+作者的作者其他作品缓存
+                    appDb.searchBookDao.clearByOriginAuthor(book.origin, book.author)
+                }
                 if (book.isLocal) {
                     LocalBook.deleteBook(book, deleteOriginal)
                 }
