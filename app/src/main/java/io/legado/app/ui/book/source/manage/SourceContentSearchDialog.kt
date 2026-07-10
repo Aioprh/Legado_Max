@@ -125,6 +125,7 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
             this.allSources = sourceList
             val items = mutableListOf<SourceFieldItem>()
             for ((sourceName, sourceUrl, jsonObj) in this.allSources) {
+                val sourceGroup = getFieldValue(jsonObj, "base", "bookSourceGroup")
                 for ((tabKey, fields) in TAB_FIELDS) {
                     for ((fieldKey, fieldName) in fields) {
                         val value = getFieldValue(jsonObj, tabKey, fieldKey) ?: continue
@@ -135,7 +136,8 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
                             tabName = TAB_NAMES[tabKey] ?: tabKey,
                             fieldKey = fieldKey,
                             fieldName = fieldName,
-                            value = value
+                            value = value,
+                            sourceGroup = sourceGroup
                         ))
                     }
                 }

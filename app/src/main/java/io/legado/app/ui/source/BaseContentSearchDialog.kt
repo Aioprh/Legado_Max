@@ -42,6 +42,7 @@ import io.legado.app.utils.gone
 import io.legado.app.utils.putPrefString
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.visible
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +66,9 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
 
     protected var searchByRuleField = true
     protected var searchAllSources = true
+    private var searchScopeMode = SearchScopeMode.ALL
+    private var selectedSourceUrl: String? = null
+    private var selectedSourceGroup: String? = null
 
     /** 所有可搜索的字段条目，由子类通过 loadSourceItems 填充 */
     protected var allSourceItems: List<SourceFieldItem> = emptyList()
@@ -196,11 +200,32 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
 
         val scopeRow = createToggleRow(
             "范围",
-            listOf("所有源" to true, "仅启用" to false),
-            selectedValue = searchAllSources
+            listOf(
+                "所有源" to SearchScopeMode.ALL,
+                "仅启用" to SearchScopeMode.ENABLED,
+                "搜索单个源" to SearchScopeMode.SINGLE_SOURCE,
+                "搜索分组" to SearchScopeMode.GROUP
+            ),
+            selectedValue = searchScopeMode
         ) { value ->
-            searchAllSources = value
-            loadSources()
+            when (value) {
+                SearchScopeMode.ALL -> {
+                    searchScopeMode = value
+                    searchAllSources = true
+                    selectedSourceUrl = null
+                    selectedSourceGroup = null
+                    loadSources()
+                }
+                SearchScopeMode.ENABLED -> {
+                    searchScopeMode = value
+                    searchAllSources = false
+                    selectedSourceUrl = null
+                    selectedSourceGroup = null
+                    loadSources()
+                }
+                SearchScopeMode.SINGLE_SOURCE -> showSingleSourceSelector()
+                SearchScopeMode.GROUP -> showGroupSelector()
+            }
         }
         toggleLayout.addView(scopeRow)
 
@@ -693,10 +718,11 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         binding.recyclerView.visibility = View.GONE
         binding.resultCountText.visibility = View.GONE
 
+        val scopeFilteredItems = filterItemsBySearchScope(allSourceItems)
         val filteredItems = if (selectedTab == "__ALL__") {
-            allSourceItems
+            scopeFilteredItems
         } else {
-            allSourceItems.filter { it.tabKey == selectedTab }
+            scopeFilteredItems.filter { it.tabKey == selectedTab }
         }
 
         searchJob = lifecycleScope.launch(Dispatchers.IO) {
@@ -704,6 +730,59 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             withContext(Dispatchers.Main) {
                 showResults(results)
             }
+        }
+    }
+
+    private fun showSingleSourceSelector() {
+        val sourceItems = allSourceItems
+            .distinctBy { it.sourceUrl }
+            .sortedBy { it.sourceName }
+        if (sourceItems.isEmpty()) {
+            requireContext().toastOnUi("没有可搜索源")
+            return
+        }
+        requireContext().selector("搜索单个源", sourceItems.map { it.sourceName }) { _, index ->
+            val item = sourceItems[index]
+            searchScopeMode = SearchScopeMode.SINGLE_SOURCE
+            selectedSourceUrl = item.sourceUrl
+            selectedSourceGroup = null
+            redoSearchIfNeeded()
+        }
+    }
+
+    private fun showGroupSelector() {
+        val groups = allSourceItems
+            .mapNotNull { it.sourceGroup?.takeIf(String::isNotBlank) }
+            .distinct()
+            .sorted()
+        if (groups.isEmpty()) {
+            requireContext().toastOnUi("没有可搜索分组")
+            return
+        }
+        requireContext().selector("搜索分组", groups) { _, index ->
+            searchScopeMode = SearchScopeMode.GROUP
+            selectedSourceUrl = null
+            selectedSourceGroup = groups[index]
+            redoSearchIfNeeded()
+        }
+    }
+
+    private fun redoSearchIfNeeded() {
+        val query = binding.searchEditText.text.toString().trim()
+        if (query.isNotEmpty()) doSearch(query)
+    }
+
+    private fun filterItemsBySearchScope(items: List<SourceFieldItem>): List<SourceFieldItem> {
+        return when (searchScopeMode) {
+            SearchScopeMode.SINGLE_SOURCE -> {
+                val sourceUrl = selectedSourceUrl ?: return items
+                items.filter { it.sourceUrl == sourceUrl }
+            }
+            SearchScopeMode.GROUP -> {
+                val group = selectedSourceGroup ?: return items
+                items.filter { it.sourceGroup == group }
+            }
+            else -> items
         }
     }
 
@@ -1065,6 +1144,13 @@ enum class ContentSearchType(
     fun createDialog(): DialogFragment = dialogFactory()
 }
 
+private enum class SearchScopeMode {
+    ALL,
+    ENABLED,
+    SINGLE_SOURCE,
+    GROUP
+}
+
 /**
  * 可搜索的源字段条目。
  * @param value     显示文本（可含上下文截断），用于列表展示和高亮
@@ -1078,5 +1164,6 @@ data class SourceFieldItem(
     val fieldKey: String,
     val fieldName: String,
     val value: String,
-    val fullValue: String = value
+    val fullValue: String = value,
+    val sourceGroup: String? = null
 )

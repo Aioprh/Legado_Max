@@ -95,7 +95,8 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
                                 tabName = TAB_NAMES[tabKey] ?: tabKey,
                                 fieldKey = fieldKey,
                                 fieldName = fieldName,
-                                value = value
+                                value = value,
+                                sourceGroup = source.sourceGroup
                             ))
                         }
                     }

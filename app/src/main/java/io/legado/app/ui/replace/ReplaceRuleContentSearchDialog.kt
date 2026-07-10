@@ -80,7 +80,8 @@ class ReplaceRuleContentSearchDialog : BaseContentSearchDialog() {
                                     tabName = TAB_NAMES[tabKey] ?: tabKey,
                                     fieldKey = fieldKey,
                                     fieldName = fieldName,
-                                    value = value
+                                    value = value,
+                                    sourceGroup = rule.group
                                 )
                             )
                         }
