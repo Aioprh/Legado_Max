@@ -1,7 +1,9 @@
 package io.legado.app.ui.source
 
 import android.os.Bundle
+import android.text.Editable
 import android.text.SpannableString
+import android.text.TextWatcher
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import android.view.Gravity
@@ -11,10 +13,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
+import android.widget.ListView
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
@@ -734,37 +739,113 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
     }
 
     private fun showSingleSourceSelector() {
-        val sourceItems = allSourceItems
+        val options = allSourceItems
             .distinctBy { it.sourceUrl }
             .sortedBy { it.sourceName }
-        if (sourceItems.isEmpty()) {
-            requireContext().toastOnUi("没有可搜索源")
-            return
-        }
-        requireContext().selector("搜索单个源", sourceItems.map { it.sourceName }) { _, index ->
-            val item = sourceItems[index]
+            .map { SearchScopeOption(it.sourceName, it.sourceUrl) }
+        showSearchScopeSelector("搜索单个源", "没有可搜索源", options) { option ->
             searchScopeMode = SearchScopeMode.SINGLE_SOURCE
-            selectedSourceUrl = item.sourceUrl
+            selectedSourceUrl = option.value
             selectedSourceGroup = null
-            redoSearchIfNeeded()
         }
     }
 
     private fun showGroupSelector() {
-        val groups = allSourceItems
+        val options = allSourceItems
             .mapNotNull { it.sourceGroup?.takeIf(String::isNotBlank) }
             .distinct()
             .sorted()
-        if (groups.isEmpty()) {
-            requireContext().toastOnUi("没有可搜索分组")
-            return
-        }
-        requireContext().selector("搜索分组", groups) { _, index ->
+            .map { SearchScopeOption(it, it) }
+        showSearchScopeSelector("搜索分组", "没有可搜索分组", options) { option ->
             searchScopeMode = SearchScopeMode.GROUP
             selectedSourceUrl = null
-            selectedSourceGroup = groups[index]
-            redoSearchIfNeeded()
+            selectedSourceGroup = option.value
         }
+    }
+
+    private fun showSearchScopeSelector(
+        title: String,
+        emptyMessage: String,
+        options: List<SearchScopeOption>,
+        onSelected: (SearchScopeOption) -> Unit
+    ) {
+        if (options.isEmpty()) {
+            requireContext().toastOnUi(emptyMessage)
+            return
+        }
+
+        val context = requireContext()
+        val visibleOptions = options.toMutableList()
+        val adapter = ArrayAdapter(
+            context,
+            android.R.layout.simple_list_item_1,
+            visibleOptions.map { it.label }.toMutableList()
+        )
+        val searchInput = EditText(context).apply {
+            hint = "搜索"
+            isSingleLine = true
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+        }
+        val emptyView = TextView(context).apply {
+            text = "没有匹配项"
+            gravity = Gravity.CENTER
+            setPadding(0, dpToPx(24), 0, dpToPx(24))
+            setTextColor(ContextCompat.getColor(context, R.color.secondaryText))
+        }
+        val listView = ListView(context).apply {
+            this.adapter = adapter
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dpToPx(360)
+            )
+        }
+        val container = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpToPx(20), dpToPx(8), dpToPx(20), 0)
+            addView(searchInput)
+            addView(listView)
+            addView(emptyView)
+        }
+        listView.emptyView = emptyView
+
+        val dialog = AlertDialog.Builder(context)
+            .setTitle(title)
+            .setView(container)
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+
+        fun refreshOptions(query: String) {
+            val keyword = query.trim()
+            visibleOptions.clear()
+            visibleOptions.addAll(
+                if (keyword.isEmpty()) {
+                    options
+                } else {
+                    options.filter {
+                        it.label.contains(keyword, ignoreCase = true) ||
+                            it.value.contains(keyword, ignoreCase = true)
+                    }
+                }
+            )
+            adapter.clear()
+            adapter.addAll(visibleOptions.map { it.label })
+            adapter.notifyDataSetChanged()
+        }
+
+        searchInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                refreshOptions(s?.toString().orEmpty())
+            }
+        })
+        listView.setOnItemClickListener { _, _, index, _ ->
+            val option = visibleOptions.getOrNull(index) ?: return@setOnItemClickListener
+            onSelected(option)
+            redoSearchIfNeeded()
+            dialog.dismiss()
+        }
+        dialog.show()
     }
 
     private fun redoSearchIfNeeded() {
@@ -1150,6 +1231,11 @@ private enum class SearchScopeMode {
     SINGLE_SOURCE,
     GROUP
 }
+
+private data class SearchScopeOption(
+    val label: String,
+    val value: String
+)
 
 /**
  * 可搜索的源字段条目。
