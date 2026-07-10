@@ -17,8 +17,8 @@ object HighlightRuleDefaultRules {
             HighlightRule(
                 id = "dialog_default",
                 name = "对话高亮",
-                pattern = """"[^"\\n]{1,120}"|"\"[^\"\\n]{1,120}\"|「[^」\\n]{1,120}」|『[^』\\n]{1,120}』""",
-                sampleText = "她轻声说：\"今晚就出发。\"",
+                pattern = "“[^”\\n]{1,120}”|\"[^\"\\n]{1,120}\"|「[^」\\n]{1,120}」|『[^』\\n]{1,120}』",
+                sampleText = "她轻声说：\"今晚就出发。\"\n他说：“明天见。”",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = context.getPrefBoolean(PreferKey.highlightRuleDialog, true),
                 textColor = 0xFFFF8C00.toInt()

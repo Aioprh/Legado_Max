@@ -78,9 +78,10 @@ data class HighlightRule(
         return pattern.ifBlank { ".*" }
     }
 
+    // 格式化样本文本，确保在显示时正确换行
     fun normalizedSampleText(): String {
         return sampleText.ifBlank {
-            "她轻声说：\"今晚就出发。\"\n最近在重读《百年孤独》（纪念版），节奏依然很稳。"
+            "她轻声说：\"今晚就出发。\"\n他说：“明天见。”\n最近在重读《百年孤独》（纪念版），节奏依然很稳。"
         }
     }
 
