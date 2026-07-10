@@ -596,7 +596,7 @@ data class TextLine(
     }
 
     /**
-     * 绘制单段下划线，用于高亮规则匹配区域，支持实线/虚线/波浪线/标题强调条
+     * 绘制单段下划线，用于高亮规则匹配区域，支持实线/虚线/波浪线/双下划线/自定义SVG
      */
     private fun drawUnderlineSegment(
         canvas: Canvas,

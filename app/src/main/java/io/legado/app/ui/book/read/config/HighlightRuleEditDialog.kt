@@ -137,7 +137,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.spUnderlineMode.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
-            listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "标题强调条", "自定义SVG")
+            listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "双下划线", "自定义SVG")
         ) {
             override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
                 val view = super.getView(position, convertView, parent)
@@ -258,6 +258,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etUnderlineColor.setTextColor(primaryTextColor)
         binding.etUnderlineColor.setHintTextColor(secondaryTextColor)
         binding.etUnderlineWidth.setTextColor(primaryTextColor)
+        binding.etUnderlineWidth.setHintTextColor(secondaryTextColor)
         binding.etUnderlineOffset.setHintTextColor(secondaryTextColor)
         binding.etUnderlineOffset.setTextColor(primaryTextColor)
         binding.etSvgPath.setTextColor(primaryTextColor)

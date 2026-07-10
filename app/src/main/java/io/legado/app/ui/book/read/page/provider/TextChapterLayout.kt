@@ -14,7 +14,6 @@ import android.text.style.URLSpan
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.PageAnim
-import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookContent
@@ -88,10 +87,6 @@ class TextChapterLayout(
     private val book: Book,
     private val bookContent: BookContent,
 ) {
-
-    private val noteHighlightColor = 0xFF8F959E.toInt()
-    private val dialogHighlightColor = 0xFFFF8C00.toInt()
-    private val bookTitleUnderlineColor = 0xFF63C37D.toInt()
 
     @Volatile
     private var listener: LayoutProgressListener? = textChapter
@@ -1289,76 +1284,6 @@ class TextChapterLayout(
         return null
     }
 
-
-    /**
-     * 排版文字
-     */
-    private fun applyBuiltInHighlightRules(spannable: SpannableStringBuilder): SpannableStringBuilder {
-        if (appCtx.getPrefBoolean(PreferKey.highlightRuleBracketNote, true)) {
-            applyTextColorRule(
-                spannable,
-                Regex("（[^）\\n]{1,80}）|\\([^\\)\\n]{1,80}\\)|【[^】\\n]{1,80}】"),
-                noteHighlightColor
-            )
-        }
-        if (appCtx.getPrefBoolean(PreferKey.highlightRuleDialog, true)) {
-            applyTextColorRule(
-                spannable,
-                Regex("“[^”\\n]{1,120}”|\"[^\"\\n]{1,120}\"|「[^」\\n]{1,120}」|『[^』\\n]{1,120}』"),
-                dialogHighlightColor
-            )
-        }
-        if (appCtx.getPrefBoolean(PreferKey.highlightRuleBookTitle, true)) {
-            applyUnderlineRule(
-                spannable,
-                Regex("《[^》\\n]{1,80}》"),
-                3,
-                bookTitleUnderlineColor
-            )
-        }
-        return spannable
-    }
-
-    private fun applyTextColorRule(
-        spannable: SpannableStringBuilder,
-        regex: Regex,
-        color: Int,
-    ) {
-        regex.findAll(spannable).forEach { match ->
-            spannable.setSpan(
-                ForegroundColorSpan(color),
-                match.range.first,
-                match.range.last + 1,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-        }
-    }
-
-    private fun applyUnderlineRule(
-        spannable: SpannableStringBuilder,
-        regex: Regex,
-        mode: Int,
-        color: Int,
-    ) {
-        regex.findAll(spannable).forEach { match ->
-            spannable.setSpan(
-                HighlightStyleSpan(mode, color, 0.5f, 2f),
-                match.range.first,
-                match.range.last + 1,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-        }
-    }
-
-    private fun applyHighlightRulesFromStore(spannable: SpannableStringBuilder): SpannableStringBuilder {
-        HighlightRuleRepository.loadEnabledRules(appCtx).forEach { rule ->
-            // 按书籍作用域过滤，不匹配则跳过
-            if (!rule.matchesScope(book.name, book.origin)) return@forEach
-            val regex = kotlin.runCatching { Regex(rule.pattern) }.getOrNull() ?: return@forEach
-            applyRuleSpans(spannable, rule, regex)
-        }
-        return spannable
-    }
 
     private fun applyHighlightRules(
         spannable: SpannableStringBuilder,

@@ -2,7 +2,6 @@ package io.legado.app.ui.book.read.config
 
 import android.text.SpannableStringBuilder
 import android.text.Spanned
-import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import io.legado.app.ui.book.read.config.BgColorSpan
 import io.legado.app.ui.book.read.config.BgImageSpan
@@ -27,7 +26,7 @@ object HighlightRulePreview {
         val spannable = SpannableStringBuilder(text)
         val regex = kotlin.runCatching { Regex(rule.pattern) }.getOrNull() ?: return spannable
         val style = HighlightRuleStyle.from(rule)
-        regex.findAll(text).forEachIndexed { index, match ->
+        regex.findAll(text).forEach { match ->
             val start = match.range.first
             val end = match.range.last + 1
             val textColor = style.resolvedTextColor
@@ -133,15 +132,6 @@ object HighlightRulePreview {
                             }
                         }
                     }
-                }
-                if (index == 0 && style.underlineMode != 4 && style.underlineMode != 5) {
-                    val baseColor = rule.textColor ?: style.underlineColor ?: 0xFF63C37D.toInt()
-                    spannable.setSpan(
-                        BackgroundColorSpan((0x33 shl 24) or (baseColor and 0x00FFFFFF)),
-                        start,
-                        end,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
                 }
             }
         }
