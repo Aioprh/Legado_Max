@@ -3,14 +3,17 @@ package io.legado.app.ui.book.toc.rule
 import androidx.fragment.app.viewModels
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.ui.source.BaseContentSearchDialog
+import io.legado.app.ui.source.ContentSearchEngine
 import io.legado.app.ui.source.ContentSearchType
+import io.legado.app.ui.source.JsonSearchItem
 import io.legado.app.ui.source.SourceFieldItem
 import io.legado.app.utils.GSON
 import io.legado.app.utils.share
 import io.legado.app.utils.showDialogFragment
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 
+/**
+ * TXT 目录规则内容查询界面，用于按规则字段或完整 JSON 搜索目录识别规则。
+ */
 class TxtTocRuleContentSearchDialog : BaseContentSearchDialog() {
 
     private val viewModel by viewModels<TxtTocRuleContentSearchViewModel>()
@@ -79,12 +82,22 @@ class TxtTocRuleContentSearchDialog : BaseContentSearchDialog() {
         query: String,
         allItems: List<SourceFieldItem>
     ): List<SourceFieldItem> {
-        val queryLower = query.lowercase()
-        val contextChars = 50
         return if (searchByRuleField) {
-            searchRuleFields(queryLower, query.length, contextChars, allItems)
+            ContentSearchEngine.searchFields(query, allItems)
         } else {
-            searchJsonFull(queryLower, query.length, contextChars, allItems)
+            ContentSearchEngine.searchJson(
+                query = query,
+                sourceItems = allItems,
+                jsonItems = allRules.mapNotNull { rule ->
+                    val ruleId = rule.id.toString()
+                    val json = cachedJsonStrings[ruleId] ?: return@mapNotNull null
+                    JsonSearchItem(
+                        sourceName = rule.name,
+                        sourceUrl = ruleId,
+                        json = json
+                    )
+                }
+            )
         }
     }
 
@@ -101,83 +114,6 @@ class TxtTocRuleContentSearchDialog : BaseContentSearchDialog() {
         viewModel.exportRules(ruleIds) { file ->
             activity?.share(file)
         }
-    }
-
-    private suspend fun searchRuleFields(
-        queryLower: String,
-        queryLen: Int,
-        contextChars: Int,
-        allItems: List<SourceFieldItem>
-    ): List<SourceFieldItem> {
-        val results = mutableListOf<SourceFieldItem>()
-        for (item in allItems) {
-            currentCoroutineContext().ensureActive()
-            val value = item.value
-            val valueLower = value.lowercase()
-            if (!valueLower.contains(queryLower)) continue
-
-            var startIndex = 0
-            while (true) {
-                val matchIndex = valueLower.indexOf(queryLower, startIndex)
-                if (matchIndex == -1) break
-
-                val start = maxOf(0, matchIndex - contextChars)
-                val end = minOf(value.length, matchIndex + queryLen + contextChars)
-                val contextText = buildString {
-                    if (start > 0) append("...")
-                    append(value.substring(start, end))
-                    if (end < value.length) append("...")
-                }
-                results.add(item.copy(value = contextText))
-                startIndex = matchIndex + 1
-            }
-        }
-        return results
-    }
-
-    private suspend fun searchJsonFull(
-        queryLower: String,
-        queryLen: Int,
-        contextChars: Int,
-        allItems: List<SourceFieldItem>
-    ): List<SourceFieldItem> {
-        val results = mutableListOf<SourceFieldItem>()
-        val ruleIds = allItems.map { it.sourceUrl }.distinct()
-        for (ruleId in ruleIds) {
-            currentCoroutineContext().ensureActive()
-            val rule = allRules.find { it.id.toString() == ruleId } ?: continue
-            val jsonStr = cachedJsonStrings[ruleId] ?: continue
-            val jsonLower = jsonStr.lowercase()
-            if (!jsonLower.contains(queryLower)) continue
-
-            var startIndex = 0
-            while (true) {
-                val matchIndex = jsonLower.indexOf(queryLower, startIndex)
-                if (matchIndex == -1) break
-
-                val start = maxOf(0, matchIndex - contextChars)
-                val end = minOf(jsonStr.length, matchIndex + queryLen + contextChars)
-                val contextText = buildString {
-                    if (start > 0) append("...")
-                    append(jsonStr.substring(start, end))
-                    if (end < jsonStr.length) append("...")
-                }
-                results.add(
-                    SourceFieldItem(
-                        sourceName = rule.name,
-                        sourceUrl = ruleId,
-                        tabKey = "json",
-                        tabName = "JSON",
-                        fieldKey = "json",
-                        fieldName = "JSON全文",
-                        value = contextText,
-                        fullValue = jsonStr
-                    )
-                )
-                startIndex = matchIndex + 1
-            }
-        }
-        return results
     }
 
     private fun getFieldValue(rule: TxtTocRule, fieldKey: String): String? {
