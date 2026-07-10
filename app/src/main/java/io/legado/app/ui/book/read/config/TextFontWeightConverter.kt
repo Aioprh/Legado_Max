@@ -16,10 +16,11 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.accentColor
-import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.ui.widget.text.StrokeTextView
 import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.applyTint
 import io.legado.app.utils.dpToPx
 
 /**
@@ -91,7 +92,7 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
         }
 
         fun updateCoarseSelection() {
-            val bg = context.bottomBackground
+            val bg = context.backgroundColor
             val isLight = ColorUtils.isColorLight(bg)
             val textColor = context.getPrimaryTextColor(isLight)
             updateSelection(coarseView ?: return, currentBoldValue, context.accentColor, textColor)
@@ -193,7 +194,7 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
         buttonText: String, 
         onButtonClick: (TextView) -> Unit
     ): LinearLayout {
-        val bg = context.bottomBackground
+        val bg = context.backgroundColor
         val isLight = ColorUtils.isColorLight(bg)
         val textColor = context.getPrimaryTextColor(isLight)
         val accentColor = context.accentColor
@@ -228,7 +229,7 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
         currentValue: Int,
         onValueChanged: (Int) -> Unit
     ): LinearLayout {
-        val bg = context.bottomBackground
+        val bg = context.backgroundColor
         val isLight = ColorUtils.isColorLight(bg)
         val textColor = context.getPrimaryTextColor(isLight)
         val accentColor = context.accentColor
@@ -266,7 +267,7 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
         currentTitleValue: Int,
         onValueChanged: (Int, Int) -> Unit
     ): LinearLayout {
-        val bg = context.bottomBackground
+        val bg = context.backgroundColor
         val isLight = ColorUtils.isColorLight(bg)
         val textColor = context.getPrimaryTextColor(isLight)
         val accentColor = context.accentColor
@@ -309,6 +310,7 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                 max = 800
                 progress = textValue - 100
                 setPadding(0, 8.dpToPx(), 0, 8.dpToPx())
+                applyTint(accentColor, !isLight)
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                         textValue = progress + 100
@@ -361,6 +363,7 @@ class TextFontWeightConverter(context: Context, attrs: AttributeSet?) :
                 max = 800
                 progress = titleValue - 100
                 setPadding(0, 8.dpToPx(), 0, 8.dpToPx())
+                applyTint(accentColor, !isLight)
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                         titleValue = progress + 100
