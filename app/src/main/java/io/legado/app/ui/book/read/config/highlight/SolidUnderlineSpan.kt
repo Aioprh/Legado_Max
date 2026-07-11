@@ -1,19 +1,18 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.graphics.Canvas
-import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.text.style.ReplacementSpan
 import io.legado.app.utils.dpToPx
 
 /**
- * 虚线下划线 Span
+ * 实线下划线 Span
  * @param textColor 文字颜色
  * @param underlineColor 下划线颜色
  * @param underlineWidth 下划线粗细(dp)
  * @param underlineOffset 下划线与文字的距离(dp)
  */
-class DashUnderlineSpan(
+class SolidUnderlineSpan(
     private val textColor: Int,
     private val underlineColor: Int,
     private val underlineWidth: Float = 1f,
@@ -56,13 +55,12 @@ class DashUnderlineSpan(
 
         val width = paint.measureText(text, start, end)
         val lineY = y + offsetPx
-        val dashPaint = Paint(paint).apply {
+        val linePaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
             strokeWidth = underlineWidth.dpToPx()
-            pathEffect = DashPathEffect(floatArrayOf(10f, 10f), 0f)
             isAntiAlias = true
         }
-        canvas.drawLine(x, lineY.toFloat(), x + width, lineY.toFloat(), dashPaint)
+        canvas.drawLine(x, lineY.toFloat(), x + width, lineY.toFloat(), linePaint)
     }
 }

@@ -98,7 +98,7 @@ class DictRuleContentSearchDialog : BaseContentSearchDialog() {
         }
     }
 
-    override fun navigateToEdit(sourceUrl: String) {
+    override fun navigateToEdit(sourceUrl: String, tabKey: String?, fieldKey: String?) {
         showDialogFragment(DictRuleEditDialog(sourceUrl))
     }
 

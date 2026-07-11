@@ -808,6 +808,7 @@
     <string name="preview">Preview</string>
     <string name="text_menu_config">Expand Text Menu Config</string>
     <string name="menu_config">Menu Config</string>
+    <string name="menu_highlight_rule">Highlight Settings</string>
     <string name="text_menu_config_desc">Select the menu items you want to display. In collapsed mode, items beyond the direct display count will be shown in the overflow menu</string>
     <string name="text_menu_visible_count">Direct display count</string>
     <string name="text_menu_visible_count_desc">Collapsed mode shows %1$d items directly before using the overflow menu</string>

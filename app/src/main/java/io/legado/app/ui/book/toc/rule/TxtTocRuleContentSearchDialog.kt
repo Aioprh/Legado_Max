@@ -101,7 +101,7 @@ class TxtTocRuleContentSearchDialog : BaseContentSearchDialog() {
         }
     }
 
-    override fun navigateToEdit(sourceUrl: String) {
+    override fun navigateToEdit(sourceUrl: String, tabKey: String?, fieldKey: String?) {
         sourceUrl.toLongOrNull()?.let {
             showDialogFragment(TxtTocRuleEditDialog(it))
         }

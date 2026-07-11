@@ -1,18 +1,8 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.text.SpannableStringBuilder
 import android.text.Spanned
-import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
-import io.legado.app.ui.book.read.config.BgColorSpan
-import io.legado.app.ui.book.read.config.BgImageSpan
-import io.legado.app.ui.book.read.config.DoubleUnderlineSpan
-import io.legado.app.ui.book.read.config.SvgUnderlineSpan
-import io.legado.app.ui.book.read.config.SolidUnderlineSpan
-import io.legado.app.ui.book.read.config.DashUnderlineSpan
-import io.legado.app.ui.book.read.config.WaveUnderlineSpan
-import io.legado.app.ui.book.read.config.highlight.HighlightRule
-import io.legado.app.ui.book.read.config.highlight.HighlightRuleStyle
 
 /**
  * 高亮规则配置页的预览文本构建器。
@@ -25,9 +15,9 @@ object HighlightRulePreview {
     fun build(rule: HighlightRule): CharSequence {
         val text = rule.normalizedSampleText()
         val spannable = SpannableStringBuilder(text)
-        val regex = kotlin.runCatching { Regex(rule.pattern) }.getOrNull() ?: return spannable
+        val regex = kotlin.runCatching { rule.toRegex() }.getOrNull() ?: return spannable
         val style = HighlightRuleStyle.from(rule)
-        regex.findAll(text).forEachIndexed { index, match ->
+        regex.findAll(text).forEach { match ->
             val start = match.range.first
             val end = match.range.last + 1
             val textColor = style.resolvedTextColor
@@ -71,6 +61,30 @@ object HighlightRulePreview {
                 )
             } else {
                 when (style.underlineMode) {
+                    1 -> {
+                        spannable.setSpan(
+                            SolidUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                    2 -> {
+                        spannable.setSpan(
+                            DashUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                    3 -> {
+                        spannable.setSpan(
+                            WaveUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
                     4 -> {
                         spannable.setSpan(
                             DoubleUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
@@ -97,51 +111,38 @@ object HighlightRulePreview {
                             )
                         }
                     }
-                    else -> {
-                        when (style.underlineMode) {
-                            1 -> {
-                                spannable.setSpan(
-                                    SolidUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
-                                    start,
-                                    end,
-                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                                )
-                            }
-                            2 -> {
-                                spannable.setSpan(
-                                    DashUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
-                                    start,
-                                    end,
-                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                                )
-                            }
-                            3 -> {
-                                spannable.setSpan(
-                                    WaveUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
-                                    start,
-                                    end,
-                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                                )
-                            }
-                            else -> {
-                                spannable.setSpan(
-                                    ForegroundColorSpan(textColor),
-                                    start,
-                                    end,
-                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                                )
-                            }
-                        }
+                    6 -> {
+                        spannable.setSpan(
+                            StrikeThroughSpan(textColor, accentColor, underlineWidth),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
                     }
-                }
-                if (index == 0 && style.underlineMode != 4 && style.underlineMode != 5) {
-                    val baseColor = rule.textColor ?: style.underlineColor ?: 0xFF63C37D.toInt()
-                    spannable.setSpan(
-                        BackgroundColorSpan((0x33 shl 24) or (baseColor and 0x00FFFFFF)),
-                        start,
-                        end,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
+                    7 -> {
+                        spannable.setSpan(
+                            ItalicTextSpan(textColor),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                    8 -> {
+                        spannable.setSpan(
+                            BoxTextSpan(textColor, accentColor, underlineWidth),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                    else -> {
+                        spannable.setSpan(
+                            ForegroundColorSpan(textColor),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
                 }
             }
         }

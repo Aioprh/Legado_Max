@@ -1,10 +1,7 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.app.Application
 import io.legado.app.base.BaseViewModel
-import io.legado.app.ui.book.read.config.highlight.HighlightRule
-import io.legado.app.ui.book.read.config.highlight.HighlightRuleGroupStore
-import io.legado.app.ui.book.read.config.highlight.HighlightRuleRepository
 
 /**
  * 高亮规则编辑弹窗的状态管理层。
@@ -31,6 +28,7 @@ class HighlightRuleEditViewModel(application: Application) : BaseViewModel(appli
             group = defaultGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP,
             scope = defaultScope
         )
+        isRegexMode = editingRule.isRegex
         groupItems = HighlightRuleRepository.loadGroups(context)
         initialized = true
     }

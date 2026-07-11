@@ -166,7 +166,7 @@ class BookInfoActivity :
             }
         } ?: let {
             if (!viewModel.inBookshelf) {
-                viewModel.delBook() //进目录会保存book，此时退出目录触发的book删除，不通知书源回调
+                viewModel.delBook(clearSearchBooks = false) //进目录会保存book，此时退出目录触发的book删除，保留搜索记录以便再次进入
             }
         }
     }
@@ -1389,6 +1389,8 @@ class BookInfoActivity :
 
     override fun showBookInfo(name: String, author: String, bookUrl: String) {
         val intent = Intent(this, BookInfoActivity::class.java)
+        intent.putExtra("name", name)
+        intent.putExtra("author", author)
         intent.putExtra("bookUrl", bookUrl)
         intent.putExtra("fromAuthorOtherWorks", true)
         startActivity(intent)

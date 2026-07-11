@@ -74,7 +74,7 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
 
     override fun getDialogTitle() = "订阅源内容查询"
 
-    override fun getSearchHint() = "输入关键词搜索所有订阅源"
+    override fun getSearchHint() = "输入关键词搜索选择的订阅源"
 
     override fun getContentSearchType() = ContentSearchType.RSS_SOURCE
 
@@ -125,9 +125,15 @@ class RssSourceContentSearchDialog : BaseContentSearchDialog() {
         }
     }
 
-    override fun navigateToEdit(sourceUrl: String) {
+    override fun navigateToEdit(sourceUrl: String, tabKey: String?, fieldKey: String?) {
         startActivity<RssSourceEditActivity> {
             putExtra("sourceUrl", sourceUrl)
+            if (!tabKey.isNullOrBlank()) {
+                putExtra("tabKey", tabKey)
+            }
+            if (!fieldKey.isNullOrBlank()) {
+                putExtra("fieldKey", fieldKey)
+            }
         }
     }
 

@@ -5,6 +5,7 @@ data class HighlightRule(
     var id: String = System.currentTimeMillis().toString(),
     var name: String = "",
     var pattern: String = "",
+    var isRegex: Boolean = true,
     var sampleText: String = "",
     var group: String = HighlightRuleGroupStore.DEFAULT_GROUP,
     var targetScope: Int = TARGET_ALL,
@@ -45,6 +46,9 @@ data class HighlightRule(
                     3 -> "波浪下划线"
                     4 -> "双下划线"
                     5 -> "自定义SVG"
+                    6 -> "删除线"
+                    7 -> "斜体"
+                    8 -> "方框"
                     else -> "下划线"
                 } + underlineColor?.let { " ${it.toHexColor()}" }.orEmpty()
             )
@@ -78,9 +82,19 @@ data class HighlightRule(
         return pattern.ifBlank { ".*" }
     }
 
+    // 转换为正则表达式
+    fun toRegex(): Regex {
+        return if (isRegex) {
+            Regex(pattern)
+        } else {
+            Regex(Regex.escape(pattern))
+        }
+    }
+
+    // 格式化样本文本，确保在显示时正确换行
     fun normalizedSampleText(): String {
         return sampleText.ifBlank {
-            "她轻声说：\"今晚就出发。\"\n最近在重读《百年孤独》（纪念版），节奏依然很稳。"
+            "她轻声说：\"今晚就出发。\"\n他说：“明天见。”\n最近在重读《百年孤独》（纪念版），节奏依然很稳。"
         }
     }
 

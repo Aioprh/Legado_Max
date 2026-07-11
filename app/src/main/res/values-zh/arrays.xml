@@ -153,6 +153,9 @@
         <item>波浪下划线</item>
         <item>双下划线</item>
         <item>自定义SVG</item>
+        <item>删除线</item>
+        <item>斜体</item>
+        <item>方框</item>
     </string-array>
 
 </resources>

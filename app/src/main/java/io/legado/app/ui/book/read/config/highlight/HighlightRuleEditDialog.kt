@@ -1,4 +1,4 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.graphics.Color
 import android.graphics.PorterDuff
@@ -30,10 +30,6 @@ import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.ui.file.HandleFileContract
-import io.legado.app.ui.book.read.config.highlight.HighlightRule
-import io.legado.app.ui.book.read.config.highlight.HighlightRuleBackgroundManager
-import io.legado.app.ui.book.read.config.HighlightRuleEditViewModel
-import io.legado.app.ui.book.read.config.highlight.HighlightRuleGroupStore
 
 /**
  * 高亮规则单条编辑弹窗。
@@ -137,7 +133,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.spUnderlineMode.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
-            listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "标题强调条", "自定义SVG")
+            listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "双下划线", "自定义SVG", "删除线", "斜体", "方框")
         ) {
             override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
                 val view = super.getView(position, convertView, parent)
@@ -258,6 +254,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etUnderlineColor.setTextColor(primaryTextColor)
         binding.etUnderlineColor.setHintTextColor(secondaryTextColor)
         binding.etUnderlineWidth.setTextColor(primaryTextColor)
+        binding.etUnderlineWidth.setHintTextColor(secondaryTextColor)
         binding.etUnderlineOffset.setHintTextColor(secondaryTextColor)
         binding.etUnderlineOffset.setTextColor(primaryTextColor)
         binding.etSvgPath.setTextColor(primaryTextColor)
@@ -308,8 +305,21 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.tvOffsetPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etUnderlineOffset.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
 
+        // 设置 Spinner 下拉弹窗背景色，避免深色主题下白底白字
+        val popupBg = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 14f * density
+            setColor(bg)
+            setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
+        }
+        binding.spGroup.setPopupBackgroundDrawable(popupBg)
+        binding.spTarget.setPopupBackgroundDrawable(popupBg)
+        binding.spUnderlineMode.setPopupBackgroundDrawable(popupBg)
+        binding.spBgImageFit.setPopupBackgroundDrawable(popupBg)
+
         // 递归遍历三个卡片容器，将静态标签的文字颜色替换为动态主题色
         applyThemeToStaticLabels()
+        updateRegexToggle()
     }
 
     /**
@@ -385,7 +395,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.spBgImageFit.setSelection(editingRule.bgImageFit.coerceIn(0, 2))
         binding.sbBgImageScale.progress = (editingRule.bgImageScale.coerceIn(0.1f, 5f) * 10).toInt()
         binding.tvBgImageScale.text = "${editingRule.bgImageScale.coerceIn(0.1f, 5f).formatScale()}x"
-        binding.spUnderlineMode.setSelection(editingRule.underlineMode.coerceIn(0, 5))
+        binding.spUnderlineMode.setSelection(editingRule.underlineMode.coerceIn(0, 8))
         val groupIndex = groupItems.indexOf(editingRule.group).takeIf { it >= 0 } ?: 0
         binding.spGroup.setSelection(groupIndex)
         binding.spTarget.setSelection(editingRule.targetScope.coerceIn(0, 2))
@@ -399,6 +409,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         updateBgPreview()
         
         updateSvgPathVisibility(editingRule.underlineMode)
+        updateRegexToggle()
     }
 
     private fun bindEvents() {
@@ -421,7 +432,9 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         }
         binding.tvRegexToggle.setOnClickListener {
             isRegexMode = !isRegexMode
+            editingRule.isRegex = isRegexMode
             updateRegexToggle()
+            updatePreview()
         }
         binding.tvWidthMinus.setOnClickListener {
             adjustWidth(-0.5f)
@@ -572,6 +585,13 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
     }
 
     private fun updateRegexToggle() {
+        binding.tvRegexToggle.text = getString(
+            if (isRegexMode) {
+                R.string.explore_block_rule_regex_mode
+            } else {
+                R.string.explore_block_rule_keyword_mode
+            }
+        )
         if (isRegexMode) {
             binding.tvRegexToggle.setTextColor(accentColor)
         } else {
@@ -681,6 +701,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             id = editingRule.id.ifBlank { System.currentTimeMillis().toString() },
             name = name.ifBlank { pattern },
             pattern = pattern,
+            isRegex = isRegexMode,
             sampleText = binding.etSampleText.text?.toString().orEmpty(),
             group = groupItems.getOrElse(binding.spGroup.selectedItemPosition) {
                 HighlightRuleGroupStore.DEFAULT_GROUP
@@ -718,6 +739,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             editingRule.copy(
                 name = binding.etName.text?.toString().orEmpty(),
                 pattern = pattern,
+                isRegex = isRegexMode,
                 sampleText = binding.etSampleText.text?.toString().orEmpty(),
                 group = groupItems.getOrElse(binding.spGroup.selectedItemPosition) {
                     HighlightRuleGroupStore.DEFAULT_GROUP
@@ -740,6 +762,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 
     private fun validatePattern(pattern: String): String? {
         if (pattern.isBlank()) return null
+        if (!isRegexMode) return null
         return kotlin.runCatching { Regex(pattern) }.exceptionOrNull()?.localizedMessage
     }
 

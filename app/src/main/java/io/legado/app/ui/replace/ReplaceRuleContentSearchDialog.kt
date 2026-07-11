@@ -115,7 +115,7 @@ class ReplaceRuleContentSearchDialog : BaseContentSearchDialog() {
         }
     }
 
-    override fun navigateToEdit(sourceUrl: String) {
+    override fun navigateToEdit(sourceUrl: String, tabKey: String?, fieldKey: String?) {
         sourceUrl.toLongOrNull()?.let {
             startActivity(ReplaceEditActivity.startIntent(requireContext(), it))
         }

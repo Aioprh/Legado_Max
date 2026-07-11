@@ -54,6 +54,7 @@ object TextMenuConfig {
         MenuItemInfo(R.id.menu_dict, R.string.dict),
         MenuItemInfo(R.id.menu_web_search, R.string.web_search),
         MenuItemInfo(R.id.menu_text_menu_config, R.string.menu_config),
+        MenuItemInfo(R.id.menu_highlight_rule, R.string.menu_highlight_rule),
         MenuItemInfo(R.id.menu_search_content, R.string.search_content),
         MenuItemInfo(R.id.menu_browser, R.string.browser),
         MenuItemInfo(R.id.menu_share_str, R.string.share)

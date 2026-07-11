@@ -1,8 +1,9 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.text.style.ReplacementSpan
+import io.legado.app.ui.book.read.config.SvgPathParser
 import io.legado.app.utils.dpToPx
 
 class SvgUnderlineSpan(
