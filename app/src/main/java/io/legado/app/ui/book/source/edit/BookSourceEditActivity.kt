@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.tabs.TabLayout
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.legado.app.R
@@ -238,19 +239,20 @@ class BookSourceEditActivity :
             "toc" -> tocEntities
             "content" -> contentEntities
             else -> null
+        } ?: return
+
+        val entity = entities.find { it.key == fieldKey } ?: return
+        value?.let { entity.value = it }
+
+        if (binding.tabLayout.selectedTabPosition != tabPosition) {
+            binding.tabLayout.selectTab(binding.tabLayout.getTabAt(tabPosition))
         }
-        entities?.find { it.key == fieldKey }?.let { entity ->
-            value?.let { entity.value = it }
-            if (binding.tabLayout.selectedTabPosition != tabPosition) {
-                binding.tabLayout.selectTab(binding.tabLayout.getTabAt(tabPosition))
-                binding.recyclerView.post {
-                    adapter.notifyDataSetChanged()
-                    scrollToEntity(entity, cursorPosition, value)
-                }
-            } else {
-                adapter.notifyDataSetChanged()
-                scrollToEntity(entity, cursorPosition, value)
-            }
+        if (adapter.editEntities !== entities) {
+            adapter.editEntities = entities
+        }
+        binding.recyclerView.post {
+            adapter.notifyDataSetChanged()
+            scrollToEntity(entity, cursorPosition, value)
         }
     }
 
@@ -268,22 +270,31 @@ class BookSourceEditActivity :
     private fun scrollToEntity(entity: EditEntity, cursorPosition: Int, value: String?) {
         val position = adapter.editEntities.indexOf(entity)
         if (position < 0) return
-        binding.recyclerView.scrollToPosition(position)
-        binding.recyclerView.postDelayed({
-            val viewHolder = binding.recyclerView.findViewHolderForAdapterPosition(position)
-            if (viewHolder is BookSourceEditAdapter.MyViewHolder) {
-                val editText = viewHolder.binding.editText
-                value?.let {
-                    if (editText.text.toString() != it) {
-                        editText.setText(it)
+        val layoutManager = binding.recyclerView.layoutManager
+        if (layoutManager is LinearLayoutManager) {
+            layoutManager.scrollToPositionWithOffset(position, 0)
+        } else {
+            binding.recyclerView.scrollToPosition(position)
+        }
+        // 双层 post 确保布局完成后再获焦，避免 onBindViewHolder.clearFocus() 冲突
+        binding.recyclerView.post {
+            binding.recyclerView.post {
+                val viewHolder = binding.recyclerView.findViewHolderForAdapterPosition(position)
+                if (viewHolder is BookSourceEditAdapter.MyViewHolder) {
+                    val editText = viewHolder.binding.editText
+                    value?.let {
+                        if (editText.text.toString() != it) {
+                            editText.setText(it)
+                        }
+                    }
+                    editText.requestFocus()
+                    val pos = if (cursorPosition >= 0) cursorPosition.coerceAtMost(editText.text.length) else 0
+                    if (editText.text.isNotEmpty()) {
+                        editText.setSelection(pos)
                     }
                 }
-                if (cursorPosition >= 0) {
-                    editText.setSelection(cursorPosition.coerceAtMost(editText.text.length))
-                }
-                editText.requestFocus()
             }
-        }, 100)
+        }
     }
 
     /**

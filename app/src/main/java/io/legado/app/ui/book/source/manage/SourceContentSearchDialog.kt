@@ -101,7 +101,7 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
             "content" to listOf(
                 "content" to "正文内容",
                 "nextContentUrl" to "正文下一页URL规则",
-                "subContent" to "副文规则",
+                "subContent" to "字内容规则",
                 "replaceRegex" to "替换正则",
                 "ChapterName" to "章节名称规则",
                 "sourceRegex" to "资源正则",

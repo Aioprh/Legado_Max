@@ -13,6 +13,7 @@ import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
@@ -204,19 +205,19 @@ class RssSourceEditActivity :
             listEntities to 2,
             webViewEntities to 3
         )
-        
+
         for ((entities, tabPosition) in allEntities) {
             val entity = entities.find { it.key == fieldKey }
             if (entity != null) {
                 entity.value = value
-                
+
                 if (binding.tabLayout.selectedTabPosition != tabPosition) {
                     binding.tabLayout.selectTab(binding.tabLayout.getTabAt(tabPosition))
-                    binding.recyclerView.post {
-                        adapter.notifyDataSetChanged()
-                        scrollToFieldAndUpdate(entity, value, cursorPosition)
-                    }
-                } else {
+                }
+                if (adapter.editEntities !== entities) {
+                    adapter.editEntities = entities
+                }
+                binding.recyclerView.post {
                     adapter.notifyDataSetChanged()
                     scrollToFieldAndUpdate(entity, value, cursorPosition)
                 }
@@ -228,18 +229,27 @@ class RssSourceEditActivity :
     private fun scrollToFieldAndUpdate(entity: EditEntity, value: String, cursorPosition: Int) {
         val position = adapter.editEntities.indexOf(entity)
         if (position >= 0) {
-            binding.recyclerView.scrollToPosition(position)
-            binding.recyclerView.postDelayed({
-                val viewHolder = binding.recyclerView.findViewHolderForAdapterPosition(position)
-                if (viewHolder is RssSourceEditAdapter.EditTextViewHolder) {
-                    val editText = viewHolder.binding.editText
-                    editText.setText(value)
-                    if (cursorPosition in 0 ..< value.length) {
-                        editText.setSelection(cursorPosition)
+            val layoutManager = binding.recyclerView.layoutManager
+            if (layoutManager is LinearLayoutManager) {
+                layoutManager.scrollToPositionWithOffset(position, 0)
+            } else {
+                binding.recyclerView.scrollToPosition(position)
+            }
+            // 双层 post 确保布局完成后再获焦，避免 onBindViewHolder.clearFocus() 冲突
+            binding.recyclerView.post {
+                binding.recyclerView.post {
+                    val viewHolder = binding.recyclerView.findViewHolderForAdapterPosition(position)
+                    if (viewHolder is RssSourceEditAdapter.EditTextViewHolder) {
+                        val editText = viewHolder.binding.editText
+                        editText.setText(value)
+                        editText.requestFocus()
+                        val pos = if (cursorPosition in 0 ..< value.length) cursorPosition else 0
+                        if (value.isNotEmpty()) {
+                            editText.setSelection(pos)
+                        }
                     }
-                    editText.requestFocus()
                 }
-            }, 100)
+            }
         }
     }
 
@@ -265,16 +275,16 @@ class RssSourceEditActivity :
             else -> 0
         }
 
-        entities.find { it.key == fieldKey }?.let { entity ->
-            if (binding.tabLayout.selectedTabPosition != tabPosition) {
-                binding.tabLayout.selectTab(binding.tabLayout.getTabAt(tabPosition))
-                binding.recyclerView.post {
-                    adapter.notifyDataSetChanged()
-                    scrollToFieldAndUpdate(entity, entity.value ?: "", -1)
-                }
-            } else {
-                scrollToFieldAndUpdate(entity, entity.value ?: "", -1)
-            }
+        val entity = entities.find { it.key == fieldKey } ?: return
+        if (binding.tabLayout.selectedTabPosition != tabPosition) {
+            binding.tabLayout.selectTab(binding.tabLayout.getTabAt(tabPosition))
+        }
+        if (adapter.editEntities !== entities) {
+            adapter.editEntities = entities
+        }
+        binding.recyclerView.post {
+            adapter.notifyDataSetChanged()
+            scrollToFieldAndUpdate(entity, entity.value ?: "", -1)
         }
     }
 
