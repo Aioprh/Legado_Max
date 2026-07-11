@@ -1,4 +1,4 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.graphics.Color
 import android.graphics.PorterDuff
@@ -30,10 +30,6 @@ import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.ui.file.HandleFileContract
-import io.legado.app.ui.book.read.config.highlight.HighlightRule
-import io.legado.app.ui.book.read.config.highlight.HighlightRuleBackgroundManager
-import io.legado.app.ui.book.read.config.HighlightRuleEditViewModel
-import io.legado.app.ui.book.read.config.highlight.HighlightRuleGroupStore
 
 /**
  * 高亮规则单条编辑弹窗。

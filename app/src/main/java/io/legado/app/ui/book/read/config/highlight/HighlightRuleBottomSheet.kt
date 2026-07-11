@@ -1,4 +1,4 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.view.MotionEvent
 import android.view.View

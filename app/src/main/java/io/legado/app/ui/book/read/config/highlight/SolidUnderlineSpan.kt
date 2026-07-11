@@ -1,4 +1,4 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -6,13 +6,13 @@ import android.text.style.ReplacementSpan
 import io.legado.app.utils.dpToPx
 
 /**
- * 双线下划线 Span
+ * 实线下划线 Span
  * @param textColor 文字颜色
  * @param underlineColor 下划线颜色
  * @param underlineWidth 下划线粗细(dp)
  * @param underlineOffset 下划线与文字的距离(dp)
  */
-class DoubleUnderlineSpan(
+class SolidUnderlineSpan(
     private val textColor: Int,
     private val underlineColor: Int,
     private val underlineWidth: Float = 1f,
@@ -20,8 +20,6 @@ class DoubleUnderlineSpan(
 ) : ReplacementSpan() {
 
     private val offsetPx = underlineOffset.toInt().dpToPx()  // 距离转换为像素
-    private val lineGap = 3.dpToPx()  // 双线间距
-    private val widthPx = underlineWidth.toInt().dpToPx()  // 粗细转换为像素
 
     override fun getSize(
         paint: Paint,
@@ -34,8 +32,8 @@ class DoubleUnderlineSpan(
             val metrics = paint.fontMetricsInt
             fm.top = metrics.top
             fm.ascent = metrics.ascent
-            fm.descent = metrics.descent + offsetPx + lineGap + widthPx
-            fm.bottom = metrics.bottom + offsetPx + lineGap + widthPx
+            fm.descent = metrics.descent + offsetPx
+            fm.bottom = metrics.bottom + offsetPx
         }
         return paint.measureText(text, start, end).toInt()
     }
@@ -56,15 +54,13 @@ class DoubleUnderlineSpan(
         canvas.drawText(textStr, x, y.toFloat(), paint)
 
         val width = paint.measureText(text, start, end)
-        val line1Y = y + offsetPx
-        val line2Y = line1Y + lineGap + widthPx
+        val lineY = y + offsetPx
         val linePaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
             strokeWidth = underlineWidth.dpToPx()
             isAntiAlias = true
         }
-        canvas.drawLine(x, line1Y.toFloat(), x + width, line1Y.toFloat(), linePaint)
-        canvas.drawLine(x, line2Y.toFloat(), x + width, line2Y.toFloat(), linePaint)
+        canvas.drawLine(x, lineY.toFloat(), x + width, lineY.toFloat(), linePaint)
     }
 }

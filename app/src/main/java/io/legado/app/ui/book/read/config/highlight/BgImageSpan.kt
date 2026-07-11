@@ -1,24 +1,33 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Canvas
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Shader
 import android.text.style.ReplacementSpan
+import io.legado.app.ui.book.read.page.entities.TextLine
 import io.legado.app.utils.dpToPx
 
 /**
- * 背景颜色+下划线 Span，用于高亮规则匹配区域
+ * 背景图+下划线 Span，用于高亮规则匹配区域
  * @param textColor 文字颜色
- * @param bgColor 背景颜色
+ * @param bgImagePath 背景图路径
+ * @param bgImageFit 背景图适配方式：0=平铺, 1=拉伸, 2=裁剪
+ * @param bgImageScale 背景图缩放比例
  * @param underlineMode 下划线样式：0=无, 1=实线, 2=虚线, 3=波浪, 4=双线, 5=SVG, 6=删除线, 7=斜体, 8=方框
  * @param underlineColor 下划线颜色
  * @param underlineWidth 下划线粗细(dp)
  * @param underlineSvgPath SVG路径（用于自定义下划线）
  * @param underlineOffset 下划线与文字的距离(dp)
  */
-class BgColorSpan(
+class BgImageSpan(
     private val textColor: Int,
-    private val bgColor: Int,
+    private val bgImagePath: String,
+    private val bgImageFit: Int = 0,
+    private val bgImageScale: Float = 1f,
     private val underlineMode: Int = 0,
     private val underlineColor: Int = 0,
     private val underlineWidth: Float = 1f,
@@ -26,7 +35,7 @@ class BgColorSpan(
     private val underlineOffset: Float = 6f,
 ) : ReplacementSpan() {
 
-    private val offsetPx = underlineOffset.toInt().dpToPx()
+    private val offsetPx = underlineOffset.toInt().dpToPx()  // 距离转换为像素
 
     override fun getSize(
         paint: Paint,
@@ -58,16 +67,59 @@ class BgColorSpan(
         paint: Paint
     ) {
         val width = paint.measureText(text, start, end)
-        
-        // 绘制背景颜色
-        val bgPaint = Paint().apply {
-            style = Paint.Style.FILL
-            color = bgColor
-            isAntiAlias = true
-        }
-        canvas.drawRect(x, top.toFloat(), x + width, bottom.toFloat(), bgPaint)
+        val rectWidth = width
+        val rectHeight = (bottom - top).toFloat()
+        val scale = bgImageScale.coerceIn(0.1f, 5f)
 
-        // 绘制文字
+        val bitmap = TextLine.getBgBitmap(bgImagePath)
+        if (bitmap != null) {
+            val bgPaint = Paint().apply {
+                style = Paint.Style.FILL
+                isAntiAlias = true
+                isFilterBitmap = true
+            }
+            when (bgImageFit) {
+                1 -> {
+                    val sw = rectWidth * scale
+                    val sh = rectHeight * scale
+                    val dx = x + (rectWidth - sw) / 2f
+                    val dy = top + (rectHeight - sh) / 2f
+                    canvas.save()
+                    canvas.clipRect(x, top.toFloat(), x + width, bottom.toFloat())
+                    canvas.drawBitmap(bitmap, null, RectF(dx, dy, dx + sw, dy + sh), bgPaint)
+                    canvas.restore()
+                }
+                2 -> {
+                    val bw = bitmap.width.toFloat()
+                    val bh = bitmap.height.toFloat()
+                    val fitScale = (rectWidth / bw).coerceAtLeast(rectHeight / bh) * scale
+                    val scaledW = bw * fitScale
+                    val scaledH = bh * fitScale
+                    val dx = x + (rectWidth - scaledW) / 2f
+                    val dy = top + (rectHeight - scaledH) / 2f
+                    canvas.save()
+                    canvas.clipRect(x, top.toFloat(), x + width, bottom.toFloat())
+                    canvas.drawBitmap(bitmap, null, RectF(dx, dy, dx + scaledW, dy + scaledH), bgPaint)
+                    canvas.restore()
+                }
+                else -> {
+                    val tileBitmap = if (scale != 1f) {
+                        val sw = (bitmap.width * scale).toInt().coerceAtLeast(1)
+                        val sh = (bitmap.height * scale).toInt().coerceAtLeast(1)
+                        Bitmap.createScaledBitmap(bitmap, sw, sh, true)
+                    } else {
+                        bitmap
+                    }
+                    val shader = BitmapShader(tileBitmap, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                    val matrix = Matrix()
+                    matrix.setTranslate(x, top.toFloat())
+                    shader.setLocalMatrix(matrix)
+                    bgPaint.shader = shader
+                    canvas.drawRect(x, top.toFloat(), x + width, bottom.toFloat(), bgPaint)
+                }
+            }
+        }
+
         paint.color = textColor
         paint.shader = null
         if (underlineMode == 7) {
@@ -79,7 +131,6 @@ class BgColorSpan(
             canvas.drawText(text, start, end, x, y.toFloat(), paint)
         }
 
-        // 绘制装饰线
         if (underlineMode != 0 && underlineMode != 7) {
             drawDecoration(canvas, x, x + width, y, paint)
         }

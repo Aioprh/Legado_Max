@@ -1,4 +1,4 @@
-package io.legado.app.ui.book.read.config
+package io.legado.app.ui.book.read.config.highlight
 
 import android.content.Context
 import android.content.Intent
@@ -36,8 +36,6 @@ import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
-import io.legado.app.ui.book.read.config.highlight.HighlightRule
-import io.legado.app.ui.book.read.config.highlight.HighlightRuleConfigViewModel
 
 /**
  * 阅读高亮规则的配置弹窗。
