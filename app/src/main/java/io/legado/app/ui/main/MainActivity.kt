@@ -117,6 +117,11 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         upBottomMenu()
         initView()
         upHomePage()
+        // setCurrentItem 到 position 0 时不会触发 onPageSelected 回调，
+        // 需要显式更新底部导航栏的选中状态
+        val position = binding.viewPagerMain.currentItem
+        val menuItemId = fragmentIdToMenuItemId(realPositions[position])
+        binding.bottomNavigationView.menu.findItem(menuItemId)?.isChecked = true
         onBackPressedDispatcher.addCallback(this) {
             val bsPos = bookshelfPosition()
             if (pagePosition != bsPos) {
