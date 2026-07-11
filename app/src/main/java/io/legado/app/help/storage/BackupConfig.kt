@@ -95,7 +95,14 @@ object BackupConfig {
         PreferKey.bitmapCacheSize,
         PreferKey.webServiceWakeLock,
         PreferKey.readAloudWakeLock,
-        PreferKey.audioPlayWakeLock
+        PreferKey.audioPlayWakeLock,
+        // 高亮规则已通过 highlightRule.json 独立备份恢复，避免 config.xml 覆盖
+        PreferKey.highlightRuleDialog,
+        PreferKey.highlightRuleBookTitle,
+        PreferKey.highlightRuleBracketNote,
+        PreferKey.highlightRuleItems,
+        PreferKey.highlightRuleGroups,
+        PreferKey.highlightRuleCurrentGroup
     )
 
     // ==================== 分类配置Key ====================

@@ -361,12 +361,9 @@ object Restore {
         if (HighlightRuleStore.backupFileName in selectedSet) {
             progress(HighlightRuleStore.backupFileName)
             File(path, HighlightRuleStore.backupFileName).takeIf { it.exists() }?.runCatching {
-            GSON.fromJsonObject<HighlightRuleStore.BackupData>(readText()).getOrNull()?.let {
-                HighlightRuleStore.restoreBackupData(appCtx, it) { context, bgImageList ->
-                    // Background file restoration is handled by the high-level backup restore process
-                    // We just need to provide the callback signature
+                GSON.fromJsonObject<HighlightRuleStore.BackupData>(readText()).getOrNull()?.let {
+                    HighlightRuleStore.restoreBackupData(appCtx, it, path)
                 }
-            }
             }?.onFailure {
                 AppLog.put("恢复高亮规则出错\n${it.localizedMessage}", it)
             }
@@ -745,10 +742,7 @@ object Restore {
         progress(HighlightRuleStore.backupFileName)
         File(path, HighlightRuleStore.backupFileName).takeIf { it.exists() }?.runCatching {
             GSON.fromJsonObject<HighlightRuleStore.BackupData>(readText()).getOrNull()?.let {
-                HighlightRuleStore.restoreBackupData(appCtx, it) { context, bgImageList ->
-                    // Background file restoration is handled by the high-level backup restore process
-                    // We just need to provide the callback signature
-                }
+                HighlightRuleStore.restoreBackupData(appCtx, it, path)
             }
         }?.onFailure {
             AppLog.put("恢复高亮规则出错\n${it.localizedMessage}", it)

@@ -109,9 +109,24 @@ object HighlightRuleStore {
     fun restoreBackupData(
         context: Context,
         backupData: BackupData,
-        restoreBackgroundFiles: (Context, String?) -> Unit,
+        backupRootPath: String? = null,
     ) {
-        save(context, backupData.rules)
+        // 从备份目录恢复背景图文件，并更新规则中的 bgImage 路径
+        val restoredRules = if (backupRootPath != null) {
+            backupData.rules.map { rule ->
+                val restoredPath = HighlightRuleBackgroundManager.restoreFromBackup(
+                    context, backupRootPath, rule.bgImage
+                )
+                if (restoredPath != null && restoredPath != rule.bgImage) {
+                    rule.copy(bgImage = restoredPath)
+                } else {
+                    rule
+                }
+            }
+        } else {
+            backupData.rules
+        }
+        save(context, restoredRules)
         HighlightRuleGroupStore.save(context, backupData.groups)
         context.putPrefBoolean(PreferKey.highlightRuleDialog, backupData.dialogEnabled)
         context.putPrefBoolean(PreferKey.highlightRuleBookTitle, backupData.bookTitleEnabled)
@@ -121,7 +136,6 @@ object HighlightRuleStore {
             PreferKey.highlightRuleCurrentGroup,
             backupData.currentGroup.takeIf { groups.contains(it) } ?: ""
         )
-        restoreBackgroundFiles(context, backupData.rules.mapNotNull { it.bgImage }.distinct().joinToString("\n"))
     }
 
     fun getUsedBgImageFiles(context: Context): List<File> {
