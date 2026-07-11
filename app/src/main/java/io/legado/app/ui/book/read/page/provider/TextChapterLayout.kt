@@ -130,7 +130,7 @@ class TextChapterLayout(
             kotlin.runCatching {
                 CompiledHighlightRule(
                     rule = rule,
-                    regex = Regex(rule.pattern)
+                    regex = rule.toRegex()
                 )
             }.getOrNull()
         }
@@ -207,6 +207,7 @@ class TextChapterLayout(
     private suspend fun appendContentInternal(newContents: List<String>) {
         val imageStyle = book.getImageStyle()
         val isTextImageStyle = imageStyle.equals(Book.imgStyleText, true)
+        val bodyHighlightRanges = buildBodyHighlightRanges(newContents)
         
         // 续排逻辑：如果最后一页没排满，摘回来继续排
         if (textPages.isNotEmpty()) {
@@ -244,7 +245,7 @@ class TextChapterLayout(
         var isSetTypedImage = false
         var wordCount = 0
         
-        for (content in newContents) {
+        for ((contentIndex, content) in newContents.withIndex()) {
             currentCoroutineContext().ensureActive()
             if (adaptSpecialStyle) {
                 val text = content.trim()
@@ -281,7 +282,9 @@ class TextChapterLayout(
                     contentPaintFontMetrics,
                     imageStyle,
                     srcList = srcList,
-                    clickList = null
+                    clickList = null,
+                    bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
+                    bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
                 )
             } else {
                 if (isSetTypedImage) {
@@ -404,7 +407,9 @@ class TextChapterLayout(
                         "TEXT",
                         isFirstLine = isFirstLine,
                         srcList = srcList,
-                        clickList = clickList
+                        clickList = clickList,
+                        bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
+                        bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
                     )
                 }
             }
@@ -617,22 +622,23 @@ class TextChapterLayout(
         }
 
         val isTextImageStyle = imageStyle.equals(Book.imgStyleText, true)
+        val bodyHighlightRanges = buildBodyHighlightRanges(contents)
 
         val sb = StringBuffer()
         var isSetTypedImage = false
         var wordCount = 0
-        contents.forEach { content ->
+        contents.forEachIndexed { contentIndex, content ->
             currentCoroutineContext().ensureActive()
             if (adaptSpecialStyle) {
                 val text = content.trim()
                 if (text == "[newpage]") {
                     prepareNextPageIfNeed()
-                    return@forEach
+                    return@forEachIndexed
                 } else if (text.startsWith("<usehtml>")) {
                     val endInt = text.lastIndexOf("<")
                     if (endInt > 9) {
                         setTypeHtml(imageStyle, book, text.substring(9, endInt))
-                        return@forEach
+                        return@forEachIndexed
                     }
                 }
             }
@@ -659,7 +665,9 @@ class TextChapterLayout(
                     contentPaintFontMetrics,
                     imageStyle,
                     srcList = srcList,
-                    clickList = null
+                    clickList = null,
+                    bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
+                    bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
                 )
             } else {
                 if (isSingleImageStyle && isSetTypedImage) {
@@ -782,7 +790,9 @@ class TextChapterLayout(
                         "TEXT",
                         isFirstLine = isFirstLine,
                         srcList = srcList,
-                        clickList = clickList
+                        clickList = clickList,
+                        bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
+                        bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
                     )
                 }
             }
@@ -1285,6 +1295,54 @@ class TextChapterLayout(
     }
 
 
+    private fun buildBodyHighlightRanges(contents: List<String>): BodyHighlightRanges {
+        val starts = ArrayList<Int>(contents.size)
+        val fullText = StringBuilder()
+        contents.forEachIndexed { index, content ->
+            starts.add(fullText.length)
+            fullText.append(content.replace(srcReplaceChar, srcReplacementChar))
+            if (index != contents.lastIndex) {
+                fullText.append('\n')
+            }
+        }
+        if (fullText.isEmpty()) {
+            return BodyHighlightRanges(starts, emptyList())
+        }
+        val ranges = ArrayList<HighlightMatchRange>()
+        compiledHighlightRules.forEach { compiled ->
+            if (!compiled.rule.appliesTo(false, book.name, book.origin)) return@forEach
+            compiled.regex.findAll(fullText).forEach { match ->
+                val start = match.range.first
+                val end = match.range.last + 1
+                if (start < end) {
+                    ranges.add(HighlightMatchRange(start, end, compiled.rule))
+                }
+            }
+        }
+        return BodyHighlightRanges(starts, ranges)
+    }
+
+    private fun BodyHighlightRanges.applyTo(
+        text: String,
+        globalStart: Int,
+    ): SpannableStringBuilder {
+        val spannable = SpannableStringBuilder(text)
+        val globalEnd = globalStart + text.length
+        ranges.forEach { range ->
+            val start = maxOf(range.start, globalStart)
+            val end = minOf(range.end, globalEnd)
+            if (start < end) {
+                applyRuleSpan(
+                    spannable,
+                    range.rule,
+                    start - globalStart,
+                    end - globalStart
+                )
+            }
+        }
+        return spannable
+    }
+
     private fun applyHighlightRules(
         spannable: SpannableStringBuilder,
         isTitle: Boolean = false
@@ -1306,23 +1364,32 @@ class TextChapterLayout(
             val start = match.range.first
             val end = match.range.last + 1
             if (start >= end) return@forEach
-            val style = HighlightRuleStyle.from(rule)
-            style.textColor?.let { color ->
-                spannable.setSpan(
-                    ForegroundColorSpan(color),
-                    start,
-                    end,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-            }
-            if (style.hasDecoration) {
-                spannable.setSpan(
-                    HighlightStyleSpan(style),
-                    start,
-                    end,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-            }
+            applyRuleSpan(spannable, rule, start, end)
+        }
+    }
+
+    private fun applyRuleSpan(
+        spannable: SpannableStringBuilder,
+        rule: HighlightRule,
+        start: Int,
+        end: Int,
+    ) {
+        val style = HighlightRuleStyle.from(rule)
+        style.textColor?.let { color ->
+            spannable.setSpan(
+                ForegroundColorSpan(color),
+                start,
+                end,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        if (style.hasDecoration) {
+            spannable.setSpan(
+                HighlightStyleSpan(style),
+                start,
+                end,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
         }
     }
 
@@ -1339,9 +1406,15 @@ class TextChapterLayout(
         emptyContent: Boolean = false,
         isVolumeTitle: Boolean = false,
         srcList: LinkedList<String>? = null,
-        clickList: LinkedList<String?>?
+        clickList: LinkedList<String?>?,
+        bodyHighlightRanges: BodyHighlightRanges? = null,
+        bodyHighlightStart: Int? = null,
     ) {
-        val styledText = applyHighlightRules(SpannableStringBuilder(text), isTitle)
+        val styledText = if (!isTitle && bodyHighlightRanges != null && bodyHighlightStart != null) {
+            bodyHighlightRanges.applyTo(text, bodyHighlightStart)
+        } else {
+            applyHighlightRules(SpannableStringBuilder(text), isTitle)
+        }
         val widthsArray = allocateFloatArray(text.length)
         textPaint.getTextWidthsCompat(text, widthsArray, reviewCharWidth)
         val layout = if (useZhLayout) {
@@ -1817,6 +1890,30 @@ class TextChapterLayout(
         val rule: HighlightRule,
         val regex: Regex,
     )
+
+    /**
+     * 单条高亮匹配区间，记录在全文中的起止位置和对应规则。
+     */
+    private data class HighlightMatchRange(
+        val start: Int,
+        val end: Int,
+        val rule: HighlightRule,
+    )
+
+    /**
+     * 正文高亮匹配结果。
+     *
+     * [starts] 保存每段 content 拼接后在全文中的起始偏移；
+     * [ranges] 保存所有规则在全文中的匹配区间。
+     * [startAt] 返回指定 content 的全局起始偏移，供 setTypeText 定位。
+     */
+    private class BodyHighlightRanges(
+        val starts: List<Int>,
+        val ranges: List<HighlightMatchRange>,
+    ) {
+        fun startAt(contentIndex: Int): Int =
+            starts.getOrElse(contentIndex) { 0 }
+    }
 
     /** 判断规则是否对当前文本生效，同时检查书籍作用域和标题/正文作用域 */
     private fun HighlightRule.appliesTo(isTitle: Boolean, bookName: String, bookOrigin: String): Boolean {

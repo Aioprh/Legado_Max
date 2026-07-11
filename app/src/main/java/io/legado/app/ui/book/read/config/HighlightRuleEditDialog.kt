@@ -311,6 +311,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 
         // 递归遍历三个卡片容器，将静态标签的文字颜色替换为动态主题色
         applyThemeToStaticLabels()
+        updateRegexToggle()
     }
 
     /**
@@ -400,6 +401,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         updateBgPreview()
         
         updateSvgPathVisibility(editingRule.underlineMode)
+        updateRegexToggle()
     }
 
     private fun bindEvents() {
@@ -422,7 +424,9 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         }
         binding.tvRegexToggle.setOnClickListener {
             isRegexMode = !isRegexMode
+            editingRule.isRegex = isRegexMode
             updateRegexToggle()
+            updatePreview()
         }
         binding.tvWidthMinus.setOnClickListener {
             adjustWidth(-0.5f)
@@ -573,6 +577,13 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
     }
 
     private fun updateRegexToggle() {
+        binding.tvRegexToggle.text = getString(
+            if (isRegexMode) {
+                R.string.explore_block_rule_regex_mode
+            } else {
+                R.string.explore_block_rule_keyword_mode
+            }
+        )
         if (isRegexMode) {
             binding.tvRegexToggle.setTextColor(accentColor)
         } else {
@@ -682,6 +693,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             id = editingRule.id.ifBlank { System.currentTimeMillis().toString() },
             name = name.ifBlank { pattern },
             pattern = pattern,
+            isRegex = isRegexMode,
             sampleText = binding.etSampleText.text?.toString().orEmpty(),
             group = groupItems.getOrElse(binding.spGroup.selectedItemPosition) {
                 HighlightRuleGroupStore.DEFAULT_GROUP
@@ -719,6 +731,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             editingRule.copy(
                 name = binding.etName.text?.toString().orEmpty(),
                 pattern = pattern,
+                isRegex = isRegexMode,
                 sampleText = binding.etSampleText.text?.toString().orEmpty(),
                 group = groupItems.getOrElse(binding.spGroup.selectedItemPosition) {
                     HighlightRuleGroupStore.DEFAULT_GROUP
@@ -741,6 +754,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
 
     private fun validatePattern(pattern: String): String? {
         if (pattern.isBlank()) return null
+        if (!isRegexMode) return null
         return kotlin.runCatching { Regex(pattern) }.exceptionOrNull()?.localizedMessage
     }
 

@@ -5,6 +5,7 @@ data class HighlightRule(
     var id: String = System.currentTimeMillis().toString(),
     var name: String = "",
     var pattern: String = "",
+    var isRegex: Boolean = true,
     var sampleText: String = "",
     var group: String = HighlightRuleGroupStore.DEFAULT_GROUP,
     var targetScope: Int = TARGET_ALL,
@@ -76,6 +77,15 @@ data class HighlightRule(
 
     fun displayPattern(): String {
         return pattern.ifBlank { ".*" }
+    }
+
+    // 转换为正则表达式
+    fun toRegex(): Regex {
+        return if (isRegex) {
+            Regex(pattern)
+        } else {
+            Regex(Regex.escape(pattern))
+        }
     }
 
     // 格式化样本文本，确保在显示时正确换行

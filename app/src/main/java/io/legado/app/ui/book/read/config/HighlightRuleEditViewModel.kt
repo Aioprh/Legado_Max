@@ -31,6 +31,7 @@ class HighlightRuleEditViewModel(application: Application) : BaseViewModel(appli
             group = defaultGroup ?: HighlightRuleGroupStore.DEFAULT_GROUP,
             scope = defaultScope
         )
+        isRegexMode = editingRule.isRegex
         groupItems = HighlightRuleRepository.loadGroups(context)
         initialized = true
     }

@@ -24,7 +24,7 @@ object HighlightRulePreview {
     fun build(rule: HighlightRule): CharSequence {
         val text = rule.normalizedSampleText()
         val spannable = SpannableStringBuilder(text)
-        val regex = kotlin.runCatching { Regex(rule.pattern) }.getOrNull() ?: return spannable
+        val regex = kotlin.runCatching { rule.toRegex() }.getOrNull() ?: return spannable
         val style = HighlightRuleStyle.from(rule)
         regex.findAll(text).forEach { match ->
             val start = match.range.first
