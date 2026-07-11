@@ -26,12 +26,14 @@ import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.model.ReadBook
+import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getClipText
 import io.legado.app.utils.observeEvent
+import io.legado.app.utils.readText
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
@@ -57,6 +59,42 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     private var previewBgColor = 0
     private var previewStrokeColor = 0
 
+    /** 待导出的规则列表暂存，导出文件回调返回时使用。 */
+    private var pendingExportRules: List<HighlightRule>? = null
+
+    /** 文件导入回调：用户选择文件后读取内容并解析为高亮规则列表。 */
+    private val importDoc = registerForActivityResult(HandleFileContract()) { result ->
+        result.uri?.let { uri ->
+            runCatching {
+                val text = uri.readText(requireContext())
+                val imported = GSON.fromJsonArray<HighlightRule>(text).getOrNull()
+                if (imported.isNullOrEmpty()) {
+                    context?.toastOnUi(R.string.highlight_rule_import_invalid)
+                } else {
+                    viewModel.importRules(imported)
+                    applyGroupFilter()
+                    context?.toastOnUi(R.string.highlight_rule_import_success)
+                }
+            }.onFailure {
+                context?.toastOnUi("读取文件出错\n${it.localizedMessage}")
+            }
+        }
+    }
+
+    /** 文件导出回调：用户选择保存位置后将规则 JSON 写入文件。 */
+    private val exportResult = registerForActivityResult(HandleFileContract()) { result ->
+        val rules = pendingExportRules ?: return@registerForActivityResult
+        pendingExportRules = null
+        result.uri?.let {
+            context?.toastOnUi("已导出 ${rules.size} 条规则")
+        }
+        result.clipboardJson?.let {
+            requireContext().sendToClip(it)
+            context?.toastOnUi("已复制 ${rules.size} 条规则")
+        }
+    }
+
+    /** 设置弹窗尺寸、位置和背景，在底部以 85% 高度展示。 */
     override fun onStart() {
         super.onStart()
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.85f)
@@ -64,6 +102,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         dialog?.window?.setBackgroundDrawableResource(R.drawable.shape_highlight_rule_sheet)
     }
 
+    /** Fragment 视图创建完毕：初始化主题、RecyclerView、按钮监听并加载规则。 */
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         initTheme()
         attachBottomSheetDismiss(
@@ -83,6 +122,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         loadRules()
     }
 
+    /** 监听全局配置变更事件，背景色或文字色变化时刷新主题和列表。 */
     override fun observeLiveBus() {
         observeEvent<ArrayList<Int>>(EventBus.UP_CONFIG) {
             if (it.contains(1) || it.contains(2)) {
@@ -92,6 +132,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }
     }
 
+    /** 根据当前主题计算各颜色值（主/次文字色、卡片背景、描边、预览区颜色）并应用到所有 UI 元素。 */
     private fun initTheme() {
         val bg = requireContext().bottomBackground
         val isLight = ColorUtils.isColorLight(bg)
@@ -129,6 +170,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         binding.tvEmptyAdd.setTextColor(accentForegroundColor)
     }
 
+    /** 在锚点视图上方弹出溢出菜单（选择、新增、预设、分组、导入导出、分享、恢复默认）。 */
     private fun showMenu(anchor: View) {
         PopupMenu(requireContext(), anchor).apply {
             menuInflater.inflate(R.menu.highlight_rule_config, menu)
@@ -136,6 +178,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }.show()
     }
 
+    /** 弹出单条规则的操作菜单（编辑、删除、导出、分享）。 */
     private fun showItemMenu(rule: HighlightRule, anchor: View) {
         PopupMenu(requireContext(), anchor).apply {
             menuInflater.inflate(R.menu.highlight_rule_item, menu)
@@ -143,7 +186,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
                 when (item.itemId) {
                     R.id.menu_edit -> editRule(rule)
                     R.id.menu_delete -> deleteRule(rule)
-                    R.id.menu_export_single -> exportRulesToClipboard(listOf(rule))
+                    R.id.menu_export_single -> showExportChooser(listOf(rule))
                     R.id.menu_share_single -> shareRules(listOf(rule))
                 }
                 true
@@ -151,26 +194,29 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }.show()
     }
 
+    /** 溢出菜单项点击分发：将各菜单 ID 路由到对应操作方法。 */
     override fun onMenuItemClick(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_select -> showRuleSelector()
             R.id.menu_add -> editRule(null)
             R.id.menu_preset -> showPresetRules()
-            R.id.menu_import -> importRulesFromClipboard()
+            R.id.menu_import -> showImportChooser()
             R.id.menu_group -> showGroupManager()
             R.id.menu_share -> shareRules(getFilteredRules())
-            R.id.menu_export -> exportRulesToClipboard(getFilteredRules())
+            R.id.menu_export -> showExportChooser(getFilteredRules())
             R.id.menu_reset -> resetRules()
             else -> return false
         }
         return true
     }
 
+    /** 从 ViewModel 加载全部规则并应用当前分组筛选。 */
     private fun loadRules() {
         viewModel.loadRules()
         applyGroupFilter()
     }
 
+    /** 按当前分组筛选规则后刷新列表、空状态和副标题。 */
     private fun applyGroupFilter() {
         val filtered = getFilteredRules()
         adapter.setItems(filtered)
@@ -178,21 +224,25 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         updateSubtitle()
     }
 
+    /** 获取经过当前分组筛选后的规则列表。 */
     private fun getFilteredRules(): List<HighlightRule> {
         return viewModel.filteredRules()
     }
 
+    /** 更新页面副标题，显示当前分组名和筛选后的规则数量。 */
     private fun updateSubtitle() {
         val groupText = viewModel.currentGroup ?: "全部分组"
         val count = getFilteredRules().size
         binding.tvPageSubtitle.text = "$groupText · $count 条规则"
     }
 
+    /** 切换到指定分组并刷新列表，供外部（如分组管理弹窗）调用。 */
     fun switchToGroup(group: String?) {
         viewModel.switchToGroup(group)
         applyGroupFilter()
     }
 
+    /** 根据筛选后的规则数量切换列表和空状态面板的可见性。 */
     private fun updateEmptyState() {
         val filteredCount = getFilteredRules().size
         val empty = filteredCount == 0
@@ -200,6 +250,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         binding.emptyPanel.visibility = if (empty) View.VISIBLE else View.GONE
     }
 
+    /** 弹出确认对话框，确认后恢复全部预置规则并覆盖自定义规则。 */
     private fun resetRules() {
         alert("恢复默认") {
             setMessage("恢复后会重新生成预置规则，自定义规则会被覆盖。")
@@ -211,6 +262,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }
     }
 
+    /** 打开规则编辑弹窗；新增规则时预填当前书籍书名和书源 URL 作为作用范围。 */
     private fun editRule(rule: HighlightRule?) {
         val defaultGroup = rule?.group ?: viewModel.currentGroup
         // 新增规则时，预填当前书籍的书名和书源URL作为作用范围
@@ -230,6 +282,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }.show(childFragmentManager, "highlightRuleEdit")
     }
 
+    /** 弹出确认对话框，确认后从 ViewModel 删除指定规则。 */
     private fun deleteRule(rule: HighlightRule) {
         alert("删除") {
             setMessage("确定删除“${rule.name}”吗？")
@@ -241,6 +294,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }
     }
 
+    /** 打开预设规则弹窗，选择后将规则添加到当前列表。 */
     private fun showPresetRules() {
         HighlightPresetRuleDialog(viewModel.currentGroup) { rule ->
             viewModel.addRule(rule)
@@ -248,6 +302,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }.show(childFragmentManager, "highlightPresetRule")
     }
 
+    /** 打开分组管理弹窗，处理分组重命名和分组切换回调。 */
     private fun showGroupManager() {
         HighlightRuleGroupManageDialog(
             onChanged = { oldGroup, newGroup ->
@@ -263,6 +318,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         ).show(childFragmentManager, "highlightRuleGroupManage")
     }
 
+    /** 弹出多选对话框，可批量选择规则进行分享或删除。 */
     private fun showRuleSelector() {
         if (viewModel.rules.isEmpty()) {
             context?.toastOnUi("暂无可选择规则")
@@ -297,6 +353,49 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         }
     }
 
+    /** 弹出导入方式选择对话框：从剪贴板导入或从文件导入。 */
+    private fun showImportChooser() {
+        alert(getString(R.string.import_rules)) {
+            items(
+                listOf(
+                    getString(R.string.import_from_clipboard),
+                    getString(R.string.import_from_file)
+                )
+            ) { _, index ->
+                when (index) {
+                    0 -> importRulesFromClipboard()
+                    1 -> importDoc.launch {
+                        mode = HandleFileContract.FILE
+                        title = getString(R.string.import_rules)
+                        allowExtensions = arrayOf("json", "txt")
+                    }
+                }
+            }
+        }
+    }
+
+    /** 弹出导出方式选择对话框：导出到剪贴板或导出到文件。 */
+    private fun showExportChooser(targetRules: List<HighlightRule>) {
+        if (targetRules.isEmpty()) {
+            context?.toastOnUi("暂无规则可导出")
+            return
+        }
+        alert(getString(R.string.export_rules)) {
+            items(
+                listOf(
+                    getString(R.string.export_to_clipboard),
+                    getString(R.string.export_to_file)
+                )
+            ) { _, index ->
+                when (index) {
+                    0 -> exportRulesToClipboard(targetRules)
+                    1 -> exportRulesToFile(targetRules)
+                }
+            }
+        }
+    }
+
+    /** 读取剪贴板文本并解析为高亮规则列表后导入。 */
     private fun importRulesFromClipboard() {
         val clip = requireContext().getClipText()
         if (clip.isNullOrBlank()) {
@@ -313,15 +412,26 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         context?.toastOnUi(R.string.highlight_rule_import_success)
     }
 
+    /** 将规则列表序列化为 JSON 并复制到系统剪贴板。 */
     private fun exportRulesToClipboard(targetRules: List<HighlightRule>) {
-        if (targetRules.isEmpty()) {
-            context?.toastOnUi("暂无规则可导出")
-            return
-        }
         requireContext().sendToClip(GSON.toJson(targetRules))
         context?.toastOnUi("已复制 ${targetRules.size} 条规则")
     }
 
+    /** 启动系统文件选择器将规则 JSON 写入用户指定的文件。 */
+    private fun exportRulesToFile(targetRules: List<HighlightRule>) {
+        pendingExportRules = targetRules
+        exportResult.launch {
+            mode = HandleFileContract.EXPORT
+            fileData = HandleFileContract.FileData(
+                "highlightRule.json",
+                GSON.toJson(targetRules).toByteArray(),
+                "application/json"
+            )
+        }
+    }
+
+    /** 通过系统分享面板将规则 JSON 以纯文本方式分享给其他应用。 */
     private fun shareRules(targetRules: List<HighlightRule>) {
         if (targetRules.isEmpty()) {
             context?.toastOnUi("没有可分享的规则")
@@ -341,10 +451,12 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
     private inner class HighlightRuleAdapter(context: Context) :
         RecyclerAdapter<HighlightRule, ItemHighlightPresetRuleBinding>(context) {
 
+        /** 创建列表项的 ViewBinding。 */
         override fun getViewBinding(parent: ViewGroup): ItemHighlightPresetRuleBinding {
             return ItemHighlightPresetRuleBinding.inflate(inflater, parent, false)
         }
 
+        /** 注册列表项的点击和长按事件：点击编辑、长按弹出操作菜单。 */
         override fun registerListener(holder: ItemViewHolder, binding: ItemHighlightPresetRuleBinding) {
             binding.root.setOnClickListener {
                 getItem(holder.layoutPosition)?.let(::editRule)
@@ -364,6 +476,7 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
             }
         }
 
+        /** 绑定规则数据到列表项视图：设置名称、样式摘要、正则、预览文本和主题颜色。 */
         override fun convert(
             holder: ItemViewHolder,
             binding: ItemHighlightPresetRuleBinding,

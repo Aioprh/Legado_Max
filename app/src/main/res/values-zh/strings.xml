@@ -1826,7 +1826,10 @@
     <string name="import_rules">导入规则</string>
     <string name="share_rules">分享规则</string>
     <string name="export_rules">导出规则</string>
+    <string name="import_export_rules">导入 / 导出规则</string>
     <string name="import_from_clipboard">从剪贴板导入</string>
+    <string name="import_from_file">从文件导入</string>
+    <string name="export_to_file">导出到文件</string>
     <string name="cover_gallery">封面图集</string>
     <string name="cover_gallery_summary">管理分组封面图集，可设置为全局默认封面源</string>
 
