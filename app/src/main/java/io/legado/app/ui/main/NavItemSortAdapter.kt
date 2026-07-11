@@ -13,11 +13,13 @@ import io.legado.app.lib.theme.accentColor
 /**
  * 导航栏排序对话框的适配器
  *
- * 支持长按拖拽排序。列表第一项为默认主页。
+ * 支持长按拖拽排序，同时可通过 RadioButton 选择默认主页。
+ * 排序顺序与默认主页选择相互独立。
  */
 class NavItemSortAdapter(
     private val context: Context,
-    private val items: MutableList<NavItemConfig>
+    private val items: MutableList<NavItemConfig>,
+    private var defaultHomeKey: String
 ) : RecyclerView.Adapter<NavItemSortAdapter.ViewHolder>() {
 
     /** 导航项配置数据 */
@@ -40,17 +42,32 @@ class NavItemSortAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = items[position]
+        val isDefault = item.key == defaultHomeKey
         holder.binding.apply {
             ivIcon.setImageResource(item.iconRes)
             ivIcon.alpha = if (item.visible) 1f else 0.4f
             tvTitle.text = item.title
             tvTitle.alpha = if (item.visible) 1f else 0.4f
 
-            if (position == 0) {
+            // 默认主页徽标
+            if (isDefault) {
                 tvBadge.text = context.getString(R.string.nav_item_sort_default_home)
                 tvBadge.visibility = View.VISIBLE
             } else {
                 tvBadge.visibility = View.GONE
+            }
+
+            // RadioButton 单选默认主页
+            radioButton.isChecked = isDefault
+            radioButton.setOnClickListener {
+                if (!isDefault) {
+                    val previousKey = defaultHomeKey
+                    defaultHomeKey = item.key
+                    // 刷新新旧两项
+                    val prevPos = items.indexOfFirst { it.key == previousKey }
+                    if (prevPos >= 0) notifyItemChanged(prevPos)
+                    notifyItemChanged(position)
+                }
             }
 
             // 拖拽手柄着色
@@ -69,14 +86,13 @@ class NavItemSortAdapter(
         val item = items.removeAt(fromPosition)
         items.add(toPosition, item)
         notifyItemMoved(fromPosition, toPosition)
-        // 通知受影响范围的 badge 变化
-        val start = minOf(fromPosition, toPosition)
-        val end = maxOf(fromPosition, toPosition)
-        notifyItemRangeChanged(start, end - start + 1)
     }
 
     /** 获取当前排序的 key 列表 */
     fun getOrderKeys(): List<String> = items.map { it.key }
+
+    /** 获取当前选中的默认主页 key */
+    fun getDefaultHomeKey(): String = defaultHomeKey
 
     /**
      * ItemTouchHelper Callback —— 仅允许上下拖拽，禁止滑动删除

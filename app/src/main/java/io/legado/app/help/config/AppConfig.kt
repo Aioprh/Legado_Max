@@ -783,12 +783,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     val autoCheckNewBackup get() = appCtx.getPrefBoolean(PreferKey.autoCheckNewBackup, true)
 
-    val defaultHomePage get() = appCtx.getPrefString(PreferKey.defaultHomePage, "bookshelf")
+    val defaultHomePage get() = appCtx.getPrefString(PreferKey.defaultHomePage, "bookshelf") ?: "bookshelf"
 
     /**
      * 底部导航栏排序，逗号分隔的页面key列表。
-     * 第一项为默认主页。
-     * 若未设置，从旧的 defaultHomePage 迁移。
+     * 排序顺序与默认主页选择相互独立。
+     * 若未设置，使用默认顺序。
      */
     val navItemOrder: List<String>
         get() {
@@ -797,14 +797,15 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
                 val parsed = stored.split(",").filter { it.isNotBlank() }
                 if (parsed.isNotEmpty()) return parsed
             }
-            // 从旧的 defaultHomePage 迁移
-            val defaultHome = appCtx.getPrefString(PreferKey.defaultHomePage, "bookshelf") ?: "bookshelf"
-            val defaultOrder = listOf("bookshelf", "homepage", "explore", "rss", "my")
-            return listOf(defaultHome) + defaultOrder.filter { it != defaultHome }
+            return listOf("bookshelf", "homepage", "explore", "rss", "my")
         }
 
     fun setNavItemOrder(order: List<String>) {
         appCtx.putPrefString(PreferKey.navItemOrder, order.joinToString(","))
+    }
+
+    fun setDefaultHomePage(key: String) {
+        appCtx.putPrefString(PreferKey.defaultHomePage, key)
     }
 
     val updateToVariant get() = appCtx.getPrefString(PreferKey.updateToVariant, "default_version")

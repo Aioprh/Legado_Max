@@ -38,10 +38,19 @@
 
     </LinearLayout>
 
+    <RadioButton
+        android:id="@+id/radio_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="@null" />
+
     <ImageView
         android:id="@+id/iv_drag"
         android:layout_width="32dp"
         android:layout_height="32dp"
+        android:layout_marginStart="8dp"
         android:contentDescription="@null"
         android:padding="4dp"
         android:src="@drawable/ic_more_vert" />

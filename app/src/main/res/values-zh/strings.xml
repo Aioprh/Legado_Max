@@ -1415,8 +1415,8 @@
     <string name="sync_book_progress_success">进度同步成功</string>
     <string name="default_home_page">默认主页</string>
     <string name="nav_item_sort_title">导航栏排序</string>
-    <string name="nav_item_sort_summary">拖动排序，第一项为默认主页</string>
-    <string name="nav_item_sort_dialog_title">拖动排序导航栏</string>
+    <string name="nav_item_sort_summary">拖动排序，点击单选按钮设置默认主页</string>
+    <string name="nav_item_sort_dialog_title">排序导航栏</string>
     <string name="nav_item_sort_default_home">默认主页</string>
     <string name="show_bookshelf_fast_scroller">显示快速滚动条</string>
     <string name="export_all_use_book_source">导出所有书的书源</string>

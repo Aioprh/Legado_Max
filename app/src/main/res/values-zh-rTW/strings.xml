@@ -1167,7 +1167,11 @@
     <string name="open_book_info_by_click_title">點擊書名打開詳情</string>
     <string name="export_wait">等待導出</string>
     <string name="sync_book_progress_success">進度同步成功</string>
-    <string name="default_home_page">默認主页</string>
+    <string name="default_home_page">默認主頁</string>
+    <string name="nav_item_sort_title">導覽列排序</string>
+    <string name="nav_item_sort_summary">拖動排序，點擊單選按鈕設定默認主頁</string>
+    <string name="nav_item_sort_dialog_title">排序導覽列</string>
+    <string name="nav_item_sort_default_home">默認主頁</string>
     <string name="show_bookshelf_fast_scroller">顯示快速滚动条</string>
     <string name="export_all_use_book_source">導出所有書的書源</string>
     <string name="cloud_progress_exceeds_current">雲端進度超過目前進度，是否同步？</string>

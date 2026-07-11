@@ -406,9 +406,11 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             binding.apply {
                 if (it) {
                     onUpBooksBadgeView = null
-                    viewPagerMain.setCurrentItem(0, false)
                 }
                 upBottomMenu()
+                if (it) {
+                    upHomePage()
+                }
             }
         }
         observeEvent<String>(PreferKey.threadCount) {
@@ -475,8 +477,19 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     }
 
     private fun upHomePage() {
-        // 默认主页为 navItemOrder 中的第一项，即 ViewPager position 0
-        binding.viewPagerMain.setCurrentItem(0, false)
+        // 根据 defaultHomePage 找到对应的 ViewPager 位置
+        val defaultHome = AppConfig.defaultHomePage
+        val fragmentId = when (defaultHome) {
+            "homepage" -> idHomepage
+            "explore" -> idExplore
+            "rss" -> idRss
+            "my" -> idMy
+            else -> idBookshelf
+        }
+        val position = realPositions.indexOf(fragmentId)
+        if (position >= 0) {
+            binding.viewPagerMain.setCurrentItem(position, false)
+        }
     }
 
     private fun getFragmentId(position: Int): Int {

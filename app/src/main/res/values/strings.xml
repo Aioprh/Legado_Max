@@ -1413,8 +1413,8 @@
     <string name="preview_image_by_click">Click to preview image</string>
     <string name="default_home_page">Default HomePage</string>
     <string name="nav_item_sort_title">Navigation Order</string>
-    <string name="nav_item_sort_summary">Drag to reorder; first item is the default home page</string>
-    <string name="nav_item_sort_dialog_title">Drag to Sort Navigation Bar</string>
+    <string name="nav_item_sort_summary">Drag to reorder; tap radio to set default home page</string>
+    <string name="nav_item_sort_dialog_title">Sort Navigation Bar</string>
     <string name="nav_item_sort_default_home">Default Home</string>
     <string name="screen_portrait_reversed">Portrait Reversed</string>
     <string name="screen_landscape_reversed">Landscape Reversed</string>

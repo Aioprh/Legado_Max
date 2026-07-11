@@ -470,13 +470,15 @@ class OtherConfigFragment : PreferenceFragment(),
     /**
      * 打开导航栏拖拽排序对话框
      *
-     * 列表中第一项为默认主页，长按拖拽可调整顺序。
-     * 确认后保存排序并通知 MainActivity 立即刷新底部导航栏。
+     * 长按拖拽可调整顺序，点击 RadioButton 可选择默认主页。
+     * 排序顺序与默认主页选择相互独立。
+     * 确认后保存并通知 MainActivity 立即刷新底部导航栏。
      */
     @SuppressLint("InflateParams")
     private fun showNavItemSortDialog() {
         val context = requireContext()
         val navOrder = AppConfig.navItemOrder
+        val defaultHome = AppConfig.defaultHomePage
         val showHomepage = AppConfig.showHomepage
         val showDiscovery = AppConfig.showDiscovery
         val showRss = AppConfig.showRSS
@@ -539,7 +541,7 @@ class OtherConfigFragment : PreferenceFragment(),
             }
         }
 
-        val adapter = NavItemSortAdapter(context, items)
+        val adapter = NavItemSortAdapter(context, items, defaultHome)
 
         alert(getString(R.string.nav_item_sort_dialog_title)) {
             val dialogBinding = DialogNavItemSortBinding.inflate(layoutInflater)
@@ -549,8 +551,8 @@ class OtherConfigFragment : PreferenceFragment(),
                 .attachToRecyclerView(dialogBinding.recyclerView)
             customView { dialogBinding.root }
             okButton {
-                val order = adapter.getOrderKeys()
-                AppConfig.setNavItemOrder(order)
+                AppConfig.setNavItemOrder(adapter.getOrderKeys())
+                AppConfig.setDefaultHomePage(adapter.getDefaultHomeKey())
                 postEvent(EventBus.NOTIFY_MAIN, true)
             }
             cancelButton()
