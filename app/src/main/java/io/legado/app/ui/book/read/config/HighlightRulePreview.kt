@@ -10,6 +10,9 @@ import io.legado.app.ui.book.read.config.SvgUnderlineSpan
 import io.legado.app.ui.book.read.config.SolidUnderlineSpan
 import io.legado.app.ui.book.read.config.DashUnderlineSpan
 import io.legado.app.ui.book.read.config.WaveUnderlineSpan
+import io.legado.app.ui.book.read.config.StrikeThroughSpan
+import io.legado.app.ui.book.read.config.ItalicTextSpan
+import io.legado.app.ui.book.read.config.BoxTextSpan
 import io.legado.app.ui.book.read.config.highlight.HighlightRule
 import io.legado.app.ui.book.read.config.highlight.HighlightRuleStyle
 
@@ -70,6 +73,30 @@ object HighlightRulePreview {
                 )
             } else {
                 when (style.underlineMode) {
+                    1 -> {
+                        spannable.setSpan(
+                            SolidUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                    2 -> {
+                        spannable.setSpan(
+                            DashUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                    3 -> {
+                        spannable.setSpan(
+                            WaveUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
                     4 -> {
                         spannable.setSpan(
                             DoubleUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
@@ -96,41 +123,37 @@ object HighlightRulePreview {
                             )
                         }
                     }
+                    6 -> {
+                        spannable.setSpan(
+                            StrikeThroughSpan(textColor, accentColor, underlineWidth),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                    7 -> {
+                        spannable.setSpan(
+                            ItalicTextSpan(textColor),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                    8 -> {
+                        spannable.setSpan(
+                            BoxTextSpan(textColor, accentColor, underlineWidth),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
                     else -> {
-                        when (style.underlineMode) {
-                            1 -> {
-                                spannable.setSpan(
-                                    SolidUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
-                                    start,
-                                    end,
-                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                                )
-                            }
-                            2 -> {
-                                spannable.setSpan(
-                                    DashUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
-                                    start,
-                                    end,
-                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                                )
-                            }
-                            3 -> {
-                                spannable.setSpan(
-                                    WaveUnderlineSpan(textColor, accentColor, underlineWidth, underlineOffset),
-                                    start,
-                                    end,
-                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                                )
-                            }
-                            else -> {
-                                spannable.setSpan(
-                                    ForegroundColorSpan(textColor),
-                                    start,
-                                    end,
-                                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                                )
-                            }
-                        }
+                        spannable.setSpan(
+                            ForegroundColorSpan(textColor),
+                            start,
+                            end,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
                     }
                 }
             }

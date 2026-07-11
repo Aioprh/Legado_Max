@@ -247,6 +247,9 @@
 		<item>Wave underline</item>
 		<item>Double underline</item>
 		<item>Custom SVG</item>
+		<item>Strikethrough</item>
+		<item>Italic</item>
+		<item>Box</item>
 	</string-array>
 
 	<string-array name="bookshelf_icon_style_entries">

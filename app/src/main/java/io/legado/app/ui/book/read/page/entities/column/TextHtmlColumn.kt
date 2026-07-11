@@ -78,6 +78,7 @@ data class TextHtmlColumn(
             textPaint.run {
                 color = ReadBookConfig.textAccentColor
                 isUnderlineText = true
+                textSkewX = if (underlineMode == 7) -0.25f else 0f
             }
             drawText(view, canvas, y, textPaint)
             return
@@ -89,6 +90,7 @@ data class TextHtmlColumn(
                 mTextColor ?: ReadBookConfig.textColor
             }
             isUnderlineText = false
+            textSkewX = if (underlineMode == 7) -0.25f else 0f
         }
         drawText(view, canvas, y, textPaint)
     }

@@ -596,7 +596,7 @@ data class TextLine(
     }
 
     /**
-     * 绘制单段下划线，用于高亮规则匹配区域，支持实线/虚线/波浪线/双下划线/自定义SVG
+     * 绘制单段下划线，用于高亮规则匹配区域，支持实线/虚线/波浪线/双下划线/自定义SVG/删除线/方框
      */
     private fun drawUnderlineSegment(
         canvas: Canvas,
@@ -613,6 +613,7 @@ data class TextLine(
         paint.color = underlineColor
         paint.strokeWidth = underlineWidth.dpToPx()
         paint.style = android.graphics.Paint.Style.STROKE
+        paint.isAntiAlias = true
         val lineY = height + underlineOffset.dpToPx()
         when (underlineMode) {
             1 -> canvas.drawLine(startX, lineY, endX, lineY, paint)
@@ -627,6 +628,22 @@ data class TextLine(
                 if (svgPathStr.isNotBlank()) {
                     drawSvgPath(canvas, startX, endX, lineY, svgPathStr, paint)
                 }
+            }
+            6 -> {
+                // 删除线：在文字垂直中线处绘制
+                val fm = paint.fontMetrics
+                val baselineY = height - fm.descent
+                val centerY = baselineY + (fm.ascent + fm.descent) / 2f
+                canvas.drawLine(startX, centerY, endX, centerY, paint)
+            }
+            8 -> {
+                // 方框：紧贴文字绘制矩形，整行匹配时自动变为长方形
+                val fm = paint.fontMetrics
+                val baselineY = height - fm.descent
+                val pad = 1.dpToPx().toFloat()
+                val boxTop = baselineY + fm.ascent - pad
+                val boxBottom = baselineY + fm.descent + pad
+                canvas.drawRect(startX, boxTop, endX, boxBottom, paint)
             }
         }
         PaintPool.recycle(paint)

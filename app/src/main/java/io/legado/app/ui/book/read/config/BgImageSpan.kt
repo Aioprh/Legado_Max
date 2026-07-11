@@ -17,7 +17,7 @@ import io.legado.app.utils.dpToPx
  * @param bgImagePath 背景图路径
  * @param bgImageFit 背景图适配方式：0=平铺, 1=拉伸, 2=裁剪
  * @param bgImageScale 背景图缩放比例
- * @param underlineMode 下划线样式：0=无, 1=实线, 2=虚线, 3=波浪, 4=双线
+ * @param underlineMode 下划线样式：0=无, 1=实线, 2=虚线, 3=波浪, 4=双线, 5=SVG, 6=删除线, 7=斜体, 8=方框
  * @param underlineColor 下划线颜色
  * @param underlineWidth 下划线粗细(dp)
  * @param underlineSvgPath SVG路径（用于自定义下划线）
@@ -48,8 +48,9 @@ class BgImageSpan(
             val metrics = paint.fontMetricsInt
             fm.top = metrics.top
             fm.ascent = metrics.ascent
-            fm.descent = metrics.descent + if (underlineMode != 0) offsetPx else 0
-            fm.bottom = metrics.bottom + if (underlineMode != 0) offsetPx else 0
+            val needsOffset = underlineMode in 1..5
+            fm.descent = metrics.descent + if (needsOffset) offsetPx else 0
+            fm.bottom = metrics.bottom + if (needsOffset) offsetPx else 0
         }
         return paint.measureText(text, start, end).toInt()
     }
@@ -121,14 +122,21 @@ class BgImageSpan(
 
         paint.color = textColor
         paint.shader = null
-        canvas.drawText(text, start, end, x, y.toFloat(), paint)
+        if (underlineMode == 7) {
+            val oldSkewX = paint.textSkewX
+            paint.textSkewX = -0.25f
+            canvas.drawText(text, start, end, x, y.toFloat(), paint)
+            paint.textSkewX = oldSkewX
+        } else {
+            canvas.drawText(text, start, end, x, y.toFloat(), paint)
+        }
 
-        if (underlineMode != 0) {
-            drawUnderline(canvas, x, x + width, y + offsetPx, paint)
+        if (underlineMode != 0 && underlineMode != 7) {
+            drawDecoration(canvas, x, x + width, y, paint)
         }
     }
 
-    private fun drawUnderline(canvas: Canvas, startX: Float, endX: Float, lineY: Int, paint: Paint) {
+    private fun drawDecoration(canvas: Canvas, startX: Float, endX: Float, y: Int, paint: Paint) {
         val ulPaint = Paint(paint).apply {
             color = underlineColor
             style = Paint.Style.STROKE
@@ -136,37 +144,50 @@ class BgImageSpan(
             isAntiAlias = true
         }
         when (underlineMode) {
-            1 -> canvas.drawLine(startX, lineY.toFloat(), endX, lineY.toFloat(), ulPaint)
+            1 -> canvas.drawLine(startX, (y + offsetPx).toFloat(), endX, (y + offsetPx).toFloat(), ulPaint)
             2 -> {
                 ulPaint.pathEffect = android.graphics.DashPathEffect(floatArrayOf(10f, 10f), 0f)
-                canvas.drawLine(startX, lineY.toFloat(), endX, lineY.toFloat(), ulPaint)
+                canvas.drawLine(startX, (y + offsetPx).toFloat(), endX, (y + offsetPx).toFloat(), ulPaint)
             }
             3 -> {
                 val path = android.graphics.Path()
                 val waveAmplitude = 3.dpToPx().toFloat()
                 val waveLength = 12.dpToPx().toFloat()
-                path.moveTo(startX, lineY.toFloat())
+                val lineY = (y + offsetPx).toFloat()
+                path.moveTo(startX, lineY)
                 var currentX = startX
-                val endY = lineY.toFloat()
                 while (currentX < endX) {
                     val nextX = (currentX + waveLength).coerceAtMost(endX)
                     val midX = (currentX + nextX) / 2
-                    path.quadTo(midX, endY - waveAmplitude, nextX, endY)
+                    path.quadTo(midX, lineY - waveAmplitude, nextX, lineY)
                     currentX = nextX
                     if (currentX < endX) {
                         val nextX2 = (currentX + waveLength).coerceAtMost(endX)
                         val midX2 = (currentX + nextX2) / 2
-                        path.quadTo(midX2, endY + waveAmplitude, nextX2, endY)
+                        path.quadTo(midX2, lineY + waveAmplitude, nextX2, lineY)
                         currentX = nextX2
                     }
                 }
                 canvas.drawPath(path, ulPaint)
             }
             4 -> {
+                val lineY = y + offsetPx
                 val lineGap = 3.dpToPx()
                 val line2Y = lineY + lineGap + underlineWidth.dpToPx()
                 canvas.drawLine(startX, lineY.toFloat(), endX, lineY.toFloat(), ulPaint)
                 canvas.drawLine(startX, line2Y.toFloat(), endX, line2Y.toFloat(), ulPaint)
+            }
+            6 -> {
+                val fm = paint.fontMetrics
+                val centerY = y + (fm.ascent + fm.descent) / 2f
+                canvas.drawLine(startX, centerY, endX, centerY, ulPaint)
+            }
+            8 -> {
+                val fm = paint.fontMetrics
+                val pad = 1.dpToPx().toFloat()
+                val boxTop = y + fm.ascent - pad
+                val boxBottom = y + fm.descent + pad
+                canvas.drawRect(startX, boxTop, endX, boxBottom, ulPaint)
             }
         }
     }

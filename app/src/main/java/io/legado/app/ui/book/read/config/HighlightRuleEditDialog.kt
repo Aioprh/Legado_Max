@@ -137,7 +137,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.spUnderlineMode.adapter = object : ArrayAdapter<String>(
             requireContext(),
             R.layout.item_text_common,
-            listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "双下划线", "自定义SVG")
+            listOf("无", "实线下划线", "虚线下划线", "波浪下划线", "双下划线", "自定义SVG", "删除线", "斜体", "方框")
         ) {
             override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
                 val view = super.getView(position, convertView, parent)
@@ -309,6 +309,18 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.tvOffsetPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etUnderlineOffset.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
 
+        // 设置 Spinner 下拉弹窗背景色，避免深色主题下白底白字
+        val popupBg = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 14f * density
+            setColor(bg)
+            setStroke((1f * density).toInt().coerceAtLeast(1), cardStrokeColor)
+        }
+        binding.spGroup.setPopupBackgroundDrawable(popupBg)
+        binding.spTarget.setPopupBackgroundDrawable(popupBg)
+        binding.spUnderlineMode.setPopupBackgroundDrawable(popupBg)
+        binding.spBgImageFit.setPopupBackgroundDrawable(popupBg)
+
         // 递归遍历三个卡片容器，将静态标签的文字颜色替换为动态主题色
         applyThemeToStaticLabels()
         updateRegexToggle()
@@ -387,7 +399,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.spBgImageFit.setSelection(editingRule.bgImageFit.coerceIn(0, 2))
         binding.sbBgImageScale.progress = (editingRule.bgImageScale.coerceIn(0.1f, 5f) * 10).toInt()
         binding.tvBgImageScale.text = "${editingRule.bgImageScale.coerceIn(0.1f, 5f).formatScale()}x"
-        binding.spUnderlineMode.setSelection(editingRule.underlineMode.coerceIn(0, 5))
+        binding.spUnderlineMode.setSelection(editingRule.underlineMode.coerceIn(0, 8))
         val groupIndex = groupItems.indexOf(editingRule.group).takeIf { it >= 0 } ?: 0
         binding.spGroup.setSelection(groupIndex)
         binding.spTarget.setSelection(editingRule.targetScope.coerceIn(0, 2))

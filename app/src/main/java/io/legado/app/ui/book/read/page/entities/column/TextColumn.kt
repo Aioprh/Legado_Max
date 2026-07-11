@@ -74,15 +74,26 @@ data class TextColumn(
             textPaint.color = drawColor
         }
         val y = textLine.lineBase - textLine.lineTop
+        if (underlineMode == 7) {
+            val oldSkewX = textPaint.textSkewX
+            textPaint.textSkewX = -0.25f
+            drawTextInternal(canvas, textPaint, y)
+            textPaint.textSkewX = oldSkewX
+        } else {
+            drawTextInternal(canvas, textPaint, y)
+        }
+        if (selected && !isSearchResult) {
+            canvas.drawRect(start, 0f, end, textLine.height, view.selectedPaint)
+        }
+    }
+
+    private fun drawTextInternal(canvas: Canvas, textPaint: android.text.TextPaint, y: Float) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             val letterSpacing = textPaint.letterSpacing * textPaint.textSize
             val letterSpacingHalf = letterSpacing * 0.5f
             canvas.drawText(charData, start + letterSpacingHalf, y, textPaint)
         } else {
             canvas.drawText(charData, start, y, textPaint)
-        }
-        if (selected && !isSearchResult) {
-            canvas.drawRect(start, 0f, end, textLine.height, view.selectedPaint)
         }
     }
 
