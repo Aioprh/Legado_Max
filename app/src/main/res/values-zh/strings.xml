@@ -805,6 +805,7 @@
     <string name="preview">预览</string>
     <string name="text_menu_config">展开文本菜单配置</string>
     <string name="menu_config">菜单配置</string>
+    <string name="menu_highlight_rule">高亮设置</string>
     <string name="text_menu_config_desc">选择您想要显示的菜单项，折叠模式下超出直接显示数量后会显示在溢出菜单</string>
     <string name="text_menu_visible_count">直接显示数量</string>
     <string name="text_menu_visible_count_desc">折叠模式下直接显示 %1$d 个菜单项，超出后放入更多菜单</string>

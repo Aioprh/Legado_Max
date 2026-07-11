@@ -157,7 +157,7 @@ class ContentProcessor private constructor(
                 // 先保护 img 标签，避免被分段算法破坏引号和空格
                 val imgMap = mutableMapOf<String, String>()
                 val imgMatcher = AppPattern.imgPattern.matcher(mContent)
-                val imgSb = StringBuilder()
+                val imgSb = StringBuffer()  //Matcher.appendTail(StringBuilder) 和 Matcher.appendReplacement(StringBuilder, String) 这两个方法是 Android API 26（Android 8.0）才新增的。你的设备系统低于 Android 8.0，所以运行时报 NoSuchMethodError。修复：将 StringBuilder 改为 StringBuffer。StringBuffer 版本的 appendTail 和 appendReplacement 从 API 1 就存在，兼容所有 Android 版本。两者功能完全一致，唯一区别是 StringBuffer 是线程安全的（在这个局部变量场景下没有性能影响）。
                 while (imgMatcher.find()) {
                     val placeholder = "图片占位符${imgMap.size}号"
                     imgMap[placeholder] = imgMatcher.group()
