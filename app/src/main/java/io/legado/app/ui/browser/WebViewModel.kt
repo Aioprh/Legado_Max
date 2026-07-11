@@ -129,6 +129,9 @@ class WebViewModel(application: Application) : BaseViewModel(application) {
         return if (URLUtil.isValidUrl(data)) {
             okHttpClient.newCallResponseBody {
                 url(data)
+                headerMap.forEach { (key, value) ->
+                    addHeader(key, value)
+                }
             }.bytes()
         } else {
             Base64.decode(data.split(",").toTypedArray()[1], Base64.DEFAULT)

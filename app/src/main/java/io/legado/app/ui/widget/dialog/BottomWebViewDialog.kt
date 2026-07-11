@@ -138,6 +138,7 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
     private var customWebViewCallback: WebChromeClient.CustomViewCallback? = null
     private var originOrientation: Int? = null
     private var needClearHistory = true
+    private var headerMap: Map<String, String> = emptyMap()
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -453,6 +454,7 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
                 preloadJs = args.getString("preloadJs")
                 val analyzeUrl =
                     AnalyzeUrl(url, source = source, coroutineContext = coroutineContext)
+                headerMap = analyzeUrl.headerMap
                 val htmlArg = args.getString("html")
                 val spliceHtml = if (htmlArg == null && analyzeUrl.isSimpleGetRequest()) {
                     null
@@ -611,6 +613,9 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
         return if (URLUtil.isValidUrl(data)) {
             okHttpClient.newCallResponseBody {
                 url(data)
+                headerMap.forEach { (key, value) ->
+                    addHeader(key, value)
+                }
             }.bytes()
         } else {
             Base64.decode(data.split(",").toTypedArray()[1], Base64.DEFAULT)
