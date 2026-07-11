@@ -130,6 +130,12 @@ class BookSourceEditActivity :
         initView()
         viewModel.initData(intent) {
             upSourceView(viewModel.bookSource)
+            // 处理从源内容查询界面跳转来的定位请求
+            val tabKey = intent.getStringExtra("tabKey")
+            val fieldKey = intent.getStringExtra("fieldKey")
+            if (!tabKey.isNullOrBlank() && !fieldKey.isNullOrBlank()) {
+                scrollToField(tabKey, fieldKey)
+            }
         }
     }
 

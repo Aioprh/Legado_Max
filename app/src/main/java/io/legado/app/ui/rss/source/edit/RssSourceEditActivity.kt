@@ -97,6 +97,12 @@ class RssSourceEditActivity :
         initView()
         viewModel.initData(intent) {
             upSourceView(viewModel.rssSource)
+            // 处理从源内容查询界面跳转来的定位请求
+            val tabKey = intent.getStringExtra("tabKey")
+            val fieldKey = intent.getStringExtra("fieldKey")
+            if (!tabKey.isNullOrBlank() && !fieldKey.isNullOrBlank()) {
+                scrollToField(tabKey, fieldKey)
+            }
         }
     }
 
@@ -234,6 +240,41 @@ class RssSourceEditActivity :
                     editText.requestFocus()
                 }
             }, 100)
+        }
+    }
+
+    /**
+     * 滚动到指定的字段位置（从源内容查询界面跳转时使用）
+     * @param tabKey Tab 标识，如 "base", "start", "list", "webView"
+     * @param fieldKey 字段标识，如 "sourceName", "ruleContent"
+     */
+    private fun scrollToField(tabKey: String, fieldKey: String) {
+        val entities = when (tabKey) {
+            "base" -> sourceEntities
+            "start" -> startEntities
+            "list" -> listEntities
+            "webView" -> webViewEntities
+            else -> return
+        }
+
+        val tabPosition = when (tabKey) {
+            "base" -> 0
+            "start" -> 1
+            "list" -> 2
+            "webView" -> 3
+            else -> 0
+        }
+
+        entities.find { it.key == fieldKey }?.let { entity ->
+            if (binding.tabLayout.selectedTabPosition != tabPosition) {
+                binding.tabLayout.selectTab(binding.tabLayout.getTabAt(tabPosition))
+                binding.recyclerView.post {
+                    adapter.notifyDataSetChanged()
+                    scrollToFieldAndUpdate(entity, entity.value ?: "", -1)
+                }
+            } else {
+                scrollToFieldAndUpdate(entity, entity.value ?: "", -1)
+            }
         }
     }
 

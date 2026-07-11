@@ -20,6 +20,9 @@
 - [链接1](https://legado.gyks.cf/)
 - [链接2](https://legado.ccccocccc.cc/index.php?i=2)
 
+**2026/7/11**
+- 修内容查询界面功能优化，使用更便捷
+
 **2026/7/10**
 - 内容查询界面架构优化
 - 增加SSL验证提醒

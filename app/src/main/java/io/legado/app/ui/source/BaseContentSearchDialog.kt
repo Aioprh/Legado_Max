@@ -74,6 +74,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
     private var searchScopeMode = SearchScopeMode.ALL
     private var selectedSourceUrl: String? = null
     private var selectedSourceGroup: String? = null
+    private var scopeRow: View? = null
 
     /** 所有可搜索的字段条目，由子类通过 loadSourceItems 填充 */
     protected var allSourceItems: List<SourceFieldItem> = emptyList()
@@ -102,7 +103,7 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
     abstract suspend fun performSearch(query: String, allItems: List<SourceFieldItem>): List<SourceFieldItem>
 
     /** 点击"跳转"后导航到对应的源编辑界面 */
-    abstract fun navigateToEdit(sourceUrl: String)
+    abstract fun navigateToEdit(sourceUrl: String, tabKey: String? = null, fieldKey: String? = null)
 
     abstract fun getTabNames(): Map<String, String>
 
@@ -203,35 +204,43 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         }
         toggleLayout.addView(modeRow)
 
-        val scopeRow = createToggleRow(
-            "范围",
-            listOf(
-                "所有源" to SearchScopeMode.ALL,
-                "仅启用" to SearchScopeMode.ENABLED,
-                "搜索单个源" to SearchScopeMode.SINGLE_SOURCE,
-                "搜索分组" to SearchScopeMode.GROUP
-            ),
-            selectedValue = searchScopeMode
-        ) { value ->
-            when (value) {
-                SearchScopeMode.ALL -> {
-                    searchScopeMode = value
-                    searchAllSources = true
-                    selectedSourceUrl = null
-                    selectedSourceGroup = null
-                    loadSources()
+        scopeRow = createToggleRow(
+                "范围",
+                listOf(
+                    "所有源" to SearchScopeMode.ALL,
+                    "仅启用" to SearchScopeMode.ENABLED,
+                    "搜索单个源" to SearchScopeMode.SINGLE_SOURCE,
+                    "搜索分组" to SearchScopeMode.GROUP
+                ),
+                selectedValue = searchScopeMode
+            ) { value ->
+                when (value) {
+                    SearchScopeMode.ALL -> {
+                        searchScopeMode = value
+                        searchAllSources = true
+                        selectedSourceUrl = null
+                        selectedSourceGroup = null
+                        loadSources()
+                        updateScopeRowText()
+                    }
+                    SearchScopeMode.ENABLED -> {
+                        searchScopeMode = value
+                        searchAllSources = false
+                        selectedSourceUrl = null
+                        selectedSourceGroup = null
+                        loadSources()
+                        updateScopeRowText()
+                    }
+                    SearchScopeMode.SINGLE_SOURCE -> {
+                        showSingleSourceSelector()
+                        updateScopeRowText()
+                    }
+                    SearchScopeMode.GROUP -> {
+                        showGroupSelector()
+                        updateScopeRowText()
+                    }
                 }
-                SearchScopeMode.ENABLED -> {
-                    searchScopeMode = value
-                    searchAllSources = false
-                    selectedSourceUrl = null
-                    selectedSourceGroup = null
-                    loadSources()
-                }
-                SearchScopeMode.SINGLE_SOURCE -> showSingleSourceSelector()
-                SearchScopeMode.GROUP -> showGroupSelector()
             }
-        }
         toggleLayout.addView(scopeRow)
 
         val toggleLp = ConstraintLayout.LayoutParams(
@@ -747,6 +756,10 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             searchScopeMode = SearchScopeMode.SINGLE_SOURCE
             selectedSourceUrl = option.value
             selectedSourceGroup = null
+            lifecycleScope.launch {
+                delay(100)
+                updateScopeRowText()
+            }
         }
     }
 
@@ -760,6 +773,34 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             searchScopeMode = SearchScopeMode.GROUP
             selectedSourceUrl = null
             selectedSourceGroup = option.value
+            lifecycleScope.launch {
+                delay(100)
+                updateScopeRowText()
+            }
+        }
+    }
+
+    private fun updateScopeRowText() {
+        scopeRow?.let { row ->
+            val scrollView = row as HorizontalScrollView
+            val rowLayout = scrollView.getChildAt(0) as ViewGroup
+
+            val displayTexts = listOf(
+                "所有源",
+                "仅启用",
+                selectedSourceUrl?.let { url ->
+                    allSourceItems.distinctBy { it.sourceUrl }.firstOrNull { it.sourceUrl == url }?.sourceName?.let { "搜索单个源($it)" }
+                } ?: "搜索单个源",
+                selectedSourceGroup?.let { "搜索分组($it)" } ?: "搜索分组"
+            )
+
+            // rowLayout 子 View 布局: index 0 是 label（"范围"）, index 1..4 是 4 个按钮
+            for (i in displayTexts.indices) {
+                val btnIndex = i + 1
+                if (btnIndex >= rowLayout.childCount) break
+                val btn = rowLayout.getChildAt(btnIndex) as? TextView ?: continue
+                btn.text = displayTexts[i]
+            }
         }
     }
 
@@ -953,7 +994,8 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(8))
         }
         val textView = TextView(requireContext()).apply {
-            text = highlightRuleSyntax(item.fullValue)
+            // 高亮规则语法 + 搜索关键词，并设置可滚动
+            text = highlightRuleSyntaxAndSearchTerm(item.fullValue, currentSearchTerm)
             textSize = 14f
             setTextColor(ContextCompat.getColor(requireContext(), R.color.primaryText))
             typeface = android.graphics.Typeface.MONOSPACE
@@ -962,21 +1004,53 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
         scrollView.addView(textView)
 
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("${item.tabName} · ${item.fieldName}")
+            .setTitle("${item.sourceName} · ${item.tabName} · ${item.fieldName}")
             .setView(scrollView)
             .setPositiveButton("跳转") { _, _ ->
-                navigateToEdit(item.sourceUrl)
+                navigateToEdit(item.sourceUrl, item.tabKey, item.fieldKey)
             }
             .setNeutralButton("复制") { _, _ ->
                 requireContext().sendToClip(item.fullValue)
             }
             .setNegativeButton("关闭", null)
             .show()
+
+        // 弹窗显示后滚动到第一个搜索关键词位置
+        scrollView.post {
+            scrollToFirstSearchMatch(textView, currentSearchTerm, scrollView)
+        }
     }
 
-    private fun highlightRuleSyntax(text: String): SpannableString {
+    private fun highlightRuleSyntaxAndSearchTerm(text: String, searchTerm: String): SpannableString {
         val spannable = SpannableString(text)
         val accentColor = ContextCompat.getColor(requireContext(), R.color.accent)
+        val searchHighlightColor = ContextCompat.getColor(requireContext(), R.color.accent)
+        
+        // 先高亮搜索关键词
+        if (searchTerm.isNotBlank()) {
+            val termLower = searchTerm.lowercase()
+            val textLower = text.lowercase()
+            var startIndex = 0
+            val highlightBg = android.graphics.Color.argb(
+                60,
+                android.graphics.Color.red(searchHighlightColor),
+                android.graphics.Color.green(searchHighlightColor),
+                android.graphics.Color.blue(searchHighlightColor)
+            )
+            while (true) {
+                val index = textLower.indexOf(termLower, startIndex)
+                if (index == -1) break
+                spannable.setSpan(
+                    BackgroundColorSpan(highlightBg),
+                    index,
+                    index + searchTerm.length,
+                    android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                startIndex = index + searchTerm.length
+            }
+        }
+
+        // 再高亮规则语法
         val rulePrefixes = listOf("@css:", "@get:", "@json:", "@xpath:", "@js:", "@put:", "@xhtml:")
         for (prefix in rulePrefixes) {
             var startIndex = 0
@@ -1008,6 +1082,26 @@ abstract class BaseContentSearchDialog : BaseDialogFragment(R.layout.dialog_rule
             }
         }
         return spannable
+    }
+
+    /**
+     * 滚动到第一个搜索关键词位置
+     */
+    private fun scrollToFirstSearchMatch(textView: TextView, searchTerm: String, scrollView: android.widget.ScrollView) {
+        if (searchTerm.isBlank()) return
+        val spannable = textView.text as? SpannableString ?: return
+        val spans = spannable.getSpans(0, spannable.length, android.text.style.BackgroundColorSpan::class.java)
+        if (spans.isNotEmpty()) {
+            val firstSpan = spans[0]
+            val offset = spannable.getSpanStart(firstSpan)
+            textView.post {
+                textView.layout?.let { layout ->
+                    val line = layout.getLineForOffset(offset)
+                    val y = layout.getLineTop(line) - textView.height / 3
+                    scrollView.smoothScrollTo(0, y.coerceAtLeast(0))
+                }
+            }
+        }
     }
 
     private fun copyMatchedSourceUrls() {

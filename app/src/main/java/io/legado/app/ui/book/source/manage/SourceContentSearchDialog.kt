@@ -116,7 +116,7 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
 
     override fun getDialogTitle() = "书源内容查询"
 
-    override fun getSearchHint() = "输入关键词搜索所有书源"
+    override fun getSearchHint() = "输入关键词搜索选择的书源"
 
     override fun getContentSearchType() = ContentSearchType.BOOK_SOURCE
 
@@ -160,9 +160,15 @@ class SourceContentSearchDialog : BaseContentSearchDialog() {
         }
     }
 
-    override fun navigateToEdit(sourceUrl: String) {
+    override fun navigateToEdit(sourceUrl: String, tabKey: String?, fieldKey: String?) {
         startActivity<BookSourceEditActivity> {
             putExtra("sourceUrl", sourceUrl)
+            if (!tabKey.isNullOrBlank()) {
+                putExtra("tabKey", tabKey)
+            }
+            if (!fieldKey.isNullOrBlank()) {
+                putExtra("fieldKey", fieldKey)
+            }
         }
     }
 
