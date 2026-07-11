@@ -20,6 +20,7 @@ import kotlinx.coroutines.CancellationException
 import splitties.init.appCtx
 import java.lang.ref.WeakReference
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 class ContentProcessor private constructor(
@@ -153,7 +154,22 @@ class ContentProcessor private constructor(
             }
             if (reSegment && book.getReSegment()) {
                 //重新分段
+                // 先保护 img 标签，避免被分段算法破坏引号和空格
+                val imgMap = mutableMapOf<String, String>()
+                val imgMatcher = AppPattern.imgPattern.matcher(mContent)
+                val imgSb = StringBuilder()
+                while (imgMatcher.find()) {
+                    val placeholder = "图片占位符${imgMap.size}号"
+                    imgMap[placeholder] = imgMatcher.group()
+                    imgMatcher.appendReplacement(imgSb, Matcher.quoteReplacement(placeholder))
+                }
+                imgMatcher.appendTail(imgSb)
+                mContent = imgSb.toString()
                 mContent = ContentHelp.reSegment(mContent, chapter.title)
+                // 还原 img 标签
+                imgMap.forEach { (placeholder, original) ->
+                    mContent = mContent.replace(placeholder, original)
+                }
             }
             if (chineseConvert) {
                 //简繁转换
