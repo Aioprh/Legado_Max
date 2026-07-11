@@ -49,9 +49,12 @@ object Debug {
         ) {
             return msg
         }
-        return dataUrlBase64Regex.replace(msg) {
-            val mediaType = it.groups[1]?.value?.takeIf { type -> type.isNotBlank() } ?: "unknown"
-            "data:$mediaType [base64图片字符过长省略输出], length=${it.value.length}]"
+        return dataUrlBase64Regex.replace(msg) { matchResult ->
+            val fullMatch = matchResult.value
+            // 数据较短时不折叠，直接原样返回
+            if (fullMatch.length <= 50) return@replace fullMatch
+            // 保留前50个字符（含 data:mime;base64, 前缀及部分 base64 数据），后续折叠
+            "${fullMatch.take(50)}…[base64字符过长省略输出, length=${fullMatch.length}]"
         }
     }
 
