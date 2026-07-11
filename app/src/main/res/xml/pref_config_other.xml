@@ -55,14 +55,13 @@
             android:title="@string/show_rss"
             app:iconSpaceReserved="false" />
 
-        <io.legado.app.lib.prefs.NameListPreference
-            android:defaultValue="bookshelf"
-            android:key="defaultHomePage"
-            android:title="@string/default_home_page"
+        <io.legado.app.lib.prefs.Preference
+            android:key="navItemOrder"
+            android:summary="@string/nav_item_sort_summary"
+            android:title="@string/nav_item_sort_title"
             app:allowDividerAbove="false"
             app:allowDividerBelow="false"
-            app:entries="@array/default_home_page"
-            app:entryValues="@array/default_home_page_value" />
+            app:iconSpaceReserved="false" />
 
     </io.legado.app.lib.prefs.PreferenceCategory>
 

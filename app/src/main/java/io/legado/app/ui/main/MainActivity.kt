@@ -405,14 +405,10 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         observeEvent<Boolean>(EventBus.NOTIFY_MAIN) {
             binding.apply {
                 if (it) {
-                    bottomNavigationView.menu.clear()
-                    bottomNavigationView.inflateMenu(R.menu.main_bnv)
                     onUpBooksBadgeView = null
+                    viewPagerMain.setCurrentItem(0, false)
                 }
                 upBottomMenu()
-                if (it) {
-                    viewPagerMain.setCurrentItem(bottomMenuCount - 1, false)
-                }
             }
         }
         observeEvent<String>(PreferKey.threadCount) {
@@ -424,48 +420,63 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         val showHomepage = AppConfig.showHomepage
         val showDiscovery = AppConfig.showDiscovery
         val showRss = AppConfig.showRSS
-        binding.bottomNavigationView.menu.let { menu ->
-            menu.findItem(R.id.menu_homepage).isVisible = showHomepage
-            menu.findItem(R.id.menu_discovery).isVisible = showDiscovery
-            menu.findItem(R.id.menu_rss).isVisible = showRss
-        }
+        val navOrder = AppConfig.navItemOrder
+
+        val menu = binding.bottomNavigationView.menu
+        menu.clear()
+
         var index = 0
-        if (showHomepage) {
-            realPositions[index] = idHomepage
-            index++
+        for (itemKey in navOrder) {
+            when (itemKey) {
+                "homepage" -> if (showHomepage) {
+                    realPositions[index] = idHomepage
+                    menu.add(0, R.id.menu_homepage, index, R.string.homepage)
+                        .setIcon(R.drawable.ic_bottom_home)
+                    index++
+                }
+
+                "bookshelf" -> {
+                    realPositions[index] = idBookshelf
+                    menu.add(0, R.id.menu_bookshelf, index, R.string.bookshelf)
+                        .setIcon(R.drawable.ic_bottom_books)
+                    index++
+                }
+
+                "explore" -> if (showDiscovery) {
+                    realPositions[index] = idExplore
+                    menu.add(0, R.id.menu_discovery, index, R.string.discovery)
+                        .setIcon(R.drawable.ic_bottom_explore)
+                    index++
+                }
+
+                "rss" -> if (showRss) {
+                    realPositions[index] = idRss
+                    menu.add(0, R.id.menu_rss, index, R.string.rss)
+                        .setIcon(R.drawable.ic_bottom_rss_feed)
+                    index++
+                }
+
+                "my" -> {
+                    realPositions[index] = idMy
+                    menu.add(0, R.id.menu_my_config, index, R.string.my)
+                        .setIcon(R.drawable.ic_bottom_person)
+                    index++
+                }
+            }
         }
-        realPositions[index] = idBookshelf
-        index++
-        if (showDiscovery) {
-            realPositions[index] = idExplore
-            index++
-        }
-        if (showRss) {
-            realPositions[index] = idRss
-            index++
-        }
-        realPositions[index] = idMy
-        bottomMenuCount = index + 1
+        bottomMenuCount = index
+
+        // 根据当前 ViewPager 位置设置底部导航栏选中状态
+        val currentPosition = binding.viewPagerMain.currentItem.coerceAtMost(bottomMenuCount - 1)
+        val menuItemId = fragmentIdToMenuItemId(realPositions[currentPosition])
+        menu.findItem(menuItemId)?.isChecked = true
+
         adapter.notifyDataSetChanged()
     }
 
     private fun upHomePage() {
-        when (AppConfig.defaultHomePage) {
-            "bookshelf" -> binding.viewPagerMain.setCurrentItem(bookshelfPosition(), false)
-            "homepage" -> if (AppConfig.showHomepage) {
-                binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idHomepage), false)
-            }
-
-            "explore" -> if (AppConfig.showDiscovery) {
-                binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idExplore), false)
-            }
-
-            "rss" -> if (AppConfig.showRSS) {
-                binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idRss), false)
-            }
-
-            "my" -> binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idMy), false)
-        }
+        // 默认主页为 navItemOrder 中的第一项，即 ViewPager position 0
+        binding.viewPagerMain.setCurrentItem(0, false)
     }
 
     private fun getFragmentId(position: Int): Int {

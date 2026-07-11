@@ -308,4 +308,7 @@ object PreferKey {
     const val exploreShowCategoryTab = "exploreShowCategoryTab"
     /** 发现详情页预加载模式：0=仅当前分类，1=当前分类+相邻分类 */
     const val exploreShowPreload = "exploreShowPreload"
+
+    /** 底部导航栏排序，逗号分隔的页面key，第一项为默认主页 */
+    const val navItemOrder = "navItemOrder"
 }

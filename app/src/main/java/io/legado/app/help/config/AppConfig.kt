@@ -785,6 +785,28 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     val defaultHomePage get() = appCtx.getPrefString(PreferKey.defaultHomePage, "bookshelf")
 
+    /**
+     * 底部导航栏排序，逗号分隔的页面key列表。
+     * 第一项为默认主页。
+     * 若未设置，从旧的 defaultHomePage 迁移。
+     */
+    val navItemOrder: List<String>
+        get() {
+            val stored = appCtx.getPrefString(PreferKey.navItemOrder)
+            if (!stored.isNullOrBlank()) {
+                val parsed = stored.split(",").filter { it.isNotBlank() }
+                if (parsed.isNotEmpty()) return parsed
+            }
+            // 从旧的 defaultHomePage 迁移
+            val defaultHome = appCtx.getPrefString(PreferKey.defaultHomePage, "bookshelf") ?: "bookshelf"
+            val defaultOrder = listOf("bookshelf", "homepage", "explore", "rss", "my")
+            return listOf(defaultHome) + defaultOrder.filter { it != defaultHome }
+        }
+
+    fun setNavItemOrder(order: List<String>) {
+        appCtx.putPrefString(PreferKey.navItemOrder, order.joinToString(","))
+    }
+
     val updateToVariant get() = appCtx.getPrefString(PreferKey.updateToVariant, "default_version")
 
     val streamReadAloudAudio get() = appCtx.getPrefBoolean(PreferKey.streamReadAloudAudio, false)

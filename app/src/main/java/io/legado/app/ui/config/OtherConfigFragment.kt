@@ -17,6 +17,10 @@ import androidx.fragment.app.activityViewModels
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
+import io.legado.app.databinding.DialogNavItemSortBinding
+import io.legado.app.ui.main.NavItemSortAdapter
 import com.jeremyliao.liveeventbus.LiveEventBus
 import io.legado.app.R
 import io.legado.app.constant.EventBus
@@ -202,6 +206,7 @@ class OtherConfigFragment : PreferenceFragment(),
             }
 
             PreferKey.clearWebViewData -> clearWebViewData()
+            PreferKey.navItemOrder -> showNavItemSortDialog()
             "blockRuleManage" -> showBlockRuleConfig()
             "localPassword" -> alertLocalPassword()
             PreferKey.shrinkDatabase -> shrinkDatabase()
@@ -460,6 +465,96 @@ class OtherConfigFragment : PreferenceFragment(),
         dialog.sourceUrl = ""
         dialog.allBooks = emptyList()
         dialog.show(childFragmentManager, "blockRuleConfig")
+    }
+
+    /**
+     * 打开导航栏拖拽排序对话框
+     *
+     * 列表中第一项为默认主页，长按拖拽可调整顺序。
+     * 确认后保存排序并通知 MainActivity 立即刷新底部导航栏。
+     */
+    @SuppressLint("InflateParams")
+    private fun showNavItemSortDialog() {
+        val context = requireContext()
+        val navOrder = AppConfig.navItemOrder
+        val showHomepage = AppConfig.showHomepage
+        val showDiscovery = AppConfig.showDiscovery
+        val showRss = AppConfig.showRSS
+
+        // 构建排序项列表，按当前排序顺序
+        val items = mutableListOf<NavItemSortAdapter.NavItemConfig>()
+        for (key in navOrder) {
+            val config = when (key) {
+                "homepage" -> NavItemSortAdapter.NavItemConfig(
+                    "homepage", getString(R.string.homepage),
+                    R.drawable.ic_bottom_home, showHomepage
+                )
+                "bookshelf" -> NavItemSortAdapter.NavItemConfig(
+                    "bookshelf", getString(R.string.bookshelf),
+                    R.drawable.ic_bottom_books, true
+                )
+                "explore" -> NavItemSortAdapter.NavItemConfig(
+                    "explore", getString(R.string.discovery),
+                    R.drawable.ic_bottom_explore, showDiscovery
+                )
+                "rss" -> NavItemSortAdapter.NavItemConfig(
+                    "rss", getString(R.string.rss),
+                    R.drawable.ic_bottom_rss_feed, showRss
+                )
+                "my" -> NavItemSortAdapter.NavItemConfig(
+                    "my", getString(R.string.my),
+                    R.drawable.ic_bottom_person, true
+                )
+                else -> null
+            }
+            if (config != null) items.add(config)
+        }
+
+        // 补全可能缺失的项（兼容旧数据）
+        for (key in listOf("bookshelf", "homepage", "explore", "rss", "my")) {
+            if (items.none { it.key == key }) {
+                val config = when (key) {
+                    "homepage" -> NavItemSortAdapter.NavItemConfig(
+                        "homepage", getString(R.string.homepage),
+                        R.drawable.ic_bottom_home, showHomepage
+                    )
+                    "explore" -> NavItemSortAdapter.NavItemConfig(
+                        "explore", getString(R.string.discovery),
+                        R.drawable.ic_bottom_explore, showDiscovery
+                    )
+                    "rss" -> NavItemSortAdapter.NavItemConfig(
+                        "rss", getString(R.string.rss),
+                        R.drawable.ic_bottom_rss_feed, showRss
+                    )
+                    "my" -> NavItemSortAdapter.NavItemConfig(
+                        "my", getString(R.string.my),
+                        R.drawable.ic_bottom_person, true
+                    )
+                    else -> NavItemSortAdapter.NavItemConfig(
+                        "bookshelf", getString(R.string.bookshelf),
+                        R.drawable.ic_bottom_books, true
+                    )
+                }
+                items.add(config)
+            }
+        }
+
+        val adapter = NavItemSortAdapter(context, items)
+
+        alert(getString(R.string.nav_item_sort_dialog_title)) {
+            val dialogBinding = DialogNavItemSortBinding.inflate(layoutInflater)
+            dialogBinding.recyclerView.layoutManager = LinearLayoutManager(context)
+            dialogBinding.recyclerView.adapter = adapter
+            ItemTouchHelper(adapter.itemTouchCallback)
+                .attachToRecyclerView(dialogBinding.recyclerView)
+            customView { dialogBinding.root }
+            okButton {
+                val order = adapter.getOrderKeys()
+                AppConfig.setNavItemOrder(order)
+                postEvent(EventBus.NOTIFY_MAIN, true)
+            }
+            cancelButton()
+        }
     }
 
     @SuppressLint("InflateParams")
