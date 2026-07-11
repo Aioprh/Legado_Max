@@ -465,8 +465,8 @@ object BackupController {
             items.add(
                 BackupItemInfo(
                     fileName = HighlightRuleStore.backupBgDirName,
-                    displayName = "楂樹寒鑳屾櫙鍥剧墖",
-                    description = "楂樹寒瑙勫垯浣跨敤鐨勮嚜瀹氫箟鑳屾櫙鍥剧墖",
+                    displayName = "高亮背景图片",
+                    description = "高亮规则使用的自定义背景图片",
                     count = highlightRuleBgFiles.size,
                     size = highlightRuleBgSize
                 )
