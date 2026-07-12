@@ -273,6 +273,9 @@ class VideoPlayer: StandardGSYVideoPlayer {
 
     override fun onPrepared() {
         super.onPrepared()
+        // 确保切换章节后静音状态仍然生效
+        // onPrepared 是播放器完全准备好之后的回调，此时 ExoPlayer 已存在，可直接设置音量
+        setMute(VideoPlay.mutePlay)
         onPrepareDanmaku(this)
     }
     private fun onPrepareDanmaku(gsyVideoPlayer: VideoPlayer) {

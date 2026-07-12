@@ -15,6 +15,7 @@ import com.shuyu.gsyvideoplayer.cache.ICacheManager
 import com.shuyu.gsyvideoplayer.model.GSYModel
 import com.shuyu.gsyvideoplayer.model.VideoOptionModel
 import com.shuyu.gsyvideoplayer.player.BasePlayerManager
+import io.legado.app.model.VideoPlay
 import tv.danmaku.ijk.media.player.IMediaPlayer
 
 
@@ -43,6 +44,8 @@ class ExoPlayerManager : BasePlayerManager() {
     ) {
         mediaPlayer = Exo2MediaPlayer(context)
         mediaPlayer!!.setAudioStreamType(AudioManager.STREAM_MUSIC)
+        // 创建新播放器后立即应用静音状态，确保切换章节后静音仍然生效
+        setNeedMute(VideoPlay.mutePlay)
         if (dummySurface == null) {
             dummySurface = PlaceholderSurface.newInstance(context, false)
         }
