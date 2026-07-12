@@ -890,16 +890,17 @@ private fun RankingTabsModule(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     tabs.forEachIndexed { index, tab ->
+                        val accent = pageAccentColor()
                         Surface(
                             color = if (selectedIndex == index)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surface,
+                                accent.copy(alpha = 0.12f)
+                            else Color.Transparent,
                             contentColor = if (selectedIndex == index)
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurface,
+                                accent
+                            else pageSecondaryTextColor(),
                             shape = RoundedCornerShape(8.dp),
                             border = if (selectedIndex == index) null
-                            else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            else BorderStroke(1.dp, pageSecondaryTextColor().copy(alpha = 0.2f)),
                             onClick = { onTabSelected(index) }
                         ) {
                             Text(
