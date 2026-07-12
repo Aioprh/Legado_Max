@@ -189,15 +189,56 @@ object HighlightRuleStore {
     }
 
     private fun shouldRefreshBuiltin(rule: HighlightRule): Boolean {
-        // 仅在规则数据明显损坏时才刷新内置规则：
+        // 仅对内置规则 ID 执行检查，用户自定义规则不受影响
+        if (rule.id !in builtinIds) return false
+        // 检查条件：
         // 1. name 或 pattern 为空（数据丢失）
         // 2. 文本包含乱码标记（编码问题）
-        // 不再因"无样式"而刷新——用户可能故意清除内置规则的样式或修改了正则
+        // 3. pattern 匹配旧版遗留正则（需升级到当前版本）
+        // 不再因"无样式"而刷新——用户可能故意清除内置规则的样式
         val inspectText = rule.name + rule.pattern + rule.sampleText
         return rule.name.isBlank() ||
                 rule.pattern.isBlank() ||
-                garbledMarkers.any { inspectText.contains(it) }
+                garbledMarkers.any { inspectText.contains(it) } ||
+                legacyBuiltinPatterns[rule.id] == rule.pattern
     }
+
+    /** 内置规则 ID 集合 */
+    private val builtinIds = setOf(
+        "dialog_default",
+        "book_title_default",
+        "bracket_note_default",
+        "title_emphasis_default",
+        "thought_default",
+        "narrator_default",
+        "emphasis_default",
+        "poetry_default",
+        "ellipsis_default",
+        "number_default",
+        "english_default",
+        "date_time_default"
+    )
+
+    /**
+     * 旧版遗留正则表达式映射。
+     *
+     * 当用户 SharedPreferences 中存储的内置规则 pattern 与此映射中的旧版 pattern
+     * 完全匹配时，说明该规则尚未升级到当前版本，需要刷新为最新默认值。
+     */
+    private val legacyBuiltinPatterns = mapOf(
+        "dialog_default" to "[“\"]([^”\"\\n]{1,120})[”\"]|「[^」\\n]{1,120}」|『[^』\\n]{1,120}』",
+        "book_title_default" to "《[^》\\n]{1,80}》",
+        "bracket_note_default" to "（[^）\\n]{1,80}）|\\([^\\)\\n]{1,80}\\)|【[^】\\n]{1,80}】",
+        "title_emphasis_default" to "(?m)^(第[0-9零一二三四五六七八九十百千两0123456789IVXLCDMivxlcdm]{1,12}[章节回卷部篇集幕]|序章|楔子|引子|终章|尾声|后记|番外)[^\\n]{0,40}$",
+        "thought_default" to "（[^）]*?(想道|暗道|心道|心里|想着|思量|思忖|盘算|盘算着)[^）]*?）",
+        "narrator_default" to "（以下\\S{0,20}省略|省略\\S{0,20}内容|[^\\n]{0,20}的情景不再赘述|[^\\n]{0,20}的情况不再多说）",
+        "emphasis_default" to "[*！]{1,2}[^*\\n]{1,50}[*！]{1,2}",
+        "poetry_default" to "[\\n]([七五言绝句律诗词牌曲牌][^\\n]{0,60}[^\\n]{10,50}[^\\n]{0,20}[，。！？])\\n",
+        "ellipsis_default" to "x{2,}|\\*{2,}|\\.{2,}",
+        "number_default" to "[0-9零一二三四五六七八九十百千万亿]+[元块美元英镑]|[0-9]+[%％]",
+        "english_default" to "[a-zA-Z]{2,}[a-zA-Z0-9'-]*",
+        "date_time_default" to "[0-9零一二三四五六七八九十]+年[0-9零一二三四五六七八九十]+月[0-9零一二三四五六七八九十]*日?|[0-9]+点[0-9零一二三四五六七八九十]*分?"
+    )
 
     /** 乱码标记，用于检测旧数据编码问题 */
     private val garbledMarkers = listOf("锛", "銆", "鈥", "瀵", "涔", "鏍", "鐪", "鏈", "绗")
