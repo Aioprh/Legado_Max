@@ -96,7 +96,16 @@ object BackupConfig {
         PreferKey.webServiceWakeLock,
         PreferKey.readAloudWakeLock,
         PreferKey.audioPlayWakeLock,
-        // 高亮规则已通过 highlightRule.json 独立备份恢复，避免 config.xml 覆盖
+    )
+
+    /**
+     * 高亮规则相关的 SharedPreferences Key 列表。
+     *
+     * 新版备份通过 highlightRule.json 独立备份恢复高亮规则，
+     * 默认不让 config.xml 处理这些键以避免覆盖。
+     * 但恢复旧备份（没有 highlightRule.json）时，需要允许 config.xml 恢复这些键。
+     */
+    val highlightRulePrefKeys = arrayOf(
         PreferKey.highlightRuleDialog,
         PreferKey.highlightRuleBookTitle,
         PreferKey.highlightRuleBracketNote,
@@ -164,7 +173,10 @@ object BackupConfig {
      * @param key SharedPreferences配置Key
      * @return true表示应该备份/恢复，false表示应该忽略
      */
-    fun keyIsNotIgnore(key: String): Boolean {
+    fun keyIsNotIgnore(key: String, allowHighlightKeys: Boolean = false): Boolean {
+        // 高亮规则键：默认忽略（由 highlightRule.json 独立处理），
+        // 仅在恢复旧备份（无 highlightRule.json）时允许通过 config.xml 恢复
+        if (!allowHighlightKeys && highlightRulePrefKeys.contains(key)) return false
         if (ignorePrefKeys.contains(key)) return false
 
         return when {

@@ -505,11 +505,13 @@ object Restore {
         // 恢复SharedPreferences配置
         if ("config.xml" in selectedSet) {
             progress("config.xml")
+            // 旧备份没有 highlightRule.json，需要允许 config.xml 恢复高亮规则键
+            val allowHighlightKeys = !File(path, HighlightRuleStore.backupFileName).exists()
             readBackupPrefs(path, "config")?.let { map ->
                 clearThemeRestorePrefs()
                 val edit = appCtx.defaultSharedPreferences.edit()
                 map.forEach { (key, value) ->
-                    if (BackupConfig.keyIsNotIgnore(key) || key in themeRestorePrefKeys) {
+                    if (BackupConfig.keyIsNotIgnore(key, allowHighlightKeys) || key in themeRestorePrefKeys) {
                         when (key) {
                             PreferKey.webDavPassword -> {
                                 kotlin.runCatching { aes.decryptStr(value.toString()) }.getOrNull()?.let {
@@ -531,6 +533,10 @@ object Restore {
                     }
                 }
                 edit.apply()
+            }
+            // 如果从 config.xml 恢复了高亮规则，清除缓存以强制重新加载
+            if (allowHighlightKeys) {
+                HighlightRuleStore.clearCache()
             }
         }
 
@@ -898,12 +904,14 @@ object Restore {
 
         // 恢复SharedPreferences配置（应用主配置）
         progress("config.xml")
+        // 旧备份没有 highlightRule.json，需要允许 config.xml 恢复高亮规则键
+        val allowHighlightKeys = !File(path, HighlightRuleStore.backupFileName).exists()
         readBackupPrefs(path, "config")?.let { map ->
             clearThemeRestorePrefs()
             val edit = appCtx.defaultSharedPreferences.edit()
 
             map.forEach { (key, value) ->
-                if (BackupConfig.keyIsNotIgnore(key) || key in themeRestorePrefKeys) {
+                if (BackupConfig.keyIsNotIgnore(key, allowHighlightKeys) || key in themeRestorePrefKeys) {
                     when (key) {
                         // WebDav密码需要解密
                         PreferKey.webDavPassword -> {
@@ -932,6 +940,10 @@ object Restore {
                 }
             }
             edit.apply()
+        }
+        // 如果从 config.xml 恢复了高亮规则，清除缓存以强制重新加载
+        if (allowHighlightKeys) {
+            HighlightRuleStore.clearCache()
         }
 
         // 修正主题背景图片路径

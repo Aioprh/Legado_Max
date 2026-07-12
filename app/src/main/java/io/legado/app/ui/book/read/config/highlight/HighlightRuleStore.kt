@@ -36,6 +36,15 @@ object HighlightRuleStore {
     @Volatile
     private var cachedRules: List<HighlightRule>? = null
 
+    /**
+     * 清除内存缓存，强制下次 load 从 SharedPreferences 重新读取。
+     *
+     * 用于备份恢复后确保缓存与持久化数据一致。
+     */
+    fun clearCache() {
+        cachedRules = null
+    }
+
     fun defaultPresetRules(context: Context): List<HighlightRule> {
         return createDefaultRules(context)
     }
@@ -180,10 +189,18 @@ object HighlightRuleStore {
     }
 
     private fun shouldRefreshBuiltin(rule: HighlightRule): Boolean {
+        // 仅在规则数据明显损坏时才刷新内置规则：
+        // 1. name 或 pattern 为空（数据丢失）
+        // 2. 文本包含乱码标记（编码问题）
+        // 不再因"无样式"而刷新——用户可能故意清除内置规则的样式或修改了正则
+        val inspectText = rule.name + rule.pattern + rule.sampleText
         return rule.name.isBlank() ||
                 rule.pattern.isBlank() ||
-                (rule.textColor == null && rule.underlineMode == 0 && rule.bgColor == null && rule.bgImage.isNullOrBlank())
+                garbledMarkers.any { inspectText.contains(it) }
     }
+
+    /** 乱码标记，用于检测旧数据编码问题 */
+    private val garbledMarkers = listOf("锛", "銆", "鈥", "瀵", "涔", "鏍", "鐪", "鏈", "绗")
 
     private fun normalizeTargetScope(ruleScope: Int, builtinScope: Int): Int {
         return if (ruleScope in 0..2) ruleScope else builtinScope
