@@ -332,21 +332,24 @@ class VideoPlayer: StandardGSYVideoPlayer {
         }
     }
 
-    override fun loopSetProgressAndTime() {
-        super.loopSetProgressAndTime()
+    override fun setProgressAndTime(
+        progress: Long,
+        secondProgress: Long,
+        currentTime: Long,
+        totalTime: Long,
+        forceChange: Boolean
+    ) {
+        super.setProgressAndTime(progress, secondProgress, currentTime, totalTime, forceChange)
         // 跳过片尾：当剩余时间小于设定秒数时，自动跳到下一集
+        // setProgressAndTime 由进度定时器每秒调用，是检测播放位置的可靠回调
         if (VideoPlay.skipIntroOutroEnabled && VideoPlay.skipOutroSeconds > 0
-            && !skipOutroTriggered
+            && totalTime > 0 && !skipOutroTriggered
         ) {
-            val currentTime = getCurrentPositionWhenPlaying()
-            val totalTime = getDuration()
-            if (totalTime > 0) {
-                val remainingMs = totalTime - currentTime
-                val skipMs = VideoPlay.skipOutroSeconds * 1000L
-                if (remainingMs <= skipMs) {
-                    skipOutroTriggered = true
-                    onAutoCompletion()
-                }
+            val remainingMs = totalTime - currentTime
+            val skipMs = VideoPlay.skipOutroSeconds * 1000L
+            if (remainingMs <= skipMs) {
+                skipOutroTriggered = true
+                onAutoCompletion()
             }
         }
     }
