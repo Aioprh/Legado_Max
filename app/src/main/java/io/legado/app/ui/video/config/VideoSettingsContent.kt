@@ -98,6 +98,7 @@ fun VideoSettingsContent(
             onCheckedChange = { checked ->
                 mutePlay = checked
                 VideoPlay.mutePlay = checked
+                postEvent(EventBus.VIDEO_CONFIG_CHANGED, true)
             }
         )
 
