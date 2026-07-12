@@ -141,6 +141,24 @@ object VideoPlay : CoroutineScope by MainScope(){
         set(value) {
             videoPrefs.edit { putBoolean("rightSlideVolumeEnabled", value) }
         }
+    /**  跳过片头片尾开关  **/
+    var skipIntroOutroEnabled
+        get() = videoPrefs.getBoolean("skipIntroOutroEnabled", false)
+        set(value) {
+            videoPrefs.edit { putBoolean("skipIntroOutroEnabled", value) }
+        }
+    /**  跳过片头秒数  **/
+    var skipIntroSeconds
+        get() = videoPrefs.getInt("skipIntroSeconds", 30)
+        set(value) {
+            videoPrefs.edit { putInt("skipIntroSeconds", value) }
+        }
+    /**  跳过片尾秒数  **/
+    var skipOutroSeconds
+        get() = videoPrefs.getInt("skipOutroSeconds", 30)
+        set(value) {
+            videoPrefs.edit { putInt("skipOutroSeconds", value) }
+        }
     /**  弹幕滚动速度  **/
     var danmakuSpeed = 1.2f
     /**  锁屏  **/

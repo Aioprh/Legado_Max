@@ -2092,4 +2092,10 @@
     <string name="module_type_waterfall">错位瀑布流</string>
     <string name="module_type_infinite_grid">无限网格</string>
     <string name="module_type_button_group">按钮组</string>
+
+    <!-- 视频播放器跳过片头片尾 -->
+    <string name="skip_intro_outro_enabled">跳过片头片尾</string>
+    <string name="skip_intro_seconds">跳过片头秒数</string>
+    <string name="skip_outro_seconds">跳过片尾秒数</string>
+    <string name="skip_seconds_summary">秒数：%d秒</string>
 </resources>

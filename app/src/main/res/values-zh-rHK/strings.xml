@@ -1573,4 +1573,10 @@
     <string name="homepage_edit">編輯</string>
     <string name="homepage_help">幫助</string>
     <string name="homepage_rename">重命名</string>
+
+    <!-- 視頻播放器跳過片頭片尾 -->
+    <string name="skip_intro_outro_enabled">跳過片頭片尾</string>
+    <string name="skip_intro_seconds">跳過片頭秒數</string>
+    <string name="skip_outro_seconds">跳過片尾秒數</string>
+    <string name="skip_seconds_summary">秒數：%d秒</string>
 </resources>

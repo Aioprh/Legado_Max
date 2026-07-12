@@ -44,6 +44,10 @@ fun VideoSettingsContent(
     var leftSlideBrightnessEnabled by remember { mutableStateOf(VideoPlay.leftSlideBrightnessEnabled) }
     var rightSlideVolumeEnabled by remember { mutableStateOf(VideoPlay.rightSlideVolumeEnabled) }
 
+    var skipIntroOutroEnabled by remember { mutableStateOf(VideoPlay.skipIntroOutroEnabled) }
+    var skipIntroSeconds by remember { mutableIntStateOf(VideoPlay.skipIntroSeconds) }
+    var skipOutroSeconds by remember { mutableIntStateOf(VideoPlay.skipOutroSeconds) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -227,6 +231,61 @@ fun VideoSettingsContent(
                                 quickJumpMinutesA = kotlin.math.abs(value)
                             }
                             postEvent(EventBus.VIDEO_CONFIG_CHANGED, true)
+                        }
+                }
+            )
+        }
+
+        // 跳过片头片尾
+        SettingSwitchItem(
+            title = stringResource(R.string.skip_intro_outro_enabled),
+            checked = skipIntroOutroEnabled,
+            onCheckedChange = { checked ->
+                skipIntroOutroEnabled = checked
+                VideoPlay.skipIntroOutroEnabled = checked
+                postEvent(EventBus.VIDEO_CONFIG_CHANGED, true)
+            }
+        )
+
+        // 跳过片头秒数（仅在跳过片头片尾开启时显示）
+        if (skipIntroOutroEnabled) {
+            SettingClickItem(
+                title = stringResource(R.string.skip_intro_seconds),
+                summary = stringResource(R.string.skip_seconds_summary, skipIntroSeconds),
+                onClick = {
+                    NumberPickerDialog(context)
+                        .setTitle(context.getString(R.string.skip_intro_seconds))
+                        .setMaxValue(300)
+                        .setMinValue(5)
+                        .setValue(skipIntroSeconds)
+                        .setCustomButton(R.string.btn_default_s) {
+                            VideoPlay.skipIntroSeconds = 30
+                            skipIntroSeconds = 30
+                        }
+                        .show { value ->
+                            VideoPlay.skipIntroSeconds = value
+                            skipIntroSeconds = value
+                        }
+                }
+            )
+
+            // 跳过片尾秒数
+            SettingClickItem(
+                title = stringResource(R.string.skip_outro_seconds),
+                summary = stringResource(R.string.skip_seconds_summary, skipOutroSeconds),
+                onClick = {
+                    NumberPickerDialog(context)
+                        .setTitle(context.getString(R.string.skip_outro_seconds))
+                        .setMaxValue(300)
+                        .setMinValue(5)
+                        .setValue(skipOutroSeconds)
+                        .setCustomButton(R.string.btn_default_s) {
+                            VideoPlay.skipOutroSeconds = 30
+                            skipOutroSeconds = 30
+                        }
+                        .show { value ->
+                            VideoPlay.skipOutroSeconds = value
+                            skipOutroSeconds = value
                         }
                 }
             )

@@ -1698,4 +1698,10 @@
     <string name="module_type_waterfall">瀑布流</string>
     <string name="module_type_infinite_grid">無限網格</string>
     <string name="module_type_button_group">按鈕組</string>
+
+    <!-- 視頻播放器跳過片頭片尾 -->
+    <string name="skip_intro_outro_enabled">跳過片頭片尾</string>
+    <string name="skip_intro_seconds">跳過片頭秒數</string>
+    <string name="skip_outro_seconds">跳過片尾秒數</string>
+    <string name="skip_seconds_summary">秒數：%d秒</string>
 </resources>

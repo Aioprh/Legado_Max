@@ -2108,4 +2108,10 @@
     <string name="module_type_waterfall">Waterfall</string>
     <string name="module_type_infinite_grid">Infinite Grid</string>
     <string name="module_type_button_group">Button Group</string>
+
+    <!-- 视频播放器跳过片头片尾 -->
+    <string name="skip_intro_outro_enabled">Skip intro/outro</string>
+    <string name="skip_intro_seconds">Skip intro seconds</string>
+    <string name="skip_outro_seconds">Skip outro seconds</string>
+    <string name="skip_seconds_summary">Seconds: %d seconds</string>
 </resources>
