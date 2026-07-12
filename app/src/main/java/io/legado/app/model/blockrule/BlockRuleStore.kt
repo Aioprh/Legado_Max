@@ -5,6 +5,7 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.utils.GSON
+import io.legado.app.utils.RegexCache
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString

@@ -4,6 +4,7 @@ import android.content.Context
 import io.legado.app.constant.PreferKey
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
+import io.legado.app.utils.RegexCache
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.putPrefBoolean
@@ -39,10 +40,12 @@ object HighlightRuleStore {
     /**
      * 清除内存缓存，强制下次 load 从 SharedPreferences 重新读取。
      *
+     * 同时清除正则表达式缓存，避免旧规则残留。
      * 用于备份恢复后确保缓存与持久化数据一致。
      */
     fun clearCache() {
         cachedRules = null
+        RegexCache.clear()
     }
 
     fun defaultPresetRules(context: Context): List<HighlightRule> {
@@ -77,6 +80,8 @@ object HighlightRuleStore {
         val json = GSON.toJson(rules)
         context.putPrefString(PreferKey.highlightRuleItems, json)
         cachedRules = rules
+        // 规则变更后清除正则缓存，避免旧 pattern 残留
+        RegexCache.clear()
         HighlightRuleGroupStore.ensureFromRules(context, rules)
     }
 

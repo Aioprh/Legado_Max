@@ -1,5 +1,7 @@
 package io.legado.app.ui.book.read.config.highlight
 
+import io.legado.app.utils.RegexCache
+
 //数据模型
 data class HighlightRule(
     var id: String = System.currentTimeMillis().toString(),
@@ -82,12 +84,13 @@ data class HighlightRule(
         return pattern.ifBlank { ".*" }
     }
 
-    // 转换为正则表达式
+    // 转换为正则表达式（使用全局缓存，避免重复编译）
     fun toRegex(): Regex {
         return if (isRegex) {
-            Regex(pattern)
+            RegexCache.getOrCompile(pattern)
         } else {
-            Regex(Regex.escape(pattern))
+            // 非正则模式：转义后作为字面量匹配，缓存键加前缀避免与正则模式冲突
+            RegexCache.getOrCompile("LITERAL:" + pattern) { Regex(Regex.escape(pattern)) }
         }
     }
 

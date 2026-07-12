@@ -2,34 +2,8 @@ package io.legado.app.model.blockrule
 
 import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.SearchBook
+import io.legado.app.utils.RegexCache
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
-
-/**
- * 正则表达式缓存管理
- *
- * 避免每次匹配都重新编译正则表达式，大幅减少内存和CPU消耗。
- * 使用 ConcurrentHashMap 保证线程安全。
- */
-object RegexCache {
-    private val cache = ConcurrentHashMap<String, Regex>()
-
-    /**
-     * 获取或编译正则表达式
-     * 缓存命中直接返回，未命中则编译并缓存
-     */
-    fun getOrCompile(pattern: String): Regex {
-        return cache.getOrPut(pattern) { Regex(pattern) }
-    }
-
-    /**
-     * 清除缓存
-     * 在屏蔽规则变更时调用，避免旧规则残留
-     */
-    fun clear() {
-        cache.clear()
-    }
-}
 
 /**
  * 屏蔽规则数据模型
