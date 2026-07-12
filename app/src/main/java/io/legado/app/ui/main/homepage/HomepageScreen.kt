@@ -1,6 +1,9 @@
 package io.legado.app.ui.main.homepage
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -28,6 +31,7 @@ import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewModule
@@ -51,6 +55,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -87,6 +92,7 @@ import io.legado.app.ui.rss.read.ReadRssActivity
 import io.legado.app.ui.main.homepage.modules.RankingModule
 import io.legado.app.ui.main.homepage.modules.WaterfallItem
 import io.legado.app.ui.theme.pageAccentColor
+import io.legado.app.ui.theme.pageCardElevatedContainerColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.widget.components.BookBottomSheet
 import io.legado.app.ui.widget.components.card.GlassCard
@@ -315,36 +321,47 @@ fun HomepageScreen(
             }
             // 使用 rememberLazyListState 保存滚动位置，避免 Fragment 重建时丢失
             val listState = rememberLazyListState()
-            PullToRefreshBox(
-                isRefreshing = uiState.isRefreshing,
-                onRefresh = { viewModel.onRefresh() },
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = { viewModel.onRefresh() },
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    items(sortedModules, key = { it.globalId }) { module ->
-                        HomepageModuleItem(
-                            module = module,
-                            viewModel = viewModel,
-                            onBookClick = { book ->
-                                viewModel.onBookClick(book)
-                            },
-                            onBookLongClick = { book ->
-                                selectedBook = book
-                                selectedBookShelfState = viewModel.getCurrentBookShelfState(book)
-                                showBookSheet = true
-                            },
-                            onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
-                                viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
-                            }
-                        )
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(sortedModules, key = { it.globalId }) { module ->
+                            HomepageModuleItem(
+                                module = module,
+                                viewModel = viewModel,
+                                onBookClick = { book ->
+                                    viewModel.onBookClick(book)
+                                },
+                                onBookLongClick = { book ->
+                                    selectedBook = book
+                                    selectedBookShelfState = viewModel.getCurrentBookShelfState(book)
+                                    showBookSheet = true
+                                },
+                                onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
+                                    viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
+                                }
+                            )
+                        }
                     }
                 }
+                // 悬浮回到顶部按钮
+                ScrollToTopFab(
+                    listState = listState,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 16.dp)
+                )
             }
         }
     }
@@ -455,7 +472,9 @@ private fun SourceTabLayout(
     val safeTabIndex = if (selectedSets.isEmpty()) 0 else selectedTabIndex.coerceIn(0, selectedSets.lastIndex)
 
     val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
-    Column(
+    // 跟踪当前页面的滚动状态，用于悬浮回到顶部按钮
+    val currentPageListState = remember { mutableStateOf<LazyListState?>(null) }
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(
@@ -465,6 +484,7 @@ private fun SourceTabLayout(
                 end = paddingValues.calculateRightPadding(layoutDirection),
             )
     ) {
+        Column(modifier = Modifier.fillMaxSize()) {
         if (selectedSets.isEmpty()) return@Column
         // 可滚动的 Tab 栏
         ScrollableTabRow(
@@ -530,6 +550,12 @@ private fun SourceTabLayout(
             val listState = rememberSaveable(saver = LazyListState.Saver) {
                 LazyListState()
             }
+            // 更新当前页面的滚动状态引用，用于悬浮回到顶部按钮
+            LaunchedEffect(pagerState.settledPage) {
+                if (pagerState.settledPage == pageIndex) {
+                    currentPageListState.value = listState
+                }
+            }
             // 直接从 ViewModel 观察刷新状态，确保每页独立接收状态变更
             // 绕过 HorizontalPager 页面缓存导致的状态传播延迟
             val pageIsRefreshing by viewModel.uiState.map { it.isRefreshing }.collectAsStateWithLifecycle(false)
@@ -558,6 +584,16 @@ private fun SourceTabLayout(
                     }
                 }
             }
+        }
+        }
+        // 悬浮回到顶部按钮
+        currentPageListState.value?.let { state ->
+            ScrollToTopFab(
+                listState = state,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 16.dp)
+            )
         }
     }
 }
@@ -941,6 +977,54 @@ private fun RankingTabsModule(
                 }
             }
             } // key(selectedIndex)
+        }
+    }
+}
+
+/**
+ * 悬浮回到顶部按钮
+ *
+ * 当列表向下滚动超过一定距离时显示，点击后平滑滚动到列表顶部。
+ * 背景和图标颜色均通过项目主题系统自适应。
+ *
+ * @param listState 关联的 LazyListState
+ * @param modifier 额外的修饰符
+ */
+@Composable
+private fun ScrollToTopFab(
+    listState: LazyListState,
+    modifier: Modifier = Modifier,
+) {
+    val scope = rememberCoroutineScope()
+    val visible by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 200
+        }
+    }
+    AnimatedVisibility(
+        visible = visible,
+        enter = scaleIn(),
+        exit = scaleOut(),
+        modifier = modifier
+    ) {
+        Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = pageCardElevatedContainerColor(),
+            contentColor = pageAccentColor(),
+            shadowElevation = 4.dp,
+            onClick = {
+                scope.launch {
+                    listState.animateScrollToItem(0)
+                }
+            },
+            modifier = Modifier.size(44.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowUp,
+                contentDescription = null,
+                tint = pageAccentColor(),
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }
