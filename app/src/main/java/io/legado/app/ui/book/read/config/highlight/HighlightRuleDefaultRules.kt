@@ -94,7 +94,7 @@ object HighlightRuleDefaultRules {
                 id = "poetry_default",
                 name = "诗词引用",
                 pattern = "(?m)^[\\p{IsHan}，。！？；：、]{5,24}$",
-                sampleText = "床前明月光，\\n疑是地上霜。",
+                sampleText = "床前明月光，\n疑是地上霜。",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
                 textColor = 0xFF2F4F4F.toInt(),

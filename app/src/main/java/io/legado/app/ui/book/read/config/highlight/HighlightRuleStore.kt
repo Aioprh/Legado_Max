@@ -195,12 +195,14 @@ object HighlightRuleStore {
         // 1. name 或 pattern 为空（数据丢失）
         // 2. 文本包含乱码标记（编码问题）
         // 3. pattern 匹配旧版遗留正则（需升级到当前版本）
+        // 4. sampleText 匹配旧版遗留样本文本（需升级到当前版本）
         // 不再因"无样式"而刷新——用户可能故意清除内置规则的样式
         val inspectText = rule.name + rule.pattern + rule.sampleText
         return rule.name.isBlank() ||
                 rule.pattern.isBlank() ||
                 garbledMarkers.any { inspectText.contains(it) } ||
-                legacyBuiltinPatterns[rule.id] == rule.pattern
+                legacyBuiltinPatterns[rule.id] == rule.pattern ||
+                legacyBuiltinSampleTexts[rule.id] == rule.sampleText
     }
 
     /** 内置规则 ID 集合 */
@@ -242,6 +244,17 @@ object HighlightRuleStore {
 
     /** 乱码标记，用于检测旧数据编码问题 */
     private val garbledMarkers = listOf("锛", "銆", "鈥", "瀵", "涔", "鏍", "鐪", "鏈", "绗")
+
+    /**
+     * 旧版遗留样本文本映射。
+     *
+     * 当用户 SharedPreferences 中存储的内置规则 sampleText 与此映射中的旧版值
+     * 完全匹配时，说明该规则尚未升级到当前版本，需要刷新为最新默认值。
+     * 主要用于修复重构时 \\n 被错误地当作字面字符而非换行符的问题。
+     */
+    private val legacyBuiltinSampleTexts = mapOf(
+        "poetry_default" to "床前明月光，\\n疑是地上霜。"
+    )
 
     private fun normalizeTargetScope(ruleScope: Int, builtinScope: Int): Int {
         return if (ruleScope in 0..2) ruleScope else builtinScope
