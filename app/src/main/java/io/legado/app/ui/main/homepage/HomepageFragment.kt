@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.data.appDb
 import io.legado.app.ui.book.info.BookInfoActivity
@@ -28,6 +29,13 @@ import io.legado.app.ui.theme.LegadoThemeWithBackground
  * 处理书籍点击（跳转 BookInfoActivity）和模块标题点击（跳转 ExploreShowActivity）的导航逻辑。
  */
 class HomepageFragment() : Fragment(), MainFragmentInterface {
+
+    /**
+     * 使用 activityViewModels 将 ViewModel 作用域绑定到 Activity，
+     * 避免 FragmentStatePagerAdapter 销毁 Fragment 时 ViewModel 被一同清除，
+     * 导致切回首页时所有模块数据重新加载。
+     */
+    private val viewModel: HomepageViewModel by activityViewModels()
 
     constructor(position: Int) : this() {
         val bundle = Bundle()
@@ -50,6 +58,7 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
                     backgroundDrawable = backgroundDrawable
                 ) {
                     HomepageScreen(
+                        viewModel = viewModel,
                         onBookClick = { name, author, bookUrl, origin, coverPath ->
                             // RSS 订阅源文章 → 直接加载文章 URL（openUrl 路径，不依赖 DB 预存）
                             if (origin != null && appDb.rssSourceDao.has(origin)) {
