@@ -1816,9 +1816,8 @@
     <string name="preset_rules">Preset Rules</string>
     <string name="import_rules">Import Rules</string>
     <string name="share_rules">Share Rules</string>
-    <string name="export_rules">Export Rules</string>
-    <string name="import_export_rules">Import / Export Rules</string>
-    <string name="import_from_clipboard">Import from Clipboard</string>
+<string name="export_rules">Export Rules</string>
+<string name="import_from_clipboard">Import from Clipboard</string>
     <string name="import_from_file">Import from File</string>
     <string name="export_to_file">Export to File</string>
 

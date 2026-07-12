@@ -33,21 +33,16 @@
         app:showAsAction="never" />
 
     <item
-        android:id="@+id/menu_import_export"
+        android:id="@+id/menu_import"
         android:icon="@drawable/ic_import"
-        android:title="@string/import_export_rules"
-        app:showAsAction="never">
-        <menu>
-            <item
-                android:id="@+id/menu_import"
-                android:icon="@drawable/ic_import"
-                android:title="@string/import_rules" />
-            <item
-                android:id="@+id/menu_export"
-                android:icon="@drawable/ic_export"
-                android:title="@string/export_rules" />
-        </menu>
-    </item>
+        android:title="@string/import_rules"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/menu_export"
+        android:icon="@drawable/ic_export"
+        android:title="@string/export_rules"
+        app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_reset"
