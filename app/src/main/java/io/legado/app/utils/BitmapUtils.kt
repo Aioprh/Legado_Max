@@ -28,15 +28,17 @@ object BitmapUtils {
      */
     @Throws(IOException::class)
     fun decodeBitmap(path: String, width: Int, height: Int? = null): Bitmap? {
-        val fis = FileInputStream(path)
-        return fis.use {
-            val op = BitmapFactory.Options()
-            // inJustDecodeBounds如果设置为true,仅仅返回图片实际的宽和高,宽和高是赋值给opts.outWidth,opts.outHeight;
-            op.inJustDecodeBounds = true
-            BitmapFactory.decodeFileDescriptor(fis.fd, null, op)
-            op.inSampleSize = calculateInSampleSize(op, width, height)
-            op.inJustDecodeBounds = false
-            BitmapFactory.decodeFileDescriptor(fis.fd, null, op)
+        // 使用 decodeStream + 独立 FileInputStream，避免 decodeFileDescriptor 两次调用
+        // 同一文件描述符时位置错乱导致第二次解码返回 null 的问题
+        val op = BitmapFactory.Options()
+        op.inJustDecodeBounds = true
+        FileInputStream(path).use { fis ->
+            BitmapFactory.decodeStream(fis, null, op)
+        }
+        op.inSampleSize = calculateInSampleSize(op, width, height)
+        op.inJustDecodeBounds = false
+        return FileInputStream(path).use { fis ->
+            BitmapFactory.decodeStream(fis, null, op)
         }
     }
 
@@ -63,9 +65,12 @@ object BitmapUtils {
         width: Int? = null,
         height: Int? = null
     ): Int {
+        // 过滤 0 或负数，避免除零异常（Activity 后台重建时 windowSize 可能为 0）
+        val safeWidth = width?.takeIf { it > 0 }
+        val safeHeight = height?.takeIf { it > 0 }
         //获取比例大小
-        val wRatio = width?.let { options.outWidth / it } ?: -1
-        val hRatio = height?.let { options.outHeight / it } ?: -1
+        val wRatio = safeWidth?.let { options.outWidth / it } ?: -1
+        val hRatio = safeHeight?.let { options.outHeight / it } ?: -1
         //如果超出指定大小，则缩小相应的比例
         return when {
             wRatio > 1 && hRatio > 1 -> max(wRatio, hRatio)
@@ -81,15 +86,17 @@ object BitmapUtils {
      */
     @Throws(IOException::class)
     fun decodeBitmap(path: String): Bitmap? {
-        val fis = FileInputStream(path)
-        return fis.use {
-            val opts = BitmapFactory.Options()
-            opts.inJustDecodeBounds = true
-
-            BitmapFactory.decodeFileDescriptor(fis.fd, null, opts)
-            opts.inSampleSize = computeSampleSize(opts, -1, 128 * 128)
-            opts.inJustDecodeBounds = false
-            BitmapFactory.decodeFileDescriptor(fis.fd, null, opts)
+        // 使用 decodeStream + 独立 FileInputStream，避免 decodeFileDescriptor 两次调用
+        // 同一文件描述符时位置错乱导致第二次解码返回 null 的问题
+        val opts = BitmapFactory.Options()
+        opts.inJustDecodeBounds = true
+        FileInputStream(path).use { fis ->
+            BitmapFactory.decodeStream(fis, null, opts)
+        }
+        opts.inSampleSize = computeSampleSize(opts, -1, 128 * 128)
+        opts.inJustDecodeBounds = false
+        return FileInputStream(path).use { fis ->
+            BitmapFactory.decodeStream(fis, null, opts)
         }
     }
 

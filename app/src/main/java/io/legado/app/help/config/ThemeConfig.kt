@@ -138,8 +138,11 @@ object ThemeConfig {
             Theme.Dark -> context.getPrefInt(PreferKey.bgImageNBlurring, 0)
             else -> 0
         }
+        // 当 Activity 在后台重建时 windowSize 可能为 0，使用屏幕真实尺寸作为兜底
+        val safeWidth = if (metrics.widthPixels > 0) metrics.widthPixels else context.resources.displayMetrics.widthPixels
+        val safeHeight = if (metrics.heightPixels > 0) metrics.heightPixels else context.resources.displayMetrics.heightPixels
         val bgImage = BitmapUtils
-            .decodeBitmap(path, metrics.widthPixels, metrics.heightPixels)
+            .decodeBitmap(path, safeWidth, safeHeight)
         if (bgImgBlu == 0) {
             return bgImage?.toDrawable(context.resources)
         }
