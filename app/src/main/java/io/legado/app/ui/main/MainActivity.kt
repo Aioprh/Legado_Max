@@ -374,12 +374,24 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // 用户从设置页返回时，RECREATE 事件可能未送达后台的 Activity，
+        // 或 recreate() 可能被 upSort() 异常阻断。
+        // 在 onResume 中直接刷新背景图片，确保主题背景变更立即生效。
+        upBackgroundImage()
+    }
+
     /**
      * 如果重启太快fragment不会重建,这里更新一下书架的排序
      */
     override fun recreate() {
-        (fragmentMap[getFragmentId(bookshelfPosition())] as? BaseBookshelfFragment)?.run {
-            upSort()
+        try {
+            (fragmentMap[getFragmentId(bookshelfPosition())] as? BaseBookshelfFragment)?.run {
+                upSort()
+            }
+        } catch (e: Exception) {
+            // 忽略 upSort 异常，确保 super.recreate() 始终被调用
         }
         super.recreate()
     }
@@ -400,6 +412,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             onUpBooksBadgeView!!.setBadgeCount(it)
         }
         observeEvent<String>(EventBus.RECREATE) {
+            // 先直接刷新背景（即使 recreate 失败或被跳过也能生效）
+            upBackgroundImage()
             recreate()
         }
         observeEvent<Boolean>(EventBus.NOTIFY_MAIN) {
