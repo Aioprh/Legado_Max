@@ -68,15 +68,22 @@ class CoverGalleryRepository {
     }
 
     suspend fun addImage(context: Context, groupId: Long, uri: Uri) {
-        val path = copyImageToCovers(context, uri)
-        val order = (dao.getMaxImageOrder(groupId) ?: -1) + 1
-        dao.insertImage(
-            CoverGalleryImage(
-                groupId = groupId,
-                path = path,
-                order = order
+        addImages(context, groupId, listOf(uri))
+    }
+
+    suspend fun addImages(context: Context, groupId: Long, uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        var order = (dao.getMaxImageOrder(groupId) ?: -1) + 1
+        uris.forEach { uri ->
+            val path = copyImageToCovers(context, uri)
+            dao.insertImage(
+                CoverGalleryImage(
+                    groupId = groupId,
+                    path = path,
+                    order = order++
+                )
             )
-        )
+        }
         refreshDefaultCover()
     }
 

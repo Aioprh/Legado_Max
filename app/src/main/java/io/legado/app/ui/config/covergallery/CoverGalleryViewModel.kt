@@ -60,6 +60,13 @@ class CoverGalleryViewModel : ViewModel() {
         }
     }
 
+    fun addImages(context: Context, groupId: Long, uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        viewModelScope.launch {
+            repository.addImages(context.applicationContext, groupId, uris)
+        }
+    }
+
     fun exportGroupZip(
         context: Context,
         groupWithImages: CoverGalleryGroupWithImages,

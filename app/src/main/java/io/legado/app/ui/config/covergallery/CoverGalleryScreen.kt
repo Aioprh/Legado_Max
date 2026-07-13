@@ -1,6 +1,7 @@
 package io.legado.app.ui.config.covergallery
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
@@ -113,14 +114,14 @@ fun CoverGalleryScreen(
     var pendingExportZipName by remember { mutableStateOf("") }
     var pendingImageGroupId by remember { mutableLongStateOf(0L) }
 
-    val selectImage = rememberLauncherForActivityResult(HandleFileContract()) {
+    val selectImages = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
         val groupId = pendingImageGroupId
-        if (groupId != 0L) {
-            it.uri?.let { uri ->
-                viewModel.addImage(context, groupId, uri)
-            }
-            pendingImageGroupId = 0L
+        if (groupId != 0L && uris.isNotEmpty()) {
+            viewModel.addImages(context, groupId, uris)
         }
+        pendingImageGroupId = 0L
     }
     val selectImportZip = rememberLauncherForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
@@ -335,10 +336,7 @@ fun CoverGalleryScreen(
                             groupWithImages = groupWithImages,
                             onAddImage = {
                                 pendingImageGroupId = groupWithImages.group.id
-                                selectImage.launch {
-                                    requestCode = 3001
-                                    mode = HandleFileContract.IMAGE
-                                }
+                                selectImages.launch(arrayOf("image/*"))
                             },
                             onSetDefault = { viewModel.setDefaultGroup(groupWithImages.group.id) },
                             onUnsetDefault = { viewModel.unsetDefaultGroup(groupWithImages.group.id) },
