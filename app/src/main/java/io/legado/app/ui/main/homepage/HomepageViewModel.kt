@@ -229,15 +229,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     ) { modules, bookshelf ->
         if (bookshelf.isEmpty()) {
             modules.map { module ->
-                val state = module.state
-                if (state is ModuleLoadState.Loaded) {
-                    module.copy(state = state.copy(
-                        books = state.books.map { item ->
-                            if (item.shelfState == BookShelfState.NOT_IN_SHELF) item
-                            else item.copy(shelfState = BookShelfState.NOT_IN_SHELF)
-                        }
-                    ))
-                } else module
+                updateModuleShelfState(module) { _ -> BookShelfState.NOT_IN_SHELF }
             }
         } else {
             val exactKeys = HashSet<Triple<String, String, String?>>(bookshelf.size)
@@ -247,23 +239,55 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 nameAuthorKeys.add(key.name to key.author)
             }
             modules.map { module ->
-                val state = module.state
-                if (state is ModuleLoadState.Loaded) {
-                    module.copy(state = state.copy(
-                        books = state.books.map { item ->
-                            val bookTriple = Triple(item.book.name, item.book.author, item.book.bookUrl)
-                            val newShelfState = when {
-                                bookTriple in exactKeys -> BookShelfState.IN_SHELF
-                                (item.book.name to item.book.author) in nameAuthorKeys ->
-                                    BookShelfState.SAME_NAME_AUTHOR
-                                else -> BookShelfState.NOT_IN_SHELF
-                            }
+                updateModuleShelfState(module) { item ->
+                    val bookTriple = Triple(item.book.name, item.book.author, item.book.bookUrl)
+                    when {
+                        bookTriple in exactKeys -> BookShelfState.IN_SHELF
+                        (item.book.name to item.book.author) in nameAuthorKeys ->
+                            BookShelfState.SAME_NAME_AUTHOR
+                        else -> BookShelfState.NOT_IN_SHELF
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 更新模块中书籍的书架状态
+     *
+     * 统一处理 Loaded 和 RankingTabs 两种状态，确保书架状态变化时所有书籍都能正确更新。
+     *
+     * @param module 首页模块 UI 数据
+     * @param resolveState 根据书籍信息计算新的书架状态
+     */
+    private fun updateModuleShelfState(
+        module: HomepageModuleUi,
+        resolveState: (HomepageBookItemUi) -> BookShelfState
+    ): HomepageModuleUi {
+        val state = module.state
+        return when (state) {
+            is ModuleLoadState.Loaded -> {
+                module.copy(state = state.copy(
+                    books = state.books.map { item ->
+                        val newShelfState = resolveState(item)
+                        if (item.shelfState == newShelfState) item
+                        else item.copy(shelfState = newShelfState)
+                    }
+                ))
+            }
+            is ModuleLoadState.RankingTabs -> {
+                module.copy(state = state.copy(
+                    tabs = state.tabs.map { tab ->
+                        val books = tab.books ?: return@map tab
+                        tab.copy(books = books.map { item ->
+                            val newShelfState = resolveState(item)
                             if (item.shelfState == newShelfState) item
                             else item.copy(shelfState = newShelfState)
-                        }
-                    ))
-                } else module
+                        })
+                    }
+                ))
             }
+            else -> module
         }
     }
 
