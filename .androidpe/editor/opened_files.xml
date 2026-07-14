@@ -2,4 +2,7 @@
     <file path="/CLAUDE.md"/>
     <file path="/app/src/main/java/io/legado/app/ui/book/read/config/highlight/HighlightRuleDefaultRules.kt"/>
     <file path="/app/src/main/java/io/legado/app/help/http/OkHttpExceptionInterceptor.kt"/>
+    <file path="/app/src/main/java/io/legado/app/data/entities/Book.kt"/>
+    <file path="/app/src/main/java/io/legado/app/data/Room.md"/>
+<file path="/app/src/main/assets/web/help/md/updateLog.md"/>
 </aml>
