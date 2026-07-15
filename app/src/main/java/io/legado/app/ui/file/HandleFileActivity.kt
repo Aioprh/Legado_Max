@@ -437,6 +437,9 @@ class HandleFileActivity :
      *
      * [HandleFileContract.parseResult] 会从 ClipData 中提取 URI 列表
      * 并填充到 [HandleFileContract.Result.uris] 字段。
+     *
+     * 必须添加 [Intent.FLAG_GRANT_READ_URI_PERMISSION]，否则接收方（如 CoverGalleryActivity）
+     * 无权读取 Photo Picker / SAF 返回的 URI，会抛出 SecurityException。
      */
     private fun onMultiResult(uris: List<Uri>) {
         if (uris.isEmpty()) {
@@ -447,6 +450,8 @@ class HandleFileActivity :
         val clipData = ClipData.newUri(contentResolver, "images", uris.first())
         uris.drop(1).forEach { clipData.addItem(ClipData.Item(it)) }
         intent.clipData = clipData
+        // 将 URI 的临时读权限转移给接收方，避免 SecurityException
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         intent.putExtra("value", this.intent.getStringExtra("value"))
         setResult(RESULT_OK, intent)
         finish()
