@@ -551,10 +551,9 @@ private fun SourceTabLayout(
                 LazyListState()
             }
             // 更新当前页面的滚动状态引用，用于悬浮回到顶部按钮
-            LaunchedEffect(pagerState.settledPage) {
-                if (pagerState.settledPage == pageIndex) {
-                    currentPageListState.value = listState
-                }
+            // 直接在组合期间赋值，确保页面重组时引用始终同步
+            if (pagerState.settledPage == pageIndex) {
+                currentPageListState.value = listState
             }
             // 直接从 ViewModel 观察刷新状态，确保每页独立接收状态变更
             // 绕过 HorizontalPager 页面缓存导致的状态传播延迟
@@ -997,7 +996,7 @@ private fun ScrollToTopFab(
     modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
-    val visible by remember {
+    val visible by remember(listState) {
         derivedStateOf {
             listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 200
         }
