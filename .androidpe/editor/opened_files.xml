@@ -8,4 +8,5 @@
     <file path="/app/src/main/assets/web/help/md/ruleHelp.md"/>
     <file path="/app/src/main/java/io/legado/app/help/HelpDocManager.kt"/>
 <file path="/app/src/main/assets/web/help/md/appHelp.md"/>
+    <file path="/app/src/main/assets/web/help/md/regexHelp.md"/>
 </aml>
