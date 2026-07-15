@@ -17,6 +17,9 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/7/15**
+- docs(正则)：优化和增加正则文档
+
 **2026/7/13**
 - fix(高亮正则)：旁白说明内置正则优化
 - fix(SSL验证)：SSL验证提醒toast去除
