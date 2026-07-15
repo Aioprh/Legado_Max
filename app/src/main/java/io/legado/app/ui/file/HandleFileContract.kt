@@ -1,6 +1,7 @@
 package io.legado.app.ui.file
 
 import android.app.Activity.RESULT_OK
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -53,11 +54,27 @@ class HandleFileContract :
         } else {
             intent.data
         }
+        val uris = if (resultCode == RESULT_OK && intent?.clipData != null) {
+            val clipData = intent.clipData!!
+            (0 until clipData.itemCount).mapNotNull { i ->
+                val itemUri = clipData.getItemAt(i).uri
+                if (RealPathUtil.getTreePath(itemUri)
+                        ?.startsWith(appCtx.externalFiles.parent!!) == true
+                ) {
+                    null
+                } else {
+                    itemUri
+                }
+            }
+        } else {
+            emptyList()
+        }
         return Result(
             uri,
             requestCode,
             intent?.getStringExtra("value"),
-            intent?.getStringExtra("clipboard_json")
+            intent?.getStringExtra("clipboard_json"),
+            uris
         )
     }
 
@@ -85,7 +102,8 @@ class HandleFileContract :
         val uri: Uri?,
         val requestCode: Int,
         val value: String?,
-        val clipboardJson: String? = null
+        val clipboardJson: String? = null,
+        val uris: List<Uri> = emptyList()
     )
 
     data class FileData(

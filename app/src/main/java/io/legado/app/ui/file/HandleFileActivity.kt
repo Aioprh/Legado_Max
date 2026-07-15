@@ -1,5 +1,6 @@
 package io.legado.app.ui.file
 
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -69,6 +70,25 @@ class HandleFileActivity :
         } ?: finish()
     }
 
+    private val selectMultipleDocs =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            if (uris.isNullOrEmpty()) {
+                finish()
+            } else {
+                uris.forEach { uri ->
+                    if (uri.isContentScheme()) {
+                        val modeFlags =
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        try {
+                            contentResolver.takePersistableUriPermission(uri, modeFlags)
+                        } catch (_: SecurityException) {
+                        }
+                    }
+                }
+                onMultiResult(uris)
+            }
+        }
+
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         mode = intent.getIntExtra("mode", 0)
         viewModel.errorLiveData.observe(this) {
@@ -125,16 +145,37 @@ class HandleFileActivity :
                         }
                     }
 
-                    HandleFileContract.FILE -> kotlin.runCatching {
-                        selectDoc.launch(typesOfExtensions(allowExtensions))
-                    }.onFailure {
-                        AppLog.put(getString(R.string.open_sys_dir_picker_error), it, true)
-                        checkPermissions {
-                            FilePickerDialog.show(
-                                supportFragmentManager,
-                                mode = HandleFileContract.FILE,
-                                allowExtensions = allowExtensions
-                            )
+                    HandleFileContract.FILE -> {
+                        if (mode == HandleFileContract.IMAGE) {
+                            kotlin.runCatching {
+                                selectMultipleDocs.launch(arrayOf("image/*"))
+                            }.onFailure {
+                                AppLog.put(getString(R.string.open_sys_dir_picker_error), it, true)
+                                kotlin.runCatching {
+                                    selectDoc.launch(typesOfExtensions(allowExtensions))
+                                }.onFailure {
+                                    checkPermissions {
+                                        FilePickerDialog.show(
+                                            supportFragmentManager,
+                                            mode = HandleFileContract.FILE,
+                                            allowExtensions = allowExtensions
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            kotlin.runCatching {
+                                selectDoc.launch(typesOfExtensions(allowExtensions))
+                            }.onFailure {
+                                AppLog.put(getString(R.string.open_sys_dir_picker_error), it, true)
+                                checkPermissions {
+                                    FilePickerDialog.show(
+                                        supportFragmentManager,
+                                        mode = HandleFileContract.FILE,
+                                        allowExtensions = allowExtensions
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -368,6 +409,20 @@ class HandleFileActivity :
             }
         }
         return types.toTypedArray()
+    }
+
+    private fun onMultiResult(uris: List<Uri>) {
+        if (uris.isEmpty()) {
+            finish()
+            return
+        }
+        val intent = Intent()
+        val clipData = ClipData.newUri(contentResolver, "images", uris.first())
+        uris.drop(1).forEach { clipData.addItem(ClipData.Item(it)) }
+        intent.clipData = clipData
+        intent.putExtra("value", this.intent.getStringExtra("value"))
+        setResult(RESULT_OK, intent)
+        finish()
     }
 
     override fun onResult(data: Intent) {
