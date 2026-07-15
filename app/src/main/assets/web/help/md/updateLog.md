@@ -16,9 +16,13 @@
 * [Github主干youfengknight](https://github.com/youfengknight/Legado_Max)
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
-##### 阅读多版本下载链接(如果网站所有者认为该网站不适合在此处显示，可以通过GitHub联系我进行删除。)
-- [链接1](https://legado.gyks.cf/)
-- [链接2](https://legado.ccccocccc.cc/index.php?i=2)
+
+**2026/7/15**
+- docs(正则)：优化和增加正则文档
+
+**2026/7/13**
+- fix(高亮正则)：旁白说明内置正则优化
+- fix(SSL验证)：SSL验证提醒toast去除
 
 **2026/7/13**
 - fix(主题): 修复设置背景图片后偶现主界面背景不生效的问题

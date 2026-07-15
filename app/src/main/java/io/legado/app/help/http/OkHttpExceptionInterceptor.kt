@@ -27,7 +27,7 @@ object OkHttpExceptionInterceptor : Interceptor {
         if (message?.startsWith(SSL_PEER_HINT) == true) {
             return this
         }
-        appCtx.toastOnUi("请仔细看报错并开启相应功能")
+        //appCtx.toastOnUi("请仔细看报错并开启相应功能")
         return SSLPeerUnverifiedException("$SSL_PEER_HINT\n$message").also {
             it.initCause(this)
             it.stackTrace = stackTrace

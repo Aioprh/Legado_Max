@@ -73,7 +73,7 @@ object HighlightRuleDefaultRules {
             HighlightRule(
                 id = "narrator_default",
                 name = "旁白说明",
-                pattern = "(?:未完待续|待续|下文再表|按：?|注：?)[^\\n]{0,40}|（(?:注|旁白|作者有话说)[:：][^）\\n]{0,40}）",
+                pattern = "(?:未完待续|待续|下文再表|按：|注：)[^\\n]{0,40}|（(?:注|旁白|作者有话说)[:：][^）\\n]{0,40}）",
                 sampleText = "（注：此处时间线与前文同步）",
                 group = HighlightRuleGroupStore.DEFAULT_GROUP,
                 enabled = false,
