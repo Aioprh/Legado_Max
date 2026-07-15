@@ -6,4 +6,5 @@
     <file path="/app/src/main/java/io/legado/app/data/Room.md"/>
 <file path="/app/src/main/assets/web/help/md/updateLog.md"/>
     <file path="/app/src/main/assets/web/help/md/ruleHelp.md"/>
+    <file path="/app/src/main/java/io/legado/app/help/HelpDocManager.kt"/>
 </aml>
