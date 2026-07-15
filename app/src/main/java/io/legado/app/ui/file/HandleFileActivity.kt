@@ -20,7 +20,7 @@ import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.permission.Permissions
 import io.legado.app.lib.permission.PermissionsCompat
-import io.legado.app.utils.SelectImageContract
+import io.legado.app.utils.SelectMultipleImagesContract
 import io.legado.app.utils.checkWrite
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getJsonArray
@@ -51,6 +51,11 @@ class HandleFileActivity :
             } ?: finish()
         }
 
+    /**
+     * 系统文件选择器（单选）
+     *
+     * 用于 FILE 模式或 IMAGE 模式下多选不可用时的降级方案。
+     */
     private val selectDoc = registerForActivityResult(ActivityResultContracts.OpenDocument()) {
         it?.let {
             if (it.isContentScheme()) {
@@ -64,12 +69,26 @@ class HandleFileActivity :
         } ?: finish()
     }
 
-    private val selectImage = registerForActivityResult(SelectImageContract()) {
-        it.uri?.let { uri ->
-            onResult(Intent().setData(uri))
-        } ?: finish()
+    /**
+     * 系统图片选择器（多选）
+     *
+     * 在 IMAGE 模式下使用，支持一次选择多张图片。
+     * 结果通过 [onMultiResult] 以 ClipData 形式返回。
+     */
+    private val selectImage = registerForActivityResult(SelectMultipleImagesContract()) { uris ->
+        if (uris.isEmpty()) {
+            finish()
+        } else {
+            onMultiResult(uris)
+        }
     }
 
+    /**
+     * 系统文件选择器（多选，仅 IMAGE 模式）
+     *
+     * 在 IMAGE 模式下作为「系统文件选择器」使用，支持多选。
+     * 其他模式仍使用 [selectDoc]（单选）。
+     */
     private val selectMultipleDocs =
         registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
             if (uris.isNullOrEmpty()) {
@@ -145,6 +164,7 @@ class HandleFileActivity :
                         }
                     }
 
+                    // IMAGE 模式：系统文件选择器使用多选，失败时降级为单选再降级为自带选择器
                     HandleFileContract.FILE -> {
                         if (mode == HandleFileContract.IMAGE) {
                             kotlin.runCatching {
@@ -179,6 +199,7 @@ class HandleFileActivity :
                         }
                     }
 
+                    // 系统图片选择器（多选）
                     HandleFileContract.IMAGE -> {
                         selectImage.launch()
                     }
@@ -411,6 +432,12 @@ class HandleFileActivity :
         return types.toTypedArray()
     }
 
+    /**
+     * 处理多选结果：将 URI 列表通过 ClipData 返回给调用方。
+     *
+     * [HandleFileContract.parseResult] 会从 ClipData 中提取 URI 列表
+     * 并填充到 [HandleFileContract.Result.uris] 字段。
+     */
     private fun onMultiResult(uris: List<Uri>) {
         if (uris.isEmpty()) {
             finish()

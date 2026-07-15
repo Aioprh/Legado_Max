@@ -45,6 +45,14 @@ class HandleFileContract :
         return intent
     }
 
+    /**
+     * 解析 Activity 返回结果。
+     *
+     * - [uri]：单选时的 URI（来自 intent.data）
+     * - [uris]：多选时的 URI 列表（来自 intent.clipData）
+     *
+     * 调用方应优先检查 [Result.uris]，为空时回退到 [Result.uri]。
+     */
     override fun parseResult(resultCode: Int, intent: Intent?): Result {
         val uri = if (resultCode != RESULT_OK || intent?.data == null ||
             RealPathUtil.getTreePath(intent.data!!)
@@ -98,6 +106,12 @@ class HandleFileContract :
         var value: String? = null
     )
 
+    /**
+     * 选择结果
+     *
+     * @param uri 单选 URI（传统模式）
+     * @param uris 多选 URI 列表（IMAGE 模式下系统图片/文件选择器多选时填充）
+     */
     data class Result(
         val uri: Uri?,
         val requestCode: Int,

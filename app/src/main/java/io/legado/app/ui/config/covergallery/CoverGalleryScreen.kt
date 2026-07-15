@@ -113,9 +113,21 @@ fun CoverGalleryScreen(
     var pendingExportZipName by remember { mutableStateOf("") }
     var pendingImageGroupId by remember { mutableLongStateOf(0L) }
 
+    /**
+     * 图片选择回调
+     *
+     * 使用 HandleFileContract IMAGE 模式，弹出 4 选项对话框：
+     * 1. 系统图片选择器（多选）
+     * 2. 系统文件选择器（多选）
+     * 3. 自带文件选择器（单选）
+     * 4. 手动输入图片链接（单选）
+     *
+     * 多选结果在 [HandleFileContract.Result.uris] 中，单选结果在 [HandleFileContract.Result.uri] 中。
+     */
     val selectImage = rememberLauncherForActivityResult(HandleFileContract()) {
         val groupId = pendingImageGroupId
         if (groupId != 0L) {
+            // 优先处理多选结果，为空时回退到单选
             if (it.uris.isNotEmpty()) {
                 viewModel.addImages(context, groupId, it.uris)
             } else {
