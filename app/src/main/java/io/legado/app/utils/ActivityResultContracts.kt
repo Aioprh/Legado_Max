@@ -61,8 +61,8 @@ class SelectImageContract : ActivityResultContract<Int?, SelectImageContract.Res
 /**
  * 多选图片 Contract
  *
- * 优先使用系统图片选择器多选模式（PickMultipleVisualMedia），
- * 若不可用则回退到 ACTION_GET_CONTENT + EXTRA_ALLOW_MULTIPLE。
+ * 优先使用系统图片选择器多选模式（PickMultipleVisualMedia，显示相册界面），
+ * 若系统不支持则回退到 ACTION_GET_CONTENT + EXTRA_ALLOW_MULTIPLE（显示文件选择器界面）。
  *
  * @return 选中的图片 URI 列表，未选择时返回空列表
  */
@@ -73,23 +73,23 @@ class SelectMultipleImagesContract :
     private var useFallback = false
 
     override fun createIntent(context: Context, input: Int?): Intent {
-        // 尝试使用 ACTION_GET_CONTENT（支持 EXTRA_ALLOW_MULTIPLE），
-        // 若系统无法处理则回退到 PickMultipleVisualMedia
-        val intent = Intent(Intent.ACTION_GET_CONTENT)
-            .addCategory(Intent.CATEGORY_OPENABLE)
-            .setType("image/*")
-            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-        if (intent.resolveActivity(appCtx.packageManager) == null) {
-            useFallback = true
+        // 优先使用系统图片选择器（PickMultipleVisualMedia），显示相册界面
+        if (ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable(context)) {
             val request = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
             return delegate.createIntent(context, request)
         }
-        return intent
+        // 系统不支持图片选择器时，回退到 ACTION_GET_CONTENT + EXTRA_ALLOW_MULTIPLE
+        useFallback = true
+        return Intent(Intent.ACTION_GET_CONTENT)
+            .addCategory(Intent.CATEGORY_OPENABLE)
+            .setType("image/*")
+            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
     }
 
     override fun parseResult(resultCode: Int, intent: Intent?): List<Uri> {
         if (resultCode != RESULT_OK) return emptyList()
-        if (useFallback) {
+        if (!useFallback) {
+            // PickMultipleVisualMedia 的返回值直接是 List<Uri>
             return delegate.parseResult(resultCode, intent)
         }
         // ACTION_GET_CONTENT 多选时通过 ClipData 返回，单选时通过 data 返回
