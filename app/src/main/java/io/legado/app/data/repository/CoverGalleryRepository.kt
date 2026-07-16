@@ -195,16 +195,17 @@ class CoverGalleryRepository {
             .distinctBy { it.path }
             .sortedWith(compareBy({ it.order }, { it.id }))
         if (images.isEmpty()) return null
-        if (images.size == 1) {
-            AppLog.putDebug("封面图集默认分组仅1张图片，无法随机。groupId=${groupWithImages.group.id}, groupName=${groupWithImages.group.name}")
-        }
         val randomSeed = CacheManager.getLong(randomSeedKeyPrefix + groupWithImages.group.id) ?: 0L
         val key = identity?.takeIf { it.isNotBlank() } ?: "default"
-        val index = stableIndex(
-            key = "${groupWithImages.group.id}:$randomSeed:$key",
-            size = images.size
-        )
-        return images[index].path
+        val fullKey = "${groupWithImages.group.id}:$randomSeed:$key"
+        val index = stableIndex(fullKey, images.size)
+        val result = images[index].path
+        if (images.size <= 1) {
+            AppLog.putDebug("封面图集默认分组仅${images.size}张图片，无法随机。groupId=${groupWithImages.group.id}, groupName=${groupWithImages.group.name}")
+        } else {
+            AppLog.putDebug("封面图集随机: identity=${key.take(30)}, size=${images.size}, index=$index, file=${File(result).name}")
+        }
+        return result
     }
 
     private fun stableIndex(key: String, size: Int): Int {
