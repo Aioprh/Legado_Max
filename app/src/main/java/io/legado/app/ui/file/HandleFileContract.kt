@@ -77,8 +77,11 @@ class HandleFileContract :
         } else {
             emptyList()
         }
+        // 向后兼容：多选结果只放在 uris 中，但旧调用方可能只检查 uri，
+        // 因此当 uri 为空且 uris 不为空时，用第一个 URI 回填 uri。
+        val effectiveUri = uri ?: uris.firstOrNull()
         return Result(
-            uri,
+            effectiveUri,
             requestCode,
             intent?.getStringExtra("value"),
             intent?.getStringExtra("clipboard_json"),
