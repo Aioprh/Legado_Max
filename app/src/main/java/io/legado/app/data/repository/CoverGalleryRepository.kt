@@ -3,6 +3,7 @@ package io.legado.app.data.repository
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.CoverGalleryGroup
@@ -191,8 +192,12 @@ class CoverGalleryRepository {
         val groupWithImages = dao.getDefaultGroupWithImages() ?: return null
         val images = groupWithImages.images
             .filter { it.path.isNotBlank() }
+            .distinctBy { it.path }
             .sortedWith(compareBy({ it.order }, { it.id }))
         if (images.isEmpty()) return null
+        if (images.size == 1) {
+            AppLog.putDebug("封面图集默认分组仅1张图片，无法随机。groupId=${groupWithImages.group.id}, groupName=${groupWithImages.group.name}")
+        }
         val randomSeed = CacheManager.getLong(randomSeedKeyPrefix + groupWithImages.group.id) ?: 0L
         val key = identity?.takeIf { it.isNotBlank() } ?: "default"
         val index = stableIndex(
