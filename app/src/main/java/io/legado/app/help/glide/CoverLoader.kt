@@ -240,8 +240,8 @@ object CoverLoader {
             return
         }
 
-        // 使用默认封面
-        if (AppConfig.useDefaultCover) {
+        // 使用默认封面（当图集默认封面存在时，不使用此路径，由下方正常加载图集封面）
+        if (AppConfig.useDefaultCover && galleryDefaultCover == null) {
             ImageLoader.load(imageView.context, BookCover.defaultDrawable)
                 .let { builder ->
                     if (fixedRatio) builder.centerCrop() else builder

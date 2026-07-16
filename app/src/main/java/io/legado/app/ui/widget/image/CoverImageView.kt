@@ -387,7 +387,7 @@ class CoverImageView @JvmOverloads constructor(
 
         isHtmlCover = false
 
-        if (AppConfig.useDefaultCover) {
+        if (AppConfig.useDefaultCover && galleryDefaultCover == null) {
             ImageLoader.load(context, BookCover.defaultDrawable)
                 .centerCrop()
                 .into(this)

@@ -49,8 +49,9 @@ fun HomepageBookCover(
 ) {
     val galleryDefaultCover = BookCover.getGalleryDefaultCover(identity)
     val useDefaultCover = AppConfig.useDefaultCover
-    val displayCover = if (useDefaultCover) null else (galleryDefaultCover ?: coverUrl)
-    val shouldDrawName = (useDefaultCover || coverUrl == null) && BookCover.drawBookName
+    // 图集默认封面优先于 useDefaultCover，使每本书获得随机图集封面
+    val displayCover = galleryDefaultCover ?: if (useDefaultCover) null else coverUrl
+    val shouldDrawName = (galleryDefaultCover == null && useDefaultCover || coverUrl == null) && BookCover.drawBookName
 
     Box(
         modifier = modifier
