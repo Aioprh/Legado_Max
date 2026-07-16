@@ -17,8 +17,14 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/7/16**
+- fix(文件选择):背景图片和封面图片无法成功选择的问题
+- fix(search): 修复搜索进度条大字号时第二行文字被截断的问题
+
 **2026/7/15**
 - docs(正则)：优化和增加正则文档
+- feat(封面图集): 系统图片选择器支持多选(android 13以上)
+- fix(首页): 修复悬浮按钮显隐状态卡死的问题
 
 **2026/7/13**
 - fix(高亮正则)：旁白说明内置正则优化
