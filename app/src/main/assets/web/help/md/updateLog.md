@@ -17,6 +17,11 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/7/11**
+- fix(订阅源): 修复网页类型订阅源误应用静音播放设置的问题
+- feat(视频播放): 播放器右上角添加视频设置入口按钮
+- fix(阅读记录): 修复大数据量下 CursorWindow 溢出导致多选删除崩溃
+
 **2026/7/16**
 - fix(文件选择):背景图片和封面图片无法成功选择的问题
 - fix(search): 修复搜索进度条大字号时第二行文字被截断的问题
