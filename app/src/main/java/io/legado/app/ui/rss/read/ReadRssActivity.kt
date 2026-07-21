@@ -1041,9 +1041,9 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
                     view.evaluateJavascript(it, null)
                 }
             }
-            // 网页h5的video标签播放器静音播放视频
-            // @param mutePlay 是否静音播放视频
-            if (VideoPlay.mutePlay) {
+            // 视频类型订阅源的h5 video标签静音播放
+            // 仅对视频类型(type==2)的订阅源生效，网页类型(type==0)不受静音播放设置控制
+            if (VideoPlay.mutePlay && viewModel.rssSource?.type == 2) {
                 view.evaluateJavascript(
                     "(function(){return document.querySelectorAll('video,audio').length;})()"
                 ) { result ->
