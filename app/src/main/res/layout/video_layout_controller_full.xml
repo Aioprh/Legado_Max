@@ -277,6 +277,15 @@
             android:textSize="18sp"
             tools:ignore="RtlSymmetry" />
 
+        <ImageView
+            android:id="@+id/iv_settings"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:paddingEnd="10dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_more_horiz"
+            tools:ignore="RtlSymmetry" />
+
     </LinearLayout>
 
     <RelativeLayout

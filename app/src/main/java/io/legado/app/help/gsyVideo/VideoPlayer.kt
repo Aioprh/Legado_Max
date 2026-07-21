@@ -15,12 +15,15 @@ import android.view.Window
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
 import com.shuyu.gsyvideoplayer.listener.LockClickListener
 import com.shuyu.gsyvideoplayer.utils.CommonUtil
 import com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer
 import com.shuyu.gsyvideoplayer.video.base.GSYVideoPlayer
 import io.legado.app.R
 import io.legado.app.model.VideoPlay
+import io.legado.app.ui.video.config.SettingsDialog
+import io.legado.app.utils.showDialogFragment
 import master.flame.danmaku.controller.DrawHandler
 import master.flame.danmaku.danmaku.loader.IllegalDataException
 import master.flame.danmaku.danmaku.loader.android.DanmakuLoaderFactory
@@ -43,6 +46,7 @@ class VideoPlayer: StandardGSYVideoPlayer {
     private var playbackSpeed: TextView? = null
     private var playSpeed: Float = 1.0f
     private var btnNext: ImageView? = null
+    private var btnSettings: ImageView? = null
     private var tipView: TextView? = null
     private var isChanging = false
     private var isLongPressSpeed = false
@@ -407,6 +411,10 @@ class VideoPlayer: StandardGSYVideoPlayer {
                 showSpeedDialog()
             }
         }
+        btnSettings = findViewById(R.id.iv_settings)
+        btnSettings?.setOnClickListener {
+            showSettingsDialog()
+        }
         tipView = findViewById(R.id.tip_view)
         if (mIfCurrentIsFullscreen && !VideoPlay.fullBottomProgressBar) {
             mBottomProgressBar = null
@@ -621,6 +629,13 @@ class VideoPlayer: StandardGSYVideoPlayer {
             }
         }, VideoPlay.chapterInVolumeIndex)
         choiceEpisodeDialog.show()
+    }
+
+    private fun showSettingsDialog() {
+        val activity = CommonUtil.scanForActivity(context)
+        if (activity is AppCompatActivity) {
+            activity.showDialogFragment(SettingsDialog(activity))
+        }
     }
 
     private fun showSpeedDialog() {
