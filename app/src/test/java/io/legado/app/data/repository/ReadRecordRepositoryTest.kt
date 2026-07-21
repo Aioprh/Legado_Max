@@ -453,6 +453,17 @@ class ReadRecordRepositoryTest {
             return flowOf(details.sortedByDescending { it.date }.map { it.copy() })
         }
 
+        override fun detailsCountFlow(): Flow<Int> {
+            return flowOf(details.size)
+        }
+
+        override suspend fun getDetailsPage(limit: Int, offset: Int): List<ReadRecordDetail> {
+            return details.sortedByDescending { it.date }
+                .drop(offset)
+                .take(limit)
+                .map { it.copy() }
+        }
+
         override suspend fun getAllDetailsList(): List<ReadRecordDetail> {
             return details.map { it.copy() }
         }
@@ -477,6 +488,17 @@ class ReadRecordRepositoryTest {
 
         override fun getAllSessions(): Flow<List<ReadRecordSession>> {
             return flowOf(sessions.sortedByDescending { it.startTime }.map { it.copy() })
+        }
+
+        override fun sessionsCountFlow(): Flow<Int> {
+            return flowOf(sessions.size)
+        }
+
+        override suspend fun getSessionsPage(limit: Int, offset: Int): List<ReadRecordSession> {
+            return sessions.sortedByDescending { it.startTime }
+                .drop(offset)
+                .take(limit)
+                .map { it.copy() }
         }
 
         override suspend fun getAllSessionsList(): List<ReadRecordSession> {

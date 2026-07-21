@@ -87,6 +87,19 @@ interface ReadRecordDao {
     @Query("SELECT * FROM readRecordDetail ORDER BY date DESC")
     fun getAllDetails(): Flow<List<ReadRecordDetail>>
 
+    /**
+     * 轻量级查询，仅返回详情总数，用作 Flow 触发器。
+     * 用于替代直接 getAllDetails() 的 Flow，避免大数据量时 CursorWindow 溢出。
+     */
+    @Query("SELECT COUNT(*) FROM readRecordDetail")
+    fun detailsCountFlow(): Flow<Int>
+
+    /**
+     * 分页查询详情记录，每页数据量小，不会超出 CursorWindow 的 2MB 限制。
+     */
+    @Query("SELECT * FROM readRecordDetail ORDER BY date DESC LIMIT :limit OFFSET :offset")
+    suspend fun getDetailsPage(limit: Int, offset: Int): List<ReadRecordDetail>
+
     @Query("SELECT * FROM readRecordDetail")
     suspend fun getAllDetailsList(): List<ReadRecordDetail>
 
@@ -101,6 +114,19 @@ interface ReadRecordDao {
 
     @Query("SELECT * FROM readRecordSession ORDER BY startTime DESC")
     fun getAllSessions(): Flow<List<ReadRecordSession>>
+
+    /**
+     * 轻量级查询，仅返回会话总数，用作 Flow 触发器。
+     * 用于替代直接 getAllSessions() 的 Flow，避免大数据量时 CursorWindow 溢出。
+     */
+    @Query("SELECT COUNT(*) FROM readRecordSession")
+    fun sessionsCountFlow(): Flow<Int>
+
+    /**
+     * 分页查询会话记录，每页数据量小，不会超出 CursorWindow 的 2MB 限制。
+     */
+    @Query("SELECT * FROM readRecordSession ORDER BY startTime DESC LIMIT :limit OFFSET :offset")
+    suspend fun getSessionsPage(limit: Int, offset: Int): List<ReadRecordSession>
 
     @Query("SELECT * FROM readRecordSession")
     suspend fun getAllSessionsList(): List<ReadRecordSession>

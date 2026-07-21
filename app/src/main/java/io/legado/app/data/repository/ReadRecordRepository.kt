@@ -79,10 +79,16 @@ class ReadRecordRepository(
         return hasValidIdentity(session.deviceId, session.bookName)
     }
 
+    /**
+     * 获取总阅读时间的 Flow。
+     *
+     * 使用 detailsCountFlow() 作为轻量级触发器加载详情数据（分页），
+     * 避免大数据量时 CursorWindow 2MB 限制导致的崩溃。
+     */
     fun getTotalReadTime(): Flow<Long> {
         return combine(
             dao.getAllReadRecordsSortedByLastRead(),
-            dao.getAllDetails()
+            dao.detailsCountFlow().map { loadAllDetailsPaginated() }
         ) { records, details ->
             applyDetailReadTimes(records, details).sumOf { it.readTime }
         }
@@ -96,16 +102,68 @@ class ReadRecordRepository(
         }
     }
 
+    /**
+     * 获取所有阅读详情的 Flow。
+     *
+     * 无搜索条件时使用 detailsCountFlow() 作为轻量级触发器 + 分页加载，
+     * 避免大数据量时 CursorWindow 2MB 限制导致的崩溃。
+     */
     fun getAllRecordDetails(query: String = ""): Flow<List<ReadRecordDetail>> {
         return if (query.isBlank()) {
-            dao.getAllDetails()
+            dao.detailsCountFlow()
+                .map { loadAllDetailsPaginated() }
         } else {
             dao.searchDetails(query)
         }
     }
 
+    /**
+     * 分页加载所有详情记录，避免单次查询数据量过大导致 CursorWindow 溢出。
+     * 每页 500 条，按 date 降序排列。
+     */
+    private suspend fun loadAllDetailsPaginated(): List<ReadRecordDetail> {
+        val pageSize = 500
+        val details = mutableListOf<ReadRecordDetail>()
+        var offset = 0
+        while (true) {
+            val page = dao.getDetailsPage(pageSize, offset)
+            if (page.isEmpty()) break
+            details.addAll(page)
+            if (page.size < pageSize) break
+            offset += pageSize
+        }
+        return details
+    }
+
+    /**
+     * 获取所有阅读会话的 Flow。
+     *
+     * 使用 sessionsCountFlow() 作为轻量级触发器（仅返回 COUNT，不会溢出 CursorWindow），
+     * 当 readRecordSession 表发生任何变更（插入/删除/更新）时触发重新加载。
+     * 实际数据通过分页查询 [loadAllSessionsPaginated] 加载，每页 500 条，
+     * 避免大数据量时 CursorWindow 2MB 限制导致的崩溃。
+     */
     fun getAllSessions(): Flow<List<ReadRecordSession>> {
-        return dao.getAllSessions()
+        return dao.sessionsCountFlow()
+            .map { loadAllSessionsPaginated() }
+    }
+
+    /**
+     * 分页加载所有会话记录，避免单次查询数据量过大导致 CursorWindow 溢出。
+     * 每页 500 条，按 startTime 降序排列。
+     */
+    private suspend fun loadAllSessionsPaginated(): List<ReadRecordSession> {
+        val pageSize = 500
+        val sessions = mutableListOf<ReadRecordSession>()
+        var offset = 0
+        while (true) {
+            val page = dao.getSessionsPage(pageSize, offset)
+            if (page.isEmpty()) break
+            sessions.addAll(page)
+            if (page.size < pageSize) break
+            offset += pageSize
+        }
+        return sessions
     }
 
     fun getBookSessions(bookName: String, bookAuthor: String): Flow<List<ReadRecordSession>> {
