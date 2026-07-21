@@ -272,20 +272,28 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     }
     
     private fun updateQuickJumpButtonsState() {
-        // 重新设置 Compose 内容以更新按钮状态
-        binding.quickJumpButtons.setContent {
-            LegadoTheme {
-                QuickJumpButtons(
-                    enabled = VideoPlay.quickJumpButtonsEnabled,
-                    minutesA = VideoPlay.quickJumpMinutesA,
-                    minutesB = VideoPlay.quickJumpMinutesB,
-                    onBackA = { performQuickJump(-VideoPlay.quickJumpMinutesA) },
-                    onBackB = { performQuickJump(-VideoPlay.quickJumpMinutesB) },
-                    onForwardB = { performQuickJump(VideoPlay.quickJumpMinutesB) },
-                    onForwardA = { performQuickJump(VideoPlay.quickJumpMinutesA) }
-                )
+        // 非全屏模式：根据开关状态更新 ComposeView 可见性和内容
+        if (VideoPlay.quickJumpButtonsEnabled && !isFullScreen && VideoPlay.book != null) {
+            binding.quickJumpButtons.visible()
+            binding.quickJumpButtons.setContent {
+                LegadoTheme {
+                    QuickJumpButtons(
+                        enabled = VideoPlay.quickJumpButtonsEnabled,
+                        minutesA = VideoPlay.quickJumpMinutesA,
+                        minutesB = VideoPlay.quickJumpMinutesB,
+                        onBackA = { performQuickJump(-VideoPlay.quickJumpMinutesA) },
+                        onBackB = { performQuickJump(-VideoPlay.quickJumpMinutesB) },
+                        onForwardB = { performQuickJump(VideoPlay.quickJumpMinutesB) },
+                        onForwardA = { performQuickJump(VideoPlay.quickJumpMinutesA) }
+                    )
+                }
             }
+        } else {
+            binding.quickJumpButtons.gone()
         }
+
+        // 全屏模式：更新全屏播放器内的快捷跳转按钮
+        playerView.getFullWindowPlayer()?.updateQuickJumpButtons()
     }
 
     private fun performQuickJump(minutes: Int) {

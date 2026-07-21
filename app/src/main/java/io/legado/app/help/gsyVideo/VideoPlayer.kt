@@ -440,6 +440,13 @@ class VideoPlayer: StandardGSYVideoPlayer {
     }
 
     /**
+     * 更新全屏快捷跳转按钮状态（供外部在配置变更时调用）
+     */
+    fun updateQuickJumpButtons() {
+        initQuickJumpButtons()
+    }
+
+    /**
      * 初始化全屏快捷跳转按钮
      */
     private fun initQuickJumpButtons() {
