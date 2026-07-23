@@ -17,7 +17,11 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
-**2026/7/11**
+**2026/7/23**
+- feat: 目录加载失败时从缓存恢复章节记录，支持离线阅读已缓存正文
+- 优化阅读记录
+
+**2026/7/21**
 - fix(订阅源): 修复网页类型订阅源误应用静音播放设置的问题
 - feat(视频播放): 播放器右上角添加视频设置入口按钮
 - fix(阅读记录): 修复大数据量下 CursorWindow 溢出导致多选删除崩溃
