@@ -497,6 +497,7 @@
     <string name="error_get_web_content">访问网站失败：%s</string>
     <string name="error_read_file">文件读取失败</string>
     <string name="error_load_toc">加载目录失败</string>
+    <string name="toc_cache_recovered">目录加载失败，已切换至离线缓存模式</string>
     <string name="error_get_data">获取数据失败！</string>
     <string name="error_load_msg">加载失败\n%s</string>
     <string name="net_error_10001">没有网络</string>

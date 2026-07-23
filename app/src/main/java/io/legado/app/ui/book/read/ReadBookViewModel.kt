@@ -272,11 +272,42 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
                         return true
                     }.onFailure {
                         currentCoroutineContext().ensureActive()
+                        // 目录加载失败，尝试从缓存恢复章节
+                        if (tryRecoverFromCache(book)) {
+                            ReadBook.upMsg(context.getString(R.string.toc_cache_recovered))
+                            return true
+                        }
                         ReadBook.upMsg(context.getString(R.string.error_load_toc))
                         return false
                     }
             }
+            // 无书源时尝试从缓存恢复
+            if (ReadBook.bookSource == null && tryRecoverFromCache(book)) {
+                ReadBook.upMsg(context.getString(R.string.toc_cache_recovered))
+            }
         }
+        return true
+    }
+
+    /**
+     * 从缓存文件恢复章节记录
+     *
+     * 当目录加载失败或无书源时，扫描缓存文件夹中的 `.nb` 文件，
+     * 解析文件名重建 [BookChapter] 列表，写入数据库，
+     * 使用户能阅读已缓存的正文内容。
+     *
+     * @param book 书籍对象
+     * @return 是否成功恢复（至少恢复一个章节）
+     */
+    private suspend fun tryRecoverFromCache(book: Book): Boolean {
+        val recoveredChapters = BookHelp.recoverChaptersFromCache(book)
+        if (recoveredChapters.isEmpty()) return false
+        appDb.bookChapterDao.delByBook(book.bookUrl)
+        appDb.bookChapterDao.insert(*recoveredChapters.toTypedArray())
+        book.totalChapterNum = recoveredChapters.size
+        appDb.bookDao.update(book)
+        ReadBook.onChapterListUpdated(book)
+        AppLog.putReaderDebug("目录加载失败，已从缓存恢复 ${recoveredChapters.size} 章")
         return true
     }
 
@@ -293,7 +324,13 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
      *   - 第二个值：是否已在渐进过程中提前加载了正文（若是，initBook应跳过后续loadContent）
      */
     private suspend fun loadChapterListProgressive(book: Book): Pair<Boolean, Boolean> {
-        val source = ReadBook.bookSource ?: return Pair(true, false)
+        val source = ReadBook.bookSource ?: run {
+            // 无书源时尝试从缓存恢复
+            if (tryRecoverFromCache(book)) {
+                ReadBook.upMsg(context.getString(R.string.toc_cache_recovered))
+            }
+            return Pair(true, false)
+        }
         val oldBook = book.copy()
         var hasEnteredContent = false
         try {
@@ -331,8 +368,12 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
             }
         } catch (e: Throwable) {
             currentCoroutineContext().ensureActive()
-            // 如果还没进入正文就出错了，返回失败；若已进入正文则忽略后续加载错误
+            // 如果还没进入正文就出错了，尝试从缓存恢复；若已进入正文则忽略后续加载错误
             if (!hasEnteredContent) {
+                if (tryRecoverFromCache(book)) {
+                    ReadBook.upMsg(context.getString(R.string.toc_cache_recovered))
+                    return Pair(true, false)
+                }
                 ReadBook.upMsg(context.getString(R.string.error_load_toc))
                 return Pair(false, false)
             }

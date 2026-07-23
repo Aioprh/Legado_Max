@@ -54,6 +54,12 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * 缓存文件名解析正则：匹配 {index:05d}-{md5}.nb 格式
+ * 例如: 00012-a3b4c5d6e7f8g9h0.nb
+ */
+private val cacheFileNameRegex = Regex("^(\\d{5})-([a-fA-F0-9]+)\\.nb$")
+
 @Suppress("unused", "ConstPropertyName")
 object BookHelp {
     private val downloadDir: File = appCtx.externalFiles
@@ -371,6 +377,44 @@ object BookHelp {
     }
 
     /**
+     * 查找章节对应的缓存文件
+     *
+     * 优先通过 [BookChapter.getFileName] 精确匹配（正常路径）。
+     * 当标题无法匹配时（例如从缓存恢复的章节使用占位标题），
+     * 回退到按章节索引在缓存文件夹中查找 `NNNNN-*.nb` 格式的文件。
+     *
+     * @param book 书籍
+     * @param bookChapter 章节对象
+     * @return 缓存文件，不存在则返回 null
+     */
+    fun findCacheFile(book: Book, bookChapter: BookChapter): File? {
+        // 优先精确匹配
+        val exactFile = downloadDir.getFile(
+            cacheFolderName,
+            book.getFolderName(),
+            bookChapter.getFileName()
+        )
+        if (exactFile.exists()) return exactFile
+
+        // 回退：按章节索引模糊查找
+        // 文件名格式: {index:05d}-{md5}.nb，用前缀匹配
+        if (!book.isLocalTxt &&
+            !(bookChapter.isVolume && bookChapter.url.startsWith(bookChapter.title))
+        ) {
+            val cacheDir = downloadDir.getFile(cacheFolderName, book.getFolderName())
+            if (cacheDir.exists() && cacheDir.isDirectory) {
+                val indexPrefix = String.format("%05d", bookChapter.index)
+                cacheDir.listFiles()?.forEach { file ->
+                    if (file.isFile && file.name.startsWith("${indexPrefix}-") && file.name.endsWith(".nb")) {
+                        return file
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+    /**
      * 检测该章节是否下载
      */
     fun hasContent(book: Book, bookChapter: BookChapter): Boolean {
@@ -379,12 +423,72 @@ object BookHelp {
         ) {
             true
         } else {
-            downloadDir.exists(
-                cacheFolderName,
-                book.getFolderName(),
-                bookChapter.getFileName()
+            findCacheFile(book, bookChapter) != null
+        }
+    }
+
+    /**
+     * 从缓存文件恢复章节记录
+     *
+     * 当目录加载失败时，扫描书籍缓存文件夹中的 `.nb` 文件，
+     * 解析文件名获取章节索引和标题 MD5，尝试从内容中提取标题，
+     * 构建 [BookChapter] 列表以便用户能阅读已缓存的正文。
+     *
+     * 恢复的章节具有以下特征：
+     * - `index`：从文件名解析，保证顺序正确
+     * - `title`：尝试从内容首行提取并验证 MD5，不匹配时使用占位标题
+     * - `url`：占位值（离线模式下不用于网络请求）
+     * - `bookUrl`：来自书籍对象
+     *
+     * @param book 书籍对象
+     * @return 恢复的章节列表，如无缓存则返回空列表
+     */
+    fun recoverChaptersFromCache(book: Book): List<BookChapter> {
+        val cacheDir = downloadDir.getFile(cacheFolderName, book.getFolderName())
+        if (!cacheDir.exists() || !cacheDir.isDirectory) return emptyList()
+
+        val nbFiles = cacheDir.listFiles { file ->
+            file.isFile && file.name.endsWith(".nb")
+        }?.toList() ?: return emptyList()
+
+        if (nbFiles.isEmpty()) return emptyList()
+
+        val chapters = mutableListOf<BookChapter>()
+        for (file in nbFiles) {
+            val match = cacheFileNameRegex.matchEntire(file.name) ?: continue
+            val index = match.groupValues[1].toInt()
+            val titleMD5FromFile = match.groupValues[2]
+
+            // 尝试从内容中提取标题
+            var title = "第${index + 1}章"
+            try {
+                val content = file.readText()
+                if (content.isNotEmpty()) {
+                    val firstLine = content.lineSequence().firstOrNull { it.isNotBlank() }
+                    if (firstLine != null) {
+                        val candidateTitle = firstLine.trim()
+                        val candidateMD5 = MD5Utils.md5Encode16(candidateTitle)
+                        if (candidateMD5 == titleMD5FromFile) {
+                            title = candidateTitle
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.put("从缓存恢复章节时读取文件失败: ${file.name}", e)
+            }
+
+            chapters.add(
+                BookChapter(
+                    url = "cache://${book.bookUrl}/$index",
+                    title = title,
+                    baseUrl = book.tocUrl.ifEmpty { book.bookUrl },
+                    bookUrl = book.bookUrl,
+                    index = index
+                )
             )
         }
+
+        return chapters.sortedBy { it.index }
     }
 
     /**
@@ -433,12 +537,9 @@ object BookHelp {
      * 读取章节内容
      */
     fun getContent(book: Book, bookChapter: BookChapter): String? {
-        val file = downloadDir.getFile(
-            cacheFolderName,
-            book.getFolderName(),
-            bookChapter.getFileName()
-        )
-        if (file.exists()) {
+        // 优先精确匹配，回退到按索引模糊查找
+        val file = findCacheFile(book, bookChapter)
+        if (file != null && file.exists()) {
             val string = file.readText()
             if (string.isEmpty()) {
                 return null

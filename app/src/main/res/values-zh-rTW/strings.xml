@@ -470,6 +470,7 @@
     <string name="error_get_web_content">瀏覽網站失敗：%s</string>
     <string name="error_read_file">文件讀取失敗</string>
     <string name="error_load_toc">載入目錄失敗</string>
+    <string name="toc_cache_recovered">目錄載入失敗，已切換至離線快取模式</string>
     <string name="error_get_data">獲取資料失敗！</string>
     <string name="error_load_msg">載入失敗\n%s</string>
     <string name="net_error_10001">沒有網路</string>
