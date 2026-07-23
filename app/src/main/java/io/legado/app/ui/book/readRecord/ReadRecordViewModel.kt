@@ -107,12 +107,12 @@ class ReadRecordViewModel : ViewModel() {
             combine(
                 repository.getAllRecordDetails(query),
                 repository.getLatestReadRecords(query),
-                repository.getAllSessions()
-            ) { details, latest, sessions ->
-                // 总阅读时间直接从已加载的 details + latest 计算复用，
-                // 避免 getTotalReadTime() 内部重复分页加载全部详情数据。
+                repository.getAllSessions(),
+                repository.getTotalReadTime()
+            ) { details, latest, sessions, totalTime ->
+                // normalizedLatestRecords 在 loadedDataFlow 中预计算，
+                // 避免 uiState 每次重发时重复调用 applyDetailReadTimes。
                 val normalizedRecords = repository.applyDetailReadTimes(latest, details)
-                val totalTime = normalizedRecords.sumOf { it.readTime }
                 LoadedData(totalTime, details, latest, sessions, normalizedRecords)
             }
         }

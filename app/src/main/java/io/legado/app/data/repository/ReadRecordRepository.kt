@@ -82,16 +82,12 @@ class ReadRecordRepository(
     /**
      * 获取总阅读时间的 Flow。
      *
-     * 使用 detailsCountFlow() 作为轻量级触发器加载详情数据（分页），
-     * 避免大数据量时 CursorWindow 2MB 限制导致的崩溃。
+     * 使用 SQL 直接在数据库层面计算（复刻 applyDetailReadTimes 的 per-book max 逻辑），
+     * 始终基于全量数据，不受搜索过滤影响。
+     * 单次 SQL 查询，无需分页加载详情数据。
      */
     fun getTotalReadTime(): Flow<Long> {
-        return combine(
-            dao.getAllReadRecordsSortedByLastRead(),
-            dao.detailsCountFlow().map { loadAllDetailsPaginated() }
-        ) { records, details ->
-            applyDetailReadTimes(records, details).sumOf { it.readTime }
-        }
+        return dao.getCalculatedTotalReadTime()
     }
 
     fun getLatestReadRecords(query: String = ""): Flow<List<ReadRecord>> {

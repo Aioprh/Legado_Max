@@ -60,6 +60,26 @@ interface ReadRecordDao {
     @Query("SELECT SUM(readTime) FROM readRecord")
     fun getTotalReadTime(): Flow<Long?>
 
+    /**
+     * 计算总阅读时间（复刻 applyDetailReadTimes 逻辑）。
+     * 对每本书取 max(readRecord.readTime, 该书所有 detail 的 readTime 之和)，再汇总。
+     * 始终基于全量数据，不受搜索过滤影响。
+     */
+    @Query(
+        "SELECT COALESCE(SUM(" +
+            "CASE WHEN detail_sums.total_detail_time IS NOT NULL " +
+            "AND detail_sums.total_detail_time > readRecord.readTime " +
+            "THEN detail_sums.total_detail_time " +
+            "ELSE readRecord.readTime END), 0) " +
+            "FROM readRecord " +
+            "LEFT JOIN (SELECT deviceId, bookName, bookAuthor, SUM(readTime) AS total_detail_time " +
+            "FROM readRecordDetail GROUP BY deviceId, bookName, bookAuthor) detail_sums " +
+            "ON readRecord.deviceId = detail_sums.deviceId " +
+            "AND readRecord.bookName = detail_sums.bookName " +
+            "AND readRecord.bookAuthor = detail_sums.bookAuthor"
+    )
+    fun getCalculatedTotalReadTime(): Flow<Long>
+
     @Query("SELECT readTime FROM readRecord WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor")
     fun getReadTimeFlow(deviceId: String, bookName: String, bookAuthor: String): Flow<Long?>
 

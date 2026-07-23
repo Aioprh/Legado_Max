@@ -399,6 +399,17 @@ class ReadRecordRepositoryTest {
             return flowOf(records.sumOf { it.readTime })
         }
 
+        override fun getCalculatedTotalReadTime(): Flow<Long> {
+            val detailSums = details.groupBy {
+                Triple(it.deviceId, it.bookName, it.bookAuthor)
+            }.mapValues { (_, grouped) -> grouped.sumOf { it.readTime } }
+            val total = records.sumOf { record ->
+                val key = Triple(record.deviceId, record.bookName, record.bookAuthor)
+                maxOf(record.readTime, detailSums[key] ?: 0L)
+            }
+            return flowOf(total)
+        }
+
         override fun getReadTimeFlow(deviceId: String, bookName: String, bookAuthor: String): Flow<Long?> {
             return flowOf(
                 records.firstOrNull {
