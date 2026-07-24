@@ -6,7 +6,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.legado.app.data.entities.CoverGalleryGroupWithImages
 import io.legado.app.data.repository.CoverGalleryRepository
+import io.legado.app.help.AppWebDav
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,12 +18,19 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * 封面图集 ViewModel。
+ *
+ * 管理封面图集的分组数据流和操作逻辑，包括搜索过滤、
+ * 添加/重命名/删除分组、上传图片到 WebDAV、选择日间/夜间封面组等。
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CoverGalleryViewModel : ViewModel() {
 
     private val repository = CoverGalleryRepository()
     private val searchQuery = MutableStateFlow("")
     private val _messageDialog = MutableStateFlow<CoverGalleryMessageDialog?>(null)
+    private val uploadingGroupIds = hashSetOf<Long>()
 
     val groups: StateFlow<List<CoverGalleryGroupWithImages>> = searchQuery
         .flatMapLatest { repository.flowGroupsWithImages(it) }
@@ -63,7 +72,24 @@ class CoverGalleryViewModel : ViewModel() {
     fun addImages(context: Context, groupId: Long, uris: List<Uri>) {
         if (uris.isEmpty()) return
         viewModelScope.launch {
-            repository.addImages(context.applicationContext, groupId, uris)
+            runCatching {
+                repository.addImages(context.applicationContext, groupId, uris)
+            }.onSuccess { result ->
+                val details = buildList {
+                    add("成功添加 ${result.addedCount} 张")
+                    if (result.skippedCount > 0) add("跳过重复 ${result.skippedCount} 张")
+                    if (result.failedCount > 0) add("失败 ${result.failedCount} 张")
+                }
+                _messageDialog.value = CoverGalleryMessageDialog(
+                    title = if (result.failedCount == 0) "添加完成" else "部分图片添加失败",
+                    message = details.joinToString("，")
+                )
+            }.onFailure {
+                _messageDialog.value = CoverGalleryMessageDialog(
+                    title = "添加失败",
+                    message = it.localizedMessage ?: "无法添加所选图片"
+                )
+            }
         }
     }
 
@@ -80,6 +106,38 @@ class CoverGalleryViewModel : ViewModel() {
                 onZipReady(it)
             }.onFailure {
                 onFailure(it.localizedMessage ?: "导出zip失败")
+            }
+        }
+    }
+
+    fun uploadGroupZip(
+        context: Context,
+        groupWithImages: CoverGalleryGroupWithImages,
+        onSuccess: () -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val groupId = groupWithImages.group.id
+            if (!uploadingGroupIds.add(groupId)) {
+                onFailure("正在上传")
+                return@launch
+            }
+            var zipFile: File? = null
+            try {
+                val exportedZip = repository.exportGroupZip(context.applicationContext, groupWithImages)
+                zipFile = exportedZip
+                AppWebDav.uploadCoverGalleryPackage(
+                    "${groupWithImages.group.id}-${groupWithImages.group.name}",
+                    exportedZip
+                )
+                onSuccess()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                onFailure(e.localizedMessage ?: "上传 WebDav 失败")
+            } finally {
+                zipFile?.delete()
+                uploadingGroupIds.remove(groupId)
             }
         }
     }

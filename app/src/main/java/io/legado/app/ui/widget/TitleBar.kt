@@ -2,7 +2,6 @@ package io.legado.app.ui.widget
 
 import android.content.Context
 import android.content.res.ColorStateList
-import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.graphics.drawable.ColorDrawable
@@ -10,7 +9,6 @@ import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.Menu
 import android.view.View
-import android.widget.ImageView
 import androidx.annotation.ColorInt
 import androidx.annotation.StyleRes
 import androidx.appcompat.widget.Toolbar
@@ -19,10 +17,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.children
 import com.google.android.material.appbar.AppBarLayout
 import io.legado.app.R
-import io.legado.app.help.config.AppConfig
-import io.legado.app.lib.theme.elevation
-import io.legado.app.lib.theme.primaryColor
-import io.legado.app.lib.theme.transparentNavBar
+import io.legado.app.constant.Theme
+import io.legado.app.utils.MenuExtensions
 import io.legado.app.utils.activity
 import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
 import splitties.views.bottomPadding
@@ -60,7 +56,9 @@ class TitleBar @JvmOverloads constructor(
     private val fitStatusBar: Boolean
     private val fitNavigationBar: Boolean
     private val attachToActivity: Boolean
-    private val opaque: Boolean
+    internal val opaque: Boolean
+    internal val ignoreTopBarOpacity: Boolean
+    internal val topBarTheme: Theme
 
     init {
         val a = context.obtainStyledAttributes(
@@ -74,14 +72,21 @@ class TitleBar @JvmOverloads constructor(
         fitStatusBar = a.getBoolean(R.styleable.TitleBar_fitStatusBar, true)
         fitNavigationBar = a.getBoolean(R.styleable.TitleBar_fitNavigationBar, false)
         opaque = a.getBoolean(R.styleable.TitleBar_opaque, false)
+        ignoreTopBarOpacity = a.getBoolean(R.styleable.TitleBar_ignoreTopBarOpacity, false)
 
         val navigationIcon = a.getDrawable(R.styleable.TitleBar_navigationIcon)
         val navigationContentDescription =
             a.getText(R.styleable.TitleBar_navigationContentDescription)
         val titleText = a.getString(R.styleable.TitleBar_title)
         val subtitleText = a.getString(R.styleable.TitleBar_subtitle)
+        val themeMode = a.getInt(R.styleable.TitleBar_themeMode, 0)
+        topBarTheme = when (themeMode) {
+            1 -> Theme.Dark
+            2 -> Theme.Light
+            else -> Theme.Auto
+        }
 
-        when (a.getInt(R.styleable.TitleBar_themeMode, 0)) {
+        when (themeMode) {
             1 -> inflate(context, R.layout.view_title_bar_dark, this)
             else -> inflate(context, R.layout.view_title_bar, this)
         }
@@ -160,38 +165,28 @@ class TitleBar @JvmOverloads constructor(
         }
 
         if (!isInEditMode) {
+//            if (fitStatusBar) {
+//                setPadding(paddingLeft, context.statusBarHeight, paddingRight, paddingBottom)
+//            }
+//
+//            if (fitNavigationBar) {
+//                setPadding(paddingLeft, paddingTop, paddingRight, context.navigationBarHeight)
+//            }
+
             if (fitStatusBar || fitNavigationBar) {
                 setOnApplyWindowInsetsListenerCompat { _, windowInsets ->
                     val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-                    if (fitStatusBar && insets.top > 0) {
+                    if (fitStatusBar) {
                         topPadding = insets.top
                     }
-                    if (fitNavigationBar && insets.bottom > 0) {
+                    if (fitNavigationBar) {
                         bottomPadding = insets.bottom
                     }
                     windowInsets
                 }
-                // 兜底：部分设备（低版本 Android / 鸿蒙）上 WindowInsets 可能不派发，
-                // 此时 insets.top 始终为 0。作为后备，在视图挂载后主动检查并补充状态栏高度。
-                post {
-                    if (fitStatusBar && topPadding == 0) {
-                        val resourceId =
-                            resources.getIdentifier("status_bar_height", "dimen", "android")
-                        if (resourceId > 0) {
-                            topPadding = resources.getDimensionPixelSize(resourceId)
-                        }
-                    }
-                }
             }
 
-            if (AppConfig.isEInkMode) {
-                setBackgroundResource(R.drawable.bg_eink_border_bottom)
-            } else if (!opaque && context.transparentNavBar) {
-                setBackgroundColor(Color.TRANSPARENT)
-            } else {
-                setBackgroundColor(context.primaryColor)
-                elevation = context.elevation
-            }
+            applyTopBarConfig()
 
             stateListAnimator = null
         }
@@ -238,12 +233,8 @@ class TitleBar @JvmOverloads constructor(
 
     fun setColorFilter(@ColorInt color: Int) {
         val colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_ATOP)
-        toolbar.children.firstOrNull { it is ImageView }?.background?.colorFilter = colorFilter
         toolbar.navigationIcon?.colorFilter = colorFilter
         toolbar.overflowIcon?.colorFilter = colorFilter
-        toolbar.menu.children.forEach {
-            it.icon?.colorFilter = colorFilter
-        }
     }
 
     override fun setBackgroundColor(color: Int) {
@@ -276,6 +267,7 @@ class TitleBar @JvmOverloads constructor(
             activity?.let {
                 it.setSupportActionBar(toolbar)
                 it.supportActionBar?.setDisplayHomeAsUpEnabled(displayHomeAsUp)
+                setColorFilter(MenuExtensions.getMenuColor(context, topBarTheme))
             }
         }
     }

@@ -938,6 +938,28 @@ class PhotoView @JvmOverloads constructor(
         mTranslateY = 0
     }
 
+    /** 返回当前显示矩阵的副本，用于裁剪计算 */
+    fun getDisplayMatrixCopy(): Matrix = Matrix(mSynthesisMatrix)
+
+    /** 缩放并居中图片到指定矩形区域内，用于裁剪页面的视口适配 */
+    fun fitInsideRect(targetRect: RectF) {
+        if (!hasDrawable || !isKnowSize || targetRect.isEmpty) return
+        initBase()
+        val scaleX = targetRect.width() / mImgRect.width()
+        val scaleY = targetRect.height() / mImgRect.height()
+        val scale = minOf(scaleX, scaleY)
+        mAnimMatrix.reset()
+        mAnimMatrix.postScale(scale, scale, mImgRect.centerX(), mImgRect.centerY())
+        executeTranslate()
+        val rect = RectF(mImgRect)
+        mSynthesisMatrix.mapRect(rect)
+        mAnimMatrix.postTranslate(
+            targetRect.centerX() - rect.centerX(),
+            targetRect.centerY() - rect.centerY()
+        )
+        executeTranslate()
+    }
+
     interface ClipCalculate {
         fun calculateTop(): Float
     }
