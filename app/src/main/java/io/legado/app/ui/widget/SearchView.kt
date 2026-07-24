@@ -13,8 +13,12 @@ import android.text.style.ImageSpan
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
+import android.widget.ImageView
 import android.widget.TextView
+import androidx.annotation.ColorInt
 import androidx.appcompat.widget.SearchView
+import androidx.core.graphics.ColorUtils
+import androidx.core.graphics.drawable.DrawableCompat
 import io.legado.app.R
 import io.legado.app.utils.printOnDebug
 
@@ -24,7 +28,10 @@ class SearchView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : SearchView(context, attrs) {
     private var mSearchHintIcon: Drawable? = null
+    private var mOriginalHintIcon: Drawable? = null
     private var textView: TextView? = null
+    private var hintIconTint: Int? = null
+    private var contentTint: Int? = null
 
     @SuppressLint("UseCompatLoadingForDrawables")
     override fun onLayout(
@@ -38,13 +45,16 @@ class SearchView @JvmOverloads constructor(
         try {
             if (textView == null) {
                 textView = findViewById(androidx.appcompat.R.id.search_src_text)
-                mSearchHintIcon = this.context.getDrawable(R.drawable.ic_search_hint)
-            }
-            // 改变字体
-            textView!!.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            textView!!.gravity = Gravity.CENTER_VERTICAL
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-                textView!!.isLocalePreferredLineHeightForMinimumUsed = false
+                mOriginalHintIcon = this.context.getDrawable(R.drawable.ic_search_hint)
+                mSearchHintIcon = mOriginalHintIcon
+                applyHintIconTint()
+                applyContentTint()
+                // 改变字体（只需初始化一次）
+                textView!!.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                textView!!.gravity = Gravity.CENTER_VERTICAL
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                    textView!!.isLocalePreferredLineHeightForMinimumUsed = false
+                }
             }
             updateQueryHint()
         } catch (e: Exception) {
@@ -55,13 +65,11 @@ class SearchView @JvmOverloads constructor(
     private fun getDecoratedHint(hintText: CharSequence): CharSequence {
         // If the field is always expanded or we don't have a search hint icon,
         // then don't add the search icon to the hint.
-        if (mSearchHintIcon == null) {
-            return hintText
-        }
+        val icon = mSearchHintIcon ?: return hintText
         val textSize = textView!!.textSize.toInt()
-        mSearchHintIcon!!.setBounds(0, 0, textSize, textSize)
+        icon.setBounds(0, 0, textSize, textSize)
         val ssb = SpannableStringBuilder("   ")
-        ssb.setSpan(CenteredImageSpan(mSearchHintIcon), 1, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        ssb.setSpan(CenteredImageSpan(icon), 1, 2, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         ssb.append(hintText)
         return ssb
     }
@@ -69,6 +77,47 @@ class SearchView @JvmOverloads constructor(
     private fun updateQueryHint() {
         textView?.let {
             it.hint = getDecoratedHint(queryHint ?: "")
+        }
+    }
+
+    fun setSearchHintIconTint(@ColorInt color: Int) {
+        hintIconTint = color
+        applyHintIconTint()
+        updateQueryHint()
+    }
+
+    /** 设置搜索框内容颜色（文字和图标），用于顶栏主题适配 */
+    fun setContentTint(@ColorInt color: Int) {
+        contentTint = color
+        hintIconTint = color
+        applyHintIconTint()
+        applyContentTint()
+        updateQueryHint()
+    }
+
+    private fun applyContentTint() {
+        val color = contentTint ?: return
+        textView?.let {
+            it.setTextColor(color)
+            it.setHintTextColor(ColorUtils.setAlphaComponent(color, 180))
+        }
+        listOf(
+            androidx.appcompat.R.id.search_button,
+            androidx.appcompat.R.id.search_close_btn,
+            androidx.appcompat.R.id.search_go_btn,
+            androidx.appcompat.R.id.search_mag_icon,
+            androidx.appcompat.R.id.search_voice_btn
+        ).forEach { id ->
+            findViewById<ImageView?>(id)?.setColorFilter(color)
+        }
+    }
+
+    private fun applyHintIconTint() {
+        val color = hintIconTint ?: return
+        mSearchHintIcon = mOriginalHintIcon?.mutate()?.let {
+            DrawableCompat.wrap(it).apply {
+                DrawableCompat.setTint(this, color)
+            }
         }
     }
 
@@ -89,7 +138,7 @@ class SearchView @JvmOverloads constructor(
         updateQueryHint()
     }
 
-    internal class CenteredImageSpan(drawable: Drawable?) : ImageSpan(drawable!!) {
+    internal class CenteredImageSpan(drawable: Drawable) : ImageSpan(drawable) {
         override fun draw(
             canvas: Canvas, text: CharSequence,
             start: Int, end: Int, x: Float,

@@ -53,6 +53,13 @@ import androidx.core.graphics.drawable.toDrawable
  * - 模糊封面加载
  * - 封面规则配置与自动搜索
  */
+/**
+ * 书籍封面管理器。
+ *
+ * 管理封面规则配置、默认封面绘制，以及封面图集的默认封面查找。
+ * 封面图集功能允许用户为书籍指定自定义封面图片，
+ * 通过 [CoverGalleryRepository] 查询匹配的图集封面。
+ */
 @Keep
 @Suppress("ConstPropertyName")
 object BookCover {
@@ -75,14 +82,18 @@ object BookCover {
         upDefaultCover()
     }
 
-    fun getGalleryDefaultCover(identity: String? = null): String? {
-        return coverGalleryRepository.getDefaultCoverPath(identity)
+    /** 从封面图集中获取默认封面路径，未匹配则返回 null */
+    fun getGalleryDefaultCover(identity: String? = null, originalCoverPath: String? = null): String? {
+        return coverGalleryRepository.getDefaultCoverPath(identity, originalCoverPath)
     }
 
+    /** 获取书籍展示封面：优先封面图集，回退到原始封面 */
     fun getDisplayCover(book: Book): String? {
-        return getGalleryDefaultCover(book.bookUrl) ?: book.getDisplayCover()
+        val originalCover = book.getDisplayCover()
+        return getGalleryDefaultCover(book.bookUrl, originalCover) ?: originalCover
     }
 
+    /** 获取搜索结果书籍的展示封面：优先封面图集，回退到原始封面 */
     fun getDisplayCover(searchBook: SearchBook): String? {
         val identity = buildString {
             append(searchBook.bookUrl)
@@ -93,7 +104,7 @@ object BookCover {
             append('|')
             append(searchBook.author)
         }
-        return getGalleryDefaultCover(identity) ?: searchBook.coverUrl
+        return getGalleryDefaultCover(identity, searchBook.coverUrl) ?: searchBook.coverUrl
     }
 
     /**
@@ -109,12 +120,12 @@ object BookCover {
         if (isNightTheme) {
             drawBookName = appCtx.getPrefBoolean(PreferKey.coverShowNameN, true)
             drawBookAuthor = appCtx.getPrefBoolean(PreferKey.coverShowAuthorN, true)
-            path = getGalleryDefaultCover("default-night")
+            path = getGalleryDefaultCover("default-night", appCtx.getPrefString(PreferKey.defaultCoverDark))
                 ?: appCtx.getPrefString(PreferKey.defaultCoverDark)
         } else {
             drawBookName = appCtx.getPrefBoolean(PreferKey.coverShowName, true)
             drawBookAuthor = appCtx.getPrefBoolean(PreferKey.coverShowAuthor, true)
-            path = getGalleryDefaultCover("default-day")
+            path = getGalleryDefaultCover("default-day", appCtx.getPrefString(PreferKey.defaultCover))
                 ?: appCtx.getPrefString(PreferKey.defaultCover)
         }
         defaultDrawable = runCatching {

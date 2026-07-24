@@ -127,7 +127,24 @@ class ThemeConfigFragment : PreferenceFragment(),
 
     override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
         menuInflater.inflate(R.menu.theme_config, menu)
+        updateThemeModeMenuItem(menu)
         menu.applyTint(requireContext())
+    }
+
+    private fun updateThemeModeMenuItem(menu: Menu) {
+        val themeModeItem = menu.findItem(R.id.menu_theme_mode) ?: return
+        val iconRes = if (AppConfig.isNightTheme) {
+            R.drawable.ic_daytime
+        } else {
+            R.drawable.ic_moon
+        }
+        val titleRes = if (AppConfig.isNightTheme) {
+            R.string.day
+        } else {
+            R.string.night
+        }
+        themeModeItem.setIcon(iconRes)
+        themeModeItem.setTitle(titleRes)
     }
 
     override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
@@ -135,6 +152,7 @@ class ThemeConfigFragment : PreferenceFragment(),
             R.id.menu_theme_mode -> {
                 AppConfig.isNightTheme = !AppConfig.isNightTheme
                 ThemeConfig.applyDayNight(requireContext())
+                activity?.invalidateMenu()
                 return true
             }
         }
@@ -204,13 +222,20 @@ class ThemeConfigFragment : PreferenceFragment(),
 
             PreferKey.bgImage -> selectBgAction(false)
             PreferKey.bgImageN -> selectBgAction(true)
-            "themeList" -> ThemeListDialog().show(childFragmentManager, "themeList")
+            "applicationThemeManage" -> startActivity<ApplicationThemeActivity>()
+            "themeList" -> startActivity<ThemeManageActivity>()
             "saveDayTheme",
             "saveNightTheme" -> alertSaveTheme(key)
 
             "coverConfig" -> startActivity<ConfigActivity> {
                 putExtra("configTag", ConfigTag.COVER_CONFIG)
             }
+
+            "navigationBarManage" -> startActivity<NavigationBarManageActivity>()
+
+            "topBarManage" -> startActivity<TopBarManageActivity>()
+
+            "bubbleManage" -> startActivity<BubbleManageActivity>()
 
             "welcomeStyle" -> startActivity<ConfigActivity> {
                 putExtra("configTag", ConfigTag.WELCOME_CONFIG)
@@ -366,7 +391,7 @@ class ThemeConfigFragment : PreferenceFragment(),
                     val suffix = if (url.contains(".9.png", true)) {
                         ".9.png"
                     } else {
-                        ".$imageType"
+                        "." + imageType
                     }
                     val fileName = MD5Utils.md5Encode(url) + suffix
                     file = FileUtils.createFileIfNotExist(file, preferenceKey, fileName)

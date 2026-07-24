@@ -11,10 +11,14 @@ import android.widget.ImageButton
 import androidx.appcompat.view.menu.MenuBuilder
 import androidx.appcompat.view.menu.MenuItemImpl
 import androidx.appcompat.view.menu.SubMenuBuilder
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.forEach
 import io.legado.app.R
 import io.legado.app.constant.Theme
+import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.transparentNavBar
 import java.lang.reflect.Method
 
 @SuppressLint("RestrictedApi")
@@ -26,7 +30,7 @@ fun Menu.applyTint(context: Context, theme: Theme = Theme.Auto): Menu = this.let
     val defaultTextColor = context.getCompatColor(R.color.primaryText)
     val tintColor = MenuExtensions.getMenuColor(context, theme)
     menu.forEach { item ->
-        (item as MenuItemImpl).let { impl ->
+        (item as? MenuItemImpl)?.let { impl ->
             //overflow：展开的item
             impl.icon?.setTintMutate(
                 if (impl.requiresOverflow()) defaultTextColor else tintColor
@@ -98,12 +102,12 @@ object MenuExtensions {
 
     fun getMenuColor(
         context: Context,
-        theme: Theme = Theme.Auto,
-        requiresOverflow: Boolean = false
+        theme: Theme = Theme.Auto
     ): Int {
-        val defaultTextColor = context.getCompatColor(R.color.primaryText)
-        if (requiresOverflow)
-            return defaultTextColor
+        if (context.transparentNavBar) {
+            val isBackgroundLight = ColorUtils.calculateLuminance(context.backgroundColor) > 0.5
+            return context.getPrimaryTextColor(isBackgroundLight)
+        }
         val primaryTextColor = context.primaryTextColor
         return when (theme) {
             Theme.Dark -> context.getCompatColor(R.color.md_white_1000)

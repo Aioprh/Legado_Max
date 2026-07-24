@@ -3,32 +3,33 @@ package io.legado.app.data.repository
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
+import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.CoverGalleryGroup
 import io.legado.app.data.entities.CoverGalleryGroupWithImages
 import io.legado.app.data.entities.CoverGalleryImage
 import io.legado.app.help.CacheManager
+import io.legado.app.help.config.AppConfig
 import io.legado.app.model.BookCover
-import io.legado.app.help.http.okHttpClient
-import io.legado.app.help.http.newCallResponse
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.createFolderIfNotExist
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
+import io.legado.app.utils.getPrefString
 import io.legado.app.utils.inputStream
 import io.legado.app.utils.normalizeFileName
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.putPrefString
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
+import splitties.init.appCtx
 import java.io.File
 import java.io.FileOutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
-import kotlin.math.absoluteValue
 
 class CoverGalleryRepository {
 
@@ -41,6 +42,15 @@ class CoverGalleryRepository {
     }
 
     fun flowGroupWithImages(groupId: Long) = dao.flowGroupWithImages(groupId)
+
+    fun allGroupsWithImages(): List<CoverGalleryGroupWithImages> {
+        return dao.getAllGroupsWithImages()
+    }
+
+    fun getGroupName(groupId: Long?): String? {
+        groupId ?: return null
+        return dao.getGroupWithImagesNow(groupId)?.group?.name
+    }
 
     suspend fun addGroup(name: String): Long {
         val order = (dao.getMaxGroupOrder() ?: -1) + 1
@@ -65,28 +75,59 @@ class CoverGalleryRepository {
 
     suspend fun deleteGroup(groupId: Long) {
         dao.deleteGroup(groupId)
+        clearGroupState(groupId)
         refreshDefaultCover()
     }
 
     suspend fun addImage(context: Context, groupId: Long, uri: Uri) {
-        addImages(context, groupId, listOf(uri))
-    }
-
-    suspend fun addImages(context: Context, groupId: Long, uris: List<Uri>) {
-        if (uris.isEmpty()) return
-        var order = (dao.getMaxImageOrder(groupId) ?: -1) + 1
-        uris.forEach { uri ->
-            val path = copyImageToCovers(context, uri)
-            dao.insertImage(
-                CoverGalleryImage(
-                    groupId = groupId,
-                    path = path,
-                    order = order++
-                )
+        val path = copyImageToCovers(context, uri)
+        val order = (dao.getMaxImageOrder(groupId) ?: -1) + 1
+        dao.insertImage(
+            CoverGalleryImage(
+                groupId = groupId,
+                path = path,
+                order = order
             )
-        }
+        )
         refreshDefaultCover()
     }
+
+    suspend fun addImages(context: Context, groupId: Long, uris: List<Uri>): BatchAddResult =
+        withContext(IO) {
+            val uniqueUris = uris.distinct()
+            val existingPaths = dao.getGroupWithImagesNow(groupId)
+                ?.images
+                .orEmpty()
+                .mapTo(hashSetOf()) { it.path }
+            var nextOrder = (dao.getMaxImageOrder(groupId) ?: -1) + 1
+            var skippedCount = 0
+            var failedCount = 0
+            val images = ArrayList<CoverGalleryImage>(uniqueUris.size)
+
+            uniqueUris.forEach { uri ->
+                runCatching { copyImageToCovers(context, uri) }
+                    .onSuccess { path ->
+                        if (!existingPaths.add(path)) {
+                            skippedCount++
+                        } else {
+                            images.add(
+                                CoverGalleryImage(
+                                    groupId = groupId,
+                                    path = path,
+                                    order = nextOrder++
+                                )
+                            )
+                        }
+                    }
+                    .onFailure { failedCount++ }
+            }
+
+            if (images.isNotEmpty()) {
+                dao.insertImages(*images.toTypedArray())
+                refreshDefaultCover()
+            }
+            BatchAddResult(images.size, skippedCount, failedCount)
+        }
 
     suspend fun deleteImage(imageId: Long) {
         dao.deleteImage(imageId)
@@ -100,6 +141,7 @@ class CoverGalleryRepository {
 
     suspend fun rerandomizeGroup(groupId: Long) {
         CacheManager.put(randomSeedKeyPrefix + groupId, System.currentTimeMillis())
+        CacheManager.delete(sequenceKeyPrefix + groupId)
         refreshDefaultCover()
     }
 
@@ -188,23 +230,98 @@ class CoverGalleryRepository {
         ZipImportResult(groupName, images.size)
     }
 
-    fun getDefaultCoverPath(identity: String? = null): String? {
-        val groupWithImages = dao.getDefaultGroupWithImages() ?: return null
+    fun getDefaultCoverPath(
+        identity: String? = null,
+        originalCoverPath: String? = null
+    ): String? {
+        val selected = getSelectedGroupWithImages(originalCoverPath)
+        val groupWithImages = selected ?: dao.getDefaultGroupWithImages() ?: return null
         val images = groupWithImages.images
             .filter { it.path.isNotBlank() }
-            .distinctBy { it.path }
             .sortedWith(compareBy({ it.order }, { it.id }))
         if (images.isEmpty()) return null
-        if (images.size == 1) {
-            AppLog.putDebug("封面图集默认分组仅1张图片，无法随机。groupId=${groupWithImages.group.id}, groupName=${groupWithImages.group.name}")
-        }
-        val randomSeed = CacheManager.getLong(randomSeedKeyPrefix + groupWithImages.group.id) ?: 0L
         val key = identity?.takeIf { it.isNotBlank() } ?: "default"
-        val index = stableIndex(
-            key = "${groupWithImages.group.id}:$randomSeed:$key",
-            size = images.size
-        )
+        val index = if (selected != null && selectedMode() == MODE_SEQUENCE) {
+            sequentialIndex(groupWithImages.group.id, key, images.size)
+        } else {
+            val randomSeed = CacheManager.getLong(randomSeedKeyPrefix + groupWithImages.group.id) ?: 0L
+            stableIndex(
+                key = "${groupWithImages.group.id}:$randomSeed:$key",
+                size = images.size
+            )
+        }
         return images[index].path
+    }
+
+    fun setSelectedGroup(isNight: Boolean, groupId: Long?) {
+        val key = if (isNight) PreferKey.coverCollectionNight else PreferKey.coverCollectionDay
+        appCtx.putPrefString(key, groupId?.toString().orEmpty())
+    }
+
+    private fun getSelectedGroupWithImages(originalCoverPath: String?): CoverGalleryGroupWithImages? {
+        val isNight = AppConfig.isNightTheme
+        if (selectedMode(isNight) == MODE_MIXED && originalCoverPath.isRealCoverPath()) {
+            return null
+        }
+        val groupId = appCtx.getPrefString(
+            if (isNight) PreferKey.coverCollectionNight else PreferKey.coverCollectionDay
+        )?.toLongOrNull() ?: return null
+        return dao.getGroupWithImagesNow(groupId)
+    }
+
+    private fun selectedMode(isNight: Boolean = AppConfig.isNightTheme): String {
+        return appCtx.getPrefString(
+            if (isNight) PreferKey.coverCollectionModeNight else PreferKey.coverCollectionModeDay,
+            MODE_RANDOM
+        ) ?: MODE_RANDOM
+    }
+
+    private fun sequentialIndex(groupId: Long, key: String, size: Int): Int {
+        if (size <= 1) return 0
+        val cacheKey = "$sequenceKeyPrefix$groupId"
+        val assignments = CacheManager.get(cacheKey)
+            ?.lineSequence()
+            ?.mapIndexedNotNull { index, line ->
+                val value = line.takeIf { it.isNotBlank() } ?: return@mapIndexedNotNull null
+                val savedIndex = value.substringAfter('\t', "").toIntOrNull()
+                val savedKey = value.substringBefore('\t')
+                savedKey to (savedIndex ?: index)
+            }
+            ?.toMutableList()
+            ?: mutableListOf()
+        assignments.firstOrNull { it.first == key }?.let {
+            return Math.floorMod(it.second, size)
+        }
+        val nextIndex = (assignments.maxOfOrNull { it.second } ?: -1) + 1
+        assignments.add(key to nextIndex)
+        val bounded = assignments.takeLast(MAX_SEQUENCE_ASSIGNMENTS)
+        CacheManager.put(cacheKey, bounded.joinToString("\n") { "${it.first}\t${it.second}" })
+        return Math.floorMod(nextIndex, size)
+    }
+
+    private fun clearGroupState(groupId: Long) {
+        CacheManager.delete(randomSeedKeyPrefix + groupId)
+        CacheManager.delete(sequenceKeyPrefix + groupId)
+    }
+
+    private fun String?.isRealCoverPath(): Boolean {
+        val value = this?.trim().orEmpty()
+        if (value.isBlank() || value.equals("use_default_cover", ignoreCase = true)) {
+            return false
+        }
+        val lowerValue = value.lowercase()
+        return when {
+            lowerValue.startsWith("http://") ||
+                lowerValue.startsWith("https://") ||
+                lowerValue.startsWith("content://") ||
+                lowerValue.startsWith("android.resource://") ||
+                lowerValue.startsWith("file:///android_asset/") -> true
+            lowerValue.startsWith("file://") -> runCatching {
+                File(Uri.parse(value).path.orEmpty()).isFile
+            }.getOrDefault(false)
+            File(value).isAbsolute -> File(value).isFile
+            else -> true
+        }
     }
 
     private fun stableIndex(key: String, size: Int): Int {
@@ -213,40 +330,10 @@ class CoverGalleryRepository {
         key.forEach {
             hash = 31 * hash + it.code
         }
-        return (hash % size).absoluteValue.toInt()
+        return Math.floorMod(hash, size)
     }
 
-    private suspend fun copyImageToCovers(context: Context, uri: Uri): String {
-        // 处理网络图片链接 (http/https)：下载到本地 covers 目录
-        if (uri.scheme == "http" || uri.scheme == "https") {
-            val url = uri.toString()
-            val response = okHttpClient.newCallResponse(retry = 1) {
-                url(url)
-            }
-            val body = response.body
-                ?: throw NoCoverGalleryImageException("图片下载失败：响应体为空")
-            val bytes = body.bytes()
-            response.close()
-
-            // 从 URL 路径中提取文件名和后缀
-            val pathSegments = uri.path?.split("/")?.filter { it.isNotBlank() } ?: emptyList()
-            val rawName = pathSegments.lastOrNull().orEmpty()
-            val suffix = if (rawName.contains(".9.png", true)) {
-                ".9.png"
-            } else {
-                "." + rawName.substringAfterLast(".", "jpg")
-            }
-            val fileName = MD5Utils.md5Encode(bytes.inputStream()) + suffix
-            val targetFile = FileUtils.createFileIfNotExist(
-                context.externalFiles, "covers", fileName
-            )
-            FileOutputStream(targetFile).use {
-                it.write(bytes)
-            }
-            return targetFile.absolutePath
-        }
-
-        // 处理本地文件 (content:// / file://)
+    private fun copyImageToCovers(context: Context, uri: Uri): String {
         var file = context.externalFiles
         val sourceName = DocumentFile.fromSingleUri(context, uri)?.name.orEmpty()
         val suffix = if (sourceName.contains(".9.png", true)) {
@@ -305,11 +392,22 @@ class CoverGalleryRepository {
         val imageCount: Int
     )
 
+    data class BatchAddResult(
+        val addedCount: Int,
+        val skippedCount: Int,
+        val failedCount: Int
+    )
+
     class NoCoverGalleryImageException(message: String) : IllegalArgumentException(message)
 
     companion object {
+        const val MODE_RANDOM = "random"
+        const val MODE_SEQUENCE = "sequence"
+        const val MODE_MIXED = "mixed"
         const val backupDirName = "封面图集"
         const val randomSeedKeyPrefix = "coverGalleryRandomSeed:"
+        const val sequenceKeyPrefix = "coverGallerySequence:"
+        private const val MAX_SEQUENCE_ASSIGNMENTS = 5000
         private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif")
     }
 }

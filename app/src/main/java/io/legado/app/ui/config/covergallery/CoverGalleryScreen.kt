@@ -1,6 +1,7 @@
 package io.legado.app.ui.config.covergallery
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
@@ -86,8 +87,8 @@ import io.legado.app.ui.theme.pageCardElevatedContainerColor
 import io.legado.app.ui.theme.pageMutedIconTint
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.theme.pageSurfaceVariantColor
-import io.legado.app.ui.theme.pageTopBarContainerColor
-import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
+import io.legado.app.ui.theme.pageTopBarBackground
+import io.legado.app.ui.theme.pageTopBarColors
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
@@ -101,7 +102,7 @@ fun CoverGalleryScreen(
     val groups by viewModel.groups.collectAsStateWithLifecycle()
     val messageDialog by viewModel.messageDialog.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val topBarColor = pageTopBarContainerColor()
+    val topBarColors = pageTopBarColors()
     val elevatedContainerColor = pageCardElevatedContainerColor()
     val secondaryTextColor = pageSecondaryTextColor()
 
@@ -113,28 +114,10 @@ fun CoverGalleryScreen(
     var pendingExportZipName by remember { mutableStateOf("") }
     var pendingImageGroupId by remember { mutableLongStateOf(0L) }
 
-    /**
-     * 图片选择回调
-     *
-     * 使用 HandleFileContract IMAGE 模式，弹出 4 选项对话框：
-     * 1. 系统图片选择器（多选）
-     * 2. 系统文件选择器（多选）
-     * 3. 自带文件选择器（单选）
-     * 4. 手动输入图片链接（单选）
-     *
-     * 多选结果在 [HandleFileContract.Result.uris] 中，单选结果在 [HandleFileContract.Result.uri] 中。
-     */
-    val selectImage = rememberLauncherForActivityResult(HandleFileContract()) {
+    val selectImages = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         val groupId = pendingImageGroupId
         if (groupId != 0L) {
-            // 优先处理多选结果，为空时回退到单选
-            if (it.uris.isNotEmpty()) {
-                viewModel.addImages(context, groupId, it.uris)
-            } else {
-                it.uri?.let { uri ->
-                    viewModel.addImage(context, groupId, uri)
-                }
-            }
+            viewModel.addImages(context, groupId, uris)
             pendingImageGroupId = 0L
         }
     }
@@ -191,32 +174,56 @@ fun CoverGalleryScreen(
     }
 
     deleteGroup?.let { groupWithImages ->
-        AppConfirmDialog(
-            title = "删除分组",
-            text = "确定删除“${groupWithImages.group.name}”及其中 ${groupWithImages.images.size} 张图片吗？",
-            confirmText = "删除",
-            destructive = true,
-            onConfirm = {
-                viewModel.deleteGroup(groupWithImages.group.id)
-                deleteGroup = null
-            },
+        AlertDialog(
             onDismissRequest = { deleteGroup = null },
-            containerColor = elevatedContainerColor
+            containerColor = elevatedContainerColor,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = secondaryTextColor,
+            shape = RoundedCornerShape(0.dp),
+            title = { Text("删除分组") },
+            text = { Text("确定删除“${groupWithImages.group.name}”及其中 ${groupWithImages.images.size} 张图片吗？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteGroup(groupWithImages.group.id)
+                        deleteGroup = null
+                    }
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteGroup = null }) {
+                    Text("取消")
+                }
+            }
         )
     }
 
     deleteImage?.let { image ->
-        AppConfirmDialog(
-            title = "删除图片",
-            text = "确定从图集中删除这张图片吗？",
-            confirmText = "删除",
-            destructive = true,
-            onConfirm = {
-                viewModel.deleteImage(image.id)
-                deleteImage = null
-            },
+        AlertDialog(
             onDismissRequest = { deleteImage = null },
-            containerColor = elevatedContainerColor
+            containerColor = elevatedContainerColor,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = secondaryTextColor,
+            shape = RoundedCornerShape(0.dp),
+            title = { Text("删除图片") },
+            text = { Text("确定从图集中删除这张图片吗？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteImage(image.id)
+                        deleteImage = null
+                    }
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteImage = null }) {
+                    Text("取消")
+                }
+            }
         )
     }
 
@@ -224,12 +231,13 @@ fun CoverGalleryScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                modifier = Modifier.pageTopBarBackground(topBarColors),
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarColor,
-                    scrolledContainerColor = topBarColor,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
-                    titleContentColor = MaterialTheme.colorScheme.onSecondary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSecondary
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                    navigationIconContentColor = topBarColors.contentColor,
+                    titleContentColor = topBarColors.contentColor,
+                    actionIconContentColor = topBarColors.contentColor
                 ),
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
@@ -271,8 +279,7 @@ fun CoverGalleryScreen(
                                     "## 封面图集\n\n" +
                                         "- 支持图片类型：jpg、jpeg、png、webp、gif、bmp、heic、heif\n" +
                                         "- 导入文件类型：zip，zip 中的图片会导入为一个分组。\n" +
-                                        "- 导出文件类型：zip，导出内容为当前分组中的图片。\n"+
-                                        "- 优先级：图集优先级 > html封面优先级 > 原封面/默认封面，当图集封面开启，html封面失效；HTML 没开启或模板为空时，才继续加载书籍原封面或默认封面",
+                                        "- 导出文件类型：zip，导出内容为当前分组中的图片。",
                                     TextDialog.Mode.MD
                                 )
                             )
@@ -351,10 +358,9 @@ fun CoverGalleryScreen(
                             groupWithImages = groupWithImages,
                             onAddImage = {
                                 pendingImageGroupId = groupWithImages.group.id
-                                selectImage.launch {
-                                    requestCode = 3001
-                                    mode = HandleFileContract.IMAGE
-                                }
+                                selectImages.launch(
+                                    arrayOf("image/jpeg", "image/png", "image/bmp", "image/webp")
+                                )
                             },
                             onSetDefault = { viewModel.setDefaultGroup(groupWithImages.group.id) },
                             onUnsetDefault = { viewModel.unsetDefaultGroup(groupWithImages.group.id) },
@@ -387,6 +393,22 @@ fun CoverGalleryScreen(
                                     },
                                     onFailure = { message ->
                                         context.toastOnUi("导出失败\n$message")
+                                    }
+                                )
+                            },
+                            onUploadZip = {
+                                if (groupWithImages.images.isEmpty()) {
+                                    context.toastOnUi("空分组不能上传")
+                                    return@CoverGalleryGroupCard
+                                }
+                                viewModel.uploadGroupZip(
+                                    context,
+                                    groupWithImages,
+                                    onSuccess = {
+                                        context.toastOnUi("上传 WebDav 成功")
+                                    },
+                                    onFailure = { message ->
+                                        context.toastOnUi("上传 WebDav 失败\n$message")
                                     }
                                 )
                             },
@@ -438,6 +460,7 @@ private fun CoverGalleryGroupCard(
     onUnsetDefault: () -> Unit,
     onRerandomize: () -> Unit,
     onExportZip: () -> Unit,
+    onUploadZip: () -> Unit,
     onRename: () -> Unit,
     onDeleteGroup: () -> Unit,
     onDeleteImage: (CoverGalleryImage) -> Unit
@@ -536,6 +559,14 @@ private fun CoverGalleryGroupCard(
                             text = { Text("导出为zip") },
                             onClick = {
                                 onExportZip()
+                                showMenu = false
+                            },
+                            leadingIcon = { Icon(Icons.Default.FileUpload, contentDescription = null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("上传 WebDav") },
+                            onClick = {
+                                onUploadZip()
                                 showMenu = false
                             },
                             leadingIcon = { Icon(Icons.Default.FileUpload, contentDescription = null) }
