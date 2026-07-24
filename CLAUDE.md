@@ -76,7 +76,7 @@ MVVM pattern with AndroidViewModel + ViewBinding + Coroutines.
 
 - **Coroutine helper**: `BaseViewModel.execute()` wraps `Coroutine.async()`. Use this instead of raw `viewModelScope.launch`.
 - **Event bus**: `LiveEventBus` for cross-component events. Subscribe via `observeEvent<T>(key) { ... }` in `observeLiveBus()`.
-- **Database**: Room (`AppDatabase` v96), singleton at `appDb`. DAOs in `data/`, entities in `data/entities/`. Uses KSP (not kapt).
+- **Database**: Room (`AppDatabase` v100), singleton at `appDb`. DAOs in `data/`, entities in `data/entities/`. Uses KSP (not kapt).
 - **Book source rules**: Rhino JS engine (`:modules:rhino` module) evaluates user-defined rules. The `analyzeRule` package in `model/` handles rule parsing.
 - **Singletons in model/**: `ReadBook`, `CacheBook`, `AudioPlay` manage global reading state.
 
