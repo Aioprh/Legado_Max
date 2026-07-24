@@ -373,7 +373,10 @@ fun HomepageScreen(
                     listState = listState,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = 16.dp)
+                        .padding(
+                            end = 16.dp,
+                            bottom = 16.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                        )
                 )
             }
         }
@@ -608,7 +611,10 @@ private fun SourceTabLayout(
                 listState = state,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = 16.dp)
+                    .padding(
+                        end = 16.dp,
+                        bottom = 16.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                    )
             )
         }
     }
