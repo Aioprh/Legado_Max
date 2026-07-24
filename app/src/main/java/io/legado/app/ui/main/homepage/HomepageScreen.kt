@@ -122,6 +122,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun HomepageScreen(
     viewModel: HomepageViewModel = viewModel(),
+    bottomPaddingPx: Int = 0,
     onBookClick: (name: String?, author: String?, bookUrl: String, origin: String?, coverPath: String?) -> Unit,
     onModuleHeaderClick: (title: String?, sourceUrl: String, exploreUrl: String?) -> Unit,
 ) {
@@ -312,6 +313,7 @@ fun HomepageScreen(
                 modules = uiState.modules,
                 sets = uiState.manageState.sets,
                 paddingValues = paddingValues,
+                bottomPaddingPx = bottomPaddingPx,
                 viewModel = viewModel,
                 context = context,
                 isRefreshing = uiState.isRefreshing,
@@ -341,7 +343,10 @@ fun HomepageScreen(
                 ) {
                     LazyColumn(
                         state = listState,
-                        contentPadding = PaddingValues(vertical = 8.dp),
+                        contentPadding = PaddingValues(
+                            top = 8.dp,
+                            bottom = 8.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                        ),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(sortedModules, key = { it.globalId }) { module ->
@@ -441,6 +446,7 @@ private fun SourceTabLayout(
     modules: List<HomepageModuleUi>,
     sets: List<HomepageSourceManageUi>,
     paddingValues: PaddingValues,
+    bottomPaddingPx: Int,
     viewModel: HomepageViewModel,
     context: android.content.Context,
     isRefreshing: Boolean,
@@ -573,7 +579,10 @@ private fun SourceTabLayout(
             ) {
                 LazyColumn(
                     state = listState,
-                    contentPadding = PaddingValues(vertical = 8.dp),
+                    contentPadding = PaddingValues(
+                        top = 8.dp,
+                        bottom = 8.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                    ),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(currentModules, key = { it.globalId }) { module ->

@@ -117,4 +117,13 @@ open class FastScrollRecyclerView : RecyclerView {
         super.onDetachedFromWindow()
     }
 
+    /**
+     * 刷新 FastScroller 的 LayoutParams，在 RecyclerView padding 变化后调用。
+     */
+    fun refreshFastScrollerLayout() {
+        (mFastScroller.parent as? ViewGroup)?.let {
+            mFastScroller.setLayoutParams(it)
+        }
+    }
+
 }

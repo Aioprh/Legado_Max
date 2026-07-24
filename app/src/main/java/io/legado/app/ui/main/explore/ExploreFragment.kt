@@ -7,6 +7,7 @@ import android.view.SubMenu
 import android.view.View
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.isGone
+import androidx.core.view.updatePadding
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -28,6 +29,7 @@ import io.legado.app.ui.book.explore.ExploreShowActivity
 import io.legado.app.ui.book.source.manage.BookSourceSort
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
+import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.cnCompare
@@ -133,6 +135,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     }
 
     private fun initRecyclerView() {
+        updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
         binding.rvFind.setEdgeEffectColor(primaryColor)
         binding.rvFind.layoutManager = linearLayoutManager
         binding.rvFind.adapter = adapter
@@ -147,6 +150,13 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
                 }
             }
         })
+    }
+
+    override fun updateMainBottomPadding(bottomPadding: Int) {
+        if (view == null) return
+        binding.rvFind.clipToPadding = false
+        binding.rvFind.scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
+        binding.rvFind.updatePadding(bottom = bottomPadding)
     }
 
     private fun initGroupData() {

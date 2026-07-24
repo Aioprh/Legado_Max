@@ -6,6 +6,7 @@ import android.view.MenuItem
 import android.view.SubMenu
 import android.view.View
 import androidx.appcompat.widget.SearchView
+import androidx.core.view.updatePadding
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -50,6 +51,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import io.legado.app.ui.login.SourceLoginActivity
+import io.legado.app.ui.main.MainActivity
 
 /**
  * 订阅界面
@@ -145,6 +147,7 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
     }
 
     private fun initRecyclerView() {
+        updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
         binding.recyclerView.setEdgeEffectColor(primaryColor)
         binding.recyclerView.adapter = adapter
         adapter.addHeaderView {
@@ -156,6 +159,13 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                 }
             }
         }
+    }
+
+    override fun updateMainBottomPadding(bottomPadding: Int) {
+        if (view == null) return
+        binding.recyclerView.clipToPadding = false
+        binding.recyclerView.scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
+        binding.recyclerView.updatePadding(bottom = bottomPadding)
     }
 
     private fun initGroupData() {

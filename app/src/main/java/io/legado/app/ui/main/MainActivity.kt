@@ -626,6 +626,30 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     // ── 底栏导航栏配置 Shell 实现 ──
 
     /**
+     * 计算底栏占用的总高度（导航栏高度 + 底部边距），
+     * 用于设置 Fragment 内容的底部内边距，防止底栏遮挡内容。
+     */
+    fun mainContentBottomPadding(): Int {
+        val bottomNav = binding.bottomNavigationGlass
+        val layoutParams = bottomNav.layoutParams as? FrameLayout.LayoutParams
+        val navHeight = bottomNav.height.takeIf { it > 0 } ?: bottomNav.minimumHeight
+        val bottomMargin = layoutParams?.bottomMargin ?: 0
+        return navHeight + bottomMargin
+    }
+
+    /**
+     * 遍历所有 Fragment，通知它们更新底部内边距以适配底栏高度。
+     */
+    private fun refreshMainContentBottomPadding() {
+        val bottomPadding = mainContentBottomPadding()
+        fragmentMap.values.forEach { fragment ->
+            if (fragment.view != null) {
+                (fragment as? MainFragmentInterface)?.updateMainBottomPadding(bottomPadding)
+            }
+        }
+    }
+
+    /**
      * 刷新底栏配置（带签名缓存，避免重复刷新）
      */
     private fun refreshBottomNavigationConfig(force: Boolean = false) {
@@ -663,6 +687,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             .create()
         bottomNavigationView.post {
             applyBottomNavigationSelectedIndicator()
+            refreshMainContentBottomPadding()
         }
     }
 

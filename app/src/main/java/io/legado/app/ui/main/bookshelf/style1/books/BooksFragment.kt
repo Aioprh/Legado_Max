@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewConfiguration
 import androidx.core.view.isGone
+import androidx.core.view.updatePadding
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -27,6 +28,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.book.info.BookInfoActivity
+import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.main.MainViewModel
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.flowWithLifecycleAndDatabaseChangeFirst
@@ -105,6 +107,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         if (!this::booksAdapter.isInitialized) {
             booksAdapter = createBooksAdapter()
         }
+        updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
         binding.rvBookshelf.setHasFixedSize(true)
         binding.rvBookshelf.setEdgeEffectColor(primaryColor)
         upFastScrollerBar()
@@ -201,6 +204,14 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
             binding.rvBookshelf.scrollBarSize =
                 ViewConfiguration.get(requireContext()).scaledScrollBarSize
         }
+    }
+
+    fun updateMainBottomPadding(bottomPadding: Int) {
+        if (view == null) return
+        binding.rvBookshelf.clipToPadding = false
+        binding.rvBookshelf.scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
+        binding.rvBookshelf.updatePadding(bottom = bottomPadding)
+        binding.rvBookshelf.refreshFastScrollerLayout()
     }
 
     fun upBookSort(sort: Int) {

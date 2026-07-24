@@ -8,6 +8,9 @@ import android.util.DisplayMetrics
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
@@ -16,6 +19,7 @@ import io.legado.app.help.config.ThemeConfig
 import io.legado.app.data.appDb
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.explore.ExploreShowActivity
+import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.ui.rss.article.RssSortActivity
 import io.legado.app.ui.rss.read.ReadRssActivity
@@ -37,6 +41,9 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
      */
     private val viewModel: HomepageViewModel by activityViewModels()
 
+    /** 底栏占用的底部高度（px），由 MainActivity 通知更新，用于 Compose 内容的底部 padding */
+    private var bottomPaddingPx by mutableIntStateOf(0)
+
     constructor(position: Int) : this() {
         val bundle = Bundle()
         bundle.putInt("position", position)
@@ -45,11 +52,17 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
 
     override val position: Int? get() = arguments?.getInt("position")
 
+    override fun updateMainBottomPadding(bottomPadding: Int) {
+        bottomPaddingPx = bottomPadding
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        // 初始化时获取当前底栏高度
+        bottomPaddingPx = (activity as? MainActivity)?.mainContentBottomPadding() ?: 0
         val backgroundDrawable = loadBackgroundDrawable()
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
@@ -59,6 +72,7 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
                 ) {
                     HomepageScreen(
                         viewModel = viewModel,
+                        bottomPaddingPx = bottomPaddingPx,
                         onBookClick = { name, author, bookUrl, origin, coverPath ->
                             // RSS 订阅源文章 → 直接加载文章 URL（openUrl 路径，不依赖 DB 预存）
                             if (origin != null && appDb.rssSourceDao.has(origin)) {
