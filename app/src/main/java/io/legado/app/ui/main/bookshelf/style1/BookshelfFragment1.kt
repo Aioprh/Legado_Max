@@ -277,6 +277,15 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         fragmentMap[groupId]?.gotoTop()
     }
 
+    override fun updateMainBottomPadding(bottomPadding: Int) {
+        if (view == null) return
+        fragmentMap.values.forEach {
+            if (it.view != null) {
+                it.updateMainBottomPadding(bottomPadding)
+            }
+        }
+    }
+
     private inner class TabFragmentPageAdapter(fm: FragmentManager) :
         FragmentStatePagerAdapter(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
 

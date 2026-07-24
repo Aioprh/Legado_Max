@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.isGone
+import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
@@ -35,6 +36,7 @@ import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.startActivityForBook
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.ui.main.MainActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
@@ -102,6 +104,7 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
         if (!this::booksAdapter.isInitialized) {
             booksAdapter = createBooksAdapter()
         }
+        updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
         binding.rvBookshelf.setHasFixedSize(true)
         binding.rvBookshelf.setEdgeEffectColor(primaryColor)
         upFastScrollerBar()
@@ -212,6 +215,14 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             binding.rvBookshelf.scrollBarSize =
                 ViewConfiguration.get(requireContext()).scaledScrollBarSize
         }
+    }
+
+    override fun updateMainBottomPadding(bottomPadding: Int) {
+        if (view == null) return
+        binding.rvBookshelf.clipToPadding = false
+        binding.rvBookshelf.scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
+        binding.rvBookshelf.updatePadding(bottom = bottomPadding)
+        binding.rvBookshelf.refreshFastScrollerLayout()
     }
 
     override fun upGroup(data: List<BookGroup>) {
