@@ -33,16 +33,26 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.bumptech.glide.Glide
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.config.AppConfig
+import io.legado.app.model.BookCover
 import io.legado.app.ui.main.homepage.HomepageBookItemUi
 import io.legado.app.ui.widget.components.card.GlassCard
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 瀑布流单个项目组件
@@ -63,6 +73,48 @@ fun WaterfallItem(
     modifier: Modifier = Modifier,
 ) {
     val searchBook = book.book
+    val context = LocalContext.current
+    val identity = remember(searchBook.bookUrl, searchBook.origin, searchBook.name, searchBook.author) {
+        buildString {
+            append(searchBook.bookUrl)
+            append('|')
+            append(searchBook.origin)
+            append('|')
+            append(searchBook.name)
+            append('|')
+            append(searchBook.author)
+        }
+    }
+    // 计算实际会显示的封面路径（与 HomepageBookCover 内部逻辑一致）
+    val displayCover = remember(identity, searchBook.coverUrl) {
+        val galleryCover = BookCover.getGalleryDefaultCover(identity)
+        galleryCover ?: if (AppConfig.useDefaultCover) null else searchBook.coverUrl
+    }
+    // 动态宽高比，null 表示尚未加载完成
+    var imageAspectRatio by remember(displayCover) { mutableStateOf<Float?>(null) }
+    // 后台预加载图片获取原始尺寸，使瀑布流适配宽图
+    LaunchedEffect(displayCover) {
+        val cover = displayCover
+        if (!cover.isNullOrEmpty()) {
+            withContext(Dispatchers.IO) {
+                try {
+                    val drawable = Glide.with(context)
+                        .load(cover)
+                        .submit()
+                        .get()
+                    val width = drawable.intrinsicWidth
+                    val height = drawable.intrinsicHeight
+                    if (width > 0 && height > 0) {
+                        imageAspectRatio = width.toFloat() / height.toFloat()
+                    }
+                } catch (_: Exception) {
+                    // 加载失败时使用默认 3:4 比例
+                }
+            }
+        }
+    }
+    // 加载完成前使用默认 3:4 比例
+    val aspectRatio = imageAspectRatio ?: (3f / 4f)
     GlassCard(
         modifier = modifier.fillMaxWidth(),
         cornerRadius = 8.dp
@@ -82,17 +134,9 @@ fun WaterfallItem(
                     coverUrl = searchBook.coverUrl,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(3f / 4f),
+                        .aspectRatio(aspectRatio),
                     cornerRadius = 4.dp,
-                    identity = buildString {
-                        append(searchBook.bookUrl)
-                        append('|')
-                        append(searchBook.origin)
-                        append('|')
-                        append(searchBook.name)
-                        append('|')
-                        append(searchBook.author)
-                    }
+                    identity = identity
                 )
                 // 新版样式：显示图标
                 if (AppConfig.bookshelfIconStyle == 0) {
