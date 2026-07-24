@@ -495,7 +495,7 @@ private fun SourceTabLayout(
         modifier = Modifier
             .fillMaxSize()
             .padding(
-                top = (paddingValues.calculateTopPadding() - 16.dp).coerceAtLeast(0.dp),
+                top = paddingValues.calculateTopPadding(),
                 bottom = paddingValues.calculateBottomPadding(),
                 start = paddingValues.calculateLeftPadding(layoutDirection),
                 end = paddingValues.calculateRightPadding(layoutDirection),
