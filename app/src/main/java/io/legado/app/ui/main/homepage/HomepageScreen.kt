@@ -12,11 +12,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -189,7 +193,11 @@ fun HomepageScreen(
         topBar = {
             val topBarColors = pageTopBarColors()
             TopAppBar(
-                modifier = Modifier.pageTopBarBackground(topBarColors),
+                modifier = Modifier
+                    .pageTopBarBackground(topBarColors)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .requiredHeight(56.dp),
+                windowInsets = WindowInsets(0),
                 title = { Text(stringResource(R.string.homepage_title), fontWeight = FontWeight.Bold) },
                 actions = {
                     // 模块管理
