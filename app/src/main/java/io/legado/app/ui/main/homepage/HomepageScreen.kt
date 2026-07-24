@@ -94,6 +94,8 @@ import io.legado.app.ui.main.homepage.modules.WaterfallItem
 import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.theme.pageCardElevatedContainerColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
+import io.legado.app.ui.theme.pageTopBarColors
+import io.legado.app.ui.theme.pageTopBarBackground
 import io.legado.app.ui.widget.components.BookBottomSheet
 import io.legado.app.ui.widget.components.card.GlassCard
 import io.legado.app.utils.showHelp
@@ -184,7 +186,9 @@ fun HomepageScreen(
         modifier = Modifier,
         containerColor = Color.Transparent,
         topBar = {
+            val topBarColors = pageTopBarColors()
             TopAppBar(
+                modifier = Modifier.pageTopBarBackground(topBarColors),
                 title = { Text(stringResource(R.string.homepage_title), fontWeight = FontWeight.Bold) },
                 actions = {
                     // 模块管理
@@ -272,7 +276,11 @@ fun HomepageScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                    navigationIconContentColor = topBarColors.contentColor,
+                    titleContentColor = topBarColors.contentColor,
+                    actionIconContentColor = topBarColors.contentColor
                 )
             )
         }
