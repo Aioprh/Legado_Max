@@ -79,6 +79,7 @@ MVVM pattern with AndroidViewModel + ViewBinding + Coroutines.
 - **Database**: Room (`AppDatabase` v100), singleton at `appDb`. DAOs in `data/`, entities in `data/entities/`. Uses KSP (not kapt).
 - **Book source rules**: Rhino JS engine (`:modules:rhino` module) evaluates user-defined rules. The `analyzeRule` package in `model/` handles rule parsing.
 - **Singletons in model/**: `ReadBook`, `CacheBook`, `AudioPlay` manage global reading state.
+- **Config packages**: `TopBarConfig` and `BubblePackageManager` store configs as file system directories (JSON + assets like wallpapers/icons), not SharedPreferences. `NavigationBarConfig` uses SharedPreferences. `ApplicationThemeManager` combines all sub-configs into exportable/importable theme packages (zip).
 
 ### Modules
 
@@ -91,10 +92,11 @@ The project has three library modules in `modules/`:
 ### Source Layout
 
 `app/src/main/java/io/legado/app/`:
-- `ui/` — Activities/Fragments grouped by feature (book/, rss/, source/, config/, debuglog/)
-- `model/` — domain logic (WebBook for HTTP fetching, analyzeRule for rule engine)
+- `ui/` — Activities/Fragments grouped by feature (book/, rss/, source/, config/, debuglog/, image/)
+- `model/` — domain logic (WebBook for HTTP fetching, analyzeRule for rule engine, ParagraphBubbleRenderer, BookCover)
 - `data/` — Room DB, DAOs, repositories
-- `help/` — helpers (config, http client, coroutine utilities, source management)
+- `help/` — helpers (config managers for theme/navbar/topbar/bubble, http client, coroutine utilities, source management)
+- `lib/theme/` — theme utilities (accent colors, typography, corners, page colors, TitleBar config extensions)
 - `utils/` — Kotlin extensions (~100+ files)
 - `web/` — embedded NanoHTTPD server + WebSocket endpoints
 
