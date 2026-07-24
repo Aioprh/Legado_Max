@@ -115,8 +115,9 @@ data class NavigationBarConfig(
         private const val PREF_KEY_ACTIVE_NIGHT = "activeNightNavBarId"
         private const val PREF_KEY_CUSTOM_CONFIGS = "customNavBarConfigs"
 
-        /** 底栏固定导航项列表：书架、发现、RSS、我的 */
+        /** 底栏导航项列表：首页、书架、发现、RSS、我的 */
         val items = listOf(
+            NavItem("homepage", R.string.homepage, R.id.menu_homepage, R.drawable.ic_bottom_home),
             NavItem("bookshelf", R.string.bookshelf, R.id.menu_bookshelf, R.drawable.ic_bottom_books),
             NavItem("discovery", R.string.discovery, R.id.menu_discovery, R.drawable.ic_bottom_explore),
             NavItem("rss", R.string.rss, R.id.menu_rss, R.drawable.ic_bottom_rss_feed),
