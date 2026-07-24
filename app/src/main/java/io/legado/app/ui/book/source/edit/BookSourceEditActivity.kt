@@ -352,13 +352,13 @@ class BookSourceEditActivity :
             R.id.menu_edit_json -> showSourceJsonEdit()
 
             R.id.menu_save -> {
-                viewModel.save(getSource()) {
+                saveSource(getSource()) {
                     setResult(RESULT_OK, Intent().putExtra("origin", it.bookSourceUrl))
                     finish()
                 }
             }
 
-            R.id.menu_debug_source -> viewModel.save(getSource()) { source ->
+            R.id.menu_debug_source -> saveSource(getSource()) { source ->
                 startActivity<BookSourceDebugActivity> {
                     putExtra("key", source.bookSourceUrl)
                 }
@@ -378,7 +378,7 @@ class BookSourceEditActivity :
 
             R.id.menu_log -> showDialogFragment<AppLogDialog>()
             R.id.menu_help -> showHelp("ruleHelp")
-            R.id.menu_login -> viewModel.save(getSource()) { source ->
+            R.id.menu_login -> saveSource(getSource()) { source ->
                 startActivity<SourceLoginActivity> {
                     putExtra("type", "bookSource")
                     putExtra("key", source.bookSourceUrl)
@@ -386,7 +386,7 @@ class BookSourceEditActivity :
             }
 
             R.id.menu_set_source_variable -> setSourceVariable()
-            R.id.menu_search -> viewModel.save(getSource()) { source ->
+            R.id.menu_search -> saveSource(getSource()) { source ->
                 SearchActivity.start(this, source)
             }
 
@@ -648,6 +648,45 @@ class BookSourceEditActivity :
 //        }
         binding.tabLayout.selectTab(binding.tabLayout.getTabAt(0))
         setEditEntities(0)
+    }
+
+    /**
+     * 保存书源。若书源 URL 发生变更且书架上有该书源的书，
+     * 询问用户是否将关联书籍迁移到新 URL，避免书籍变成无源状态。
+     */
+    private fun saveSource(
+        source: BookSource,
+        onSuccess: ((BookSource) -> Unit)? = null
+    ) {
+        val oldUrl = viewModel.bookSource?.bookSourceUrl
+        val urlChanged = !oldUrl.isNullOrBlank() && oldUrl != source.bookSourceUrl
+        viewModel.save(source) { savedSource ->
+            if (urlChanged && oldUrl != null) {
+                lifecycleScope.launch {
+                    val hasBooks = withContext(IO) { appDb.bookDao.hasBookByOrigin(oldUrl) }
+                    if (hasBooks) {
+                        alert(R.string.migrate_book_origin_title) {
+                            setMessage(R.string.migrate_book_origin_msg)
+                            positiveButton(R.string.migrate_book_origin_yes) {
+                                lifecycleScope.launch {
+                                    withContext(IO) {
+                                        appDb.bookDao.updateOrigin(oldUrl, savedSource.bookSourceUrl)
+                                    }
+                                    onSuccess?.invoke(savedSource)
+                                }
+                            }
+                            negativeButton(R.string.migrate_book_origin_no) {
+                                onSuccess?.invoke(savedSource)
+                            }
+                        }
+                    } else {
+                        onSuccess?.invoke(savedSource)
+                    }
+                }
+            } else {
+                onSuccess?.invoke(savedSource)
+            }
+        }
     }
 
     /**
@@ -971,7 +1010,7 @@ class BookSourceEditActivity :
     }
 
     private fun setSourceVariable() {
-        viewModel.save(getSource()) { source ->
+        saveSource(getSource()) { source ->
             lifecycleScope.launch {
                 val comment =
                     source.getDisplayVariableComment("源变量可在js中通过source.getVariable()获取")
