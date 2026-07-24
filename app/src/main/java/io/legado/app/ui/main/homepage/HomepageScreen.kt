@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -54,8 +53,6 @@ import androidx.compose.material3.TabPosition
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -192,19 +189,31 @@ fun HomepageScreen(
         containerColor = Color.Transparent,
         topBar = {
             val topBarColors = pageTopBarColors()
-            TopAppBar(
+            Box(
                 modifier = Modifier
                     .pageTopBarBackground(topBarColors)
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .requiredHeight(56.dp),
-                windowInsets = WindowInsets(0),
-                title = { Text(stringResource(R.string.homepage_title), fontWeight = FontWeight.Bold) },
-                actions = {
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.homepage_title),
+                        fontWeight = FontWeight.Bold,
+                        color = topBarColors.contentColor,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 16.dp)
+                    )
                     // 模块管理
                     IconButton(onClick = { showManageSheet = true }) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = stringResource(R.string.homepage_module_manage)
+                            contentDescription = stringResource(R.string.homepage_module_manage),
+                            tint = topBarColors.contentColor
                         )
                     }
                     // 三点菜单（切换布局、帮助等）
@@ -212,7 +221,8 @@ fun HomepageScreen(
                         IconButton(onClick = { showOverflowMenu = true }) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
-                                contentDescription = stringResource(R.string.homepage_more)
+                                contentDescription = stringResource(R.string.homepage_more),
+                                tint = topBarColors.contentColor
                             )
                         }
                         DropdownMenu(
@@ -283,15 +293,8 @@ fun HomepageScreen(
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                    navigationIconContentColor = topBarColors.contentColor,
-                    titleContentColor = topBarColors.contentColor,
-                    actionIconContentColor = topBarColors.contentColor
-                )
-            )
+                }
+            }
         }
     ) { paddingValues ->
         if (uiState.modules.isEmpty() && !uiState.isRefreshing) {
@@ -514,6 +517,7 @@ private fun SourceTabLayout(
         // 可滚动的 Tab 栏
         ScrollableTabRow(
             selectedTabIndex = safeTabIndex,
+            modifier = Modifier.height(40.dp),
             edgePadding = 8.dp,
             containerColor = Color.Transparent,
             // 自定义 indicator：防止 tabPositions 与 selectedTabIndex 不同步时越界
@@ -539,7 +543,7 @@ private fun SourceTabLayout(
                             text = set.sourceName,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelLarge
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
                 )
