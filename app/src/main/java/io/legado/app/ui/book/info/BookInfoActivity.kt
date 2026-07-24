@@ -205,10 +205,14 @@ class BookInfoActivity :
             return@registerForActivityResult
         }
         book?.let { book ->
-            viewModel.bookSource = appDb.bookSourceDao.getBookSource(book.origin)?.also { source ->
-                viewModel.hasCustomBtn = source.customButton
-            }
-            viewModel.refreshBook(book)
+            // 书源 URL 可能已变更（含迁移关联书籍），重新从数据库加载书籍以获取最新 origin，
+            // 否则用内存缓存的旧 origin 查源会查不到（旧 URL 的源已被删除），导致详情页显示“没有源”
+            val freshBook = appDb.bookDao.getBook(book.bookUrl) ?: book
+            viewModel.bookSource =
+                appDb.bookSourceDao.getBookSource(freshBook.origin)?.also { source ->
+                    viewModel.hasCustomBtn = source.customButton
+                }
+            viewModel.refreshBook(freshBook)
         }
     }
     private var chapterChanged = false
