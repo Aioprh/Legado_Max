@@ -10,6 +10,7 @@ import androidx.core.view.ViewCompat
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import io.legado.app.databinding.ViewNavigationBadgeBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.NavigationBarConfig
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.bottomBackground
@@ -56,6 +57,26 @@ class ThemeBottomNavigationVIew(context: Context, attrs: AttributeSet) :
         val colorStateList = createThemeColorStateList(bgColor)
         itemIconTintList = colorStateList
         itemTextColor = colorStateList
+    }
+
+    /**
+     * 应用底栏导航栏配置（NavigationBarConfig）。
+     *
+     * 根据当前激活的配置项设置底栏背景色/透明度、图标和文字颜色。
+     * E-Ink 模式下跳过，保持 E-Ink 专用背景。
+     */
+    fun applyNavigationBarConfig() {
+        if (AppConfig.isEInkMode) return
+        val config = NavigationBarConfig.activeConfig(context, AppConfig.isNightTheme)
+        val baseColor = context.bottomBackground
+        val bgColor = NavigationBarConfig.resolveBottomColor(baseColor, config)
+        if (context.transparentNavBar) {
+            setBackgroundColor(Color.TRANSPARENT)
+        } else {
+            setBackgroundColor(bgColor)
+            elevation = context.elevation
+        }
+        restoreThemeIconTint(bgColor)
     }
 
     fun addBadgeView(index: Int): BadgeView {

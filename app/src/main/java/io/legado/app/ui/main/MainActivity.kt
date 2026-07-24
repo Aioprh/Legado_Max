@@ -27,6 +27,7 @@ import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.NavigationBarConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
@@ -430,6 +431,17 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         observeEvent<String>(PreferKey.threadCount) {
             viewModel.upPool()
         }
+        // 底栏配置变更时，重新应用底栏配置
+        observeEvent<Boolean>(EventBus.NAVIGATION_BAR_CHANGED) { isNightMode ->
+            if (isNightMode == AppConfig.isNightTheme) {
+                binding.bottomNavigationView.applyNavigationBarConfig()
+                NavigationBarConfig.applyToMenu(
+                    binding.bottomNavigationView.menu,
+                    this,
+                    AppConfig.isNightTheme
+                )
+            }
+        }
     }
 
     private fun upBottomMenu() {
@@ -486,6 +498,10 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         val currentPosition = binding.viewPagerMain.currentItem.coerceAtMost(bottomMenuCount - 1)
         val menuItemId = fragmentIdToMenuItemId(realPositions[currentPosition])
         menu.findItem(menuItemId)?.isChecked = true
+
+        // 应用底栏导航栏配置（背景色、透明度、自定义图标）
+        binding.bottomNavigationView.applyNavigationBarConfig()
+        NavigationBarConfig.applyToMenu(menu, this, AppConfig.isNightTheme)
 
         adapter.notifyDataSetChanged()
     }
