@@ -17,6 +17,9 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/7/24**
+- feat(书源编辑): 书源URL变更时支持迁移书架关联书籍，可以放心改同站域名了
+
 **2026/7/23**
 - feat: 目录加载失败时从缓存恢复章节记录，支持离线阅读已缓存正文
 - 优化阅读记录
