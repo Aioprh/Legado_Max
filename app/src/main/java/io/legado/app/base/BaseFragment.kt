@@ -12,8 +12,12 @@ import androidx.appcompat.view.SupportMenuInflater
 import androidx.appcompat.widget.Toolbar
 import androidx.fragment.app.Fragment
 import io.legado.app.R
+import io.legado.app.constant.EventBus
+import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.widget.TitleBar
+import io.legado.app.ui.widget.applyTopBarConfig
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.observeEvent
 
 @Suppress("MemberVisibilityCanBePrivate")
 abstract class BaseFragment(@LayoutRes layoutID: Int) : Fragment(layoutID) {
@@ -29,6 +33,12 @@ abstract class BaseFragment(@LayoutRes layoutID: Int) : Fragment(layoutID) {
         super.onViewCreated(view, savedInstanceState)
         onMultiWindowModeChanged()
         observeLiveBus()
+        // 顶栏配置变更时，重新应用顶栏配置到当前 Fragment 的 TitleBar
+        observeEvent<Boolean>(EventBus.TOP_BAR_CHANGED) { isNightMode ->
+            if (isNightMode == AppConfig.isNightTheme) {
+                view.findViewById<TitleBar>(R.id.title_bar)?.applyTopBarConfig()
+            }
+        }
         onFragmentCreated(view, savedInstanceState)
     }
 
