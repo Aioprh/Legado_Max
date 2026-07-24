@@ -5,27 +5,36 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <LinearLayout
+    <androidx.viewpager.widget.ViewPager
+        android:id="@+id/view_pager_main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        tools:ignore="SpeakableTextPresentCheck" />
 
-        <androidx.viewpager.widget.ViewPager
-            android:id="@+id/view_pager_main"
+    <FrameLayout
+        android:id="@+id/bottom_navigation_glass"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <View
+            android:id="@+id/bottom_navigation_shell_overlay"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            tools:ignore="SpeakableTextPresentCheck" />
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false" />
 
         <io.legado.app.lib.theme.view.ThemeBottomNavigationVIew
             android:id="@+id/bottom_navigation_view"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@color/background"
+            android:layout_height="match_parent"
+            android:background="@color/transparent"
             android:minHeight="50dp"
             app:itemActiveIndicatorStyle="@color/transparent"
             app:labelVisibilityMode="unlabeled"
             app:menu="@menu/main_bnv" />
 
-    </LinearLayout>
+    </FrameLayout>
 </FrameLayout>

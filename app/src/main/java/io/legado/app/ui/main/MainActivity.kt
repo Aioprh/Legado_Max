@@ -4,8 +4,17 @@ package io.legado.app.ui.main
 
 import android.os.Bundle
 import android.text.format.DateUtils
+import android.graphics.Outline
+import android.view.Gravity
 import android.view.MenuItem
+import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
+import android.graphics.Color
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
+import android.widget.FrameLayout
 import androidx.activity.addCallback
 import androidx.activity.viewModels
 import androidx.core.view.get
@@ -32,6 +41,10 @@ import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.elevation
+import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.about.CrashLogsDialog
@@ -58,6 +71,10 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.invisible
 import io.legado.app.utils.visible
 import io.legado.app.utils.startActivity
+import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.dpToPx
+import io.legado.app.utils.getCompatColor
+import io.legado.app.utils.getPrefInt
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
@@ -66,6 +83,7 @@ import kotlinx.coroutines.withContext
 import splitties.views.bottomPadding
 import kotlin.coroutines.resume
 import androidx.core.view.get
+import androidx.core.graphics.drawable.toDrawable
 import io.legado.app.help.update.AppUpdate
 import io.legado.app.ui.about.UpdateDialog
 import kotlin.time.Duration.Companion.hours
@@ -102,6 +120,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         TabFragmentPageAdapter(supportFragmentManager)
     }
     private var onUpBooksBadgeView: BadgeView? = null
+    private var bottomNavigationConfigSignature: String? = null
+    private var bottomNavigationInset = 0
 
     private fun bookshelfPosition(): Int = realPositions.indexOf(idBookshelf)
 
@@ -226,13 +246,15 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         viewPagerMain.addOnPageChangeListener(PageChangeCallback())
         bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)
         bottomNavigationView.setOnNavigationItemReselectedListener(this@MainActivity)
+        refreshBottomNavigationConfig(force = true)
         if (AppConfig.isEInkMode) {
             bottomNavigationView.setBackgroundResource(R.drawable.bg_eink_border_top)
         }
-        bottomNavigationView.setOnApplyWindowInsetsListenerCompat { view, windowInsets ->
-            val height = windowInsets.navigationBarHeight
-            view.bottomPadding = height
-            windowInsets.inset(0, 0, 0, height)
+        bottomNavigationGlass.setOnApplyWindowInsetsListenerCompat { view, windowInsets ->
+            bottomNavigationInset = windowInsets.navigationBarHeight
+            view.bottomPadding = 0
+            refreshBottomNavigationConfig(force = true)
+            windowInsets
         }
     }
 
@@ -381,6 +403,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         // 或 recreate() 可能被 upSort() 异常阻断。
         // 在 onResume 中直接刷新背景图片，确保主题背景变更立即生效。
         upBackgroundImage()
+        refreshBottomNavigationConfig(force = true)
     }
 
     /**
@@ -434,12 +457,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         // 底栏配置变更时，重新应用底栏配置
         observeEvent<Boolean>(EventBus.NAVIGATION_BAR_CHANGED) { isNightMode ->
             if (isNightMode == AppConfig.isNightTheme) {
-                binding.bottomNavigationView.applyNavigationBarConfig()
-                NavigationBarConfig.applyToMenu(
-                    binding.bottomNavigationView.menu,
-                    this,
-                    AppConfig.isNightTheme
-                )
+                refreshBottomNavigationConfig(force = true)
             }
         }
     }
@@ -499,9 +517,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         val menuItemId = fragmentIdToMenuItemId(realPositions[currentPosition])
         menu.findItem(menuItemId)?.isChecked = true
 
-        // 应用底栏导航栏配置（背景色、透明度、自定义图标）
-        binding.bottomNavigationView.applyNavigationBarConfig()
-        NavigationBarConfig.applyToMenu(menu, this, AppConfig.isNightTheme)
+        // 应用底栏导航栏配置（布局模式、效果、背景色、透明度、自定义图标）
+        applyNavigationBarPackage()
 
         adapter.notifyDataSetChanged()
     }
@@ -603,6 +620,225 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             2 -> showDialogFragment(
                 ImportReplaceRuleDialog(source)
             )
+        }
+    }
+
+    // ── 底栏导航栏配置 Shell 实现 ──
+
+    /**
+     * 刷新底栏配置（带签名缓存，避免重复刷新）
+     */
+    private fun refreshBottomNavigationConfig(force: Boolean = false) {
+        val signature = NavigationBarConfig.currentSignature(this, AppConfig.isNightTheme)
+        if (!force && bottomNavigationConfigSignature == signature) {
+            return
+        }
+        bottomNavigationConfigSignature = signature
+        applyNavigationBarPackage()
+    }
+
+    /**
+     * 应用底栏导航栏配置包：背景色、自定义图标、布局 Shell（浮动/标准/侧栏 + 玻璃/磨砂/实色）
+     */
+    private fun applyNavigationBarPackage() = binding.run {
+        val config = NavigationBarConfig.activeConfig(this@MainActivity, AppConfig.isNightTheme)
+        val bgColor = resolveNavigationBarBackground(config)
+        val hasCustomIcons = NavigationBarConfig.applyToMenu(
+            bottomNavigationView.menu,
+            this@MainActivity,
+            AppConfig.isNightTheme,
+            bgColor
+        )
+        if (hasCustomIcons) {
+            bottomNavigationView.itemIconTintList = null
+        } else {
+            bottomNavigationView.restoreThemeIconTint(bgColor)
+        }
+        bottomNavigationView.itemBackground = Color.TRANSPARENT.toDrawable()
+        applyBottomNavigationShell(config, bgColor)
+        val textIsDark = ColorUtils.isColorLight(bgColor)
+        bottomNavigationView.itemTextColor = io.legado.app.lib.theme.Selector.colorBuild()
+            .setDefaultColor(getSecondaryTextColor(textIsDark))
+            .setSelectedColor(accentColor)
+            .create()
+        bottomNavigationView.post {
+            applyBottomNavigationSelectedIndicator()
+        }
+    }
+
+    /** 解析底栏背景色：内置配置用主题色，自定义配置用配置中的颜色+透明度 */
+    private fun resolveNavigationBarBackground(config: NavigationBarConfig): Int {
+        if (config.isBuiltin) {
+            return bottomBackground
+        }
+        val baseColor = if (AppConfig.isNightTheme) {
+            getPrefInt(PreferKey.cNBBackground, getCompatColor(R.color.default_night_bottom_background))
+        } else {
+            getPrefInt(PreferKey.cBBackground, getCompatColor(R.color.default_bottom_background))
+        }
+        return NavigationBarConfig.resolveBottomColor(baseColor, config)
+    }
+
+    /** 解析底栏边框颜色 */
+    private fun resolveBottomNavigationBorderColor(config: NavigationBarConfig): Int? {
+        return config.borderColor?.let {
+            if (Color.alpha(it) == 0) {
+                Color.TRANSPARENT
+            } else {
+                ColorUtils.withAlpha(it, config.borderAlpha.coerceIn(0, 100) / 100f)
+            }
+        }
+    }
+
+    /**
+     * 应用底栏 Shell：根据布局模式（浮动/标准/侧栏）和效果模式（实色/玻璃/磨砂）
+     * 设置容器尺寸、边距、圆角、阴影和背景 Drawable
+     */
+    private fun applyBottomNavigationShell(config: NavigationBarConfig, bgColor: Int) = binding.run {
+        val floating = config.layoutMode == NavigationBarConfig.LAYOUT_FLOATING
+        val standard = config.layoutMode == NavigationBarConfig.LAYOUT_STANDARD
+        val horizontalMargin = if (floating) 20.dpToPx() else 0
+        val bottomMargin = if (floating) 10.dpToPx() + bottomNavigationInset else 0
+        val shellHeight = if (floating) 48.dpToPx() else 50.dpToPx() + if (standard) bottomNavigationInset else 0
+        bottomNavigationGlass.layoutParams = (bottomNavigationGlass.layoutParams as FrameLayout.LayoutParams).apply {
+            width = ViewGroup.LayoutParams.MATCH_PARENT
+            height = shellHeight
+            gravity = Gravity.BOTTOM
+            setMargins(horizontalMargin, 0, horizontalMargin, bottomMargin)
+        }
+        bottomNavigationView.layoutParams = (bottomNavigationView.layoutParams as FrameLayout.LayoutParams).apply {
+            width = ViewGroup.LayoutParams.MATCH_PARENT
+            height = ViewGroup.LayoutParams.MATCH_PARENT
+            gravity = Gravity.CENTER
+            setMargins(0, 0, 0, 0)
+        }
+        bottomNavigationGlass.minimumHeight = shellHeight
+        bottomNavigationView.minimumHeight = if (floating) 48.dpToPx() else 50.dpToPx()
+        bottomNavigationView.itemIconSize = if (floating) 23.dpToPx() else 22.dpToPx()
+        bottomNavigationView.setPadding(
+            if (floating) 6.dpToPx() else 0,
+            0,
+            if (floating) 6.dpToPx() else 0,
+            if (standard) bottomNavigationInset else 0
+        )
+        bottomNavigationView.alpha = 1f
+        bottomNavigationView.elevation = 0f
+        bottomNavigationGlass.elevation = if (floating) {
+            when (config.effectMode) {
+                NavigationBarConfig.EFFECT_SOLID -> 8.dpToPx().toFloat()
+                NavigationBarConfig.EFFECT_FROSTED -> 14.dpToPx().toFloat()
+                else -> 12.dpToPx().toFloat()
+            }
+        } else {
+            0f
+        }
+        bottomNavigationView.setBackgroundColor(Color.TRANSPARENT)
+        bottomNavigationView.background = Color.TRANSPARENT.toDrawable()
+        val liquid = !standard && config.effectMode != NavigationBarConfig.EFFECT_SOLID
+        applyBottomNavigationGlassOutline(bottomNavigationGlass, if (floating) 24f.dpToPx() else 0f)
+        if (liquid) {
+            bottomNavigationShellOverlay.background = createLiquidGlassShellDrawable(
+                glassLevel = config.opacity.coerceIn(0, 100) / 100f,
+                cornerRadius = if (floating) 24f.dpToPx() else 0f,
+                effectMode = config.effectMode,
+                bgColor = bgColor,
+                strokeColor = resolveBottomNavigationBorderColor(config)
+            )
+        } else {
+            bottomNavigationShellOverlay.background = createBottomNavigationShellDrawable(config, bgColor)
+        }
+    }
+
+    /** 设置底栏容器的圆角裁剪 */
+    private fun applyBottomNavigationGlassOutline(view: View, cornerRadius: Float) {
+        view.clipToOutline = cornerRadius > 0f
+        view.outlineProvider = if (cornerRadius > 0f) {
+            object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, cornerRadius)
+                }
+            }
+        } else {
+            ViewOutlineProvider.BOUNDS
+        }
+    }
+
+    /** 创建玻璃/磨砂效果的 Shell 背景 Drawable */
+    private fun createLiquidGlassShellDrawable(
+        glassLevel: Float,
+        cornerRadius: Float,
+        effectMode: String,
+        bgColor: Int,
+        strokeColor: Int?
+    ): GradientDrawable {
+        val baseColor = Color.rgb(Color.red(bgColor), Color.green(bgColor), Color.blue(bgColor))
+        val isLight = ColorUtils.isColorLight(baseColor)
+        val neutralSurface = if (isLight) Color.WHITE else Color.rgb(22, 24, 28)
+        val surfaceColor = ColorUtils.blendColors(
+            baseColor,
+            neutralSurface,
+            if (effectMode == NavigationBarConfig.EFFECT_FROSTED) 0.26f else 0.14f
+        )
+        val frosted = effectMode == NavigationBarConfig.EFFECT_FROSTED
+        val startAlpha = if (frosted) {
+            (0.025f + glassLevel * 0.615f).coerceIn(0f, 0.76f)
+        } else {
+            (0.004f + glassLevel * 0.386f).coerceIn(0f, 0.48f)
+        }
+        val centerAlpha = if (frosted) {
+            (0.018f + glassLevel * 0.462f).coerceIn(0f, 0.58f)
+        } else {
+            (0.003f + glassLevel * 0.267f).coerceIn(0f, 0.34f)
+        }
+        val endAlpha = if (frosted) {
+            (0.012f + glassLevel * 0.348f).coerceIn(0f, 0.46f)
+        } else {
+            (0.002f + glassLevel * 0.198f).coerceIn(0f, 0.26f)
+        }
+        val strokeAlpha = if (frosted) {
+            (0.20f + glassLevel * 0.16f).coerceIn(0f, 0.44f)
+        } else {
+            (0.22f + glassLevel * 0.18f).coerceIn(0f, 0.46f)
+        }
+        return GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                ColorUtils.withAlpha(surfaceColor, startAlpha),
+                ColorUtils.withAlpha(surfaceColor, centerAlpha),
+                ColorUtils.withAlpha(surfaceColor, endAlpha)
+            )
+        ).apply {
+            shape = GradientDrawable.RECTANGLE
+            setCornerRadius(cornerRadius)
+            setStroke(1.dpToPx(), strokeColor ?: ColorUtils.withAlpha(surfaceColor, strokeAlpha))
+        }
+    }
+
+    /** 创建实色/标准 Shell 背景 Drawable */
+    private fun createBottomNavigationShellDrawable(config: NavigationBarConfig, bgColor: Int): Drawable {
+        val standard = config.layoutMode == NavigationBarConfig.LAYOUT_STANDARD
+        val radius = if (standard) 0f else 24f.dpToPx()
+        val strokeColor = resolveBottomNavigationBorderColor(config)
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(bgColor)
+            setStroke(
+                if (!standard && strokeColor != null) 1.dpToPx() else 0,
+                strokeColor ?: Color.TRANSPARENT
+            )
+        }
+    }
+
+    /** 清除选中项的默认背景指示器 */
+    private fun applyBottomNavigationSelectedIndicator() = binding.run {
+        val menuView = bottomNavigationView.getChildAt(0) as? ViewGroup ?: return@run
+        val visibleItems = NavigationBarConfig.items
+            .filter { bottomNavigationView.menu.findItem(it.menuId)?.isVisible == true }
+        visibleItems.forEachIndexed { index, _ ->
+            val child = menuView.getChildAt(index) ?: return@forEachIndexed
+            child.background = Color.TRANSPARENT.toDrawable()
+            child.setPadding(0, 3.dpToPx(), 0, 3.dpToPx())
         }
     }
 
