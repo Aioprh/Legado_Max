@@ -139,7 +139,7 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         binding.ivInBookshelfWaterfall.setShelfState(shelfState)
         binding.ivInBookshelfDotWaterfall.setShelfStateDot(shelfState)
         binding.tvNameWaterfall.text = item.name
-        binding.tvAuthorWaterfall.text = context.getString(R.string.author_show, item.author)
+        binding.tvAuthorWaterfall.text = item.author
 
         val kinds = item.getKindList()
         if (kinds.isEmpty()) {
@@ -152,11 +152,11 @@ class ExploreShowAdapter(context: Context, val callBack: CallBack) :
         if (item.latestChapterTitle.isNullOrEmpty()) {
             binding.tvLastedWaterfall.gone()
         } else {
-            binding.tvLastedWaterfall.text = context.getString(R.string.lasted_show, item.latestChapterTitle)
+            binding.tvLastedWaterfall.text = item.latestChapterTitle
             binding.tvLastedWaterfall.visible()
         }
 
-        binding.tvIntroduceWaterfall.text = item.trimIntro(context)
+        binding.tvIntroduceWaterfall.text = item.intro?.trim().orEmpty()
         // 根据卡片实际宽度动态计算简介最大行数（基于密度比例）
         binding.tvIntroduceWaterfall.maxLines = if (columnCount <= 3) {
             10
