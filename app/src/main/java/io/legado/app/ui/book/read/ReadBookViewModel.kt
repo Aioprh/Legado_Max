@@ -303,6 +303,7 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
      * @return 是否成功恢复（至少恢复一个章节）
      */
     private suspend fun tryRecoverFromCache(book: Book): Boolean {
+        if (!AppConfig.cacheRecoverOnTocFail) return false
         val recoveredChapters = BookHelp.recoverChaptersFromCache(book)
         if (recoveredChapters.isEmpty()) return false
         // 数据库中已有更多或同等数量的章节时，不应被缓存覆盖

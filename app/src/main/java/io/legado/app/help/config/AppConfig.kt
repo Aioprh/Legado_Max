@@ -672,6 +672,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.bookInfoShowAuthorOtherWorks, value)
         }
 
+    var cacheRecoverOnTocFail: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.cacheRecoverOnTocFail, true)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.cacheRecoverOnTocFail, value)
+        }
+
     val autoChangeSource: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.autoChangeSource, true)
 
