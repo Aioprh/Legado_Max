@@ -72,6 +72,7 @@ object HelpDocManager {
         HelpDoc("SourceMRssHelp", "订阅源管理界面帮助"),
         HelpDoc("replaceRuleHelp", "替换规则说明"),
         HelpDoc("readMenuHelp", "阅读界面帮助文档"),
+        HelpDoc("bubbleHelp", "段评气泡管理帮助"),
         HelpDoc("webDavBookHelp", "WebDav书籍简明使用教程"),
         HelpDoc("webDavHelp", "WebDav备份教程"),
         HelpDoc("updateLog", "更新日志")
