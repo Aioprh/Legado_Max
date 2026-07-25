@@ -88,9 +88,9 @@ class BookshelfManageActivity :
         DragSelectTouchHelper(adapter.dragSelectCallback).setSlideArea(16, 50)
     }
     private val exportDir = registerForActivityResult(HandleFileContract()) {
-        ExportResultHandler.handleExportResult(this, it) { text ->
+        ExportResultHandler.handleExportResult(this, it, { text ->
             sendToClip(text)
-        }
+        }, null)
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {

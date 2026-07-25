@@ -66,9 +66,9 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
     }
     /** 导出书单结果的ActivityResultLauncher，用于选择保存位置 */
     private val exportResult = registerForActivityResult(HandleFileContract()) {
-        ExportResultHandler.handleExportResult(requireActivity() as androidx.appcompat.app.AppCompatActivity, it) { text ->
+        ExportResultHandler.handleExportResult(requireActivity() as androidx.appcompat.app.AppCompatActivity, it, { text ->
             requireContext().sendToClip(text)
-        }
+        }, null)
     }
     /** 当前分组ID，用于确定导入书籍的分组 */
     abstract val groupId: Long

@@ -2303,4 +2303,5 @@
     <string name="app_theme_name_invalid">Invalid app theme name</string>
     <string name="app_theme_summary_format">Day: %1$s / %2$s / %3$s / %4$s
 Night: %5$s / %6$s / %7$s / %8$s</string>
+    <string name="shibboleth">口令</string>
 </resources>
