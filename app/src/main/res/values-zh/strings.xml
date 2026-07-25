@@ -2287,4 +2287,5 @@
     <string name="app_theme_name_invalid">应用主题名称无效</string>
     <string name="app_theme_summary_format">日间：%1$s / %2$s / %3$s / %4$s
 夜间：%5$s / %6$s / %7$s / %8$s</string>
+    <string name="shibboleth">口令</string>
 </resources>

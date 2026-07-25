@@ -1769,4 +1769,5 @@
     <string name="app_theme_name_invalid">應用主題名稱無效</string>
     <string name="app_theme_summary_format">日間：%1$s / %2$s / %3$s / %4$s
 夜間：%5$s / %6$s / %7$s / %8$s</string>
+    <string name="shibboleth">口令</string>
 </resources>
