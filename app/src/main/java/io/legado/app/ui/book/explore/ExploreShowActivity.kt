@@ -392,6 +392,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                                         putExtra("name", book.name)
                                         putExtra("author", book.author)
                                         putExtra("bookUrl", book.bookUrl)
+                                        putExtra("origin", book.origin)
                                     }
                                 }
                             )
@@ -856,6 +857,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
             putExtra("name", book.name)
             putExtra("author", book.author)
             putExtra("bookUrl", book.bookUrl)
+            putExtra("origin", book.origin)
         }
     }
 
