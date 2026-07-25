@@ -43,6 +43,7 @@ import io.legado.app.utils.dpToPx
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.launch
 import io.legado.app.help.ExportResultHandler
+import io.legado.app.utils.StringUtils
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showDialogFragment
@@ -94,9 +95,9 @@ class ReplaceRuleActivity : VMBaseActivity<ActivityReplaceRuleBinding, ReplaceRu
         }
     }
     private val exportResult = registerForActivityResult(HandleFileContract()) {
-        ExportResultHandler.handleExportResult(this, it) { text ->
-            sendToClip(text)
-        }
+ExportResultHandler.handleExportResult(this, it, { text ->
+sendToClip(text)
+}, StringUtils.REPLACE_RULE)
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {

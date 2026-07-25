@@ -6,6 +6,7 @@ import io.legado.app.data.appDb
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.utils.StringUtils
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.toastOnUi
@@ -20,7 +21,8 @@ object ExportResultHandler {
     fun handleExportResult(
         activity: AppCompatActivity,
         result: HandleFileContract.Result,
-        onCopy: (String) -> Unit
+        onCopy: (String) -> Unit,
+        type: String? = null
     ) {
         result.clipboardJson?.let { json ->
             onCopy(json)
@@ -28,8 +30,9 @@ object ExportResultHandler {
             return
         }
         result.uri?.let { uri ->
+            val url = uri.toString()
             activity.alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
+                if (url.isAbsUrl()) {
                     // 从数据库读取默认规则的summary
                     GlobalScope.launch(Dispatchers.IO) {
                         val defaultRule = appDb.directLinkUploadRuleDao.getDefault()
@@ -38,14 +41,29 @@ object ExportResultHandler {
                             setMessage(summary)
                         }
                     }
+                    if (type != null) {
+                        val time = System.currentTimeMillis()
+                        shibboleth {
+                            val shibbolethUrl = StringUtils.toShibboleth(url, type, time)
+                            activity.alert(R.string.shibboleth) {
+                                val alertBinding = DialogEditTextBinding.inflate(activity.layoutInflater).apply {
+                                    editView.setText(shibbolethUrl)
+                                }
+                                customView { alertBinding.root }
+                                okButton {
+                                    onCopy(shibbolethUrl)
+                                }
+                            }
+                        }
+                    }
                 }
                 val alertBinding = DialogEditTextBinding.inflate(activity.layoutInflater).apply {
                     editView.hint = activity.getString(R.string.path)
-                    editView.setText(uri.toString())
+                    editView.setText(url)
                 }
                 customView { alertBinding.root }
                 okButton {
-                    onCopy(uri.toString())
+                    onCopy(url)
                 }
             }
         }

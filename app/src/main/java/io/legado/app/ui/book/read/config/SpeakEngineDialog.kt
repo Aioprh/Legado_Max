@@ -42,6 +42,7 @@ import io.legado.app.utils.gone
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.isJsonObject
 import io.legado.app.help.ExportResultHandler
+import io.legado.app.utils.StringUtils
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.setLayout
@@ -79,9 +80,9 @@ class SpeakEngineDialog() : BaseDialogFragment(R.layout.dialog_recycler_view),
         }
     }
     private val exportDirResult = registerForActivityResult(HandleFileContract()) {
-        ExportResultHandler.handleExportResult(requireActivity() as androidx.appcompat.app.AppCompatActivity, it) { text ->
-            requireContext().sendToClip(text)
-        }
+ExportResultHandler.handleExportResult(requireActivity() as androidx.appcompat.app.AppCompatActivity, it, { text ->
+requireContext().sendToClip(text)
+}, StringUtils.TTS_RULE)
     }
 
     override fun onStart() {

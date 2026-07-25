@@ -36,6 +36,7 @@ import io.legado.app.utils.applyTint
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.launch
 import io.legado.app.help.ExportResultHandler
+import io.legado.app.utils.StringUtils
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showDialogFragment
@@ -78,9 +79,9 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
         }
     }
     private val exportResult = registerForActivityResult(HandleFileContract()) {
-        ExportResultHandler.handleExportResult(this, it) { text ->
-            sendToClip(text)
-        }
+ExportResultHandler.handleExportResult(this, it, { text ->
+sendToClip(text)
+}, StringUtils.TOC_RULE)
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {

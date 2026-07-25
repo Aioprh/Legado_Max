@@ -59,6 +59,7 @@ import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.launch
 import io.legado.app.utils.observeEvent
 import io.legado.app.help.ExportResultHandler
+import io.legado.app.utils.StringUtils
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.share
@@ -120,9 +121,9 @@ class BookSourceActivity : VMBaseActivity<ActivityBookSourceBinding, BookSourceV
         }
     }
     private val exportDir = registerForActivityResult(HandleFileContract()) {
-        ExportResultHandler.handleExportResult(this, it) { text ->
-            sendToClip(text)
-        }
+ExportResultHandler.handleExportResult(this, it, { text ->
+sendToClip(text)
+}, StringUtils.BOOK_SOURCE)
     }
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         locateSourceUrl = intent.getStringExtra("locateSourceUrl")

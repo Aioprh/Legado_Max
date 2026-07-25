@@ -35,6 +35,7 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.ActivityMainBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.help.AppWebDav
+import io.legado.app.help.LifecycleHelp
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.NavigationBarConfig
@@ -50,8 +51,11 @@ import io.legado.app.lib.theme.primaryColor
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.about.CrashLogsDialog
 import io.legado.app.ui.association.ImportBookSourceDialog
+import io.legado.app.ui.association.ImportDictRuleDialog
+import io.legado.app.ui.association.ImportHttpTtsDialog
 import io.legado.app.ui.association.ImportReplaceRuleDialog
 import io.legado.app.ui.association.ImportRssSourceDialog
+import io.legado.app.ui.association.ImportTxtTocRuleDialog
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.style1.BookshelfFragment1
 import io.legado.app.ui.main.bookshelf.style2.BookshelfFragment2
@@ -89,6 +93,9 @@ import androidx.core.view.get
 import androidx.core.graphics.drawable.toDrawable
 import io.legado.app.help.update.AppUpdate
 import io.legado.app.ui.about.UpdateDialog
+import io.legado.app.utils.StringUtils
+import io.legado.app.utils.clearClip
+import io.legado.app.utils.getClipText
 import kotlin.time.Duration.Companion.hours
 
 /**
@@ -188,6 +195,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             binding.viewPagerMain.postDelayed(1000) {
                 viewModel.ruleSubsUp()
             }
+            readShibboleth(1500)
             //自动更新书籍
             val isAutoRefreshedBook = savedInstanceState?.getBoolean("isAutoRefreshedBook") ?: false
             if (AppConfig.autoRefreshBook && !isAutoRefreshedBook) {
@@ -403,6 +411,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     override fun onResume() {
         super.onResume()
+        if (LifecycleHelp.activitySize() == 1) {
+            readShibboleth(500)
+        }
         // 用户从设置页返回时，RECREATE 事件可能未送达后台的 Activity，
         // 或 recreate() 可能被 upSort() 异常阻断。
         // 在 onResume 中直接刷新背景图片，确保主题背景变更立即生效。
@@ -1098,6 +1109,36 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             val child = menuView.getChildAt(index) ?: return@forEachIndexed
             child.background = Color.TRANSPARENT.toDrawable()
             child.setPadding(0, 3.dpToPx(), 0, 3.dpToPx())
+        }
+    }
+
+    /**
+     * 读取导入口令
+     */
+    fun readShibboleth(delay: Long) {
+        binding.viewPagerMain.postDelayed(delay) {
+            val text = this@MainActivity.getClipText()
+            if (!text.isNullOrBlank()) {
+                if ("#L:" in text) {
+                    this@MainActivity.clearClip() //清理一下防重复
+                    val (url, type, customWord) = StringUtils.unShibboleth(text)
+                    when (type) {
+                        StringUtils.BOOK_SOURCE ->
+                            showDialogFragment(ImportBookSourceDialog(url))
+                        StringUtils.RSS_SOURCE ->
+                            showDialogFragment(ImportRssSourceDialog(url))
+                        StringUtils.DICT_RULE ->
+                            showDialogFragment(ImportDictRuleDialog(url))
+                        StringUtils.REPLACE_RULE ->
+                            showDialogFragment(ImportReplaceRuleDialog(url))
+                        StringUtils.TOC_RULE ->
+                            showDialogFragment(ImportTxtTocRuleDialog(url))
+                        StringUtils.TTS_RULE ->
+                            showDialogFragment(ImportHttpTtsDialog(url))
+                        else -> showDialogFragment(ImportHttpTtsDialog(url))
+                    }
+                }
+            }
         }
     }
 
