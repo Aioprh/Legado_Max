@@ -691,12 +691,11 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
     }
 
-    /** 解析底栏背景色：内置配置用主题色，自定义配置用配置中的颜色+透明度 */
+    /** 解析底栏背景色：内置配置用主题色+配置透明度，自定义配置用配置中的颜色+透明度 */
     private fun resolveNavigationBarBackground(config: NavigationBarConfig): Int {
-        if (config.isBuiltin) {
-            return bottomBackground
-        }
-        val baseColor = if (AppConfig.isNightTheme) {
+        val baseColor = if (config.isBuiltin) {
+            bottomBackground
+        } else if (AppConfig.isNightTheme) {
             getPrefInt(PreferKey.cNBBackground, getCompatColor(R.color.default_night_bottom_background))
         } else {
             getPrefInt(PreferKey.cBBackground, getCompatColor(R.color.default_bottom_background))

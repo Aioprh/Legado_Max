@@ -133,7 +133,10 @@ data class NavigationBarConfig(
                 id = "builtin_default_day",
                 name = appCtx.getString(R.string.nav_bar_default_day_name),
                 isNight = false,
-                isBuiltin = true
+                isBuiltin = true,
+                layoutMode = LAYOUT_STANDARD,
+                effectMode = EFFECT_SOLID,
+                opacity = 30
             )
         }
 
@@ -142,7 +145,10 @@ data class NavigationBarConfig(
                 id = "builtin_default_night",
                 name = appCtx.getString(R.string.nav_bar_default_night_name),
                 isNight = true,
-                isBuiltin = true
+                isBuiltin = true,
+                layoutMode = LAYOUT_STANDARD,
+                effectMode = EFFECT_SOLID,
+                opacity = 30
             )
         }
 
@@ -277,10 +283,9 @@ data class NavigationBarConfig(
             if (recreate) postEvent(EventBus.RECREATE, "")
         }
 
-        /** 根据配置的透明度计算最终底栏背景色 */
+        /** 根据配置的透明度计算最终底栏背景色（内置与自定义配置统一处理） */
         fun resolveBottomColor(baseColor: Int, config: NavigationBarConfig): Int {
             val alpha = config.opacity.coerceIn(0, 100) / 100f
-            if (config.isBuiltin) return ColorUtils.withAlpha(baseColor, 1f)
             return ColorUtils.withAlpha(config.backgroundColor ?: baseColor, alpha)
         }
 
