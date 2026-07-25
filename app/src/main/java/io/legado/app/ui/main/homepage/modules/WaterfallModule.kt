@@ -117,7 +117,7 @@ fun WaterfallItem(
     val aspectRatio = imageAspectRatio ?: (3f / 4f)
     GlassCard(
         modifier = modifier.fillMaxWidth(),
-        cornerRadius = 8.dp
+        cornerRadius = 0.dp
     ) {
         Column(
             modifier = Modifier
@@ -125,7 +125,7 @@ fun WaterfallItem(
                     onClick = onClick,
                     onLongClick = onLongClick
                 )
-                .padding(4.dp)
+                .padding(bottom = 4.dp)
         ) {
             Box {
                 HomepageBookCover(
@@ -135,7 +135,7 @@ fun WaterfallItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(aspectRatio),
-                    cornerRadius = 4.dp,
+                    cornerRadius = 0.dp,
                     identity = identity
                 )
                 // 新版样式：显示图标
@@ -170,7 +170,9 @@ fun WaterfallItem(
             }
             // 书名区域
             Row(
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // 经典样式：显示小绿点
@@ -202,7 +204,9 @@ fun WaterfallItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp),
+                modifier = Modifier
+                    .padding(top = 2.dp)
+                    .padding(horizontal = 4.dp),
             )
             // 简介，最多两行显示，超出部分省略
             val intro = searchBook.intro?.takeIf { it.isNotBlank() }?.replace("\\s+".toRegex(), " ")
@@ -213,7 +217,9 @@ fun WaterfallItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .padding(horizontal = 4.dp),
                 )
             }
         }
