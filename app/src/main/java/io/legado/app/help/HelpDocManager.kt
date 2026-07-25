@@ -16,8 +16,7 @@ object HelpDocManager {
                 HelpDoc("txtTocRuleHelp", "txt目录正则说明"),
                 HelpDoc("dictRuleHelp", "字典规则说明"),
                 HelpDoc("httpTTSHelp", "在线朗读规则"),
-                HelpDoc("debugHelp", "书源调试说明"),
-                HelpDoc("homepageHelp", "首页功能使用帮助")
+                HelpDoc("debugHelp", "书源调试说明")
             )
         ),
         HelpDocGroup(
@@ -72,6 +71,7 @@ object HelpDocManager {
         HelpDoc("SourceMRssHelp", "订阅源管理界面帮助"),
         HelpDoc("replaceRuleHelp", "替换规则说明"),
         HelpDoc("readMenuHelp", "阅读界面帮助文档"),
+        HelpDoc("homepageHelp", "首页功能使用帮助"),
         HelpDoc("bubbleHelp", "段评气泡管理帮助"),
         HelpDoc("webDavBookHelp", "WebDav书籍简明使用教程"),
         HelpDoc("webDavHelp", "WebDav备份教程"),
