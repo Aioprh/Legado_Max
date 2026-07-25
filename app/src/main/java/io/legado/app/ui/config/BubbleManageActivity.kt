@@ -45,6 +45,7 @@ import io.legado.app.utils.SvgUtils
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.showHelp
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers
@@ -373,19 +374,7 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
     }
 
     private fun showBubbleHelp() {
-        alert(getString(R.string.help), """
-            段评气泡用于把规则里的 dp 图片转成原生 SVG 气泡。
-
-            接入格式：
-            <img src="dp:12,{&quot;pclick&quot;:&quot;...&quot;,&quot;status&quot;:&quot;normal&quot;}">
-
-            dp: 后面的数字会替换 SVG 模板里的 ${'$'}{num}。
-            status 可选：normal 使用常规色，emphasis 使用强调色；不写 status 时默认 normal。
-            SVG 模板支持 ${'$'}{color} 和 ${'$'}{num} 两个占位。
-            内置气泡只读；需要自定义时请通过添加创建新气泡。
-        """.trimIndent()) {
-            okButton()
-        }
+        showHelp("bubbleHelp")
     }
 
     private inner class Adapter : RecyclerView.Adapter<Adapter.Holder>() {
