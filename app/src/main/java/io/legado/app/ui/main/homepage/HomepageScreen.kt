@@ -539,7 +539,7 @@ private fun SourceTabLayout(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelLarge,
                         color = if (isSelected) accent else secondaryColor
                     )
                     // 底部下划线指示器
