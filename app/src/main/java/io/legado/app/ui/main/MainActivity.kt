@@ -74,6 +74,7 @@ import io.legado.app.utils.invisible
 import io.legado.app.utils.visible
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.DevicePerformanceUtils
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getCompatColor
 import io.legado.app.utils.getPrefInt
@@ -390,6 +391,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     }
 
     override fun onDestroy() {
+        releaseBottomNavigationGlassSampling()
         super.onDestroy()
         Coroutine.async {
             BookHelp.clearInvalidCache()
@@ -405,7 +407,27 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         // 或 recreate() 可能被 upSort() 异常阻断。
         // 在 onResume 中直接刷新背景图片，确保主题背景变更立即生效。
         upBackgroundImage()
-        refreshBottomNavigationConfig(force = true)
+        // 签名缓存已修复内置配置时间戳问题，无需 force = true；
+        // 若配置确实变更，签名不同会自动触发刷新；若未变更则跳过，避免重复重建。
+        refreshBottomNavigationConfig(force = false)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Activity 不可见时释放玻璃采样视图，避免持续采样整页内容
+        releaseBottomNavigationGlassSampling()
+    }
+
+    /**
+     * 释放底栏玻璃视图的采样源，停止实时模糊采样以节省 CPU/GPU 资源。
+     * 在 Activity 不可见或销毁时调用；恢复可见时由 refreshBottomNavigationConfig 重新绑定。
+     */
+    private fun releaseBottomNavigationGlassSampling() {
+        if (!binding.bottomNavigationGlassView.isReleased()) {
+            binding.bottomNavigationGlassView.release()
+            // 重置签名缓存，确保恢复时重新绑定采样源
+            bottomNavigationConfigSignature = null
+        }
     }
 
     /**
@@ -653,6 +675,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     /**
      * 刷新底栏配置（带签名缓存，避免重复刷新）
+     *
+     * 签名缓存机制：比较当前底栏配置的签名摘要，仅在配置实际变化时才重新应用。
+     * 对于内置配置，updatedAt 固定为 0L，确保每次 loadConfigs 不会产生新签名。
      */
     private fun refreshBottomNavigationConfig(force: Boolean = false) {
         val signature = NavigationBarConfig.currentSignature(this, AppConfig.isNightTheme)
@@ -665,6 +690,10 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     /**
      * 应用底栏导航栏配置包：背景色、自定义图标、布局 Shell（浮动/标准/侧栏 + 玻璃/磨砂/实色）
+     *
+     * 性能优化：
+     * - 低性能设备自动将玻璃/磨砂降级为静态材质背景，避免持续采样整页内容
+     * - 高性能设备保留实时玻璃效果
      */
     private fun applyNavigationBarPackage() = binding.run {
         val config = NavigationBarConfig.activeConfig(this@MainActivity, AppConfig.isNightTheme)
@@ -719,6 +748,11 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     /**
      * 应用底栏 Shell：根据布局模式（浮动/标准/侧栏）和效果模式（实色/玻璃/磨砂）
      * 设置容器尺寸、边距、圆角、阴影和背景 Drawable
+     *
+     * 性能优化：
+     * - 低性能设备（旧系统/低内存）自动降级为静态材质背景，避免实时采样
+     * - 高性能设备保留实时玻璃效果，但合并参数刷新为单次操作
+     * - 切换为实色模式或标准布局时及时释放采样视图
      */
     private fun applyBottomNavigationShell(config: NavigationBarConfig, bgColor: Int) = binding.run {
         val floating = config.layoutMode == NavigationBarConfig.LAYOUT_FLOATING
@@ -760,7 +794,10 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
         bottomNavigationView.setBackgroundColor(Color.TRANSPARENT)
         bottomNavigationView.background = Color.TRANSPARENT.toDrawable()
-        val liquid = !standard && config.effectMode != NavigationBarConfig.EFFECT_SOLID
+        // 判断是否使用实时玻璃效果：用户配置为玻璃/磨砂 且 非标准布局 且 设备支持实时模糊
+        val wantsLiquid = !standard && config.effectMode != NavigationBarConfig.EFFECT_SOLID
+        val canRealtimeGlass = DevicePerformanceUtils.supportsRealtimeGlass
+        val liquid = wantsLiquid && canRealtimeGlass
         applyBottomNavigationGlassOutline(bottomNavigationGlass, if (floating) 24f.dpToPx() else 0f)
         if (liquid) {
             bottomNavigationGlassView.visible()
@@ -773,7 +810,14 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 strokeColor = resolveBottomNavigationBorderColor(config)
             )
         } else {
+            // 不使用实时玻璃时，释放采样视图以停止持续采样
+            if (!bottomNavigationGlassView.isReleased()) {
+                bottomNavigationGlassView.release()
+            }
             bottomNavigationGlassView.invisible()
+            // 低性能设备降级：用静态玻璃材质 Drawable 替代实时模糊。
+            // createBottomNavigationShellDrawable 内部会根据 effectMode 生成对应的
+            // 静态玻璃/磨砂材质渐变 Drawable，视觉效果接近实时模糊但无需持续采样。
             bottomNavigationShellOverlay.background = createBottomNavigationShellDrawable(config, bgColor)
         }
     }
@@ -783,6 +827,10 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
      *
      * 玻璃效果：较小模糊半径 + 较高色散，产生清晰折射感。
      * 磨砂效果：较大模糊半径 + 较低色散，产生朦胧磨砂感。
+     *
+     * 性能优化：使用 [StableLiquidGlassView.beginBatchUpdate] / [endBatchUpdate]
+     * 将 12+ 个参数设置合并为单次 updateParameters 调用，避免逐个 setter
+     * 各自触发 GPU 参数上传。
      */
     private fun setupBottomLiquidGlass(
         liquidGlassView: StableLiquidGlassView,
@@ -794,6 +842,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         val frosted = config.effectMode == NavigationBarConfig.EFFECT_FROSTED
         val tintColor = Color.rgb(Color.red(bgColor), Color.green(bgColor), Color.blue(bgColor))
         liquidGlassView.bind(binding.contentContainer)
+        // 批量更新：合并所有参数设置为单次 updateParameters 调用
+        liquidGlassView.beginBatchUpdate()
         liquidGlassView.setCornerRadius(cornerRadius)
         liquidGlassView.setRefractionHeight(if (frosted) 10f.dpToPx() else (14f + level * 10f).dpToPx())
         liquidGlassView.setRefractionOffset(if (frosted) 30f.dpToPx() else (42f + level * 18f).dpToPx())
@@ -806,7 +856,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         liquidGlassView.setDraggableEnabled(false)
         liquidGlassView.setElasticEnabled(false)
         liquidGlassView.setTouchEffectEnabled(false)
-        liquidGlassView.invalidate()
+        liquidGlassView.endBatchUpdate()
     }
 
     /** 设置底栏容器的圆角裁剪 */

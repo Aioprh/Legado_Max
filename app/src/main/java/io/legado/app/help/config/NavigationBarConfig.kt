@@ -136,7 +136,8 @@ data class NavigationBarConfig(
                 isBuiltin = true,
                 layoutMode = LAYOUT_STANDARD,
                 effectMode = EFFECT_SOLID,
-                opacity = 30
+                opacity = 30,
+                updatedAt = 0L
             )
         }
 
@@ -148,7 +149,8 @@ data class NavigationBarConfig(
                 isBuiltin = true,
                 layoutMode = LAYOUT_STANDARD,
                 effectMode = EFFECT_SOLID,
-                opacity = 30
+                opacity = 30,
+                updatedAt = 0L
             )
         }
 
@@ -261,6 +263,9 @@ data class NavigationBarConfig(
             val iconSignature = config.icons.entries
                 .sortedBy { it.key }
                 .joinToString("|") { "${it.key}:${it.value}" }
+            // 内置配置使用固定 updatedAt（0L），避免每次 loadConfigs 重新创建实例
+            // 导致时间戳变化、签名不一致，进而触发重复重建主题/图标/背景。
+            val stableUpdatedAt = if (config.isBuiltin) 0L else config.updatedAt
             return listOf(
                 isNight,
                 config.id,
@@ -270,7 +275,7 @@ data class NavigationBarConfig(
                 config.opacity,
                 config.borderColor,
                 config.borderAlpha,
-                config.updatedAt,
+                stableUpdatedAt,
                 iconSignature
             ).joinToString("|")
         }
