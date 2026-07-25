@@ -1398,11 +1398,12 @@ class BookInfoActivity :
         return viewModel.getBookShelfState(book)
     }
 
-    override fun showBookInfo(name: String, author: String, bookUrl: String) {
+    override fun showBookInfo(name: String, author: String, bookUrl: String, origin: String) {
         val intent = Intent(this, BookInfoActivity::class.java)
         intent.putExtra("name", name)
         intent.putExtra("author", author)
         intent.putExtra("bookUrl", bookUrl)
+        intent.putExtra("origin", origin)
         intent.putExtra("fromAuthorOtherWorks", true)
         startActivity(intent)
     }
