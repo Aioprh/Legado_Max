@@ -46,7 +46,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabPosition
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -509,39 +514,39 @@ private fun SourceTabLayout(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
         if (selectedSets.isEmpty()) return@Column
-        // 可滚动的 Tab 栏（使用 Surface 样式，与排行榜 Tab 风格一致）
-        val tabScrollState = rememberScrollState()
-        val accent = pageAccentColor()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(tabScrollState)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // 可滚动的 Tab 栏
+        ScrollableTabRow(
+            selectedTabIndex = safeTabIndex,
+            modifier = Modifier.height(40.dp),
+            edgePadding = 8.dp,
+            containerColor = Color.Transparent,
+            // 自定义 indicator：防止 tabPositions 与 selectedTabIndex 不同步时越界
+            indicator = { tabPositions ->
+                if (tabPositions.isNotEmpty() && safeTabIndex < tabPositions.size) {
+                    TabRowDefaults.Indicator(
+                        Modifier.tabIndicatorOffset(tabPositions[safeTabIndex])
+                    )
+                }
+            }
         ) {
             selectedSets.forEachIndexed { index, set ->
-                val isSelected = safeTabIndex == index
-                Surface(
-                    color = if (isSelected) accent.copy(alpha = 0.12f) else Color.Transparent,
-                    contentColor = if (isSelected) accent else pageSecondaryTextColor(),
-                    shape = RoundedCornerShape(8.dp),
-                    border = if (isSelected) null else BorderStroke(1.dp, pageSecondaryTextColor().copy(alpha = 0.2f)),
+                Tab(
+                    selected = safeTabIndex == index,
                     onClick = {
                         selectedTabIndex = index
                         coroutineScope.launch {
                             pagerState.animateScrollToPage(index)
                         }
+                    },
+                    text = {
+                        Text(
+                            text = set.sourceName,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium
+                        )
                     }
-                ) {
-                    Text(
-                        text = set.sourceName,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
-                }
+                )
             }
         }
         // 使用 HorizontalPager 实现左右滑动切换书源集
