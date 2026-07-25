@@ -73,6 +73,7 @@ import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
+import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.invisible
 import io.legado.app.utils.visible
@@ -411,9 +412,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     override fun onResume() {
         super.onResume()
-        if (LifecycleHelp.activitySize() == 1) {
-            readShibboleth(500)
-        }
+        // 口令识别：不限制 activitySize，确保从子 Activity 返回时也能识别
+        readShibboleth(500)
         // 用户从设置页返回时，RECREATE 事件可能未送达后台的 Activity，
         // 或 recreate() 可能被 upSort() 异常阻断。
         // 在 onResume 中直接刷新背景图片，确保主题背景变更立即生效。
@@ -1117,8 +1117,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
      */
     fun readShibboleth(delay: Long) {
         binding.viewPagerMain.postDelayed(delay) {
-            val text = this@MainActivity.getClipText()
-            if (!text.isNullOrBlank()) {
+            try {
+                val text = this@MainActivity.getClipText()
+                if (text.isNullOrBlank()) return@postDelayed
                 if ("#L:" in text) {
                     this@MainActivity.clearClip() //清理一下防重复
                     val (url, type, customWord) = StringUtils.unShibboleth(text)
@@ -1138,6 +1139,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                         else -> showDialogFragment(ImportHttpTtsDialog(url))
                     }
                 }
+            } catch (e: Exception) {
+                e.printOnDebug()
             }
         }
     }
