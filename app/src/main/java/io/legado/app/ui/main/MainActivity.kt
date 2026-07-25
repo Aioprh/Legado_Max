@@ -25,6 +25,7 @@ import androidx.fragment.app.FragmentStatePagerAdapter
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import android.os.Build
 import io.legado.app.BuildConfig
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
@@ -58,6 +59,7 @@ import io.legado.app.ui.main.explore.ExploreFragment
 import io.legado.app.ui.main.homepage.HomepageFragment
 import io.legado.app.ui.main.my.MyFragment
 import io.legado.app.ui.main.rss.RssFragment
+import io.legado.app.ui.widget.StableLiquidGlassView
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.ui.widget.text.BadgeView
 import io.legado.app.utils.isCreated
@@ -761,6 +763,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         val liquid = !standard && config.effectMode != NavigationBarConfig.EFFECT_SOLID
         applyBottomNavigationGlassOutline(bottomNavigationGlass, if (floating) 24f.dpToPx() else 0f)
         if (liquid) {
+            bottomNavigationGlassView.visible()
+            setupBottomLiquidGlass(bottomNavigationGlassView, config, if (floating) 24f.dpToPx() else 0f, bgColor)
             bottomNavigationShellOverlay.background = createLiquidGlassShellDrawable(
                 glassLevel = config.opacity.coerceIn(0, 100) / 100f,
                 cornerRadius = if (floating) 24f.dpToPx() else 0f,
@@ -769,8 +773,40 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 strokeColor = resolveBottomNavigationBorderColor(config)
             )
         } else {
+            bottomNavigationGlassView.invisible()
             bottomNavigationShellOverlay.background = createBottomNavigationShellDrawable(config, bgColor)
         }
+    }
+
+    /**
+     * 配置液态玻璃视图的模糊参数。
+     *
+     * 玻璃效果：较小模糊半径 + 较高色散，产生清晰折射感。
+     * 磨砂效果：较大模糊半径 + 较低色散，产生朦胧磨砂感。
+     */
+    private fun setupBottomLiquidGlass(
+        liquidGlassView: StableLiquidGlassView,
+        config: NavigationBarConfig,
+        cornerRadius: Float,
+        bgColor: Int
+    ) {
+        val level = config.opacity.coerceIn(0, 100) / 100f
+        val frosted = config.effectMode == NavigationBarConfig.EFFECT_FROSTED
+        val tintColor = Color.rgb(Color.red(bgColor), Color.green(bgColor), Color.blue(bgColor))
+        liquidGlassView.bind(binding.contentContainer)
+        liquidGlassView.setCornerRadius(cornerRadius)
+        liquidGlassView.setRefractionHeight(if (frosted) 10f.dpToPx() else (14f + level * 10f).dpToPx())
+        liquidGlassView.setRefractionOffset(if (frosted) 30f.dpToPx() else (42f + level * 18f).dpToPx())
+        liquidGlassView.setBlurRadius(if (frosted) 22f + level * 20f else 8f + level * 14f)
+        liquidGlassView.setDispersion(if (frosted) 0.06f else 0.24f + level * 0.24f)
+        liquidGlassView.setTintAlpha(if (frosted) 0.012f + level * 0.268f else 0.004f + level * 0.156f)
+        liquidGlassView.setTintColorRed(Color.red(tintColor) / 255f)
+        liquidGlassView.setTintColorGreen(Color.green(tintColor) / 255f)
+        liquidGlassView.setTintColorBlue(Color.blue(tintColor) / 255f)
+        liquidGlassView.setDraggableEnabled(false)
+        liquidGlassView.setElasticEnabled(false)
+        liquidGlassView.setTouchEffectEnabled(false)
+        liquidGlassView.invalidate()
     }
 
     /** 设置底栏容器的圆角裁剪 */
@@ -787,7 +823,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
     }
 
-    /** 创建玻璃/磨砂效果的 Shell 背景 Drawable */
+    /** 创建玻璃/磨砂效果的 Shell 背景 Drawable（作为 StableLiquidGlassView 的补充层） */
     private fun createLiquidGlassShellDrawable(
         glassLevel: Float,
         cornerRadius: Float,
@@ -803,21 +839,22 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             neutralSurface,
             if (effectMode == NavigationBarConfig.EFFECT_FROSTED) 0.26f else 0.14f
         )
+        val fallbackBoost = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) 0.08f else 0f
         val frosted = effectMode == NavigationBarConfig.EFFECT_FROSTED
         val startAlpha = if (frosted) {
-            (0.025f + glassLevel * 0.615f).coerceIn(0f, 0.76f)
+            (0.025f + glassLevel * 0.615f + fallbackBoost).coerceIn(0f, 0.76f)
         } else {
-            (0.004f + glassLevel * 0.386f).coerceIn(0f, 0.48f)
+            (0.004f + glassLevel * 0.386f + fallbackBoost * 0.55f).coerceIn(0f, 0.48f)
         }
         val centerAlpha = if (frosted) {
-            (0.018f + glassLevel * 0.462f).coerceIn(0f, 0.58f)
+            (0.018f + glassLevel * 0.462f + fallbackBoost * 0.65f).coerceIn(0f, 0.58f)
         } else {
-            (0.003f + glassLevel * 0.267f).coerceIn(0f, 0.34f)
+            (0.003f + glassLevel * 0.267f + fallbackBoost * 0.35f).coerceIn(0f, 0.34f)
         }
         val endAlpha = if (frosted) {
-            (0.012f + glassLevel * 0.348f).coerceIn(0f, 0.46f)
+            (0.012f + glassLevel * 0.348f + fallbackBoost * 0.45f).coerceIn(0f, 0.46f)
         } else {
-            (0.002f + glassLevel * 0.198f).coerceIn(0f, 0.26f)
+            (0.002f + glassLevel * 0.198f + fallbackBoost * 0.30f).coerceIn(0f, 0.26f)
         }
         val strokeAlpha = if (frosted) {
             (0.20f + glassLevel * 0.16f).coerceIn(0f, 0.44f)
@@ -838,11 +875,17 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
     }
 
-    /** 创建实色/标准 Shell 背景 Drawable */
+    /** 创建实色/标准 Shell 背景 Drawable，非实色效果使用多层玻璃 Drawable */
     private fun createBottomNavigationShellDrawable(config: NavigationBarConfig, bgColor: Int): Drawable {
         val standard = config.layoutMode == NavigationBarConfig.LAYOUT_STANDARD
-        val radius = if (standard) 0f else 24f.dpToPx()
+        val radius = when {
+            standard -> 0f
+            else -> 24f.dpToPx()
+        }
         val strokeColor = resolveBottomNavigationBorderColor(config)
+        if (!standard && config.effectMode != NavigationBarConfig.EFFECT_SOLID) {
+            return createBottomNavigationGlassDrawable(config, bgColor, radius, strokeColor)
+        }
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
@@ -850,6 +893,148 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             setStroke(
                 if (!standard && strokeColor != null) 1.dpToPx() else 0,
                 strokeColor ?: Color.TRANSPARENT
+            )
+        }
+    }
+
+    /** 创建多层玻璃/磨砂 Drawable（阴影 + 主体 + 雾气 + 高光 + 底部阴影 + 边框） */
+    private fun createBottomNavigationGlassDrawable(
+        config: NavigationBarConfig,
+        bgColor: Int,
+        radius: Float,
+        strokeColor: Int?
+    ): Drawable {
+        val opacityFactor = config.opacity.coerceIn(0, 100) / 100f
+        val glassBase = glassBaseColor(bgColor, config.effectMode, opacityFactor)
+        val body = roundedGradient(
+            radius = radius,
+            colors = bottomNavigationMaterialColors(glassBase, config.effectMode)
+        )
+        val mist = roundedGradient(
+            radius = radius,
+            colors = intArrayOf(
+                Color.TRANSPARENT,
+                adjustAlpha(
+                    if (ColorUtils.isColorLight(glassBase)) Color.WHITE else Color.rgb(90, 110, 136),
+                    opacityFactor * if (config.effectMode == NavigationBarConfig.EFFECT_FROSTED) 0.34f else 0.08f
+                ),
+                Color.TRANSPARENT
+            )
+        )
+        val highlight = roundedGradient(
+            radius = radius,
+            colors = intArrayOf(
+                adjustAlpha(
+                    getCompatColor(R.color.glass_bar_highlight),
+                    opacityFactor * if (config.effectMode == NavigationBarConfig.EFFECT_FROSTED) 0.36f else 1.00f
+                ),
+                adjustAlpha(Color.WHITE, opacityFactor * if (config.effectMode == NavigationBarConfig.EFFECT_FROSTED) 0.06f else 0.20f),
+                Color.TRANSPARENT,
+                adjustAlpha(
+                    getCompatColor(R.color.glass_overlay),
+                    opacityFactor * if (config.effectMode == NavigationBarConfig.EFFECT_FROSTED) 0.18f else 0.72f
+                )
+            )
+        )
+        val bottomShade = roundedGradient(
+            radius = radius,
+            colors = intArrayOf(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT,
+                adjustAlpha(
+                    if (ColorUtils.isColorLight(glassBase)) Color.rgb(20, 34, 54) else Color.BLACK,
+                    opacityFactor * if (config.effectMode == NavigationBarConfig.EFFECT_FROSTED) 0.06f else 0.18f
+                )
+            )
+        )
+        val border = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(Color.TRANSPARENT)
+            setStroke(
+                1.dpToPx(),
+                strokeColor ?: adjustAlpha(getCompatColor(R.color.glass_stroke), opacityFactor)
+            )
+        }
+        val shadow = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(adjustAlpha(getCompatColor(R.color.glass_bar_shadow), opacityFactor))
+        }
+        return LayerDrawable(arrayOf(shadow, body, mist, highlight, bottomShade, border)).apply {
+            val shadowInset = 2.dpToPx()
+            setLayerInset(0, shadowInset, 2.dpToPx(), shadowInset, 0)
+            setLayerInset(1, 0, 0, 0, 1.dpToPx())
+            setLayerInset(2, 2.dpToPx(), 1.dpToPx(), 2.dpToPx(), 3.dpToPx())
+            setLayerInset(3, 1.dpToPx(), 1.dpToPx(), 1.dpToPx(), 2.dpToPx())
+            setLayerInset(4, 1.dpToPx(), 2.dpToPx(), 1.dpToPx(), 1.dpToPx())
+            setLayerInset(5, 0, 0, 0, 1.dpToPx())
+        }
+    }
+
+    /** 计算玻璃/磨砂材质的基础颜色 */
+    private fun glassBaseColor(bgColor: Int, effectMode: String, opacityFactor: Float): Int {
+        val baseRgb = Color.rgb(Color.red(bgColor), Color.green(bgColor), Color.blue(bgColor))
+        val light = ColorUtils.isColorLight(baseRgb)
+        val materialTint = when (effectMode) {
+            NavigationBarConfig.EFFECT_FROSTED -> if (light) Color.WHITE else Color.rgb(52, 58, 68)
+            else -> getCompatColor(R.color.glass_bar)
+        }
+        val ratio = if (effectMode == NavigationBarConfig.EFFECT_FROSTED) 0.34f else 0.18f
+        val alpha = opacityFactor * if (effectMode == NavigationBarConfig.EFFECT_FROSTED) 0.96f else 0.78f
+        val rgb = ColorUtils.blendColors(baseRgb, materialTint, ratio)
+        return ColorUtils.withAlpha(rgb, alpha.coerceIn(0f, 1f))
+    }
+
+    /** 创建圆角渐变 Drawable */
+    private fun roundedGradient(radius: Float, colors: IntArray): GradientDrawable {
+        return GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors).apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+        }
+    }
+
+    /** 调整颜色的 Alpha 通道 */
+    private fun adjustAlpha(color: Int, factor: Float): Int {
+        return ColorUtils.withAlpha(
+            Color.rgb(Color.red(color), Color.green(color), Color.blue(color)),
+            (Color.alpha(color) / 255f * factor).coerceIn(0f, 1f)
+        )
+    }
+
+    /** 根据效果模式生成底栏材质渐变色数组 */
+    private fun bottomNavigationMaterialColors(bgColor: Int, effectMode: String): IntArray {
+        val alpha = Color.alpha(bgColor) / 255f
+        val rgb = Color.rgb(Color.red(bgColor), Color.green(bgColor), Color.blue(bgColor))
+        return if (effectMode == NavigationBarConfig.EFFECT_FROSTED) {
+            val frost = if (ColorUtils.isColorLight(rgb)) Color.WHITE else Color.rgb(62, 70, 82)
+            intArrayOf(
+                ColorUtils.blendColors(
+                    ColorUtils.withAlpha(rgb, (alpha * 0.98f).coerceIn(0f, 1f)),
+                    ColorUtils.withAlpha(frost, (alpha * 0.38f).coerceIn(0f, 1f)),
+                    0.48f
+                ),
+                ColorUtils.blendColors(
+                    ColorUtils.withAlpha(rgb, (alpha * 0.94f).coerceIn(0f, 1f)),
+                    ColorUtils.withAlpha(frost, (alpha * 0.25f).coerceIn(0f, 1f)),
+                    0.36f
+                ),
+                ColorUtils.withAlpha(rgb, (alpha * 0.86f).coerceIn(0f, 1f))
+            )
+        } else {
+            val highlight = if (ColorUtils.isColorLight(rgb)) Color.WHITE else Color.rgb(56, 74, 96)
+            intArrayOf(
+                ColorUtils.blendColors(
+                    ColorUtils.withAlpha(rgb, (alpha * 0.76f).coerceIn(0f, 1f)),
+                    ColorUtils.withAlpha(highlight, 0.34f),
+                    0.58f
+                ),
+                ColorUtils.withAlpha(rgb, (alpha * 0.56f).coerceIn(0f, 1f)),
+                ColorUtils.blendColors(
+                    ColorUtils.withAlpha(rgb, (alpha * 0.40f).coerceIn(0f, 1f)),
+                    ColorUtils.withAlpha(Color.WHITE, 0.10f),
+                    0.18f
+                )
             )
         }
     }
