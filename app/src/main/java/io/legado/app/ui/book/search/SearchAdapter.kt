@@ -79,7 +79,7 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
     override fun registerListener(holder: ItemViewHolder, binding: ItemSearchBinding) {
         binding.root.setOnClickListener {
             getItem(holder.layoutPosition)?.let {
-                callBack.showBookInfo(it.name, it.author, it.bookUrl)
+                callBack.showBookInfo(it.name, it.author, it.bookUrl, it.origin)
             }
         }
         binding.root.setOnLongClickListener {
@@ -165,7 +165,7 @@ class SearchAdapter(context: Context, val callBack: CallBack) :
         /**
          * 显示书籍详情
          */
-        fun showBookInfo(name: String, author: String, bookUrl: String)
+        fun showBookInfo(name: String, author: String, bookUrl: String, origin: String = "")
 
         /**
          * 长按书籍事件
