@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -264,10 +265,8 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                 addView(optionRow(getString(R.string.wallpaper), wallpaperLabel(config.wallpaperPath)) {
                     showWallpaperSelector()
                 })
-                addView(optionRow(getString(R.string.top_bar_wallpaper_alpha), "${config.wallpaperAlpha}%") {
-                    showPercentPicker(getString(R.string.top_bar_wallpaper_alpha), config.wallpaperAlpha) {
-                        config.wallpaperAlpha = it
-                    }
+                addView(sliderRow(getString(R.string.top_bar_wallpaper_alpha), config.wallpaperAlpha) {
+                    config.wallpaperAlpha = it
                 })
                 addView(optionRow(getString(R.string.top_bar_filter_default), filterDefaultLabel(config.expandFiltersByDefault)) {
                     selector(
@@ -286,19 +285,15 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
             addView(optionRow(getString(R.string.top_bar_tag_bar_color), colorLabel(config.tagBarColor), tagBarColor) {
                 showColorOptions(COLOR_TAG_BAR, tagBarColor)
             })
-            addView(optionRow(getString(R.string.tag_bar_opacity), "${config.tagBarAlpha}%") {
-                showPercentPicker(getString(R.string.tag_bar_opacity), config.tagBarAlpha) {
-                    config.tagBarAlpha = it
-                }
+            addView(sliderRow(getString(R.string.tag_bar_opacity), config.tagBarAlpha) {
+                config.tagBarAlpha = it
             })
             val selectedColor = config.tagSelectedColor ?: defaultSelectedColor()
             addView(optionRow(getString(R.string.top_bar_tag_selected_color), colorLabel(config.tagSelectedColor), selectedColor) {
                 showColorOptions(COLOR_TAG_SELECTED, selectedColor)
             })
-            addView(optionRow(getString(R.string.tag_selected_opacity), "${config.tagSelectedAlpha}%") {
-                showPercentPicker(getString(R.string.tag_selected_opacity), config.tagSelectedAlpha) {
-                    config.tagSelectedAlpha = it
-                }
+            addView(sliderRow(getString(R.string.tag_selected_opacity), config.tagSelectedAlpha) {
+                config.tagSelectedAlpha = it
             })
         }
     }
@@ -335,6 +330,74 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                 setTextColor(ContextCompat.getColor(context, R.color.secondaryText))
             })
             setOnClickListener { onClick() }
+        }
+    }
+
+    /**
+     * 创建横向进度条行：标题 + 百分比文本在上，[-] SeekBar [+] 在下。
+     * 滑动时实时更新值，不触发对话框重建。
+     */
+    private fun sliderRow(title: String, value: Int, onValueChange: (Int) -> Unit): View {
+        val percentText = TextView(this).apply {
+            text = "$value%"
+            textSize = 13f
+            setTextColor(ContextCompat.getColor(this@TopBarManageActivity, R.color.secondaryText))
+        }
+        val seekBar = SeekBar(this).apply {
+            max = 100
+            progress = value.coerceIn(0, 100)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                    percentText.text = "$progress%"
+                    onValueChange(progress)
+                }
+                override fun onStartTrackingTouch(sb: SeekBar?) {}
+                override fun onStopTrackingTouch(sb: SeekBar?) {}
+            })
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val minusBtn = TextView(this).apply {
+            text = "−"
+            textSize = 20f
+            gravity = Gravity.CENTER
+            setTextColor(ContextCompat.getColor(this@TopBarManageActivity, R.color.primaryText))
+            setPadding(14.dp, 0, 14.dp, 0)
+            setOnClickListener { seekBar.progress = (seekBar.progress - 1).coerceAtLeast(0) }
+        }
+        val plusBtn = TextView(this).apply {
+            text = "+"
+            textSize = 20f
+            gravity = Gravity.CENTER
+            setTextColor(ContextCompat.getColor(this@TopBarManageActivity, R.color.primaryText))
+            setPadding(14.dp, 0, 14.dp, 0)
+            setOnClickListener { seekBar.progress = (seekBar.progress + 1).coerceAtMost(100) }
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(14.dp, 6.dp, 14.dp, 6.dp)
+            background = ContextCompat.getDrawable(context, R.drawable.bg_config_card)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 8.dp }
+            addView(LinearLayout(this@TopBarManageActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(this@TopBarManageActivity).apply {
+                    text = title
+                    textSize = 15f
+                    setTextColor(ContextCompat.getColor(this@TopBarManageActivity, R.color.primaryText))
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                })
+                addView(percentText)
+            })
+            addView(LinearLayout(this@TopBarManageActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(minusBtn)
+                addView(seekBar)
+                addView(plusBtn)
+            })
         }
     }
 
@@ -387,18 +450,6 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
         )
         pendingWallpaperCropRequest = request
         cropWallpaper.launch(request.params)
-    }
-
-    private fun showPercentPicker(title: String, value: Int, apply: (Int) -> Unit) {
-        NumberPickerDialog(this)
-            .setTitle(title)
-            .setMinValue(0)
-            .setMaxValue(100)
-            .setValue(value.coerceIn(0, 100))
-            .show {
-                apply(it.coerceIn(0, 100))
-                refreshEditDialog()
-            }
     }
 
     private fun showCornerScalePicker(value: Float, apply: (Float) -> Unit) {
