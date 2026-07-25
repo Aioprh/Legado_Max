@@ -1361,6 +1361,7 @@
     <string name="restore_show_selector">還原時顯示選擇器</string>
     <string name="restore_show_selector_summary">還原前選擇要還原的資料</string>
     <string name="search_help">搜尋說明</string>
+    <string name="more_settings">更多設定</string>
     <string name="show_read_record_in_book_info">顯示閱讀記錄</string>
     <string name="show_source_comment">顯示源註釋</string>
     <string name="show_web_log">輸出日誌</string>

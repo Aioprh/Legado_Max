@@ -79,22 +79,29 @@
         app:showAsAction="never" />
 
     <item
-        android:id="@+id/menu_show_read_record"
-        android:title="@string/show_read_record_in_book_info"
-        android:checkable="true"
-        app:showAsAction="never" />
+        android:id="@+id/menu_more_settings"
+        android:title="@string/more_settings"
+        app:showAsAction="never">
+        <menu>
+            <item
+                android:id="@+id/menu_show_read_record"
+                android:title="@string/show_read_record_in_book_info"
+                android:checkable="true"
+                app:showAsAction="never" />
 
-    <item
-        android:id="@+id/menu_show_author_other_works"
-        android:title="@string/show_author_other_works_in_book_info"
-        android:checkable="true"
-        app:showAsAction="never" />
+            <item
+                android:id="@+id/menu_show_author_other_works"
+                android:title="@string/show_author_other_works_in_book_info"
+                android:checkable="true"
+                app:showAsAction="never" />
 
-    <item
-        android:id="@+id/menu_cache_recover"
-        android:title="@string/cache_recover_on_toc_fail"
-        android:checkable="true"
-        app:showAsAction="never" />
+            <item
+                android:id="@+id/menu_cache_recover"
+                android:title="@string/cache_recover_on_toc_fail"
+                android:checkable="true"
+                app:showAsAction="never" />
+        </menu>
+    </item>
 
     <item
         android:id="@+id/menu_clear_cache"

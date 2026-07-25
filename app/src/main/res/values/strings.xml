@@ -1596,6 +1596,7 @@
     <string name="book_author_other_works_error">Search failed: %1$s</string>
     <string name="total_read_time_s">Total Read %1$s</string>
     <string name="last_read_s">Last Read %1$s</string>
+    <string name="more_settings">More Settings</string>
     <string name="show_read_record_in_book_info">Show Read Record</string>
     <string name="show_author_other_works_in_book_info">Show Author\'s Other Works</string>
     <string name="words">Words</string>

@@ -673,7 +673,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         }
 
     var cacheRecoverOnTocFail: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.cacheRecoverOnTocFail, true)
+        get() = appCtx.getPrefBoolean(PreferKey.cacheRecoverOnTocFail, false)
         set(value) {
             appCtx.putPrefBoolean(PreferKey.cacheRecoverOnTocFail, value)
         }
