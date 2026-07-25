@@ -93,8 +93,10 @@ import io.legado.app.ui.theme.pageCardElevatedContainerColor
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.theme.pageTopBarColors
 import io.legado.app.ui.theme.pageTopBarBackground
+import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.widget.components.BookBottomSheet
 import io.legado.app.ui.widget.components.card.GlassCard
+import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.showHelp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -254,6 +256,13 @@ fun HomepageScreen(
                                     }
                                 )
                             }
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.log)) },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    (context as? AppCompatActivity)?.showDialogFragment<AppLogDialog>()
+                                }
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.homepage_help)) },
                                 onClick = {
@@ -539,7 +548,7 @@ private fun SourceTabLayout(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelLarge,
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                         color = if (isSelected) accent else secondaryColor
                     )
                     // 底部下划线指示器
