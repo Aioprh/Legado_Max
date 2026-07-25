@@ -439,7 +439,7 @@ object StringUtils {
         val expiresAt = if (expiryDate < 1) 0 else {
             time + expiryDate.toLong() * 60 * 60 * 24 * 1000
         }
-        return "复制口令到阅读导入$result！$type©${expiresAt.toString().take(7)}¥Sigma^"
+        return "复制口令到阅读导入$result！$type©${expiresAt.toString().take(7)}¥MAX^"
     }
 
     /**
