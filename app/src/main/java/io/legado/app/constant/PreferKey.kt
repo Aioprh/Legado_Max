@@ -273,6 +273,7 @@ object PreferKey {
     const val readRecordDisplayMode = "readRecordDisplayMode"
     const val bookInfoShowReadRecord = "bookInfoShowReadRecord"
     const val bookInfoShowAuthorOtherWorks = "bookInfoShowAuthorOtherWorks"
+    const val cacheRecoverOnTocFail = "cacheRecoverOnTocFail"
     const val highlightRuleDialog = "highlightRuleDialog"
     const val highlightRuleBookTitle = "highlightRuleBookTitle"
     const val highlightRuleBracketNote = "highlightRuleBracketNote"
