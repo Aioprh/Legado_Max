@@ -517,7 +517,6 @@ private fun SourceTabLayout(
         // 可滚动的 Tab 栏
         ScrollableTabRow(
             selectedTabIndex = safeTabIndex,
-            modifier = Modifier.height(40.dp),
             edgePadding = 8.dp,
             containerColor = Color.Transparent,
             // 自定义 indicator：防止 tabPositions 与 selectedTabIndex 不同步时越界
