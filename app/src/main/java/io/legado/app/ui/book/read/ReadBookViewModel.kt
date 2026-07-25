@@ -296,12 +296,21 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
      * 解析文件名重建 [BookChapter] 列表，写入数据库，
      * 使用户能阅读已缓存的正文内容。
      *
+     * 保护机制：若数据库中已有章节数 >= 缓存可恢复的章节数，则不覆盖，
+     * 避免用户主动刷新章节时因网络波动导致已有的完整章节列表被旧缓存替换。
+     *
      * @param book 书籍对象
      * @return 是否成功恢复（至少恢复一个章节）
      */
     private suspend fun tryRecoverFromCache(book: Book): Boolean {
         val recoveredChapters = BookHelp.recoverChaptersFromCache(book)
         if (recoveredChapters.isEmpty()) return false
+        // 数据库中已有更多或同等数量的章节时，不应被缓存覆盖
+        val existingCount = appDb.bookChapterDao.getChapterCount(book.bookUrl)
+        if (existingCount > 0 && existingCount >= recoveredChapters.size) {
+            AppLog.putReaderDebug("跳过缓存恢复：数据库已有 $existingCount 章，缓存仅有 ${recoveredChapters.size} 章")
+            return false
+        }
         appDb.bookChapterDao.delByBook(book.bookUrl)
         appDb.bookChapterDao.insert(*recoveredChapters.toTypedArray())
         book.totalChapterNum = recoveredChapters.size
