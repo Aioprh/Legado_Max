@@ -117,7 +117,7 @@ fun WaterfallItem(
     val aspectRatio = imageAspectRatio ?: (3f / 4f)
     GlassCard(
         modifier = modifier.fillMaxWidth(),
-        cornerRadius = 0.dp
+        cornerRadius = 8.dp
     ) {
         Column(
             modifier = Modifier
@@ -135,7 +135,7 @@ fun WaterfallItem(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(aspectRatio),
-                    cornerRadius = 0.dp,
+                    cornerRadius = 8.dp,
                     identity = identity
                 )
                 // 新版样式：显示图标
