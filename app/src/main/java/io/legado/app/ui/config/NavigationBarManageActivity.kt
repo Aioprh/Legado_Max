@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -28,7 +29,6 @@ import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.ui.file.HandleFileContract
-import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
@@ -273,15 +273,15 @@ class NavigationBarManageActivity : BaseActivity<ActivityNavigationBarManageBind
                 selectBackgroundColor(config)
             })
             if (config.layoutMode != NavigationBarConfig.LAYOUT_SIDEBAR) {
-                addView(optionRow(getString(R.string.opacity), "${config.opacity}%") {
-                    editOpacity(config)
+                addView(sliderRow(getString(R.string.opacity), config.opacity) {
+                    config.opacity = it
                 })
                 addView(optionRow(getString(R.string.bottom_bar_border_color), config.borderColorText()) {
                     selectBorderColor(config)
                 })
                 if (config.borderColor?.let { Color.alpha(it) > 0 } == true) {
-                    addView(optionRow(getString(R.string.bottom_bar_border_alpha), "${config.borderAlpha}%") {
-                        editBorderAlpha(config)
+                    addView(sliderRow(getString(R.string.bottom_bar_border_alpha), config.borderAlpha) {
+                        config.borderAlpha = it
                     })
                 }
             }
@@ -323,6 +323,74 @@ class NavigationBarManageActivity : BaseActivity<ActivityNavigationBarManageBind
                 setTextColor(ContextCompat.getColor(context, R.color.secondaryText))
             })
             setOnClickListener { onClick() }
+        }
+    }
+
+    /**
+     * 创建横向进度条行：标题 + 百分比文本在上，[-] SeekBar [+] 在下。
+     * 滑动时实时更新值，不触发对话框重建。
+     */
+    private fun sliderRow(title: String, value: Int, onValueChange: (Int) -> Unit): View {
+        val percentText = TextView(this).apply {
+            text = "$value%"
+            textSize = 13f
+            setTextColor(ContextCompat.getColor(this@NavigationBarManageActivity, R.color.secondaryText))
+        }
+        val seekBar = SeekBar(this).apply {
+            max = 100
+            progress = value.coerceIn(0, 100)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+                    percentText.text = "$progress%"
+                    onValueChange(progress)
+                }
+                override fun onStartTrackingTouch(sb: SeekBar?) {}
+                override fun onStopTrackingTouch(sb: SeekBar?) {}
+            })
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val minusBtn = TextView(this).apply {
+            text = "−"
+            textSize = 20f
+            gravity = Gravity.CENTER
+            setTextColor(ContextCompat.getColor(this@NavigationBarManageActivity, R.color.primaryText))
+            setPadding(14.dp, 0, 14.dp, 0)
+            setOnClickListener { seekBar.progress = (seekBar.progress - 1).coerceAtLeast(0) }
+        }
+        val plusBtn = TextView(this).apply {
+            text = "+"
+            textSize = 20f
+            gravity = Gravity.CENTER
+            setTextColor(ContextCompat.getColor(this@NavigationBarManageActivity, R.color.primaryText))
+            setPadding(14.dp, 0, 14.dp, 0)
+            setOnClickListener { seekBar.progress = (seekBar.progress + 1).coerceAtMost(100) }
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(14.dp, 6.dp, 14.dp, 6.dp)
+            background = ContextCompat.getDrawable(context, R.drawable.bg_config_card)
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 8.dp }
+            addView(LinearLayout(this@NavigationBarManageActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(this@NavigationBarManageActivity).apply {
+                    text = title
+                    textSize = 15f
+                    setTextColor(ContextCompat.getColor(this@NavigationBarManageActivity, R.color.primaryText))
+                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+                })
+                addView(percentText)
+            })
+            addView(LinearLayout(this@NavigationBarManageActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(minusBtn)
+                addView(seekBar)
+                addView(plusBtn)
+            })
         }
     }
 
@@ -439,19 +507,7 @@ class NavigationBarManageActivity : BaseActivity<ActivityNavigationBarManageBind
         }
     }
 
-    private fun editOpacity(config: NavigationBarConfig) {
-        NumberPickerDialog(this)
-            .setTitle(getString(R.string.opacity))
-            .setMinValue(0)
-            .setMaxValue(100)
-            .setValue(config.opacity.coerceIn(0, 100))
-            .show {
-                config.opacity = it
-                refreshEditDialog()
-            }
-    }
-
-    private fun selectBackgroundColor(config: NavigationBarConfig) {
+private fun selectBackgroundColor(config: NavigationBarConfig) {
         val actions = listOf(
             getString(R.string.bottom_bar_follow_theme),
             getString(R.string.accent_color),
@@ -528,19 +584,7 @@ class NavigationBarManageActivity : BaseActivity<ActivityNavigationBarManageBind
             .commitAllowingStateLoss()
     }
 
-    private fun editBorderAlpha(config: NavigationBarConfig) {
-        NumberPickerDialog(this)
-            .setTitle(getString(R.string.bottom_bar_border_alpha))
-            .setMinValue(0)
-            .setMaxValue(100)
-            .setValue(config.borderAlpha.coerceIn(0, 100))
-            .show {
-                config.borderAlpha = it
-                refreshEditDialog()
-            }
-    }
-
-    override fun onColorSelected(dialogId: Int, color: Int) {
+override fun onColorSelected(dialogId: Int, color: Int) {
         editingConfig?.let {
             when (dialogId) {
                 COLOR_DIALOG_BORDER -> {
