@@ -16,6 +16,12 @@ import io.legado.app.utils.dpToPx
  *
  * 玻璃效果（EFFECT_GLASS）：较小的模糊半径 + 较高的色散，产生清晰通透的折射感。
  * 磨砂效果（EFFECT_FROSTED）：较大的模糊半径 + 较低的色散，产生朦胧磨砂感。
+ *
+ * 性能优化：
+ * - [beginBatchUpdate] / [endBatchUpdate] 合并多个参数设置为单次刷新，避免逐个 setter
+ *   各自触发 [LiquidGlass.updateParameters] 导致的重复 GPU 上传。
+ * - [release] 主动解绑采样源并移除 LiquidGlass 子视图，在底栏隐藏或切换为实色模式时
+ *   及时释放资源，避免持续采样整页内容造成的电量与 CPU 开销。
  */
 class StableLiquidGlassView @JvmOverloads constructor(
     context: Context,
@@ -38,61 +44,111 @@ class StableLiquidGlassView @JvmOverloads constructor(
     private var blurRadius = 0.01f
     private var dispersion = 0.5f
 
+    /** 批量更新计数器，> 0 时延迟 applyConfig */
+    private var batchDepth = 0
+
+    /** 标记批量更新期间有参数变化，待 endBatchUpdate 时统一刷新 */
+    private var batchDirty = false
+
+    /** 是否已主动释放采样源 */
+    private var released = false
+
     init {
         clipChildren = false
         clipToPadding = false
         setWillNotDraw(false)
     }
 
+    /**
+     * 开启批量更新模式。在 [endBatchUpdate] 之前，所有 setter 方法
+     * 只更新内部字段值，不会触发 [LiquidGlass.updateParameters]。
+     *
+     * 可嵌套调用，只有最外层的 [endBatchUpdate] 才会执行实际刷新。
+     */
+    fun beginBatchUpdate() {
+        batchDepth++
+    }
+
+    /**
+     * 结束批量更新模式。如果是最外层调用且有参数变化，执行一次 [applyConfig]。
+     */
+    fun endBatchUpdate() {
+        if (batchDepth > 0) {
+            batchDepth--
+            if (batchDepth == 0 && batchDirty) {
+                batchDirty = false
+                applyConfig()
+            }
+        }
+    }
+
     /** 绑定内容容器作为模糊采样源 */
     fun bind(source: ViewGroup?) {
+        if (source == null) return
         sampleSource = source
+        released = false
         ensureGlass()
     }
 
+    /**
+     * 释放采样源并移除 LiquidGlass 子视图。
+     *
+     * 在底栏切换为实色模式、隐藏或 Activity 不可见时调用，
+     * 避免持续采样整页内容造成的 CPU/GPU 开销。
+     * 可通过再次调用 [bind] 恢复。
+     */
+    fun release() {
+        released = true
+        removeGlass()
+        sampleSource = null
+    }
+
+    /** 当前是否已释放采样源 */
+    fun isReleased(): Boolean = released
+
     fun setCornerRadius(value: Float) {
         cornerRadius = value.coerceIn(0f, (height.takeIf { it > 0 } ?: Int.MAX_VALUE).toFloat() / 2f)
-        applyConfig()
+        deferOrApply()
     }
 
     fun setRefractionHeight(value: Float) {
         refractionHeight = value.coerceIn(12f.dpToPx(), 50f.dpToPx())
-        applyConfig()
+        deferOrApply()
     }
 
     fun setRefractionOffset(value: Float) {
         refractionOffset = value.coerceIn(20f.dpToPx(), 120f.dpToPx())
-        applyConfig()
+        deferOrApply()
     }
 
     fun setTintAlpha(value: Float) {
         tintAlpha = value
-        applyConfig()
+        deferOrApply()
     }
 
     fun setTintColorRed(value: Float) {
         tintColorRed = value
-        applyConfig()
+        deferOrApply()
     }
 
     fun setTintColorGreen(value: Float) {
         tintColorGreen = value
-        applyConfig()
+        deferOrApply()
     }
 
     fun setTintColorBlue(value: Float) {
         tintColorBlue = value
-        applyConfig()
+        deferOrApply()
     }
 
     fun setDispersion(value: Float) {
         dispersion = value.coerceIn(0f, 1f)
-        applyConfig()
+        deferOrApply()
     }
 
     fun setBlurRadius(value: Float) {
         blurRadius = value.coerceIn(0.01f, 50f)
-        applyConfig()
+        deferOrApply()
     }
 
     fun setDraggableEnabled(@Suppress("UNUSED_PARAMETER") enabled: Boolean) = Unit
@@ -101,9 +157,22 @@ class StableLiquidGlassView @JvmOverloads constructor(
 
     fun setTouchEffectEnabled(@Suppress("UNUSED_PARAMETER") enabled: Boolean) = Unit
 
+    /**
+     * 如果处于批量更新模式，仅标记 dirty；否则立即执行 [applyConfig]。
+     */
+    private fun deferOrApply() {
+        if (batchDepth > 0) {
+            batchDirty = true
+        } else {
+            applyConfig()
+        }
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        ensureGlass()
+        if (!released) {
+            ensureGlass()
+        }
     }
 
     override fun onDetachedFromWindow() {
@@ -120,6 +189,7 @@ class StableLiquidGlassView @JvmOverloads constructor(
 
     private fun ensureGlass() {
         val source = sampleSource ?: return
+        if (released) return
         if (!isAttachedToWindow) return
         if (glass == null) {
             val nextConfig = createConfig()
@@ -141,7 +211,7 @@ class StableLiquidGlassView @JvmOverloads constructor(
 
     private fun applyConfig() {
         val source = sampleSource
-        if (!isAttachedToWindow || source == null) return
+        if (!isAttachedToWindow || source == null || released) return
         if (glass == null) {
             ensureGlass()
             return
@@ -158,7 +228,7 @@ class StableLiquidGlassView @JvmOverloads constructor(
     private fun rebuildGlass(source: ViewGroup) {
         removeGlass()
         sampleSource = source
-        post { ensureGlass() }
+        post { if (!released) ensureGlass() }
     }
 
     private fun removeGlass() {
