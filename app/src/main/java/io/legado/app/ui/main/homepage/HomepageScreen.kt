@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -46,12 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabPosition
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -514,38 +510,47 @@ private fun SourceTabLayout(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
         if (selectedSets.isEmpty()) return@Column
-        // 可滚动的 Tab 栏
-        ScrollableTabRow(
-            selectedTabIndex = safeTabIndex,
-            edgePadding = 8.dp,
-            containerColor = Color.Transparent,
-            // 自定义 indicator：防止 tabPositions 与 selectedTabIndex 不同步时越界
-            indicator = { tabPositions ->
-                if (tabPositions.isNotEmpty() && safeTabIndex < tabPositions.size) {
-                    TabRowDefaults.Indicator(
-                        Modifier.tabIndicatorOffset(tabPositions[safeTabIndex])
-                    )
-                }
-            }
+        // 可滚动的 Tab 栏（自定义实现，高度36dp，底部下划线指示器）
+        val tabScrollState = rememberScrollState()
+        val accent = pageAccentColor()
+        val secondaryColor = pageSecondaryTextColor()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(tabScrollState)
+                .height(36.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             selectedSets.forEachIndexed { index, set ->
-                Tab(
-                    selected = safeTabIndex == index,
-                    onClick = {
-                        selectedTabIndex = index
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
-                    },
-                    text = {
-                        Text(
-                            text = set.sourceName,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                    }
-                )
+                val isSelected = safeTabIndex == index
+                Box(
+                    modifier = Modifier
+                        .height(36.dp)
+                        .clickable {
+                            selectedTabIndex = index
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = set.sourceName,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isSelected) accent else secondaryColor
+                    )
+                    // 底部下划线指示器
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .background(if (isSelected) accent else Color.Transparent)
+                    )
+                }
             }
         }
         // 使用 HorizontalPager 实现左右滑动切换书源集
