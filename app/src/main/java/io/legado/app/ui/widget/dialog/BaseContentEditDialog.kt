@@ -19,6 +19,7 @@ import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.code.CodeEditActivity
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.disableEdit
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -34,13 +35,14 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
  *
  * 子类需实现：
  * - [getTitle]：对话框标题
- * - [onSave]：保存逻辑，返回 true 则关闭对话框
- * - [onReset]：重置逻辑
  *
  * 子类可覆写：
  * - [setupContentView]：额外 CodeView 配置（如语法高亮）
  * - [onContentReady]：内容加载入口
+ * - [onSave]：保存逻辑，返回 true 则关闭对话框（只读模式下无需覆写）
+ * - [onReset]：重置逻辑（只读模式下无需覆写）
  * - [showFullscreenEdit]：是否显示全屏编辑按钮
+ * - [isReadOnly]：是否只读模式，隐藏保存/重置按钮并禁用编辑
  * - [getSourceType] / [getSourceKey]：全屏编辑器参数
  */
 abstract class BaseContentEditDialog :
@@ -86,6 +88,10 @@ abstract class BaseContentEditDialog :
         binding.contentView.applyTint(accentColor)
         binding.contentView.threshold = Int.MAX_VALUE
         binding.contentView.filters = arrayOfNulls(0)
+        // 只读模式禁用编辑
+        if (isReadOnly) {
+            binding.contentView.disableEdit()
+        }
         // 子类额外配置（如语法高亮）
         setupContentView()
         // 初始化菜单和搜索
@@ -111,14 +117,18 @@ abstract class BaseContentEditDialog :
     /**
      * 保存逻辑
      * @return true 表示保存成功，关闭对话框；false 表示不关闭（如校验失败）
+     * 只读模式下无需覆写。
      */
-    abstract fun onSave(content: String): Boolean
+    open fun onSave(content: String): Boolean = true
 
-    /** 重置逻辑 */
-    abstract fun onReset()
+    /** 重置逻辑，只读模式下无需覆写 */
+    open fun onReset() {}
 
     /** 是否显示全屏编辑按钮，默认 true */
     open val showFullscreenEdit: Boolean get() = true
+
+    /** 是否只读模式，只读时隐藏保存/重置按钮并禁用编辑 */
+    open val isReadOnly: Boolean get() = false
 
     /** 全屏编辑器的 sourceType 参数 */
     open fun getSourceType(): String = "content"
@@ -134,6 +144,8 @@ abstract class BaseContentEditDialog :
         binding.toolBar.inflateMenu(R.menu.content_edit)
         binding.toolBar.menu.applyTint(requireContext())
         binding.toolBar.menu.findItem(R.id.menu_fullscreen_edit)?.isVisible = showFullscreenEdit
+        binding.toolBar.menu.findItem(R.id.menu_save)?.isVisible = !isReadOnly
+        binding.toolBar.menu.findItem(R.id.menu_reset)?.isVisible = !isReadOnly
         binding.toolBar.setOnMenuItemClickListener {
             when (it.itemId) {
                 R.id.menu_search -> toggleSearchPanel()

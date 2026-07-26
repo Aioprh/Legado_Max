@@ -1,22 +1,23 @@
 package io.legado.app.ui.widget.dialog
 
 import android.os.Bundle
-import android.view.View
-import android.view.ViewGroup
 import io.legado.app.R
-import io.legado.app.base.BaseDialogFragment
-import io.legado.app.databinding.DialogCodeViewBinding
 import io.legado.app.help.IntentData
-import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.widget.code.addJsPattern
 import io.legado.app.ui.widget.code.addJsonPattern
 import io.legado.app.ui.widget.code.addLegadoPattern
-import io.legado.app.utils.applyTint
-import io.legado.app.utils.disableEdit
-import io.legado.app.utils.setLayout
-import io.legado.app.utils.viewbindingdelegate.viewBinding
 
-class CodeDialog() : BaseDialogFragment(R.layout.dialog_code_view) {
+/**
+ * 代码查看/编辑对话框
+ *
+ * 用于导入书源、订阅源、替换规则、TTS、字典规则、主题等时查看和编辑 JSON 内容。
+ *
+ * - 只读模式（disableEdit = true）：仅查看，隐藏保存/重置按钮，禁用编辑
+ * - 编辑模式（disableEdit = false）：可编辑，通过 [Callback] 回调保存
+ *
+ * 继承 [BaseContentEditDialog]，拥有搜索、全屏编辑器、复制全部等功能。
+ */
+class CodeDialog() : BaseContentEditDialog() {
 
     constructor(code: String, disableEdit: Boolean = true, requestId: String? = null) : this() {
         arguments = Bundle().apply {
@@ -26,52 +27,50 @@ class CodeDialog() : BaseDialogFragment(R.layout.dialog_code_view) {
         }
     }
 
-    val binding by viewBinding(DialogCodeViewBinding::bind)
-
-    override fun onStart() {
-        super.onStart()
-        setLayout(1f, ViewGroup.LayoutParams.MATCH_PARENT)
+    override fun getTitle(): CharSequence {
+        return if (isReadOnly) "code view" else getString(R.string.edit_content)
     }
 
-    override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(primaryColor)
-        if (arguments?.getBoolean("disableEdit") == true) {
-            binding.toolBar.title = "code view"
-            binding.codeView.disableEdit()
-        } else {
-            initMenu()
-        }
-        binding.codeView.addLegadoPattern()
-        binding.codeView.addJsonPattern()
-        binding.codeView.addJsPattern()
+    override val isReadOnly: Boolean
+        get() = arguments?.getBoolean("disableEdit") == true
+
+    override fun getSourceType(): String = "codeDialog"
+
+    override fun setupContentView() {
+        binding.contentView.addLegadoPattern()
+        binding.contentView.addJsonPattern()
+        binding.contentView.addJsPattern()
+    }
+
+    override fun onContentReady() {
         arguments?.getString("code")?.let {
-            binding.codeView.text = IntentData.get(it)
-        }
-    }
-
-    private fun initMenu() {
-        binding.toolBar.inflateMenu(R.menu.code_edit)
-        binding.toolBar.menu.applyTint(requireContext())
-        binding.toolBar.setOnMenuItemClickListener {
-            when (it.itemId) {
-                R.id.menu_save -> {
-                    binding.codeView.text?.toString()?.let { code ->
-                        val requestId = arguments?.getString("requestId")
-                        (parentFragment as? Callback)?.onCodeSave(code, requestId)
-                            ?: (activity as? Callback)?.onCodeSave(code, requestId)
-                    }
-                    dismiss()
-                }
+            val code: String? = IntentData.get(it)
+            if (code != null) {
+                binding.contentView.setText(code)
+                originalContent = null
             }
-            return@setOnMenuItemClickListener true
         }
     }
 
+    override fun onSave(content: String): Boolean {
+        val requestId = arguments?.getString("requestId")
+        (parentFragment as? Callback)?.onCodeSave(content, requestId)
+            ?: (activity as? Callback)?.onCodeSave(content, requestId)
+        return true
+    }
+
+    override fun onReset() {
+        // 恢复为原始内容
+        arguments?.getString("code")?.let {
+            val code: String? = IntentData.get(it)
+            if (code != null) {
+                binding.contentView.setText(code)
+                originalContent = null
+            }
+        }
+    }
 
     interface Callback {
-
         fun onCodeSave(code: String, requestId: String?)
-
     }
-
 }
