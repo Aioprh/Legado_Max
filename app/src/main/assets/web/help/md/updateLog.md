@@ -17,6 +17,10 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/7/26**
+- 优化底栏不透明度为0时的显示效果
+- 优化导入规则的编辑页
+
 **2026/7/25**
 - fix(书源管理): 修复分组图标不显示用户自定义分组的问题
 - 优化发现页瀑布流
