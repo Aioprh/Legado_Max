@@ -794,7 +794,10 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         )
         bottomNavigationView.alpha = 1f
         bottomNavigationView.elevation = 0f
-        bottomNavigationGlass.elevation = if (floating) {
+        // 不透明度为 0 时用户期望完全透明的底栏，需要同时移除 elevation 阴影，
+        // 否则 Android 仍会根据 elevation 绘制阴影（与背景透明度无关）。
+        val fullyTransparent = config.opacity <= 0
+        bottomNavigationGlass.elevation = if (floating && !fullyTransparent) {
             when (config.effectMode) {
                 NavigationBarConfig.EFFECT_SOLID -> 8.dpToPx().toFloat()
                 NavigationBarConfig.EFFECT_FROSTED -> 14.dpToPx().toFloat()
@@ -811,25 +814,35 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         val liquid = wantsLiquid && canRealtimeGlass
         applyBottomNavigationGlassOutline(bottomNavigationGlass, if (floating) 24f.dpToPx() else 0f)
         if (liquid) {
+            // 玻璃/磨砂效果：保留液态玻璃视图，即使不透明度为 0 也能反映页面滑动的折射/模糊效果
             bottomNavigationGlassView.visible()
             setupBottomLiquidGlass(bottomNavigationGlassView, config, if (floating) 24f.dpToPx() else 0f, bgColor)
-            bottomNavigationShellOverlay.background = createLiquidGlassShellDrawable(
-                glassLevel = config.opacity.coerceIn(0, 100) / 100f,
-                cornerRadius = if (floating) 24f.dpToPx() else 0f,
-                effectMode = config.effectMode,
-                bgColor = bgColor,
-                strokeColor = resolveBottomNavigationBorderColor(config)
-            )
+            // 不透明度为 0 时 shell overlay 设为透明，避免静态底色/描边残留（如 strokeAlpha 基底 0.22）；
+            // 液态玻璃视图本身的折射/模糊效果不受影响，仍能反映页面滑动
+            bottomNavigationShellOverlay.background = if (fullyTransparent) {
+                Color.TRANSPARENT.toDrawable()
+            } else {
+                createLiquidGlassShellDrawable(
+                    glassLevel = config.opacity.coerceIn(0, 100) / 100f,
+                    cornerRadius = if (floating) 24f.dpToPx() else 0f,
+                    effectMode = config.effectMode,
+                    bgColor = bgColor,
+                    strokeColor = resolveBottomNavigationBorderColor(config)
+                )
+            }
         } else {
-            // 不使用实时玻璃时，释放采样视图以停止持续采样
+            // 非实时玻璃（实色效果或低性能设备降级）：释放采样视图以停止持续采样
             if (!bottomNavigationGlassView.isReleased()) {
                 bottomNavigationGlassView.release()
             }
             bottomNavigationGlassView.invisible()
-            // 低性能设备降级：用静态玻璃材质 Drawable 替代实时模糊。
-            // createBottomNavigationShellDrawable 内部会根据 effectMode 生成对应的
-            // 静态玻璃/磨砂材质渐变 Drawable，视觉效果接近实时模糊但无需持续采样。
-            bottomNavigationShellOverlay.background = createBottomNavigationShellDrawable(config, bgColor)
+            // 不透明度为 0 时无静态背景，确保完全透明；
+            // 否则用静态玻璃材质 Drawable 替代实时模糊（低性能设备降级）
+            bottomNavigationShellOverlay.background = if (fullyTransparent) {
+                Color.TRANSPARENT.toDrawable()
+            } else {
+                createBottomNavigationShellDrawable(config, bgColor)
+            }
         }
     }
 
