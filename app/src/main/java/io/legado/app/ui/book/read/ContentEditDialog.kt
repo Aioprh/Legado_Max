@@ -30,6 +30,7 @@ import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.ReadBook
 import io.legado.app.model.webBook.WebBook
@@ -73,6 +74,10 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         binding.toolBar.setBackgroundColor(primaryColor)
         binding.toolBar.title = ReadBook.curTextChapter?.title
+        // CodeView 配置：设置光标颜色、禁用自动补全和 autoIndent
+        binding.contentView.applyTint(accentColor)
+        binding.contentView.threshold = Int.MAX_VALUE
+        binding.contentView.filters = arrayOfNulls(0)
         initMenu()
         binding.toolBar.setOnClickListener {
             lifecycleScope.launch {

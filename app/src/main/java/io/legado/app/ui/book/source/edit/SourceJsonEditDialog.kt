@@ -15,7 +15,10 @@ import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.databinding.DialogContentEditBinding
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.ui.widget.code.addJsonPattern
+import io.legado.app.ui.widget.code.addLegadoPattern
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -41,6 +44,11 @@ class SourceJsonEditDialog(
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         binding.toolBar.setBackgroundColor(primaryColor)
         binding.toolBar.title = getString(R.string.edit_content)
+        // CodeView 配置：设置光标颜色、禁用自动补全、添加 JSON 语法高亮
+        binding.contentView.applyTint(accentColor)
+        binding.contentView.threshold = Int.MAX_VALUE
+        binding.contentView.addLegadoPattern()
+        binding.contentView.addJsonPattern()
         initMenu()
         initSearchPanel()
         loadJson()
