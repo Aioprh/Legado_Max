@@ -380,12 +380,12 @@ object BookHelp {
      * 查找章节对应的缓存文件
      *
      * 优先通过 [BookChapter.getFileName] 精确匹配（正常路径）。
-     * 仅当章节是从缓存恢复的（url 以 `cache://` 开头，使用占位标题）时，
-     * 才回退到按章节索引在缓存文件夹中查找 `NNNNN-*.nb` 格式的文件。
+     * 当精确匹配失败时（例如书源更新后章节标题发生细微变化导致 titleMD5 不匹配），
+     * 回退到按章节索引在缓存文件夹中查找 `NNNNN-*.nb` 格式的文件。
      *
-     * 正常章节有真实的 url 和 title，不应使用索引回退匹配，
-     * 否则当书源更新后新章节的 index 与旧章节重叠时，
-     * 会错误地读取旧章节的缓存内容（可能是已失效的提示信息）。
+     * 注意：回退匹配找到的缓存文件可能对应旧标题的章节内容。
+     * [getContent] 会对回退匹配的结果做内容有效性验证，
+     * 过滤掉被篡改或无效的缓存（如书源提示信息）。
      *
      * @param book 书籍
      * @param bookChapter 章节对象
@@ -400,11 +400,10 @@ object BookHelp {
         )
         if (exactFile.exists()) return exactFile
 
-        // 仅对从缓存恢复的章节使用索引回退匹配
-        // 恢复的章节 url 以 cache:// 开头，title 为占位值，精确匹配必然失败
-        // 正常章节有真实 title，精确匹配失败说明该章节尚未缓存，应从网络获取
-        if (bookChapter.url.startsWith("cache://") &&
-            !book.isLocalTxt &&
+        // 回退：按章节索引模糊查找
+        // 文件名格式: {index:05d}-{md5}.nb，用前缀匹配
+        // 当书源更新后标题细微变化导致 titleMD5 不匹配时，通过索引查找缓存文件
+        if (!book.isLocalTxt &&
             !(bookChapter.isVolume && bookChapter.url.startsWith(bookChapter.title))
         ) {
             val cacheDir = downloadDir.getFile(cacheFolderName, book.getFolderName())
@@ -418,6 +417,19 @@ object BookHelp {
             }
         }
         return null
+    }
+
+    /**
+     * 从缓存文件名中解析章节索引
+     *
+     * 文件名格式：{index:05d}-{md5}.nb
+     *
+     * @param fileName 缓存文件名
+     * @return 章节索引，解析失败返回 null
+     */
+    fun parseCacheFileIndex(fileName: String): Int? {
+        val match = cacheFileNameRegex.matchEntire(fileName) ?: return null
+        return match.groupValues[1].toIntOrNull()
     }
 
     /**
@@ -504,26 +516,25 @@ object BookHelp {
         if (!hasContent(book, bookChapter)) {
             return false
         }
+        val content = getContent(book, bookChapter) ?: return false
         var ret = true
         val op = BitmapFactory.Options()
         op.inJustDecodeBounds = true
-        getContent(book, bookChapter)?.let {
-            val matcher = AppPattern.imgPattern.matcher(it)
-            while (matcher.find()) {
-                val src = matcher.group(1)!!
-                val image = getImage(book, src)
-                if (!image.exists()) {
-                    ret = false
+        val matcher = AppPattern.imgPattern.matcher(content)
+        while (matcher.find()) {
+            val src = matcher.group(1)!!
+            val image = getImage(book, src)
+            if (!image.exists()) {
+                ret = false
+                continue
+            }
+            BitmapFactory.decodeFile(image.absolutePath, op)
+            if (op.outWidth < 1 && op.outHeight < 1) {
+                if (SvgUtils.getSize(image.absolutePath) != null) {
                     continue
                 }
-                BitmapFactory.decodeFile(image.absolutePath, op)
-                if (op.outWidth < 1 && op.outHeight < 1) {
-                    if (SvgUtils.getSize(image.absolutePath) != null) {
-                        continue
-                    }
-                    ret = false
-                    image.delete()
-                }
+                ret = false
+                image.delete()
             }
         }
         return ret
@@ -541,6 +552,11 @@ object BookHelp {
 
     /**
      * 读取章节内容
+     *
+     * 当缓存文件是通过索引回退匹配找到的（非精确匹配）时，
+     * 会验证缓存内容的有效性：检查内容首行标题的 MD5 是否与文件名中的 titleMD5 匹配。
+     * 这可以过滤掉被篡改或无效的缓存（如书源作者设置的提示信息），
+     * 避免书源更新后 index 重叠导致读到旧缓存中的无效内容。
      */
     fun getContent(book: Book, bookChapter: BookChapter): String? {
         // 优先精确匹配，回退到按索引模糊查找
@@ -549,6 +565,16 @@ object BookHelp {
             val string = file.readText()
             if (string.isEmpty()) {
                 return null
+            }
+            // 检查是否为精确匹配（文件名与当前章节生成的文件名一致）
+            val exactFileName = bookChapter.getFileName()
+            if (file.name != exactFileName) {
+                // 回退匹配：验证缓存内容有效性
+                // 检查内容首行标题的 MD5 是否与文件名中的 titleMD5 匹配
+                // 不匹配说明缓存内容可能被篡改或是无效的书源提示信息，不使用
+                if (!isCacheContentValid(file.name, string)) {
+                    return null
+                }
             }
             return string
         }
@@ -560,6 +586,27 @@ object BookHelp {
             return string
         }
         return null
+    }
+
+    /**
+     * 验证缓存内容有效性
+     *
+     * 通过检查内容首行标题的 MD5 是否与文件名中的 titleMD5 匹配来判断缓存是否有效。
+     * 如果内容首行是正确的章节标题（MD5 匹配），说明缓存内容完整有效；
+     * 如果不匹配，说明缓存内容可能被篡改或是无效的书源提示信息。
+     *
+     * @param fileName 缓存文件名
+     * @param content 缓存文件内容
+     * @return 缓存是否有效
+     */
+    private fun isCacheContentValid(fileName: String, content: String): Boolean {
+        val match = cacheFileNameRegex.matchEntire(fileName) ?: return false
+        val titleMD5FromFile = match.groupValues[2]
+
+        val firstLine = content.lineSequence().firstOrNull { it.isNotBlank() } ?: return false
+        val candidateMD5 = MD5Utils.md5Encode16(firstLine.trim())
+
+        return candidateMD5 == titleMD5FromFile
     }
 
     /**
