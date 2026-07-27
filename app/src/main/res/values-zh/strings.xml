@@ -767,9 +767,8 @@
     <string name="name">名称</string>
     <string name="regex">正则</string>
     <string name="more_menu">更多菜单</string>
-    <string name="highlight_rule_config">高亮规则</string>
-    <string name="highlight_rule_config_summary">预置对话、书名号和括号标注高亮</string>
-    <string name="highlight_rule_dialog_title">高亮规则</string>
+<string name="highlight_rule_config">高亮规则</string>
+<string name="highlight_rule_dialog_title">高亮规则</string>
     <string name="highlight_rule_preset">预置规则</string>
     <string name="highlight_rule_dialog_name">对话高亮</string>
     <string name="highlight_rule_dialog_desc">高亮中文、日文和英文双引号中的对话内容</string>
