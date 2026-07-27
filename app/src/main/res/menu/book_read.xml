@@ -143,6 +143,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_highlight_rule_config"
+        android:title="@string/highlight_rule_config"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_log"
         android:title="@string/log"
         app:showAsAction="never" />

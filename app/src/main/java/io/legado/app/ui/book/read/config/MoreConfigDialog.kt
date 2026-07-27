@@ -25,7 +25,6 @@ import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.TextMenuConfigDialog
-import io.legado.app.ui.book.read.config.highlight.HighlightRuleConfigDialog
 import io.legado.app.ui.book.read.page.provider.ChapterProvider
 import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.utils.canvasrecorder.CanvasRecorderFactory
@@ -224,9 +223,6 @@ class MoreConfigDialog : BasePrefDialogFragment() {
                 }
                 "textMenuConfig" -> {
                     TextMenuConfigDialog().show(childFragmentManager, "textMenuConfig")
-                }
-                "highlightRuleConfig" -> {
-                    HighlightRuleConfigDialog().show(childFragmentManager, "highlightRuleConfig")
                 }
 
                 PreferKey.pageTouchSlop -> {
