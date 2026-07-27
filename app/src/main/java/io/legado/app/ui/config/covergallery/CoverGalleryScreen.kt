@@ -1,7 +1,6 @@
 package io.legado.app.ui.config.covergallery
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
@@ -114,10 +113,28 @@ fun CoverGalleryScreen(
     var pendingExportZipName by remember { mutableStateOf("") }
     var pendingImageGroupId by remember { mutableLongStateOf(0L) }
 
-    val selectImages = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+    /**
+     * 图片选择回调
+     *
+     * 使用 HandleFileContract IMAGE 模式，弹出 4 选项对话框：
+     * 1. 系统图片选择器（多选）
+     * 2. 系统文件选择器（多选）
+     * 3. 自带文件选择器（单选）
+     * 4. 手动输入图片链接（单选）
+     *
+     * 多选结果在 [HandleFileContract.Result.uris] 中，单选结果在 [HandleFileContract.Result.uri] 中。
+     */
+    val selectImage = rememberLauncherForActivityResult(HandleFileContract()) {
         val groupId = pendingImageGroupId
         if (groupId != 0L) {
-            viewModel.addImages(context, groupId, uris)
+            // 优先处理多选结果，为空时回退到单选
+            if (it.uris.isNotEmpty()) {
+                viewModel.addImages(context, groupId, it.uris)
+            } else {
+                it.uri?.let { uri ->
+                    viewModel.addImage(context, groupId, uri)
+                }
+            }
             pendingImageGroupId = 0L
         }
     }
@@ -358,9 +375,10 @@ fun CoverGalleryScreen(
                             groupWithImages = groupWithImages,
                             onAddImage = {
                                 pendingImageGroupId = groupWithImages.group.id
-                                selectImages.launch(
-                                    arrayOf("image/jpeg", "image/png", "image/bmp", "image/webp")
-                                )
+                                selectImage.launch {
+                                    requestCode = 3001
+                                    mode = HandleFileContract.IMAGE
+                                }
                             },
                             onSetDefault = { viewModel.setDefaultGroup(groupWithImages.group.id) },
                             onUnsetDefault = { viewModel.unsetDefaultGroup(groupWithImages.group.id) },
