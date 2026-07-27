@@ -121,6 +121,7 @@
     <string name="restore_message">還原成功會覆蓋原有書架。</string>
     <string name="backup_success">備份成功</string>
     <string name="backup_fail">備份失敗\n%s</string>
+    <string name="backup_local_only">僅備份本地</string>
     <string name="on_restore">正在還原</string>
     <string name="restore_success">還原成功</string>
     <string name="restore_fail">還原失敗</string>
@@ -743,7 +744,7 @@
     <string name="select_backup_path">請選擇備份路徑</string>
     <string name="other">其它</string>
     <string name="official_account">legado-top</string>
-    <string name="backup_summary">本地和WebDav壹起備份</string>
+    <string name="backup_summary">本地和WebDav壹起備份，長按僅備份本地</string>
     <string name="restore_summary">優先從WebDav恢復,長按從本地恢復</string>
     <string name="import_old_summary">選擇舊版備份文件夾</string>
     <string name="enabled">已啓用</string>

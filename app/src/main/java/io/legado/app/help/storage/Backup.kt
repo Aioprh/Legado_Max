@@ -414,15 +414,17 @@ object Backup {
      * 
      * @param context Android Context
      * @param path 备份目标路径，可为null（使用默认路径）
+     * @param localOnly 是否仅备份到本地，跳过WebDav上传
      */
     suspend fun backupLocked(
         context: Context,
         path: String?,
+        localOnly: Boolean = false,
         onProgress: ((String) -> Unit)? = null
     ) {
         mutex.withLock {
             withContext(IO) {
-                backup(context, path, onProgress)
+                backup(context, path, localOnly, onProgress)
             }
         }
     }
@@ -436,15 +438,17 @@ object Backup {
      * 3. 导出SharedPreferences配置
      * 4. 打包成ZIP文件
      * 5. 复制到目标目录
-     * 6. 上传到WebDav（如果配置）
+     * 6. 上传到WebDav（如果配置且非仅本地模式）
      * 7. 清理临时文件
      * 
      * @param context Android Context
      * @param path 备份目标路径
+     * @param localOnly 是否仅备份到本地，跳过WebDav上传
      */
     private suspend fun backup(
         context: Context,
         path: String?,
+        localOnly: Boolean = false,
         onProgress: ((String) -> Unit)? = null
     ) {
         LogUtils.d(TAG, "开始备份 path:$path")
@@ -689,12 +693,14 @@ object Backup {
                 }
             }
 
-            // 上传到WebDav云端
-            try {
-                onProgress?.invoke(BackupInfoHelper.getDisplayName("webDavBackup"))
-                AppWebDav.backUpWebDav(zipFileName)
-            } catch (e: Exception) {
-                AppLog.put("上传备份至webdav失败\n$e", e)
+            // 上传到WebDav云端（仅本地模式时跳过）
+            if (!localOnly) {
+                try {
+                    onProgress?.invoke(BackupInfoHelper.getDisplayName("webDavBackup"))
+                    AppWebDav.backUpWebDav(zipFileName)
+                } catch (e: Exception) {
+                    AppLog.put("上传备份至webdav失败\n$e", e)
+                }
             }
         }
 
@@ -705,9 +711,11 @@ object Backup {
 
         currentCoroutineContext().ensureActive()
 
-        // 上传背景图片到WebDav
-        onProgress?.invoke(BackupInfoHelper.getDisplayName("webDavBackgroundImages"))
-        AppWebDav.upBgs(getBackgroundImageFiles().toTypedArray())
+        // 上传背景图片到WebDav（仅本地模式时跳过）
+        if (!localOnly) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName("webDavBackgroundImages"))
+            AppWebDav.upBgs(getBackgroundImageFiles().toTypedArray())
+        }
     }
 
     /**
