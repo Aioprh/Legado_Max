@@ -49,6 +49,7 @@ fun HomepageBookCover(
 ) {
     val galleryDefaultCover = BookCover.getGalleryDefaultCover(identity)
     val useDefaultCover = AppConfig.useDefaultCover
+    val coverShadowEnabled = AppConfig.bookCoverShadow
     // 图集默认封面优先于 useDefaultCover，使每本书获得随机图集封面
     val displayCover = galleryDefaultCover ?: if (useDefaultCover) null else coverUrl
     val shouldDrawName = (galleryDefaultCover == null && useDefaultCover || coverUrl == null) && BookCover.drawBookName
@@ -56,7 +57,10 @@ fun HomepageBookCover(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .then(
+                if (coverShadowEnabled) Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                else Modifier
+            )
     ) {
         if (displayCover != null) {
             GlideImage(

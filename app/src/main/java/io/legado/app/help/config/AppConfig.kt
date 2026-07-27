@@ -777,6 +777,8 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     val loadCoverOnlyWifi get() = appCtx.getPrefBoolean(PreferKey.loadCoverOnlyWifi, false)
 
+    val bookCoverShadow get() = appCtx.getPrefBoolean(PreferKey.bookCoverShadow, true)
+
     val showAddToShelfAlert get() = appCtx.getPrefBoolean(PreferKey.showAddToShelfAlert, true)
 
     val ignoreAudioFocus get() = appCtx.getPrefBoolean(PreferKey.ignoreAudioFocus, false)

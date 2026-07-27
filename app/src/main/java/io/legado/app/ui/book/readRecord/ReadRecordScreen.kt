@@ -35,6 +35,7 @@ import io.legado.app.R
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.ui.book.readRecord.components.HeatmapCalendarBottomSheet
 import io.legado.app.ui.book.readRecord.components.HeatmapMode
@@ -430,8 +431,11 @@ private fun BookCoverImage(
 
     Surface(
         shape = RoundedCornerShape(6.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = modifier.shadow(4.dp, RoundedCornerShape(6.dp))
+        color = if (AppConfig.bookCoverShadow) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+        modifier = modifier.then(
+            if (AppConfig.bookCoverShadow) Modifier.shadow(4.dp, RoundedCornerShape(6.dp))
+            else Modifier
+        )
     ) {
         if (coverBitmap != null) {
             androidx.compose.foundation.Image(

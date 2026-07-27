@@ -1189,6 +1189,8 @@
     <string name="cover_html_code_summary">自定义HTML代码来生成封面图片</string>
     <string name="cover_html_enable">自动生成封面</string>
     <string name="cover_html_enable_summary">使用HTML模板生成封面图片</string>
+    <string name="book_cover_shadow">显示封面阴影</string>
+    <string name="book_cover_shadow_summary">关闭后透明封面区域不填充背景色</string>
     <string name="cover_html_preview">预览</string>
     <string name="cover_html_book_name">书名</string>
     <string name="cover_html_author">作者</string>
