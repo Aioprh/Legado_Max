@@ -470,11 +470,19 @@ object CacheBook {
             onDownloadSet.add(chapterIndex)
             if (BookHelp.hasContent(book, chapter)) {
                 val task = Coroutine.async(scope, context, executeContext = context) {
-                    BookHelp.getContent(book, chapter)?.let {
-                        BookHelp.saveImages(bookSource, book, chapter, it, 1)
+                    val content = BookHelp.getContent(book, chapter)
+                    if (content != null) {
+                        BookHelp.saveImages(bookSource, book, chapter, content, 1)
                     }
-                }.onSuccess {
-                    onSuccess(chapter)
+                    content != null
+                }.onSuccess { contentValid ->
+                    if (contentValid) {
+                        onSuccess(chapter)
+                    } else {
+                        // 缓存内容无效（回退匹配验证失败），将章节重新加入下载队列
+                        onDownloadSet.remove(chapterIndex)
+                        waitDownloadSet.add(chapterIndex)
+                    }
                 }.onError {
                     onPreError(chapter, it)
                     //出现错误等待一秒后重新加入待下载列表
