@@ -794,14 +794,16 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         )
         bottomNavigationView.alpha = 1f
         bottomNavigationView.elevation = 0f
-        // 不透明度为 0 时用户期望完全透明的底栏，需要同时移除 elevation 阴影，
-        // 否则 Android 仍会根据 elevation 绘制阴影（与背景透明度无关）。
-        val fullyTransparent = config.opacity <= 0
-        bottomNavigationGlass.elevation = if (floating && !fullyTransparent) {
+        // 阴影随不透明度等比缩放：底栏越透明阴影越淡，高不透明度时保留完整深度感。
+        // Android 的 elevation 阴影不受背景透明度影响，若固定 elevation 值，
+        // 低不透明度时背景近乎透明但阴影仍满强度渲染，视觉上很突兀。
+        val opacityFactor = config.opacity.coerceIn(0, 100) / 100f
+        val fullyTransparent = opacityFactor <= 0f
+        bottomNavigationGlass.elevation = if (floating && opacityFactor > 0f) {
             when (config.effectMode) {
-                NavigationBarConfig.EFFECT_SOLID -> 8.dpToPx().toFloat()
-                NavigationBarConfig.EFFECT_FROSTED -> 14.dpToPx().toFloat()
-                else -> 12.dpToPx().toFloat()
+                NavigationBarConfig.EFFECT_SOLID -> 8.dpToPx() * opacityFactor
+                NavigationBarConfig.EFFECT_FROSTED -> 14.dpToPx() * opacityFactor
+                else -> 12.dpToPx() * opacityFactor
             }
         } else {
             0f
