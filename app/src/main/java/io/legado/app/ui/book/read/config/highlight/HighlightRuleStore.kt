@@ -79,7 +79,9 @@ object HighlightRuleStore {
     fun save(context: Context, rules: List<HighlightRule>) {
         val json = GSON.toJson(rules)
         context.putPrefString(PreferKey.highlightRuleItems, json)
-        cachedRules = rules
+        // 防御性拷贝：避免缓存与调用方持有同一个列表引用，
+        // 当调用方 clear/修改其列表时不会污染缓存（修复新建/删除分组后规则消失的 bug）
+        cachedRules = ArrayList(rules)
         // 规则变更后清除正则缓存，避免旧 pattern 残留
         RegexCache.clear()
         HighlightRuleGroupStore.ensureFromRules(context, rules)
