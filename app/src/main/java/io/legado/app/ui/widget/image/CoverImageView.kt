@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Paint
 import android.graphics.Typeface
@@ -67,6 +68,9 @@ class CoverImageView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : AppCompatImageView(context, attrs) {
+    init {
+        updateCoverBackground()
+    }
     companion object {
         private val _nameBitmapCache by lazy { LruCache<String, Bitmap>(33) }
         private val _needNameBitmap by lazy { LruCache<String, Boolean>(99) }
@@ -146,6 +150,7 @@ class CoverImageView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
+        updateCoverBackground()
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 outline.setRoundRect(0, 0, w, h, 12f)
@@ -285,6 +290,20 @@ class CoverImageView @JvmOverloads constructor(
         minimumWidth = width
     }
 
+    /**
+     * 根据封面阴影设置更新背景色
+     *
+     * 当 bookCoverShadow 开启时，填充主题背景色，使透明 PNG 封面有统一底色；
+     * 关闭时设为透明，避免透明区域出现灰色/深色底色。
+     */
+    fun updateCoverBackground() {
+        if (AppConfig.bookCoverShadow) {
+            setBackgroundColor(appCtx.backgroundColor)
+        } else {
+            setBackgroundColor(Color.TRANSPARENT)
+        }
+    }
+
     private val glideListener by lazy {
         object : RequestListener<Drawable> {
 
@@ -365,6 +384,7 @@ class CoverImageView @JvmOverloads constructor(
         overrideHeight: Int = 0,
         onLoadFinish: (() -> Unit)? = null
     ) {
+        updateCoverBackground()
         val currentAuthor = author?.replace(AppPattern.bdRegex, "")?.trim()?.also {
             this.author = it
         }

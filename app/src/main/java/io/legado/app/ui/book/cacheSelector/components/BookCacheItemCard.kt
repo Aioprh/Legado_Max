@@ -34,6 +34,7 @@ import io.legado.app.R
 import io.legado.app.ui.book.cacheSelector.BookCacheItem
 import io.legado.app.ui.book.cacheSelector.cacheSelectorTintContainerColor
 import io.legado.app.model.BookCover
+import io.legado.app.help.config.AppConfig
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
@@ -74,7 +75,10 @@ fun BookCacheItemCard(
                 modifier = Modifier
                     .size(48.dp, 68.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .then(
+                        if (AppConfig.bookCoverShadow) Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+                        else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 val coverUrl = BookCover.getDisplayCover(item.book)

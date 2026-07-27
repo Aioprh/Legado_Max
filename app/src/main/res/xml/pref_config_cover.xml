@@ -17,6 +17,15 @@
         app:allowDividerBelow="false"
         app:iconSpaceReserved="false" />
 
+    <io.legado.app.lib.prefs.SwitchPreference
+        android:defaultValue="true"
+        android:key="bookCoverShadow"
+        android:title="@string/book_cover_shadow"
+        android:summary="@string/book_cover_shadow_summary"
+        app:allowDividerAbove="false"
+        app:allowDividerBelow="false"
+        app:iconSpaceReserved="false" />
+
     <io.legado.app.lib.prefs.Preference
         android:key="coverRule"
         android:title="@string/cover_rule"

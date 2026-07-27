@@ -1286,6 +1286,8 @@
     <string name="cover_html_code_summary">自訂封面 HTML 程式碼</string>
     <string name="cover_html_enable">啟用封面 HTML</string>
     <string name="cover_html_enable_summary">使用 HTML 產生預設封面</string>
+    <string name="book_cover_shadow">顯示封面陰影</string>
+    <string name="book_cover_shadow_summary">關閉後透明封面區域不填充背景色</string>
     <string name="custom_button">自訂按鈕</string>
     <string name="custom_hosts">自訂 Hosts</string>
     <string name="custom_hosts_summary">域名到 IP 的對應</string>

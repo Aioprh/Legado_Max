@@ -280,6 +280,10 @@ class BookInfoActivity :
         binding.llAuthorOtherWorks?.setBackgroundColor(backgroundColor)
         binding.vSpacerBottom?.setBackgroundColor(backgroundColor)
         binding.ivCoverC.setCardBackgroundColor(backgroundColor)
+        if (!AppConfig.bookCoverShadow) {
+            binding.ivCoverC.cardElevation = 0f
+            binding.ivCoverC.setCardBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
         binding.flAction.setBackgroundColor(bottomBackground)
         binding.vwBg.applyNavigationBarPadding()
         binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))

@@ -23,6 +23,7 @@ object PreferKey {
     const val coverShowNameN = "coverShowNameN"
     const val coverShowAuthorN = "coverShowAuthorN"
     const val coverHtmlEnable = "coverHtmlEnable"
+    const val bookCoverShadow = "bookCoverShadow"
     const val paragraphBubblePackage = "paragraphBubblePackage"
     const val remoteServerId = "remoteServerId"
     const val hideStatusBar = "hideStatusBar"

@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import io.legado.app.R
 import io.legado.app.data.entities.readRecord.ReadRecord
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.ui.book.readRecord.ReadRecordViewModel
 import io.legado.app.ui.book.readRecord.readRecordBookStackSurfaceColor
@@ -178,9 +179,9 @@ private fun BookStackView(
                     .rotate(if (index % 2 == 0) 3f else -3f)
             ) {
                 Surface(
-                    shadowElevation = 4.dp,
+                    shadowElevation = if (AppConfig.bookCoverShadow) 4.dp else 0.dp,
                     shape = RoundedCornerShape(4.dp),
-                    color = stackSurfaceColor
+                    color = if (AppConfig.bookCoverShadow) stackSurfaceColor else androidx.compose.ui.graphics.Color.Transparent
                 ) {
                     Box(
                         modifier = Modifier

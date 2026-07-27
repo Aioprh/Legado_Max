@@ -1193,6 +1193,8 @@
     <string name="cover_html_code_summary">Customize HTML code to generate cover images</string>
     <string name="cover_html_enable">Auto generate cover</string>
     <string name="cover_html_enable_summary">Use HTML template to generate cover images</string>
+    <string name="book_cover_shadow">Show cover shadow</string>
+    <string name="book_cover_shadow_summary">Fill background behind transparent cover areas</string>
     <string name="cover_html_preview">Preview</string>
     <string name="cover_html_book_name">Book Name</string>
     <string name="cover_html_author">Author</string>
