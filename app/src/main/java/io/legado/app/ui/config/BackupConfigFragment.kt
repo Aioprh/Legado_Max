@@ -85,6 +85,7 @@ class BackupConfigFragment : PreferenceFragment(),
     private val waitDialog by lazy { WaitDialog(requireContext()) }
     private var backupJob: Job? = null
     private var restoreJob: Job? = null
+    private var backupLocalOnly = false
 
     private fun updateWaitDialog(prefix: String, itemName: String) {
         listView.post {
@@ -167,6 +168,12 @@ class BackupConfigFragment : PreferenceFragment(),
         upPreferenceSummary(PreferKey.webDavDir, AppConfig.webDavDir)
         upPreferenceSummary(PreferKey.webDavDeviceName, AppConfig.webDavDeviceName)
         upPreferenceSummary(PreferKey.backupPath, getPrefString(PreferKey.backupPath))
+        findPreference<io.legado.app.lib.prefs.Preference>("web_dav_backup")
+            ?.onLongClick {
+                appCtx.toastOnUi(R.string.backup_local_only)
+                backup(true)
+                true
+            }
         findPreference<io.legado.app.lib.prefs.Preference>("web_dav_restore")
             ?.onLongClick {
                 restoreFromLocal()
@@ -329,7 +336,8 @@ class BackupConfigFragment : PreferenceFragment(),
             .show(childFragmentManager, "restoreInfo")
     }
 
-    fun backup() {
+    fun backup(localOnly: Boolean = false) {
+        backupLocalOnly = localOnly
         val backupPath = AppConfig.backupPath
         if (backupPath.isNullOrEmpty()) {
             backupDir.launch()
@@ -358,9 +366,10 @@ class BackupConfigFragment : PreferenceFragment(),
         }
         waitDialog.show()
         backupJob?.cancel()
+        val localOnly = backupLocalOnly
         backupJob = lifecycleScope.launch {
             try {
-                Backup.backupLocked(requireContext(), backupPath) { itemName ->
+                Backup.backupLocked(requireContext(), backupPath, localOnly = localOnly) { itemName ->
                     updateWaitDialog(getString(R.string.backup), itemName)
                 }
                 appCtx.toastOnUi(R.string.backup_success)

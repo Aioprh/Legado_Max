@@ -123,6 +123,7 @@
     <string name="restore_message">復原書架會覆蓋現有書架。</string>
     <string name="backup_success">備份成功</string>
     <string name="backup_fail">備份失敗\n%s</string>
+    <string name="backup_local_only">僅備份本機</string>
     <string name="on_restore">正在復原</string>
     <string name="restore_success">復原成功</string>
     <string name="restore_fail">復原失敗</string>
@@ -751,7 +752,7 @@
     <string name="text_bottom_justify">文字底部對齊</string>
     <string name="auto_page_speed">自動翻頁速度</string>
     <string name="sort_by_url">地址排序</string>
-    <string name="backup_summary">本機和 WebDav 一起備份</string>
+    <string name="backup_summary">本機和 WebDav 一起備份，長按僅備份本機</string>
     <string name="restore_summary">優先從 WebDav 復原，長按從本機復原</string>
     <string name="import_old_summary">選擇舊版備份資料夾</string>
     <string name="enabled">已啟用</string>
