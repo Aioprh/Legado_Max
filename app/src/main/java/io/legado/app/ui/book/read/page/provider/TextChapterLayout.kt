@@ -266,11 +266,14 @@ class TextChapterLayout(
             var text = content.replace(srcReplaceChar, srcReplacementChar)
             if (isTextImageStyle) {
                 val srcList = LinkedList<String>()
+                val clickList = LinkedList<String?>()
                 sb.setLength(0)
                 val matcher = AppPattern.imgPattern.matcher(text)
                 while (matcher.find()) {
                     matcher.group(1)?.let { src ->
-                        srcList.add(tryParseForcedBubbleSrc(src))
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(src)
+                        srcList.add(bubbleResult.renderSrc)
+                        clickList.add(bubbleResult.click)
                         matcher.appendReplacement(sb, srcReplaceStr)
                     }
                 }
@@ -285,7 +288,7 @@ class TextChapterLayout(
                     contentPaintFontMetrics,
                     imageStyle,
                     srcList = srcList,
-                    clickList = null,
+                    clickList = clickList,
                     bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
                     bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
                 )
@@ -303,10 +306,11 @@ class TextChapterLayout(
                     val matcher = AppPattern.imgPattern.matcher(text)
                     while (matcher.find()) {
                         currentCoroutineContext().ensureActive()
-                        val imgSrc = tryParseForcedBubbleSrc(matcher.group(1)!!)
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(matcher.group(1)!!)
+                        val imgSrc = bubbleResult.renderSrc
                         val isBubble = ParagraphBubbleRenderer.isBubbleSrc(imgSrc)
                         var style: String? = null
-                        var click: String? = null
+                        var click: String? = if (isBubble) bubbleResult.click else null
                         var imgSize = ImageProvider.getImageSize(book, imgSrc, ReadBook.bookSource)
                         val isAnimated = if (isBubble) false else ImageProvider.isGif(book, imgSrc, ReadBook.bookSource)
                         val urlMatcher = paramPattern.matcher(imgSrc)
@@ -650,11 +654,14 @@ class TextChapterLayout(
             if (isTextImageStyle) {
                 //图片样式为文字嵌入类型
                 val srcList = LinkedList<String>()
+                val clickList = LinkedList<String?>()
                 sb.setLength(0)
                 val matcher = AppPattern.imgPattern.matcher(text)
                 while (matcher.find()) {
                     matcher.group(1)?.let { src ->
-                        srcList.add(tryParseForcedBubbleSrc(src))
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(src)
+                        srcList.add(bubbleResult.renderSrc)
+                        clickList.add(bubbleResult.click)
                         matcher.appendReplacement(sb, srcReplaceStr)
                     }
                 }
@@ -669,7 +676,7 @@ class TextChapterLayout(
                     contentPaintFontMetrics,
                     imageStyle,
                     srcList = srcList,
-                    clickList = null,
+                    clickList = clickList,
                     bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
                     bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
                 )
@@ -687,10 +694,11 @@ class TextChapterLayout(
                     val matcher = AppPattern.imgPattern.matcher(text)
                     while (matcher.find()) {
                         currentCoroutineContext().ensureActive()
-                        val imgSrc = tryParseForcedBubbleSrc(matcher.group(1)!!)
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(matcher.group(1)!!)
+                        val imgSrc = bubbleResult.renderSrc
                         val isBubble = ParagraphBubbleRenderer.isBubbleSrc(imgSrc)
                         var style: String? = null
-                        var click: String? = null
+                        var click: String? = if (isBubble) bubbleResult.click else null
                         var imgSize = ImageProvider.getImageSize(book, imgSrc, ReadBook.bookSource)
                         val isAnimated = if (isBubble) false else ImageProvider.isGif(book, imgSrc, ReadBook.bookSource)
                         val urlMatcher = paramPattern.matcher(imgSrc)
@@ -1012,11 +1020,13 @@ class TextChapterLayout(
                         val urlOption = GSON.fromJsonObject<Map<String, String>>(urlOptionStr).getOrNull() ?: return@let
                         var iStyle = urlOption["style"]
                         val width = urlOption["width"]
-                        val click = urlOption["click"]
                         // 强制软件气泡检测（提前到 getImageSize 之前，避免对气泡 URL 执行无意义的网络请求）
-                        val forcedBubbleSrc = tryParseForcedBubbleSrc(source)
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(source)
+                        val forcedBubbleSrc = bubbleResult.renderSrc
                         val isForcedBubble = ParagraphBubbleRenderer.isBubbleSrc(forcedBubbleSrc) &&
                             !ParagraphBubbleRenderer.isBubbleSrc(source)
+                        val click = if (isForcedBubble) bubbleResult.click
+                            else listOfNotNull(urlOption["pclick"]?.takeIf { it.isNotBlank() }, urlOption["click"]?.takeIf { it.isNotBlank() }).firstOrNull()
                         val effectiveSrc = if (isForcedBubble) forcedBubbleSrc else source
                         var imgSize = ImageProvider.getImageSize(book, effectiveSrc, ReadBook.bookSource)
                         val isAnimated = if (isForcedBubble) false else ImageProvider.isGif(book, source, ReadBook.bookSource)
@@ -1070,7 +1080,8 @@ class TextChapterLayout(
                             }
                         }
                     } else {
-                        val forcedSrc = tryParseForcedBubbleSrc(source)
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(source)
+                        val forcedSrc = bubbleResult.renderSrc
                         val isBubble = ParagraphBubbleRenderer.isBubbleSrc(forcedSrc)
                         if (isBubble) {
                             columns.add(
@@ -1078,7 +1089,7 @@ class TextChapterLayout(
                                     start = absStartX + charX,
                                     end = absStartX + charRight,
                                     src = forcedSrc,
-                                    click = null,
+                                    click = bubbleResult.click,
                                     isAnimated = false
                                 )
                             )
@@ -1970,30 +1981,47 @@ class TextChapterLayout(
 
     //region 强制软件气泡
 
+    /** 强制气泡解析结果：renderSrc 为气泡 URL 或原始 src，click 为从原始 option 中提取的点击脚本 */
+    private data class ForcedBubbleResult(val renderSrc: String, val click: String?)
+
     /**
-     * 尝试将非气泡图片源转换为 bubble://paragraph URL。
-     * 当 [AppConfig.forceSoftwareParagraphBubble] 开启时，检测图片源是否为段评入口
-     * （如内联 SVG、特定 type/click 等），如果是则转换为软件气泡 URL。
-     * 已是气泡 URL 或开关关闭时原样返回。
+     * 尝试将非气泡图片源转换为 bubble://paragraph URL（仅返回 renderSrc）。
+     * 当需要同时保留 click 时请使用 [tryParseForcedBubbleSrcWithClick]。
      */
     private fun tryParseForcedBubbleSrc(src: String): String {
-        if (!AppConfig.forceSoftwareParagraphBubble) return src
-        if (ParagraphBubbleRenderer.isBubbleSrc(src)) return src
+        return tryParseForcedBubbleSrcWithClick(src).renderSrc
+    }
+
+    /**
+     * 尝试将非气泡图片源转换为 bubble://paragraph URL，同时保留原始 click 脚本。
+     *
+     * 当 [AppConfig.forceSoftwareParagraphBubble] 开启时，检测图片源是否为段评入口
+     * （如内联 SVG、特定 type/click 等），如果是则转换为软件气泡 URL，
+     * 并将原始 option 中的 click/pclick 脚本保留到结果中。
+     *
+     * 已是气泡 URL 或开关关闭时返回原始 src 和 null click。
+     */
+    private fun tryParseForcedBubbleSrcWithClick(src: String): ForcedBubbleResult {
+        if (!AppConfig.forceSoftwareParagraphBubble) return ForcedBubbleResult(src, null)
+        if (ParagraphBubbleRenderer.isBubbleSrc(src)) return ForcedBubbleResult(src, null)
         val urlMatcher = paramPattern.matcher(src)
-        if (!urlMatcher.find()) return src
+        if (!urlMatcher.find()) return ForcedBubbleResult(src, null)
         val renderSrc = src.substring(0, urlMatcher.start())
         val optionStr = src.substring(urlMatcher.end())
-        val option = GSON.fromJsonObject<Map<String, String>>(optionStr).getOrNull() ?: return src
-        if (!isForcedBubbleCandidate(src, option)) return src
-        val displayText = extractForcedBubbleDisplayText(src, renderSrc, option) ?: return src
+        val option = GSON.fromJsonObject<Map<String, String>>(optionStr).getOrNull()
+            ?: return ForcedBubbleResult(src, null)
+        if (!isForcedBubbleCandidate(src, option)) return ForcedBubbleResult(src, null)
+        val displayText = extractForcedBubbleDisplayText(src, renderSrc, option)
+            ?: return ForcedBubbleResult(src, null)
         val status = option.valueIgnoreCase("status")?.takeIf { it.isNotBlank() } ?: "normal"
         val displayColor = extractForcedBubbleColor(src, renderSrc, option)
         val colorQuery = displayColor?.let { "&displayColor=${Uri.encode(it)}" }.orEmpty()
         val encodedText = Uri.encode(displayText)
         val encodedStatus = Uri.encode(status)
-        // click 保留到返回的 URL 中供后续使用，但 bubble URL 本身不含 click
-        // click 通过 ImageColumn.click 字段传递
-        return "bubble://paragraph?displayText=$encodedText&num=$encodedText&status=$encodedStatus$colorQuery"
+        val pclick = option.valueIgnoreCase("pclick")?.takeIf { it.isNotBlank() }
+        val click = option.valueIgnoreCase("click")?.takeIf { it.isNotBlank() }
+        val bubbleUrl = "bubble://paragraph?displayText=$encodedText&num=$encodedText&status=$encodedStatus$colorQuery"
+        return ForcedBubbleResult(bubbleUrl, pclick ?: click)
     }
 
     /** 判断图片源是否像段评气泡入口 */
