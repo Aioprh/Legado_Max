@@ -1013,12 +1013,13 @@ class TextChapterLayout(
                         var iStyle = urlOption["style"]
                         val width = urlOption["width"]
                         val click = urlOption["click"]
-                        var imgSize = ImageProvider.getImageSize(book, source, ReadBook.bookSource)
-                        val isAnimated = ImageProvider.isGif(book, source, ReadBook.bookSource)
-                        // 强制软件气泡检测
+                        // 强制软件气泡检测（提前到 getImageSize 之前，避免对气泡 URL 执行无意义的网络请求）
                         val forcedBubbleSrc = tryParseForcedBubbleSrc(source)
                         val isForcedBubble = ParagraphBubbleRenderer.isBubbleSrc(forcedBubbleSrc) &&
                             !ParagraphBubbleRenderer.isBubbleSrc(source)
+                        val effectiveSrc = if (isForcedBubble) forcedBubbleSrc else source
+                        var imgSize = ImageProvider.getImageSize(book, effectiveSrc, ReadBook.bookSource)
+                        val isAnimated = if (isForcedBubble) false else ImageProvider.isGif(book, source, ReadBook.bookSource)
                         width?.let {
                             if (width.endsWith("%")) {
                                 width.dropLast(1).toIntOrNull()?.let { percentage ->
