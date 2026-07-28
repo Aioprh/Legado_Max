@@ -1126,5 +1126,11 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         set(value) {
             appCtx.putPrefString(PreferKey.bookshelfIconStyle, value.toString())
         }
+
+    var forceSoftwareParagraphBubble: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.forceSoftwareParagraphBubble, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.forceSoftwareParagraphBubble, value)
+        }
 }
 

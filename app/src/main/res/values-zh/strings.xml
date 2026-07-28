@@ -2259,6 +2259,8 @@
     <string name="bubble_svg_template_title">SVG 模板</string>
     <string name="bubble_source_builtin">内置</string>
     <string name="bubble_source_local">本地</string>
+    <string name="bubble_force_software">强制使用软件气泡</string>
+    <string name="bubble_force_software_summary">识别正文图片形式的段评入口，并使用当前气泡样式渲染</string>
     <string name="app_theme_config_too_large">应用主题配置文件过大</string>
     <string name="app_theme_config_corrupted">应用主题配置文件损坏，已保留原文件</string>
     <string name="app_theme_file_too_large">应用主题文件过大</string>
