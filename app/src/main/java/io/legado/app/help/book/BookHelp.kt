@@ -371,50 +371,6 @@ object BookHelp {
     }
 
     /**
-     * 查找章节对应的缓存文件
-     *
-     * 优先通过 [BookChapter.getFileName] 精确匹配（正常路径）。
-     * 仅当章节是从缓存恢复的（url 以 `cache://` 开头，使用占位标题）时，
-     * 才回退到按章节索引在缓存文件夹中查找 `NNNNN-*.nb` 格式的文件。
-     *
-     * 正常章节有真实的 url 和 title，不应使用索引回退匹配，
-     * 否则当书源更新后新章节的 index 与旧章节重叠时，
-     * 会错误地读取旧章节的缓存内容（可能是已失效的提示信息）。
-     *
-     * @param book 书籍
-     * @param bookChapter 章节对象
-     * @return 缓存文件，不存在则返回 null
-     */
-    fun findCacheFile(book: Book, bookChapter: BookChapter): File? {
-        // 精确匹配
-        val exactFile = downloadDir.getFile(
-            cacheFolderName,
-            book.getFolderName(),
-            bookChapter.getFileName()
-        )
-        if (exactFile.exists()) return exactFile
-
-        // 仅对从缓存恢复的章节使用索引回退匹配
-        // 恢复的章节 url 以 cache:// 开头，title 为占位值，精确匹配必然失败
-        // 正常章节有真实 title，精确匹配失败说明该章节尚未缓存，应从网络获取
-        if (bookChapter.url.startsWith("cache://") &&
-            !book.isLocalTxt &&
-            !(bookChapter.isVolume && bookChapter.url.startsWith(bookChapter.title))
-        ) {
-            val cacheDir = downloadDir.getFile(cacheFolderName, book.getFolderName())
-            if (cacheDir.exists() && cacheDir.isDirectory) {
-                val indexPrefix = String.format("%05d", bookChapter.index)
-                cacheDir.listFiles()?.forEach { file ->
-                    if (file.isFile && file.name.startsWith("${indexPrefix}-") && file.name.endsWith(".nb")) {
-                        return file
-                    }
-                }
-            }
-        }
-        return null
-    }
-
-    /**
      * 检测该章节是否下载
      */
     fun hasContent(book: Book, bookChapter: BookChapter): Boolean {
@@ -423,7 +379,11 @@ object BookHelp {
         ) {
             true
         } else {
-            findCacheFile(book, bookChapter) != null
+            downloadDir.exists(
+                cacheFolderName,
+                book.getFolderName(),
+                bookChapter.getFileName()
+            )
         }
     }
 
@@ -473,9 +433,12 @@ object BookHelp {
      * 读取章节内容
      */
     fun getContent(book: Book, bookChapter: BookChapter): String? {
-        // 优先精确匹配，回退到按索引模糊查找
-        val file = findCacheFile(book, bookChapter)
-        if (file != null && file.exists()) {
+        val file = downloadDir.getFile(
+            cacheFolderName,
+            book.getFolderName(),
+            bookChapter.getFileName()
+        )
+        if (file.exists()) {
             val string = file.readText()
             if (string.isEmpty()) {
                 return null
