@@ -17,6 +17,10 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/7/28**
+- fix(web服务)：修复开启web 服务传书书不显示在书架的问题，补全发送刷新事件通知书架 UI 更新
+- fix(气泡): 修复气泡管理无实际作用的bug
+
 **2026/7/27**
 - fix(主题配置): 恢复封面图集4选项图片选择器和书架图标样式切换功能
 - fix(缓存): 修复书源更新后章节标题变化导致缓存消失的问题
