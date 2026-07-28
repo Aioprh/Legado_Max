@@ -5,6 +5,7 @@ import android.graphics.drawable.Drawable
 import androidx.core.graphics.drawable.toBitmap
 import com.bumptech.glide.Glide
 import io.legado.app.api.ReturnData
+import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookProgress
@@ -24,6 +25,7 @@ import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.GSON
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.fromJsonObject
+import io.legado.app.utils.postEvent
 import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.stackTraceStr
 import kotlinx.coroutines.delay
@@ -297,6 +299,8 @@ object BookController {
                 is SecurityException -> returnData.setErrorMsg("需重新设置书籍保存位置!")
                 else -> returnData.setErrorMsg("保存书籍错误\n${it.localizedMessage}")
             }
+        }.onSuccess {
+            postEvent(EventBus.UP_BOOKSHELF, "")
         }
         return returnData.setData(true)
     }
