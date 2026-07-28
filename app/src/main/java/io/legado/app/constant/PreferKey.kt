@@ -25,6 +25,7 @@ object PreferKey {
     const val coverHtmlEnable = "coverHtmlEnable"
     const val bookCoverShadow = "bookCoverShadow"
     const val paragraphBubblePackage = "paragraphBubblePackage"
+    const val forceSoftwareParagraphBubble = "forceSoftwareParagraphBubble"
     const val remoteServerId = "remoteServerId"
     const val hideStatusBar = "hideStatusBar"
     const val clickActionTL = "clickActionTopLeft"
