@@ -94,12 +94,6 @@
                 android:title="@string/show_author_other_works_in_book_info"
                 android:checkable="true"
                 app:showAsAction="never" />
-
-            <item
-                android:id="@+id/menu_cache_recover"
-                android:title="@string/cache_recover_on_toc_fail"
-                android:checkable="true"
-                app:showAsAction="never" />
         </menu>
     </item>
 

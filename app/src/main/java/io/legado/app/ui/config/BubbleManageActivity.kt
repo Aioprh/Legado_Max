@@ -14,6 +14,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.widget.SwitchCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
@@ -29,6 +30,7 @@ import io.legado.app.base.BaseActivity
 import io.legado.app.constant.EventBus
 import io.legado.app.databinding.ActivityThemeManageBinding
 import io.legado.app.help.config.BubblePackageManager
+import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.UiCorner
@@ -103,6 +105,12 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
         tabContainer.visibility = View.GONE
         tvSummary.text = getString(R.string.bubble_manage_summary)
         tvSummary.setTextColor(themeSecondaryTextColor())
+        // 强制软件气泡开关
+        val switchRow = createForceSoftwareBubbleRow()
+        (root as? LinearLayout)?.let { layout ->
+            val index = layout.indexOfChild(tvSummary)
+            layout.addView(switchRow, index + 1)
+        }
         recyclerView.layoutManager = LinearLayoutManager(this@BubbleManageActivity)
         recyclerView.adapter = adapter
         (recyclerView.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
@@ -317,7 +325,59 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
 
     private fun notifyBubbleChanged() {
         ImageProvider.clear()
-        postEvent(EventBus.REFRESH_BOOK_INFO, false)
+        postEvent(EventBus.UP_CONFIG, arrayListOf(5))
+    }
+
+    private fun createForceSoftwareBubbleRow(): View {
+        val density = resources.displayMetrics.density
+        val dp = { value: Int -> (value * density).toInt() }
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(12), dp(18), dp(12))
+            background = UiCorner.panelRounded(
+                this@BubbleManageActivity,
+                ContextCompat.getColor(this@BubbleManageActivity, R.color.background_card),
+                UiCorner.panelRadius(this@BubbleManageActivity)
+            )
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = dp(10)
+                marginStart = dp(16)
+                marginEnd = dp(16)
+            }
+        }
+        val textContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val title = TextView(this).apply {
+            text = getString(R.string.bubble_force_software)
+            setTextColor(themePrimaryTextColor())
+            textSize = 15f
+            applyUiSectionTitleStyle(this@BubbleManageActivity)
+        }
+        val subtitle = TextView(this).apply {
+            text = getString(R.string.bubble_force_software_summary)
+            setTextColor(themeSecondaryTextColor())
+            textSize = 12f
+            setPadding(0, dp(4), 0, 0)
+        }
+        textContainer.addView(title)
+        textContainer.addView(subtitle)
+        val switch = SwitchCompat(this).apply {
+            isChecked = AppConfig.forceSoftwareParagraphBubble
+            setOnCheckedChangeListener { _, isChecked ->
+                AppConfig.forceSoftwareParagraphBubble = isChecked
+                notifyBubbleChanged()
+            }
+        }
+        container.addView(textContainer)
+        container.addView(switch)
+        container.applyUiBodyTypefaceDeep(uiTypeface())
+        return container
     }
 
     private fun requireValidSvg(config: BubblePackageManager.Config) {
