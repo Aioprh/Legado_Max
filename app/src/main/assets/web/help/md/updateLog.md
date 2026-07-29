@@ -17,6 +17,9 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/7/29**
+- feat(强制气泡)：强制气泡可以覆盖img标签中的js字段返回的base64 data url图片链接
+
 **2026/7/28**
 - fix(web服务)：修复开启web 服务传书书不显示在书架的问题，补全发送刷新事件通知书架 UI 更新
 - fix(气泡): 修复气泡管理无实际作用的bug
