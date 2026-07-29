@@ -71,18 +71,8 @@ class CacheViewModel(application: Application) : BaseViewModel(application) {
                             val chapterCaches = hashSetOf<String>()
                             if (cacheNames.isNotEmpty()) {
                                 book.totalChapterNum = chapters.size
-                                // 构建索引到缓存文件名的映射，用于索引回退匹配
-                                val indexToCacheName = mutableMapOf<Int, String>()
-                                cacheNames.forEach { name ->
-                                    BookHelp.parseCacheFileIndex(name)?.let { index ->
-                                        indexToCacheName[index] = name
-                                    }
-                                }
                                 chapters.forEach { chapter ->
                                     if (cacheNames.contains(chapter.getFileName()) || chapter.isVolume) {
-                                        chapterCaches.add(chapter.url)
-                                    } else if (indexToCacheName.containsKey(chapter.index)) {
-                                        // 索引回退匹配：标题变化导致精确匹配失败，但缓存文件存在
                                         chapterCaches.add(chapter.url)
                                     }
                                 }

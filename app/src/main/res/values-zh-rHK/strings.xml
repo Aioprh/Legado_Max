@@ -468,8 +468,6 @@
     <string name="error_get_web_content">訪問網站失敗: %s</string>
     <string name="error_read_file">文件讀取失敗</string>
     <string name="error_load_toc">加載目錄失敗</string>
-    <string name="toc_cache_recovered">目錄加載失敗，已切換至離線快取模式</string>
-    <string name="cache_recover_on_toc_fail">目錄加載失敗時從快取還原</string>
     <string name="error_get_data">獲取數據失敗！</string>
     <string name="error_load_msg">加載失敗\n%s</string>
     <string name="net_error_10001">沒有網絡</string>
@@ -1743,6 +1741,8 @@
     <string name="bubble_svg_template_title">SVG 模板</string>
     <string name="bubble_source_builtin">內置</string>
     <string name="bubble_source_local">本地</string>
+    <string name="bubble_force_software">強制使用軟件氣泡</string>
+    <string name="bubble_force_software_summary">識別正文圖片形式的段評入口，並使用當前氣泡樣式渲染</string>
     <string name="app_theme_config_too_large">應用主題配置檔案過大</string>
     <string name="app_theme_config_corrupted">應用主題配置檔案損壞，已保留原檔案</string>
     <string name="app_theme_file_too_large">應用主題檔案過大</string>

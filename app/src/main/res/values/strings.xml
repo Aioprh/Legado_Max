@@ -503,8 +503,6 @@
     <string name="error_get_web_content">Failed to access website:%s</string>
     <string name="error_read_file">Failed to read file</string>
     <string name="error_load_toc">Failed to load chapters list</string>
-    <string name="toc_cache_recovered">Failed to load chapters list, switched to offline cache mode</string>
-    <string name="cache_recover_on_toc_fail">Recover from cache on load failure</string>
     <string name="error_get_data">Failed to get data</string>
     <string name="error_load_msg">Failed to load\n%s</string>
     <string name="net_error_10001">No network</string>
@@ -2277,6 +2275,8 @@
     <string name="bubble_svg_template_title">SVG template</string>
     <string name="bubble_source_builtin">Builtin</string>
     <string name="bubble_source_local">Local</string>
+    <string name="bubble_force_software">Force software bubble</string>
+    <string name="bubble_force_software_summary">Detect inline image-based paragraph review entries and render with current bubble style</string>
     <string name="app_theme_config_too_large">App theme config file too large</string>
     <string name="app_theme_config_corrupted">App theme config file corrupted, original preserved</string>
     <string name="app_theme_file_too_large">App theme file too large</string>
