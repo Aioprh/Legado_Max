@@ -14,6 +14,7 @@ import android.text.style.URLSpan
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.PageAnim
+import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookContent
@@ -38,6 +39,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -65,6 +68,7 @@ import androidx.core.util.component2
 import io.legado.app.help.TextViewTagHandler
 import io.legado.app.help.TextViewTagHandler.Companion.HR_PLACE_CHAR
 import io.legado.app.help.TextViewTagHandler.Companion.HR_PLACE_STR
+import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeUrl.Companion.paramPattern
 import io.legado.app.ui.book.read.page.entities.column.BaseColumn
 import io.legado.app.ui.book.read.page.entities.column.TextBaseColumn
@@ -84,7 +88,7 @@ import splitties.init.appCtx
  * 高亮规则在这里完成正则匹配和 Span 标记，最终样式绘制交给 TextLine。
  */
 class TextChapterLayout(
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val textChapter: TextChapter,
     private val textPages: ArrayList<TextPage>,
     private val book: Book,
@@ -208,9 +212,10 @@ class TextChapterLayout(
     }
     
     private suspend fun appendContentInternal(newContents: List<String>) {
+        val processedContents = preprocessBubbleJs(newContents)
         val imageStyle = book.getImageStyle()
         val isTextImageStyle = imageStyle.equals(Book.imgStyleText, true)
-        val bodyHighlightRanges = buildBodyHighlightRanges(newContents)
+        val bodyHighlightRanges = buildBodyHighlightRanges(processedContents)
         
         // 续排逻辑：如果最后一页没排满，摘回来继续排
         if (textPages.isNotEmpty()) {
@@ -248,7 +253,7 @@ class TextChapterLayout(
         var isSetTypedImage = false
         var wordCount = 0
         
-        for ((contentIndex, content) in newContents.withIndex()) {
+        for ((contentIndex, content) in processedContents.withIndex()) {
             currentCoroutineContext().ensureActive()
             if (adaptSpecialStyle) {
                 val text = content.trim()
@@ -521,7 +526,7 @@ class TextChapterLayout(
         displayTitle: String,
         bookContent: BookContent,
     ) {
-        val contents = bookContent.textList
+        val contents = preprocessBubbleJs(bookContent.textList)
         val imageStyle = book.getImageStyle()
         val isSingleImageStyle = imageStyle.equals(Book.imgStyleSingle, true)
 
@@ -2134,6 +2139,120 @@ class TextChapterLayout(
     }
 
     //endregion
+
+    /**
+     * 预处理段评气泡的 js 字段：扫描所有段落的 <img> 标签，
+     * 对含 js 字段且可能是段评入口的 src，异步执行 JS 并用返回值替换原始 src。
+     *
+     * 执行失败时保持原 src 不变（走原有逻辑），不重试不缓存。
+     */
+    private suspend fun preprocessBubbleJs(contents: List<String>): List<String> {
+        if (!AppConfig.forceSoftwareParagraphBubble) return contents
+        val source = ReadBook.bookSource ?: return contents
+
+        // 并行处理每个段落
+        return contents.map { content ->
+            scope.async { preprocessBubbleJsInText(content, source) }
+        }.awaitAll()
+    }
+
+    /**
+     * 处理单个段落：找出所有含 js 字段的 img src，异步执行 JS，替换为 JS 返回值
+     */
+    private suspend fun preprocessBubbleJsInText(
+        text: String,
+        source: BaseSource
+    ): String {
+        val matcher = AppPattern.imgPattern.matcher(text)
+        // 收集需要处理的 (start, end, originalSrc)
+        val tasks = mutableListOf<Triple<Int, Int, String>>()
+        while (matcher.find()) {
+            val originalSrc = matcher.group(1) ?: continue
+            if (isJsBubbleSrc(originalSrc)) {
+                tasks.add(Triple(matcher.start(1), matcher.end(1), originalSrc))
+            }
+        }
+        if (tasks.isEmpty()) return text
+
+        // 段落内多个 img 的 JS 并行执行
+        val results = tasks.map { (_, _, src) ->
+            scope.async {
+                currentCoroutineContext().ensureActive()
+                executeBubbleJs(src, source)
+            }
+        }.awaitAll()
+
+        // 按位置倒序替换，避免偏移问题
+        var result = text
+        for (i in tasks.indices.reversed()) {
+            val (start, end, originalSrc) = tasks[i]
+            val newRenderSrc = results[i]
+            if (newRenderSrc != null && newRenderSrc != originalSrc) {
+                // 从 originalSrc 中分离出 option 部分，拼装成 "newRenderSrc,option"
+                val urlMatcher = paramPattern.matcher(originalSrc)
+                if (urlMatcher.find()) {
+                    val optionStr = originalSrc.substring(urlMatcher.end())
+                    val replaced = "$newRenderSrc,$optionStr"
+                    result = result.substring(0, start) + replaced + result.substring(end)
+                }
+            }
+        }
+        return result
+    }
+
+    /**
+     * 判断 img src 是否需要执行 js 字段：
+     * - 已含 js 字段
+     * - style=TEXT 或没有 style（参考强制气泡候选判断）
+     */
+    private fun isJsBubbleSrc(src: String): Boolean {
+        val urlMatcher = paramPattern.matcher(src)
+        if (!urlMatcher.find()) return false
+        val optionStr = src.substring(urlMatcher.end())
+        val option = GSON.fromJsonObject<Map<String, String>>(optionStr).getOrNull() ?: return false
+        val js = option.valueIgnoreCase("js")?.takeIf { it.isNotBlank() } ?: return false
+        // 必须是可能的段评入口：style=TEXT 或其他强信号
+        val style = option.valueIgnoreCase("style")
+        val styleText = style.equals("TEXT", ignoreCase = true)
+        val type = option.valueIgnoreCase("type").orEmpty().lowercase()
+        val knownType = type in FORCED_BUBBLE_TYPES
+        val click = listOfNotNull(option.valueIgnoreCase("click"), option.valueIgnoreCase("pclick"))
+            .joinToString(separator = "\n").lowercase()
+        val clickLike = click.contains("showcmt(") ||
+            click.contains("showcomment(") ||
+            click.contains("showreview(") ||
+            click.contains("showparagraph(")
+        return styleText || knownType || clickLike
+    }
+
+    /**
+     * 执行 js 字段，返回 JS 的执行结果（字符串）。
+     * 执行失败或返回无效值时返回 null（保持原 src 不变）。
+     */
+    private suspend fun executeBubbleJs(
+        src: String,
+        source: BaseSource
+    ): String? {
+        val urlMatcher = paramPattern.matcher(src)
+        if (!urlMatcher.find()) return null
+        val urlNoOption = src.substring(0, urlMatcher.start())
+        val optionStr = src.substring(urlMatcher.end())
+        val option = GSON.fromJsonObject<Map<String, String>>(optionStr).getOrNull() ?: return null
+        val js = option.valueIgnoreCase("js")?.takeIf { it.isNotBlank() } ?: return null
+
+        return try {
+            val result = AnalyzeRule(book, source).apply {
+                setCoroutineContext(currentCoroutineContext())
+                setBaseUrl(bookChapter.url)
+                setChapter(bookChapter)
+            }.evalJS(js, urlNoOption)?.toString()
+            // 过滤无效返回值，避免把 "undefined"/空串写进 src
+            if (result.isNullOrBlank() || result == "undefined" || result == "null") null else result
+        } catch (e: Exception) {
+            AppLog.put("强制气泡JS执行失败: ${e.localizedMessage}", e)
+            null
+        }
+    }
 
     private companion object {
         val FORCED_BUBBLE_TEXT_REGEX = Regex(
