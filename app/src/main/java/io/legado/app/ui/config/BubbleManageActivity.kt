@@ -10,6 +10,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -44,6 +45,7 @@ import io.legado.app.ui.code.CodeEditActivity
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.utils.SvgUtils
+import io.legado.app.utils.applyTint
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.postEvent
@@ -67,6 +69,7 @@ import java.util.Locale
  * 管理段评气泡包的配置，包括 SVG 模板编辑、缩放比例、
  * 日夜间常规/强调色配置。内置气泡包只读，用户可创建自定义包。
  * 支持内置代码编辑器编辑 SVG 模板、zip 导入导出、实时预览。
+ * 支持长按列表项进入多选模式，可批量导出、置顶、删除。
  * 列表项展示气泡预览图和来源信息。
  */
 class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPickerDialogListener {
@@ -78,6 +81,8 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
     private var editingConfig: BubblePackageManager.Config? = null
     private var editingRoot: LinearLayout? = null
     private var svgCursorPosition: Int = 0
+    private val selectedPositions = mutableSetOf<Int>()
+    private var isMultiSelectMode = false
     private val importPackage = registerForActivityResult(HandleFileContract()) {
         it.uri?.let(::importZip)
     }
@@ -130,20 +135,34 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(0, MENU_HELP, 0, R.string.help).apply {
-            setIcon(R.drawable.ic_help)
-            setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+        if (isMultiSelectMode) {
+            menuInflater.inflate(R.menu.bubble_list_multi, menu)
+            menu.applyTint(this)
+        } else {
+            menu.add(0, MENU_HELP, 0, R.string.help).apply {
+                setIcon(R.drawable.ic_help)
+                setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+            }
         }
         return true
     }
 
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            MENU_HELP -> {
-                showBubbleHelp()
-                true
-            }
+            MENU_HELP -> { showBubbleHelp(); true }
+            R.id.menu_select_all -> { selectAllOrClear(); true }
+            R.id.menu_to_top -> { toTopSelected(); true }
+            R.id.menu_export -> { exportSelected(); true }
+            R.id.menu_delete -> { deleteSelected(); true }
             else -> super.onCompatOptionsItemSelected(item)
+        }
+    }
+
+    override fun onBackPressed() {
+        if (isMultiSelectMode) {
+            exitMultiSelectMode()
+        } else {
+            super.onBackPressed()
         }
     }
 
@@ -309,6 +328,105 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
                 loadPackages()
             }
             cancelButton()
+        }
+    }
+
+    private fun enterMultiSelectMode(position: Int) {
+        isMultiSelectMode = true
+        selectedPositions.clear()
+        selectedPositions.add(position)
+        binding.titleBar.title = getString(R.string.selected, selectedPositions.size)
+        invalidateOptionsMenu()
+        adapter.notifyDataSetChanged()
+    }
+
+    private fun exitMultiSelectMode() {
+        if (!isMultiSelectMode) return
+        isMultiSelectMode = false
+        selectedPositions.clear()
+        binding.titleBar.title = getString(R.string.bubble_manage)
+        invalidateOptionsMenu()
+        adapter.notifyDataSetChanged()
+    }
+
+    private fun toggleSelection(position: Int) {
+        if (selectedPositions.contains(position)) {
+            selectedPositions.remove(position)
+            if (selectedPositions.isEmpty()) {
+                exitMultiSelectMode()
+                return
+            }
+        } else {
+            selectedPositions.add(position)
+        }
+        adapter.notifyItemChanged(position)
+        binding.titleBar.title = getString(R.string.selected, selectedPositions.size)
+    }
+
+    private fun selectAllOrClear() {
+        if (selectedPositions.size == adapter.itemCount) {
+            selectedPositions.clear()
+        } else {
+            selectedPositions.clear()
+            for (i in 0 until adapter.itemCount) {
+                selectedPositions.add(i)
+            }
+        }
+        if (selectedPositions.isEmpty()) {
+            exitMultiSelectMode()
+        } else {
+            binding.titleBar.title = getString(R.string.selected, selectedPositions.size)
+            adapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun toTopSelected() {
+        if (selectedPositions.isEmpty()) {
+            toastOnUi(R.string.bubble_select_at_least_one)
+            return
+        }
+        val entries = selectedPositions.sorted().mapNotNull { adapter.items.getOrNull(it) }
+        BubblePackageManager.toTop(entries)
+        exitMultiSelectMode()
+        loadPackages()
+    }
+
+    private fun exportSelected() {
+        if (selectedPositions.isEmpty()) {
+            toastOnUi(R.string.bubble_select_at_least_one)
+            return
+        }
+        val entries = selectedPositions.sorted().mapNotNull { adapter.items.getOrNull(it) }
+        lifecycleScope.launch {
+            kotlin.runCatching {
+                withContext(Dispatchers.IO) { BubblePackageManager.exportZip(entries) }
+            }.onSuccess { zip ->
+                exportPackage.launch {
+                    mode = HandleFileContract.EXPORT
+                    title = getString(R.string.export_str)
+                    fileData = HandleFileContract.FileData(zip.name, zip, "application/zip")
+                }
+                exitMultiSelectMode()
+            }.onFailure {
+                toastOnUi(it.localizedMessage)
+            }
+        }
+    }
+
+    private fun deleteSelected() {
+        if (selectedPositions.isEmpty()) {
+            toastOnUi(R.string.bubble_select_at_least_one)
+            return
+        }
+        alert(R.string.delete, R.string.sure_del) {
+            yesButton {
+                val entries = selectedPositions.sorted().mapNotNull { adapter.items.getOrNull(it) }
+                entries.forEach { BubblePackageManager.deleteLocal(it) }
+                exitMultiSelectMode()
+                notifyBubbleChanged()
+                loadPackages()
+            }
+            noButton()
         }
     }
 
@@ -567,6 +685,16 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
                 setTextColor(themePrimaryTextColor())
                 typeface = this@BubbleManageActivity.uiTypeface()
             }
+            private val checkBox = CheckBox(itemRoot.context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    marginStart = 4.dp
+                }
+                isClickable = false
+                isFocusable = false
+            }
 
             init {
                 textBox.addView(title)
@@ -574,6 +702,7 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
                 itemRoot.addView(preview)
                 itemRoot.addView(textBox)
                 itemRoot.addView(action)
+                itemRoot.addView(checkBox)
             }
 
             fun bind(entry: BubblePackageManager.Entry) {
@@ -604,10 +733,26 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
                         preview.setImageDrawable(ColorDrawable(Color.TRANSPARENT))
                     }
                 }
-                action.text = if (active) getString(R.string.applied) else getString(R.string.apply)
-                action.setTextColor(if (active) accentColor else themePrimaryTextColor())
-                action.setOnClickListener { applyEntry(entry) }
-                itemRoot.setOnClickListener { showActions(entry) }
+                if (isMultiSelectMode) {
+                    action.visibility = View.GONE
+                    checkBox.visibility = View.VISIBLE
+                    checkBox.isChecked = selectedPositions.contains(layoutPosition)
+                    itemRoot.setOnClickListener { toggleSelection(layoutPosition) }
+                    itemRoot.setOnLongClickListener(null)
+                } else {
+                    action.visibility = View.VISIBLE
+                    checkBox.visibility = View.GONE
+                    action.text = if (active) getString(R.string.applied) else getString(R.string.apply)
+                    action.setTextColor(if (active) accentColor else themePrimaryTextColor())
+                    action.setOnClickListener { applyEntry(entry) }
+                    itemRoot.setOnClickListener { showActions(entry) }
+                    itemRoot.setOnLongClickListener {
+                        if (entry.source != BubblePackageManager.Source.BUILTIN) {
+                            enterMultiSelectMode(layoutPosition)
+                        }
+                        true
+                    }
+                }
             }
 
             fun cancelPreview() {

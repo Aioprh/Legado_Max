@@ -2254,6 +2254,7 @@
     <string name="bubble_custom_name">自定义段评气泡</string>
     <string name="bubble_create_manual">手动创建</string>
     <string name="bubble_import_zip">导入 zip</string>
+    <string name="bubble_select_at_least_one">请至少选择一个气泡包</string>
     <string name="bubble_import_count_success">成功导入 %1$d 个气泡包</string>
     <string name="bubble_svg_edit_title">SVG...</string>
     <string name="bubble_svg_edit_hint">点击编辑，支持 ${color} 和 ${num}</string>
