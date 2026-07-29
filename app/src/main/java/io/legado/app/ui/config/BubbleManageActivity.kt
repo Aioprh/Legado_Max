@@ -314,8 +314,13 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
                     FileOutputStream(file).use { output -> input.copyTo(output) }
                 } ?: throw IllegalArgumentException(getString(R.string.file_not_exist))
                 withContext(Dispatchers.IO) { BubblePackageManager.importZip(file) }
-            }.onSuccess {
-                toastOnUi(R.string.import_success)
+            }.onSuccess { entries ->
+                val msg = if (entries.size > 1) {
+                    getString(R.string.bubble_import_count_success, entries.size)
+                } else {
+                    getString(R.string.import_success)
+                }
+                toastOnUi(msg)
                 loadPackages()
             }.onFailure {
                 toastOnUi(it.localizedMessage)

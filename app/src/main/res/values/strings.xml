@@ -2270,6 +2270,7 @@
     <string name="bubble_custom_name">Custom bubble</string>
     <string name="bubble_create_manual">Create manually</string>
     <string name="bubble_import_zip">Import zip</string>
+    <string name="bubble_import_count_success">Successfully imported %1$d bubble packages</string>
     <string name="bubble_svg_edit_title">SVG...</string>
     <string name="bubble_svg_edit_hint">Tap to edit, supports ${color} and ${num}</string>
     <string name="bubble_svg_template_title">SVG template</string>
