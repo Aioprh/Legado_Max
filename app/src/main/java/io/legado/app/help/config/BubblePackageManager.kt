@@ -20,7 +20,7 @@ import java.io.File
  *
  * 管理段评气泡的 SVG 模板、缩放比例和日夜间配色。
  * 配置以文件系统目录形式存储，每个包包含 bubble.json 配置文件。
- * 内置气泡包为只读，用户可创建自定义包或导入 zip。
+ * 内置气泡包为只读，用户可创建自定义包或导入导出 zip。
  *
  * 气泡渲染由 [ParagraphBubbleRenderer] 负责，通过 SVG 模板
  * 替换 ${color} 和 ${num} 占位符生成位图。
@@ -191,6 +191,15 @@ object BubblePackageManager {
             appCtx.putPrefString(PreferKey.paragraphBubblePackage, BUILTIN_DIR_NAME)
         }
         invalidateCurrentEntry()
+    }
+
+    /** 将气泡包导出为 zip 文件，返回生成的临时 zip 文件 */
+    fun exportZip(entry: Entry): File {
+        val dir = entry.localDir ?: localDir(entry.dirName)
+        val zipFile = tempDir.getFile("${entry.dirName}.zip")
+        if (zipFile.exists()) zipFile.delete()
+        ZipUtils.zipFile(dir, zipFile)
+        return zipFile
     }
 
     /**

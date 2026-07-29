@@ -47,6 +47,7 @@ import io.legado.app.utils.SvgUtils
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.share
 import io.legado.app.utils.showHelp
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -65,7 +66,7 @@ import java.util.Locale
  *
  * 管理段评气泡包的配置，包括 SVG 模板编辑、缩放比例、
  * 日夜间常规/强调色配置。内置气泡包只读，用户可创建自定义包。
- * 支持内置代码编辑器编辑 SVG 模板、zip 导入、实时预览。
+ * 支持内置代码编辑器编辑 SVG 模板、zip 导入导出、实时预览。
  * 列表项展示气泡预览图和来源信息。
  */
 class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPickerDialogListener {
@@ -79,6 +80,9 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
     private var svgCursorPosition: Int = 0
     private val importPackage = registerForActivityResult(HandleFileContract()) {
         it.uri?.let(::importZip)
+    }
+    private val exportPackage = registerForActivityResult(HandleFileContract()) {
+        if (it.uri != null) toastOnUi(R.string.export_success)
     }
     private val svgEditLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -164,12 +168,22 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
         val actions = if (entry.source == BubblePackageManager.Source.BUILTIN) {
             listOf(Action.APPLY)
         } else {
-            listOf(Action.APPLY, Action.EDIT, Action.DELETE)
+            buildList {
+                add(Action.APPLY)
+                add(Action.EDIT)
+                add(Action.EXPORT)
+                add(Action.SHARE)
+                if (entry.dirName != BubblePackageManager.activeDirName()) {
+                    add(Action.DELETE)
+                }
+            }
         }
         selector(entry.config.name, actions.map { getString(it.titleRes) }) { _, index ->
             when (actions[index]) {
                 Action.APPLY -> applyEntry(entry)
                 Action.EDIT -> showEditDialog(entry)
+                Action.EXPORT -> exportPackage(entry)
+                Action.SHARE -> sharePackage(entry)
                 Action.DELETE -> confirmDelete(entry)
             }
         }
@@ -295,6 +309,34 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
                 loadPackages()
             }
             cancelButton()
+        }
+    }
+
+    private fun exportPackage(entry: BubblePackageManager.Entry) {
+        lifecycleScope.launch {
+            kotlin.runCatching {
+                withContext(Dispatchers.IO) { BubblePackageManager.exportZip(entry) }
+            }.onSuccess { zip ->
+                exportPackage.launch {
+                    mode = HandleFileContract.EXPORT
+                    title = getString(R.string.export_str)
+                    fileData = HandleFileContract.FileData(zip.name, zip, "application/zip")
+                }
+            }.onFailure {
+                toastOnUi(it.localizedMessage)
+            }
+        }
+    }
+
+    private fun sharePackage(entry: BubblePackageManager.Entry) {
+        lifecycleScope.launch {
+            kotlin.runCatching {
+                withContext(Dispatchers.IO) { BubblePackageManager.exportZip(entry) }
+            }.onSuccess { zip ->
+                share(zip, "application/zip")
+            }.onFailure {
+                toastOnUi(it.localizedMessage)
+            }
         }
     }
 
@@ -607,6 +649,8 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
     private enum class Action(@StringRes val titleRes: Int) {
         APPLY(R.string.apply),
         EDIT(R.string.edit),
+        EXPORT(R.string.export_str),
+        SHARE(R.string.share),
         DELETE(R.string.delete)
     }
 
