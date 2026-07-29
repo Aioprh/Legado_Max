@@ -9,4 +9,9 @@
     <file path="/app/src/main/java/io/legado/app/help/HelpDocManager.kt"/>
 <file path="/app/src/main/assets/web/help/md/appHelp.md"/>
     <file path="/app/src/main/assets/web/help/md/regexHelp.md"/>
+<file path="/app/src/main/java/io/legado/app/api/controller/BookController.kt"/>
+<file path="/app/src/main/assets/web/help/md/debugHelp.md"/>
+<file path="/.gitignore"/>
+<file path="/.github/workflows/lint.yaml"/>
+    <file path="/app/src/main/java/io/legado/app/ui/book/read/page/provider/TextChapterLayout.kt"/>
 </aml>
