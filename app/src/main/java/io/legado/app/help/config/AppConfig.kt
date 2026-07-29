@@ -672,12 +672,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.bookInfoShowAuthorOtherWorks, value)
         }
 
-    var cacheRecoverOnTocFail: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.cacheRecoverOnTocFail, false)
-        set(value) {
-            appCtx.putPrefBoolean(PreferKey.cacheRecoverOnTocFail, value)
-        }
-
     val autoChangeSource: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.autoChangeSource, true)
 
@@ -1131,6 +1125,12 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefString(PreferKey.bookshelfIconStyle)?.toIntOrNull() ?: 0
         set(value) {
             appCtx.putPrefString(PreferKey.bookshelfIconStyle, value.toString())
+        }
+
+    var forceSoftwareParagraphBubble: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.forceSoftwareParagraphBubble, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.forceSoftwareParagraphBubble, value)
         }
 }
 
