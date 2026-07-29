@@ -23,6 +23,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.model.ImageProvider
+import io.legado.app.model.ParagraphBubbleRenderer
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.page.entities.TextChapter
 import io.legado.app.ui.book.read.page.entities.TextLine
@@ -46,6 +47,8 @@ import kotlinx.coroutines.sync.withLock
 import java.util.LinkedList
 import kotlin.math.roundToInt
 import android.util.Size
+import android.util.Base64
+import android.net.Uri
 import androidx.core.text.HtmlCompat
 import io.legado.app.constant.AppPattern.noWordCountRegex
 import io.legado.app.data.appDb
@@ -263,11 +266,14 @@ class TextChapterLayout(
             var text = content.replace(srcReplaceChar, srcReplacementChar)
             if (isTextImageStyle) {
                 val srcList = LinkedList<String>()
+                val clickList = LinkedList<String?>()
                 sb.setLength(0)
                 val matcher = AppPattern.imgPattern.matcher(text)
                 while (matcher.find()) {
                     matcher.group(1)?.let { src ->
-                        srcList.add(src)
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(src)
+                        srcList.add(bubbleResult.renderSrc)
+                        clickList.add(bubbleResult.click)
                         matcher.appendReplacement(sb, srcReplaceStr)
                     }
                 }
@@ -282,7 +288,7 @@ class TextChapterLayout(
                     contentPaintFontMetrics,
                     imageStyle,
                     srcList = srcList,
-                    clickList = null,
+                    clickList = clickList,
                     bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
                     bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
                 )
@@ -300,11 +306,13 @@ class TextChapterLayout(
                     val matcher = AppPattern.imgPattern.matcher(text)
                     while (matcher.find()) {
                         currentCoroutineContext().ensureActive()
-                        val imgSrc = matcher.group(1)!!
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(matcher.group(1)!!)
+                        val imgSrc = bubbleResult.renderSrc
+                        val isBubble = ParagraphBubbleRenderer.isBubbleSrc(imgSrc)
                         var style: String? = null
-                        var click: String? = null
+                        var click: String? = if (isBubble) bubbleResult.click else null
                         var imgSize = ImageProvider.getImageSize(book, imgSrc, ReadBook.bookSource)
-                        val isAnimated = ImageProvider.isGif(book, imgSrc, ReadBook.bookSource)
+                        val isAnimated = if (isBubble) false else ImageProvider.isGif(book, imgSrc, ReadBook.bookSource)
                         val urlMatcher = paramPattern.matcher(imgSrc)
                         if (urlMatcher.find()) {
                             var width: String? = null
@@ -646,11 +654,14 @@ class TextChapterLayout(
             if (isTextImageStyle) {
                 //图片样式为文字嵌入类型
                 val srcList = LinkedList<String>()
+                val clickList = LinkedList<String?>()
                 sb.setLength(0)
                 val matcher = AppPattern.imgPattern.matcher(text)
                 while (matcher.find()) {
                     matcher.group(1)?.let { src ->
-                        srcList.add(src)
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(src)
+                        srcList.add(bubbleResult.renderSrc)
+                        clickList.add(bubbleResult.click)
                         matcher.appendReplacement(sb, srcReplaceStr)
                     }
                 }
@@ -665,7 +676,7 @@ class TextChapterLayout(
                     contentPaintFontMetrics,
                     imageStyle,
                     srcList = srcList,
-                    clickList = null,
+                    clickList = clickList,
                     bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
                     bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
                 )
@@ -683,11 +694,13 @@ class TextChapterLayout(
                     val matcher = AppPattern.imgPattern.matcher(text)
                     while (matcher.find()) {
                         currentCoroutineContext().ensureActive()
-                        val imgSrc = matcher.group(1)!!
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(matcher.group(1)!!)
+                        val imgSrc = bubbleResult.renderSrc
+                        val isBubble = ParagraphBubbleRenderer.isBubbleSrc(imgSrc)
                         var style: String? = null
-                        var click: String? = null
+                        var click: String? = if (isBubble) bubbleResult.click else null
                         var imgSize = ImageProvider.getImageSize(book, imgSrc, ReadBook.bookSource)
-                        val isAnimated = ImageProvider.isGif(book, imgSrc, ReadBook.bookSource)
+                        val isAnimated = if (isBubble) false else ImageProvider.isGif(book, imgSrc, ReadBook.bookSource)
                         val urlMatcher = paramPattern.matcher(imgSrc)
                         if (urlMatcher.find()) {
                             var width: String? = null
@@ -1007,9 +1020,16 @@ class TextChapterLayout(
                         val urlOption = GSON.fromJsonObject<Map<String, String>>(urlOptionStr).getOrNull() ?: return@let
                         var iStyle = urlOption["style"]
                         val width = urlOption["width"]
-                        val click = urlOption["click"]
-                        var imgSize = ImageProvider.getImageSize(book, source, ReadBook.bookSource)
-                        val isAnimated = ImageProvider.isGif(book, source, ReadBook.bookSource)
+                        // 强制软件气泡检测（提前到 getImageSize 之前，避免对气泡 URL 执行无意义的网络请求）
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(source)
+                        val forcedBubbleSrc = bubbleResult.renderSrc
+                        val isForcedBubble = ParagraphBubbleRenderer.isBubbleSrc(forcedBubbleSrc) &&
+                            !ParagraphBubbleRenderer.isBubbleSrc(source)
+                        val click = if (isForcedBubble) bubbleResult.click
+                            else listOfNotNull(urlOption["pclick"]?.takeIf { it.isNotBlank() }, urlOption["click"]?.takeIf { it.isNotBlank() }).firstOrNull()
+                        val effectiveSrc = if (isForcedBubble) forcedBubbleSrc else source
+                        var imgSize = ImageProvider.getImageSize(book, effectiveSrc, ReadBook.bookSource)
+                        val isAnimated = if (isForcedBubble) false else ImageProvider.isGif(book, source, ReadBook.bookSource)
                         width?.let {
                             if (width.endsWith("%")) {
                                 width.dropLast(1).toIntOrNull()?.let { percentage ->
@@ -1033,14 +1053,17 @@ class TextChapterLayout(
                         }
                         when (iStyle?.uppercase()) {
                             "TEXT" -> {
-                                ImageProvider.cacheImage(book, source, ReadBook.bookSource)
+                                val renderSrc = if (isForcedBubble) forcedBubbleSrc else source
+                                if (!ParagraphBubbleRenderer.isBubbleSrc(renderSrc)) {
+                                    ImageProvider.cacheImage(book, renderSrc, ReadBook.bookSource)
+                                }
                                 columns.add(
                                     ImageColumn(
                                         start = absStartX + charX,
                                         end = absStartX + charRight,
-                                        src = source,
+                                        src = renderSrc,
                                         click = click,
-                                        isAnimated = isAnimated
+                                        isAnimated = if (ParagraphBubbleRenderer.isBubbleSrc(renderSrc)) false else isAnimated
                                     )
                                 )
                             }
@@ -1057,17 +1080,32 @@ class TextChapterLayout(
                             }
                         }
                     } else {
-                        val imgSize = ImageProvider.getImageSize(book, source, ReadBook.bookSource)
-                        val isAnimated = ImageProvider.isGif(book, source, ReadBook.bookSource)
-                        setTypeImage(
-                            book,
-                            source,
-                            contentPaintTextHeight,
-                            imageStyle,
-                            imgSize,
-                            null,
-                            isAnimated
-                        )
+                        val bubbleResult = tryParseForcedBubbleSrcWithClick(source)
+                        val forcedSrc = bubbleResult.renderSrc
+                        val isBubble = ParagraphBubbleRenderer.isBubbleSrc(forcedSrc)
+                        if (isBubble) {
+                            columns.add(
+                                ImageColumn(
+                                    start = absStartX + charX,
+                                    end = absStartX + charRight,
+                                    src = forcedSrc,
+                                    click = bubbleResult.click,
+                                    isAnimated = false
+                                )
+                            )
+                        } else {
+                            val imgSize = ImageProvider.getImageSize(book, source, ReadBook.bookSource)
+                            val isAnimated = ImageProvider.isGif(book, source, ReadBook.bookSource)
+                            setTypeImage(
+                                book,
+                                source,
+                                contentPaintTextHeight,
+                                imageStyle,
+                                imgSize,
+                                null,
+                                isAnimated
+                            )
+                        }
                     }
                     needAddText = false
                 }
@@ -1417,6 +1455,19 @@ class TextChapterLayout(
         }
         val widthsArray = allocateFloatArray(text.length)
         textPaint.getTextWidthsCompat(text, widthsArray, reviewCharWidth)
+        // 调整气泡内联宽度
+        if (srcList != null && srcList.isNotEmpty()) {
+            var imageIndex = 0
+            text.forEachIndexed { index, char ->
+                if (char == srcReplaceChar || char == reviewChar) {
+                    val src = srcList.getOrNull(imageIndex)
+                    if (src != null && ParagraphBubbleRenderer.isBubbleSrc(src)) {
+                        widthsArray[index] = ParagraphBubbleRenderer.inlineWidth(widthsArray[index])
+                    }
+                    imageIndex++
+                }
+            }
+        }
         val layout = if (useZhLayout) {
             val (words, widths) = measureTextSplit(text, widthsArray)
             val indentSize = if (isFirstLine) paragraphIndent.length else 0
@@ -1750,8 +1801,11 @@ class TextChapterLayout(
             !srcList.isNullOrEmpty() && (char == srcReplaceStr || char == reviewStr) -> {
                 val src = srcList.removeFirst()
                 val click = clickList?.removeFirst()
-                ImageProvider.cacheImage(book, src, ReadBook.bookSource)
-                val isAnimated = ImageProvider.isGif(book, src, ReadBook.bookSource)
+                val isBubble = ParagraphBubbleRenderer.isBubbleSrc(src)
+                if (!isBubble) {
+                    ImageProvider.cacheImage(book, src, ReadBook.bookSource)
+                }
+                val isAnimated = if (isBubble) false else ImageProvider.isGif(book, src, ReadBook.bookSource)
                 ImageColumn(
                     start = absStartX + xStart,
                     end = absStartX + xEnd,
@@ -1923,6 +1977,188 @@ class TextChapterLayout(
             HighlightRule.TARGET_BODY -> !isTitle
             else -> true
         }
+    }
+
+    //region 强制软件气泡
+
+    /** 强制气泡解析结果：renderSrc 为气泡 URL 或原始 src，click 为从原始 option 中提取的点击脚本 */
+    private data class ForcedBubbleResult(val renderSrc: String, val click: String?)
+
+    /**
+     * 尝试将非气泡图片源转换为 bubble://paragraph URL（仅返回 renderSrc）。
+     * 当需要同时保留 click 时请使用 [tryParseForcedBubbleSrcWithClick]。
+     */
+    private fun tryParseForcedBubbleSrc(src: String): String {
+        return tryParseForcedBubbleSrcWithClick(src).renderSrc
+    }
+
+    /**
+     * 尝试将非气泡图片源转换为 bubble://paragraph URL，同时保留原始 click 脚本。
+     *
+     * 当 [AppConfig.forceSoftwareParagraphBubble] 开启时，检测图片源是否为段评入口
+     * （如内联 SVG、特定 type/click 等），如果是则转换为软件气泡 URL，
+     * 并将原始 option 中的 click/pclick 脚本保留到结果中。
+     *
+     * 已是气泡 URL 或开关关闭时返回原始 src 和 null click。
+     */
+    private fun tryParseForcedBubbleSrcWithClick(src: String): ForcedBubbleResult {
+        if (!AppConfig.forceSoftwareParagraphBubble) return ForcedBubbleResult(src, null)
+        if (ParagraphBubbleRenderer.isBubbleSrc(src)) return ForcedBubbleResult(src, null)
+        val urlMatcher = paramPattern.matcher(src)
+        if (!urlMatcher.find()) return ForcedBubbleResult(src, null)
+        val renderSrc = src.substring(0, urlMatcher.start())
+        val optionStr = src.substring(urlMatcher.end())
+        val option = GSON.fromJsonObject<Map<String, String>>(optionStr).getOrNull()
+            ?: return ForcedBubbleResult(src, null)
+        if (!isForcedBubbleCandidate(src, option)) return ForcedBubbleResult(src, null)
+        val displayText = extractForcedBubbleDisplayText(src, renderSrc, option)
+            ?: return ForcedBubbleResult(src, null)
+        val status = option.valueIgnoreCase("status")?.takeIf { it.isNotBlank() } ?: "normal"
+        val displayColor = extractForcedBubbleColor(src, renderSrc, option)
+        val colorQuery = displayColor?.let { "&displayColor=${Uri.encode(it)}" }.orEmpty()
+        val encodedText = Uri.encode(displayText)
+        val encodedStatus = Uri.encode(status)
+        val pclick = option.valueIgnoreCase("pclick")?.takeIf { it.isNotBlank() }
+        val click = option.valueIgnoreCase("click")?.takeIf { it.isNotBlank() }
+        val bubbleUrl = "bubble://paragraph?displayText=$encodedText&num=$encodedText&status=$encodedStatus$colorQuery"
+        return ForcedBubbleResult(bubbleUrl, pclick ?: click)
+    }
+
+    /** 判断图片源是否像段评气泡入口 */
+    private fun isForcedBubbleCandidate(src: String, option: Map<String, String>): Boolean {
+        val style = option.valueIgnoreCase("style")
+        val styleText = style.equals("TEXT", ignoreCase = true)
+        if (!style.isNullOrBlank() && !styleText) return false
+        val type = option.valueIgnoreCase("type").orEmpty().lowercase()
+        val knownType = type in FORCED_BUBBLE_TYPES
+        val click = listOfNotNull(option.valueIgnoreCase("click"), option.valueIgnoreCase("pclick"))
+            .joinToString(separator = "\n")
+            .lowercase()
+        val clickLike = click.contains("showcmt(") ||
+            click.contains("showcomment(") ||
+            click.contains("showreview(") ||
+            click.contains("showparagraph(")
+        val dataSvg = src.trimStart().startsWith("data:image/svg+xml", ignoreCase = true)
+        return knownType || clickLike || (styleText && dataSvg)
+    }
+
+    /** 从图片源中提取气泡显示文本 */
+    private fun extractForcedBubbleDisplayText(
+        src: String,
+        renderSrc: String,
+        option: Map<String, String>
+    ): String? {
+        listOf("displayText", "num", "\$num", "\${num}", "{{num}}", "count", "text", "label").forEach { key ->
+            normalizeForcedBubbleText(option.valueIgnoreCase(key).orEmpty())?.let { return it }
+        }
+        listOf("click", "pclick", "js").forEach { key ->
+            extractForcedBubbleTextFromScript(option.valueIgnoreCase(key).orEmpty())?.let { return it }
+        }
+        listOf(src, renderSrc).distinct().forEach { source ->
+            FORCED_BUBBLE_DISPLAY_PARAM_REGEX.find(source)?.groupValues?.getOrNull(1)?.let {
+                normalizeForcedBubbleText(Uri.decode(it))?.let { value -> return value }
+            }
+            val optionMatcher = paramPattern.matcher(source)
+            val sourcePart = if (optionMatcher.find()) {
+                source.substring(0, optionMatcher.start())
+            } else {
+                source
+            }
+            decodeDataSvg(sourcePart)
+                ?.let { extractForcedBubbleTextFromSvg(it) }
+                ?.let { return it }
+        }
+        return null
+    }
+
+    /** 从脚本中提取 createSvg 调用的 count 参数 */
+    private fun extractForcedBubbleTextFromScript(script: String): String? {
+        if (script.isBlank()) return null
+        return FORCED_BUBBLE_CREATE_SVG_COUNT_REGEX.find(script)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.let { normalizeForcedBubbleText(it) }
+    }
+
+    /** 从 SVG 中提取 <text> 标签内容 */
+    private fun extractForcedBubbleTextFromSvg(svg: String): String? {
+        val texts = FORCED_BUBBLE_TEXT_REGEX.findAll(svg)
+            .mapNotNull { normalizeForcedBubbleText(it.groupValues[1]) }
+            .toList()
+        return texts.firstOrNull { text -> text.any { it.isDigit() } }
+            ?: texts.singleOrNull()
+            ?: texts.firstOrNull()
+    }
+
+    /** 从图片源中提取气泡颜色 */
+    private fun extractForcedBubbleColor(
+        src: String,
+        renderSrc: String,
+        option: Map<String, String>
+    ): String? {
+        listOf("displayColor", "color", "\$color", "\${color}", "{{color}}").forEach { key ->
+            normalizeForcedBubbleText(option.valueIgnoreCase(key).orEmpty())?.let { return it }
+        }
+        listOf(src, renderSrc).distinct().forEach { source ->
+            FORCED_BUBBLE_COLOR_PARAM_REGEX.find(source)?.groupValues?.getOrNull(1)?.let {
+                normalizeForcedBubbleText(Uri.decode(it))?.let { value -> return value }
+            }
+        }
+        return null
+    }
+
+    /** 规范化气泡文本：去除 HTML 标签、trim、限制长度 */
+    private fun normalizeForcedBubbleText(raw: String): String? {
+        return HtmlCompat.fromHtml(raw, HtmlCompat.FROM_HTML_MODE_LEGACY)
+            .toString()
+            .trim()
+            .takeIf { it.isNotBlank() }
+            ?.take(24)
+    }
+
+    /** 解码 data:image/svg+xml URL */
+    private fun decodeDataSvg(sourcePart: String): String? {
+        if (!sourcePart.startsWith("data:image/svg+xml", ignoreCase = true)) return null
+        return runCatching {
+            if (sourcePart.contains(";base64,", ignoreCase = true)) {
+                val base64 = sourcePart.substringAfter(";base64,")
+                String(Base64.decode(base64, Base64.DEFAULT), Charsets.UTF_8)
+            } else {
+                Uri.decode(sourcePart.substringAfter(",", ""))
+            }
+        }.getOrNull()
+    }
+
+    private fun Map<String, String>.valueIgnoreCase(key: String): String? {
+        return entries.firstOrNull { it.key.equals(key, ignoreCase = true) }?.value
+    }
+
+    //endregion
+
+    private companion object {
+        val FORCED_BUBBLE_TEXT_REGEX = Regex(
+            """<text\b[^>]*>(.*?)</text>""",
+            setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+        )
+        val FORCED_BUBBLE_DISPLAY_PARAM_REGEX = Regex(
+            """(?:^|[?&,])(?:displayText|num|\${'$'}num|\${'$'}\{num\}|\{\{num\}\}|count|text|label)=([^&,\s]{1,48})""",
+            RegexOption.IGNORE_CASE
+        )
+        val FORCED_BUBBLE_COLOR_PARAM_REGEX = Regex(
+            """(?:^|[?&,])(?:displayColor|color|\${'$'}color|\${'$'}\{color\}|\{\{color\}\})=([^&,\s]{1,32})""",
+            RegexOption.IGNORE_CASE
+        )
+        val FORCED_BUBBLE_CREATE_SVG_COUNT_REGEX = Regex(
+            """createSvg2?\s*\((?:[^,)]*,){3}\s*([0-9]{1,8})""",
+            RegexOption.IGNORE_CASE
+        )
+        val FORCED_BUBBLE_TYPES = setOf(
+            "qd",
+            "fqpl",
+            "fanqie",
+            "cmt",
+            "comment",
+        )
     }
 
 }

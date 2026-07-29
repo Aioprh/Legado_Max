@@ -395,7 +395,13 @@ object Backup {
                 mutex.withLock {
                     if (shouldBackup()) {
                         val backupZipFileName = getNowZipFileName()
-                        if (!AppWebDav.hasBackUp(backupZipFileName)) {
+                        val hasBackUp = try {
+                            AppWebDav.hasBackUp(backupZipFileName)
+                        } catch (e: Exception) {
+                            AppLog.put("检查WebDav备份是否存在失败，继续执行备份\n${e.localizedMessage}", e)
+                            false
+                        }
+                        if (!hasBackUp) {
                             backup(context, AppConfig.backupPath)
                         } else {
                             LocalConfig.lastBackup = System.currentTimeMillis()
@@ -713,8 +719,12 @@ object Backup {
 
         // 上传背景图片到WebDav（仅本地模式时跳过）
         if (!localOnly) {
-            onProgress?.invoke(BackupInfoHelper.getDisplayName("webDavBackgroundImages"))
-            AppWebDav.upBgs(getBackgroundImageFiles().toTypedArray())
+            try {
+                onProgress?.invoke(BackupInfoHelper.getDisplayName("webDavBackgroundImages"))
+                AppWebDav.upBgs(getBackgroundImageFiles().toTypedArray())
+            } catch (e: Exception) {
+                AppLog.put("上传背景图片至webdav失败\n${e.localizedMessage}", e)
+            }
         }
     }
 

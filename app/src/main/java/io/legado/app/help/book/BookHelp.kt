@@ -54,12 +54,6 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-/**
- * 缓存文件名解析正则：匹配 {index:05d}-{md5}.nb 格式
- * 例如: 00012-a3b4c5d6e7f8g9h0.nb
- */
-private val cacheFileNameRegex = Regex("^(\\d{5})-([a-fA-F0-9]+)\\.nb$")
-
 @Suppress("unused", "ConstPropertyName")
 object BookHelp {
     private val downloadDir: File = appCtx.externalFiles
@@ -377,62 +371,6 @@ object BookHelp {
     }
 
     /**
-     * 查找章节对应的缓存文件
-     *
-     * 优先通过 [BookChapter.getFileName] 精确匹配（正常路径）。
-     * 当精确匹配失败时（例如书源更新后章节标题发生细微变化导致 titleMD5 不匹配），
-     * 回退到按章节索引在缓存文件夹中查找 `NNNNN-*.nb` 格式的文件。
-     *
-     * 注意：回退匹配找到的缓存文件可能对应旧标题的章节内容。
-     * [getContent] 会对回退匹配的结果做内容有效性验证，
-     * 过滤掉被篡改或无效的缓存（如书源提示信息）。
-     *
-     * @param book 书籍
-     * @param bookChapter 章节对象
-     * @return 缓存文件，不存在则返回 null
-     */
-    fun findCacheFile(book: Book, bookChapter: BookChapter): File? {
-        // 精确匹配
-        val exactFile = downloadDir.getFile(
-            cacheFolderName,
-            book.getFolderName(),
-            bookChapter.getFileName()
-        )
-        if (exactFile.exists()) return exactFile
-
-        // 回退：按章节索引模糊查找
-        // 文件名格式: {index:05d}-{md5}.nb，用前缀匹配
-        // 当书源更新后标题细微变化导致 titleMD5 不匹配时，通过索引查找缓存文件
-        if (!book.isLocalTxt &&
-            !(bookChapter.isVolume && bookChapter.url.startsWith(bookChapter.title))
-        ) {
-            val cacheDir = downloadDir.getFile(cacheFolderName, book.getFolderName())
-            if (cacheDir.exists() && cacheDir.isDirectory) {
-                val indexPrefix = String.format("%05d", bookChapter.index)
-                cacheDir.listFiles()?.forEach { file ->
-                    if (file.isFile && file.name.startsWith("${indexPrefix}-") && file.name.endsWith(".nb")) {
-                        return file
-                    }
-                }
-            }
-        }
-        return null
-    }
-
-    /**
-     * 从缓存文件名中解析章节索引
-     *
-     * 文件名格式：{index:05d}-{md5}.nb
-     *
-     * @param fileName 缓存文件名
-     * @return 章节索引，解析失败返回 null
-     */
-    fun parseCacheFileIndex(fileName: String): Int? {
-        val match = cacheFileNameRegex.matchEntire(fileName) ?: return null
-        return match.groupValues[1].toIntOrNull()
-    }
-
-    /**
      * 检测该章节是否下载
      */
     fun hasContent(book: Book, bookChapter: BookChapter): Boolean {
@@ -441,72 +379,12 @@ object BookHelp {
         ) {
             true
         } else {
-            findCacheFile(book, bookChapter) != null
-        }
-    }
-
-    /**
-     * 从缓存文件恢复章节记录
-     *
-     * 当目录加载失败时，扫描书籍缓存文件夹中的 `.nb` 文件，
-     * 解析文件名获取章节索引和标题 MD5，尝试从内容中提取标题，
-     * 构建 [BookChapter] 列表以便用户能阅读已缓存的正文。
-     *
-     * 恢复的章节具有以下特征：
-     * - `index`：从文件名解析，保证顺序正确
-     * - `title`：尝试从内容首行提取并验证 MD5，不匹配时使用占位标题
-     * - `url`：占位值（离线模式下不用于网络请求）
-     * - `bookUrl`：来自书籍对象
-     *
-     * @param book 书籍对象
-     * @return 恢复的章节列表，如无缓存则返回空列表
-     */
-    fun recoverChaptersFromCache(book: Book): List<BookChapter> {
-        val cacheDir = downloadDir.getFile(cacheFolderName, book.getFolderName())
-        if (!cacheDir.exists() || !cacheDir.isDirectory) return emptyList()
-
-        val nbFiles = cacheDir.listFiles { file ->
-            file.isFile && file.name.endsWith(".nb")
-        }?.toList() ?: return emptyList()
-
-        if (nbFiles.isEmpty()) return emptyList()
-
-        val chapters = mutableListOf<BookChapter>()
-        for (file in nbFiles) {
-            val match = cacheFileNameRegex.matchEntire(file.name) ?: continue
-            val index = match.groupValues[1].toInt()
-            val titleMD5FromFile = match.groupValues[2]
-
-            // 尝试从内容中提取标题
-            var title = "第${index + 1}章"
-            try {
-                val content = file.readText()
-                if (content.isNotEmpty()) {
-                    val firstLine = content.lineSequence().firstOrNull { it.isNotBlank() }
-                    if (firstLine != null) {
-                        val candidateTitle = firstLine.trim()
-                        val candidateMD5 = MD5Utils.md5Encode16(candidateTitle)
-                        if (candidateMD5 == titleMD5FromFile) {
-                            title = candidateTitle
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                AppLog.put("从缓存恢复章节时读取文件失败: ${file.name}", e)
-            }
-
-            chapters.add(
-                BookChapter(
-                    url = "cache://${book.bookUrl}/$index",
-                    title = title,
-                    baseUrl = book.tocUrl.ifEmpty { book.bookUrl },
-                    bookUrl = book.bookUrl,
-                    index = index
-                )
+            downloadDir.exists(
+                cacheFolderName,
+                book.getFolderName(),
+                bookChapter.getFileName()
             )
         }
-
-        return chapters.sortedBy { it.index }
     }
 
     /**
@@ -516,25 +394,26 @@ object BookHelp {
         if (!hasContent(book, bookChapter)) {
             return false
         }
-        val content = getContent(book, bookChapter) ?: return false
         var ret = true
         val op = BitmapFactory.Options()
         op.inJustDecodeBounds = true
-        val matcher = AppPattern.imgPattern.matcher(content)
-        while (matcher.find()) {
-            val src = matcher.group(1)!!
-            val image = getImage(book, src)
-            if (!image.exists()) {
-                ret = false
-                continue
-            }
-            BitmapFactory.decodeFile(image.absolutePath, op)
-            if (op.outWidth < 1 && op.outHeight < 1) {
-                if (SvgUtils.getSize(image.absolutePath) != null) {
+        getContent(book, bookChapter)?.let {
+            val matcher = AppPattern.imgPattern.matcher(it)
+            while (matcher.find()) {
+                val src = matcher.group(1)!!
+                val image = getImage(book, src)
+                if (!image.exists()) {
+                    ret = false
                     continue
                 }
-                ret = false
-                image.delete()
+                BitmapFactory.decodeFile(image.absolutePath, op)
+                if (op.outWidth < 1 && op.outHeight < 1) {
+                    if (SvgUtils.getSize(image.absolutePath) != null) {
+                        continue
+                    }
+                    ret = false
+                    image.delete()
+                }
             }
         }
         return ret
@@ -552,29 +431,17 @@ object BookHelp {
 
     /**
      * 读取章节内容
-     *
-     * 当缓存文件是通过索引回退匹配找到的（非精确匹配）时，
-     * 会验证缓存内容的有效性：检查内容首行标题的 MD5 是否与文件名中的 titleMD5 匹配。
-     * 这可以过滤掉被篡改或无效的缓存（如书源作者设置的提示信息），
-     * 避免书源更新后 index 重叠导致读到旧缓存中的无效内容。
      */
     fun getContent(book: Book, bookChapter: BookChapter): String? {
-        // 优先精确匹配，回退到按索引模糊查找
-        val file = findCacheFile(book, bookChapter)
-        if (file != null && file.exists()) {
+        val file = downloadDir.getFile(
+            cacheFolderName,
+            book.getFolderName(),
+            bookChapter.getFileName()
+        )
+        if (file.exists()) {
             val string = file.readText()
             if (string.isEmpty()) {
                 return null
-            }
-            // 检查是否为精确匹配（文件名与当前章节生成的文件名一致）
-            val exactFileName = bookChapter.getFileName()
-            if (file.name != exactFileName) {
-                // 回退匹配：验证缓存内容有效性
-                // 检查内容首行标题的 MD5 是否与文件名中的 titleMD5 匹配
-                // 不匹配说明缓存内容可能被篡改或是无效的书源提示信息，不使用
-                if (!isCacheContentValid(file.name, string)) {
-                    return null
-                }
             }
             return string
         }
@@ -586,27 +453,6 @@ object BookHelp {
             return string
         }
         return null
-    }
-
-    /**
-     * 验证缓存内容有效性
-     *
-     * 通过检查内容首行标题的 MD5 是否与文件名中的 titleMD5 匹配来判断缓存是否有效。
-     * 如果内容首行是正确的章节标题（MD5 匹配），说明缓存内容完整有效；
-     * 如果不匹配，说明缓存内容可能被篡改或是无效的书源提示信息。
-     *
-     * @param fileName 缓存文件名
-     * @param content 缓存文件内容
-     * @return 缓存是否有效
-     */
-    private fun isCacheContentValid(fileName: String, content: String): Boolean {
-        val match = cacheFileNameRegex.matchEntire(fileName) ?: return false
-        val titleMD5FromFile = match.groupValues[2]
-
-        val firstLine = content.lineSequence().firstOrNull { it.isNotBlank() } ?: return false
-        val candidateMD5 = MD5Utils.md5Encode16(firstLine.trim())
-
-        return candidateMD5 == titleMD5FromFile
     }
 
     /**
