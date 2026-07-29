@@ -42,19 +42,27 @@ import io.legado.app.lib.theme.applyUiLabelStyle
 import io.legado.app.lib.theme.applyUiSectionTitleStyle
 import io.legado.app.lib.theme.uiTypeface
 import io.legado.app.model.ImageProvider
+import io.legado.app.ui.association.ImportUrlDialogHelper
+import io.legado.app.ui.browser.WebViewActivity
 import io.legado.app.ui.code.CodeEditActivity
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.number.NumberPickerDialog
+import io.legado.app.utils.ACache
 import io.legado.app.utils.SvgUtils
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
+import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.share
 import io.legado.app.utils.showHelp
+import io.legado.app.utils.splitNotBlank
+import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.help.http.okHttpClient
+import io.legado.app.help.http.newCallResponseBody
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -89,9 +97,9 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
         it.uri?.let(::importZip)
     }
     private val exportPackage = registerForActivityResult(HandleFileContract()) {
-        ExportResultHandler.handleExportResult(this, it) { text ->
+        ExportResultHandler.handleExportResult(this, it, onCopy = { text ->
             sendToClip(text)
-        }
+        })
     }
     private val svgEditLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -175,7 +183,7 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
     }
 
     private fun showAddActions() {
-        selector(getString(R.string.add), listOf(getString(R.string.bubble_create_manual), getString(R.string.bubble_import_zip))) { _, index ->
+        selector(getString(R.string.add), listOf(getString(R.string.bubble_create_manual), getString(R.string.bubble_import_zip), getString(R.string.import_on_line))) { _, index ->
             when (index) {
                 0 -> showEditDialog(null)
                 1 -> importPackage.launch {
@@ -183,6 +191,73 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
                     title = getString(R.string.bubble_import_zip)
                     allowExtensions = arrayOf("zip")
                 }
+                2 -> showImportUrlDialog()
+            }
+        }
+    }
+
+    private fun showImportUrlDialog() {
+        val aCache = ACache.get(cacheDir = false)
+        val cacheUrls: MutableList<String> = aCache
+            .getAsString("bubbleImportUrls")
+            ?.splitNotBlank(",")
+            ?.toMutableList() ?: mutableListOf()
+        alert(titleResource = R.string.import_on_line) {
+            val alertBinding = ImportUrlDialogHelper.createBinding(
+                layoutInflater = layoutInflater,
+                context = this@BubbleManageActivity,
+                lifecycleOwner = this@BubbleManageActivity,
+                cacheUrls = cacheUrls,
+                onUrlsChanged = {
+                    aCache.put("bubbleImportUrls", it.joinToString(","))
+                },
+                openBrowser = { url ->
+                    startActivity<WebViewActivity> {
+                        putExtra("url", url)
+                    }
+                }
+            )
+            customView { alertBinding.root }
+            okButton {
+                val text = alertBinding.editView.text?.toString()?.trim()
+                if (text.isNullOrEmpty()) {
+                    toastOnUi(R.string.please_input_url)
+                    return@okButton
+                }
+                if (!text.isAbsUrl()) {
+                    toastOnUi(R.string.url_format_error)
+                    return@okButton
+                }
+                if (!cacheUrls.contains(text)) {
+                    cacheUrls.add(0, text)
+                    aCache.put("bubbleImportUrls", cacheUrls.joinToString(","))
+                }
+                importZipFromUrl(text)
+            }
+            cancelButton()
+        }
+    }
+
+    private fun importZipFromUrl(url: String) {
+        lifecycleScope.launch {
+            kotlin.runCatching {
+                withContext(Dispatchers.IO) {
+                    val bytes = okHttpClient.newCallResponseBody { url(url) }.bytes()
+                    val file = externalFiles.getFile("bubbleImports", "import_${System.currentTimeMillis()}.zip")
+                    file.parentFile?.mkdirs()
+                    FileOutputStream(file).use { it.write(bytes) }
+                    BubblePackageManager.importZip(file)
+                }
+            }.onSuccess { entries ->
+                val msg = if (entries.size > 1) {
+                    getString(R.string.bubble_import_count_success, entries.size)
+                } else {
+                    getString(R.string.import_success)
+                }
+                toastOnUi(msg)
+                loadPackages()
+            }.onFailure {
+                toastOnUi(it.localizedMessage)
             }
         }
     }
