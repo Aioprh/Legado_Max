@@ -202,6 +202,30 @@ object BubblePackageManager {
         return zipFile
     }
 
+    /** 将多个气泡包打包导出为单个 zip 文件，保留各自子目录结构 */
+    fun exportZip(entries: List<Entry>): File {
+        val zipFile = tempDir.getFile("bubble_export_${System.currentTimeMillis()}.zip")
+        if (zipFile.exists()) zipFile.delete()
+        val dirs = entries.mapNotNull { it.localDir ?: localDir(it.dirName) }
+            .filter { it.exists() }
+        ZipUtils.zipFiles(dirs, zipFile)
+        return zipFile
+    }
+
+    /** 将指定气泡包的 updatedAt 更新为当前时间戳，使其在列表中置顶 */
+    fun toTop(entries: List<Entry>) {
+        var timestamp = System.currentTimeMillis()
+        for (entry in entries) {
+            val dir = entry.localDir ?: localDir(entry.dirName)
+            val file = File(dir, packageFileName)
+            if (!file.isFile) continue
+            val config = GSON.fromJsonObject<Config>(file.readText()).getOrNull() ?: continue
+            file.writeText(GSON.toJson(config.copy(updatedAt = timestamp)))
+            timestamp--
+        }
+        invalidateCurrentEntry()
+    }
+
     /**
      * 从 zip 文件导入气泡包，支持 zip 内包含多个气泡包，自动生成唯一目录名。
      *
