@@ -30,6 +30,7 @@ import io.legado.app.R
 import io.legado.app.base.BaseActivity
 import io.legado.app.constant.EventBus
 import io.legado.app.databinding.ActivityThemeManageBinding
+import io.legado.app.help.ExportResultHandler
 import io.legado.app.help.config.BubblePackageManager
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
@@ -49,6 +50,7 @@ import io.legado.app.utils.applyTint
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.sendToClip
 import io.legado.app.utils.share
 import io.legado.app.utils.showHelp
 import io.legado.app.utils.toastOnUi
@@ -87,7 +89,9 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
         it.uri?.let(::importZip)
     }
     private val exportPackage = registerForActivityResult(HandleFileContract()) {
-        if (it.uri != null) toastOnUi(R.string.export_success)
+        ExportResultHandler.handleExportResult(this, it) { text ->
+            sendToClip(text)
+        }
     }
     private val svgEditLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
