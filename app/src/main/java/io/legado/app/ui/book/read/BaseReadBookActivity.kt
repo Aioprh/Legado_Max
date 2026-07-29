@@ -228,7 +228,7 @@ abstract class BaseReadBookActivity :
             binding.searchMenu.bottomMenuVisible -> super.upNavigationBarColor()
             bottomDialog > 0 -> super.upNavigationBarColor()
             !AppConfig.immNavigationBar -> super.upNavigationBarColor()
-            else -> setNavigationBarColorAuto(ReadBookConfig.bgMeanColor)
+            else -> setNavigationBarColorAuto(ReadBookConfig.bgMeanColor, transparent = true)
         }
     }
 
