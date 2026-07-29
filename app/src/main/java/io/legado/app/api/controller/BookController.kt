@@ -300,6 +300,7 @@ object BookController {
                 else -> returnData.setErrorMsg("保存书籍错误\n${it.localizedMessage}")
             }
         }.onSuccess {
+            postEvent(EventBus.BOOKSHELF_REFRESH, "")//BOOKSHELF_REFRESH` 会让书架Fragment执行 `refreshBookshelf()`，从数据库重新拉取完整列表，从web服务导入的书自然就出来了。
             postEvent(EventBus.UP_BOOKSHELF, "")
         }
         return returnData.setData(true)
