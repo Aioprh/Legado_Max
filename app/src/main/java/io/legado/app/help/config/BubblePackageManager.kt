@@ -193,32 +193,52 @@ object BubblePackageManager {
         invalidateCurrentEntry()
     }
 
-    /** 从 zip 文件导入气泡包，自动生成唯一目录名 */
-    fun importZip(zipFile: File): Entry {
+    /**
+     * 从 zip 文件导入气泡包，支持 zip 内包含多个气泡包，自动生成唯一目录名。
+     *
+     * 遍历解压目录中的所有 [packageFileName] 文件，逐个导入。
+     * 若全部解析失败则抛出异常；部分失败时跳过，仅返回成功导入的条目。
+     */
+    fun importZip(zipFile: File): List<Entry> {
         val unzipDir = tempDir.getFile("import_${System.currentTimeMillis()}").apply {
             if (exists()) FileUtils.delete(this, deleteRootDir = true)
             mkdirs()
         }
         return try {
             ZipUtils.unZipToPath(zipFile, unzipDir)
-            val packageFile = unzipDir.walkTopDown().firstOrNull { it.isFile && it.name == packageFileName }
-                ?: throw IllegalArgumentException(appCtx.getString(R.string.bubble_config_not_found))
-            val config = normalizeConfig(GSON.fromJsonObject<Config>(packageFile.readText()).getOrThrow())
-            val dirName = uniqueDirName(
-                config.dirName.ifBlank { config.name.normalizeFileName() }
-                    .ifBlank { "bubble_${System.currentTimeMillis()}" }
-            )
-            val targetDir = localDir(dirName)
-            if (targetDir.exists()) FileUtils.delete(targetDir, deleteRootDir = true)
-            targetDir.mkdirs()
-            packageFile.parentFile?.copyRecursively(targetDir, overwrite = true)
-            val finalConfig = config.copy(
-                dirName = dirName,
-                updatedAt = System.currentTimeMillis()
-            )
-            File(targetDir, packageFileName).writeText(GSON.toJson(finalConfig))
+            val packageFiles = unzipDir.walkTopDown()
+                .filter { it.isFile && it.name == packageFileName }
+                .toList()
+            if (packageFiles.isEmpty()) {
+                throw IllegalArgumentException(appCtx.getString(R.string.bubble_config_not_found))
+            }
+            val results = mutableListOf<Entry>()
+            for (packageFile in packageFiles) {
+                runCatching {
+                    val config = normalizeConfig(
+                        GSON.fromJsonObject<Config>(packageFile.readText()).getOrThrow()
+                    )
+                    val dirName = uniqueDirName(
+                        config.dirName.ifBlank { config.name.normalizeFileName() }
+                            .ifBlank { "bubble_${System.currentTimeMillis()}" }
+                    )
+                    val targetDir = localDir(dirName)
+                    if (targetDir.exists()) FileUtils.delete(targetDir, deleteRootDir = true)
+                    targetDir.mkdirs()
+                    packageFile.parentFile?.copyRecursively(targetDir, overwrite = true)
+                    val finalConfig = config.copy(
+                        dirName = dirName,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                    File(targetDir, packageFileName).writeText(GSON.toJson(finalConfig))
+                    Entry(finalConfig, Source.LOCAL, dirName, localDir = targetDir)
+                }.onSuccess(results::add)
+            }
+            if (results.isEmpty()) {
+                throw IllegalArgumentException(appCtx.getString(R.string.bubble_config_not_found))
+            }
             invalidateCurrentEntry()
-            Entry(finalConfig, Source.LOCAL, dirName, localDir = targetDir)
+            results
         } finally {
             FileUtils.delete(unzipDir, deleteRootDir = true)
         }
