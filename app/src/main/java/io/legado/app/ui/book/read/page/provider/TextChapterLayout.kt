@@ -80,6 +80,9 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.getPrefBoolean
 import splitties.init.appCtx
+import io.legado.app.model.analyze.AnalyzeRule.Companion.setChapter
+import io.legado.app.model.analyze.AnalyzeRule.Companion.setCoroutineContext
+
 
 /**
  * 章节文本排版器。
@@ -88,7 +91,7 @@ import splitties.init.appCtx
  * 高亮规则在这里完成正则匹配和 Span 标记，最终样式绘制交给 TextLine。
  */
 class TextChapterLayout(
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val textChapter: TextChapter,
     private val textPages: ArrayList<TextPage>,
     private val book: Book,
