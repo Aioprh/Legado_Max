@@ -276,6 +276,7 @@ class BookInfoActivity :
         binding.titleBar.setBackgroundResource(R.color.transparent)
         binding.refreshLayout?.setColorSchemeColors(accentColor)
         binding.arcView?.setBgColor(backgroundColor)
+        binding.llContentBg?.setBackgroundColor(backgroundColor)
         binding.llInfo.setBackgroundColor(backgroundColor)
         binding.llAuthorOtherWorks?.setBackgroundColor(backgroundColor)
         binding.vSpacerBottom?.setBackgroundColor(backgroundColor)
@@ -285,7 +286,7 @@ class BookInfoActivity :
             binding.ivCoverC.setCardBackgroundColor(android.graphics.Color.TRANSPARENT)
         }
         binding.flAction.setBackgroundColor(bottomBackground)
-        binding.vwBg.applyNavigationBarPadding()
+        binding.flAction.applyNavigationBarPadding(withInitialPadding = true)
         binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
         binding.tvToc.text = getString(R.string.toc_s, getString(R.string.loading))
         initAuthorOtherWorksView()
