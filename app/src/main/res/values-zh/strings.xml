@@ -2121,6 +2121,7 @@
 <string name="application_theme_empty">暂无应用主题，请先调整界面配置，再保存当前组合。</string>
 <string name="application_theme_export">导出当前应用主题</string>
 <string name="application_theme_import">导入应用主题</string>
+<string name="application_theme_import_with_options">导入应用主题设置</string>
 <string name="application_theme_manage">应用主题</string>
 <string name="application_theme_name">应用主题名称</string>
 <string name="application_theme_name_exists">应用主题名称已存在</string>

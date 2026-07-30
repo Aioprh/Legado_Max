@@ -98,6 +98,17 @@ object ApplicationThemeManager {
         val images: List<String>
     )
 
+    /** 导入应用主题时的可选应用范围 */
+    @Keep
+    data class ImportOptions(
+        val applyTheme: Boolean = false,
+        val applyTopBar: Boolean = false,
+        val applyBottomBar: Boolean = false,
+        val applyCover: Boolean = false
+    ) {
+        val hasAny: Boolean get() = applyTheme || applyTopBar || applyBottomBar || applyCover
+    }
+
     /** 从文件加载所有应用主题配置，自动校验大小和格式 */
     fun load(): MutableList<Config> {
         val file = File(filePath)
@@ -356,6 +367,38 @@ object ApplicationThemeManager {
             throw IllegalStateException(appCtx.getString(R.string.app_theme_night_apply_failed))
         }
 
+        AppConfig.isNightTheme = wasNight
+        ThemeConfig.applyDayNight(context)
+        context.putPrefString(currentIdKey, config.id)
+        postEvent(EventBus.TOP_BAR_CHANGED, wasNight)
+        postEvent(EventBus.NAVIGATION_BAR_CHANGED, wasNight)
+        postEvent(EventBus.BOOKSHELF_REFRESH, "")
+    }
+
+    /**
+     * 按选项部分应用主题配置。
+     * 仅应用用户选中的组件（主题颜色、顶栏、底栏、封面图集），
+     * 然后发送事件总线通知 UI 刷新。
+     */
+    fun applyPartial(context: Context, config: Config, options: ImportOptions) {
+        val wasNight = AppConfig.isNightTheme
+        if (options.applyTheme) {
+            config.dayTheme?.let { ThemeConfig.applyConfig(context, it.copy(isNightTheme = false), applyNow = false) }
+            config.nightTheme?.let { ThemeConfig.applyConfig(context, it.copy(isNightTheme = true), applyNow = false) }
+        }
+        if (options.applyTopBar) {
+            applyTopBar(context, false, config.dayTopBarDir)
+            applyTopBar(context, true, config.nightTopBarDir)
+        }
+        if (options.applyBottomBar) {
+            applyBottomBar(context, false, config.dayBottomBarId)
+            applyBottomBar(context, true, config.nightBottomBarId)
+        }
+        if (options.applyCover) {
+            val coverRepository = CoverGalleryRepository()
+            config.dayCoverGroupId?.let { coverRepository.setSelectedGroup(false, it) }
+            config.nightCoverGroupId?.let { coverRepository.setSelectedGroup(true, it) }
+        }
         AppConfig.isNightTheme = wasNight
         ThemeConfig.applyDayNight(context)
         context.putPrefString(currentIdKey, config.id)

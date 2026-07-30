@@ -2137,6 +2137,7 @@
 <string name="application_theme_empty">No app themes. Configure the interface, then create one from the current combination.</string>
 <string name="application_theme_export">Export current app theme</string>
 <string name="application_theme_import">Import app theme</string>
+<string name="application_theme_import_with_options">Import app theme with options</string>
 <string name="application_theme_manage">App themes</string>
 <string name="application_theme_name">App theme name</string>
 <string name="application_theme_name_exists">An app theme with this name already exists</string>

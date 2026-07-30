@@ -9,7 +9,9 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
@@ -44,6 +46,7 @@ import java.io.FileOutputStream
 private const val MENU_CREATE = 6101
 private const val MENU_IMPORT = 6102
 private const val MENU_EXPORT = 6103
+private const val MENU_IMPORT_WITH_OPTIONS = 6104
 
 private data class ApplicationThemeListItem(
     val config: ApplicationThemeManager.Config,
@@ -98,7 +101,9 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         menu.add(0, MENU_IMPORT, 1, R.string.application_theme_import)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
-        menu.add(0, MENU_EXPORT, 2, R.string.application_theme_export)
+        menu.add(0, MENU_IMPORT_WITH_OPTIONS, 2, R.string.application_theme_import_with_options)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        menu.add(0, MENU_EXPORT, 3, R.string.application_theme_export)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         return true
     }
@@ -107,6 +112,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         return when (item.itemId) {
             MENU_CREATE -> { showNameDialog(); true }
             MENU_IMPORT -> { selectImport(); true }
+            MENU_IMPORT_WITH_OPTIONS -> { showImportOptionsDialog(); true }
             MENU_EXPORT -> { exportCurrent(); true }
             else -> super.onCompatOptionsItemSelected(item)
         }
@@ -120,7 +126,55 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    private var pendingImportOptions: ApplicationThemeManager.ImportOptions? = null
+
+    private fun showImportOptionsDialog() {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 32, 48, 16)
+        }
+        val cbTheme = CheckBox(this).apply {
+            text = getString(R.string.application_theme_component_theme)
+            isChecked = true
+        }
+        val cbTopBar = CheckBox(this).apply {
+            text = getString(R.string.application_theme_component_top_bar)
+            isChecked = true
+        }
+        val cbBottomBar = CheckBox(this).apply {
+            text = getString(R.string.application_theme_component_bottom_bar)
+            isChecked = true
+        }
+        val cbCover = CheckBox(this).apply {
+            text = getString(R.string.application_theme_component_cover)
+            isChecked = true
+        }
+        container.addView(cbTheme)
+        container.addView(cbTopBar)
+        container.addView(cbBottomBar)
+        container.addView(cbCover)
+        alert(R.string.application_theme_import_with_options) {
+            customView { container }
+            okButton {
+                pendingImportOptions = ApplicationThemeManager.ImportOptions(
+                    applyTheme = cbTheme.isChecked,
+                    applyTopBar = cbTopBar.isChecked,
+                    applyBottomBar = cbBottomBar.isChecked,
+                    applyCover = cbCover.isChecked
+                )
+                importTheme.launch {
+                    mode = HandleFileContract.FILE
+                    title = getString(R.string.application_theme_import)
+                    allowExtensions = arrayOf("zip", "json")
+                }
+            }
+            cancelButton()
+        }
+    }
+
     private fun importTheme(uri: Uri) {
+        val options = pendingImportOptions
+        pendingImportOptions = null
         lifecycleScope.launch {
             runCatching {
                 val file = externalFiles.getFile("applicationThemeImports", "import_${System.currentTimeMillis()}.json")
@@ -130,13 +184,17 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
                 } ?: error(getString(R.string.file_not_exist))
                 withContext(Dispatchers.IO) {
                     try {
-                        ApplicationThemeManager.importFile(file)
+                        val imported = ApplicationThemeManager.importFile(file)
+                        if (options?.hasAny == true) {
+                            ApplicationThemeManager.applyPartial(this@ApplicationThemeActivity, imported, options)
+                        }
                     } finally {
                         file.delete()
                     }
                 }
             }.onSuccess {
                 toastOnUi(R.string.import_success)
+                if (options?.hasAny == true) recreate()
                 refresh()
             }.onFailure {
                 toastOnUi(it.localizedMessage ?: getString(R.string.error))
