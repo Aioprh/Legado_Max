@@ -133,22 +133,27 @@ object ApplicationThemeManager {
                 )
             }
         validateForApply(context, current)
+        return exportConfig(context, current)
+    }
+
+    /** 导出指定应用主题为 zip 文件（含所有关联资源） */
+    fun exportConfig(context: Context, config: Config): File {
         val dir = appCtx.cacheDir.resolve("applicationThemeExports").apply { mkdirs() }
-        val exportName = current.name.normalizeFileName().ifBlank { "application_theme" }
+        val exportName = config.name.normalizeFileName().ifBlank { "application_theme" }
         return dir.resolve("$exportName.zip").apply {
             ZipOutputStream(outputStream().buffered()).use { zip ->
-                val packagedConfig = current.copy(
-                    dayTheme = packageTheme(zip, current.dayTheme, "themes/day"),
-                    nightTheme = packageTheme(zip, current.nightTheme, "themes/night")
+                val packagedConfig = config.copy(
+                    dayTheme = packageTheme(zip, config.dayTheme, "themes/day"),
+                    nightTheme = packageTheme(zip, config.nightTheme, "themes/night")
                 )
                 val data = PackageData(
                     config = packagedConfig,
-                    dayTopBar = packageTopBar(zip, context, false, current.dayTopBarDir, "topbar/day"),
-                    nightTopBar = packageTopBar(zip, context, true, current.nightTopBarDir, "topbar/night"),
-                    dayBottomBar = packageBottomBar(zip, context, false, current.dayBottomBarId, "bottombar/day"),
-                    nightBottomBar = packageBottomBar(zip, context, true, current.nightBottomBarId, "bottombar/night"),
-                    dayCover = packageCover(zip, current.dayCoverGroupId, "covers/day"),
-                    nightCover = packageCover(zip, current.nightCoverGroupId, "covers/night")
+                    dayTopBar = packageTopBar(zip, context, false, config.dayTopBarDir, "topbar/day"),
+                    nightTopBar = packageTopBar(zip, context, true, config.nightTopBarDir, "topbar/night"),
+                    dayBottomBar = packageBottomBar(zip, context, false, config.dayBottomBarId, "bottombar/day"),
+                    nightBottomBar = packageBottomBar(zip, context, true, config.nightBottomBarId, "bottombar/night"),
+                    dayCover = packageCover(zip, config.dayCoverGroupId, "covers/day"),
+                    nightCover = packageCover(zip, config.nightCoverGroupId, "covers/night")
                 )
                 zip.putNextEntry(ZipEntry("application_theme.json"))
                 zip.write(GSON.toJson(data).toByteArray())

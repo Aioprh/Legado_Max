@@ -234,6 +234,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             getString(R.string.edit),
             getString(R.string.application_theme_update_current),
             getString(R.string.application_theme_rename),
+            getString(R.string.export),
             getString(R.string.delete)
         )
         selector(config.name, items) { _, index ->
@@ -247,7 +248,30 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
                     refresh()
                 }
                 2 -> showNameDialog(config)
-                3 -> confirmDelete(config)
+                3 -> exportConfig(config)
+                4 -> confirmDelete(config)
+            }
+        }
+    }
+
+    private fun exportConfig(config: ApplicationThemeManager.Config) {
+        lifecycleScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { ApplicationThemeManager.exportConfig(this@ApplicationThemeActivity, config) }
+            }.onSuccess { file ->
+                exportTheme.launch {
+                    mode = HandleFileContract.EXPORT
+                    title = getString(R.string.application_theme_export)
+                    fileData = HandleFileContract.FileData(file.name, file, "application/zip")
+                    onlyOtherActions = true
+                    otherActions = arrayListOf(
+                        SelectItem(getString(R.string.sys_folder_picker), HandleFileContract.DIR),
+                        SelectItem(getString(R.string.app_folder_picker), 10),
+                        SelectItem(getString(R.string.manual_input), 112)
+                    )
+                }
+            }.onFailure {
+                toastOnUi(it.localizedMessage ?: getString(R.string.error))
             }
         }
     }
