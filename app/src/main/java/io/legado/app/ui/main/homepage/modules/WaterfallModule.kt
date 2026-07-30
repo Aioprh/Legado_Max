@@ -87,7 +87,7 @@ fun WaterfallItem(
     }
     // 计算实际会显示的封面路径（与 HomepageBookCover 内部逻辑一致）
     val displayCover = remember(identity, searchBook.coverUrl) {
-        val galleryCover = BookCover.getGalleryDefaultCover(identity)
+        val galleryCover = BookCover.getGalleryDefaultCover(identity, searchBook.coverUrl)
         galleryCover ?: if (AppConfig.useDefaultCover) null else searchBook.coverUrl
     }
     // 动态宽高比，null 表示尚未加载完成
