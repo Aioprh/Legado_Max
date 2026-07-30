@@ -316,7 +316,7 @@ class TextChapterLayout(
                         val bubbleResult = tryParseForcedBubbleSrcWithClick(matcher.group(1)!!)
                         val imgSrc = bubbleResult.renderSrc
                         val isBubble = ParagraphBubbleRenderer.isBubbleSrc(imgSrc)
-                        var style: String? = null
+                        var style: String? = if (isBubble) "TEXT" else null
                         var click: String? = if (isBubble) bubbleResult.click else null
                         var imgSize = ImageProvider.getImageSize(book, imgSrc, ReadBook.bookSource)
                         val isAnimated = if (isBubble) false else ImageProvider.isGif(book, imgSrc, ReadBook.bookSource)
@@ -549,7 +549,7 @@ class TextChapterLayout(
                 } else {
                     val urlMatcher = paramPattern.matcher(titleImg)
                     var click: String? = null
-                    var style: String? = null
+                    var style: String? = if (ParagraphBubbleRenderer.isBubbleSrc(titleImg)) "TEXT" else null
                     var imgSize = ImageProvider.getImageSize(book, titleImg, ReadBook.bookSource)
                     val isAnimated = ImageProvider.isGif(book, titleImg, ReadBook.bookSource)
                     if (urlMatcher.find()) {
@@ -704,7 +704,7 @@ class TextChapterLayout(
                         val bubbleResult = tryParseForcedBubbleSrcWithClick(matcher.group(1)!!)
                         val imgSrc = bubbleResult.renderSrc
                         val isBubble = ParagraphBubbleRenderer.isBubbleSrc(imgSrc)
-                        var style: String? = null
+                        var style: String? = if (isBubble) "TEXT" else null
                         var click: String? = if (isBubble) bubbleResult.click else null
                         var imgSize = ImageProvider.getImageSize(book, imgSrc, ReadBook.bookSource)
                         val isAnimated = if (isBubble) false else ImageProvider.isGif(book, imgSrc, ReadBook.bookSource)
@@ -1051,7 +1051,9 @@ class TextChapterLayout(
                                 }
                             }
                         }
-                        if (iStyle == null) {
+                        if (isForcedBubble) {
+                            iStyle = "TEXT"
+                        } else if (iStyle == null) {
                             iStyle = if (imgSize.width < 80 && imgSize.height < 80) {
                                 "text"
                             } else {

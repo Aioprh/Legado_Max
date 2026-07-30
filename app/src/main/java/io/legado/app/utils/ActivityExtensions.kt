@@ -21,6 +21,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 import androidx.fragment.app.DialogFragment
 import io.legado.app.R
+import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.widget.dialog.TextDialog
 
 inline fun <reified T : DialogFragment> AppCompatActivity.showDialogFragment(
@@ -78,8 +79,12 @@ fun Activity.fullScreen() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         window.setDecorFitsSystemWindows(true)
     }
-    window.decorView.systemUiVisibility =
-        View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+    // 沉浸式导航栏：内容延伸到导航栏下方，使透明导航栏能显示应用内容
+    var flag = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+    if (AppConfig.immNavigationBar) {
+        flag = flag or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+    }
+    window.decorView.systemUiVisibility = flag
     window.clearFlags(
         WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS
                 or WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION
@@ -142,11 +147,14 @@ fun Activity.setLightStatusBar(isLightBar: Boolean) {
 
 /**
  * 设置导航栏颜色
+ *
+ * @param color 用于判断导航栏图标明暗的主题色（非实际绘制色）
+ * @param transparent 为 true 时将导航栏设为完全透明，[color] 仅用于控制图标明暗
  */
 @Suppress("DEPRECATION")
-fun Activity.setNavigationBarColorAuto(@ColorInt color: Int) {
+fun Activity.setNavigationBarColorAuto(@ColorInt color: Int, transparent: Boolean = false) {
     val isLightBor = ColorUtils.isColorLight(color)
-    window.navigationBarColor = color
+    window.navigationBarColor = if (transparent) Color.TRANSPARENT else color
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         window.insetsController?.let {
             if (isLightBor) {

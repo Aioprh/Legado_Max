@@ -64,7 +64,7 @@ fun ComponentActivity.setupLegadoComposeSystemBar() {
     val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
     setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, true)
     if (AppConfig.immNavigationBar) {
-        setNavigationBarColorAuto(ThemeStore.navigationBarColor(this))
+        setNavigationBarColorAuto(ThemeStore.navigationBarColor(this), transparent = true)
     } else {
         setNavigationBarColorAuto(ColorUtils.darkenColor(ThemeStore.navigationBarColor(this)))
     }

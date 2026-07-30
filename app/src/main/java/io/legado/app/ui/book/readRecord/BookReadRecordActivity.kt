@@ -155,7 +155,7 @@ class BookReadRecordActivity : AppCompatActivity() {
         val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
         setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, true)
         if (AppConfig.immNavigationBar) {
-            setNavigationBarColorAuto(ThemeStore.navigationBarColor(this))
+            setNavigationBarColorAuto(ThemeStore.navigationBarColor(this), transparent = true)
         } else {
             val nbColor = ColorUtils.darkenColor(ThemeStore.navigationBarColor(this))
             setNavigationBarColorAuto(nbColor)

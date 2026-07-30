@@ -256,8 +256,8 @@ object CacheBook {
             return count
         }
 
-    val successDownloadSet = linkedSetOf<String>()
-    val errorDownloadMap = hashMapOf<String, Int>()
+    val successDownloadSet: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    val errorDownloadMap = ConcurrentHashMap<String, Int>()
 
     class CacheBookModel(var bookSource: BookSource, var book: Book) {
 
