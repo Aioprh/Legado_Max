@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
@@ -133,6 +134,11 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 32, 48, 16)
         }
+        val tvHint = TextView(this).apply {
+            text = getString(R.string.application_theme_import_options_hint)
+            setPadding(0, 0, 0, 24)
+        }
+        container.addView(tvHint)
         val cbTheme = CheckBox(this).apply {
             text = getString(R.string.application_theme_component_theme)
             isChecked = true
