@@ -117,8 +117,21 @@ object ApplicationThemeManager {
 
     /** 导出当前应用主题为 zip 文件（含所有关联资源） */
     fun exportCurrent(context: Context): File {
-        val current = load().firstOrNull { isCurrent(context, it) }
-            ?: captureCurrent(context, appCtx.getString(io.legado.app.R.string.application_theme_manage))
+        val current = (load().firstOrNull { isCurrent(context, it) }
+            ?: captureCurrent(context, appCtx.getString(io.legado.app.R.string.application_theme_manage)))
+            .let { config ->
+                // 从 SharedPreferences 刷新背景图路径，确保导出的是当前实际使用的背景图。
+                // 用户可能通过「主题设置」偏好页面修改了背景图，而已保存的应用主题配置中
+                // 的 backgroundImgPath 可能仍是旧值。
+                config.copy(
+                    dayTheme = config.dayTheme?.copy(
+                        backgroundImgPath = context.getPrefString(PreferKey.bgImage)
+                    ),
+                    nightTheme = config.nightTheme?.copy(
+                        backgroundImgPath = context.getPrefString(PreferKey.bgImageN)
+                    )
+                )
+            }
         validateForApply(context, current)
         val dir = appCtx.cacheDir.resolve("applicationThemeExports").apply { mkdirs() }
         val exportName = current.name.normalizeFileName().ifBlank { "application_theme" }
@@ -247,15 +260,23 @@ object ApplicationThemeManager {
     fun captureCurrent(context: Context, name: String, id: String? = null): Config {
         val dayThemeName = context.getPrefString(PreferKey.dThemeName).orEmpty()
         val nightThemeName = context.getPrefString(PreferKey.dNThemeName).orEmpty()
+        val dayTheme = ThemeConfig.configList.firstOrNull {
+            !it.isNightTheme && it.themeName == dayThemeName
+        }?.copy()
+        val nightTheme = ThemeConfig.configList.firstOrNull {
+            it.isNightTheme && it.themeName == nightThemeName
+        }?.copy()
+        // 使用 SharedPreferences 中的实时值覆盖 backgroundImgPath。
+        // 用户可能通过「主题设置」偏好页面直接修改了背景图（写入 PreferKey.bgImage / bgImageN），
+        // 而该修改不会同步更新 ThemeConfig.configList 中的模板配置，
+        // 因此必须从 SharedPreferences 读取当前实际使用的背景图路径。
+        dayTheme?.backgroundImgPath = context.getPrefString(PreferKey.bgImage)
+        nightTheme?.backgroundImgPath = context.getPrefString(PreferKey.bgImageN)
         return Config(
             id = id ?: UUID.randomUUID().toString(),
             name = name.trim(),
-            dayTheme = ThemeConfig.configList.firstOrNull {
-                !it.isNightTheme && it.themeName == dayThemeName
-            }?.copy(),
-            nightTheme = ThemeConfig.configList.firstOrNull {
-                it.isNightTheme && it.themeName == nightThemeName
-            }?.copy(),
+            dayTheme = dayTheme,
+            nightTheme = nightTheme,
             dayTopBarDir = TopBarConfig.activeDirName(false),
             nightTopBarDir = TopBarConfig.activeDirName(true),
             dayBottomBarId = NavigationBarConfig.activeConfig(context, false).id,
