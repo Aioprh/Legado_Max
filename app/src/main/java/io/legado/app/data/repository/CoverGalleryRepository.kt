@@ -276,14 +276,19 @@ class CoverGalleryRepository {
         identity: String? = null,
         originalCoverPath: String? = null
     ): String? {
-        val selected = getSelectedGroupWithImages(originalCoverPath)
+        val mode = selectedMode()
+        // 混合模式：如果书籍已有真实封面（网络/本地），直接返回 null 以使用原始封面
+        if (mode == MODE_MIXED && originalCoverPath.isRealCoverPath()) {
+            return null
+        }
+        val selected = getSelectedGroupWithImages()
         val groupWithImages = selected ?: dao.getDefaultGroupWithImages() ?: return null
         val images = groupWithImages.images
             .filter { it.path.isNotBlank() }
             .sortedWith(compareBy({ it.order }, { it.id }))
         if (images.isEmpty()) return null
         val key = identity?.takeIf { it.isNotBlank() } ?: "default"
-        val index = if (selected != null && selectedMode() == MODE_SEQUENCE) {
+        val index = if (mode == MODE_SEQUENCE) {
             sequentialIndex(groupWithImages.group.id, key, images.size)
         } else {
             val randomSeed = CacheManager.getLong(randomSeedKeyPrefix + groupWithImages.group.id) ?: 0L
@@ -300,11 +305,8 @@ class CoverGalleryRepository {
         appCtx.putPrefString(key, groupId?.toString().orEmpty())
     }
 
-    private fun getSelectedGroupWithImages(originalCoverPath: String?): CoverGalleryGroupWithImages? {
+    private fun getSelectedGroupWithImages(): CoverGalleryGroupWithImages? {
         val isNight = AppConfig.isNightTheme
-        if (selectedMode(isNight) == MODE_MIXED && originalCoverPath.isRealCoverPath()) {
-            return null
-        }
         val groupId = appCtx.getPrefString(
             if (isNight) PreferKey.coverCollectionNight else PreferKey.coverCollectionDay
         )?.toLongOrNull() ?: return null

@@ -392,7 +392,8 @@ class CoverImageView @JvmOverloads constructor(
             this.name = it
         }
         val galleryDefaultCover = BookCover.getGalleryDefaultCover(
-            galleryIdentity ?: listOfNotNull(sourceOrigin, path, name, author).joinToString("|")
+            galleryIdentity ?: listOfNotNull(sourceOrigin, path, name, author).joinToString("|"),
+            path
         )
         val actualPath = galleryDefaultCover ?: path
         this.bitmapPath = actualPath
