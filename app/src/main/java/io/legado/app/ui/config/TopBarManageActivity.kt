@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -218,7 +219,11 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
         val root = buildEditView()
         editingDialog = root
         alert(if (entry == null) R.string.add else R.string.edit) {
-            customView { root }
+            customView {
+                ScrollView(this@TopBarManageActivity).apply {
+                    addView(root)
+                }
+            }
             okButton { saveEditingPackage() }
             cancelButton()
         }

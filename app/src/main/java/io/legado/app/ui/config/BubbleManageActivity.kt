@@ -14,6 +14,7 @@ import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.widget.SwitchCompat
 import androidx.activity.result.contract.ActivityResultContracts
@@ -299,7 +300,11 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
         val root = buildEditView()
         editingRoot = root
         alert(if (entry == null) R.string.add else R.string.edit) {
-            customView { root }
+            customView {
+                ScrollView(this@BubbleManageActivity).apply {
+                    addView(root)
+                }
+            }
             okButton {
                 captureEditFields()
                 val config = editingConfig ?: return@okButton

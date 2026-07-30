@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -237,7 +238,11 @@ tvAddConfig.applyNavigationBarMargin(withInitialMargin = true)
         val root = buildEditView(config)
         editingDialog = root
         alert(if (isEdit) R.string.edit else R.string.add) {
-            customView { root }
+            customView {
+                ScrollView(this@NavigationBarManageActivity).apply {
+                    addView(root)
+                }
+            }
             okButton {
                 root.findViewWithTag<TextView>("name")?.text?.toString()?.trim()
                     ?.takeIf { it.isNotBlank() }
