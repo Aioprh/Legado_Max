@@ -2,7 +2,6 @@ package io.legado.app.help.config
 
 import android.content.Context
 import android.graphics.Color
-import android.net.Uri
 import androidx.annotation.Keep
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
@@ -500,13 +499,25 @@ object ApplicationThemeManager {
         isNight: Boolean
     ): ThemeConfig.Config? {
         theme ?: return null
-        val path = theme.backgroundImgPath ?: return theme.copy(isNightTheme = isNight)
-        if (path.startsWith("http", true)) return theme.copy(isNightTheme = isNight)
-        val extracted = extractAsset(zip, temp, path) ?: return theme.copy(isNightTheme = isNight, backgroundImgPath = null)
-        val dir = appCtx.externalFiles.getFile(if (isNight) PreferKey.bgImageN else PreferKey.bgImage).apply { mkdirs() }
-        val target = dir.getFile("application_theme_${UUID.randomUUID()}.${extracted.extension.ifBlank { "jpg" }}")
-        extracted.copyTo(target, overwrite = true)
-        return theme.copy(isNightTheme = isNight, backgroundImgPath = target.absolutePath)
+        val path = theme.backgroundImgPath
+        var restored = theme.copy(isNightTheme = isNight)
+        if (path != null && !path.startsWith("http", true)) {
+            val extracted = extractAsset(zip, temp, path)
+            if (extracted != null) {
+                val dir = appCtx.externalFiles.getFile(if (isNight) PreferKey.bgImageN else PreferKey.bgImage).apply { mkdirs() }
+                val target = dir.getFile("application_theme_${UUID.randomUUID()}.${extracted.extension.ifBlank { "jpg" }}")
+                extracted.copyTo(target, overwrite = true)
+                restored = restored.copy(backgroundImgPath = target.absolutePath)
+            } else {
+                restored = restored.copy(backgroundImgPath = null)
+            }
+        }
+        // 将导入的主题添加到 ThemeConfig.configList，使其在主题管理列表中可见
+        val usedNames = ThemeConfig.configList.filter { it.isNightTheme == isNight }.map { it.themeName }.toSet()
+        val uniqueThemeName = uniqueName(restored.themeName, usedNames)
+        restored = restored.copy(themeName = uniqueThemeName)
+        ThemeConfig.addConfig(restored)
+        return restored
     }
 
     private fun restoreTopBar(
@@ -560,8 +571,8 @@ object ApplicationThemeManager {
         val repository = CoverGalleryRepository()
         val usedNames = repository.allGroupsWithImages().map { it.group.name }.toSet()
         val groupId = repository.addGroup(uniqueName(payload.name, usedNames))
-        val uris = payload.images.mapNotNull { extractAsset(zip, temp, it) }.map(Uri::fromFile)
-        if (uris.isNotEmpty()) repository.addImages(appCtx, groupId, uris)
+        val files = payload.images.mapNotNull { extractAsset(zip, temp, it) }
+        if (files.isNotEmpty()) repository.addImageFiles(appCtx, groupId, files)
         return groupId
     }
 
