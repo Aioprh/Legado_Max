@@ -4,7 +4,11 @@ import android.annotation.SuppressLint
 import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
+import androidx.core.view.MenuProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import io.legado.app.R
@@ -31,6 +35,8 @@ import io.legado.app.utils.readUri
 import io.legado.app.utils.removePref
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.showHelp
+import io.legado.app.utils.applyTint
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
@@ -39,7 +45,7 @@ import splitties.init.appCtx
 import java.io.FileOutputStream
 
 class CoverConfigFragment : PreferenceFragment(),
-    SharedPreferences.OnSharedPreferenceChangeListener {
+    SharedPreferences.OnSharedPreferenceChangeListener, MenuProvider {
 
     private val coverGalleryRepository by lazy { CoverGalleryRepository() }
     private val requestCodeCover = 111
@@ -70,6 +76,22 @@ class CoverConfigFragment : PreferenceFragment(),
         super.onViewCreated(view, savedInstanceState)
         activity?.setTitle(R.string.cover_config)
         listView.setEdgeEffectColor(primaryColor)
+        activity?.addMenuProvider(this, viewLifecycleOwner)
+    }
+
+    override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+        menuInflater.inflate(R.menu.cover_config, menu)
+        menu.applyTint(requireContext())
+    }
+
+    override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+        when (menuItem.itemId) {
+            R.id.menu_help -> {
+                showHelp("coverConfigHelp")
+                return true
+            }
+        }
+        return false
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

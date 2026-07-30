@@ -183,6 +183,9 @@ class CoverGalleryRepository {
 
     suspend fun rerandomizeGroup(groupId: Long) {
         CacheManager.put(randomSeedKeyPrefix + groupId, System.currentTimeMillis())
+        synchronized(sequenceLock) {
+            sequenceAssignments.remove(groupId)
+        }
         CacheManager.delete(sequenceKeyPrefix + groupId)
         refreshDefaultCover()
     }
@@ -322,28 +325,49 @@ class CoverGalleryRepository {
 
     private fun sequentialIndex(groupId: Long, key: String, size: Int): Int {
         if (size <= 1) return 0
+        synchronized(sequenceLock) {
+            val assignments = sequenceAssignments.getOrPut(groupId) {
+                loadSequenceAssignments(groupId)
+            }
+            assignments[key]?.let { return Math.floorMod(it, size) }
+            val nextIndex = (assignments.values.maxOrNull() ?: -1) + 1
+            assignments[key] = nextIndex
+            persistSequenceAssignments(groupId, assignments)
+            return Math.floorMod(nextIndex, size)
+        }
+    }
+
+    private fun loadSequenceAssignments(groupId: Long): MutableMap<String, Int> {
         val cacheKey = "$sequenceKeyPrefix$groupId"
-        val assignments = CacheManager.get(cacheKey)
+        val map = LinkedHashMap<String, Int>()
+        CacheManager.get(cacheKey)
             ?.lineSequence()
-            ?.mapIndexedNotNull { index, line ->
-                val value = line.takeIf { it.isNotBlank() } ?: return@mapIndexedNotNull null
+            ?.forEachIndexed { index, line ->
+                val value = line.takeIf { it.isNotBlank() } ?: return@forEachIndexed
                 val savedIndex = value.substringAfter('\t', "").toIntOrNull()
                 val savedKey = value.substringBefore('\t')
-                savedKey to (savedIndex ?: index)
+                if (savedKey.isNotBlank()) {
+                    map[savedKey] = savedIndex ?: index
+                }
             }
-            ?.toMutableList()
-            ?: mutableListOf()
-        assignments.firstOrNull { it.first == key }?.let {
-            return Math.floorMod(it.second, size)
-        }
-        val nextIndex = (assignments.maxOfOrNull { it.second } ?: -1) + 1
-        assignments.add(key to nextIndex)
-        val bounded = assignments.takeLast(MAX_SEQUENCE_ASSIGNMENTS)
-        CacheManager.put(cacheKey, bounded.joinToString("\n") { "${it.first}\t${it.second}" })
-        return Math.floorMod(nextIndex, size)
+        return map
+    }
+
+    private fun persistSequenceAssignments(groupId: Long, assignments: Map<String, Int>) {
+        val cacheKey = "$sequenceKeyPrefix$groupId"
+        val bounded = assignments.entries
+            .sortedBy { it.value }
+            .takeLast(MAX_SEQUENCE_ASSIGNMENTS)
+        CacheManager.put(
+            cacheKey,
+            bounded.joinToString("\n") { "${it.key}\t${it.value}" }
+        )
     }
 
     private fun clearGroupState(groupId: Long) {
+        synchronized(sequenceLock) {
+            sequenceAssignments.remove(groupId)
+        }
         CacheManager.delete(randomSeedKeyPrefix + groupId)
         CacheManager.delete(sequenceKeyPrefix + groupId)
     }
@@ -453,5 +477,8 @@ class CoverGalleryRepository {
         const val sequenceKeyPrefix = "coverGallerySequence:"
         private const val MAX_SEQUENCE_ASSIGNMENTS = 5000
         private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif")
+
+        private val sequenceLock = Any()
+        private val sequenceAssignments = HashMap<Long, MutableMap<String, Int>>()
     }
 }
