@@ -157,10 +157,10 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             customView { container }
             okButton {
                 pendingImportOptions = ApplicationThemeManager.ImportOptions(
-                    applyTheme = cbTheme.isChecked,
-                    applyTopBar = cbTopBar.isChecked,
-                    applyBottomBar = cbBottomBar.isChecked,
-                    applyCover = cbCover.isChecked
+                    importTheme = cbTheme.isChecked,
+                    importTopBar = cbTopBar.isChecked,
+                    importBottomBar = cbBottomBar.isChecked,
+                    importCover = cbCover.isChecked
                 )
                 importTheme.launch {
                     mode = HandleFileContract.FILE
@@ -184,17 +184,13 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
                 } ?: error(getString(R.string.file_not_exist))
                 withContext(Dispatchers.IO) {
                     try {
-                        val imported = ApplicationThemeManager.importFile(file)
-                        if (options?.hasAny == true) {
-                            ApplicationThemeManager.applyPartial(this@ApplicationThemeActivity, imported, options)
-                        }
+                        ApplicationThemeManager.importFile(file, options)
                     } finally {
                         file.delete()
                     }
                 }
             }.onSuccess {
                 toastOnUi(R.string.import_success)
-                if (options?.hasAny == true) recreate()
                 refresh()
             }.onFailure {
                 toastOnUi(it.localizedMessage ?: getString(R.string.error))
