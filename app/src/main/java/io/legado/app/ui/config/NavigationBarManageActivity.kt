@@ -101,15 +101,15 @@ class NavigationBarManageActivity : BaseActivity<ActivityNavigationBarManageBind
         loadConfigs()
     }
 
-private fun initView() = binding.run {
-recyclerView.layoutManager = LinearLayoutManager(this@NavigationBarManageActivity)
-recyclerView.addItemDecoration(VerticalDivider(this@NavigationBarManageActivity))
-recyclerView.adapter = adapter
-tvAddConfig.setOnClickListener {
-showAddOptions()
-}
-tvAddConfig.applyNavigationBarMargin(withInitialMargin = true)
-}
+    private fun initView() = binding.run {
+        recyclerView.layoutManager = LinearLayoutManager(this@NavigationBarManageActivity)
+        recyclerView.addItemDecoration(VerticalDivider(this@NavigationBarManageActivity))
+        recyclerView.adapter = adapter
+        tvAddConfig.setOnClickListener {
+            showAddOptions()
+        }
+        tvAddConfig.applyNavigationBarMargin(withInitialMargin = true)
+    }
 
     private fun initTabs() = binding.run {
         isNightMode = getPrefBoolean(PREF_KEY_IS_NIGHT, AppConfig.isNightTheme)
