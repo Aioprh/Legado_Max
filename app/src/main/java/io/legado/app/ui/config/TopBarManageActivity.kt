@@ -34,6 +34,7 @@ import io.legado.app.ui.image.ImageCropContract
 import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.ImageCropHelper
+import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getClipText
 import io.legado.app.utils.getFile
@@ -117,6 +118,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
         recyclerView.addItemDecoration(VerticalDivider(this@TopBarManageActivity))
         recyclerView.adapter = adapter
         tvAddConfig.setOnClickListener { showAddOptions() }
+        tvAddConfig.applyNavigationBarMargin(withInitialMargin = true)
     }
 
     private fun initTabs() = binding.run {

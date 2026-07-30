@@ -27,6 +27,7 @@ import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.observeEvent
@@ -77,6 +78,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         binding.recyclerView.addItemDecoration(VerticalDivider(this))
         binding.recyclerView.adapter = adapter
         binding.tvAddTheme.setOnClickListener { showNameDialog() }
+        binding.tvAddTheme.applyNavigationBarMargin(withInitialMargin = true)
         refresh()
     }
 

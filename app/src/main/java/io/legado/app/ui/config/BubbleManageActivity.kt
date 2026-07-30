@@ -50,6 +50,7 @@ import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.utils.ACache
 import io.legado.app.utils.SvgUtils
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.isAbsUrl
@@ -143,6 +144,7 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
             UiCorner.actionRadius(this@BubbleManageActivity)
         )
         tvAddTheme.setOnClickListener { showAddActions() }
+        tvAddTheme.applyNavigationBarMargin(withInitialMargin = true)
         root.applyUiBodyTypefaceDeep(uiTypeface())
     }
 
