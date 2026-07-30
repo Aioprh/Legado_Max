@@ -30,6 +30,7 @@ import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.recycler.VerticalDivider
+import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.getClipText
@@ -99,14 +100,15 @@ class NavigationBarManageActivity : BaseActivity<ActivityNavigationBarManageBind
         loadConfigs()
     }
 
-    private fun initView() = binding.run {
-        recyclerView.layoutManager = LinearLayoutManager(this@NavigationBarManageActivity)
-        recyclerView.addItemDecoration(VerticalDivider(this@NavigationBarManageActivity))
-        recyclerView.adapter = adapter
-        tvAddConfig.setOnClickListener {
-            showAddOptions()
-        }
-    }
+private fun initView() = binding.run {
+recyclerView.layoutManager = LinearLayoutManager(this@NavigationBarManageActivity)
+recyclerView.addItemDecoration(VerticalDivider(this@NavigationBarManageActivity))
+recyclerView.adapter = adapter
+tvAddConfig.setOnClickListener {
+showAddOptions()
+}
+tvAddConfig.applyNavigationBarMargin(withInitialMargin = true)
+}
 
     private fun initTabs() = binding.run {
         isNightMode = getPrefBoolean(PREF_KEY_IS_NIGHT, AppConfig.isNightTheme)

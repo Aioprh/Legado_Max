@@ -12,6 +12,7 @@ import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.config.TopBarConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
+import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
@@ -39,6 +40,8 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
             return
         }
         binding.titleBar.title = getString(R.string.application_theme_edit)
+        // 底部操作区避让系统导航栏
+        binding.root.getChildAt(binding.root.childCount - 1)?.applyNavigationBarPadding(withInitialPadding = true)
         bindActions()
         render()
     }
