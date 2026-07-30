@@ -58,6 +58,7 @@ class TitleBar @JvmOverloads constructor(
     private val attachToActivity: Boolean
     internal val opaque: Boolean
     internal val ignoreTopBarOpacity: Boolean
+    internal val skipTopBarConfig: Boolean
     internal val topBarTheme: Theme
 
     init {
@@ -73,6 +74,7 @@ class TitleBar @JvmOverloads constructor(
         fitNavigationBar = a.getBoolean(R.styleable.TitleBar_fitNavigationBar, false)
         opaque = a.getBoolean(R.styleable.TitleBar_opaque, false)
         ignoreTopBarOpacity = a.getBoolean(R.styleable.TitleBar_ignoreTopBarOpacity, false)
+        skipTopBarConfig = a.getBoolean(R.styleable.TitleBar_skipTopBarConfig, false)
 
         val navigationIcon = a.getDrawable(R.styleable.TitleBar_navigationIcon)
         val navigationContentDescription =
