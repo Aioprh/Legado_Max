@@ -441,9 +441,15 @@ class BookInfoActivity :
                 }
             }
 
-            R.id.menu_clear_cache -> viewModel.getBook()?.let {
-                    SourceCallBack.callBackBtn(this, SourceCallBack.CLICK_CLEAR_CACHE, viewModel.bookSource, it, null) {
-                        viewModel.clearCache(it)
+            R.id.menu_clear_cache -> viewModel.getBook()?.let { book ->
+                    alert(R.string.clear_cache) {
+                        setMessage(getString(R.string.sure_clear_cache, book.name))
+                        noButton()
+                        yesButton {
+                            SourceCallBack.callBackBtn(this@BookInfoActivity, SourceCallBack.CLICK_CLEAR_CACHE, viewModel.bookSource, book, null) {
+                                viewModel.clearCache(book)
+                            }
+                        }
                     }
                 }
             R.id.menu_log -> showDialogFragment<AppLogDialog>()
