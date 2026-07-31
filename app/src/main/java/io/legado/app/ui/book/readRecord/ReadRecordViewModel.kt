@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.legado.app.constant.AppConst
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
+import io.legado.app.data.dao.DailyReadStat
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
@@ -21,12 +22,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
@@ -60,6 +62,31 @@ enum class DisplayMode {
     READ_TIME
 }
 
+/**
+ * 按显示模式加载的额外数据。
+ * - AGGREGATE 模式加载 details
+ * - TIMELINE 模式加载 sessions
+ * - LATEST / READ_TIME 模式不需要额外数据（使用 recordsFlow）
+ */
+private data class ModeData(
+    val details: List<ReadRecordDetail>? = null,
+    val sessions: List<ReadRecordSession>? = null
+)
+
+/** 轻量级统计数据（SQL 聚合，始终加载）。 */
+private data class StatsData(
+    val totalReadTime: Long,
+    val dailyStats: List<DailyReadStat>,
+    val todayReadTime: Long,
+    val todayBookCount: Int
+)
+
+/** 搜索 + 日期筛选状态。 */
+private data class FilterState(
+    val query: String,
+    val dateStr: String?
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReadRecordViewModel : ViewModel() {
 
@@ -83,7 +110,7 @@ class ReadRecordViewModel : ViewModel() {
     private val _selectedRecords = MutableStateFlow<Set<RecordIdentity>>(emptySet())
 
     init {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             if (appCtx.getPrefInt(PreferKey.readRecordRepairVersion) < ReadRecordRepository.CURRENT_REPAIR_VERSION) {
                 repository.repairRecords { bookName ->
                     bookRepository.getAuthorByBookName(bookName)
@@ -101,145 +128,129 @@ class ReadRecordViewModel : ViewModel() {
         return enumValueOf<DisplayMode>(DisplayMode.values().getOrNull(savedOrdinal)?.name ?: DisplayMode.AGGREGATE.name)
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val loadedDataFlow = _searchKey
-        .flatMapLatest { query ->
-            combine(
-                repository.getAllRecordDetails(query),
-                repository.getLatestReadRecords(query),
-                repository.getAllSessions(),
-                repository.getTotalReadTime()
-            ) { details, latest, sessions, totalTime ->
-                // normalizedLatestRecords 在 loadedDataFlow 中预计算，
-                // 避免 uiState 每次重发时重复调用 applyDetailReadTimes。
-                val normalizedRecords = repository.applyDetailReadTimes(latest, details)
-                LoadedData(totalTime, details, latest, sessions, normalizedRecords)
-            }
-        }
+    // ==================== 拆分后的 Flow（方案三核心） ====================
 
-    val uiState: StateFlow<ReadRecordUiState> = combine(
-        loadedDataFlow,
-        _selectedDate,
-        _searchKey,
-        _isSelectionMode,
-        _selectedRecords
-    ) { data, selectedDate, searchKey, isSelectionMode, selectedRecords ->
-        val today = LocalDate.now()
-        val dateStr = selectedDate?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+    /** 搜索 + 日期筛选状态（派生自 _searchKey 和 _selectedDate） */
+    private val filterState = combine(_searchKey, _selectedDate) { query, date ->
+        FilterState(query, date?.format(DateTimeFormatter.ISO_LOCAL_DATE))
+    }
 
-        val searchedSessions = data.sessions.filter { session ->
-            searchKey.isEmpty() ||
-                session.bookName.contains(searchKey, ignoreCase = true) ||
-                session.bookAuthor.contains(searchKey, ignoreCase = true)
-        }
+    /**
+     * 轻量级统计数据 Flow —— SQL 聚合，始终加载。
+     * 包含：总阅读时间、每日统计（热力图）、今日阅读时间、今日书籍数。
+     */
+    private val statsFlow = combine(
+        repository.getTotalReadTime(),
+        repository.getDailyStats(),
+        repository.getReadTimeByDate(LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)),
+        repository.getBookCountByDate(LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE))
+    ) { total, daily, todayTime, todayCount ->
+        StatsData(total, daily, todayTime, todayCount)
+    }
 
-        val mergedDailySessions = searchedSessions
-            .groupBy { dateFormat.format(Date(it.startTime)) }
-            .mapValues { (_, sessions) -> mergeContinuousSessions(sessions) }
-
-        val dailyCounts = data.details
-            .groupBy { LocalDate.parse(it.date, DateTimeFormatter.ISO_LOCAL_DATE) }
-            .mapValues { it.value.size }
-
-        val dailyTimes = data.details
-            .groupBy { LocalDate.parse(it.date, DateTimeFormatter.ISO_LOCAL_DATE) }
-            .mapValues { (_, details) -> details.sumOf { it.readTime } }
-
-        val todayReadTime = dailyTimes[today] ?: 0L
-        val todayBookCount = data.details
-            .asSequence()
-            .filter { it.date == today.format(DateTimeFormatter.ISO_LOCAL_DATE) }
-            .map { recordIdentity(it.deviceId, it.bookName, it.bookAuthor) }
-            .distinct()
-            .count()
-
-        val filteredDetails = data.details.filter { detail ->
-            dateStr == null || detail.date == dateStr
-        }
-
-        val timelineMap = searchedSessions
-            .asSequence()
-            .filter { session ->
-                val sDate = dateFormat.format(Date(session.startTime))
-                dateStr == null || sDate == dateStr
-            }
-            .groupBy { dateFormat.format(Date(it.startTime)) }
-            .mapValues { (_, sessions) ->
-                mergeContinuousSessions(sessions).reversed()
-            }
-            .toSortedMap(compareByDescending { it })
-
-        val normalizedLatestRecords = data.normalizedLatestRecords
-
-        val latestRecords = if (dateStr == null) {
-            normalizedLatestRecords
+    /**
+     * 阅读记录 Flow（SummaryCard + LATEST / READ_TIME 模式共用）。
+     * - 无日期筛选：SQL JOIN 返回 readTime = MAX(record, detail_sum)
+     * - 有日期筛选：SQL GROUP BY 返回该日期的每书统计
+     */
+    private val recordsFlow = filterState.flatMapLatest { filter ->
+        if (filter.dateStr == null) {
+            repository.getRecordsWithDetailTime(filter.query)
         } else {
-            val filteredDetailsByRecord = filteredDetails.groupBy {
-                recordIdentity(it.deviceId, it.bookName, it.bookAuthor)
-            }
-            val latestRecordIndex = normalizedLatestRecords.associateBy {
-                recordIdentity(it.deviceId, it.bookName, it.bookAuthor)
-            }
+            repository.getRecordsByDate(filter.query, filter.dateStr)
+        }
+    }
 
-            filteredDetailsByRecord.map { (identity, details) ->
-                val baseRecord = latestRecordIndex[identity]
-                val dayReadTime = details.sumOf { it.readTime }
-                val dayLastRead = details.maxOf { it.lastReadTime }
-                if (baseRecord != null) {
-                    baseRecord.copy(
-                        readTime = dayReadTime,
-                        lastRead = dayLastRead
-                    )
-                } else {
-                    ReadRecord(
-                        deviceId = identity.first,
-                        bookName = identity.second,
-                        bookAuthor = identity.third,
-                        readTime = dayReadTime,
-                        lastRead = dayLastRead
-                    )
+    /**
+     * 按显示模式加载的额外数据 Flow。
+     * flatMapLatest 确保切换模式时自动取消上一个模式的数据加载。
+     */
+    private val modeDataFlow: StateFlow<ModeData> = _displayMode
+        .flatMapLatest { mode ->
+            when (mode) {
+                DisplayMode.AGGREGATE -> filterState.flatMapLatest { filter ->
+                    repository.getFilteredDetails(filter.query, filter.dateStr)
+                        .map { ModeData(details = it) }
                 }
-            }.sortedByDescending { it.lastRead }
+                DisplayMode.TIMELINE -> filterState.flatMapLatest { filter ->
+                    repository.getFilteredSessions(filter.query, filter.dateStr)
+                        .map { ModeData(sessions = it) }
+                }
+                DisplayMode.LATEST, DisplayMode.READ_TIME -> flowOf(ModeData())
+            }
         }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ModeData())
 
-        val readTimeRecords = if (dateStr == null) {
-            latestRecords.sortedByDescending { it.readTime }
-        } else {
-            val filteredDetailReadTimes = filteredDetails
-                .groupBy { recordIdentity(it.deviceId, it.bookName, it.bookAuthor) }
-                .mapValues { (_, details) -> details.sumOf { it.readTime } }
+    /** 选择模式状态 */
+    private val selectionState = combine(_isSelectionMode, _selectedRecords) { isSel, selRecs ->
+        isSel to selRecs
+    }
 
-            latestRecords.mapNotNull { record ->
-                val dateReadTime = filteredDetailReadTimes[
-                    recordIdentity(record.deviceId, record.bookName, record.bookAuthor)
-                ]
-                    ?: return@mapNotNull null
-                record.copy(readTime = dateReadTime)
-            }.sortedByDescending { it.readTime }
+    /**
+     * UI 状态 Flow —— 组合统计数据、记录、模式数据和选择状态。
+     * 计算量极小：SQL 已完成聚合/过滤/排序，此处仅做轻量组装。
+     */
+    val uiState: StateFlow<ReadRecordUiState> = combine(
+        statsFlow,
+        recordsFlow,
+        modeDataFlow,
+        filterState,
+        selectionState
+    ) { stats, records, modeData, filter, selection ->
+        val (isSelectionMode, selectedRecords) = selection
+        val selectedDate = filter.dateStr?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) }
+
+        // AGGREGATE 模式：details 按 date 分组（轻量操作，数据已被 SQL 过滤）
+        val groupedRecords = modeData.details
+            ?.groupBy { it.date }
+            ?: emptyMap()
+
+        // TIMELINE 模式：sessions 按日期分组 + 合并连续会话
+        val timelineRecords = modeData.sessions
+            ?.let { sessions -> buildTimelineMap(sessions) }
+            ?: emptyMap()
+
+        // daily stats 转 Map（SQL 已聚合，仅需转换 key 类型）
+        val dailyReadCounts = stats.dailyStats.associate {
+            LocalDate.parse(it.date, DateTimeFormatter.ISO_LOCAL_DATE) to it.readCount
+        }
+        val dailyReadTimes = stats.dailyStats.associate {
+            LocalDate.parse(it.date, DateTimeFormatter.ISO_LOCAL_DATE) to it.totalReadTime
         }
 
         ReadRecordUiState(
             isLoading = false,
-            totalReadTime = data.totalReadTime,
-            todayReadTime = todayReadTime,
-            todayBookCount = todayBookCount,
-            groupedRecords = filteredDetails.groupBy { it.date },
-            timelineRecords = timelineMap,
-            latestRecords = latestRecords,
-            readTimeRecords = readTimeRecords,
+            totalReadTime = stats.totalReadTime,
+            todayReadTime = stats.todayReadTime,
+            todayBookCount = stats.todayBookCount,
+            groupedRecords = groupedRecords,
+            timelineRecords = timelineRecords,
+            latestRecords = records,
+            readTimeRecords = records.sortedByDescending { it.readTime },
             selectedDate = selectedDate,
-            searchKey = searchKey,
-            dailyReadCounts = dailyCounts,
-            dailyReadTimes = dailyTimes,
+            searchKey = filter.query,
+            dailyReadCounts = dailyReadCounts,
+            dailyReadTimes = dailyReadTimes,
             isSelectionMode = isSelectionMode,
             selectedRecords = selectedRecords
         )
     }.flowOn(Dispatchers.Default)
         .stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = ReadRecordUiState(isLoading = true)
-    )
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ReadRecordUiState(isLoading = true)
+        )
+
+    /**
+     * 构建时间线 Map：按日期分组 + 合并连续会话。
+     * 数据已被 SQL 过滤，此处仅做合并和分组。
+     */
+    private fun buildTimelineMap(sessions: List<ReadRecordSession>): Map<String, List<ReadRecordSession>> {
+        return sessions
+            .groupBy { dateFormat.format(Date(it.startTime)) }
+            .mapValues { (_, daySessions) -> mergeContinuousSessions(daySessions).reversed() }
+            .toSortedMap(compareByDescending { it })
+    }
 
     fun setSearchKey(query: String) {
         _searchKey.value = query
@@ -463,22 +474,7 @@ class ReadRecordViewModel : ViewModel() {
         return _selectedRecords.value.contains(recordIdentity(session.deviceId, session.bookName, session.bookAuthor))
     }
 
-    private data class LoadedData(
-        val totalReadTime: Long,
-        val details: List<ReadRecordDetail>,
-        val latestRecords: List<ReadRecord>,
-        val sessions: List<ReadRecordSession>,
-        val normalizedLatestRecords: List<ReadRecord>
-    )
-
     private fun cacheKey(bookName: String, bookAuthor: String) = "$bookName|$bookAuthor"
-}
-
-private fun Long.toLocalDateString(): String {
-    return Date(this).toInstant()
-        .atZone(ZoneId.systemDefault())
-        .toLocalDate()
-        .format(DateTimeFormatter.ISO_LOCAL_DATE)
 }
 
 private fun recordIdentity(deviceId: String, bookName: String, bookAuthor: String): RecordIdentity {
