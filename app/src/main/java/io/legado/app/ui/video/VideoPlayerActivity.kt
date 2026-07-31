@@ -143,6 +143,7 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         })
     }
     private var isNew = true
+    private var isStartingNew = false
     private var isFullScreen = false
     private var orientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     private var menuCustomBtn: MenuItem? = null
@@ -187,6 +188,11 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         playerView.enlargeImageRes = R.drawable.ic_fullscreen
         isNew = intent.getBooleanExtra("isNew", true)
         if (isNew) {
+            // 标记新会话启动，跳过 onResume 恢复旧视频
+            isStartingNew = true
+            // 停止上一次的播放并释放媒体，防止 onResume 时旧视频被恢复
+            VideoPlay.stopLoading()
+            VideoPlay.stopPlayback()
             // 重置可能残留的上一次播放状态，防止旧链接/标题泄漏到新会话
             VideoPlay.singleUrl = false
             VideoPlay.videoUrl = null
@@ -892,6 +898,12 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
      */
     override fun onResume() {
         super.onResume()
+        if (isStartingNew) {
+            // 新会话启动时跳过恢复旧视频，新内容加载完成后由 startPlayLogic 自动播放
+            isStartingNew = false
+            VideoPlay.markReadStart()
+            return
+        }
         VideoPlay.onResume()
     }
 
