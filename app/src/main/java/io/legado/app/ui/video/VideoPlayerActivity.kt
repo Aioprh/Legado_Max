@@ -64,6 +64,7 @@ import io.legado.app.service.VideoPlayService
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.association.OnLineImportActivity
+import io.legado.app.ui.book.explore.ExploreShowActivity
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
@@ -149,6 +150,14 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     private var isFullScreen = false
     private var orientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     private var menuCustomBtn: MenuItem? = null
+
+    // 保存从视频内通过 java.open("explore") 打开的发现列表数据，
+    // 以便 onNewIntent 清除上方 Activity 后能在 finish 时重建返回栈
+    private var savedExploreName: String? = null
+    private var savedExploreUrl: String? = null
+    private var savedSourceUrl: String? = null
+    // 标记正在重建返回栈，避免 startActivity 拦截器重复保存
+    private var isRestoringStack = false
     private val bookSourceEditResult =
         registerForActivityResult(StartActivityContract(BookSourceEditActivity::class.java)) {
             if (it.resultCode == RESULT_OK) {
@@ -211,6 +220,19 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             }
             finish()
         }
+    }
+
+    /**
+     * 拦截 startActivity 调用，当发现列表(ExploreShowActivity)从视频内通过 java.open("explore") 启动时，
+     * 保存其 Intent 数据。这样在 onNewIntent 清除上方 Activity 后，finish 时可以重建发现列表。
+     */
+    override fun startActivity(intent: Intent?, options: Bundle?) {
+        if (!isRestoringStack && intent?.component?.className == ExploreShowActivity::class.java.name) {
+            savedExploreName = intent.getStringExtra("exploreName")
+            savedExploreUrl = intent.getStringExtra("exploreUrl")
+            savedSourceUrl = intent.getStringExtra("sourceUrl")
+        }
+        super.startActivity(intent, options)
     }
 
     /**
@@ -900,12 +922,27 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     }
 
     /**
-     * 当书籍通过 onNewIntent 切换时，singleTask 会清除上方的 BookInfoActivity，
-     * 导致返回时回到旧书籍详情页。此方法在 finish 前启动当前书籍的详情页。
+     * 当书籍通过 onNewIntent 切换时，singleTask 会清除上方的 Activity（包括发现列表和详情页），
+     * 导致返回时回到旧书籍详情页。此方法在 finish 前重建当前书籍的详情页，
+     * 并在发现列表存在时一并重建，使返回栈正确：[发现列表] → [当前书籍详情页]。
      */
     private fun navigateToBookInfoIfNeeded(book: Book) {
         if (!bookChangedViaNewIntent) return
         bookChangedViaNewIntent = false
+        // 如果之前从视频内通过 java.open("explore") 打开过发现列表，
+        // singleTask 会将其清除，需要重建以保持返回栈正确
+        if (savedSourceUrl != null) {
+            isRestoringStack = true
+            startActivity<ExploreShowActivity> {
+                putExtra("exploreName", savedExploreName)
+                putExtra("sourceUrl", savedSourceUrl)
+                putExtra("exploreUrl", savedExploreUrl)
+            }
+            isRestoringStack = false
+            savedExploreName = null
+            savedExploreUrl = null
+            savedSourceUrl = null
+        }
         startActivity<BookInfoActivity> {
             putExtra("bookUrl", book.bookUrl)
             putExtra("inBookshelf", VideoPlay.inBookshelf)
@@ -956,6 +993,12 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             isStartingNew = false
             VideoPlay.markReadStart()
             return
+        }
+        // 用户从其他界面返回但未切换书籍，清除过期的发现列表数据
+        if (!bookChangedViaNewIntent) {
+            savedExploreName = null
+            savedExploreUrl = null
+            savedSourceUrl = null
         }
         VideoPlay.onResume()
     }
