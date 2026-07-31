@@ -196,9 +196,9 @@
             android:launchMode="singleTask" />
         <!-- 视频播放器界面 -->
         <activity
-            android:name="io.legado.app.ui.video.VideoPlayerActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
-            android:launchMode="singleTask" />
+android:name="io.legado.app.ui.video.VideoPlayerActivity"
+android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
+android:launchMode="standard" />
         <!-- 授权界面 -->
         <activity
             android:name="io.legado.app.lib.permission.PermissionActivity"
