@@ -64,7 +64,6 @@ import io.legado.app.service.VideoPlayService
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.association.OnLineImportActivity
-import io.legado.app.ui.book.explore.ExploreShowActivity
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
@@ -93,6 +92,7 @@ import io.legado.app.utils.toggleSystemBar
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import io.legado.app.help.InnerBrowserLinkResolver
+import java.lang.ref.WeakReference
 import androidx.compose.ui.platform.ComposeView
 import io.legado.app.ui.theme.LegadoTheme
 import io.noties.markwon.Markwon
@@ -106,6 +106,11 @@ import kotlinx.coroutines.withContext
 
 class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlayerViewModel>(),
     SettingsDialog.CallBack,RssFavoritesDialog.Callback {
+
+    companion object {
+        @Volatile
+        private var currentInstance: WeakReference<VideoPlayerActivity>? = null
+    }
     override val binding by viewBinding(ActivityVideoPlayerBinding::inflate)
     override val viewModel by viewModels<VideoPlayerViewModel>()
     private val playerView: VideoPlayer by lazy { binding.playerView }
@@ -146,18 +151,11 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     }
     private var isNew = true
     private var isStartingNew = false
-    private var bookChangedViaNewIntent = false
     private var isFullScreen = false
     private var orientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     private var menuCustomBtn: MenuItem? = null
-
-    // 保存从视频内通过 java.open("explore") 打开的发现列表数据，
-    // 以便 onNewIntent 清除上方 Activity 后能在 finish 时重建返回栈
-    private var savedExploreName: String? = null
-    private var savedExploreUrl: String? = null
-    private var savedSourceUrl: String? = null
-    // 标记正在重建返回栈，避免 startActivity 拦截器重复保存
-    private var isRestoringStack = false
+    // 标记当前实例正被新实例替换，跳过 finish 弹窗和 onDestroy 中的 saveRead
+    private var isFinishingDueToReplacement = false
     private val bookSourceEditResult =
         registerForActivityResult(StartActivityContract(BookSourceEditActivity::class.java)) {
             if (it.resultCode == RESULT_OK) {
@@ -196,6 +194,13 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
 
     @OptIn(UnstableApi::class)
     override fun onActivityCreated(savedInstanceState: Bundle?) {
+        // 改用 standard 启动模式后，新实例创建时自动 finish 旧实例，
+        // 避免返回栈中出现多个 VideoPlayerActivity
+        currentInstance?.get()?.let { old ->
+            old.isFinishingDueToReplacement = true
+            old.finish()
+        }
+        currentInstance = WeakReference(this)
         playerView.enlargeImageRes = R.drawable.ic_fullscreen
         isNew = intent.getBooleanExtra("isNew", true)
         if (isNew) {
@@ -223,42 +228,7 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     }
 
     /**
-     * 拦截 startActivity 调用，当发现列表(ExploreShowActivity)从视频内通过 java.open("explore") 启动时，
-     * 保存其 Intent 数据。这样在 onNewIntent 清除上方 Activity 后，finish 时可以重建发现列表。
-     */
-    override fun startActivity(intent: Intent?, options: Bundle?) {
-        if (!isRestoringStack && intent?.component?.className == ExploreShowActivity::class.java.name) {
-            savedExploreName = intent.getStringExtra("exploreName")
-            savedExploreUrl = intent.getStringExtra("exploreUrl")
-            savedSourceUrl = intent.getStringExtra("sourceUrl")
-        }
-        super.startActivity(intent, options)
-    }
-
-    /**
-     * 处理 singleTask 复用 Activity 时收到的新 Intent。
-     * 当从发现列表/书籍详情页切换书籍时，旧 Activity 会被复用，
-     * 新的 bookUrl 通过 onNewIntent 传入，需要重新初始化播放。
-     */
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        // 如果在全屏模式，先退出全屏
-        if (isFullScreen) {
-            toggleFullScreen()
-        }
-        // 标记书籍是通过 onNewIntent 切换的，finish 时需导航到当前书籍详情页
-        bookChangedViaNewIntent = true
-        // 清理上本书的内嵌 WebView（<useweb> 简介），防止重复切换时 WebView 泄漏
-        destroyWeb()
-        startNewSession()
-        initView()
-        upView()
-    }
-
-    /**
      * 初始化新的播放会话：停止旧播放、重置状态、加载新书源数据、开始播放。
-     * 被 onActivityCreated(isNew=true) 和 onNewIntent() 共同调用。
      */
     private fun startNewSession() {
         // 标记新会话启动，跳过 onResume 恢复旧视频
@@ -887,16 +857,19 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     }
 
     override fun finish() {
+        if (isFinishingDueToReplacement) {
+            // 被新实例替换时直接 finish，不弹窗、不回调
+            super.finish()
+            return
+        }
         val book = VideoPlay.book ?: return super.finish()
         if (VideoPlay.inBookshelf) {
             callBackBookEnd()
-            navigateToBookInfoIfNeeded(book)
             return super.finish()
         }
         if (!AppConfig.showAddToShelfAlert) {
             callBackBookEnd()
             viewModel.removeFromBookshelf {
-                navigateToBookInfoIfNeeded(book)
                 super.finish()
             }
         } else {
@@ -907,45 +880,15 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
                     VideoPlay.book?.save()
                     VideoPlay.inBookshelf = true
                     setResult(RESULT_OK)
-                    navigateToBookInfoIfNeeded(book)
                     super.finish()
                 }
                 noButton {
                     callBackBookEnd()
                     viewModel.removeFromBookshelf {
-                        navigateToBookInfoIfNeeded(book)
                         super.finish()
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * 当书籍通过 onNewIntent 切换时，singleTask 会清除上方的 Activity（包括发现列表和详情页），
-     * 导致返回时回到旧书籍详情页。此方法在 finish 前重建当前书籍的详情页，
-     * 并在发现列表存在时一并重建，使返回栈正确：[发现列表] → [当前书籍详情页]。
-     */
-    private fun navigateToBookInfoIfNeeded(book: Book) {
-        if (!bookChangedViaNewIntent) return
-        bookChangedViaNewIntent = false
-        // 如果之前从视频内通过 java.open("explore") 打开过发现列表，
-        // singleTask 会将其清除，需要重建以保持返回栈正确
-        if (savedSourceUrl != null) {
-            isRestoringStack = true
-            startActivity<ExploreShowActivity> {
-                putExtra("exploreName", savedExploreName)
-                putExtra("sourceUrl", savedSourceUrl)
-                putExtra("exploreUrl", savedExploreUrl)
-            }
-            isRestoringStack = false
-            savedExploreName = null
-            savedExploreUrl = null
-            savedSourceUrl = null
-        }
-        startActivity<BookInfoActivity> {
-            putExtra("bookUrl", book.bookUrl)
-            putExtra("inBookshelf", VideoPlay.inBookshelf)
         }
     }
 
@@ -994,26 +937,24 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             VideoPlay.markReadStart()
             return
         }
-        // 用户从其他界面返回且非新会话启动，清除过期的发现列表数据。
-        // isStartingNew=true 的早退已保护 onNewIntent 后的数据不被清除，
-        // 能到达这里说明用户是从发现列表/设置等界面返回（未切换书籍），
-        // 此时 savedExploreData 已过期应清除，避免 finish 时误重建发现列表。
-        savedExploreName = null
-        savedExploreUrl = null
-        savedSourceUrl = null
         VideoPlay.onResume()
     }
 
     override fun onDestroy() {
         destroyWeb()
+        if (currentInstance?.get() == this) {
+            currentInstance = null
+        }
         super.onDestroy()
         if (initGetter) {
             glideImageGetter.clear()
         }
-        VideoPlay.saveRead()
-        VideoPlay.stopLoading()
-        playerView.getCurrentPlayer().release()
-        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (!isFinishingDueToReplacement) {
+            VideoPlay.saveRead()
+            VideoPlay.stopLoading()
+            playerView.getCurrentPlayer().release()
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     private fun destroyWeb() {
