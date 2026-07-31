@@ -64,6 +64,7 @@ import io.legado.app.service.VideoPlayService
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.association.OnLineImportActivity
+import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.login.SourceLoginActivity
@@ -144,6 +145,7 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     }
     private var isNew = true
     private var isStartingNew = false
+    private var bookChangedViaNewIntent = false
     private var isFullScreen = false
     private var orientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     private var menuCustomBtn: MenuItem? = null
@@ -223,6 +225,8 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         if (isFullScreen) {
             toggleFullScreen()
         }
+        // 标记书籍是通过 onNewIntent 切换的，finish 时需导航到当前书籍详情页
+        bookChangedViaNewIntent = true
         startNewSession()
         initView()
         upView()
@@ -862,11 +866,15 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         val book = VideoPlay.book ?: return super.finish()
         if (VideoPlay.inBookshelf) {
             callBackBookEnd()
+            navigateToBookInfoIfNeeded(book)
             return super.finish()
         }
         if (!AppConfig.showAddToShelfAlert) {
             callBackBookEnd()
-            viewModel.removeFromBookshelf { super.finish() }
+            viewModel.removeFromBookshelf {
+                navigateToBookInfoIfNeeded(book)
+                super.finish()
+            }
         } else {
             alert(title = getString(R.string.add_to_bookshelf)) {
                 setMessage(getString(R.string.check_add_bookshelf, book.name))
@@ -875,12 +883,30 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
                     VideoPlay.book?.save()
                     VideoPlay.inBookshelf = true
                     setResult(RESULT_OK)
+                    navigateToBookInfoIfNeeded(book)
+                    super.finish()
                 }
                 noButton {
                     callBackBookEnd()
-                    viewModel.removeFromBookshelf { super.finish() }
+                    viewModel.removeFromBookshelf {
+                        navigateToBookInfoIfNeeded(book)
+                        super.finish()
+                    }
                 }
             }
+        }
+    }
+
+    /**
+     * 当书籍通过 onNewIntent 切换时，singleTask 会清除上方的 BookInfoActivity，
+     * 导致返回时回到旧书籍详情页。此方法在 finish 前启动当前书籍的详情页。
+     */
+    private fun navigateToBookInfoIfNeeded(book: Book) {
+        if (!bookChangedViaNewIntent) return
+        bookChangedViaNewIntent = false
+        startActivity<BookInfoActivity> {
+            putExtra("bookUrl", book.bookUrl)
+            putExtra("inBookshelf", VideoPlay.inBookshelf)
         }
     }
 
