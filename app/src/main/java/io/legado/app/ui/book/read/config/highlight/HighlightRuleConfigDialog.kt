@@ -20,6 +20,7 @@ import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogHighlightRuleConfigBinding
 import io.legado.app.databinding.ItemHighlightPresetRuleBinding
 import io.legado.app.help.book.isLocal
+import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
@@ -99,7 +100,10 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
         super.onStart()
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.85f)
         dialog?.window?.setGravity(Gravity.BOTTOM)
-        dialog?.window?.setBackgroundDrawableResource(R.drawable.shape_highlight_rule_sheet)
+        dialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        if (!AppConfig.isEInkMode) {
+            view?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
     }
 
     /** Fragment 视图创建完毕：初始化主题、RecyclerView、按钮监听并加载规则。 */

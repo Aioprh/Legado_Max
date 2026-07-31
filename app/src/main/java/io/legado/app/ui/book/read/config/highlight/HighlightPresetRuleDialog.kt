@@ -17,6 +17,7 @@ import io.legado.app.databinding.DialogHighlightPresetRuleBinding
 import io.legado.app.databinding.ItemHighlightPresetAddBinding
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.utils.ColorUtils
@@ -46,7 +47,10 @@ class HighlightPresetRuleDialog @JvmOverloads constructor(
         super.onStart()
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.85f)
         dialog?.window?.setGravity(Gravity.BOTTOM)
-        dialog?.window?.setBackgroundDrawableResource(R.drawable.shape_highlight_rule_sheet)
+        dialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        if (!AppConfig.isEInkMode) {
+            view?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {

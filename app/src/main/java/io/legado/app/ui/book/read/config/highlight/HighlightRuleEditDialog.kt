@@ -80,7 +80,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, 0.85f)
         dialog?.window?.setGravity(Gravity.BOTTOM)
         dialog?.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-        dialog?.window?.setBackgroundDrawableResource(R.drawable.shape_highlight_rule_sheet)
+        dialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
