@@ -26,6 +26,7 @@ import io.legado.app.databinding.ItemThemeConfigBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ApplicationThemeManager
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.ui.widget.recycler.VerticalDivider
@@ -376,6 +377,9 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             ivDelete.visibility = View.GONE
             ivCurrent.visibility = if (item.isCurrent) View.VISIBLE else View.GONE
             tvApply.text = getString(if (item.isCurrent) R.string.applied else R.string.apply)
+            tvApply.setTextColor(
+                if (item.isCurrent) accentColor else ContextCompat.getColor(context, R.color.primaryText)
+            )
             val isNight = AppConfig.isNightTheme
             val previewTheme = if (isNight) config.nightTheme else config.dayTheme
             val background = parseThemeColor(
