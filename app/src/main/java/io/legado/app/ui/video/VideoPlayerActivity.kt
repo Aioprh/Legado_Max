@@ -994,12 +994,13 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             VideoPlay.markReadStart()
             return
         }
-        // 用户从其他界面返回但未切换书籍，清除过期的发现列表数据
-        if (!bookChangedViaNewIntent) {
-            savedExploreName = null
-            savedExploreUrl = null
-            savedSourceUrl = null
-        }
+        // 用户从其他界面返回且非新会话启动，清除过期的发现列表数据。
+        // isStartingNew=true 的早退已保护 onNewIntent 后的数据不被清除，
+        // 能到达这里说明用户是从发现列表/设置等界面返回（未切换书籍），
+        // 此时 savedExploreData 已过期应清除，避免 finish 时误重建发现列表。
+        savedExploreName = null
+        savedExploreUrl = null
+        savedSourceUrl = null
         VideoPlay.onResume()
     }
 
