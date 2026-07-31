@@ -227,6 +227,8 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         }
         // 标记书籍是通过 onNewIntent 切换的，finish 时需导航到当前书籍详情页
         bookChangedViaNewIntent = true
+        // 清理上本书的内嵌 WebView（<useweb> 简介），防止重复切换时 WebView 泄漏
+        destroyWeb()
         startNewSession()
         initView()
         upView()
