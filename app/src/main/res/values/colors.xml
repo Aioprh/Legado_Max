@@ -152,4 +152,8 @@
     <color name="border_add_button">#08000000</color>
     <color name="background_action_button">#04000000</color>
     <color name="background_preview_card">#FFFFFF</color>
+
+    <!-- 管理界面半透明层级色（日间用黑叠加，夜间用白叠加，随背景自然融合） -->
+    <color name="background_card_surface">#0F000000</color>
+    <color name="border_card_surface">#1A000000</color>
 </resources>
