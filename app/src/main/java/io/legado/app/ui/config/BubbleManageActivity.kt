@@ -140,7 +140,7 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
         tvAddTheme.text = getString(R.string.add)
         tvAddTheme.setTextColor(themePrimaryTextColor())
         tvAddTheme.background = UiCorner.actionSelector(
-            ContextCompat.getColor(this@BubbleManageActivity, R.color.background_card),
+            ContextCompat.getColor(this@BubbleManageActivity, R.color.background_card_surface),
             ContextCompat.getColor(this@BubbleManageActivity, R.color.background_menu),
             UiCorner.actionRadius(this@BubbleManageActivity)
         )
@@ -586,9 +586,9 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
             setPadding(dp(18), dp(12), dp(18), dp(12))
-            background = UiCorner.panelRounded(
+            background = UiCorner.surfaceRounded(
                 this@BubbleManageActivity,
-                ContextCompat.getColor(this@BubbleManageActivity, R.color.background_card),
+                ContextCompat.getColor(this@BubbleManageActivity, R.color.background_card_surface),
                 UiCorner.panelRadius(this@BubbleManageActivity)
             )
             layoutParams = LinearLayout.LayoutParams(
@@ -719,9 +719,9 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
                 gravity = android.view.Gravity.CENTER_VERTICAL
                 setPadding(12.dp, 10.dp, 12.dp, 10.dp)
                 minimumHeight = BUBBLE_ITEM_MIN_HEIGHT_DP.dp
-                background = UiCorner.panelRounded(
+                background = UiCorner.surfaceRounded(
                     this@BubbleManageActivity,
-                    ContextCompat.getColor(parent.context, R.color.background_card),
+                    ContextCompat.getColor(parent.context, R.color.background_card_surface),
                     UiCorner.panelRadius(this@BubbleManageActivity)
                 )
                 layoutParams = RecyclerView.LayoutParams(
