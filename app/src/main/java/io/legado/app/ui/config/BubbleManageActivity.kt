@@ -19,6 +19,7 @@ import android.widget.TextView
 import androidx.appcompat.widget.SwitchCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.use
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -759,18 +760,16 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
                 applyUiLabelStyle(this@BubbleManageActivity)
                 setTextColor(themeSecondaryTextColor())
             }
-            private val action = TextView(itemRoot.context).apply {
-                gravity = android.view.Gravity.CENTER
-                minWidth = 62.dp
-                minHeight = 36.dp
-                background = UiCorner.actionSelector(
-                    Color.TRANSPARENT,
-                    ContextCompat.getColor(itemRoot.context, R.color.background_menu),
-                    UiCorner.actionRadius(this@BubbleManageActivity)
-                )
-                setTextColor(themePrimaryTextColor())
-                typeface = this@BubbleManageActivity.uiTypeface()
+            private val buttonRow = LinearLayout(itemRoot.context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = 8.dp }
             }
+            private val tvApply = createActionButton()
+            private val tvEdit = createActionButton()
+            private val tvMore = createActionButton()
             private val checkBox = CheckBox(itemRoot.context).apply {
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -785,10 +784,37 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
             init {
                 textBox.addView(title)
                 textBox.addView(info)
+                textBox.addView(buttonRow)
+                buttonRow.addView(tvApply)
+                buttonRow.addView(android.widget.Space(itemRoot.context).apply {
+                    layoutParams = LinearLayout.LayoutParams(8.dp, 0)
+                })
+                buttonRow.addView(tvEdit)
+                buttonRow.addView(android.widget.Space(itemRoot.context).apply {
+                    layoutParams = LinearLayout.LayoutParams(8.dp, 0)
+                })
+                buttonRow.addView(tvMore)
                 itemRoot.addView(preview)
                 itemRoot.addView(textBox)
-                itemRoot.addView(action)
                 itemRoot.addView(checkBox)
+            }
+
+            private fun createActionButton(): TextView {
+                return TextView(itemRoot.context).apply {
+                    gravity = android.view.Gravity.CENTER
+                    minWidth = 56.dp
+                    minHeight = 34.dp
+                    setPadding(12.dp, 0, 12.dp, 0)
+                    textSize = 13f
+                    setTextColor(themePrimaryTextColor())
+                    typeface = this@BubbleManageActivity.uiTypeface()
+                    background = ContextCompat.getDrawable(itemRoot.context, R.drawable.bg_action_button)
+                    foreground = itemRoot.context.obtainStyledAttributes(
+                        intArrayOf(android.R.attr.selectableItemBackground)
+                    ).use { it.getDrawable(0) }
+                    isClickable = true
+                    isFocusable = true
+                }
             }
 
             fun bind(entry: BubblePackageManager.Entry) {
@@ -820,20 +846,26 @@ class BubbleManageActivity : BaseActivity<ActivityThemeManageBinding>(), ColorPi
                     }
                 }
                 if (isMultiSelectMode) {
-                    action.visibility = View.GONE
+                    buttonRow.visibility = View.GONE
                     checkBox.visibility = View.VISIBLE
                     checkBox.isChecked = selectedPositions.contains(layoutPosition)
                     itemRoot.setOnClickListener { toggleSelection(layoutPosition) }
                     itemRoot.setOnLongClickListener(null)
                 } else {
-                    action.visibility = View.VISIBLE
+                    buttonRow.visibility = View.VISIBLE
                     checkBox.visibility = View.GONE
-                    action.text = if (active) getString(R.string.applied) else getString(R.string.apply)
-                    action.setTextColor(if (active) accentColor else themePrimaryTextColor())
-                    action.setOnClickListener { applyEntry(entry) }
+                    val isBuiltin = entry.source == BubblePackageManager.Source.BUILTIN
+                    tvApply.text = getString(if (active) R.string.applied else R.string.apply)
+                    tvApply.setTextColor(if (active) accentColor else themePrimaryTextColor())
+                    tvApply.setOnClickListener { applyEntry(entry) }
+                    tvEdit.text = getString(R.string.edit)
+                    tvEdit.visibility = if (isBuiltin) View.GONE else View.VISIBLE
+                    tvEdit.setOnClickListener { if (!isBuiltin) showEditDialog(entry) }
+                    tvMore.text = getString(R.string.more)
+                    tvMore.setOnClickListener { showActions(entry) }
                     itemRoot.setOnClickListener { showActions(entry) }
                     itemRoot.setOnLongClickListener {
-                        if (entry.source != BubblePackageManager.Source.BUILTIN) {
+                        if (!isBuiltin) {
                             enterMultiSelectMode(layoutPosition)
                         }
                         true
