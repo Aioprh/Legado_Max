@@ -950,11 +950,13 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             glideImageGetter.clear()
         }
         if (!isFinishingDueToReplacement) {
+            // 仅跳过操作 VideoPlay 单例的方法（会影响新实例的播放器）
             VideoPlay.saveRead()
             VideoPlay.stopLoading()
-            playerView.getCurrentPlayer().release()
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+        // 以下操作的是本实例自己的资源，被替换时也必须执行，否则媒体播放器资源泄漏
+        playerView.getCurrentPlayer().release()
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     private fun destroyWeb() {
