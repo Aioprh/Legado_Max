@@ -2,7 +2,6 @@ package io.legado.app.help.config
 
 import android.content.Context
 import android.graphics.Color
-import android.net.Uri
 import androidx.annotation.Keep
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
@@ -98,6 +97,15 @@ object ApplicationThemeManager {
         val images: List<String>
     )
 
+    /** 导入应用主题时的可选创建范围，控制是否将各子配置创建到相应界面 */
+    @Keep
+    data class ImportOptions(
+        val importTheme: Boolean = true,
+        val importTopBar: Boolean = true,
+        val importBottomBar: Boolean = true,
+        val importCover: Boolean = true
+    )
+
     /** 从文件加载所有应用主题配置，自动校验大小和格式 */
     fun load(): MutableList<Config> {
         val file = File(filePath)
@@ -117,25 +125,43 @@ object ApplicationThemeManager {
 
     /** 导出当前应用主题为 zip 文件（含所有关联资源） */
     fun exportCurrent(context: Context): File {
-        val current = load().firstOrNull { isCurrent(context, it) }
-            ?: captureCurrent(context, appCtx.getString(io.legado.app.R.string.application_theme_manage))
+        val current = (load().firstOrNull { isCurrent(context, it) }
+            ?: captureCurrent(context, appCtx.getString(io.legado.app.R.string.application_theme_manage)))
+            .let { config ->
+                // 从 SharedPreferences 刷新背景图路径，确保导出的是当前实际使用的背景图。
+                // 用户可能通过「主题设置」偏好页面修改了背景图，而已保存的应用主题配置中
+                // 的 backgroundImgPath 可能仍是旧值。
+                config.copy(
+                    dayTheme = config.dayTheme?.copy(
+                        backgroundImgPath = context.getPrefString(PreferKey.bgImage)
+                    ),
+                    nightTheme = config.nightTheme?.copy(
+                        backgroundImgPath = context.getPrefString(PreferKey.bgImageN)
+                    )
+                )
+            }
         validateForApply(context, current)
+        return exportConfig(context, current)
+    }
+
+    /** 导出指定应用主题为 zip 文件（含所有关联资源） */
+    fun exportConfig(context: Context, config: Config): File {
         val dir = appCtx.cacheDir.resolve("applicationThemeExports").apply { mkdirs() }
-        val exportName = current.name.normalizeFileName().ifBlank { "application_theme" }
+        val exportName = config.name.normalizeFileName().ifBlank { "application_theme" }
         return dir.resolve("$exportName.zip").apply {
             ZipOutputStream(outputStream().buffered()).use { zip ->
-                val packagedConfig = current.copy(
-                    dayTheme = packageTheme(zip, current.dayTheme, "themes/day"),
-                    nightTheme = packageTheme(zip, current.nightTheme, "themes/night")
+                val packagedConfig = config.copy(
+                    dayTheme = packageTheme(zip, config.dayTheme, "themes/day"),
+                    nightTheme = packageTheme(zip, config.nightTheme, "themes/night")
                 )
                 val data = PackageData(
                     config = packagedConfig,
-                    dayTopBar = packageTopBar(zip, context, false, current.dayTopBarDir, "topbar/day"),
-                    nightTopBar = packageTopBar(zip, context, true, current.nightTopBarDir, "topbar/night"),
-                    dayBottomBar = packageBottomBar(zip, context, false, current.dayBottomBarId, "bottombar/day"),
-                    nightBottomBar = packageBottomBar(zip, context, true, current.nightBottomBarId, "bottombar/night"),
-                    dayCover = packageCover(zip, current.dayCoverGroupId, "covers/day"),
-                    nightCover = packageCover(zip, current.nightCoverGroupId, "covers/night")
+                    dayTopBar = packageTopBar(zip, context, false, config.dayTopBarDir, "topbar/day"),
+                    nightTopBar = packageTopBar(zip, context, true, config.nightTopBarDir, "topbar/night"),
+                    dayBottomBar = packageBottomBar(zip, context, false, config.dayBottomBarId, "bottombar/day"),
+                    nightBottomBar = packageBottomBar(zip, context, true, config.nightBottomBarId, "bottombar/night"),
+                    dayCover = packageCover(zip, config.dayCoverGroupId, "covers/day"),
+                    nightCover = packageCover(zip, config.nightCoverGroupId, "covers/night")
                 )
                 zip.putNextEntry(ZipEntry("application_theme.json"))
                 zip.write(GSON.toJson(data).toByteArray())
@@ -148,38 +174,22 @@ object ApplicationThemeManager {
      * 导入应用主题文件。
      * 支持 zip（含资源）和纯 json（仅配置）两种格式。
      * 自动处理名称冲突，添加数字后缀。
+     * @param options 导入选项，控制是否创建各子配置；null 表示全部创建
      */
-    suspend fun importFile(file: File): Config {
+    suspend fun importFile(file: File, options: ImportOptions? = null): Config {
         val isZip = file.inputStream().use { input ->
             input.read() == 'P'.code && input.read() == 'K'.code
         }
-        if (isZip) return importZip(file)
+        if (isZip) return importZip(file, options)
         require(file.length() <= maxManifestBytes) { appCtx.getString(R.string.app_theme_file_too_large) }
         val imported = sanitize(
             GSON.fromJson(file.readText(), Config::class.java)
                 ?: throw IllegalArgumentException("Invalid application theme")
         )
-        val items = load()
-        val baseName = imported.name.trim().ifBlank {
-            appCtx.getString(io.legado.app.R.string.application_theme_manage)
-        }
-        var name = baseName
-        var suffix = 2
-        while (items.any { it.name == name }) {
-            name = "$baseName $suffix"
-            suffix++
-        }
-        val next = imported.copy(
-            id = UUID.randomUUID().toString(),
-            name = name,
-            updatedAt = System.currentTimeMillis()
-        )
-        items.add(next)
-        save(items)
-        return next
+        return addImported(stripComponents(imported, options))
     }
 
-    private suspend fun importZip(file: File): Config {
+    private suspend fun importZip(file: File, options: ImportOptions?): Config {
         val temp = appCtx.cacheDir.resolve("applicationThemeImport/${System.currentTimeMillis()}").apply { mkdirs() }
         try {
             ZipFile(file).use { zip ->
@@ -190,16 +200,20 @@ object ApplicationThemeManager {
                     GSON.fromJson(it, PackageData::class.java)
                 } ?: throw IllegalArgumentException(appCtx.getString(R.string.app_theme_invalid_format))
                 require(data.version == 1) { appCtx.getString(R.string.app_theme_unsupported_version) }
-                validatePackage(zip, data)
+                validatePackage(zip, data, options)
                 val source = sanitize(data.config)
-                val dayTheme = restoreThemeAsset(zip, temp, source.dayTheme, false)
-                val nightTheme = restoreThemeAsset(zip, temp, source.nightTheme, true)
-                val dayTop = restoreTopBar(zip, temp, false, source.dayTopBarDir, data.dayTopBar)
-                val nightTop = restoreTopBar(zip, temp, true, source.nightTopBarDir, data.nightTopBar)
-                val dayBottom = restoreBottomBar(zip, temp, false, data.dayBottomBar)
-                val nightBottom = restoreBottomBar(zip, temp, true, data.nightBottomBar)
-                val dayCover = restoreCover(zip, temp, data.dayCover)
-                val nightCover = restoreCover(zip, temp, data.nightCover)
+                val importTheme = options?.importTheme ?: true
+                val importTopBar = options?.importTopBar ?: true
+                val importBottomBar = options?.importBottomBar ?: true
+                val importCover = options?.importCover ?: true
+                val dayTheme = if (importTheme) restoreThemeAsset(zip, temp, source.dayTheme, false) else source.dayTheme?.copy(backgroundImgPath = null)
+                val nightTheme = if (importTheme) restoreThemeAsset(zip, temp, source.nightTheme, true) else source.nightTheme?.copy(backgroundImgPath = null)
+                val dayTop = if (importTopBar) restoreTopBar(zip, temp, false, source.dayTopBarDir, data.dayTopBar) else TopBarConfig.DEFAULT_DIR_NAME
+                val nightTop = if (importTopBar) restoreTopBar(zip, temp, true, source.nightTopBarDir, data.nightTopBar) else TopBarConfig.DEFAULT_DIR_NAME
+                val dayBottom = if (importBottomBar) restoreBottomBar(zip, temp, false, data.dayBottomBar) else null
+                val nightBottom = if (importBottomBar) restoreBottomBar(zip, temp, true, data.nightBottomBar) else null
+                val dayCover = if (importCover) restoreCover(zip, temp, data.dayCover) else null
+                val nightCover = if (importCover) restoreCover(zip, temp, data.nightCover) else null
                 return addImported(
                     source.copy(
                         dayTheme = dayTheme,
@@ -216,6 +230,21 @@ object ApplicationThemeManager {
         } finally {
             temp.deleteRecursively()
         }
+    }
+
+    /** 按导入选项剥离未选中的组件，将对应字段置为默认值 */
+    private fun stripComponents(config: Config, options: ImportOptions?): Config {
+        if (options == null) return config
+        return config.copy(
+            dayTheme = if (options.importTheme) config.dayTheme else config.dayTheme?.copy(backgroundImgPath = null),
+            nightTheme = if (options.importTheme) config.nightTheme else config.nightTheme?.copy(backgroundImgPath = null),
+            dayTopBarDir = if (options.importTopBar) config.dayTopBarDir else TopBarConfig.DEFAULT_DIR_NAME,
+            nightTopBarDir = if (options.importTopBar) config.nightTopBarDir else TopBarConfig.DEFAULT_DIR_NAME,
+            dayBottomBarId = if (options.importBottomBar) config.dayBottomBarId else null,
+            nightBottomBarId = if (options.importBottomBar) config.nightBottomBarId else null,
+            dayCoverGroupId = if (options.importCover) config.dayCoverGroupId else null,
+            nightCoverGroupId = if (options.importCover) config.nightCoverGroupId else null
+        )
     }
 
     private fun addImported(imported: Config): Config {
@@ -247,15 +276,23 @@ object ApplicationThemeManager {
     fun captureCurrent(context: Context, name: String, id: String? = null): Config {
         val dayThemeName = context.getPrefString(PreferKey.dThemeName).orEmpty()
         val nightThemeName = context.getPrefString(PreferKey.dNThemeName).orEmpty()
+        val dayTheme = ThemeConfig.configList.firstOrNull {
+            !it.isNightTheme && it.themeName == dayThemeName
+        }?.copy()
+        val nightTheme = ThemeConfig.configList.firstOrNull {
+            it.isNightTheme && it.themeName == nightThemeName
+        }?.copy()
+        // 使用 SharedPreferences 中的实时值覆盖 backgroundImgPath。
+        // 用户可能通过「主题设置」偏好页面直接修改了背景图（写入 PreferKey.bgImage / bgImageN），
+        // 而该修改不会同步更新 ThemeConfig.configList 中的模板配置，
+        // 因此必须从 SharedPreferences 读取当前实际使用的背景图路径。
+        dayTheme?.backgroundImgPath = context.getPrefString(PreferKey.bgImage)
+        nightTheme?.backgroundImgPath = context.getPrefString(PreferKey.bgImageN)
         return Config(
             id = id ?: UUID.randomUUID().toString(),
             name = name.trim(),
-            dayTheme = ThemeConfig.configList.firstOrNull {
-                !it.isNightTheme && it.themeName == dayThemeName
-            }?.copy(),
-            nightTheme = ThemeConfig.configList.firstOrNull {
-                it.isNightTheme && it.themeName == nightThemeName
-            }?.copy(),
+            dayTheme = dayTheme,
+            nightTheme = nightTheme,
             dayTopBarDir = TopBarConfig.activeDirName(false),
             nightTopBarDir = TopBarConfig.activeDirName(true),
             dayBottomBarId = NavigationBarConfig.activeConfig(context, false).id,
@@ -462,13 +499,25 @@ object ApplicationThemeManager {
         isNight: Boolean
     ): ThemeConfig.Config? {
         theme ?: return null
-        val path = theme.backgroundImgPath ?: return theme.copy(isNightTheme = isNight)
-        if (path.startsWith("http", true)) return theme.copy(isNightTheme = isNight)
-        val extracted = extractAsset(zip, temp, path) ?: return theme.copy(isNightTheme = isNight, backgroundImgPath = null)
-        val dir = appCtx.externalFiles.getFile(if (isNight) PreferKey.bgImageN else PreferKey.bgImage).apply { mkdirs() }
-        val target = dir.getFile("application_theme_${UUID.randomUUID()}.${extracted.extension.ifBlank { "jpg" }}")
-        extracted.copyTo(target, overwrite = true)
-        return theme.copy(isNightTheme = isNight, backgroundImgPath = target.absolutePath)
+        val path = theme.backgroundImgPath
+        var restored = theme.copy(isNightTheme = isNight)
+        if (path != null && !path.startsWith("http", true)) {
+            val extracted = extractAsset(zip, temp, path)
+            if (extracted != null) {
+                val dir = appCtx.externalFiles.getFile(if (isNight) PreferKey.bgImageN else PreferKey.bgImage).apply { mkdirs() }
+                val target = dir.getFile("application_theme_${UUID.randomUUID()}.${extracted.extension.ifBlank { "jpg" }}")
+                extracted.copyTo(target, overwrite = true)
+                restored = restored.copy(backgroundImgPath = target.absolutePath)
+            } else {
+                restored = restored.copy(backgroundImgPath = null)
+            }
+        }
+        // 将导入的主题添加到 ThemeConfig.configList，使其在主题管理列表中可见
+        val usedNames = ThemeConfig.configList.filter { it.isNightTheme == isNight }.map { it.themeName }.toSet()
+        val uniqueThemeName = uniqueName(restored.themeName, usedNames)
+        restored = restored.copy(themeName = uniqueThemeName)
+        ThemeConfig.addConfig(restored)
+        return restored
     }
 
     private fun restoreTopBar(
@@ -522,8 +571,8 @@ object ApplicationThemeManager {
         val repository = CoverGalleryRepository()
         val usedNames = repository.allGroupsWithImages().map { it.group.name }.toSet()
         val groupId = repository.addGroup(uniqueName(payload.name, usedNames))
-        val uris = payload.images.mapNotNull { extractAsset(zip, temp, it) }.map(Uri::fromFile)
-        if (uris.isNotEmpty()) repository.addImages(appCtx, groupId, uris)
+        val files = payload.images.mapNotNull { extractAsset(zip, temp, it) }
+        if (files.isNotEmpty()) repository.addImageFiles(appCtx, groupId, files)
         return groupId
     }
 
@@ -546,20 +595,32 @@ object ApplicationThemeManager {
         return "$normalized $index"
     }
 
-    private fun validatePackage(zip: ZipFile, data: PackageData) {
+    private fun validatePackage(zip: ZipFile, data: PackageData, options: ImportOptions? = null) {
+        val importTheme = options?.importTheme ?: true
+        val importTopBar = options?.importTopBar ?: true
+        val importBottomBar = options?.importBottomBar ?: true
+        val importCover = options?.importCover ?: true
         val assetPaths = buildList {
-            listOfNotNull(data.config.dayTheme, data.config.nightTheme).forEach { theme ->
-                theme.backgroundImgPath?.takeUnless { it.startsWith("http", true) }?.let(::add)
+            if (importTheme) {
+                listOfNotNull(data.config.dayTheme, data.config.nightTheme).forEach { theme ->
+                    theme.backgroundImgPath?.takeUnless { it.startsWith("http", true) }?.let(::add)
+                }
             }
-            listOfNotNull(data.dayTopBar, data.nightTopBar).forEach { topBar ->
-                topBar.wallpaperPath?.let(::add)
+            if (importTopBar) {
+                listOfNotNull(data.dayTopBar, data.nightTopBar).forEach { topBar ->
+                    topBar.wallpaperPath?.let(::add)
+                }
             }
-            listOfNotNull(data.dayBottomBar, data.nightBottomBar).forEach { bottomBar ->
-                addAll(bottomBar.icons.values)
+            if (importBottomBar) {
+                listOfNotNull(data.dayBottomBar, data.nightBottomBar).forEach { bottomBar ->
+                    addAll(bottomBar.icons.values)
+                }
             }
-            listOfNotNull(data.dayCover, data.nightCover).forEach { cover ->
-                require(cover.images.size <= maxCoverImages) { appCtx.getString(R.string.app_theme_too_many_cover_images) }
-                addAll(cover.images)
+            if (importCover) {
+                listOfNotNull(data.dayCover, data.nightCover).forEach { cover ->
+                    require(cover.images.size <= maxCoverImages) { appCtx.getString(R.string.app_theme_too_many_cover_images) }
+                    addAll(cover.images)
+                }
             }
         }
         require(assetPaths.distinct().size == assetPaths.size) { appCtx.getString(R.string.app_theme_duplicate_assets) }

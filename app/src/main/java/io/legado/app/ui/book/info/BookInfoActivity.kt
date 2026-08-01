@@ -276,6 +276,7 @@ class BookInfoActivity :
         binding.titleBar.setBackgroundResource(R.color.transparent)
         binding.refreshLayout?.setColorSchemeColors(accentColor)
         binding.arcView?.setBgColor(backgroundColor)
+        binding.llContentBg?.setBackgroundColor(backgroundColor)
         binding.llInfo.setBackgroundColor(backgroundColor)
         binding.llAuthorOtherWorks?.setBackgroundColor(backgroundColor)
         binding.vSpacerBottom?.setBackgroundColor(backgroundColor)
@@ -285,7 +286,7 @@ class BookInfoActivity :
             binding.ivCoverC.setCardBackgroundColor(android.graphics.Color.TRANSPARENT)
         }
         binding.flAction.setBackgroundColor(bottomBackground)
-        binding.vwBg.applyNavigationBarPadding()
+        binding.flAction.applyNavigationBarPadding(withInitialPadding = true)
         binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
         binding.tvToc.text = getString(R.string.toc_s, getString(R.string.loading))
         initAuthorOtherWorksView()
@@ -440,9 +441,15 @@ class BookInfoActivity :
                 }
             }
 
-            R.id.menu_clear_cache -> viewModel.getBook()?.let {
-                    SourceCallBack.callBackBtn(this, SourceCallBack.CLICK_CLEAR_CACHE, viewModel.bookSource, it, null) {
-                        viewModel.clearCache(it)
+            R.id.menu_clear_cache -> viewModel.getBook()?.let { book ->
+                    alert(R.string.clear_cache) {
+                        setMessage(getString(R.string.sure_clear_cache, book.name))
+                        noButton()
+                        yesButton {
+                            SourceCallBack.callBackBtn(this@BookInfoActivity, SourceCallBack.CLICK_CLEAR_CACHE, viewModel.bookSource, book, null) {
+                                viewModel.clearCache(book)
+                            }
+                        }
                     }
                 }
             R.id.menu_log -> showDialogFragment<AppLogDialog>()

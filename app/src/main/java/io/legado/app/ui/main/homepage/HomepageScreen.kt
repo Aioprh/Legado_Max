@@ -182,9 +182,14 @@ fun HomepageScreen(
         )
     }
 
+    // contentWindowInsets = WindowInsets(0)：不消费系统导航栏 inset，
+    // 让系统正常处理导航栏区域（施加 padding + 绘制 navigationBarColor），
+    // 与其他 View-based Fragment 行为一致。
+    // 顶栏的状态栏 inset 由 topBar 内的 windowInsetsPadding(WindowInsets.statusBars) 独立处理。
     Scaffold(
         modifier = Modifier,
         containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             val topBarColors = pageTopBarColors()
             Box(

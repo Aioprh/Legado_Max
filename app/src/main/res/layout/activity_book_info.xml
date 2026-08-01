@@ -88,10 +88,16 @@
                     </RelativeLayout>
 
                     <LinearLayout
-                        android:id="@+id/ll_info"
+                        android:id="@+id/ll_content_bg"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:background="@color/background"
+                        android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/ll_info"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:paddingLeft="8dp"
                         android:paddingRight="8dp"
@@ -490,8 +496,10 @@
                     <View
                         android:id="@+id/v_spacer_bottom"
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@color/background" />
+                        android:layout_height="0dp"
+                        android:layout_weight="1" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 

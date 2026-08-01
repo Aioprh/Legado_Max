@@ -29,8 +29,9 @@ object PackageManageUi {
             setText(text)
             this.hint = hint
             applyUiInputStyle(context)
-            background = UiCorner.opaqueRounded(
-                ContextCompat.getColor(context, R.color.background_card),
+            background = UiCorner.surfaceRounded(
+                context,
+                ContextCompat.getColor(context, R.color.background_card_surface),
                 UiCorner.actionRadius(context)
             )
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 44.dp(context))
@@ -47,8 +48,9 @@ object PackageManageUi {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(14.dp(context), 0, 14.dp(context), 0)
-            background = UiCorner.opaqueRounded(
-                ContextCompat.getColor(context, R.color.background_card),
+            background = UiCorner.surfaceRounded(
+                context,
+                ContextCompat.getColor(context, R.color.background_card_surface),
                 UiCorner.actionRadius(context)
             )
             layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 46.dp(context)).apply {
