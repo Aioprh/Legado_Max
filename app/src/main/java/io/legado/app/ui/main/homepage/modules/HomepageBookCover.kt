@@ -47,7 +47,7 @@ fun HomepageBookCover(
     cornerRadius: Dp = 8.dp,
     identity: String? = null,
 ) {
-    val galleryDefaultCover = BookCover.getGalleryDefaultCover(identity)
+    val galleryDefaultCover = BookCover.getGalleryDefaultCover(identity, coverUrl)
     val useDefaultCover = AppConfig.useDefaultCover
     val coverShadowEnabled = AppConfig.bookCoverShadow
     // 图集默认封面优先于 useDefaultCover，使每本书获得随机图集封面

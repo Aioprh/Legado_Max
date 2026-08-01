@@ -178,6 +178,7 @@
     <string name="aloud_stop">朗讀停止</string>
     <string name="clear_cache">清理快取</string>
     <string name="clear_cache_success">成功清理快取</string>
+    <string name="sure_clear_cache">確定清理《%s》的快取嗎？</string>
     <string name="action_save">儲存</string>
     <string name="edit_source">編輯源</string>
     <string name="edit_book_source">編輯書源</string>
@@ -1728,6 +1729,8 @@
 <string name="application_theme_empty">暂无应用主题，请先调整界面配置，再保存当前组合。</string>
 <string name="application_theme_export">导出当前应用主题</string>
 <string name="application_theme_import">导入应用主题</string>
+<string name="application_theme_import_with_options">导入应用主题设置</string>
+<string name="application_theme_import_options_hint">勾選需要在匯入時建立的元件，未勾選的元件將被跳過（不建立）</string>
 <string name="application_theme_manage">应用主题</string>
 <string name="application_theme_name">应用主题名称</string>
 <string name="application_theme_name_exists">应用主题名称已存在</string>

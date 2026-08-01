@@ -183,6 +183,109 @@ interface ReadRecordDao {
     @Query("DELETE FROM readRecordSession WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor AND date(startTime / 1000, 'unixepoch', 'localtime') = :date")
     suspend fun deleteSessionsByBookAndDate(deviceId: String, bookName: String, bookAuthor: String, date: String)
 
+    // ==================== SQL 聚合查询（方案三：下推到数据库层） ====================
+
+    /**
+     * 按日期聚合统计：返回每天的阅读次数和总阅读时间。
+     * 用于热力图日历，一次查询替代内存 groupBy。
+     */
+    @Query(
+        "SELECT date, COUNT(*) as readCount, SUM(readTime) as totalReadTime " +
+            "FROM readRecordDetail GROUP BY date"
+    )
+    fun getDailyStats(): Flow<List<DailyReadStat>>
+
+    /**
+     * 指定日期的总阅读时间。
+     */
+    @Query("SELECT COALESCE(SUM(readTime), 0) FROM readRecordDetail WHERE date = :date")
+    fun getReadTimeByDate(date: String): Flow<Long>
+
+    /**
+     * 指定日期的阅读书籍数（去重）。
+     */
+    @Query(
+        "SELECT COUNT(*) FROM (SELECT DISTINCT deviceId, bookName, bookAuthor " +
+            "FROM readRecordDetail WHERE date = :date)"
+    )
+    fun getBookCountByDate(date: String): Flow<Int>
+
+    /**
+     * 分页查询过滤后的详情记录（搜索 + 日期筛选下推到 SQL）。
+     * 配合 [detailsCountFlow] 作为触发器使用，避免 CursorWindow 溢出。
+     */
+    @Query(
+        "SELECT * FROM readRecordDetail " +
+            "WHERE (:query = '' OR bookName LIKE '%' || :query || '%' OR bookAuthor LIKE '%' || :query || '%') " +
+            "AND (:dateFilter IS NULL OR date = :dateFilter) " +
+            "ORDER BY date DESC, readTime DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun getFilteredDetailsPage(
+        query: String, dateFilter: String?, limit: Int, offset: Int
+    ): List<ReadRecordDetail>
+
+    /**
+     * 分页查询过滤后的会话记录（搜索 + 日期筛选下推到 SQL）。
+     * 配合 [sessionsCountFlow] 作为触发器使用，避免 CursorWindow 溢出。
+     */
+    @Query(
+        "SELECT * FROM readRecordSession " +
+            "WHERE (:query = '' OR bookName LIKE '%' || :query || '%' OR bookAuthor LIKE '%' || :query || '%') " +
+            "AND (:dateFilter IS NULL OR date(startTime / 1000, 'unixepoch', 'localtime') = :dateFilter) " +
+            "ORDER BY startTime DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun getFilteredSessionsPage(
+        query: String, dateFilter: String?, limit: Int, offset: Int
+    ): List<ReadRecordSession>
+
+    /**
+     * 带详情时间校正的阅读记录列表（无日期筛选时使用）。
+     * readTime = MAX(readRecord.readTime, 该书所有 detail 的 readTime 之和)。
+     * Room 自动观察 readRecord 和 readRecordDetail 两张表的变化。
+     */
+    @Query(
+        "SELECT r.deviceId, r.bookName, r.bookAuthor, " +
+            "MAX(r.readTime, COALESCE(d.totalReadTime, 0)) as readTime, " +
+            "r.lastRead, r.durChapterTitle, r.durChapterIndex " +
+            "FROM readRecord r " +
+            "LEFT JOIN (SELECT deviceId, bookName, bookAuthor, SUM(readTime) AS totalReadTime " +
+            "FROM readRecordDetail GROUP BY deviceId, bookName, bookAuthor) d " +
+            "ON r.deviceId = d.deviceId AND r.bookName = d.bookName AND r.bookAuthor = d.bookAuthor " +
+            "WHERE (:query = '' OR r.bookName LIKE '%' || :query || '%' OR r.bookAuthor LIKE '%' || :query || '%') " +
+            "ORDER BY r.lastRead DESC"
+    )
+    fun getRecordsWithDetailTime(query: String): Flow<List<ReadRecord>>
+
+    /**
+     * 指定日期的每本书阅读统计（有日期筛选时使用）。
+     * 从 readRecordDetail 按书聚合，JOIN readRecord 获取章节信息。
+     */
+    @Query(
+        "SELECT d.deviceId, d.bookName, d.bookAuthor, " +
+            "SUM(d.readTime) as readTime, MAX(d.lastReadTime) as lastRead, " +
+            "COALESCE(MAX(r.durChapterTitle), '') as durChapterTitle, " +
+            "COALESCE(MAX(r.durChapterIndex), 0) as durChapterIndex " +
+            "FROM readRecordDetail d " +
+            "LEFT JOIN readRecord r ON d.deviceId = r.deviceId AND d.bookName = r.bookName AND d.bookAuthor = r.bookAuthor " +
+            "WHERE d.date = :date " +
+            "AND (:query = '' OR d.bookName LIKE '%' || :query || '%' OR d.bookAuthor LIKE '%' || :query || '%') " +
+            "GROUP BY d.deviceId, d.bookName, d.bookAuthor " +
+            "ORDER BY MAX(d.lastReadTime) DESC"
+    )
+    fun getRecordsByDate(query: String, date: String): Flow<List<ReadRecord>>
+
+    /**
+     * 单本书的阅读时间（SQL 聚合，替代加载全量 details）。
+     * 返回 MAX(readRecord.readTime, detail 之和)。
+     */
+    @Query(
+        "SELECT COALESCE(MAX(" +
+            "COALESCE((SELECT readTime FROM readRecord WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor), 0), " +
+            "COALESCE((SELECT SUM(readTime) FROM readRecordDetail WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor), 0)" +
+            "), 0)"
+    )
+    fun getBookReadTimeCalculated(deviceId: String, bookName: String, bookAuthor: String): Flow<Long>
+
     @Query("SELECT * FROM readRecord WHERE bookAuthor = ''")
     suspend fun getRecordsWithEmptyAuthor(): List<ReadRecord>
 
@@ -208,5 +311,14 @@ interface ReadRecordDao {
 data class BookReadTime(
     val bookName: String,
     val bookAuthor: String,
+    val totalReadTime: Long
+)
+
+/**
+ * 每日阅读统计聚合结果（SQL GROUP BY 返回）。
+ */
+data class DailyReadStat(
+    val date: String,
+    val readCount: Int,
     val totalReadTime: Long
 )

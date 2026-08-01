@@ -77,6 +77,16 @@ class TextPageFactory(dataSource: DataSource) : PageFactory<TextPage>(dataSource
                 if (currentChapter == null && prevChapter == null) {
                     return@with false
                 }
+                // 滚动模式：上一章未加载时先触发加载，停在当前页顶部，
+                // 待排版完成后再跨章翻页，避免 curTextChapter 为空 + 末页临时定位导致的跳变
+                if (isScroll && prevChapter == null) {
+                    ReadBook.loadContent(
+                        ReadBook.durChapterIndex - 1,
+                        upContent = true,
+                        resetPageOffset = false
+                    )
+                    return@with false
+                }
                 if (prevChapter != null && prevChapter?.isCompleted == false) {
                     return@with false
                 }

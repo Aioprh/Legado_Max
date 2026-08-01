@@ -1,10 +1,7 @@
 package io.legado.app.ui.main.homepage
 
 import android.content.Intent
-import android.graphics.drawable.Drawable
-import android.os.Build
 import android.os.Bundle
-import android.util.DisplayMetrics
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,7 +12,6 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import io.legado.app.help.config.ThemeConfig
 import io.legado.app.data.appDb
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.explore.ExploreShowActivity
@@ -23,13 +19,14 @@ import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.ui.rss.article.RssSortActivity
 import io.legado.app.ui.rss.read.ReadRssActivity
-import io.legado.app.ui.theme.LegadoThemeWithBackground
+import io.legado.app.ui.theme.LegadoTheme
 
 /**
  * 首页 Fragment
  *
  * 作为首页在 MainActivity 中的容器，使用 ComposeView 承载 Compose 界面。
- * 通过 LegadoThemeWithBackground 包裹内容，确保主题颜色统一适配并显示背景图片。
+ * 通过 LegadoTheme 提供主题颜色，背景由 BaseActivity 的 decorView 统一管理，
+ * 与其他 Fragment（书架、发现等）保持一致的导航栏沉浸行为。
  * 处理书籍点击（跳转 BookInfoActivity）和模块标题点击（跳转 ExploreShowActivity）的导航逻辑。
  */
 class HomepageFragment() : Fragment(), MainFragmentInterface {
@@ -63,13 +60,10 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
     ): View {
         // 初始化时获取当前底栏高度
         bottomPaddingPx = (activity as? MainActivity)?.mainContentBottomPadding() ?: 0
-        val backgroundDrawable = loadBackgroundDrawable()
         return ComposeView(requireContext()).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
-                LegadoThemeWithBackground(
-                    backgroundDrawable = backgroundDrawable
-                ) {
+                LegadoTheme {
                     HomepageScreen(
                         viewModel = viewModel,
                         bottomPaddingPx = bottomPaddingPx,
@@ -119,30 +113,6 @@ class HomepageFragment() : Fragment(), MainFragmentInterface {
                     )
                 }
             }
-        }
-    }
-
-    /**
-     * 加载主题设置的背景图片
-     *
-     * 从 ThemeConfig 获取当前主题的背景图片 Drawable，
-     * 如果未设置背景图则返回 null，此时 LegadoBackgroundBox 会使用纯色背景。
-     */
-    private fun loadBackgroundDrawable(): Drawable? {
-        return try {
-            val activity = requireActivity()
-            val metrics = DisplayMetrics()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val bounds = activity.windowManager.currentWindowMetrics.bounds
-                metrics.widthPixels = bounds.width()
-                metrics.heightPixels = bounds.height()
-            } else {
-                @Suppress("DEPRECATION")
-                activity.windowManager.defaultDisplay.getMetrics(metrics)
-            }
-            ThemeConfig.getBgImage(activity, metrics)
-        } catch (_: Exception) {
-            null
         }
     }
 }

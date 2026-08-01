@@ -41,6 +41,7 @@ import java.io.File
  */
 
 fun TitleBar.applyTopBarConfig() {
+    if (skipTopBarConfig) return
     if (AppConfig.isEInkMode) {
         setBackgroundResource(R.drawable.bg_eink_border_bottom)
         applyTopBarContentColor()

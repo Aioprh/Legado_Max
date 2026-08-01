@@ -42,6 +42,7 @@ import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.MenuExtensions
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getClipText
 import io.legado.app.utils.hexString
@@ -115,6 +116,7 @@ class ThemeManageActivity : BaseActivity<ActivityThemeManageBinding>(),
         tvAddTheme.setOnClickListener {
             showAddOptions()
         }
+        tvAddTheme.applyNavigationBarMargin(withInitialMargin = true)
     }
 
     private fun updateActionTextColor(item: MenuItem?) {

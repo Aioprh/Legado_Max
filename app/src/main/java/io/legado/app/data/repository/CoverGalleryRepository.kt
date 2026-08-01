@@ -92,6 +92,48 @@ class CoverGalleryRepository {
         refreshDefaultCover()
     }
 
+    /**
+     * 直接从 File 列表批量添加图片到指定分组。
+     * 绕过 URI 机制，适用于已解压到本地临时目录的图片文件。
+     */
+    suspend fun addImageFiles(context: Context, groupId: Long, files: List<File>): Int =
+        withContext(IO) {
+            if (files.isEmpty()) return@withContext 0
+            val targetDir = context.externalFiles.getFile("covers").createFolderIfNotExist()
+            val existingPaths = dao.getGroupWithImagesNow(groupId)
+                ?.images
+                .orEmpty()
+                .mapTo(hashSetOf()) { it.path }
+            var nextOrder = (dao.getMaxImageOrder(groupId) ?: -1) + 1
+            val images = ArrayList<CoverGalleryImage>(files.size)
+            files.forEach { file ->
+                if (!file.isFile) return@forEach
+                val suffix = when {
+                    file.name.contains(".9.png", true) -> ".9.png"
+                    file.extension.isNotBlank() -> ".${file.extension}"
+                    else -> ".jpg"
+                }
+                val fileName = file.inputStream().use { MD5Utils.md5Encode(it) + suffix }
+                val targetFile = FileUtils.createFileIfNotExist(targetDir, fileName)
+                if (!existingPaths.add(targetFile.absolutePath)) return@forEach
+                file.inputStream().use { input ->
+                    FileOutputStream(targetFile).use { input.copyTo(it) }
+                }
+                images.add(
+                    CoverGalleryImage(
+                        groupId = groupId,
+                        path = targetFile.absolutePath,
+                        order = nextOrder++
+                    )
+                )
+            }
+            if (images.isNotEmpty()) {
+                dao.insertImages(*images.toTypedArray())
+                refreshDefaultCover()
+            }
+            images.size
+        }
+
     suspend fun addImages(context: Context, groupId: Long, uris: List<Uri>): BatchAddResult =
         withContext(IO) {
             val uniqueUris = uris.distinct()

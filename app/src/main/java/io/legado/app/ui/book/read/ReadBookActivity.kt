@@ -38,7 +38,6 @@ import io.legado.app.help.AppWebDav
 import io.legado.app.help.IntentData
 import io.legado.app.help.TTS
 import io.legado.app.help.book.BookHelp
-import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.isEpub
 import io.legado.app.help.book.isLocal
@@ -692,13 +691,10 @@ class ReadBookActivity : BaseReadBookActivity(),
 
             R.id.menu_same_title_removed -> {
                 ReadBook.book?.let {
-                    val contentProcessor = ContentProcessor.get(it)
                     val textChapter = ReadBook.curTextChapter
                     if (textChapter != null
                         && !textChapter.sameTitleRemoved
-                        && !contentProcessor.removeSameTitleCache.contains(
-                            textChapter.chapter.getFileName("nr")
-                        )
+                        && BookHelp.removeSameTitle(it, textChapter.chapter)
                     ) {
                         toastOnUi("未找到可移除的重复标题")
                     }

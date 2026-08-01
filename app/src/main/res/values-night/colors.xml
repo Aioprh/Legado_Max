@@ -51,4 +51,14 @@
     <color name="regex_status_success">#66BB6A</color>
     <color name="regex_status_error">#EF5350</color>
     <color name="regex_edit_border">#424242</color>
+
+    <!-- 管理界面半透明层级色（夜间用白叠加，随暗色背景自然融合） -->
+    <color name="background_card_surface">#0FFFFFFF</color>
+    <color name="border_card_surface">#1AFFFFFF</color>
+    <color name="background_add_button">#08FFFFFF</color>
+    <color name="border_add_button">#10FFFFFF</color>
+    <color name="background_action_button">#08FFFFFF</color>
+    <color name="background_tab_container">#0FFFFFFF</color>
+    <color name="background_tab_selected">#10FFFFFF</color>
+    <color name="background_preview_card">#10FFFFFF</color>
 </resources>

@@ -48,6 +48,21 @@ object UiCorner {
         }
     }
 
+    /**
+     * 生成半透明面板圆角 Drawable，描边使用 [R.color.border_card_surface]。
+     *
+     * 适用于管理界面中随背景自然融合的半透明层级（列表卡片、编辑区行等），
+     * 白天用黑叠加描边、夜间用白叠加描边，避免 [panelRounded] 对半透明色
+     * 计算亮度时取反描边方向的问题。
+     */
+    fun surfaceRounded(context: Context, color: Int, radius: Float): Drawable {
+        val stroke = androidx.core.content.ContextCompat
+            .getColor(context, R.color.border_card_surface)
+        return rounded(color, radius).apply {
+            setStroke(1.dpToPx(), stroke)
+        }
+    }
+
     /** 生成按钮按压/选中状态选择器 Drawable */
     fun actionSelector(defaultColor: Int, pressedColor: Int, radius: Float): StateListDrawable {
         return StateListDrawable().apply {
