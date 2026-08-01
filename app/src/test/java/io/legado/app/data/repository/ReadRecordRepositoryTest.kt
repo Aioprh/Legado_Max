@@ -1,6 +1,7 @@
 package io.legado.app.data.repository
 
 import io.legado.app.data.dao.BookReadTime
+import io.legado.app.data.dao.DailyReadStat
 import io.legado.app.data.dao.ReadRecordDao
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
@@ -273,18 +274,21 @@ class ReadRecordRepositoryTest {
     }
 
     @Test
-    fun applyDetailReadTimesKeepsLargerAggregateAndFillsMissingDetailTime() {
-        val repository = ReadRecordRepository(FakeReadRecordDao()) { CURRENT_DEVICE_ID }
-        val records = listOf(
+    fun getRecordsWithDetailTimeKeepsLargerAggregateAndFillsMissingDetailTime() = runBlocking {
+        val dao = FakeReadRecordDao()
+        val repository = ReadRecordRepository(dao) { CURRENT_DEVICE_ID }
+        dao.insert(
             ReadRecord(CURRENT_DEVICE_ID, "Book A", "Author", 3_600_000L, 500L),
             ReadRecord(CURRENT_DEVICE_ID, "Book B", "Author", 0L, 200L)
         )
-        val details = listOf(
-            ReadRecordDetail(CURRENT_DEVICE_ID, "Book A", "Author", "2026-05-03", 120_000L, 0L, 100L, 200L),
+        dao.insertDetail(
+            ReadRecordDetail(CURRENT_DEVICE_ID, "Book A", "Author", "2026-05-03", 120_000L, 0L, 100L, 200L)
+        )
+        dao.insertDetail(
             ReadRecordDetail(CURRENT_DEVICE_ID, "Book B", "Author", "2026-05-03", 180_000L, 0L, 100L, 200L)
         )
 
-        val normalized = repository.applyDetailReadTimes(records, details)
+        val normalized = repository.getRecordsWithDetailTime("").first()
 
         assertEquals(3_600_000L, normalized.first { it.bookName == "Book A" }.readTime)
         assertEquals(180_000L, normalized.first { it.bookName == "Book B" }.readTime)
@@ -617,6 +621,115 @@ class ReadRecordRepositoryTest {
 
         override suspend fun deleteReadRecord(record: ReadRecord) {
             delete(record)
+        }
+
+        // ==================== SQL 聚合查询实现 ====================
+
+        override fun getDailyStats(): Flow<List<DailyReadStat>> {
+            return flowOf(
+                details.groupBy { it.date }
+                    .map { (date, grouped) ->
+                        DailyReadStat(date, grouped.size, grouped.sumOf { it.readTime })
+                    }
+            )
+        }
+
+        override fun getReadTimeByDate(date: String): Flow<Long> {
+            return flowOf(details.filter { it.date == date }.sumOf { it.readTime })
+        }
+
+        override fun getBookCountByDate(date: String): Flow<Int> {
+            return flowOf(
+                details.filter { it.date == date }
+                    .map { Triple(it.deviceId, it.bookName, it.bookAuthor) }
+                    .distinct()
+                    .size
+            )
+        }
+
+        override suspend fun getFilteredDetailsPage(
+            query: String, dateFilter: String?, limit: Int, offset: Int
+        ): List<ReadRecordDetail> {
+            return details
+                .filter { d ->
+                    (query.isEmpty() || d.bookName.contains(query) || d.bookAuthor.contains(query)) &&
+                        (dateFilter == null || d.date == dateFilter)
+                }
+                .sortedWith(compareByDescending<ReadRecordDetail> { it.date }.thenByDescending { it.readTime })
+                .drop(offset)
+                .take(limit)
+                .map { it.copy() }
+        }
+
+        override suspend fun getFilteredSessionsPage(
+            query: String, dateFilter: String?, limit: Int, offset: Int
+        ): List<ReadRecordSession> {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd")
+            return sessions
+                .filter { s ->
+                    (query.isEmpty() || s.bookName.contains(query) || s.bookAuthor.contains(query)) &&
+                        (dateFilter == null || sdf.format(java.util.Date(s.startTime)) == dateFilter)
+                }
+                .sortedByDescending { it.startTime }
+                .drop(offset)
+                .take(limit)
+                .map { it.copy() }
+        }
+
+        override fun getRecordsWithDetailTime(query: String): Flow<List<ReadRecord>> {
+            val detailSums = details.groupBy {
+                Triple(it.deviceId, it.bookName, it.bookAuthor)
+            }.mapValues { (_, grouped) -> grouped.sumOf { it.readTime } }
+            return flowOf(
+                records
+                    .filter { r ->
+                        query.isEmpty() || r.bookName.contains(query) || r.bookAuthor.contains(query)
+                    }
+                    .map { r ->
+                        val key = Triple(r.deviceId, r.bookName, r.bookAuthor)
+                        r.copy(readTime = maxOf(r.readTime, detailSums[key] ?: 0L))
+                    }
+                    .sortedByDescending { it.lastRead }
+            )
+        }
+
+        override fun getRecordsByDate(query: String, date: String): Flow<List<ReadRecord>> {
+            return flowOf(
+                details.filter { d ->
+                    d.date == date &&
+                        (query.isEmpty() || d.bookName.contains(query) || d.bookAuthor.contains(query))
+                }
+                    .groupBy { Triple(it.deviceId, it.bookName, it.bookAuthor) }
+                    .map { (identity, grouped) ->
+                        val record = records.firstOrNull {
+                            it.deviceId == identity.first &&
+                                it.bookName == identity.second &&
+                                it.bookAuthor == identity.third
+                        }
+                        ReadRecord(
+                            deviceId = identity.first,
+                            bookName = identity.second,
+                            bookAuthor = identity.third,
+                            readTime = grouped.sumOf { it.readTime },
+                            lastRead = grouped.maxOf { it.lastReadTime },
+                            durChapterTitle = record?.durChapterTitle ?: "",
+                            durChapterIndex = record?.durChapterIndex ?: 0
+                        )
+                    }
+                    .sortedByDescending { it.lastRead }
+            )
+        }
+
+        override fun getBookReadTimeCalculated(
+            deviceId: String, bookName: String, bookAuthor: String
+        ): Flow<Long> {
+            val recordTime = records.firstOrNull {
+                it.deviceId == deviceId && it.bookName == bookName && it.bookAuthor == bookAuthor
+            }?.readTime ?: 0L
+            val detailTime = details.filter {
+                it.deviceId == deviceId && it.bookName == bookName && it.bookAuthor == bookAuthor
+            }.sumOf { it.readTime }
+            return flowOf(maxOf(recordTime, detailTime))
         }
     }
 

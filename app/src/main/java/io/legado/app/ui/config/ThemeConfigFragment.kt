@@ -39,6 +39,7 @@ import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.applyTint
+import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getPrefString
@@ -112,6 +113,7 @@ class ThemeConfigFragment : PreferenceFragment(),
         super.onViewCreated(view, savedInstanceState)
         activity?.setTitle(R.string.theme_setting)
         listView.setEdgeEffectColor(primaryColor)
+        listView.applyNavigationBarPadding(withInitialPadding = true)
         activity?.addMenuProvider(this, viewLifecycleOwner)
     }
 

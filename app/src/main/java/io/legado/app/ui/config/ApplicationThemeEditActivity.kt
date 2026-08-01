@@ -1,7 +1,9 @@
 package io.legado.app.ui.config
 
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import io.legado.app.R
 import io.legado.app.base.BaseActivity
 import io.legado.app.data.repository.CoverGalleryRepository
@@ -12,6 +14,9 @@ import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.config.TopBarConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
+import io.legado.app.lib.theme.accentColor
+import io.legado.app.utils.applyNavigationBarPadding
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
@@ -39,8 +44,23 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
             return
         }
         binding.titleBar.title = getString(R.string.application_theme_edit)
+        // 底部操作区避让系统导航栏
+        binding.root.getChildAt(binding.root.childCount - 1)?.applyNavigationBarPadding(withInitialPadding = true)
         bindActions()
+        styleBottomButtons()
         render()
+    }
+
+    private fun styleBottomButtons() = binding.run {
+        val accent = accentColor
+        val saveBg = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 8f.dpToPx()
+            setColor(ContextCompat.getColor(this@ApplicationThemeEditActivity, R.color.background_add_button))
+            setStroke(1.dpToPx(), accent)
+        }
+        btnSave.background = saveBg
+        btnSave.setTextColor(accent)
     }
 
     private fun bindActions() = binding.run {

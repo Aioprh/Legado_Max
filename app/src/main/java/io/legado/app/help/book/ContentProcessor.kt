@@ -59,7 +59,6 @@ class ContentProcessor private constructor(
 
     init {
         upReplaceRules()
-        upRemoveSameTitle()
     }
 
     fun upReplaceRules() {
@@ -73,6 +72,14 @@ class ContentProcessor private constructor(
         }
     }
 
+    /**
+     * 重新扫描整本书缓存目录以填充 removeSameTitleCache。
+     *
+     * 注意：此方法会扫描整本书的缓存目录，开销较大，不再在 init 中自动调用。
+     * removeSameTitleCache 现在仅在 [setRemoveSameTitle] 被用户调用时增量更新，
+     * [getContent] 中的去除重复标题判断已改为按单章按需检查 .nr 文件，
+     * 避免每次进入正文都扫描整本书的缓存目录。
+     */
     private fun upRemoveSameTitle() {
         val book = appDb.bookDao.getBookByOrigin(bookName, bookOrigin) ?: return
         removeSameTitleCache.clear()
@@ -107,8 +114,8 @@ class ContentProcessor private constructor(
         val replaceBook by lazy { book.toReplaceBook() }
         if (content != "null") {
             //去除重复标题
-            val fileName = chapter.getFileName("nr")
-            if (!removeSameTitleCache.contains(fileName)) try {
+            // 按单章按需检查 .nr 文件，避免在 init 中扫描整本书缓存目录
+            if (BookHelp.removeSameTitle(book, chapter)) try {
                 val name = Pattern.quote(book.name)
                 var title = chapter.title.escapeRegex().replace(spaceRegex, "\\\\s*")
                 var matcher = Pattern.compile("^(\\s|\\p{P}|${name})*${title}(\\s)*")

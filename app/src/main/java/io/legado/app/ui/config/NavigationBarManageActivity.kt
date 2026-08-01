@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -30,6 +31,7 @@ import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.recycler.VerticalDivider
+import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.getClipText
@@ -106,6 +108,7 @@ class NavigationBarManageActivity : BaseActivity<ActivityNavigationBarManageBind
         tvAddConfig.setOnClickListener {
             showAddOptions()
         }
+        tvAddConfig.applyNavigationBarMargin(withInitialMargin = true)
     }
 
     private fun initTabs() = binding.run {
@@ -235,7 +238,11 @@ class NavigationBarManageActivity : BaseActivity<ActivityNavigationBarManageBind
         val root = buildEditView(config)
         editingDialog = root
         alert(if (isEdit) R.string.edit else R.string.add) {
-            customView { root }
+            customView {
+                ScrollView(this@NavigationBarManageActivity).apply {
+                    addView(root)
+                }
+            }
             okButton {
                 root.findViewWithTag<TextView>("name")?.text?.toString()?.trim()
                     ?.takeIf { it.isNotBlank() }

@@ -229,7 +229,8 @@ object CoverLoader {
         val currentName = name?.replace(AppPattern.bdRegex, "")?.trim()
 
         val galleryDefaultCover = BookCover.getGalleryDefaultCover(
-            galleryIdentity ?: listOfNotNull(sourceOrigin, path, name, author).joinToString("|")
+            galleryIdentity ?: listOfNotNull(sourceOrigin, path, name, author).joinToString("|"),
+            path
         )
         val actualPath = galleryDefaultCover ?: path
 

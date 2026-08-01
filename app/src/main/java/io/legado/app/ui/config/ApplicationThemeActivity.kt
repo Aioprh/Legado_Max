@@ -9,7 +9,10 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
@@ -23,10 +26,12 @@ import io.legado.app.databinding.ItemThemeConfigBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ApplicationThemeManager
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.observeEvent
@@ -43,6 +48,7 @@ import java.io.FileOutputStream
 private const val MENU_CREATE = 6101
 private const val MENU_IMPORT = 6102
 private const val MENU_EXPORT = 6103
+private const val MENU_IMPORT_WITH_OPTIONS = 6104
 
 private data class ApplicationThemeListItem(
     val config: ApplicationThemeManager.Config,
@@ -77,6 +83,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         binding.recyclerView.addItemDecoration(VerticalDivider(this))
         binding.recyclerView.adapter = adapter
         binding.tvAddTheme.setOnClickListener { showNameDialog() }
+        binding.tvAddTheme.applyNavigationBarMargin(withInitialMargin = true)
         refresh()
     }
 
@@ -96,7 +103,9 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         menu.add(0, MENU_IMPORT, 1, R.string.application_theme_import)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
-        menu.add(0, MENU_EXPORT, 2, R.string.application_theme_export)
+        menu.add(0, MENU_IMPORT_WITH_OPTIONS, 2, R.string.application_theme_import_with_options)
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
+        menu.add(0, MENU_EXPORT, 3, R.string.application_theme_export)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         return true
     }
@@ -105,6 +114,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         return when (item.itemId) {
             MENU_CREATE -> { showNameDialog(); true }
             MENU_IMPORT -> { selectImport(); true }
+            MENU_IMPORT_WITH_OPTIONS -> { showImportOptionsDialog(); true }
             MENU_EXPORT -> { exportCurrent(); true }
             else -> super.onCompatOptionsItemSelected(item)
         }
@@ -118,7 +128,60 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    private var pendingImportOptions: ApplicationThemeManager.ImportOptions? = null
+
+    private fun showImportOptionsDialog() {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 32, 48, 16)
+        }
+        val tvHint = TextView(this).apply {
+            text = getString(R.string.application_theme_import_options_hint)
+            setPadding(0, 0, 0, 24)
+        }
+        container.addView(tvHint)
+        val cbTheme = CheckBox(this).apply {
+            text = getString(R.string.application_theme_component_theme)
+            isChecked = true
+        }
+        val cbTopBar = CheckBox(this).apply {
+            text = getString(R.string.application_theme_component_top_bar)
+            isChecked = true
+        }
+        val cbBottomBar = CheckBox(this).apply {
+            text = getString(R.string.application_theme_component_bottom_bar)
+            isChecked = true
+        }
+        val cbCover = CheckBox(this).apply {
+            text = getString(R.string.application_theme_component_cover)
+            isChecked = true
+        }
+        container.addView(cbTheme)
+        container.addView(cbTopBar)
+        container.addView(cbBottomBar)
+        container.addView(cbCover)
+        alert(R.string.application_theme_import_with_options) {
+            customView { container }
+            okButton {
+                pendingImportOptions = ApplicationThemeManager.ImportOptions(
+                    importTheme = cbTheme.isChecked,
+                    importTopBar = cbTopBar.isChecked,
+                    importBottomBar = cbBottomBar.isChecked,
+                    importCover = cbCover.isChecked
+                )
+                importTheme.launch {
+                    mode = HandleFileContract.FILE
+                    title = getString(R.string.application_theme_import)
+                    allowExtensions = arrayOf("zip", "json")
+                }
+            }
+            cancelButton()
+        }
+    }
+
     private fun importTheme(uri: Uri) {
+        val options = pendingImportOptions
+        pendingImportOptions = null
         lifecycleScope.launch {
             runCatching {
                 val file = externalFiles.getFile("applicationThemeImports", "import_${System.currentTimeMillis()}.json")
@@ -128,7 +191,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
                 } ?: error(getString(R.string.file_not_exist))
                 withContext(Dispatchers.IO) {
                     try {
-                        ApplicationThemeManager.importFile(file)
+                        ApplicationThemeManager.importFile(file, options)
                     } finally {
                         file.delete()
                     }
@@ -232,6 +295,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             getString(R.string.edit),
             getString(R.string.application_theme_update_current),
             getString(R.string.application_theme_rename),
+            getString(R.string.export),
             getString(R.string.delete)
         )
         selector(config.name, items) { _, index ->
@@ -245,7 +309,30 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
                     refresh()
                 }
                 2 -> showNameDialog(config)
-                3 -> confirmDelete(config)
+                3 -> exportConfig(config)
+                4 -> confirmDelete(config)
+            }
+        }
+    }
+
+    private fun exportConfig(config: ApplicationThemeManager.Config) {
+        lifecycleScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { ApplicationThemeManager.exportConfig(this@ApplicationThemeActivity, config) }
+            }.onSuccess { file ->
+                exportTheme.launch {
+                    mode = HandleFileContract.EXPORT
+                    title = getString(R.string.application_theme_export)
+                    fileData = HandleFileContract.FileData(file.name, file, "application/zip")
+                    onlyOtherActions = true
+                    otherActions = arrayListOf(
+                        SelectItem(getString(R.string.sys_folder_picker), HandleFileContract.DIR),
+                        SelectItem(getString(R.string.app_folder_picker), 10),
+                        SelectItem(getString(R.string.manual_input), 112)
+                    )
+                }
+            }.onFailure {
+                toastOnUi(it.localizedMessage ?: getString(R.string.error))
             }
         }
     }
@@ -290,6 +377,9 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             ivDelete.visibility = View.GONE
             ivCurrent.visibility = if (item.isCurrent) View.VISIBLE else View.GONE
             tvApply.text = getString(if (item.isCurrent) R.string.applied else R.string.apply)
+            tvApply.setTextColor(
+                if (item.isCurrent) accentColor else ContextCompat.getColor(context, R.color.primaryText)
+            )
             val isNight = AppConfig.isNightTheme
             val previewTheme = if (isNight) config.nightTheme else config.dayTheme
             val background = parseThemeColor(
