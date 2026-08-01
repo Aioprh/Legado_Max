@@ -163,20 +163,41 @@ fun Context.startForegroundServiceCompat(intent: Intent) {
 val Context.defaultSharedPreferences: SharedPreferences
     get() = PreferenceManager.getDefaultSharedPreferences(this)
 
-fun Context.getPrefBoolean(key: String, defValue: Boolean = false) =
-    defaultSharedPreferences.getBoolean(key, defValue)
+fun Context.getPrefBoolean(key: String, defValue: Boolean = false): Boolean {
+    return try {
+        defaultSharedPreferences.getBoolean(key, defValue)
+    } catch (e: ClassCastException) {
+        // 值可能以其他类型（如 String）存储，尝试兼容读取
+        val strValue = defaultSharedPreferences.getString(key, null)
+        strValue?.toBooleanStrictOrNull() ?: defValue
+    }
+}
 
 fun Context.putPrefBoolean(key: String, value: Boolean = false) =
     defaultSharedPreferences.edit { putBoolean(key, value) }
 
-fun Context.getPrefInt(key: String, defValue: Int = 0) =
-    defaultSharedPreferences.getInt(key, defValue)
+fun Context.getPrefInt(key: String, defValue: Int = 0): Int {
+    return try {
+        defaultSharedPreferences.getInt(key, defValue)
+    } catch (e: ClassCastException) {
+        // 值可能以 String 类型存储（如从其他 Legado 变体恢复备份），尝试兼容读取
+        val strValue = defaultSharedPreferences.getString(key, null)
+        strValue?.toIntOrNull() ?: defValue
+    }
+}
 
 fun Context.putPrefInt(key: String, value: Int) =
     defaultSharedPreferences.edit { putInt(key, value) }
 
-fun Context.getPrefLong(key: String, defValue: Long = 0L) =
-    defaultSharedPreferences.getLong(key, defValue)
+fun Context.getPrefLong(key: String, defValue: Long = 0L): Long {
+    return try {
+        defaultSharedPreferences.getLong(key, defValue)
+    } catch (e: ClassCastException) {
+        // 值可能以 String 类型存储，尝试兼容读取
+        val strValue = defaultSharedPreferences.getString(key, null)
+        strValue?.toLongOrNull() ?: defValue
+    }
+}
 
 fun Context.putPrefLong(key: String, value: Long) =
     defaultSharedPreferences.edit { putLong(key, value) }

@@ -21,7 +21,8 @@
         android:layout_height="wrap_content"
         android:theme="?attr/actionBarStyle"
         app:layout_constraintTop_toTopOf="parent"
-        app:opaque="true" >
+        app:opaque="true"
+        app:skipTopBarConfig="true" >
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/title_bar_addition"

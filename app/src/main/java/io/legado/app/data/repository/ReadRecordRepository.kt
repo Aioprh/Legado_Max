@@ -1,5 +1,6 @@
 package io.legado.app.data.repository
 
+import io.legado.app.data.dao.DailyReadStat
 import io.legado.app.data.dao.ReadRecordDao
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordDetail
@@ -7,7 +8,6 @@ import io.legado.app.data.entities.readRecord.ReadRecordSession
 import io.legado.app.data.entities.readRecord.ReadRecordTimelineDay
 import io.legado.app.constant.AppConst
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -79,50 +79,50 @@ class ReadRecordRepository(
         return hasValidIdentity(session.deviceId, session.bookName)
     }
 
+    // ==================== SQL 聚合查询（方案三） ====================
+
     /**
-     * 获取总阅读时间的 Flow。
-     *
-     * 使用 SQL 直接在数据库层面计算（复刻 applyDetailReadTimes 的 per-book max 逻辑），
-     * 始终基于全量数据，不受搜索过滤影响。
-     * 单次 SQL 查询，无需分页加载详情数据。
+     * 获取总阅读时间的 Flow（SQL 聚合，单次查询）。
      */
     fun getTotalReadTime(): Flow<Long> {
         return dao.getCalculatedTotalReadTime()
     }
 
-    fun getLatestReadRecords(query: String = ""): Flow<List<ReadRecord>> {
-        return if (query.isBlank()) {
-            dao.getAllReadRecordsSortedByLastRead()
-        } else {
-            dao.searchReadRecordsByLastRead(query)
-        }
+    /**
+     * 按日期聚合统计（SQL GROUP BY，替代内存 groupBy）。
+     */
+    fun getDailyStats(): Flow<List<DailyReadStat>> {
+        return dao.getDailyStats()
     }
 
     /**
-     * 获取所有阅读详情的 Flow。
-     *
-     * 无搜索条件时使用 detailsCountFlow() 作为轻量级触发器 + 分页加载，
-     * 避免大数据量时 CursorWindow 2MB 限制导致的崩溃。
+     * 指定日期的总阅读时间。
      */
-    fun getAllRecordDetails(query: String = ""): Flow<List<ReadRecordDetail>> {
-        return if (query.isBlank()) {
-            dao.detailsCountFlow()
-                .map { loadAllDetailsPaginated() }
-        } else {
-            dao.searchDetails(query)
-        }
+    fun getReadTimeByDate(date: String): Flow<Long> {
+        return dao.getReadTimeByDate(date)
     }
 
     /**
-     * 分页加载所有详情记录，避免单次查询数据量过大导致 CursorWindow 溢出。
-     * 每页 500 条，按 date 降序排列。
+     * 指定日期的阅读书籍数（SQL COUNT DISTINCT）。
      */
-    private suspend fun loadAllDetailsPaginated(): List<ReadRecordDetail> {
+    fun getBookCountByDate(date: String): Flow<Int> {
+        return dao.getBookCountByDate(date)
+    }
+
+    /**
+     * 获取过滤后的详情记录（搜索 + 日期筛选下推到 SQL）。
+     * 使用 detailsCountFlow 作为触发器 + 分页加载，避免 CursorWindow 溢出。
+     */
+    fun getFilteredDetails(query: String, dateFilter: String?): Flow<List<ReadRecordDetail>> {
+        return dao.detailsCountFlow().map { loadFilteredDetailsPaginated(query, dateFilter) }
+    }
+
+    private suspend fun loadFilteredDetailsPaginated(query: String, dateFilter: String?): List<ReadRecordDetail> {
         val pageSize = 500
         val details = mutableListOf<ReadRecordDetail>()
         var offset = 0
         while (true) {
-            val page = dao.getDetailsPage(pageSize, offset)
+            val page = dao.getFilteredDetailsPage(query, dateFilter, pageSize, offset)
             if (page.isEmpty()) break
             details.addAll(page)
             if (page.size < pageSize) break
@@ -132,34 +132,41 @@ class ReadRecordRepository(
     }
 
     /**
-     * 获取所有阅读会话的 Flow。
-     *
-     * 使用 sessionsCountFlow() 作为轻量级触发器（仅返回 COUNT，不会溢出 CursorWindow），
-     * 当 readRecordSession 表发生任何变更（插入/删除/更新）时触发重新加载。
-     * 实际数据通过分页查询 [loadAllSessionsPaginated] 加载，每页 500 条，
-     * 避免大数据量时 CursorWindow 2MB 限制导致的崩溃。
+     * 获取过滤后的会话记录（搜索 + 日期筛选下推到 SQL）。
+     * 使用 sessionsCountFlow 作为触发器 + 分页加载，避免 CursorWindow 溢出。
      */
-    fun getAllSessions(): Flow<List<ReadRecordSession>> {
-        return dao.sessionsCountFlow()
-            .map { loadAllSessionsPaginated() }
+    fun getFilteredSessions(query: String, dateFilter: String?): Flow<List<ReadRecordSession>> {
+        return dao.sessionsCountFlow().map { loadFilteredSessionsPaginated(query, dateFilter) }
     }
 
-    /**
-     * 分页加载所有会话记录，避免单次查询数据量过大导致 CursorWindow 溢出。
-     * 每页 500 条，按 startTime 降序排列。
-     */
-    private suspend fun loadAllSessionsPaginated(): List<ReadRecordSession> {
+    private suspend fun loadFilteredSessionsPaginated(query: String, dateFilter: String?): List<ReadRecordSession> {
         val pageSize = 500
         val sessions = mutableListOf<ReadRecordSession>()
         var offset = 0
         while (true) {
-            val page = dao.getSessionsPage(pageSize, offset)
+            val page = dao.getFilteredSessionsPage(query, dateFilter, pageSize, offset)
             if (page.isEmpty()) break
             sessions.addAll(page)
             if (page.size < pageSize) break
             offset += pageSize
         }
         return sessions
+    }
+
+    /**
+     * 带详情时间校正的阅读记录列表（无日期筛选时使用）。
+     * SQL JOIN 完成 readTime = MAX(readRecord.readTime, detail 之和) 的计算。
+     */
+    fun getRecordsWithDetailTime(query: String): Flow<List<ReadRecord>> {
+        return dao.getRecordsWithDetailTime(query)
+    }
+
+    /**
+     * 指定日期的每本书阅读统计（有日期筛选时使用）。
+     * SQL GROUP BY + JOIN 直接返回聚合结果。
+     */
+    fun getRecordsByDate(query: String, date: String): Flow<List<ReadRecord>> {
+        return dao.getRecordsByDate(query, date)
     }
 
     fun getBookSessions(bookName: String, bookAuthor: String): Flow<List<ReadRecordSession>> {
@@ -201,39 +208,12 @@ class ReadRecordRepository(
         return merged
     }
 
+    /**
+     * 获取单本书的阅读时间（SQL 聚合，单次查询）。
+     * 替代旧版 combine(getReadTimeFlow, getAllRecordDetails) 的全量加载方式。
+     */
     fun getBookReadTime(bookName: String, bookAuthor: String): Flow<Long> {
-        return combine(
-            dao.getReadTimeFlow(getCurrentDeviceId(), bookName, bookAuthor),
-            getAllRecordDetails()
-        ) { recordReadTime, details ->
-            val detailReadTime = details.asSequence()
-                .filter {
-                    it.deviceId == getCurrentDeviceId() &&
-                        it.bookName == bookName &&
-                        it.bookAuthor == bookAuthor
-                }
-                .sumOf { it.readTime }
-            max(recordReadTime ?: 0L, detailReadTime)
-        }
-    }
-
-    fun applyDetailReadTimes(
-        records: List<ReadRecord>,
-        details: List<ReadRecordDetail>
-    ): List<ReadRecord> {
-        val detailReadTimes = details
-            .groupBy { RecordIdentity(it.deviceId, it.bookName, it.bookAuthor) }
-            .mapValues { (_, groupedDetails) -> groupedDetails.sumOf { it.readTime } }
-        return records.map { record ->
-            val detailReadTime = detailReadTimes[
-                RecordIdentity(record.deviceId, record.bookName, record.bookAuthor)
-            ]
-            if (detailReadTime != null) {
-                record.copy(readTime = max(record.readTime, detailReadTime))
-            } else {
-                record
-            }
-        }
+        return dao.getBookReadTimeCalculated(getCurrentDeviceId(), bookName, bookAuthor)
     }
 
     suspend fun getMergeCandidates(targetRecord: ReadRecord): List<ReadRecord> {

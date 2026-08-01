@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -34,6 +35,7 @@ import io.legado.app.ui.image.ImageCropContract
 import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.ImageCropHelper
+import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getClipText
 import io.legado.app.utils.getFile
@@ -117,6 +119,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
         recyclerView.addItemDecoration(VerticalDivider(this@TopBarManageActivity))
         recyclerView.adapter = adapter
         tvAddConfig.setOnClickListener { showAddOptions() }
+        tvAddConfig.applyNavigationBarMargin(withInitialMargin = true)
     }
 
     private fun initTabs() = binding.run {
@@ -216,7 +219,11 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
         val root = buildEditView()
         editingDialog = root
         alert(if (entry == null) R.string.add else R.string.edit) {
-            customView { root }
+            customView {
+                ScrollView(this@TopBarManageActivity).apply {
+                    addView(root)
+                }
+            }
             okButton { saveEditingPackage() }
             cancelButton()
         }

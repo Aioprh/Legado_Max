@@ -19,6 +19,8 @@ import io.legado.app.help.source.getSourceType
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.model.ReadBook
 import io.legado.app.model.ReadManga
 import io.legado.app.ui.browser.WebViewActivity
@@ -119,6 +121,11 @@ class MangaMenu @JvmOverloads constructor(
             titleBar.setBackgroundResource(R.drawable.bg_eink_border_bottom)
             bottomMenu.setBackgroundResource(R.drawable.bg_eink_border_top)
         } else {
+            val titleBgColor = context.primaryColor
+            val titleTextColor = context.primaryTextColor
+            titleBar.setBackgroundColor(titleBgColor)
+            titleBar.setTextColor(titleTextColor)
+            titleBar.setColorFilter(titleTextColor)
             bottomMenu.setBackgroundColor(bgColor)
         }
         if (AppConfig.showReadTitleBarAddition) {
