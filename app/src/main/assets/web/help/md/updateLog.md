@@ -17,6 +17,13 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/02**
+- fix(webview): 修复书籍详情页 useWeb 渲染污染 showBrowser 页面显示的问题
+- fix(应用主题): 导入主题设置选项持久化，不再设置后弹出文件选择器
+- fix(应用主题): 不勾选主题导入时背景图丢失，拆分资源提取与注册逻辑
+- feat(应用主题): 导入设置日夜间独立控制，4 个复选框拆为 8 个
+- fix(阅读页): 加入书架弹窗按钮由确认改为是
+
 **2026/7/31**
 - fix(read): 修复滚动模式向上翻到上一章时正文跳变
 - fix(高亮规则): 将底部弹窗手写拖动改为系统原生 BottomSheetBehavior,防止背景色残留
