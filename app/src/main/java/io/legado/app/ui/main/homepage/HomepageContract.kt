@@ -136,6 +136,9 @@ sealed interface ModuleLoadState {
  * @property exploreUrl 分类探索 URL（点击箭头跳转目标）
  * @property books 该分类下的书籍列表，null 表示尚未加载
  * @property errorMessage 加载错误，非 null 表示加载失败
+ * @property page 当前已加载到的页码
+ * @property hasMore 是否还有更多数据（用于显示加载更多按钮）
+ * @property isLoadingMore 是否正在加载更多（防止重复请求）
  */
 @Stable
 data class RankingTabData(
@@ -143,6 +146,9 @@ data class RankingTabData(
     val exploreUrl: String?,
     val books: List<HomepageBookItemUi>? = null,
     val errorMessage: String? = null,
+    val page: Int = 1,
+    val hasMore: Boolean = true,
+    val isLoadingMore: Boolean = false,
 )
 
 // ==================== 管理模式 UI 状态 ====================
