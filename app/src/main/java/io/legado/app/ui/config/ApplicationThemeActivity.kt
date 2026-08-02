@@ -128,9 +128,8 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
-    private var pendingImportOptions: ApplicationThemeManager.ImportOptions? = null
-
     private fun showImportOptionsDialog() {
+        val saved = ApplicationThemeManager.getImportOptions(this)
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 32, 48, 16)
@@ -142,19 +141,19 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         container.addView(tvHint)
         val cbTheme = CheckBox(this).apply {
             text = getString(R.string.application_theme_component_theme)
-            isChecked = true
+            isChecked = saved.importTheme
         }
         val cbTopBar = CheckBox(this).apply {
             text = getString(R.string.application_theme_component_top_bar)
-            isChecked = true
+            isChecked = saved.importTopBar
         }
         val cbBottomBar = CheckBox(this).apply {
             text = getString(R.string.application_theme_component_bottom_bar)
-            isChecked = true
+            isChecked = saved.importBottomBar
         }
         val cbCover = CheckBox(this).apply {
             text = getString(R.string.application_theme_component_cover)
-            isChecked = true
+            isChecked = saved.importCover
         }
         container.addView(cbTheme)
         container.addView(cbTopBar)
@@ -163,25 +162,23 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         alert(R.string.application_theme_import_with_options) {
             customView { container }
             okButton {
-                pendingImportOptions = ApplicationThemeManager.ImportOptions(
-                    importTheme = cbTheme.isChecked,
-                    importTopBar = cbTopBar.isChecked,
-                    importBottomBar = cbBottomBar.isChecked,
-                    importCover = cbCover.isChecked
+                ApplicationThemeManager.saveImportOptions(
+                    this@ApplicationThemeActivity,
+                    ApplicationThemeManager.ImportOptions(
+                        importTheme = cbTheme.isChecked,
+                        importTopBar = cbTopBar.isChecked,
+                        importBottomBar = cbBottomBar.isChecked,
+                        importCover = cbCover.isChecked
+                    )
                 )
-                importTheme.launch {
-                    mode = HandleFileContract.FILE
-                    title = getString(R.string.application_theme_import)
-                    allowExtensions = arrayOf("zip", "json")
-                }
+                toastOnUi(R.string.success)
             }
             cancelButton()
         }
     }
 
     private fun importTheme(uri: Uri) {
-        val options = pendingImportOptions
-        pendingImportOptions = null
+        val options = ApplicationThemeManager.getImportOptions(this)
         lifecycleScope.launch {
             runCatching {
                 val file = externalFiles.getFile("applicationThemeImports", "import_${System.currentTimeMillis()}.json")

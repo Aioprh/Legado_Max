@@ -9,8 +9,10 @@ import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
+import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.putPrefString
 import io.legado.app.utils.normalizeFileName
 import io.legado.app.utils.externalFiles
@@ -105,6 +107,24 @@ object ApplicationThemeManager {
         val importBottomBar: Boolean = true,
         val importCover: Boolean = true
     )
+
+    /** 将导入选项持久化到 SharedPreferences */
+    fun saveImportOptions(context: Context, options: ImportOptions) {
+        context.putPrefBoolean(PreferKey.appThemeImportTheme, options.importTheme)
+        context.putPrefBoolean(PreferKey.appThemeImportTopBar, options.importTopBar)
+        context.putPrefBoolean(PreferKey.appThemeImportBottomBar, options.importBottomBar)
+        context.putPrefBoolean(PreferKey.appThemeImportCover, options.importCover)
+    }
+
+    /** 从 SharedPreferences 读取持久化的导入选项，默认全部为 true */
+    fun getImportOptions(context: Context): ImportOptions {
+        return ImportOptions(
+            importTheme = context.getPrefBoolean(PreferKey.appThemeImportTheme, true),
+            importTopBar = context.getPrefBoolean(PreferKey.appThemeImportTopBar, true),
+            importBottomBar = context.getPrefBoolean(PreferKey.appThemeImportBottomBar, true),
+            importCover = context.getPrefBoolean(PreferKey.appThemeImportCover, true)
+        )
+    }
 
     /** 从文件加载所有应用主题配置，自动校验大小和格式 */
     fun load(): MutableList<Config> {
