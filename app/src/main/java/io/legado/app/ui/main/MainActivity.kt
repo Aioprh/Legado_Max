@@ -5,8 +5,10 @@ package io.legado.app.ui.main
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.graphics.Outline
+import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
@@ -17,7 +19,6 @@ import android.graphics.drawable.LayerDrawable
 import android.widget.FrameLayout
 import androidx.activity.addCallback
 import androidx.activity.viewModels
-import androidx.core.view.get
 import androidx.core.view.postDelayed
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
@@ -98,6 +99,7 @@ import io.legado.app.utils.StringUtils
 import io.legado.app.utils.clearClip
 import io.legado.app.utils.getClipText
 import kotlin.time.Duration.Companion.hours
+import kotlin.math.abs
 
 /**
  * 主界面
@@ -133,6 +135,35 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private var onUpBooksBadgeView: BadgeView? = null
     private var bottomNavigationConfigSignature: String? = null
     private var bottomNavigationInset = 0
+
+    // 底部导航栏滑动手势检测器（已修正 onFling 签名）
+    private val gestureDetector by lazy {
+        GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onFling(
+                e1: MotionEvent?,
+                e2: MotionEvent,          // 注意：此处为非空类型
+                velocityX: Float,
+                velocityY: Float
+            ): Boolean {
+                val diffX = (e2.x - (e1?.x ?: 0f))
+                if (abs(diffX) > 100 && abs(velocityX) > 100) {
+                    val current = binding.viewPagerMain.currentItem
+                    return when {
+                        diffX < 0 && current < bottomMenuCount - 1 -> {
+                            binding.viewPagerMain.currentItem = current + 1
+                            true
+                        }
+                        diffX > 0 && current > 0 -> {
+                            binding.viewPagerMain.currentItem = current - 1
+                            true
+                        }
+                        else -> false
+                    }
+                }
+                return false
+            }
+        })
+    }
 
     private fun bookshelfPosition(): Int = realPositions.indexOf(idBookshelf)
 
@@ -256,9 +287,18 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         viewPagerMain.offscreenPageLimit = 3
         viewPagerMain.adapter = adapter
         viewPagerMain.addOnPageChangeListener(PageChangeCallback())
+        // 禁用内容区域滑动切换
+        viewPagerMain.pagingEnabled = false
+
         bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)
         bottomNavigationView.setOnNavigationItemReselectedListener(this@MainActivity)
         refreshBottomNavigationConfig(force = true)
+
+        // 底部导航栏滑动手势
+        bottomNavigationGlass.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+        }
+
         if (AppConfig.isEInkMode) {
             bottomNavigationView.setBackgroundResource(R.drawable.bg_eink_border_top)
         }
