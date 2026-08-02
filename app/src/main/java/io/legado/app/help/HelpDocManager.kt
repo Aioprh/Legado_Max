@@ -38,6 +38,7 @@ object HelpDocManager {
         HelpDocGroup(
             "深入理解legado机制",
             listOf(
+                HelpDoc("Rhino缺陷","Rhino引擎缺陷"),
                 HelpDoc("订阅源机制详解", "订阅源机制详解"),
                 HelpDoc("预注入JS机制详解", "订阅源预注入JS机制"),
                 HelpDoc("替换规则流程与机制", "替换规则流程与机制"),
