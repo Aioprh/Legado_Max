@@ -109,10 +109,12 @@ data class TextLine(
 
     /**
      * 获取指定位置的文本列，越界时返回最后一个
+     * FIXED: 修复了当 textColumns 为空时调用 last() 导致的 NoSuchElementException
      */
     fun getColumn(index: Int): BaseColumn {
+        // 使用 lastOrNull 替代 last，若列表为空则返回一个空的 TextColumn 占位
         return textColumns.getOrElse(index) {
-            textColumns.last()
+            textColumns.lastOrNull() ?: TextColumn("")
         }
     }
 
