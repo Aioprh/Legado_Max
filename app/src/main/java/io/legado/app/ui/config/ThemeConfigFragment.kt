@@ -213,7 +213,7 @@ class ThemeConfigFragment : PreferenceFragment(),
                 .setTitle(getString(R.string.font_scale))
                 .setMaxValue(16)
                 .setMinValue(8)
-                .setValue(10)
+                .setValue(requireContext().getPrefInt(PreferKey.fontScale, 10))
                 .setCustomButton((R.string.btn_default_s)) {
                     putPrefInt(PreferKey.fontScale, 0)
                     recreateActivities()
@@ -357,7 +357,7 @@ class ThemeConfigFragment : PreferenceFragment(),
                 getString(R.string.bar_elevation_s, value)
 
             PreferKey.fontScale -> {
-                val fontScale = AppContextWrapper.getFontScale(requireContext())
+                val fontScale = requireContext().getPrefInt(PreferKey.fontScale, 10)
                 preference.summary = getString(R.string.font_scale_summary, fontScale)
             }
 
