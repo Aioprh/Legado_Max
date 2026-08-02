@@ -322,9 +322,13 @@ object PreferKey {
     /** 底部导航栏排序，逗号分隔的页面key，第一项为默认主页 */
     const val navItemOrder = "navItemOrder"
 
-    /** 导入应用主题时各组件的创建开关 */
-    const val appThemeImportTheme = "appThemeImportTheme"
-    const val appThemeImportTopBar = "appThemeImportTopBar"
-    const val appThemeImportBottomBar = "appThemeImportBottomBar"
-    const val appThemeImportCover = "appThemeImportCover"
+    /** 导入应用主题时各组件的创建开关（日夜间独立） */
+    const val appThemeImportDayTheme = "appThemeImportDayTheme"
+    const val appThemeImportNightTheme = "appThemeImportNightTheme"
+    const val appThemeImportDayTopBar = "appThemeImportDayTopBar"
+    const val appThemeImportNightTopBar = "appThemeImportNightTopBar"
+    const val appThemeImportDayBottomBar = "appThemeImportDayBottomBar"
+    const val appThemeImportNightBottomBar = "appThemeImportNightBottomBar"
+    const val appThemeImportDayCover = "appThemeImportDayCover"
+    const val appThemeImportNightCover = "appThemeImportNightCover"
 }

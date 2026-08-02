@@ -139,36 +139,51 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             setPadding(0, 0, 0, 24)
         }
         container.addView(tvHint)
-        val cbTheme = CheckBox(this).apply {
-            text = getString(R.string.application_theme_component_theme)
-            isChecked = saved.importTheme
+
+        fun addRow(labelRes: Int, dayChecked: Boolean, nightChecked: Boolean): Pair<CheckBox, CheckBox> {
+            val tvLabel = TextView(this).apply {
+                text = getString(labelRes)
+                setPadding(0, 12, 0, 4)
+                paintFlags = paintFlags or android.graphics.Paint.FAKE_BOLD_TEXT_FLAG
+            }
+            container.addView(tvLabel)
+            val cbDay = CheckBox(this).apply {
+                text = getString(R.string.day)
+                isChecked = dayChecked
+            }
+            val cbNight = CheckBox(this).apply {
+                text = getString(R.string.night)
+                isChecked = nightChecked
+            }
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(48, 0, 0, 0)
+                addView(cbDay)
+                addView(cbNight)
+            }
+            container.addView(row)
+            return cbDay to cbNight
         }
-        val cbTopBar = CheckBox(this).apply {
-            text = getString(R.string.application_theme_component_top_bar)
-            isChecked = saved.importTopBar
-        }
-        val cbBottomBar = CheckBox(this).apply {
-            text = getString(R.string.application_theme_component_bottom_bar)
-            isChecked = saved.importBottomBar
-        }
-        val cbCover = CheckBox(this).apply {
-            text = getString(R.string.application_theme_component_cover)
-            isChecked = saved.importCover
-        }
-        container.addView(cbTheme)
-        container.addView(cbTopBar)
-        container.addView(cbBottomBar)
-        container.addView(cbCover)
+
+        val (cbDayTheme, cbNightTheme) = addRow(R.string.application_theme_component_theme, saved.importDayTheme, saved.importNightTheme)
+        val (cbDayTopBar, cbNightTopBar) = addRow(R.string.application_theme_component_top_bar, saved.importDayTopBar, saved.importNightTopBar)
+        val (cbDayBottomBar, cbNightBottomBar) = addRow(R.string.application_theme_component_bottom_bar, saved.importDayBottomBar, saved.importNightBottomBar)
+        val (cbDayCover, cbNightCover) = addRow(R.string.application_theme_component_cover, saved.importDayCover, saved.importNightCover)
+
         alert(R.string.application_theme_import_with_options) {
             customView { container }
             okButton {
                 ApplicationThemeManager.saveImportOptions(
                     this@ApplicationThemeActivity,
                     ApplicationThemeManager.ImportOptions(
-                        importTheme = cbTheme.isChecked,
-                        importTopBar = cbTopBar.isChecked,
-                        importBottomBar = cbBottomBar.isChecked,
-                        importCover = cbCover.isChecked
+                        importDayTheme = cbDayTheme.isChecked,
+                        importNightTheme = cbNightTheme.isChecked,
+                        importDayTopBar = cbDayTopBar.isChecked,
+                        importNightTopBar = cbNightTopBar.isChecked,
+                        importDayBottomBar = cbDayBottomBar.isChecked,
+                        importNightBottomBar = cbNightBottomBar.isChecked,
+                        importDayCover = cbDayCover.isChecked,
+                        importNightCover = cbNightCover.isChecked
                     )
                 )
                 toastOnUi(R.string.success)
