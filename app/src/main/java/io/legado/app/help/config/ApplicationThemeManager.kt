@@ -226,8 +226,8 @@ object ApplicationThemeManager {
                 val importTopBar = options?.importTopBar ?: true
                 val importBottomBar = options?.importBottomBar ?: true
                 val importCover = options?.importCover ?: true
-                val dayTheme = if (importTheme) restoreThemeAsset(zip, temp, source.dayTheme, false) else source.dayTheme?.copy(backgroundImgPath = null)
-                val nightTheme = if (importTheme) restoreThemeAsset(zip, temp, source.nightTheme, true) else source.nightTheme?.copy(backgroundImgPath = null)
+                val dayTheme = restoreThemeAsset(zip, temp, source.dayTheme, false, registerTheme = importTheme)
+                val nightTheme = restoreThemeAsset(zip, temp, source.nightTheme, true, registerTheme = importTheme)
                 val dayTop = if (importTopBar) restoreTopBar(zip, temp, false, source.dayTopBarDir, data.dayTopBar) else TopBarConfig.DEFAULT_DIR_NAME
                 val nightTop = if (importTopBar) restoreTopBar(zip, temp, true, source.nightTopBarDir, data.nightTopBar) else TopBarConfig.DEFAULT_DIR_NAME
                 val dayBottom = if (importBottomBar) restoreBottomBar(zip, temp, false, data.dayBottomBar) else null
@@ -252,12 +252,17 @@ object ApplicationThemeManager {
         }
     }
 
-    /** 按导入选项剥离未选中的组件，将对应字段置为默认值 */
+    /**
+     * 按导入选项剥离未选中的组件，将对应字段置为默认值。
+     *
+     * 主题组件存储的是内联数据（颜色 + 背景图路径），而非引用 ID，
+     * 因此不剥离背景图路径——无论是否勾选「主题」，应用主题配置中
+     * 都保留完整的主题数据，以便预览和应用时能正确显示背景图。
+     * 「主题」勾选仅控制是否在主题管理列表中注册新条目（见 restoreThemeAsset）。
+     */
     private fun stripComponents(config: Config, options: ImportOptions?): Config {
         if (options == null) return config
         return config.copy(
-            dayTheme = if (options.importTheme) config.dayTheme else config.dayTheme?.copy(backgroundImgPath = null),
-            nightTheme = if (options.importTheme) config.nightTheme else config.nightTheme?.copy(backgroundImgPath = null),
             dayTopBarDir = if (options.importTopBar) config.dayTopBarDir else TopBarConfig.DEFAULT_DIR_NAME,
             nightTopBarDir = if (options.importTopBar) config.nightTopBarDir else TopBarConfig.DEFAULT_DIR_NAME,
             dayBottomBarId = if (options.importBottomBar) config.dayBottomBarId else null,
@@ -516,7 +521,8 @@ object ApplicationThemeManager {
         zip: ZipFile,
         temp: File,
         theme: ThemeConfig.Config?,
-        isNight: Boolean
+        isNight: Boolean,
+        registerTheme: Boolean = true
     ): ThemeConfig.Config? {
         theme ?: return null
         val path = theme.backgroundImgPath
@@ -532,11 +538,13 @@ object ApplicationThemeManager {
                 restored = restored.copy(backgroundImgPath = null)
             }
         }
-        // 将导入的主题添加到 ThemeConfig.configList，使其在主题管理列表中可见
-        val usedNames = ThemeConfig.configList.filter { it.isNightTheme == isNight }.map { it.themeName }.toSet()
-        val uniqueThemeName = uniqueName(restored.themeName, usedNames)
-        restored = restored.copy(themeName = uniqueThemeName)
-        ThemeConfig.addConfig(restored)
+        if (registerTheme) {
+            // 将导入的主题添加到 ThemeConfig.configList，使其在主题管理列表中可见
+            val usedNames = ThemeConfig.configList.filter { it.isNightTheme == isNight }.map { it.themeName }.toSet()
+            val uniqueThemeName = uniqueName(restored.themeName, usedNames)
+            restored = restored.copy(themeName = uniqueThemeName)
+            ThemeConfig.addConfig(restored)
+        }
         return restored
     }
 
@@ -616,15 +624,14 @@ object ApplicationThemeManager {
     }
 
     private fun validatePackage(zip: ZipFile, data: PackageData, options: ImportOptions? = null) {
-        val importTheme = options?.importTheme ?: true
         val importTopBar = options?.importTopBar ?: true
         val importBottomBar = options?.importBottomBar ?: true
         val importCover = options?.importCover ?: true
         val assetPaths = buildList {
-            if (importTheme) {
-                listOfNotNull(data.config.dayTheme, data.config.nightTheme).forEach { theme ->
-                    theme.backgroundImgPath?.takeUnless { it.startsWith("http", true) }?.let(::add)
-                }
+            // 主题背景图始终需要校验：无论是否勾选「主题」，
+            // 背景图资源都会从 zip 中提取以供预览和应用使用
+            listOfNotNull(data.config.dayTheme, data.config.nightTheme).forEach { theme ->
+                theme.backgroundImgPath?.takeUnless { it.startsWith("http", true) }?.let(::add)
             }
             if (importTopBar) {
                 listOfNotNull(data.dayTopBar, data.nightTopBar).forEach { topBar ->
