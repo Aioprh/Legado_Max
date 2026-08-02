@@ -58,11 +58,36 @@ fun SummaryCard(
     latestRecords: List<ReadRecord>,
     viewModel: ReadRecordViewModel
 ) {
-    val hours = totalReadTime / (1000 * 60 * 60)
+    // ★★★ 时间格式化：转换为 天 + 小时 ★★★
+    val totalHours = totalReadTime / (1000 * 60 * 60)
+    val days = totalHours / 24
+    val remainingHours = totalHours % 24
     val minutes = (totalReadTime / (1000 * 60)) % 60
-    val hourStr = stringResource(if (hours == 1L) R.string.rr_hour else R.string.rr_hours)
-    val minuteStr = stringResource(if (minutes == 1L) R.string.rr_minute else R.string.rr_minutes)
-    val timeString = if (hours > 0) "${hours}$hourStr${minutes}$minuteStr" else "${minutes}$minuteStr"
+
+    // ★★★ 构建时间字符串 ★★★
+    val timeString = buildString {
+        if (days > 0) {
+            append(days)
+            append(if (days == 1L) "天" else "天")
+            if (remainingHours > 0) {
+                append(" ")
+                append(remainingHours)
+                append(if (remainingHours == 1L) "小时" else "小时")
+            }
+        } else if (totalHours > 0) {
+            append(totalHours)
+            append(if (totalHours == 1L) "小时" else "小时")
+            if (minutes > 0) {
+                append(" ")
+                append(minutes)
+                append(if (minutes == 1L) "分钟" else "分钟")
+            }
+        } else {
+            append(minutes)
+            append(if (minutes == 1L) "分钟" else "分钟")
+        }
+    }
+
     val shape = RoundedCornerShape(16.dp)
     val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.18f
     val cardColor = if (isDarkBackground) {
@@ -123,6 +148,7 @@ fun SummaryCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
+                // ★★★ 使用新的 timeString ★★★
                 Text(
                     text = stringResource(R.string.rr_total_read_time, timeString),
                     style = MaterialTheme.typography.bodySmall,
