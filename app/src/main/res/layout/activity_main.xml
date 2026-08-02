@@ -10,7 +10,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <androidx.viewpager.widget.ViewPager
+        <!-- 替换为自定义 NoSwipeViewPager，禁用内容区域滑动切换 -->
+        <io.legado.app.ui.widget.NoSwipeViewPager
             android:id="@+id/view_pager_main"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
