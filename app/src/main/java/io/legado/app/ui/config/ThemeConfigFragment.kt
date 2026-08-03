@@ -256,13 +256,15 @@ class ThemeConfigFragment : PreferenceFragment(),
             customView { alertBinding.root }
             okButton {
                 alertBinding.editView.text?.toString()?.let { themeName ->
-                    when (key) {
-                        "saveDayTheme" -> {
-                            ThemeConfig.saveDayTheme(requireContext(), themeName)
-                        }
+                    lifecycleScope.launch {
+                        when (key) {
+                            "saveDayTheme" -> {
+                                ThemeConfig.saveDayTheme(requireContext(), themeName)
+                            }
 
-                        "saveNightTheme" -> {
-                            ThemeConfig.saveNightTheme(requireContext(), themeName)
+                            "saveNightTheme" -> {
+                                ThemeConfig.saveNightTheme(requireContext(), themeName)
+                            }
                         }
                     }
                 }

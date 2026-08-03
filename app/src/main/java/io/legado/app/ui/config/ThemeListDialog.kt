@@ -36,6 +36,8 @@ import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.*
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
@@ -166,12 +168,14 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
         when (item?.itemId) {
             R.id.menu_import -> {
                 requireContext().getClipText()?.let { clipText ->
-                    val count = ThemeConfig.addConfig(clipText)
-                    if (count > 0) {
-                        initData()
-                        toastOnUi("成功导入 $count 个主题")
-                    } else {
-                        toastOnUi("格式不对,添加失败")
+                    lifecycleScope.launch {
+                        val count = ThemeConfig.addConfig(clipText)
+                        if (count > 0) {
+                            initData()
+                            toastOnUi("成功导入 $count 个主题")
+                        } else {
+                            toastOnUi("格式不对,添加失败")
+                        }
                     }
                 } ?: toastOnUi("剪贴板为空")
             }
@@ -223,13 +227,15 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
                 0 -> editTheme(null)
                 1 -> {
                     requireContext().getClipText()?.let { clipText ->
-                        val count = ThemeConfig.addConfig(clipText)
-                        if (count > 0) {
-                            initData()
-                            updateSummary()
-                            toastOnUi("成功导入 $count 个主题")
-                        } else {
-                            toastOnUi("格式不对,添加失败")
+                        lifecycleScope.launch {
+                            val count = ThemeConfig.addConfig(clipText)
+                            if (count > 0) {
+                                initData()
+                                updateSummary()
+                                toastOnUi("成功导入 $count 个主题")
+                            } else {
+                                toastOnUi("格式不对,添加失败")
+                            }
                         }
                     } ?: toastOnUi("剪贴板为空")
                 }
@@ -285,18 +291,20 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
                 val filteredThemes = getFilteredThemes()
                 val positions = selectedPositions.sortedDescending()
                 // 需要找到在原始列表中的位置
-                positions.forEach { filteredIndex ->
+                val indicesToDelete = positions.mapNotNull { filteredIndex ->
                     val config = filteredThemes[filteredIndex]
-                    val originalIndex = ThemeConfig.configList.indexOfFirst { 
+                    ThemeConfig.configList.indexOfFirst { 
                         it.themeName == config.themeName && it.isNightTheme == config.isNightTheme 
-                    }
-                    if (originalIndex >= 0) {
+                    }.takeIf { it >= 0 }
+                }
+                lifecycleScope.launch {
+                    indicesToDelete.sortedDescending().forEach { originalIndex ->
                         ThemeConfig.delConfig(originalIndex)
                     }
+                    exitMultiSelectMode()
+                    initData()
+                    updateSummary()
                 }
-                exitMultiSelectMode()
-                initData()
-                updateSummary()
             }
             noButton()
         }
@@ -317,9 +325,11 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
             }
         }.filter { it >= 0 }
         
-        ThemeConfig.toTopConfigs(originalPositions)
-        exitMultiSelectMode()
-        initData()
+        lifecycleScope.launch {
+            ThemeConfig.toTopConfigs(originalPositions)
+            exitMultiSelectMode()
+            initData()
+        }
     }
 
     fun delete(index: Int) {
@@ -332,10 +342,12 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
         alert(R.string.delete, R.string.sure_del) {
             yesButton {
                 if (originalIndex >= 0) {
-                    ThemeConfig.delConfig(originalIndex)
+                    lifecycleScope.launch {
+                        ThemeConfig.delConfig(originalIndex)
+                        initData()
+                        updateSummary()
+                    }
                 }
-                initData()
-                updateSummary()
             }
             noButton()
         }
@@ -559,14 +571,16 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
         } else {
             ThemeConfig.configList.add(config)
         }
-        ThemeConfig.save()
-        initData()
-        updateSummary()
-        val current = ThemeConfig.getDurConfig(requireContext())
-        if (current.themeName == config.themeName && current.isNightTheme == config.isNightTheme) {
-            ThemeConfig.applyConfig(requireContext(), config)
+        lifecycleScope.launch {
+            ThemeConfig.save()
+            initData()
+            updateSummary()
+            val current = ThemeConfig.getDurConfig(requireContext())
+            if (current.themeName == config.themeName && current.isNightTheme == config.isNightTheme) {
+                ThemeConfig.applyConfig(requireContext(), config)
+            }
+            toastOnUi("主题已保存")
         }
-        toastOnUi("主题已保存")
     }
 
     private fun findThemeIndex(config: ThemeConfig.Config): Int {

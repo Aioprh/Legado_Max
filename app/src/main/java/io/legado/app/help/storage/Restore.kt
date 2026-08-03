@@ -1342,7 +1342,7 @@ object Restore {
         }
     }
 
-    private fun fixThemeConfigBackgroundPaths() {
+    private suspend fun fixThemeConfigBackgroundPaths() {
         var updated = false
         ThemeConfig.configList.forEachIndexed { index, config ->
             val bgPath = config.backgroundImgPath ?: return@forEachIndexed
@@ -1351,7 +1351,7 @@ object Restore {
             if (fixedPath != bgPath) {
                 ThemeConfig.configList[index] = config.copy(backgroundImgPath = fixedPath)
                 updated = true
-                LogUtils.d(TAG, "淇涓婚閰嶇疆鑳屾櫙璺緞: $bgPath -> $fixedPath")
+                LogUtils.d(TAG, "修正主题配置背景路径: $bgPath -> $fixedPath")
             }
         }
         if (updated) {
