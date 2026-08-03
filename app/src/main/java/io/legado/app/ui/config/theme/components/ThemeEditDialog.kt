@@ -45,7 +45,7 @@ fun ThemeEditDialog(
     onSave: () -> Unit,
     onSelectImage: () -> Unit,
     onUpdateDraft: ((ThemeConfig.Config) -> ThemeConfig.Config) -> Unit,
-    onColorClick: (colorKey: String, currentColor: String) -> Unit = {},
+    onColorClick: (colorKey: String, currentColor: String) -> Unit = { _, _ -> },
     onBlurClick: (currentBlur: Int) -> Unit = {}
 ) {
     val config = draft ?: return
@@ -290,6 +290,4 @@ private fun SwitchRow(
             )
         }
     }
-}
-
 }
