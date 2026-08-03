@@ -17,6 +17,16 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/03**
+- feat: 阅读时间显示支持天单位，超过24小时显示为X天Y小时
+- feat: 首页排行榜支持分页加载，每页5行，滑到底自动加载更多，支持页码记忆
+- fix: 修复 TextLine.getColumn 在 textColumns 为空时调用 last() 导致的 NoSuchElementException 崩溃
+- 以上提交来自[Aioprh](https://github.com/Aioprh/Legado_Max),我稍微做了些修改
+- fix: 单分类网格排行榜滑到最后一页时不加载下一页
+- perf(restore): 优化备份恢复时阅读记录恢复速度
+- fix(dialogs): 修复 OPPO ColorOS 设备上 AlertDialog 不显示的问题
+fix(阅读页): 修复 dp: 协议段评气泡无法显示的问题
+
 **2026/8/02**
 - fix(webview): 修复书籍详情页 useWeb 渲染污染 showBrowser 页面显示的问题
 - fix(应用主题): 导入主题设置选项持久化，不再设置后弹出文件选择器
