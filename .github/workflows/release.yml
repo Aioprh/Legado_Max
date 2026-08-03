@@ -77,6 +77,8 @@ jobs:
   release:
     needs: [prepare, build]
     runs-on: ubuntu-latest
+    permissions:                            # 🔑 新增：赋予写入权限
+      contents: write
     steps:
       - name: 下载所有 APK
         uses: actions/download-artifact@v7
@@ -102,6 +104,7 @@ jobs:
             两个版本可以同时安装，互不冲突。
           files: all_apks/*.apk
           fail_on_unmatched_files: true
+          overwrite_files: true              # ✅ 避免同名文件冲突
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
