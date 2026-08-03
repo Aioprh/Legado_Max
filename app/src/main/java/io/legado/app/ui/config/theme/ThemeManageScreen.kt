@@ -52,7 +52,9 @@ fun ThemeManageScreen(
     onRecreate: () -> Unit,
     onDeleteConfirm: () -> Unit,
     onToast: (Int) -> Unit = {},
-    onToastMsg: (String) -> Unit = {}
+    onToastMsg: (String) -> Unit = {},
+    onColorClick: (colorKey: String, currentColor: String) -> Unit = { _, _ -> },
+    onBlurClick: (currentBlur: Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val topBarColor = pageCardContainerColor()
@@ -208,7 +210,9 @@ fun ThemeManageScreen(
             onDismiss = { viewModel.closeEditDialog() },
             onSave = { viewModel.saveEditedTheme() },
             onSelectImage = onSelectImage,
-            onUpdateDraft = { viewModel.updateDraft(it) }
+            onUpdateDraft = { viewModel.updateDraft(it) },
+            onColorClick = onColorClick,
+            onBlurClick = onBlurClick
         )
     }
 }

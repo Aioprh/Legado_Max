@@ -1,7 +1,6 @@
 package io.legado.app.ui.config.theme.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,50 +12,30 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import io.legado.app.R
 import io.legado.app.help.config.ThemeConfig
-
-private val presetColors = listOf(
-    "#F44336", "#E91E63", "#9C27B0", "#673AB7",
-    "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4",
-    "#009688", "#4CAF50", "#8BC34A", "#CDDC39",
-    "#FFEB3B", "#FFC107", "#FF9800", "#FF5722",
-    "#795548", "#607D8B", "#9E9E9E", "#424242",
-    "#FFFFFF", "#000000"
-)
 
 @Composable
 fun ThemeEditDialog(
@@ -65,7 +44,9 @@ fun ThemeEditDialog(
     onDismiss: () -> Unit,
     onSave: () -> Unit,
     onSelectImage: () -> Unit,
-    onUpdateDraft: ((ThemeConfig.Config) -> ThemeConfig.Config) -> Unit
+    onUpdateDraft: ((ThemeConfig.Config) -> ThemeConfig.Config) -> Unit,
+    onColorClick: (colorKey: String, currentColor: String) -> Unit = {},
+    onBlurClick: (currentBlur: Int) -> Unit = {}
 ) {
     val config = draft ?: return
 
@@ -82,7 +63,7 @@ fun ThemeEditDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 // 主题名称
                 OutlinedTextField(
@@ -90,65 +71,64 @@ fun ThemeEditDialog(
                     onValueChange = { name -> onUpdateDraft { cfg -> cfg.copy(themeName = name) } },
                     label = { Text(stringResource(R.string.theme_name)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
                 )
 
                 // 主色调
-                ColorPickerSection(
-                    label = stringResource(R.string.top_bar_primary_color),
+                ColorRow(
+                    title = stringResource(R.string.primary),
                     hexColor = config.primaryColor,
-                    onColorChanged = { color -> onUpdateDraft { cfg -> cfg.copy(primaryColor = color) } }
+                    isAccent = false,
+                    onClick = { onColorClick("primaryColor", config.primaryColor) }
                 )
 
                 // 强调色
-                ColorPickerSection(
-                    label = stringResource(R.string.accent_color),
+                ColorRow(
+                    title = stringResource(R.string.accent_color),
                     hexColor = config.accentColor,
-                    onColorChanged = { color -> onUpdateDraft { cfg -> cfg.copy(accentColor = color) } }
+                    isAccent = true,
+                    onClick = { onColorClick("accentColor", config.accentColor) }
                 )
 
                 // 背景色
-                ColorPickerSection(
-                    label = stringResource(R.string.background_color),
+                ColorRow(
+                    title = stringResource(R.string.background_color),
                     hexColor = config.backgroundColor,
-                    onColorChanged = { color -> onUpdateDraft { cfg -> cfg.copy(backgroundColor = color) } }
+                    isAccent = false,
+                    onClick = { onColorClick("backgroundColor", config.backgroundColor) }
                 )
 
                 // 底栏背景色
-                ColorPickerSection(
-                    label = stringResource(R.string.bottom_background_color),
+                ColorRow(
+                    title = stringResource(R.string.bottom_background_color),
                     hexColor = config.bottomBackground,
-                    onColorChanged = { color -> onUpdateDraft { cfg -> cfg.copy(bottomBackground = color) } }
+                    isAccent = false,
+                    onClick = { onColorClick("bottomBackground", config.bottomBackground) }
                 )
 
-                // 背景图
-                BackgroundImageSection(
-                    path = config.backgroundImgPath,
-                    onSelectImage = onSelectImage,
-                    onClear = { onUpdateDraft { cfg -> cfg.copy(backgroundImgPath = null) } }
+                // 导航栏颜色透明
+                SwitchRow(
+                    title = stringResource(R.string.imm_navigation_bar_s),
+                    checked = config.transparentNavBar,
+                    onCheckedChange = { checked -> onUpdateDraft { cfg -> cfg.copy(transparentNavBar = checked) } }
                 )
 
-                // 模糊度
-                BlurSlider(
-                    blur = config.backgroundImgBlur,
-                    onBlurChanged = { value -> onUpdateDraft { cfg -> cfg.copy(backgroundImgBlur = value) } }
+                // 背景图片
+                OptionRow(
+                    title = stringResource(R.string.background_image),
+                    value = config.backgroundImgPath?.substringAfterLast('/')?.substringAfterLast('\\')?.ifBlank { config.backgroundImgPath }
+                        ?: stringResource(R.string.select_image),
+                    onClick = onSelectImage
                 )
 
-                // 透明导航栏
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.transparent),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Switch(
-                        checked = config.transparentNavBar,
-                        onCheckedChange = { checked -> onUpdateDraft { cfg -> cfg.copy(transparentNavBar = checked) } }
-                    )
-                }
+                // 背景图片虚化
+                OptionRow(
+                    title = stringResource(R.string.background_image_blurring),
+                    value = "${config.backgroundImgBlur}",
+                    onClick = { onBlurClick(config.backgroundImgBlur) }
+                )
             }
         },
         confirmButton = {
@@ -164,148 +144,152 @@ fun ThemeEditDialog(
     )
 }
 
+/**
+ * 颜色属性行：左边标题，中间色号，右边颜色方块
+ * isAccent=true 时颜色方块更大（还原旧版行为：强调色方块比其他色大）
+ */
 @Composable
-private fun ColorPickerSection(
-    label: String,
+private fun ColorRow(
+    title: String,
     hexColor: String,
-    onColorChanged: (String) -> Unit
+    isAccent: Boolean,
+    onClick: () -> Unit
 ) {
     val currentColor = remember(hexColor) {
         runCatching { Color(hexColor.toColorInt()) }.getOrDefault(Color.Gray)
     }
-    var hexText by remember(hexColor) { mutableStateOf(hexColor) }
+    val displayHex = remember(hexColor) { hexColor.uppercase() }
 
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        // 预设颜色
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(presetColors) { hex ->
-                val color = runCatching { Color(hex.toColorInt()) }.getOrDefault(Color.Gray)
-                val isSelected = hex.equals(hexColor, ignoreCase = true)
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(color)
-                        .then(
-                            if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                            else Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                        )
-                        .clickable {
-                            hexText = hex
-                            onColorChanged(hex)
-                        }
-                )
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // 十六进制输入
-        OutlinedTextField(
-            value = hexText,
-            onValueChange = { text ->
-                hexText = text
-                val cleaned = text.trim()
-                if (cleaned.matches(Regex("^#?[0-9A-Fa-f]{6,8}$"))) {
-                    val normalized = if (cleaned.startsWith("#")) cleaned else "#$cleaned"
-                    runCatching { normalized.toColorInt() }.onSuccess { onColorChanged(normalized) }
-                }
-            },
-            label = { Text("Hex") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
-        )
-    }
-}
-
-@Composable
-private fun BackgroundImageSection(
-    path: String?,
-    onSelectImage: () -> Unit,
-    onClear: () -> Unit
-) {
-    Column {
-        Text(
-            text = stringResource(R.string.background_image),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            text = path ?: stringResource(R.string.empty),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1
-        )
-
-        Spacer(Modifier.height(4.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onSelectImage) {
-                Text(stringResource(R.string.select_image))
-            }
-            if (path != null) {
-                Button(
-                    onClick = onClear,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                ) {
-                    Text(stringResource(R.string.clear))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BlurSlider(
-    blur: Int,
-    onBlurChanged: (Int) -> Unit
-) {
-    Column {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 0.dp
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(R.string.background_image_blurring_radius),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Medium
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontSize = 15.sp,
+                modifier = Modifier.weight(1f)
             )
+
             Text(
-                text = blur.toString(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = displayHex,
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.width(100.dp)
+            )
+
+            Spacer(Modifier.width(10.dp))
+
+            // 颜色方块：强调色比其他色大
+            Box(
+                modifier = Modifier
+                    .size(
+                        width = if (isAccent) 36.dp else 28.dp,
+                        height = if (isAccent) 28.dp else 22.dp
+                    )
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(currentColor)
             )
         }
-
-        Slider(
-            value = blur.toFloat(),
-            onValueChange = { onBlurChanged(it.toInt()) },
-            valueRange = 0f..25f,
-            steps = 24,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Text(
-            text = stringResource(R.string.background_image_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 11.sp
-        )
     }
+}
+
+/**
+ * 通用属性行：左边标题，右边值文本，点击触发回调
+ */
+@Composable
+private fun OptionRow(
+    title: String,
+    value: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontSize = 15.sp,
+                modifier = Modifier.weight(1f)
+            )
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.MiddleEllipsis
+            )
+        }
+    }
+}
+
+/**
+ * 开关行：左边标题，右边Switch
+ */
+@Composable
+private fun SwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .clip(RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontSize = 15.sp,
+                modifier = Modifier.weight(1f)
+            )
+
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
+            )
+        }
+    }
+}
+
 }
