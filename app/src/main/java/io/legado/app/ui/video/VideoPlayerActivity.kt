@@ -45,6 +45,7 @@ import io.legado.app.help.book.removeType
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.gsyVideo.VideoPlayer
 import io.legado.app.help.webView.PooledWebView
+import io.legado.app.help.webView.Scope
 import io.legado.app.help.webView.WebJsExtensions
 import io.legado.app.help.webView.WebJsExtensions.Companion.buildUseWebInjection
 import io.legado.app.help.webView.WebJsExtensions.Companion.nameCache
@@ -401,7 +402,7 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
             }
             val html = wrapUseWebHtml(intro.substring(8, lastIndex), VideoPlay.source)
             val pooledWebView = this.pooledWebView ?: let{
-                val pooledWebView = WebViewPool.acquire(this)
+                val pooledWebView = WebViewPool.acquire(this, Scope.INLINE)
                 val webView = pooledWebView.realWebView
                 webView.onResume()
                 prepareForInlineContent(webView)
