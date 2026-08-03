@@ -2013,6 +2013,10 @@ class TextChapterLayout(
     private fun tryParseForcedBubbleSrcWithClick(src: String): ForcedBubbleResult {
         if (!AppConfig.forceSoftwareParagraphBubble) return ForcedBubbleResult(src, null)
         if (ParagraphBubbleRenderer.isBubbleSrc(src)) return ForcedBubbleResult(src, null)
+        // dp: 协议快速解析（如 dp:12,{"pclick":"...","status":"normal"}）
+        if (src.startsWith(PARAGRAPH_BUBBLE_PREFIX, ignoreCase = true)) {
+            return parseParagraphBubble(src)
+        }
         val urlMatcher = paramPattern.matcher(src)
         if (!urlMatcher.find()) return ForcedBubbleResult(src, null)
         val renderSrc = src.substring(0, urlMatcher.start())
@@ -2024,6 +2028,41 @@ class TextChapterLayout(
             ?: return ForcedBubbleResult(src, null)
         val status = option.valueIgnoreCase("status")?.takeIf { it.isNotBlank() } ?: "normal"
         val displayColor = extractForcedBubbleColor(src, renderSrc, option)
+        val colorQuery = displayColor?.let { "&displayColor=${Uri.encode(it)}" }.orEmpty()
+        val encodedText = Uri.encode(displayText)
+        val encodedStatus = Uri.encode(status)
+        val pclick = option.valueIgnoreCase("pclick")?.takeIf { it.isNotBlank() }
+        val click = option.valueIgnoreCase("click")?.takeIf { it.isNotBlank() }
+        val bubbleUrl = "bubble://paragraph?displayText=$encodedText&num=$encodedText&status=$encodedStatus$colorQuery"
+        return ForcedBubbleResult(bubbleUrl, pclick ?: click)
+    }
+
+    /**
+     * 解析 dp: 协议的段评气泡 src。
+     *
+     * 格式：dp:<count>,{"pclick":"...","status":"normal","displayColor":"..."}
+     * - count 部分作为气泡显示文本的 fallback
+     * - option JSON 中的 displayText/num/count 等优先作为显示文本
+     * - pclick/click 保留为点击脚本
+     */
+    private fun parseParagraphBubble(src: String): ForcedBubbleResult {
+        val payload = src.substring(PARAGRAPH_BUBBLE_PREFIX.length).trim()
+        val optionIndex = payload.indexOf(",{")
+        val count = if (optionIndex >= 0) {
+            payload.substring(0, optionIndex)
+        } else {
+            payload
+        }.trim()
+        val option = if (optionIndex >= 0) {
+            GSON.fromJsonObject<Map<String, String>>(payload.substring(optionIndex + 1))
+                .getOrNull()
+                .orEmpty()
+        } else {
+            emptyMap()
+        }
+        val displayText = extractForcedBubbleDisplayText(src, src, option) ?: count
+        val status = option.valueIgnoreCase("status")?.takeIf { it.isNotBlank() } ?: "normal"
+        val displayColor = extractForcedBubbleColor(src, src, option)
         val colorQuery = displayColor?.let { "&displayColor=${Uri.encode(it)}" }.orEmpty()
         val encodedText = Uri.encode(displayText)
         val encodedStatus = Uri.encode(status)
@@ -2046,7 +2085,7 @@ class TextChapterLayout(
         val clickLike = click.contains("showcmt(") ||
             click.contains("showcomment(") ||
             click.contains("showreview(") ||
-            click.contains("showparagraph(")
+            click.contains("paragraph")
         val dataSvg = src.trimStart().startsWith("data:image/svg+xml", ignoreCase = true)
         return knownType || clickLike || (styleText && dataSvg)
     }
@@ -2225,7 +2264,7 @@ class TextChapterLayout(
         val clickLike = click.contains("showcmt(") ||
             click.contains("showcomment(") ||
             click.contains("showreview(") ||
-            click.contains("showparagraph(")
+            click.contains("paragraph")
         return styleText || knownType || clickLike
     }
 
@@ -2275,12 +2314,17 @@ class TextChapterLayout(
             """createSvg2?\s*\((?:[^,)]*,){3}\s*([0-9]{1,8})""",
             RegexOption.IGNORE_CASE
         )
+        const val PARAGRAPH_BUBBLE_PREFIX = "dp:"
         val FORCED_BUBBLE_TYPES = setOf(
             "qd",
             "fqpl",
             "fanqie",
             "cmt",
             "comment",
+            "comments",
+            "review",
+            "paragraph",
+            "paragraphcomment",
         )
     }
 
