@@ -79,6 +79,7 @@ import io.legado.app.utils.isJsonArray
 import io.legado.app.utils.openInputStream
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
+import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -420,16 +421,23 @@ object Restore {
         // 恢复阅读记录
         if ("readRecord.json" in selectedSet || "readRecordDetail.json" in selectedSet || "readRecordSession.json" in selectedSet) {
             progress("readRecord.json")
-            appDb.readRecordDao.clear()
-            appDb.readRecordDao.clearDetails()
-            appDb.readRecordDao.clearSessions()
             val readRecords = if ("readRecord.json" in selectedSet) fileToListT<ReadRecord>(path, "readRecord.json").orEmpty() else emptyList()
             val readRecordDetails = if ("readRecordDetail.json" in selectedSet) fileToListT<ReadRecordDetail>(path, "readRecordDetail.json").orEmpty() else emptyList()
             val readRecordSessions = if ("readRecordSession.json" in selectedSet) fileToListT<ReadRecordSession>(path, "readRecordSession.json").orEmpty() else emptyList()
             if (readRecords.isNotEmpty() || readRecordDetails.isNotEmpty() || readRecordSessions.isNotEmpty()) {
-                ReadRecordRepository(appDb.readRecordDao).apply {
-                    importRecords(readRecords, readRecordDetails, readRecordSessions)
-                    repairRecords { bookName -> appDb.bookDao.getBookByName(bookName)?.author?.trim()?.ifBlank { null } }
+                // 预加载书名→作者映射，避免 repairRecords 中逐条查询 bookDao
+                val bookAuthorMap = appDb.bookDao.all
+                    .mapNotNull { book -> book.author.trim().ifBlank { null }?.let { book.name to it } }
+                    .toMap()
+                // 整个清空+导入+修复在一个事务中执行，避免 N 次事务提交开销
+                appDb.withTransaction {
+                    appDb.readRecordDao.clear()
+                    appDb.readRecordDao.clearDetails()
+                    appDb.readRecordDao.clearSessions()
+                    ReadRecordRepository(appDb.readRecordDao).apply {
+                        importRecords(readRecords, readRecordDetails, readRecordSessions)
+                        repairRecords { bookName -> bookAuthorMap[bookName] }
+                    }
                 }
                 appCtx.putPrefInt(PreferKey.readRecordRepairVersion, ReadRecordRepository.CURRENT_REPAIR_VERSION)
             }
@@ -792,21 +800,28 @@ object Restore {
 
         // 恢复阅读记录（先清空再导入）
         progress("readRecord.json")
-        appDb.readRecordDao.clear()
-        appDb.readRecordDao.clearDetails()
-        appDb.readRecordDao.clearSessions()
         val readRecords = fileToListT<ReadRecord>(path, "readRecord.json").orEmpty()
         val readRecordDetails = fileToListT<ReadRecordDetail>(path, "readRecordDetail.json").orEmpty()
         val readRecordSessions = fileToListT<ReadRecordSession>(path, "readRecordSession.json").orEmpty()
         if (readRecords.isNotEmpty() || readRecordDetails.isNotEmpty() || readRecordSessions.isNotEmpty()) {
-            ReadRecordRepository(appDb.readRecordDao).apply {
-                importRecords(
-                    readRecords,
-                    readRecordDetails,
-                    readRecordSessions
-                )
-                repairRecords { bookName ->
-                    appDb.bookDao.getBookByName(bookName)?.author?.trim()?.ifBlank { null }
+            // 预加载书名→作者映射，避免 repairRecords 中逐条查询 bookDao
+            val bookAuthorMap = appDb.bookDao.all
+                .mapNotNull { book -> book.author.trim().ifBlank { null }?.let { book.name to it } }
+                .toMap()
+            // 整个清空+导入+修复在一个事务中执行，避免 N 次事务提交开销
+            appDb.withTransaction {
+                appDb.readRecordDao.clear()
+                appDb.readRecordDao.clearDetails()
+                appDb.readRecordDao.clearSessions()
+                ReadRecordRepository(appDb.readRecordDao).apply {
+                    importRecords(
+                        readRecords,
+                        readRecordDetails,
+                        readRecordSessions
+                    )
+                    repairRecords { bookName ->
+                        bookAuthorMap[bookName]
+                    }
                 }
             }
             appCtx.putPrefInt(

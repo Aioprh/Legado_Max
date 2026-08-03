@@ -16,10 +16,19 @@ interface ReadRecordDao {
     suspend fun insert(vararg readRecord: ReadRecord)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(readRecords: List<ReadRecord>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDetail(detail: ReadRecordDetail)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllDetails(details: List<ReadRecordDetail>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSession(session: ReadRecordSession)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllSessions(sessions: List<ReadRecordSession>)
 
     @Update
     suspend fun update(vararg record: ReadRecord)

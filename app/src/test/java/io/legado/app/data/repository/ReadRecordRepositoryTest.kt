@@ -311,6 +311,10 @@ class ReadRecordRepositoryTest {
             }
         }
 
+        override suspend fun insertAll(readRecords: List<ReadRecord>) {
+            insert(*readRecords.toTypedArray())
+        }
+
         override suspend fun insertDetail(detail: ReadRecordDetail) {
             details.removeAll {
                 it.deviceId == detail.deviceId &&
@@ -321,6 +325,10 @@ class ReadRecordRepositoryTest {
             details.add(detail.copy())
         }
 
+        override suspend fun insertAllDetails(details: List<ReadRecordDetail>) {
+            details.forEach { insertDetail(it) }
+        }
+
         override suspend fun insertSession(session: ReadRecordSession) {
             val stored = if (session.id == 0L) {
                 session.copy(id = nextSessionId++)
@@ -329,6 +337,10 @@ class ReadRecordRepositoryTest {
             }
             sessions.removeAll { it.id == stored.id }
             sessions.add(stored)
+        }
+
+        override suspend fun insertAllSessions(sessions: List<ReadRecordSession>) {
+            sessions.forEach { insertSession(it) }
         }
 
         override suspend fun update(vararg record: ReadRecord) {
