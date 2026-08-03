@@ -786,7 +786,10 @@ private fun HomepageModuleItem(
                         HomepageModuleType.GridRanking -> GridRankingModule(
                             books = state.books,
                             onClick = { item -> onBookClick(item.book) },
-                            onLongClick = { item -> onBookLongClick(item.book) }
+                            onLongClick = { item -> onBookLongClick(item.book) },
+                            onLoadMore = if (state.hasMore && !state.isLoadingMore) {
+                                { viewModel.loadMoreModule(module.globalId) }
+                            } else null
                         )
 
                         HomepageModuleType.Waterfall -> {
