@@ -9,8 +9,10 @@ import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
+import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.putPrefString
 import io.legado.app.utils.normalizeFileName
 import io.legado.app.utils.externalFiles
@@ -97,14 +99,44 @@ object ApplicationThemeManager {
         val images: List<String>
     )
 
-    /** 导入应用主题时的可选创建范围，控制是否将各子配置创建到相应界面 */
+    /** 导入应用主题时的可选创建范围，日夜间可独立控制 */
     @Keep
     data class ImportOptions(
-        val importTheme: Boolean = true,
-        val importTopBar: Boolean = true,
-        val importBottomBar: Boolean = true,
-        val importCover: Boolean = true
+        val importDayTheme: Boolean = true,
+        val importNightTheme: Boolean = true,
+        val importDayTopBar: Boolean = true,
+        val importNightTopBar: Boolean = true,
+        val importDayBottomBar: Boolean = true,
+        val importNightBottomBar: Boolean = true,
+        val importDayCover: Boolean = true,
+        val importNightCover: Boolean = true
     )
+
+    /** 将导入选项持久化到 SharedPreferences */
+    fun saveImportOptions(context: Context, options: ImportOptions) {
+        context.putPrefBoolean(PreferKey.appThemeImportDayTheme, options.importDayTheme)
+        context.putPrefBoolean(PreferKey.appThemeImportNightTheme, options.importNightTheme)
+        context.putPrefBoolean(PreferKey.appThemeImportDayTopBar, options.importDayTopBar)
+        context.putPrefBoolean(PreferKey.appThemeImportNightTopBar, options.importNightTopBar)
+        context.putPrefBoolean(PreferKey.appThemeImportDayBottomBar, options.importDayBottomBar)
+        context.putPrefBoolean(PreferKey.appThemeImportNightBottomBar, options.importNightBottomBar)
+        context.putPrefBoolean(PreferKey.appThemeImportDayCover, options.importDayCover)
+        context.putPrefBoolean(PreferKey.appThemeImportNightCover, options.importNightCover)
+    }
+
+    /** 从 SharedPreferences 读取持久化的导入选项，默认全部为 true */
+    fun getImportOptions(context: Context): ImportOptions {
+        return ImportOptions(
+            importDayTheme = context.getPrefBoolean(PreferKey.appThemeImportDayTheme, true),
+            importNightTheme = context.getPrefBoolean(PreferKey.appThemeImportNightTheme, true),
+            importDayTopBar = context.getPrefBoolean(PreferKey.appThemeImportDayTopBar, true),
+            importNightTopBar = context.getPrefBoolean(PreferKey.appThemeImportNightTopBar, true),
+            importDayBottomBar = context.getPrefBoolean(PreferKey.appThemeImportDayBottomBar, true),
+            importNightBottomBar = context.getPrefBoolean(PreferKey.appThemeImportNightBottomBar, true),
+            importDayCover = context.getPrefBoolean(PreferKey.appThemeImportDayCover, true),
+            importNightCover = context.getPrefBoolean(PreferKey.appThemeImportNightCover, true)
+        )
+    }
 
     /** 从文件加载所有应用主题配置，自动校验大小和格式 */
     fun load(): MutableList<Config> {
@@ -202,18 +234,22 @@ object ApplicationThemeManager {
                 require(data.version == 1) { appCtx.getString(R.string.app_theme_unsupported_version) }
                 validatePackage(zip, data, options)
                 val source = sanitize(data.config)
-                val importTheme = options?.importTheme ?: true
-                val importTopBar = options?.importTopBar ?: true
-                val importBottomBar = options?.importBottomBar ?: true
-                val importCover = options?.importCover ?: true
-                val dayTheme = if (importTheme) restoreThemeAsset(zip, temp, source.dayTheme, false) else source.dayTheme?.copy(backgroundImgPath = null)
-                val nightTheme = if (importTheme) restoreThemeAsset(zip, temp, source.nightTheme, true) else source.nightTheme?.copy(backgroundImgPath = null)
-                val dayTop = if (importTopBar) restoreTopBar(zip, temp, false, source.dayTopBarDir, data.dayTopBar) else TopBarConfig.DEFAULT_DIR_NAME
-                val nightTop = if (importTopBar) restoreTopBar(zip, temp, true, source.nightTopBarDir, data.nightTopBar) else TopBarConfig.DEFAULT_DIR_NAME
-                val dayBottom = if (importBottomBar) restoreBottomBar(zip, temp, false, data.dayBottomBar) else null
-                val nightBottom = if (importBottomBar) restoreBottomBar(zip, temp, true, data.nightBottomBar) else null
-                val dayCover = if (importCover) restoreCover(zip, temp, data.dayCover) else null
-                val nightCover = if (importCover) restoreCover(zip, temp, data.nightCover) else null
+                val importDayTheme = options?.importDayTheme ?: true
+                val importNightTheme = options?.importNightTheme ?: true
+                val importDayTopBar = options?.importDayTopBar ?: true
+                val importNightTopBar = options?.importNightTopBar ?: true
+                val importDayBottomBar = options?.importDayBottomBar ?: true
+                val importNightBottomBar = options?.importNightBottomBar ?: true
+                val importDayCover = options?.importDayCover ?: true
+                val importNightCover = options?.importNightCover ?: true
+                val dayTheme = restoreThemeAsset(zip, temp, source.dayTheme, false, registerTheme = importDayTheme)
+                val nightTheme = restoreThemeAsset(zip, temp, source.nightTheme, true, registerTheme = importNightTheme)
+                val dayTop = if (importDayTopBar) restoreTopBar(zip, temp, false, source.dayTopBarDir, data.dayTopBar) else TopBarConfig.DEFAULT_DIR_NAME
+                val nightTop = if (importNightTopBar) restoreTopBar(zip, temp, true, source.nightTopBarDir, data.nightTopBar) else TopBarConfig.DEFAULT_DIR_NAME
+                val dayBottom = if (importDayBottomBar) restoreBottomBar(zip, temp, false, data.dayBottomBar) else null
+                val nightBottom = if (importNightBottomBar) restoreBottomBar(zip, temp, true, data.nightBottomBar) else null
+                val dayCover = if (importDayCover) restoreCover(zip, temp, data.dayCover) else null
+                val nightCover = if (importNightCover) restoreCover(zip, temp, data.nightCover) else null
                 return addImported(
                     source.copy(
                         dayTheme = dayTheme,
@@ -232,18 +268,23 @@ object ApplicationThemeManager {
         }
     }
 
-    /** 按导入选项剥离未选中的组件，将对应字段置为默认值 */
+    /**
+     * 按导入选项剥离未选中的组件，将对应字段置为默认值。
+     *
+     * 主题组件存储的是内联数据（颜色 + 背景图路径），而非引用 ID，
+     * 因此不剥离背景图路径——无论是否勾选「主题」，应用主题配置中
+     * 都保留完整的主题数据，以便预览和应用时能正确显示背景图。
+     * 「主题」勾选仅控制是否在主题管理列表中注册新条目（见 restoreThemeAsset）。
+     */
     private fun stripComponents(config: Config, options: ImportOptions?): Config {
         if (options == null) return config
         return config.copy(
-            dayTheme = if (options.importTheme) config.dayTheme else config.dayTheme?.copy(backgroundImgPath = null),
-            nightTheme = if (options.importTheme) config.nightTheme else config.nightTheme?.copy(backgroundImgPath = null),
-            dayTopBarDir = if (options.importTopBar) config.dayTopBarDir else TopBarConfig.DEFAULT_DIR_NAME,
-            nightTopBarDir = if (options.importTopBar) config.nightTopBarDir else TopBarConfig.DEFAULT_DIR_NAME,
-            dayBottomBarId = if (options.importBottomBar) config.dayBottomBarId else null,
-            nightBottomBarId = if (options.importBottomBar) config.nightBottomBarId else null,
-            dayCoverGroupId = if (options.importCover) config.dayCoverGroupId else null,
-            nightCoverGroupId = if (options.importCover) config.nightCoverGroupId else null
+            dayTopBarDir = if (options.importDayTopBar) config.dayTopBarDir else TopBarConfig.DEFAULT_DIR_NAME,
+            nightTopBarDir = if (options.importNightTopBar) config.nightTopBarDir else TopBarConfig.DEFAULT_DIR_NAME,
+            dayBottomBarId = if (options.importDayBottomBar) config.dayBottomBarId else null,
+            nightBottomBarId = if (options.importNightBottomBar) config.nightBottomBarId else null,
+            dayCoverGroupId = if (options.importDayCover) config.dayCoverGroupId else null,
+            nightCoverGroupId = if (options.importNightCover) config.nightCoverGroupId else null
         )
     }
 
@@ -496,7 +537,8 @@ object ApplicationThemeManager {
         zip: ZipFile,
         temp: File,
         theme: ThemeConfig.Config?,
-        isNight: Boolean
+        isNight: Boolean,
+        registerTheme: Boolean = true
     ): ThemeConfig.Config? {
         theme ?: return null
         val path = theme.backgroundImgPath
@@ -512,11 +554,13 @@ object ApplicationThemeManager {
                 restored = restored.copy(backgroundImgPath = null)
             }
         }
-        // 将导入的主题添加到 ThemeConfig.configList，使其在主题管理列表中可见
-        val usedNames = ThemeConfig.configList.filter { it.isNightTheme == isNight }.map { it.themeName }.toSet()
-        val uniqueThemeName = uniqueName(restored.themeName, usedNames)
-        restored = restored.copy(themeName = uniqueThemeName)
-        ThemeConfig.addConfig(restored)
+        if (registerTheme) {
+            // 将导入的主题添加到 ThemeConfig.configList，使其在主题管理列表中可见
+            val usedNames = ThemeConfig.configList.filter { it.isNightTheme == isNight }.map { it.themeName }.toSet()
+            val uniqueThemeName = uniqueName(restored.themeName, usedNames)
+            restored = restored.copy(themeName = uniqueThemeName)
+            ThemeConfig.addConfig(restored)
+        }
         return restored
     }
 
@@ -596,28 +640,38 @@ object ApplicationThemeManager {
     }
 
     private fun validatePackage(zip: ZipFile, data: PackageData, options: ImportOptions? = null) {
-        val importTheme = options?.importTheme ?: true
-        val importTopBar = options?.importTopBar ?: true
-        val importBottomBar = options?.importBottomBar ?: true
-        val importCover = options?.importCover ?: true
+        val importDayTopBar = options?.importDayTopBar ?: true
+        val importNightTopBar = options?.importNightTopBar ?: true
+        val importDayBottomBar = options?.importDayBottomBar ?: true
+        val importNightBottomBar = options?.importNightBottomBar ?: true
+        val importDayCover = options?.importDayCover ?: true
+        val importNightCover = options?.importNightCover ?: true
         val assetPaths = buildList {
-            if (importTheme) {
-                listOfNotNull(data.config.dayTheme, data.config.nightTheme).forEach { theme ->
-                    theme.backgroundImgPath?.takeUnless { it.startsWith("http", true) }?.let(::add)
+            // 主题背景图始终需要校验：无论是否勾选「主题」，
+            // 背景图资源都会从 zip 中提取以供预览和应用使用
+            listOfNotNull(data.config.dayTheme, data.config.nightTheme).forEach { theme ->
+                theme.backgroundImgPath?.takeUnless { it.startsWith("http", true) }?.let(::add)
+            }
+            if (importDayTopBar) {
+                data.dayTopBar?.wallpaperPath?.let(::add)
+            }
+            if (importNightTopBar) {
+                data.nightTopBar?.wallpaperPath?.let(::add)
+            }
+            if (importDayBottomBar) {
+                data.dayBottomBar?.icons?.values?.let(::addAll)
+            }
+            if (importNightBottomBar) {
+                data.nightBottomBar?.icons?.values?.let(::addAll)
+            }
+            if (importDayCover) {
+                data.dayCover?.let { cover ->
+                    require(cover.images.size <= maxCoverImages) { appCtx.getString(R.string.app_theme_too_many_cover_images) }
+                    addAll(cover.images)
                 }
             }
-            if (importTopBar) {
-                listOfNotNull(data.dayTopBar, data.nightTopBar).forEach { topBar ->
-                    topBar.wallpaperPath?.let(::add)
-                }
-            }
-            if (importBottomBar) {
-                listOfNotNull(data.dayBottomBar, data.nightBottomBar).forEach { bottomBar ->
-                    addAll(bottomBar.icons.values)
-                }
-            }
-            if (importCover) {
-                listOfNotNull(data.dayCover, data.nightCover).forEach { cover ->
+            if (importNightCover) {
+                data.nightCover?.let { cover ->
                     require(cover.images.size <= maxCoverImages) { appCtx.getString(R.string.app_theme_too_many_cover_images) }
                     addAll(cover.images)
                 }
