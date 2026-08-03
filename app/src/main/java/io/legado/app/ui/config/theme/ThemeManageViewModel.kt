@@ -235,6 +235,28 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
         updateDraft { it.copy(backgroundImgPath = path) }
     }
 
+    // ── 颜色选择处理（由 Activity ColorPickerDialog 回调） ──
+
+    fun onColorSelected(colorKey: String, color: Int) {
+        // ColorPickerDialog 关闭了alpha滑块，但保险起见补齐8位
+        val hex = "#" + Integer.toHexString(color).padStart(8, '0').uppercase()
+        updateDraft { draft ->
+            when (colorKey) {
+                "primaryColor" -> draft.copy(primaryColor = hex)
+                "accentColor" -> draft.copy(accentColor = hex)
+                "backgroundColor" -> draft.copy(backgroundColor = hex)
+                "bottomBackground" -> draft.copy(bottomBackground = hex)
+                else -> draft
+            }
+        }
+    }
+
+    // ── 虚化值处理（由 Activity NumberPickerDialog 回调） ──
+
+    fun onBlurSelected(blur: Int) {
+        updateDraft { it.copy(backgroundImgBlur = blur) }
+    }
+
     // ── 内部 ──────────────────────────────────────────────
 
     private fun newThemeConfig(): ThemeConfig.Config {
