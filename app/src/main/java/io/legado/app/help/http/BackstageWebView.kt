@@ -23,6 +23,7 @@ import io.legado.app.help.WebCacheManager
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.webView.PooledWebView
+import io.legado.app.help.webView.Scope
 import io.legado.app.help.webView.WebJsExtensions
 import io.legado.app.help.webView.WebJsExtensions.Companion.getInjectionString
 import io.legado.app.help.webView.WebJsExtensions.Companion.nameCache
@@ -150,7 +151,7 @@ class BackstageWebView(
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun createWebView(): WebView {
-        val pooledWebView = WebViewPool.acquire(appCtx)
+        val pooledWebView = WebViewPool.acquire(appCtx, Scope.GLOBAL)
         this.pooledWebView = pooledWebView
         val webView = pooledWebView.realWebView
         webView.onResume() //缓存库拿的需要激活

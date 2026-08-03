@@ -1860,7 +1860,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         } else {
             alert(title = getString(R.string.add_to_bookshelf)) {
                 setMessage(getString(R.string.check_add_bookshelf, book.name))
-                okButton {
+                yesButton {
                     ReadBook.book?.removeType(BookType.notShelf)
                     ReadBook.book?.save()
                     SourceCallBack.callBackBook(SourceCallBack.ADD_BOOK_SHELF, ReadBook.bookSource, ReadBook.book)

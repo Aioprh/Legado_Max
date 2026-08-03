@@ -46,6 +46,7 @@ import io.legado.app.help.TextViewTagHandler
 import io.legado.app.help.WebCacheManager
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.webView.PooledWebView
+import io.legado.app.help.webView.Scope
 import io.legado.app.help.webView.WebJsExtensions
 import io.legado.app.help.webView.WebJsExtensions.Companion.buildUseWebInjection
 import io.legado.app.help.webView.WebJsExtensions.Companion.nameCache
@@ -912,7 +913,7 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
             initialPage = initialPage
         )
         val html = wrapExploreUseWebHtml(useWebHtml, source, pageJs)
-        val pooledWebView = WebViewPool.acquire(context)
+        val pooledWebView = WebViewPool.acquire(context, Scope.INLINE)
         val webView = pooledWebView.realWebView
         webView.onResume()
         val cachedHeight = exploreWebViewHeightCache[pageLayoutKey]?.takeIf { it > 1 }
