@@ -3,12 +3,12 @@
  *
  * 文件作用：提供首页排行榜模块的 UI 组件实现。
  * 主要功能：
- * - 以分页卡片形式展示排行榜书籍，每页 4 行
+ * - 以分页卡片形式展示排行榜书籍，每页 5 行
  * - 每行包含封面、排名编号、书名和分类/作者信息
  * - 前 3 名使用特殊样式（主色 + 斜体）
  * - 支持点击和长按交互
- * - 样式对齐 MD3-main 分支设计规范
- * - 支持新版和经典两种书架状态样式
+ * - 支持加载更多（滚动到底自动触发）
+ * - 支持页码记忆（切换Tab后恢复位置）
  */
 package io.legado.app.ui.main.homepage.modules
 
@@ -37,6 +37,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,23 +53,22 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.ui.main.homepage.HomepageBookItemUi
 import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.widget.components.card.GlassCard
+import kotlinx.coroutines.launch
 
 /** 每页显示的行数 */
-private const val ROWS_PER_PAGE = 4
-/** 最多显示的书籍数量 */
-private const val MAX_COUNT = 20
+private const val ROWS_PER_PAGE = 5
 /** 占位项高度 */
-private val PLACEHOLDER_HEIGHT = 76.dp
+private val PLACEHOLDER_HEIGHT = 80.dp
 
 /**
  * 网格排行榜模块
  *
- * 以分页卡片形式显示排行榜书籍，每页 4 行。
- * 使用 HorizontalPager 实现左右翻页浏览，样式对齐 MD3-main 分支。
- *
- * @param books 书籍列表数据
- * @param onClick 点击书籍回调
+ * @param books 书籍列表数据（全部显示，无数量限制）
+ * @param onClick 点击书籍回调（用于跳转看书页面）
  * @param onLongClick 长按书籍回调
+ * @param onLoadMore 加载更多回调（滚动到底自动触发）
+ * @param initialPage 初始页码（从0开始，用于记忆翻页位置）
+ * @param onPageChanged 页码变化回调（用于外部保存状态）
  * @param modifier 布局修饰符
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -76,13 +77,31 @@ fun GridRankingModule(
     books: List<HomepageBookItemUi>,
     onClick: (HomepageBookItemUi) -> Unit,
     onLongClick: (HomepageBookItemUi) -> Unit,
+    onLoadMore: (() -> Unit)? = null,
+    initialPage: Int = 0,
+    onPageChanged: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (books.isEmpty()) return
-    // 限制最多显示 20 个
-    val limitedBooks = books.take(MAX_COUNT)
-    val pages = limitedBooks.chunked(ROWS_PER_PAGE)
-    val pagerState = rememberPagerState(pageCount = { pages.size })
+
+    val pages = books.chunked(ROWS_PER_PAGE)
+    val pagerState = rememberPagerState(
+        initialPage = initialPage.coerceIn(0, pages.size - 1),
+        pageCount = { pages.size }
+    )
+    val coroutineScope = rememberCoroutineScope()
+
+    // 页码变化时通知外部（用于记忆翻页位置）
+    LaunchedEffect(pagerState.currentPage) {
+        onPageChanged(pagerState.currentPage)
+    }
+
+    // 滑到最后一页时自动加载更多
+    LaunchedEffect(pagerState.currentPage, pages.size) {
+        if (onLoadMore != null && pages.size > 1 && pagerState.currentPage >= pages.lastIndex) {
+            onLoadMore()
+        }
+    }
 
     HorizontalPager(
         state = pagerState,
@@ -90,7 +109,6 @@ fun GridRankingModule(
         pageSpacing = 12.dp,
         modifier = modifier.fillMaxWidth()
     ) { pageIndex ->
-        // 防止 books 变化导致 pages 缩减时越界崩溃
         val page = pages.getOrNull(pageIndex) ?: return@HorizontalPager
         GlassCard(
             modifier = Modifier.fillMaxWidth(),
