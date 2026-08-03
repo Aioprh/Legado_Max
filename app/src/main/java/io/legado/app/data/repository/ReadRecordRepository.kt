@@ -578,22 +578,53 @@ class ReadRecordRepository(
     }
 
     suspend fun rebuildAggregateRecordsFromHistory() {
-        val identities = linkedSetOf<RecordIdentity>()
-        dao.getAllDetailsList().forEach {
-            identities += RecordIdentity(it.deviceId, it.bookName, it.bookAuthor)
+        val allRecords = dao.all.associateBy {
+            RecordIdentity(it.deviceId, it.bookName, it.bookAuthor)
         }
-        dao.getAllSessionsList().forEach {
-            identities += RecordIdentity(it.deviceId, it.bookName, it.bookAuthor)
+        val detailsByIdentity = dao.getAllDetailsList()
+            .groupBy { RecordIdentity(it.deviceId, it.bookName, it.bookAuthor) }
+        val sessionsByIdentity = dao.getAllSessionsList()
+            .groupBy { RecordIdentity(it.deviceId, it.bookName, it.bookAuthor) }
+
+        val allIdentities = mutableSetOf<RecordIdentity>()
+        allIdentities.addAll(detailsByIdentity.keys)
+        allIdentities.addAll(sessionsByIdentity.keys)
+
+        val toUpsert = mutableListOf<ReadRecord>()
+        for (identity in allIdentities) {
+            val bookSessions = sessionsByIdentity[identity].orEmpty()
+            val bookDetails = detailsByIdentity[identity].orEmpty()
+            val existingRecord = allRecords[identity]
+
+            val sessionTotalTime = bookSessions.sumOf { it.endTime - it.startTime }
+            val detailTotalTime = bookDetails.sumOf { it.readTime }
+            val totalTime = max(max(sessionTotalTime, detailTotalTime), existingRecord?.readTime ?: 0L)
+
+            val sessionLastRead = bookSessions.maxOfOrNull { it.endTime } ?: 0L
+            val detailLastRead = bookDetails.maxOfOrNull { it.lastReadTime } ?: 0L
+            val lastRead = max(max(sessionLastRead, detailLastRead), existingRecord?.lastRead ?: 0L)
+
+            if (existingRecord != null) {
+                if (existingRecord.readTime != totalTime || existingRecord.lastRead != lastRead) {
+                    toUpsert.add(
+                        existingRecord.copy(readTime = totalTime, lastRead = lastRead)
+                    )
+                }
+            } else {
+                toUpsert.add(
+                    ReadRecord(
+                        deviceId = identity.deviceId,
+                        bookName = identity.bookName,
+                        bookAuthor = identity.bookAuthor,
+                        readTime = totalTime,
+                        lastRead = lastRead
+                    )
+                )
+            }
         }
-        identities.forEach { identity ->
-            val current = dao.getReadRecord(identity.deviceId, identity.bookName, identity.bookAuthor)
-            updateReadRecordTotal(
-                identity.deviceId,
-                identity.bookName,
-                identity.bookAuthor,
-                minimumReadTime = current?.readTime ?: 0L,
-                minimumLastRead = current?.lastRead ?: 0L
-            )
+
+        if (toUpsert.isNotEmpty()) {
+            dao.insertAll(toUpsert)
         }
     }
 
@@ -684,12 +715,34 @@ class ReadRecordRepository(
         details: List<ReadRecordDetail> = emptyList(),
         sessions: List<ReadRecordSession> = emptyList()
     ) {
-        records.forEach { record ->
-            importSingleRecord(record)
+        val currentDeviceId = getCurrentDeviceId()
+
+        // 批量插入所有记录（归一化 deviceId 到当前设备）
+        val normalizedRecords = records
+            .map { normalizeRecord(it).copy(deviceId = currentDeviceId) }
+            .filter { isValidRecord(it) }
+        if (normalizedRecords.isNotEmpty()) {
+            dao.insertAll(normalizedRecords)
         }
-        importSingleDetailRecords(details)
-        importSingleSessionRecords(sessions)
-        rebuildImportedBookTotals(records, details, sessions)
+
+        // 批量插入所有详情记录
+        val normalizedDetails = details
+            .map { normalizeDetail(it).copy(deviceId = currentDeviceId) }
+            .filter { isValidDetail(it) }
+        if (normalizedDetails.isNotEmpty()) {
+            dao.insertAllDetails(normalizedDetails)
+        }
+
+        // 批量插入所有会话记录
+        val normalizedSessions = sessions
+            .map { normalizeSession(it).copy(id = 0, deviceId = currentDeviceId) }
+            .filter { isValidSession(it) }
+        if (normalizedSessions.isNotEmpty()) {
+            dao.insertAllSessions(normalizedSessions)
+        }
+
+        // 使用内存计算重建聚合记录，避免 N+1 查询
+        rebuildImportedBookTotalsFast()
     }
 
     private suspend fun importSingleDetailRecords(details: List<ReadRecordDetail>) {
@@ -747,24 +800,61 @@ class ReadRecordRepository(
         }
     }
 
-    private suspend fun rebuildImportedBookTotals(
-        records: List<ReadRecord>,
-        details: List<ReadRecordDetail>,
-        sessions: List<ReadRecordSession>
-    ) {
-        val importedBooks = linkedSetOf<Pair<String, String>>()
-        records.forEach { importedBooks.add(it.bookName to it.bookAuthor) }
-        details.forEach { importedBooks.add(it.bookName to it.bookAuthor) }
-        sessions.forEach { importedBooks.add(it.bookName to it.bookAuthor) }
-        importedBooks.forEach { (bookName, bookAuthor) ->
-            val current = dao.getReadRecord(getCurrentDeviceId(), bookName, bookAuthor)
-            updateReadRecordTotal(
-                getCurrentDeviceId(),
-                bookName,
-                bookAuthor,
-                minimumReadTime = current?.readTime ?: 0L,
-                minimumLastRead = current?.lastRead ?: 0L
-            )
+    /**
+     * 快速重建导入书籍的聚合记录。
+     *
+     * 使用内存计算替代逐书查询，将 3N+1 次 DB 操作降为 3 次 SELECT + 1 次批量 INSERT。
+     */
+    private suspend fun rebuildImportedBookTotalsFast() {
+        val currentDeviceId = getCurrentDeviceId()
+        val allRecords = dao.all.associateBy { it.bookName to it.bookAuthor }
+        val detailsByBook = dao.getAllDetailsList()
+            .filter { it.deviceId == currentDeviceId }
+            .groupBy { it.bookName to it.bookAuthor }
+        val sessionsByBook = dao.getAllSessionsList()
+            .filter { it.deviceId == currentDeviceId }
+            .groupBy { it.bookName to it.bookAuthor }
+
+        val allBookKeys = mutableSetOf<Pair<String, String>>()
+        allBookKeys.addAll(allRecords.keys)
+        allBookKeys.addAll(detailsByBook.keys)
+        allBookKeys.addAll(sessionsByBook.keys)
+
+        val toUpsert = mutableListOf<ReadRecord>()
+        for ((bookName, bookAuthor) in allBookKeys) {
+            val bookSessions = sessionsByBook[bookName to bookAuthor].orEmpty()
+            val bookDetails = detailsByBook[bookName to bookAuthor].orEmpty()
+            val existingRecord = allRecords[bookName to bookAuthor]
+
+            val sessionTotalTime = bookSessions.sumOf { it.endTime - it.startTime }
+            val detailTotalTime = bookDetails.sumOf { it.readTime }
+            val totalTime = max(max(sessionTotalTime, detailTotalTime), existingRecord?.readTime ?: 0L)
+
+            val sessionLastRead = bookSessions.maxOfOrNull { it.endTime } ?: 0L
+            val detailLastRead = bookDetails.maxOfOrNull { it.lastReadTime } ?: 0L
+            val lastRead = max(max(sessionLastRead, detailLastRead), existingRecord?.lastRead ?: 0L)
+
+            if (existingRecord != null) {
+                if (existingRecord.readTime != totalTime || existingRecord.lastRead != lastRead) {
+                    toUpsert.add(
+                        existingRecord.copy(readTime = totalTime, lastRead = lastRead)
+                    )
+                }
+            } else {
+                toUpsert.add(
+                    ReadRecord(
+                        deviceId = currentDeviceId,
+                        bookName = bookName,
+                        bookAuthor = bookAuthor,
+                        readTime = totalTime,
+                        lastRead = lastRead
+                    )
+                )
+            }
+        }
+
+        if (toUpsert.isNotEmpty()) {
+            dao.insertAll(toUpsert)
         }
     }
 }
