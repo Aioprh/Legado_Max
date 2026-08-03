@@ -28,20 +28,39 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /**
+ * WebView 池作用域
+ * 
+ * 不同作用域的 WebView 互不复用，避免跨场景污染。
+ * 例如书籍详情页的 useWeb 内联渲染与浏览器/后台请求隔离。
+ */
+enum class Scope {
+    /** 全局池：浏览器、后台请求、RSS 阅读、登录等 */
+    GLOBAL,
+    /** 内联池：书籍详情页、视频播放页、发现页的 useWeb 内联渲染 */
+    INLINE
+}
+
+/**
  * WebView 对象池
  * 
  * 管理 WebView 的创建、复用和销毁，优化内存使用和性能。
  * 采用池化设计，避免频繁创建和销毁 WebView 带来的性能开销。
  * 
+ * 通过 [Scope] 将闲置池隔离，防止不同场景的 WebView 互相复用导致污染
+ * （如书籍详情页 useWeb 渲染的 WebView 被浏览器页面复用后残留 JS 注入和设置）。
+ * 
  * 主要功能：
- * 1. WebView 对象池管理（获取、释放、清理）
+ * 1. WebView 对象池管理（获取、释放、清理），按 Scope 隔离闲置池
  * 2. 内联内容高度测量和平滑过渡
  * 3. 触摸事件后高度重新测量（处理懒加载图片）
  * 
  * 使用场景：
- * - 发现页 useWeb 内容显示
- * - 书籍详情页 useWeb 内容显示
- * - 视频播放页 useWeb 内容显示
+ * - 发现页 useWeb 内容显示（INLINE）
+ * - 书籍详情页 useWeb 内容显示（INLINE）
+ * - 视频播放页 useWeb 内容显示（INLINE）
+ * - 浏览器页面显示（GLOBAL）
+ * - 后台 WebView 请求（GLOBAL）
+ * - RSS 阅读（GLOBAL）
  */
 object WebViewPool {
     // 空白页面 URL，用于重置 WebView
@@ -77,9 +96,9 @@ object WebViewPool {
         })();
     """.trimIndent()
     
-    // 未使用的、已预初始化的WebView池 (使用栈结构，后进先出，复用缓存)
-    private val idlePool = Stack<PooledWebView>()
-    // 正在使用的WebView集合
+    // 按 Scope 隔离的闲置 WebView 池 (使用栈结构，后进先出，复用缓存)
+    private val idlePools = mutableMapOf<Scope, Stack<PooledWebView>>()
+    // 正在使用的WebView集合（全局，按 id 索引）
     private val inUsePool = mutableMapOf<String, PooledWebView>()
 
     // 是否需要初始化清理定时器
@@ -119,19 +138,21 @@ object WebViewPool {
     }
 
     /**
-     * 从池中获取一个 WebView
+     * 从指定作用域的池中获取一个 WebView
      * 
      * 获取策略：
-     * 1. 优先从闲置池中复用
+     * 1. 优先从对应 Scope 的闲置池中复用
      * 2. 闲置池为空时创建新实例
      * 3. 首次获取时启动清理定时器
      * 
      * @param context 上下文
+     * @param scope 池作用域，默认 GLOBAL。INLINE 用于内联渲染场景，与浏览器/后台请求隔离
      * @return 包装后的 WebView 对象
      */
     // 获取一个WebView
     @Synchronized
-    fun acquire(context: Context): PooledWebView {
+    fun acquire(context: Context, scope: Scope = Scope.GLOBAL): PooledWebView {
+        val idlePool = idlePools.getOrPut(scope) { Stack() }
         val pooledWebView = if (idlePool.isNotEmpty()) {
             idlePool.pop() // 复用闲置实例
         } else {
@@ -139,7 +160,7 @@ object WebViewPool {
                 needInitialize = false
                 startCleanupTimer()
             }
-            createNewWebView() // 创建新实例
+            createNewWebView(scope) // 创建新实例
         }
         pooledWebView.upContext(context).apply {
             (realWebView.parent as? ViewGroup)?.removeView(realWebView)//从父视图中移除
@@ -207,12 +228,13 @@ object WebViewPool {
             isFocusable = true
             isFocusableInTouchMode = true
             pooledWebView.upContext(appCtx)
-            if (idlePool.size >= CACHED_WEB_VIEW_MAX_NUM - inUsePool.size) {
-                // 池子已满，直接销毁
+            val idlePool = idlePools.getOrPut(pooledWebView.scope) { Stack() }
+            if (idlePool.size >= CACHED_WEB_VIEW_MAX_NUM) {
+                // 该作用域池子已满，直接销毁
                 pooledWebView.realWebView.destroy()
                 return
             }
-            // 设置 WebViewClient 在加载空白页完成后将 WebView 加入闲置池
+            // 设置 WebViewClient 在加载空白页完成后将 WebView 加入对应 Scope 的闲置池
             webViewClient = object: WebViewClient() {
                 @SuppressLint("SetJavaScriptEnabled")
                 override fun onPageFinished(view: WebView?, url: String?) {
@@ -235,7 +257,7 @@ object WebViewPool {
                     }
                     pooledWebView.isInUse = false
                     pooledWebView.lastUseTime = System.currentTimeMillis()
-                    idlePool.push(pooledWebView)
+                    idlePools.getOrPut(pooledWebView.scope) { Stack() }.push(pooledWebView)
                 }
             }
             loadUrl(BLANK_HTML)//加载空白页
@@ -502,12 +524,13 @@ object WebViewPool {
     /**
      * 创建新的 WebView 实例
      * 
+     * @param scope 所属池作用域
      * @return 包装后的 WebView 对象
      */
-    private fun createNewWebView(): PooledWebView {
+    private fun createNewWebView(scope: Scope = Scope.GLOBAL): PooledWebView {
         val webView = VisibleWebView(MutableContextWrapper(appCtx))
         preInitWebView(webView)
-        return PooledWebView(webView, generateId())
+        return PooledWebView(webView, generateId(), scope)
     }
 
     /**
@@ -572,28 +595,30 @@ object WebViewPool {
                 val toRemove = mutableListOf<PooledWebView>()
                 var shouldCancel = false
                 synchronized(this@WebViewPool) {
-                    for ((index, pooled) in idlePool.withIndex()) {
-                        // 最后一个 WebView 使用更长的超时时间
-                        val timeout = if (index == 0) {
-                            IDLE_TIME_OUT_LAST
-                        } else {
-                            IDLE_TIME_OUT
-                        }
-                        if (now - pooled.lastUseTime > timeout) {
-                            toRemove.add(pooled)
+                    idlePools.forEach { (scope, idlePool) ->
+                        for ((index, pooled) in idlePool.withIndex()) {
+                            // 每个 Scope 池中最后一个 WebView 使用更长的超时时间
+                            val timeout = if (index == 0) {
+                                IDLE_TIME_OUT_LAST
+                            } else {
+                                IDLE_TIME_OUT
+                            }
+                            if (now - pooled.lastUseTime > timeout) {
+                                toRemove.add(pooled)
+                            }
                         }
                     }
-                    // 从池中移除并销毁
+                    // 从对应池中移除并销毁
                     toRemove.forEach { pooled ->
-                        idlePool.remove(pooled)
+                        idlePools[pooled.scope]?.remove(pooled)
                         try {
                             pooled.realWebView.destroy()
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
                     }
-                    // 闲置池为空时停止定时器
-                    if (idlePool.isEmpty()) {
+                    // 所有闲置池都为空时停止定时器
+                    if (idlePools.values.all { it.isEmpty() }) {
                         shouldCancel = true
                     }
                 }
