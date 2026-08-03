@@ -87,7 +87,7 @@ fun ThemeEditDialog(
                 // 主题名称
                 OutlinedTextField(
                     value = config.themeName,
-                    onValueChange = { onUpdateDraft { it.copy(themeName = it) } },
+                    onValueChange = { name -> onUpdateDraft { cfg -> cfg.copy(themeName = name) } },
                     label = { Text(stringResource(R.string.theme_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -97,41 +97,41 @@ fun ThemeEditDialog(
                 ColorPickerSection(
                     label = stringResource(R.string.top_bar_primary_color),
                     hexColor = config.primaryColor,
-                    onColorChanged = { onUpdateDraft { it.copy(primaryColor = it) } }
+                    onColorChanged = { color -> onUpdateDraft { cfg -> cfg.copy(primaryColor = color) } }
                 )
 
                 // 强调色
                 ColorPickerSection(
                     label = stringResource(R.string.accent_color),
                     hexColor = config.accentColor,
-                    onColorChanged = { onUpdateDraft { it.copy(accentColor = it) } }
+                    onColorChanged = { color -> onUpdateDraft { cfg -> cfg.copy(accentColor = color) } }
                 )
 
                 // 背景色
                 ColorPickerSection(
                     label = stringResource(R.string.background_color),
                     hexColor = config.backgroundColor,
-                    onColorChanged = { onUpdateDraft { it.copy(backgroundColor = it) } }
+                    onColorChanged = { color -> onUpdateDraft { cfg -> cfg.copy(backgroundColor = color) } }
                 )
 
                 // 底栏背景色
                 ColorPickerSection(
                     label = stringResource(R.string.bottom_background_color),
                     hexColor = config.bottomBackground,
-                    onColorChanged = { onUpdateDraft { it.copy(bottomBackground = it) } }
+                    onColorChanged = { color -> onUpdateDraft { cfg -> cfg.copy(bottomBackground = color) } }
                 )
 
                 // 背景图
                 BackgroundImageSection(
                     path = config.backgroundImgPath,
                     onSelectImage = onSelectImage,
-                    onClear = { onUpdateDraft { it.copy(backgroundImgPath = null) } }
+                    onClear = { onUpdateDraft { cfg -> cfg.copy(backgroundImgPath = null) } }
                 )
 
                 // 模糊度
                 BlurSlider(
                     blur = config.backgroundImgBlur,
-                    onBlurChanged = { onUpdateDraft { it.copy(backgroundImgBlur = it) } }
+                    onBlurChanged = { value -> onUpdateDraft { cfg -> cfg.copy(backgroundImgBlur = value) } }
                 )
 
                 // 透明导航栏
@@ -146,7 +146,7 @@ fun ThemeEditDialog(
                     )
                     Switch(
                         checked = config.transparentNavBar,
-                        onCheckedChange = { onUpdateDraft { it.copy(transparentNavBar = it) } }
+                        onCheckedChange = { checked -> onUpdateDraft { cfg -> cfg.copy(transparentNavBar = checked) } }
                     )
                 }
             }
