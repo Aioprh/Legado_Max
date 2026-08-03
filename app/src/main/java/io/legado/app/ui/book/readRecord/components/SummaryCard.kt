@@ -58,11 +58,36 @@ fun SummaryCard(
     latestRecords: List<ReadRecord>,
     viewModel: ReadRecordViewModel
 ) {
-    val hours = totalReadTime / (1000 * 60 * 60)
+    val totalHours = totalReadTime / (1000 * 60 * 60)
+    val days = totalHours / 24
+    val remainingHours = totalHours % 24
     val minutes = (totalReadTime / (1000 * 60)) % 60
-    val hourStr = stringResource(if (hours == 1L) R.string.rr_hour else R.string.rr_hours)
+    val dayStr = stringResource(if (days == 1L) R.string.rr_day else R.string.rr_days)
+    val hourStr = stringResource(if (remainingHours == 1L) R.string.rr_hour else R.string.rr_hours)
+    val totalHourStr = stringResource(if (totalHours == 1L) R.string.rr_hour else R.string.rr_hours)
     val minuteStr = stringResource(if (minutes == 1L) R.string.rr_minute else R.string.rr_minutes)
-    val timeString = if (hours > 0) "${hours}$hourStr${minutes}$minuteStr" else "${minutes}$minuteStr"
+    val timeString = buildString {
+        if (days > 0) {
+            append(days)
+            append(dayStr)
+            if (remainingHours > 0) {
+                append(" ")
+                append(remainingHours)
+                append(hourStr)
+            }
+        } else if (totalHours > 0) {
+            append(totalHours)
+            append(totalHourStr)
+            if (minutes > 0) {
+                append(" ")
+                append(minutes)
+                append(minuteStr)
+            }
+        } else {
+            append(minutes)
+            append(minuteStr)
+        }
+    }
     val shape = RoundedCornerShape(16.dp)
     val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.18f
     val cardColor = if (isDarkBackground) {
