@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -22,6 +24,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.Theme
@@ -43,6 +46,8 @@ import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setNavigationBarColorAuto
 import io.legado.app.utils.setStatusBarColorAuto
 import io.legado.app.utils.startActivity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 fun ComponentActivity.initLegadoComposeTheme() {
     when (ThemeConfig.getTheme()) {
@@ -142,17 +147,21 @@ fun ComponentActivity.setLegadoContent(
     content: @Composable () -> Unit
 ) {
     setupLegadoComposeSystemBar()
-    val backgroundDrawable = loadLegadoBackgroundDrawable()
+    val bgState: MutableState<Drawable?> = mutableStateOf(null)
     enableEdgeToEdge()
     setContent {
         LegadoThemeWithBackground(
-            backgroundDrawable = backgroundDrawable,
+            backgroundDrawable = bgState.value,
             overlayAlpha = overlayAlpha
         ) {
             content()
         }
     }
     (this as? AppCompatActivity)?.installComposeGlobalUi()
+    lifecycleScope.launch(Dispatchers.Default) {
+        val drawable = loadLegadoBackgroundDrawable()
+        launch(Dispatchers.Main) { bgState.value = drawable }
+    }
 }
 
 private fun AppCompatActivity.installComposeGlobalUi() {

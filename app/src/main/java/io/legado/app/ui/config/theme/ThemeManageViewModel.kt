@@ -105,9 +105,11 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
 
     fun executeDeleteSelected() {
         val indices = _uiState.value.multiSelect.selectedOriginalIndices.sortedDescending()
-        indices.forEach { ThemeConfig.delConfig(it) }
-        exitMultiSelect()
-        loadThemes()
+        execute {
+            indices.forEach { ThemeConfig.delConfig(it) }
+            exitMultiSelect()
+            loadThemes()
+        }
     }
 
     fun toTopSelected() {
@@ -116,9 +118,11 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
             return
         }
         val positions = _uiState.value.multiSelect.selectedOriginalIndices.sorted()
-        ThemeConfig.toTopConfigs(positions)
-        exitMultiSelect()
-        loadThemes()
+        execute {
+            ThemeConfig.toTopConfigs(positions)
+            exitMultiSelect()
+            loadThemes()
+        }
     }
 
     fun exportSelected() {
@@ -164,8 +168,10 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
     }
 
     fun deleteItem(item: ThemeItem) {
-        ThemeConfig.delConfig(item.originalIndex)
-        loadThemes()
+        execute {
+            ThemeConfig.delConfig(item.originalIndex)
+            loadThemes()
+        }
     }
 
     fun shareItem(item: ThemeItem) {
@@ -204,21 +210,23 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
         val config = state.editDialog.draft ?: return
         val targetIndex = state.editDialog.editingIndex
 
-        if (targetIndex >= 0) {
-            ThemeConfig.configList[targetIndex] = config
-        } else {
-            ThemeConfig.configList.add(config)
-        }
-        ThemeConfig.save()
-        loadThemes()
-        closeEditDialog()
+        execute {
+            if (targetIndex >= 0) {
+                ThemeConfig.configList[targetIndex] = config
+            } else {
+                ThemeConfig.configList.add(config)
+            }
+            ThemeConfig.save()
+            loadThemes()
+            closeEditDialog()
 
-        val current = ThemeConfig.getDurConfig(getApplication())
-        if (current.themeName == config.themeName && current.isNightTheme == config.isNightTheme) {
-            ThemeConfig.applyConfig(getApplication(), config)
-            _events.trySend(ThemeEvent.Recreate)
+            val current = ThemeConfig.getDurConfig(getApplication())
+            if (current.themeName == config.themeName && current.isNightTheme == config.isNightTheme) {
+                ThemeConfig.applyConfig(getApplication(), config)
+                _events.trySend(ThemeEvent.Recreate)
+            }
+            _events.trySend(ThemeEvent.Toast(R.string.success))
         }
-        _events.trySend(ThemeEvent.Toast(R.string.success))
     }
 
     // ── 背景图处理（由 Activity 回调） ────────────────────
