@@ -154,7 +154,7 @@ object ThemeConfig {
         return bgImage?.stackBlur(bgImgBlu)?.toDrawable(context.resources)
     }
 
-    fun upConfig() {
+    suspend fun upConfig() {
         addConfigs(DefaultData.themeConfigs)
     }
 
