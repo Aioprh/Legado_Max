@@ -1863,10 +1863,12 @@
     <string name="rr_books_read">Books Read</string>
     <string name="rr_book_unit">books</string>
     <string name="rr_total_read_time">Total read time %s</string>
-    <string name="rr_hour">hour</string>
-    <string name="rr_minute">minute</string>
-    <string name="rr_hours">hours</string>
-    <string name="rr_minutes">minutes</string>
+<string name="rr_day">day</string>
+<string name="rr_days">days</string>
+<string name="rr_hour">hour</string>
+<string name="rr_minute">minute</string>
+<string name="rr_hours">hours</string>
+<string name="rr_minutes">minutes</string>
 
     <!-- Heatmap Calendar -->
     <string name="rr_heatmap_title">Reading Calendar</string>

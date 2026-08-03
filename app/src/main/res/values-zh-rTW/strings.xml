@@ -1473,10 +1473,12 @@
     <string name="rr_books_read">已讀</string>
     <string name="rr_book_unit">本書</string>
     <string name="rr_total_read_time">共閱讀 %s</string>
-    <string name="rr_hour">小時</string>
-    <string name="rr_minute">分鐘</string>
-    <string name="rr_hours">小時</string>
-    <string name="rr_minutes">分鐘</string>
+<string name="rr_day">天</string>
+<string name="rr_days">天</string>
+<string name="rr_hour">小時</string>
+<string name="rr_minute">分鐘</string>
+<string name="rr_hours">小時</string>
+<string name="rr_minutes">分鐘</string>
 
     <!-- Heatmap Calendar -->
     <string name="rr_heatmap_title">閱讀日曆</string>
