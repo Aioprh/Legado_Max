@@ -111,19 +111,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * 首页主屏幕 Composable
- *
- * 负责展示首页模块列表，包括：
- * - 顶部栏（标题 + 模块管理入口）
- * - 空状态提示
- * - 各类型模块的内容渲染（Banner、卡片、网格、排行、瀑布流等）
- * - 模块管理底部弹窗
- *
- * @param viewModel 首页 ViewModel，提供 UI 状态和操作方法
- * @param onBookClick 书籍点击回调，传递书籍信息用于跳转详情页
- * @param onModuleHeaderClick 模块标题点击回调，用于跳转发现页
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomepageScreen(
@@ -140,7 +127,6 @@ fun HomepageScreen(
     val layoutMode by viewModel.layoutMode.collectAsStateWithLifecycle()
     val preloadMode by viewModel.preloadMode.collectAsStateWithLifecycle()
 
-    // 书籍底部弹窗状态
     var showBookSheet by remember { mutableStateOf(false) }
     var selectedBook by remember { mutableStateOf<SearchBook?>(null) }
     var selectedBookShelfState by remember { mutableStateOf(BookShelfState.NOT_IN_SHELF) }
@@ -161,7 +147,6 @@ fun HomepageScreen(
         }
     }
 
-    // 构建管理操作回调
     val manageActions = remember(viewModel) {
         HomepageManageActions(
             onToggleSet = viewModel::toggleSet,
@@ -189,10 +174,6 @@ fun HomepageScreen(
         )
     }
 
-    // contentWindowInsets = WindowInsets(0)：不消费系统导航栏 inset，
-    // 让系统正常处理导航栏区域（施加 padding + 绘制 navigationBarColor），
-    // 与其他 View-based Fragment 行为一致。
-    // 顶栏的状态栏 inset 由 topBar 内的 windowInsetsPadding(WindowInsets.statusBars) 独立处理。
     Scaffold(
         modifier = Modifier,
         containerColor = Color.Transparent,
@@ -218,7 +199,6 @@ fun HomepageScreen(
                             .weight(1f)
                             .padding(start = 16.dp)
                     )
-                    // 模块管理
                     IconButton(onClick = { showManageSheet = true }) {
                         Icon(
                             imageVector = Icons.Default.Settings,
@@ -226,7 +206,6 @@ fun HomepageScreen(
                             tint = topBarColors.contentColor
                         )
                     }
-                    // 三点菜单（切换布局、帮助等）
                     Box {
                         IconButton(onClick = { showOverflowMenu = true }) {
                             Icon(
@@ -246,10 +225,9 @@ fun HomepageScreen(
                                     showLayoutMenu = true
                                 }
                             )
-                            // 预加载开关（仅在分源Tab模式下显示）
                             if (layoutMode == 1) {
                                 DropdownMenuItem(
-                                    text = { 
+                                    text = {
                                         Text(
                                             text = stringResource(R.string.homepage_preload),
                                             style = MaterialTheme.typography.bodyMedium
@@ -283,7 +261,6 @@ fun HomepageScreen(
                                 }
                             )
                         }
-                        // 布局选择子菜单
                         DropdownMenu(
                             expanded = showLayoutMenu,
                             onDismissRequest = { showLayoutMenu = false }
@@ -336,7 +313,6 @@ fun HomepageScreen(
                 }
             }
         } else if (layoutMode == 1) {
-            // 分源Tab 模式：按集分组，Tab 切换展示
             SourceTabLayout(
                 modules = uiState.modules,
                 sets = uiState.manageState.sets,
@@ -353,11 +329,9 @@ fun HomepageScreen(
                 },
             )
         } else {
-            // 混合列表 模式：所有模块在一个列表中展示，无限类型模块排在底部
             val sortedModules = uiState.modules.sortedBy { module ->
                 if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
             }
-            // 使用 rememberLazyListState 保存滚动位置，避免 Fragment 重建时丢失
             val listState = rememberLazyListState()
             Box(
                 modifier = Modifier
@@ -396,7 +370,6 @@ fun HomepageScreen(
                         }
                     }
                 }
-                // 悬浮回到顶部按钮
                 ScrollToTopFab(
                     listState = listState,
                     modifier = Modifier
@@ -410,7 +383,6 @@ fun HomepageScreen(
         }
     }
 
-    // 模块管理弹窗
     HomepageModuleManageSheet(
         show = showManageSheet,
         onDismiss = { showManageSheet = false },
@@ -418,7 +390,6 @@ fun HomepageScreen(
         actions = manageActions,
     )
 
-    // 书籍底部弹窗
     val isRssArticle = remember(selectedBook) {
         selectedBook?.let { book ->
             appDb.rssSourceDao.has(book.origin)
@@ -430,14 +401,12 @@ fun HomepageScreen(
         shelfState = selectedBookShelfState,
         onDismiss = { showBookSheet = false },
         onAddToShelf = { book -> viewModel.onAddToShelf(book) },
-        onShowInfo = { book ->
-            viewModel.onBookClick(book)
-        },
+        onShowInfo = { book -> viewModel.onBookClick(book) },
         isRssArticle = isRssArticle,
         onAddToFavorites = if (isRssArticle) {
             { book ->
                 kotlinx.coroutines.MainScope().launch {
-                    withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    withContext(Dispatchers.IO) {
                         appDb.rssStarDao.insert(RssStar(
                             origin = book.origin,
                             title = book.name,
@@ -462,15 +431,10 @@ fun HomepageScreen(
                 )
             }
         } else null,
+        onCacheBook = if (!isRssArticle) { book -> viewModel.onCacheBook(book) } else null
     )
 }
 
-/**
- * 分源Tab 布局
- *
- * 使用管理状态中的集列表作为Tab来源，确保Tab顺序与集排序同步更新。
- * 通过 Tab 切换展示不同集的模块，适用于书源较多、希望分源浏览的场景。
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SourceTabLayout(
@@ -484,8 +448,6 @@ private fun SourceTabLayout(
     onRefresh: (String?) -> Unit,
     onBookLongClick: (SearchBook) -> Unit,
 ) {
-    // 使用管理状态中的集列表作为Tab来源，确保顺序与排序同步
-    // 只显示已选中且有模块的集
     val selectedSets = remember(sets) {
         sets.filter { it.isSelected && it.moduleCount > 0 }
     }
@@ -493,19 +455,14 @@ private fun SourceTabLayout(
     var selectedTabIndex by remember { mutableStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
 
-    // 同步 pagerState.settledPage 和 selectedTabIndex
-    // 使用 settledPage 而不是 currentPage，确保只有页面稳定后才触发加载
     LaunchedEffect(pagerState.settledPage) {
         selectedTabIndex = pagerState.settledPage
     }
 
-    // 更新 ViewModel 中的当前Tab索引和集列表（用于预加载控制）
-    // 使用 settledPage 确保只有页面稳定后才触发加载
     LaunchedEffect(pagerState.settledPage, selectedSets) {
         viewModel.updateCurrentTab(pagerState.settledPage, selectedSets)
     }
 
-    // 确保 selectedTabIndex 不越界
     LaunchedEffect(selectedSets.size) {
         if (selectedTabIndex >= selectedSets.size) {
             selectedTabIndex = 0
@@ -513,11 +470,9 @@ private fun SourceTabLayout(
         }
     }
 
-    // 确保 selectedTabIndex 不越界（组合期间立即生效，防止隐藏集后索引越界崩溃）
     val safeTabIndex = if (selectedSets.isEmpty()) 0 else selectedTabIndex.coerceIn(0, selectedSets.lastIndex)
 
     val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
-    // 跟踪当前页面的滚动状态，用于悬浮回到顶部按钮
     val currentPageListState = remember { mutableStateOf<LazyListState?>(null) }
     Box(
         modifier = Modifier
@@ -530,119 +485,106 @@ private fun SourceTabLayout(
             )
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-        if (selectedSets.isEmpty()) return@Column
-        // 可滚动的 Tab 栏（自定义实现，高度36dp，底部下划线指示器）
-        val tabScrollState = rememberScrollState()
-        val accent = pageAccentColor()
-        val secondaryColor = pageSecondaryTextColor()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(tabScrollState)
-                .height(36.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            selectedSets.forEachIndexed { index, set ->
-                val isSelected = safeTabIndex == index
-                Box(
-                    modifier = Modifier
-                        .height(36.dp)
-                        .clickable {
-                            selectedTabIndex = index
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = set.sourceName,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = if (isSelected) accent else secondaryColor
-                    )
-                    // 底部下划线指示器
+            if (selectedSets.isEmpty()) return@Column
+            val tabScrollState = rememberScrollState()
+            val accent = pageAccentColor()
+            val secondaryColor = pageSecondaryTextColor()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(tabScrollState)
+                    .height(36.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                selectedSets.forEachIndexed { index, set ->
+                    val isSelected = safeTabIndex == index
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(2.dp)
-                            .background(if (isSelected) accent else Color.Transparent)
-                    )
-                }
-            }
-        }
-        // 使用 HorizontalPager 实现左右滑动切换书源集
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            key = { index -> selectedSets.getOrNull(index)?.sourceUrl ?: index }
-        ) { pageIndex ->
-            // 当前选中 Tab 对应的集
-            val currentSet = selectedSets.getOrNull(pageIndex)
-            // 根据集过滤模块：自定义集使用 customSetId 匹配，书源集使用 sourceUrl 匹配
-            val currentModules = remember(modules, currentSet) {
-                val filtered = modules.filter { module ->
-                    if (currentSet?.isCustomSet == true) {
-                        val setId = HomepageViewModel.customSetIdFromUrl(currentSet.sourceUrl)
-                        module.customSetId == setId
-                    } else {
-                        // 书源集：集 URL 格式为 src_<书源URL>，模块的 customSetId 也是 src_<书源URL>
-                        module.customSetId == currentSet?.sourceUrl
-                    }
-                }
-                // 无限类型模块排在底部
-                filtered.sortedBy { module ->
-                    if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
-                }
-            }
-            val currentSetName = currentSet?.sourceName
-            // 使用 rememberSaveable 保存每个页面的滚动位置
-            val listStateKey = "homepage_tab_${currentSet?.sourceUrl ?: pageIndex}"
-            val listState = rememberSaveable(saver = LazyListState.Saver) {
-                LazyListState()
-            }
-            // 更新当前页面的滚动状态引用，用于悬浮回到顶部按钮
-            // 直接在组合期间赋值，确保页面重组时引用始终同步
-            if (pagerState.settledPage == pageIndex) {
-                currentPageListState.value = listState
-            }
-            // 直接从 ViewModel 观察刷新状态，确保每页独立接收状态变更
-            // 绕过 HorizontalPager 页面缓存导致的状态传播延迟
-            val pageIsRefreshing by viewModel.uiState.map { it.isRefreshing }.collectAsStateWithLifecycle(false)
-            PullToRefreshBox(
-                isRefreshing = pageIsRefreshing,
-                onRefresh = { onRefresh(currentSetName) },
-                modifier = Modifier.fillMaxSize()
-            ) {
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(
-                        top = 8.dp,
-                        bottom = 8.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(currentModules, key = { it.globalId }) { module ->
-                        HomepageModuleItem(
-                            module = module,
-                            viewModel = viewModel,
-                            onBookClick = { book ->
-                                viewModel.onBookClick(book)
+                            .height(36.dp)
+                            .clickable {
+                                selectedTabIndex = index
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
                             },
-                            onBookLongClick = onBookLongClick,
-                            onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
-                                viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
-                            }
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = set.sourceName,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = if (isSelected) accent else secondaryColor
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(2.dp)
+                                .background(if (isSelected) accent else Color.Transparent)
                         )
                     }
                 }
             }
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                key = { index -> selectedSets.getOrNull(index)?.sourceUrl ?: index }
+            ) { pageIndex ->
+                val currentSet = selectedSets.getOrNull(pageIndex)
+                val currentModules = remember(modules, currentSet) {
+                    val filtered = modules.filter { module ->
+                        if (currentSet?.isCustomSet == true) {
+                            val setId = HomepageViewModel.customSetIdFromUrl(currentSet.sourceUrl)
+                            module.customSetId == setId
+                        } else {
+                            module.customSetId == currentSet?.sourceUrl
+                        }
+                    }
+                    filtered.sortedBy { module ->
+                        if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
+                    }
+                }
+                val currentSetName = currentSet?.sourceName
+                val listStateKey = "homepage_tab_${currentSet?.sourceUrl ?: pageIndex}"
+                val listState = rememberSaveable(saver = LazyListState.Saver) {
+                    LazyListState()
+                }
+                if (pagerState.settledPage == pageIndex) {
+                    currentPageListState.value = listState
+                }
+                val pageIsRefreshing by viewModel.uiState.map { it.isRefreshing }.collectAsStateWithLifecycle(false)
+                PullToRefreshBox(
+                    isRefreshing = pageIsRefreshing,
+                    onRefresh = { onRefresh(currentSetName) },
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    LazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(
+                            top = 8.dp,
+                            bottom = 8.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(currentModules, key = { it.globalId }) { module ->
+                            HomepageModuleItem(
+                                module = module,
+                                viewModel = viewModel,
+                                onBookClick = { book ->
+                                    viewModel.onBookClick(book)
+                                },
+                                onBookLongClick = onBookLongClick,
+                                onModuleHeaderClick = { title, sourceUrl, exploreUrl ->
+                                    viewModel.onModuleHeaderClick(sourceUrl, exploreUrl, title)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         }
-        }
-        // 悬浮回到顶部按钮
         currentPageListState.value?.let { state ->
             ScrollToTopFab(
                 listState = state,
@@ -666,13 +608,11 @@ private fun HomepageModuleItem(
     onModuleHeaderClick: (title: String?, sourceUrl: String, exploreUrl: String?) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 排行榜多 Tab 模式下，获取当前选中 Tab 的 exploreUrl
         val rankingTabState = module.state as? ModuleLoadState.RankingTabs
         val isRankingTabs = rankingTabState != null
         val rankingCurrentExploreUrl = rankingTabState
             ?.tabs?.getOrNull(rankingTabState.selectedIndex)?.exploreUrl
 
-        // 模块标题
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -704,7 +644,6 @@ private fun HomepageModuleItem(
             )
         }
 
-        // Module content
         Box(
             modifier = Modifier.padding(horizontal = 16.dp)
         ) {
@@ -762,7 +701,6 @@ private fun HomepageModuleItem(
                                 onLongClick = { book, _ -> onBookLongClick(book) },
                                 maxRows = if (module.type == HomepageModuleType.InfiniteGrid) null else 2
                             )
-                            // 无限网格显示加载更多
                             if (module.type == HomepageModuleType.InfiniteGrid && state.hasMore) {
                                 LoadMoreFooter(
                                     isLoading = state.isLoadingMore,
@@ -794,7 +732,6 @@ private fun HomepageModuleItem(
 
                         HomepageModuleType.Waterfall -> {
                             Column(modifier = Modifier.fillMaxWidth()) {
-                                // 瀑布流布局 - 使用 Column+Row 实现两列，避免 LazyGrid 嵌套需要固定高度
                                 val displayBooks = state.books
                                 val leftColumn = displayBooks.filterIndexed { index, _ -> index % 2 == 0 }
                                 val rightColumn = displayBooks.filterIndexed { index, _ -> index % 2 == 1 }
@@ -827,7 +764,6 @@ private fun HomepageModuleItem(
                                         }
                                     }
                                 }
-                                // 加载更多
                                 if (state.hasMore) {
                                     LoadMoreFooter(
                                         isLoading = state.isLoadingMore,
@@ -950,12 +886,10 @@ private fun RankingTabsModule(
 ) {
     val currentTab = tabs.getOrNull(selectedIndex) ?: return
 
-    // 为每个 Tab 保存当前页码（用于记忆翻页位置）
     val pageStates = remember { mutableStateMapOf<String, Int>() }
     val currentPage = pageStates.getOrPut(currentTab.title) { 0 }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // 多个 Tab 时显示 Tab 栏 + 固定箭头
         if (tabs.size > 1) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -992,7 +926,6 @@ private fun RankingTabsModule(
                         }
                     }
                 }
-                // 固定位置箭头
                 if (currentTab.exploreUrl != null) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
@@ -1007,69 +940,66 @@ private fun RankingTabsModule(
             }
         }
 
-        // 内容区域（按 selectedIndex 做 key，切换 Tab 时重置分页/滚动状态）
-        // 注意：外层 HomepageModuleItem 已应用 padding(horizontal = 16.dp)，此处不再重复
         Box {
             androidx.compose.runtime.key(selectedIndex) {
-            when {
-                currentTab.books != null -> {
-                    val books = currentTab.books!!
-                    when (moduleType) {
-                        HomepageModuleType.Ranking -> {
-                            RankingModule(
-                                books = books,
-                                onClick = { book, _ -> onBookClick(book) },
-                                onLongClick = { book, _ -> onBookLongClick(book) }
-                            )
-                        }
-                        HomepageModuleType.GridRanking -> {
-                            GridRankingModule(
-                                books = books,
-                                onClick = { item -> onBookClick(item.book) },
-                                onLongClick = { item -> onBookLongClick(item.book) },
-                                onLoadMore = if (currentTab.hasMore && !currentTab.isLoadingMore) {
-                                    { onLoadMore(selectedIndex) }
-                                } else null,
-                                initialPage = currentPage,
-                                onPageChanged = { newPage ->
-                                    pageStates[currentTab.title] = newPage
-                                }
-                            )
-                        }
-                        else -> {
-                            RankingModule(
-                                books = books,
-                                onClick = { book, _ -> onBookClick(book) },
-                                onLongClick = { book, _ -> onBookLongClick(book) }
-                            )
+                when {
+                    currentTab.books != null -> {
+                        val books = currentTab.books!!
+                        when (moduleType) {
+                            HomepageModuleType.Ranking -> {
+                                RankingModule(
+                                    books = books,
+                                    onClick = { book, _ -> onBookClick(book) },
+                                    onLongClick = { book, _ -> onBookLongClick(book) }
+                                )
+                            }
+                            HomepageModuleType.GridRanking -> {
+                                GridRankingModule(
+                                    books = books,
+                                    onClick = { item -> onBookClick(item.book) },
+                                    onLongClick = { item -> onBookLongClick(item.book) },
+                                    onLoadMore = if (currentTab.hasMore && !currentTab.isLoadingMore) {
+                                        { onLoadMore(selectedIndex) }
+                                    } else null,
+                                    initialPage = currentPage,
+                                    onPageChanged = { newPage ->
+                                        pageStates[currentTab.title] = newPage
+                                    }
+                                )
+                            }
+                            else -> {
+                                RankingModule(
+                                    books = books,
+                                    onClick = { book, _ -> onBookClick(book) },
+                                    onLongClick = { book, _ -> onBookLongClick(book) }
+                                )
+                            }
                         }
                     }
-                }
-                currentTab.errorMessage != null -> {
-                    GlassCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 12.dp) {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                    currentTab.errorMessage != null -> {
+                        GlassCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 12.dp) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.homepage_load_failed),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(100.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = stringResource(R.string.homepage_load_failed),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
                         }
-                    }
-                }
-                else -> {
-                    // 加载中
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
                     }
                 }
             }
-            } // key(selectedIndex)
         }
     }
 }
@@ -1102,15 +1032,6 @@ private fun AutoLoadMoreContainer(
     }
 }
 
-/**
- * 悬浮回到顶部按钮
- *
- * 当列表向下滚动超过一定距离时显示，点击后平滑滚动到列表顶部。
- * 背景和图标颜色均通过项目主题系统自适应。
- *
- * @param listState 关联的 LazyListState
- * @param modifier 额外的修饰符
- */
 @Composable
 private fun ScrollToTopFab(
     listState: LazyListState,
