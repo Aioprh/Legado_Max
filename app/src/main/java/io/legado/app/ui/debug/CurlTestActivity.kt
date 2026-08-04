@@ -1,20 +1,14 @@
 package io.legado.app.ui.debug
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
-import io.legado.app.ui.theme.LegadoThemeWithBackground
-import io.legado.app.ui.theme.initLegadoComposeTheme
-import io.legado.app.ui.theme.setLegadoContent
+import io.legado.app.base.BaseComposeActivity
 
-class CurlTestActivity : AppCompatActivity() {
+class CurlTestActivity : BaseComposeActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        initLegadoComposeTheme()
-        super.onCreate(savedInstanceState)
-        setLegadoContent {
-            CurlTestScreen(onBackClick = { finish() })
-        }
+    @Composable
+    override fun ComposeContent() {
+        CurlTestScreen(onBackClick = { finish() })
     }
 }
 
@@ -22,7 +16,5 @@ class CurlTestActivity : AppCompatActivity() {
 fun CurlTestContent(
     onBackClick: () -> Unit
 ) {
-    LegadoThemeWithBackground(backgroundDrawable = null) {
-        CurlTestScreen(onBackClick = onBackClick)
-    }
+    CurlTestScreen(onBackClick = onBackClick)
 }
