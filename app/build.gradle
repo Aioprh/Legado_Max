@@ -2,7 +2,6 @@ plugins {
 //    id "com.android.application"
 //    id 'org.jetbrains.kotlin.android'
 //    id 'kotlin-parcelize'
-//    //id 'kotlin-kapt'
 //    id 'com.google.devtools.ksp'
 //    id "com.google.gms.google-services"
 
@@ -13,6 +12,7 @@ plugins {
     alias libs.plugins.room
     alias libs.plugins.ksp
     alias libs.plugins.google.services
+    id 'com.google.dagger.hilt.android'
 
 }
 apply from: 'download.gradle'
@@ -282,7 +282,6 @@ dependencies {
     //room sql语句不高亮解决方法https://issuetracker.google.com/issues/234612964#comment6
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
-    //kapt("androidx.room:room-compiler:$room_version")
     ksp(libs.room.compiler)
     androidTestImplementation(libs.room.testing)
     
@@ -364,9 +363,13 @@ dependencies {
     //epubLib集成到应用内
     // 椒盐歌词
     implementation(libs.lyricViewx)
-    // sora-editor代码编辑器,更丰富的编辑功能
+    //sora-editor代码编辑器,更丰富的编辑功能
     implementation(platform(libs.soraEditor.bom))
     implementation(libs.soraEditor.core)
     implementation(libs.soraEditor.language.textmate)
+
+    //Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
 }

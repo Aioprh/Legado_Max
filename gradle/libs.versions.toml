@@ -11,6 +11,7 @@ flexbox = "3.0.0"
 fragment = "1.8.9"
 documentfile = "1.1.0"
 liquidglass = "1.0.3"
+hilt = "2.57.1"
 
 composeBom = "2025.04.01"
 
@@ -223,6 +224,13 @@ renderscript-intrinsics-replacement-toolkit = { module = "com.github.TomasValent
 liquidglass = { module = "com.qmdeve.liquidglass:core", version.ref = "liquidglass" }
 zxing-lite = { module = "com.github.jenly1314:zxing-lite", version.ref = "zxingLite" }
 
+# 在现有的 libraries 最后添加这两行
+hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
+hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
+
+
+
+
 [bundles]
 coroutines = ["kotlinx-coroutines-core", "kotlinx-coroutines-android"]
 androidTest = ["androidx-espresso-core", "androidx-junit", "androidx-runner"]
@@ -252,5 +260,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
 
 #protobuf = { id = "com.google.protobuf", version = "0.9.4" }
+# ✅Hilt插件，这里key名字必须叫 hilt，id固定
+hilt = { id = "dagger.hilt.android.plugin", version.ref = "hilt" }
 
 download = { id = "de.undercouch.download", version = "5.6.0" }
