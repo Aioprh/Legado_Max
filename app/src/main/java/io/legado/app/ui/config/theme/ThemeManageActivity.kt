@@ -17,6 +17,13 @@ import io.legado.app.utils.RealPathUtil
 import io.legado.app.utils.share
 import io.legado.app.utils.toastOnUi
 
+/**
+ * 主题管理 Activity（Compose 版）。
+ *
+ * 入口页面，展示日间/夜间主题列表，支持应用、编辑、删除、置顶、多选导出等操作。
+ * UI 层使用 Jetpack Compose（ThemeManageScreen），ViewModel 通过 StateFlow 驱动渲染，
+ * 平台侧逻辑（ColorPickerDialog、NumberPickerDialog、文件选择）由 Activity 回调处理。
+ */
 class ThemeManageActivity : AppCompatActivity(), ColorPickerDialogListener {
 
     private lateinit var viewModel: ThemeManageViewModel

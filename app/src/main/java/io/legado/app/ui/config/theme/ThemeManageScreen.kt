@@ -39,6 +39,12 @@ import io.legado.app.ui.config.theme.components.ThemeEditDialog
 import io.legado.app.ui.config.theme.components.ThemeTabRow
 import io.legado.app.ui.theme.pageCardContainerColor
 
+/**
+ * 主题管理主屏幕（Compose）。
+ *
+ * 订阅 ViewModel 的 UiState 渲染主题列表、Tab切换、多选操作栏、编辑弹窗。
+ * 一次性事件（Toast、分享、Recreate等）通过 LaunchedEffect 收集并回调给 Activity。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeManageScreen(
