@@ -7,12 +7,14 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.AppLog
+import io.legado.app.R
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.help.book.isNotShelf
 import io.legado.app.help.config.AppConfig
+import io.legado.app.model.CacheBook
 import io.legado.app.model.webBook.SearchModel
 import io.legado.app.model.webBook.SourceSearchRecord
 import io.legado.app.utils.ConflateLiveData
@@ -175,6 +177,28 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
             upAdapterLiveData.postValue("isInBookshelf")
         }.onError {
             AppLog.put("加入书架失败", it)
+        }
+    }
+
+    /**
+     * 离线缓存书籍：自动加入书架（若未加入），并启动全书缓存
+     */
+    fun onCacheBook(book: SearchBook) {
+        execute {
+            // 1. 确保书籍在书架中（若已在则跳过）
+            addToBookshelf(book)
+
+            // 2. 获取 Book 实体（优先使用 bookUrl）
+            val bookEntity = appDb.bookDao.getBook(book.bookUrl)
+                ?: appDb.bookDao.getBook(book.name, book.author)
+            if (bookEntity == null) {
+                context.toastOnUi(context.getString(R.string.offline_cache_failed, book.name))
+                return@execute
+            }
+
+            // 3. 启动全书缓存（从第0章到最后一章，-1 表示全部）
+            CacheBook.start(getApplication(), bookEntity, 0, -1)
+            context.toastOnUi(context.getString(R.string.offline_cache_start, book.name))
         }
     }
 
