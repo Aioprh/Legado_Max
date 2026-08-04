@@ -1,20 +1,14 @@
 package io.legado.app.ui.debug
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
-import io.legado.app.ui.theme.LegadoThemeWithBackground
-import io.legado.app.ui.theme.initLegadoComposeTheme
-import io.legado.app.ui.theme.setLegadoContent
+import io.legado.app.base.BaseComposeActivity
 
-class EncodeToolsActivity : AppCompatActivity() {
+class EncodeToolsActivity : BaseComposeActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        initLegadoComposeTheme()
-        super.onCreate(savedInstanceState)
-        setLegadoContent {
-            EncodeToolsScreen(onBackClick = { finish() })
-        }
+    @Composable
+    override fun ComposeContent() {
+        EncodeToolsScreen(onBackClick = { finish() })
     }
 }
 
@@ -22,7 +16,5 @@ class EncodeToolsActivity : AppCompatActivity() {
 fun EncodeToolsContent(
     onBackClick: () -> Unit
 ) {
-    LegadoThemeWithBackground(backgroundDrawable = null) {
-        EncodeToolsScreen(onBackClick = onBackClick)
-    }
+    EncodeToolsScreen(onBackClick = onBackClick)
 }

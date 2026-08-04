@@ -3,18 +3,35 @@ package io.legado.app.ui.config
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import io.legado.app.base.BaseComposeActivity
 import io.legado.app.help.config.CoverHtmlTemplateConfig
-import io.legado.app.ui.theme.LegadoThemeWithBackground
-import io.legado.app.ui.theme.initLegadoComposeTheme
-import io.legado.app.ui.theme.setLegadoContent
 
-class CoverHtmlActivity : AppCompatActivity() {
+class CoverHtmlActivity : BaseComposeActivity() {
+
+    private var mode: Int = MODE_TEMPLATE_LIST
+    private var templateId: String? = null
+    private var isNew: Boolean = false
+
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        mode = intent.getIntExtra(EXTRA_MODE, MODE_TEMPLATE_LIST)
+        templateId = intent.getStringExtra(EXTRA_TEMPLATE_ID)
+        isNew = intent.getBooleanExtra(EXTRA_IS_NEW, false)
+    }
+
+    @Composable
+    override fun ComposeContent() {
+        CoverHtmlContent(
+            mode = mode,
+            templateId = templateId,
+            isNew = isNew,
+            onBackClick = { finish() }
+        )
+    }
 
     companion object {
         private const val EXTRA_MODE = "mode"
@@ -40,24 +57,6 @@ class CoverHtmlActivity : AppCompatActivity() {
             context.startActivity(intent)
         }
     }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        initLegadoComposeTheme()
-        super.onCreate(savedInstanceState)
-
-        val mode = intent.getIntExtra(EXTRA_MODE, MODE_TEMPLATE_LIST)
-        val templateId = intent.getStringExtra(EXTRA_TEMPLATE_ID)
-        val isNew = intent.getBooleanExtra(EXTRA_IS_NEW, false)
-
-        setLegadoContent {
-            CoverHtmlContent(
-                mode = mode,
-                templateId = templateId,
-                isNew = isNew,
-                onBackClick = { finish() }
-            )
-        }
-    }
 }
 
 @Composable
@@ -67,44 +66,42 @@ fun CoverHtmlContent(
     isNew: Boolean,
     onBackClick: () -> Unit
 ) {
-    LegadoThemeWithBackground(backgroundDrawable = null) {
-        var currentMode by remember { mutableStateOf(mode) }
-        var currentTemplateId by remember { mutableStateOf(templateId) }
-        var currentIsNew by remember { mutableStateOf(isNew) }
+    var currentMode by remember { mutableStateOf(mode) }
+    var currentTemplateId by remember { mutableStateOf(templateId) }
+    var currentIsNew by remember { mutableStateOf(isNew) }
 
-        when (currentMode) {
-            CoverHtmlActivity.MODE_TEMPLATE_LIST -> {
-                CoverHtmlTemplateListScreen(
-                    onBackClick = onBackClick,
-                    onEditTemplate = { template ->
-                        if (template == null) {
-                            currentMode = CoverHtmlActivity.MODE_EDIT_TEMPLATE
-                            currentIsNew = true
-                            currentTemplateId = null
-                        } else {
-                            currentMode = CoverHtmlActivity.MODE_EDIT_TEMPLATE
-                            currentIsNew = false
-                            currentTemplateId = template.id
-                        }
+    when (currentMode) {
+        CoverHtmlActivity.MODE_TEMPLATE_LIST -> {
+            CoverHtmlTemplateListScreen(
+                onBackClick = onBackClick,
+                onEditTemplate = { template ->
+                    if (template == null) {
+                        currentMode = CoverHtmlActivity.MODE_EDIT_TEMPLATE
+                        currentIsNew = true
+                        currentTemplateId = null
+                    } else {
+                        currentMode = CoverHtmlActivity.MODE_EDIT_TEMPLATE
+                        currentIsNew = false
+                        currentTemplateId = template.id
                     }
-                )
-            }
-
-            CoverHtmlActivity.MODE_EDIT_TEMPLATE -> {
-                val template = currentTemplateId?.let {
-                    CoverHtmlTemplateConfig.getTemplateById(it)
                 }
-                CoverHtmlCodeScreen(
-                    template = template,
-                    isNewTemplate = currentIsNew,
-                    onBackClick = {
-                        currentMode = CoverHtmlActivity.MODE_TEMPLATE_LIST
-                    },
-                    onShowTemplateList = {
-                        currentMode = CoverHtmlActivity.MODE_TEMPLATE_LIST
-                    }
-                )
+            )
+        }
+
+        CoverHtmlActivity.MODE_EDIT_TEMPLATE -> {
+            val template = currentTemplateId?.let {
+                CoverHtmlTemplateConfig.getTemplateById(it)
             }
+            CoverHtmlCodeScreen(
+                template = template,
+                isNewTemplate = currentIsNew,
+                onBackClick = {
+                    currentMode = CoverHtmlActivity.MODE_TEMPLATE_LIST
+                },
+                onShowTemplateList = {
+                    currentMode = CoverHtmlActivity.MODE_TEMPLATE_LIST
+                }
+            )
         }
     }
 }

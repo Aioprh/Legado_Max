@@ -1,10 +1,6 @@
 package io.legado.app.ui.book.readRecord
 
-import android.graphics.drawable.Drawable
 import android.os.Bundle
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -60,113 +56,44 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.legado.app.base.BaseComposeActivity
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.readRecord.ReadRecordSession
 import io.legado.app.data.entities.readRecord.ReadRecordTimelineDay
 import io.legado.app.data.repository.ReadRecordRepository
-import io.legado.app.help.config.AppConfig
-import io.legado.app.help.config.ThemeConfig
-import io.legado.app.lib.theme.ThemeStore
-import io.legado.app.lib.theme.backgroundColor
-import io.legado.app.lib.theme.primaryColor
-import io.legado.app.ui.theme.LegadoTheme
-import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.formatReadDuration
-import io.legado.app.utils.fullScreen
-import io.legado.app.utils.setNavigationBarColorAuto
-import io.legado.app.utils.setStatusBarColorAuto
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class BookReadRecordActivity : AppCompatActivity() {
+class BookReadRecordActivity : BaseComposeActivity() {
 
     companion object {
         const val EXTRA_BOOK_NAME = "bookName"
         const val EXTRA_BOOK_AUTHOR = "bookAuthor"
     }
 
-    private var bgDrawable: Drawable? = null
+    private var bookName: String = ""
+    private var bookAuthor: String = ""
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        initTheme()
-        super.onCreate(savedInstanceState)
-        setupSystemBar()
-        loadBackgroundImage()
-        enableEdgeToEdge()
-
-        val bookName = intent.getStringExtra(EXTRA_BOOK_NAME).orEmpty()
-        val bookAuthor = intent.getStringExtra(EXTRA_BOOK_AUTHOR).orEmpty()
-
-        setContent {
-            LegadoTheme {
-                BookReadRecordScreen(
-                    bgDrawable = bgDrawable,
-                    bookName = bookName,
-                    bookAuthor = bookAuthor,
-                    onBackClick = { finish() }
-                )
-            }
-        }
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        bookName = intent.getStringExtra(EXTRA_BOOK_NAME).orEmpty()
+        bookAuthor = intent.getStringExtra(EXTRA_BOOK_AUTHOR).orEmpty()
     }
 
-    @Suppress("DEPRECATION")
-    private fun loadBackgroundImage() {
-        try {
-            val metrics = android.util.DisplayMetrics()
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                val windowMetrics = windowManager.currentWindowMetrics
-                val bounds = windowMetrics.bounds
-                metrics.widthPixels = bounds.width()
-                metrics.heightPixels = bounds.height()
-            } else {
-                windowManager.defaultDisplay.getMetrics(metrics)
-            }
-            bgDrawable = ThemeConfig.getBgImage(this, metrics)
-        } catch (_: Exception) {
-            bgDrawable = null
-        }
-    }
-
-    private fun initTheme() {
-        val theme = ThemeConfig.getTheme()
-        when (theme) {
-            io.legado.app.constant.Theme.Dark -> {
-                setTheme(io.legado.app.R.style.AppTheme_Dark)
-            }
-
-            io.legado.app.constant.Theme.Light -> {
-                setTheme(io.legado.app.R.style.AppTheme_Light)
-            }
-
-            else -> {
-                if (ColorUtils.isColorLight(primaryColor)) {
-                    setTheme(io.legado.app.R.style.AppTheme_Light)
-                } else {
-                    setTheme(io.legado.app.R.style.AppTheme_Dark)
-                }
-            }
-        }
-    }
-
-    private fun setupSystemBar() {
-        fullScreen()
-        val isTransparentStatusBar = AppConfig.isTransparentStatusBar
-        val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
-        setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, true)
-        if (AppConfig.immNavigationBar) {
-            setNavigationBarColorAuto(ThemeStore.navigationBarColor(this), transparent = true)
-        } else {
-            val nbColor = ColorUtils.darkenColor(ThemeStore.navigationBarColor(this))
-            setNavigationBarColorAuto(nbColor)
-        }
+    @Composable
+    override fun ComposeContent() {
+        BookReadRecordScreen(
+            bookName = bookName,
+            bookAuthor = bookAuthor,
+            onBackClick = { finish() }
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookReadRecordScreen(
-    bgDrawable: Drawable?,
     bookName: String,
     bookAuthor: String,
     onBackClick: () -> Unit
