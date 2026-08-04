@@ -182,22 +182,22 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
 
     /**
      * 离线缓存书籍：自动加入书架（若未加入），并启动全书缓存
+     * 直接使用 SearchBook.toBook() 生成的 Book 实体，无需二次查询。
      */
     fun onCacheBook(book: SearchBook) {
         execute {
-            // 1. 确保书籍在书架中（若已在则跳过）
-            addToBookshelf(book)
-
-            // 2. 获取 Book 实体（优先使用 bookUrl）
-            val bookEntity = appDb.bookDao.getBook(book.bookUrl)
-                ?: appDb.bookDao.getBook(book.name, book.author)
-            if (bookEntity == null) {
-                context.toastOnUi(context.getString(R.string.offline_cache_failed, book.name))
-                return@execute
-            }
-
-            // 3. 启动全书缓存（从第0章到最后一章，-1 表示全部）
+            // 1. 转换为 Book 实体（包含完整字段：bookUrl、name、author、origin 等）
+            val bookEntity = book.toBook()
+            // 2. 加入书架（如已存在则替换，不会报错）
+            appDb.bookDao.insert(bookEntity)
+            // 3. 更新内存中的书架状态
+            val key = if (book.author.isNotBlank()) "${book.name}-${book.author}" else book.name
+            bookshelf.add(key)
+            bookshelf.add(book.bookUrl)
+            upAdapterLiveData.postValue("isInBookshelf")
+            // 4. 启动全书缓存（0 到 -1 表示全部章节）
             CacheBook.start(getApplication(), bookEntity, 0, -1)
+            // 5. 提示成功
             context.toastOnUi(context.getString(R.string.offline_cache_start, book.name))
         }
     }
