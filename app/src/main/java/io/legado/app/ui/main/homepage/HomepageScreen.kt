@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -33,8 +35,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
@@ -55,6 +57,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,11 +66,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -664,16 +671,12 @@ private fun HomepageModuleItem(
         val isRankingTabs = rankingTabState != null
         val rankingCurrentExploreUrl = rankingTabState
             ?.tabs?.getOrNull(rankingTabState.selectedIndex)?.exploreUrl
-        // 箭头显示逻辑：多 Tab 时在 Tab 栏 → 标题行不显示；单 Tab 或无 Tab 时在标题行显示
-        val hasArrow = ((module.exploreUrl != null || rankingCurrentExploreUrl != null)
-                && module.type != HomepageModuleType.ButtonGroup
-                && (!isRankingTabs || (rankingTabState?.tabs?.size ?: 0) <= 1))
 
-        // Module header
+        // 模块标题
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .padding(horizontal = 16.dp, vertical = 2.dp)
                 .then(
                     if (module.type != HomepageModuleType.ButtonGroup) {
                         Modifier.clickable {
@@ -699,14 +702,6 @@ private fun HomepageModuleItem(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            if (hasArrow) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = stringResource(R.string.homepage_more),
-                    tint = pageSecondaryTextColor(),
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
         }
 
         // Module content
@@ -776,16 +771,25 @@ private fun HomepageModuleItem(
                             }
                         }
 
-                        HomepageModuleType.Ranking -> RankingModule(
-                            books = state.books,
-                            onClick = { book, _ -> onBookClick(book) },
-                            onLongClick = { book, _ -> onBookLongClick(book) }
-                        )
+                        HomepageModuleType.Ranking -> AutoLoadMoreContainer(
+                            enabled = state.hasMore,
+                            isLoading = state.isLoadingMore,
+                            onLoadMore = { viewModel.loadMoreModule(module.globalId) }
+                        ) {
+                            RankingModule(
+                                books = state.books,
+                                onClick = { book, _ -> onBookClick(book) },
+                                onLongClick = { book, _ -> onBookLongClick(book) }
+                            )
+                        }
 
                         HomepageModuleType.GridRanking -> GridRankingModule(
                             books = state.books,
                             onClick = { item -> onBookClick(item.book) },
-                            onLongClick = { item -> onBookLongClick(item.book) }
+                            onLongClick = { item -> onBookLongClick(item.book) },
+                            onLoadMore = if (state.hasMore && !state.isLoadingMore) {
+                                { viewModel.loadMoreModule(module.globalId) }
+                            } else null
                         )
 
                         HomepageModuleType.Waterfall -> {
@@ -853,6 +857,7 @@ private fun HomepageModuleItem(
                         tabs = state.tabs,
                         selectedIndex = state.selectedIndex,
                         moduleType = module.type,
+                        globalId = module.globalId,
                         onTabSelected = { index ->
                             viewModel.selectRankingTab(module.globalId, index)
                         },
@@ -860,6 +865,9 @@ private fun HomepageModuleItem(
                         onBookLongClick = onBookLongClick,
                         onArrowClick = { tab ->
                             onModuleHeaderClick(tab.title, module.sourceUrl, tab.exploreUrl)
+                        },
+                        onLoadMore = { tabIndex ->
+                            viewModel.loadMoreRankingTab(module.globalId, tabIndex)
                         }
                     )
                 }
@@ -877,40 +885,52 @@ private fun LoadMoreFooter(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             CircularProgressIndicator(
-                modifier = Modifier.padding(end = 8.dp),
-                strokeWidth = 2.dp
+                modifier = Modifier.size(6.dp),
+                strokeWidth = 0.5.dp,
+                color = pageAccentColor()
             )
+            Spacer(modifier = Modifier.width(3.dp))
             Text(
                 text = stringResource(R.string.homepage_loading),
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp),
                 color = pageSecondaryTextColor()
             )
         }
     } else {
-        Row(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp)
+                .padding(horizontal = 16.dp, vertical = 2.dp)
                 .clickable(onClick = onClick),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+            shape = RoundedCornerShape(6.dp),
+            color = pageAccentColor().copy(alpha = 0.08f),
+            border = BorderStroke(0.5.dp, pageAccentColor().copy(alpha = 0.15f))
         ) {
-            Text(
-                text = stringResource(R.string.homepage_load_more),
-                style = MaterialTheme.typography.labelMedium,
-                color = pageAccentColor()
-            )
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = pageAccentColor(),
-                modifier = Modifier.padding(start = 4.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.homepage_load_more),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 9.sp),
+                    color = pageAccentColor()
+                )
+                Spacer(modifier = Modifier.width(3.dp))
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = pageAccentColor(),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
 }
@@ -921,12 +941,19 @@ private fun RankingTabsModule(
     tabs: List<RankingTabData>,
     selectedIndex: Int,
     moduleType: HomepageModuleType,
+    globalId: String,
     onTabSelected: (Int) -> Unit,
     onBookClick: (SearchBook) -> Unit,
     onBookLongClick: (SearchBook) -> Unit,
     onArrowClick: (RankingTabData) -> Unit,
+    onLoadMore: (Int) -> Unit,
 ) {
     val currentTab = tabs.getOrNull(selectedIndex) ?: return
+
+    // 为每个 Tab 保存当前页码（用于记忆翻页位置）
+    val pageStates = remember { mutableStateMapOf<String, Int>() }
+    val currentPage = pageStates.getOrPut(currentTab.title) { 0 }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         // 多个 Tab 时显示 Tab 栏 + 固定箭头
         if (tabs.size > 1) {
@@ -988,21 +1015,34 @@ private fun RankingTabsModule(
                 currentTab.books != null -> {
                     val books = currentTab.books!!
                     when (moduleType) {
-                        HomepageModuleType.Ranking -> RankingModule(
-                            books = books,
-                            onClick = { book, _ -> onBookClick(book) },
-                            onLongClick = { book, _ -> onBookLongClick(book) }
-                        )
-                        HomepageModuleType.GridRanking -> GridRankingModule(
-                            books = books,
-                            onClick = { item -> onBookClick(item.book) },
-                            onLongClick = { item -> onBookLongClick(item.book) }
-                        )
-                        else -> RankingModule(
-                            books = books,
-                            onClick = { book, _ -> onBookClick(book) },
-                            onLongClick = { book, _ -> onBookLongClick(book) }
-                        )
+                        HomepageModuleType.Ranking -> {
+                            RankingModule(
+                                books = books,
+                                onClick = { book, _ -> onBookClick(book) },
+                                onLongClick = { book, _ -> onBookLongClick(book) }
+                            )
+                        }
+                        HomepageModuleType.GridRanking -> {
+                            GridRankingModule(
+                                books = books,
+                                onClick = { item -> onBookClick(item.book) },
+                                onLongClick = { item -> onBookLongClick(item.book) },
+                                onLoadMore = if (currentTab.hasMore && !currentTab.isLoadingMore) {
+                                    { onLoadMore(selectedIndex) }
+                                } else null,
+                                initialPage = currentPage,
+                                onPageChanged = { newPage ->
+                                    pageStates[currentTab.title] = newPage
+                                }
+                            )
+                        }
+                        else -> {
+                            RankingModule(
+                                books = books,
+                                onClick = { book, _ -> onBookClick(book) },
+                                onLongClick = { book, _ -> onBookLongClick(book) }
+                            )
+                        }
                     }
                 }
                 currentTab.errorMessage != null -> {
@@ -1031,6 +1071,34 @@ private fun RankingTabsModule(
             }
             } // key(selectedIndex)
         }
+    }
+}
+
+@Composable
+private fun AutoLoadMoreContainer(
+    enabled: Boolean,
+    isLoading: Boolean,
+    onLoadMore: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val view = LocalView.current
+    val threshold = with(androidx.compose.ui.platform.LocalDensity.current) { 120.dp.toPx() }
+    var triggered by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier.onGloballyPositioned { coords ->
+            if (!enabled || isLoading) return@onGloballyPositioned
+            val bottom = coords.positionInWindow().y + coords.size.height
+            if (bottom >= view.height.toFloat() - threshold) {
+                if (!triggered) {
+                    triggered = true
+                    onLoadMore()
+                }
+            } else {
+                triggered = false
+            }
+        }
+    ) {
+        content()
     }
 }
 
