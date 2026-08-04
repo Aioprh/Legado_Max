@@ -1,4 +1,4 @@
-package io.legado.app.ui.config
+package io.legado.app.ui.config.theme
 
 import android.os.Bundle
 import androidx.appcompat.app.AlertDialog
@@ -9,8 +9,6 @@ import androidx.lifecycle.ViewModelProvider
 import com.jaredrummler.android.colorpicker.ColorPickerDialog
 import com.jaredrummler.android.colorpicker.ColorPickerDialogListener
 import io.legado.app.R
-import io.legado.app.ui.config.theme.ThemeManageScreen
-import io.legado.app.ui.config.theme.ThemeManageViewModel
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.theme.initLegadoComposeTheme
 import io.legado.app.ui.theme.setLegadoContent

@@ -1,4 +1,4 @@
-package io.legado.app.ui.config
+package io.legado.app.ui.config.theme
 
 import android.content.Context
 import android.graphics.Color

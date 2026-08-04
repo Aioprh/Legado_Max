@@ -7,6 +7,7 @@ import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.EventBus
 import io.legado.app.databinding.ActivityConfigBinding
+import io.legado.app.ui.config.theme.ThemeConfigFragment
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
