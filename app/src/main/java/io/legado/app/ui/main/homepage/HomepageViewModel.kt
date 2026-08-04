@@ -619,18 +619,22 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         // 排行榜多分类模式：args 包含多个 {t:标题, u:URL} 对象
         val isRanking = module.type == HomepageModuleType.Ranking.key || module.type == HomepageModuleType.GridRanking.key
         val rankingCategoryPairs = if (isRanking) parseRankingCategories(module.args) else null
-        if (rankingCategoryPairs != null) {
+
+        if (rankingCategoryPairs != null && rankingCategoryPairs.size >= 2) {
             val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
-            val categoryList = rankingCategoryPairs
-            // 初始化：每个 Tab 先创建空占位（books = null），仅首 Tab 立即加载
-            val initialTabs = categoryList.map { (title, url) ->
-                RankingTabData(title = title, exploreUrl = url.ifBlank { null })
+            val initialTabs = rankingCategoryPairs.map { (title, url) ->
+                RankingTabData(
+                    title = title,
+                    exploreUrl = url.ifBlank { null },
+                    page = 1,
+                    hasMore = true,
+                    isLoadingMore = false
+                )
             }
             _moduleContentStates.update { it + (module.id to ModuleLoadState.RankingTabs(initialTabs)) }
-            // 立即加载第一个分类 Tab
-            if (categoryList.isNotEmpty()) {
-                val (title, url) = categoryList[0]
-                loadRankingTab(module.id, module.sourceUrl, rssSource, 0, title, url)
+            if (rankingCategoryPairs.isNotEmpty()) {
+                val (title, url) = rankingCategoryPairs[0]
+                loadRankingTab(module.id, module.sourceUrl, rssSource, 0, title, url, page = 1)
             }
             return
         }
@@ -665,22 +669,25 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                     books to false
                 } else {
                     // 书源加载（原有逻辑）
-                    val isRanking =
-                        module.type == HomepageModuleType.Ranking.key || module.type == HomepageModuleType.GridRanking.key
-                    val books = if (isRanking) exploreBooksUseCase.executeForRanking(
-                        module.sourceUrl,
-                        module.url,
-                        module.args
+                    val effectiveUrl = if (isRanking) {
+                        parseRankingCategories(module.args)?.firstOrNull()?.second?.ifBlank { null }
+                            ?: module.url
+                    } else {
+                        module.url
+                    }
+                    val result = exploreBooksUseCase.execute(
+                        sourceUrl = module.sourceUrl,
+                        moduleUrl = effectiveUrl,
+                        args = module.args,
+                        page = 1
                     )
-                    else exploreBooksUseCase.execute(module.sourceUrl, module.url, module.args).books
-                    val hasMore = isInfinite(module.type, module.layoutConfig) && books.isNotEmpty()
-                    books to hasMore
+                    result.books to result.hasMore
                 }
             }.onSuccess { (books, hasMore) ->
                 val shelf = _bookshelf.value
                 _moduleContentStates.update {
                     it + (module.id to ModuleLoadState.Loaded(
-                        books.map { book ->
+                        books = books.map { book ->
                             HomepageBookItemUi(
                                 book = book,
                                 shelfState = resolveBookShelfStateUseCase.execute(
@@ -691,7 +698,9 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                                 )
                             )
                         },
-                        hasMore = hasMore
+                        hasMore = hasMore,
+                        page = 1,
+                        isLoadingMore = false
                     ))
                 }
             }.onFailure { e ->
@@ -708,10 +717,18 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         viewModelScope.launch {
             kotlin.runCatching {
                 val module = gateway.getById(globalId) ?: throw Exception("Module not found")
+                val isRanking = module.type == HomepageModuleType.Ranking.key ||
+                        module.type == HomepageModuleType.GridRanking.key
+                val effectiveUrl = if (isRanking) {
+                    parseRankingCategories(module.args)?.firstOrNull()?.second?.ifBlank { null }
+                        ?: module.url
+                } else {
+                    module.url
+                }
                 exploreBooksUseCase.execute(
-                    module.sourceUrl,
-                    module.url,
-                    module.args,
+                    sourceUrl = module.sourceUrl,
+                    moduleUrl = effectiveUrl,
+                    args = module.args,
                     page = nextPage
                 )
             }.onSuccess { result ->
@@ -730,9 +747,12 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                             )
                         )
                     }
+                    val finalHasMore = if (deduped.isEmpty()) false else result.hasMore
                     states + (globalId to ModuleLoadState.Loaded(
                         books = lastState.books + deduped,
-                        hasMore = deduped.isNotEmpty(), isLoadingMore = false, page = nextPage
+                        hasMore = finalHasMore,
+                        isLoadingMore = false,
+                        page = nextPage
                     ))
                 }
             }.onFailure { e ->
@@ -781,7 +801,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
             if (currentTab.books == null && currentTab.errorMessage == null) {
                 val tabJobKey = "${globalId}_tab_$index"
                 if (loadJobs[tabJobKey]?.isActive != true) {
-                    loadRankingTab(globalId, module.sourceUrl, rssSource, index, currentTab.title, currentTab.exploreUrl ?: "")
+                    loadRankingTab(globalId, module.sourceUrl, rssSource, index, currentTab.title, currentTab.exploreUrl ?: "", page = 1)
                 }
             }
             // 预加载相邻 Tab（预加载开启时）
@@ -791,7 +811,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                     if (adjacentTab.books == null && adjacentTab.errorMessage == null) {
                         val adjJobKey = "${globalId}_tab_$adjacentIndex"
                         if (loadJobs[adjJobKey]?.isActive != true) {
-                            loadRankingTab(globalId, module.sourceUrl, rssSource, adjacentIndex, adjacentTab.title, adjacentTab.exploreUrl ?: "")
+                            loadRankingTab(globalId, module.sourceUrl, rssSource, adjacentIndex, adjacentTab.title, adjacentTab.exploreUrl ?: "", page = 1)
                         }
                     }
                 }
@@ -799,9 +819,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
-    /**
-     * 加载排行榜单个分类 Tab 的书籍数据
-     */
+    // ==================== 多分类 Tab 加载 ====================
     private fun loadRankingTab(
         moduleId: String,
         sourceUrl: String,
@@ -809,13 +827,16 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         index: Int,
         title: String,
         url: String,
+        page: Int = 1
     ) {
         val jobKey = "${moduleId}_tab_$index"
+        // 取消之前的加载任务
+        loadJobs[jobKey]?.cancel()
         loadJobs[jobKey] = viewModelScope.launch {
             kotlin.runCatching {
                 val books = if (rssSource != null) {
                     val (articles, _) = withContext(Dispatchers.IO) {
-                        Rss.getArticlesAwait(title.ifBlank { rssSource.sourceName }, url, rssSource, page = 1)
+                        Rss.getArticlesAwait(title.ifBlank { rssSource.sourceName }, url, rssSource, page = page)
                     }
                     articles.map { article ->
                         SearchBook(
@@ -830,10 +851,16 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                         )
                     }
                 } else {
-                    exploreBooksUseCase.executeForRanking(sourceUrl, url.ifBlank { null }, null)
+                    val result = exploreBooksUseCase.execute(
+                        sourceUrl = sourceUrl,
+                        moduleUrl = url.ifBlank { null },
+                        args = null,
+                        page = page
+                    )
+                    result.books
                 }
                 val shelf = _bookshelf.value
-                val bookItems = books.map { book ->
+                books.map { book ->
                     HomepageBookItemUi(
                         book = book,
                         shelfState = resolveBookShelfStateUseCase.execute(
@@ -841,25 +868,79 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                         )
                     )
                 }
-                bookItems
             }.onSuccess { bookItems ->
                 _moduleContentStates.update { states ->
                     val current = states[moduleId] as? ModuleLoadState.RankingTabs ?: return@update states
-                    val updatedTabs = current.tabs.toMutableList().also {
-                        it[index] = it[index].copy(books = bookItems)
-                    }
+                    val updatedTabs = current.tabs.toMutableList()
+                    val oldTab = updatedTabs[index]
+                    val existingUrls = oldTab.books?.map { it.book.bookUrl }?.toSet() ?: emptySet()
+                    val deduped = bookItems.filter { it.book.bookUrl !in existingUrls }
+                    val newBooks = if (oldTab.books != null) oldTab.books + deduped else bookItems
+                    val hasMore = if (bookItems.isEmpty()) false else true
+                    updatedTabs[index] = oldTab.copy(
+                        books = newBooks,
+                        page = page,
+                        hasMore = hasMore,
+                        isLoadingMore = false,
+                        errorMessage = null
+                    )
                     states + (moduleId to current.copy(tabs = updatedTabs))
                 }
             }.onFailure { e ->
                 _moduleContentStates.update { states ->
                     val current = states[moduleId] as? ModuleLoadState.RankingTabs ?: return@update states
-                    val updatedTabs = current.tabs.toMutableList().also {
-                        it[index] = it[index].copy(errorMessage = e.stackTraceStr)
-                    }
+                    val updatedTabs = current.tabs.toMutableList()
+                    updatedTabs[index] = updatedTabs[index].copy(
+                        errorMessage = e.stackTraceStr,
+                        isLoadingMore = false
+                    )
                     states + (moduleId to current.copy(tabs = updatedTabs))
                 }
             }
         }.also { it.invokeOnCompletion { loadJobs.remove(jobKey) } }
+    }
+
+    fun loadMoreRankingTab(globalId: String, tabIndex: Int) {
+        val state = _moduleContentStates.value[globalId] as? ModuleLoadState.RankingTabs ?: return
+        val tab = state.tabs.getOrNull(tabIndex) ?: return
+
+        if (tab.isLoadingMore) return
+
+        val nextPage = tab.page + 1
+
+        // 重试逻辑：即使 hasMore=false，如果已有书籍且不是空列表，允许重试
+        val effectiveHasMore = if (!tab.hasMore && tab.books != null && tab.books.isNotEmpty()) {
+            true
+        } else {
+            tab.hasMore
+        }
+        if (!effectiveHasMore) return
+
+        // 更新状态
+        _moduleContentStates.update { states ->
+            val current = states[globalId] as? ModuleLoadState.RankingTabs ?: return@update states
+            val updatedTabs = current.tabs.toMutableList()
+            updatedTabs[tabIndex] = updatedTabs[tabIndex].copy(
+                isLoadingMore = true,
+                hasMore = true,
+                errorMessage = null
+            )
+            states + (globalId to current.copy(tabs = updatedTabs))
+        }
+
+        viewModelScope.launch {
+            val module = gateway.getById(globalId) ?: return@launch
+            val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
+            loadRankingTab(
+                moduleId = globalId,
+                sourceUrl = module.sourceUrl,
+                rssSource = rssSource,
+                index = tabIndex,
+                title = tab.title,
+                url = tab.exploreUrl ?: "",
+                page = nextPage
+            )
+        }
     }
 
     /**
@@ -1419,7 +1500,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 val u = map["u"] ?: ""
                 Pair(t, u)
             }
-            if (result.size >= 1) result else null
+            if (result.isNotEmpty()) result else null
         } catch (_: Exception) {
             null
         }

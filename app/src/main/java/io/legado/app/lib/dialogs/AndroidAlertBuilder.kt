@@ -3,6 +3,7 @@ package io.legado.app.lib.dialogs
 import android.content.Context
 import android.content.DialogInterface
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.view.KeyEvent
 import android.view.View
 import androidx.appcompat.app.AlertDialog
@@ -179,6 +180,7 @@ internal class AndroidAlertBuilder(override val ctx: Context) : AlertBuilder<Ale
     override fun build(): AlertDialog {
         applyButtons()
         val dialog = builder.create()
+        fixDialogWindowCompat(dialog)
         if (AppConfig.isEInkMode) {
             dialog.window?.run {
                 val attr = attributes
@@ -194,6 +196,7 @@ internal class AndroidAlertBuilder(override val ctx: Context) : AlertBuilder<Ale
     override fun show(): AlertDialog {
         applyButtons()
         val dialog = builder.show().applyTint()
+        fixDialogWindowCompat(dialog)
         if (AppConfig.isEInkMode) {
             dialog.window?.run {
                 val attr = attributes
@@ -204,5 +207,27 @@ internal class AndroidAlertBuilder(override val ctx: Context) : AlertBuilder<Ale
             }
         }
         return dialog
+    }
+
+    /**
+     * 修复部分 OEM 设备（如 OPPO ColorOS）上 AlertDialog 不显示的问题。
+     *
+     * 当 Activity 使用沉浸式导航栏（setDecorFitsSystemWindows(false) +
+     * SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION）时，部分 OEM 的 WindowManager
+     * 实现会让 Dialog 窗口继承 Activity 的窗口属性，导致 Dialog 内容延伸到
+     * 导航栏后方或被 Activity 窗口遮挡，出现「菜单不可见但截图可见」的现象。
+     *
+     * 解决方案：强制将 Dialog 窗口的 DecorFitsSystemWindows 设为 true（默认值），
+     * 并清除 decorView 上可能继承的 systemUiVisibility 标志，确保 Dialog 内容
+     * 不延伸到系统栏后方。
+     */
+    private fun fixDialogWindowCompat(dialog: AlertDialog) {
+        dialog.window?.let { window ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.setDecorFitsSystemWindows(true)
+            }
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = 0
+        }
     }
 }
