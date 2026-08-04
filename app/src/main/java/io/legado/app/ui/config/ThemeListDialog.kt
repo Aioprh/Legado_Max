@@ -1,5 +1,7 @@
 package io.legado.app.ui.config
 
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -112,28 +114,96 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
         }
     }
 
-    // 更新 Tab 选中状态
+    // 更新 Tab 选中状态（带 indicator 滑动 + 文字颜色渐变动画）
     private fun updateTabSelection() = binding.run {
         val accentColor = requireContext().accentColor
         val primaryTextColor = ContextCompat.getColor(requireContext(), R.color.primaryText)
-        
-        // 日间 Tab
-        val dayTabSelected = !isNightThemeTab
-        tvTabDay.setTextColor(if (dayTabSelected) accentColor else primaryTextColor)
-        tabDay.background = if (dayTabSelected) {
-            ContextCompat.getDrawable(requireContext(), R.drawable.bg_theme_tab_selected)
-        } else {
-            null
+
+        // 初始化 indicator 背景
+        initIndicatorIfNeeded()
+
+        // 滑动 indicator 到目标位置
+        animateIndicatorTo(if (isNightThemeTab) 1 else 0)
+
+        // 文字颜色渐变动画
+        val dayFromColor = tvTabDay.currentTextColor
+        val dayToColor = if (!isNightThemeTab) accentColor else primaryTextColor
+        val nightFromColor = tvTabNight.currentTextColor
+        val nightToColor = if (isNightThemeTab) accentColor else primaryTextColor
+
+        ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = TAB_ANIM_DURATION
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { animator ->
+                val fraction = animator.animatedFraction
+                tvTabDay.setTextColor(
+                    ArgbEvaluator().evaluate(fraction, dayFromColor, dayToColor) as Int
+                )
+                tvTabNight.setTextColor(
+                    ArgbEvaluator().evaluate(fraction, nightFromColor, nightToColor) as Int
+                )
+            }
+            start()
         }
-        
-        // 夜间 Tab
-        val nightTabSelected = isNightThemeTab
-        tvTabNight.setTextColor(if (nightTabSelected) accentColor else primaryTextColor)
-        tabNight.background = if (nightTabSelected) {
-            ContextCompat.getDrawable(requireContext(), R.drawable.bg_theme_tab_selected)
-        } else {
-            null
+
+        // 根据当前 Tab 对应的主题模式刷新 toolbar 颜色
+        updateToolBarColor()
+    }
+
+    // 初始化 indicator 的圆角背景和初始位置
+    private fun initIndicatorIfNeeded() = binding.run {
+        val indicator = tabIndicator
+        if (indicator.tag != "initialized") {
+            indicator.tag = "initialized"
+            // 设置 indicator 圆角背景
+            val drawable = GradientDrawable()
+            drawable.cornerRadius = 8f.dpToPx()
+            drawable.setColor(ContextCompat.getColor(requireContext(), R.color.background_tab_selected))
+            indicator.background = drawable
+            // 初始位置：根据当前 Tab 设置 translationX
+            indicator.post {
+                val tabWidth = tabContainer.width / 2
+                indicator.layoutParams = indicator.layoutParams.apply {
+                    width = tabWidth - 8.dpToPx()
+                }
+                indicator.translationX = if (isNightThemeTab) tabWidth.toFloat() else 0f
+            }
         }
+    }
+
+    // indicator 滑动动画
+    private fun animateIndicatorTo(targetPosition: Int) = binding.run {
+        val indicator = tabIndicator
+        val tabWidth = tabContainer.width / 2
+        // 确保宽度正确
+        indicator.layoutParams = indicator.layoutParams.apply {
+            width = tabWidth - 8.dpToPx()
+        }
+        val targetX = targetPosition * tabWidth.toFloat()
+        indicator.animate()
+            .translationX(targetX)
+            .setDuration(TAB_ANIM_DURATION)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .start()
+    }
+
+    // 根据当前 Tab 对应的日间/夜间模式，读取对应 primaryColor 并设置 toolbar
+    private fun updateToolBarColor() = binding.run {
+        val ctx = requireContext()
+        val toolbarColor = if (isNightThemeTab) {
+            // 夜间模式：读取夜间主题的 primaryColor
+            ctx.getPrefInt(
+                io.legado.app.constant.PreferKey.cNPrimary,
+                ContextCompat.getColor(ctx, R.color.default_night_primary)
+            )
+        } else {
+            // 日间模式：读取日间主题的 primaryColor
+            ctx.getPrefInt(
+                io.legado.app.constant.PreferKey.cPrimary,
+                ContextCompat.getColor(ctx, R.color.default_primary)
+            )
+        }
+        toolBar.setBackgroundColor(toolbarColor)
     }
 
     // 更新摘要文本
@@ -798,11 +868,13 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
     }
 
     private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
+    private val Float.dpToPx: Int get() = (this * resources.displayMetrics.density).toInt()
 
     companion object {
         private const val COLOR_PRIMARY = 401
         private const val COLOR_ACCENT = 402
         private const val COLOR_BACKGROUND = 403
         private const val COLOR_BOTTOM_BACKGROUND = 404
+        private const val TAB_ANIM_DURATION = 250L
     }
 }
