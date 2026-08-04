@@ -13,6 +13,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 
+/**
+ * 主题管理 ViewModel。
+ *
+ * 持有主题列表的 UiState（日间/夜间Tab、多选状态、编辑弹窗状态），
+ * 所有 ThemeConfig 的写操作（addConfig / delConfig / toTopConfigs / save）
+ * 均通过 BaseViewModel.execute 在协程中执行，避免主线程阻塞。
+ * 一次性事件（Toast、分享、Recreate等）通过 Channel 向上抛给 Activity 处理。
+ */
 class ThemeManageViewModel(application: Application) : BaseViewModel(application) {
 
     private val _uiState = MutableStateFlow(ThemeManageUiState())

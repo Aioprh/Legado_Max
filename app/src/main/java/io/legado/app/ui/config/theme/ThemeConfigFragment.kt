@@ -62,6 +62,12 @@ import splitties.init.appCtx
 import java.io.FileOutputStream
 
 
+/**
+ * 主题配置 Fragment（旧版 PreferenceFragment 实现）。
+ *
+ * 通过 XML PreferenceScreen 展示主题色、背景图、虚化、导航栏透明等配置项，
+ * 保留为兼容入口，新增/编辑主题列表的入口已迁移至 ThemeManageActivity（Compose 版）。
+ */
 @Suppress("SameParameterValue")
 class ThemeConfigFragment : PreferenceFragment(),
     SharedPreferences.OnSharedPreferenceChangeListener,

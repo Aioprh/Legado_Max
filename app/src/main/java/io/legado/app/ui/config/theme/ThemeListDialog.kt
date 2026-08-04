@@ -42,6 +42,13 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+/**
+ * 主题列表 Dialog（旧版 BaseDialogFragment + RecyclerView 实现）。
+ *
+ * 全屏弹窗，展示日间/夜间主题列表，支持应用、编辑、删除、置顶、多选导出等操作。
+ * 内含主题编辑视图（LinearLayout 构建），颜色选择通过 ColorPickerDialog 回调处理。
+ * 保留为旧版兼容入口，Compose 版见 ThemeManageActivity + ThemeEditDialog。
+ */
 class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
     Toolbar.OnMenuItemClickListener,
     ColorPickerDialogListener {

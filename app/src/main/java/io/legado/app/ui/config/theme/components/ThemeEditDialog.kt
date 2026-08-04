@@ -37,6 +37,13 @@ import androidx.core.graphics.toColorInt
 import io.legado.app.R
 import io.legado.app.help.config.ThemeConfig
 
+/**
+ * 主题编辑弹窗（Compose 版）。
+ *
+ * 还原旧版 RecyclerView 列表行布局：颜色属性行（标题+色号+颜色方块）、
+ * 选项行（标题+值，点击触发回调）、开关行（标题+Switch）。
+ * 编辑结果通过 onUpdateDraft 回调更新 ViewModel 的 draft 状态。
+ */
 @Composable
 fun ThemeEditDialog(
     draft: ThemeConfig.Config?,
