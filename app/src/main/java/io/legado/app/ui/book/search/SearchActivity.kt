@@ -720,6 +720,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
 
     /**
      * 更新书籍底部弹窗的显示状态
+     * 修改：增加 onCacheBook 回调
      */
     private fun updateBookSheetView() {
         val contentView = binding.root
@@ -746,6 +747,9 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
                                         putExtra("bookUrl", book.bookUrl)
                                         putExtra("origin", book.origin)
                                     }
+                                },
+                                onCacheBook = { book ->
+                                    viewModel.onCacheBook(book)
                                 }
                             )
                         }
