@@ -27,6 +27,7 @@ import io.legado.app.help.book.isNotShelf
 import io.legado.app.data.entities.rule.ExploreKind
 import io.legado.app.help.source.exploreKinds
 import io.legado.app.help.source.sortUrls
+import io.legado.app.model.CacheBook
 import io.legado.app.model.rss.Rss
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
@@ -1723,6 +1724,29 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 }
             }
             notifyConfigChanged()
+        }
+    }
+
+    // ==================== 新增：离线缓存 ====================
+    /**
+     * 离线缓存书籍：自动加入书架（若未加入），并启动全书缓存
+     */
+    fun onCacheBook(book: SearchBook) {
+        execute {
+            // 1. 确保书籍在书架中（若已在则跳过）
+            addToBookshelfUseCase.execute(book)
+
+            // 2. 获取 Book 实体（优先使用 bookUrl）
+            val bookEntity = appDb.bookDao.getBook(book.bookUrl)
+                ?: appDb.bookDao.getBook(book.name, book.author)
+            if (bookEntity == null) {
+                _effects.tryEmit(HomepageEffect.ShowSnackbar("加入书架后未找到书籍，请稍后重试"))
+                return@execute
+            }
+
+            // 3. 启动全书缓存（从第0章到最后一章，-1 表示全部）
+            CacheBook.start(getApplication(), bookEntity, 0, -1)
+            _effects.tryEmit(HomepageEffect.ShowSnackbar("开始离线缓存：${book.name}"))
         }
     }
 }
