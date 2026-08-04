@@ -8,6 +8,8 @@
     <string name="tip_perm_request_storage">Legado needs storage access to find and read books. please go "App Settings" to allow "Storage permission".</string>
 
     <!--Other-->
+    <string name="offline_cache_start">开始缓存：%1$s</string>
+<string name="offline_cache_failed">缓存失败：%1$s</string>
     <string name="menu_backup">Home</string>
     <string name="menu_restore">Restore</string>
     <string name="menu_import_old">Import Legado data</string>
