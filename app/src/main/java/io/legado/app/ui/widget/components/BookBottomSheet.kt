@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Download  // 新增导入
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -59,6 +60,7 @@ import io.legado.app.utils.splitNotBlank
  * @param isRssArticle 是否为 RSS 订阅源文章（true 时显示"加入收藏"/"查看内容"）
  * @param onAddToFavorites 加入 RSS 收藏的回调
  * @param onViewContent 查看 RSS 内容的回调
+ * @param onCacheBook 离线缓存回调（仅普通书籍有效）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +74,7 @@ fun BookBottomSheet(
     isRssArticle: Boolean = false,
     onAddToFavorites: ((SearchBook) -> Unit)? = null,
     onViewContent: ((SearchBook) -> Unit)? = null,
+    onCacheBook: ((SearchBook) -> Unit)? = null,  // 新增
 ) {
     // 使用 skipPartiallyExpanded = true，确保弹窗直接展开到最大高度
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -85,6 +88,7 @@ fun BookBottomSheet(
     val addToFavoritesText = stringResource(R.string.add_to_favorites)
     val viewDetailsText = stringResource(R.string.view_details)
     val viewContentText = stringResource(R.string.view_content)
+    val offlineCacheText = stringResource(R.string.offline_cache)  // 已有
 
     if (show && book != null) {
         ModalBottomSheet(
@@ -242,16 +246,15 @@ fun BookBottomSheet(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 操作按钮区域（在滚动内容内部，确保用户能立即看到）
+                // 操作按钮区域
                 if (isRssArticle) {
-                    // RSS 文章专用按钮
+                    // RSS 文章专用按钮（不变）
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // 加入收藏按钮
                         TextButton(
                             onClick = {
                                 onAddToFavorites?.invoke(book)
@@ -271,7 +274,6 @@ fun BookBottomSheet(
                             )
                         }
 
-                        // 查看内容按钮
                         TextButton(
                             onClick = {
                                 onViewContent?.invoke(book)
@@ -292,53 +294,125 @@ fun BookBottomSheet(
                         }
                     }
                 } else {
-                    // 书籍操作按钮（原有逻辑）
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        // 加入书架按钮
-                        TextButton(
-                            onClick = {
-                                onAddToShelf(book)
-                                Toast.makeText(context, addedToBookshelfMsg, Toast.LENGTH_SHORT).show()
-                                onDismiss()
-                            },
-                            modifier = Modifier.weight(1f)
+                    // 普通书籍按钮
+                    if (onCacheBook != null) {
+                        // 三按钮布局
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = addToBookshelfText,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (shelfState == BookShelfState.IN_SHELF) alreadyInBookshelfText 
-                                       else addToBookshelfText,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                            // 加入书架
+                            TextButton(
+                                onClick = {
+                                    onAddToShelf(book)
+                                    Toast.makeText(context, addedToBookshelfMsg, Toast.LENGTH_SHORT).show()
+                                    onDismiss()
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = addToBookshelfText,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (shelfState == BookShelfState.IN_SHELF) alreadyInBookshelfText else addToBookshelfText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
 
-                        // 查看详情按钮
-                        TextButton(
-                            onClick = {
-                                onShowInfo(book)
-                                onDismiss()
-                            },
-                            modifier = Modifier.weight(1f)
+                            // 离线缓存
+                            TextButton(
+                                onClick = {
+                                    onCacheBook(book)
+                                    onDismiss()
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = offlineCacheText,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = offlineCacheText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            // 查看详情
+                            TextButton(
+                                onClick = {
+                                    onShowInfo(book)
+                                    onDismiss()
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = viewDetailsText,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = viewDetailsText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    } else {
+                        // 原有两按钮（保持不变）
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = viewDetailsText,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = viewDetailsText,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            TextButton(
+                                onClick = {
+                                    onAddToShelf(book)
+                                    Toast.makeText(context, addedToBookshelfMsg, Toast.LENGTH_SHORT).show()
+                                    onDismiss()
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = addToBookshelfText,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (shelfState == BookShelfState.IN_SHELF) alreadyInBookshelfText else addToBookshelfText,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            TextButton(
+                                onClick = {
+                                    onShowInfo(book)
+                                    onDismiss()
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = viewDetailsText,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = viewDetailsText,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
@@ -403,7 +477,6 @@ private fun CategoryRow(
             softWrap = false
         )
         // 分类值（每个单独有外框）
-        // 使用 splitNotBlank 方法分隔分类值（与书架标签一致，使用逗号和换行符）
         val categories = value.splitNotBlank(",", "\n")
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
