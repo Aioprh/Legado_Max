@@ -267,6 +267,7 @@
     <string name="dark_status_icon">深色狀態欄圖標</string>
     <string name="content">內容</string>
     <string name="copy_text">拷貝內容</string>
+    <string name="copy">複製</string>
     <string name="download_all">一鍵緩存</string>
     <string name="content_sl">這是一段測試文字\n\u3000\u3000只是讓你看看效果的</string>
     <string name="text_bg_style">文字顏色和背景(長按自定義)</string>

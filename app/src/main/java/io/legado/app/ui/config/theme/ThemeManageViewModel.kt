@@ -3,6 +3,7 @@ package io.legado.app.ui.config.theme
 import android.app.Application
 import io.legado.app.R
 import io.legado.app.base.BaseViewModel
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.utils.GSON
 import io.legado.app.utils.getClipText
@@ -30,20 +31,23 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
     val events = _events.receiveAsFlow()
 
     init {
-        loadThemes()
+        val initialTab = if (AppConfig.isNightTheme) ThemeTab.NIGHT else ThemeTab.DAY
+        loadThemes(initialTab)
     }
 
     // ── 数据加载 ──────────────────────────────────────────
 
-    fun loadThemes() {
+    fun loadThemes(initialTab: ThemeTab? = null) {
         ThemeConfig.configList // 触发 lazy init
         val items = ThemeConfig.configList.mapIndexed { index, config ->
             ThemeItem(config = config, originalIndex = index)
         }
+        val tab = initialTab ?: _uiState.value.tab
         _uiState.update { state ->
             state.copy(
+                tab = tab,
                 allItems = items,
-                visibleItems = items.filter { it.config.isNightTheme == state.tab.isNight }
+                visibleItems = items.filter { it.config.isNightTheme == tab.isNight }
             )
         }
     }
