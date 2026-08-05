@@ -175,6 +175,24 @@
                 android:layout_width="8dp"
                 android:layout_height="0dp" />
 
+            <!-- 复制按钮 -->
+            <TextView
+                android:id="@+id/tv_copy"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:minWidth="56dp"
+                android:paddingHorizontal="12dp"
+                android:gravity="center"
+                android:text="@string/copy"
+                android:textSize="13sp"
+                android:textColor="@color/primaryText"
+                android:background="@drawable/bg_action_button"
+                android:foreground="?attr/selectableItemBackground" />
+
+            <Space
+                android:layout_width="8dp"
+                android:layout_height="0dp" />
+
             <!-- 更多按钮 -->
             <TextView
                 android:id="@+id/tv_more"

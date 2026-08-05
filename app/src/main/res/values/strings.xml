@@ -290,6 +290,7 @@
     <string name="dark_status_icon">Darken the status bar\'s icon color</string>
     <string name="content">Content</string>
     <string name="copy_text">Copy</string>
+    <string name="copy">Copy</string>
     <string name="download_all">Download all</string>
     <string name="content_sl">This is a test text, \n\u3000\u3000 just to show you the effect</string>
     <string name="text_bg_style">Color and background (long tap to customize)</string>

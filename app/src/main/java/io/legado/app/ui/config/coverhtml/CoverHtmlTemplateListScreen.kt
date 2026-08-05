@@ -1,11 +1,10 @@
-package io.legado.app.ui.config
+package io.legado.app.ui.config.coverhtml
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -27,6 +25,14 @@ import io.legado.app.ui.widget.image.CoverImageView
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
 
+/**
+ * 封面HTML模板列表屏幕
+ * 
+ * 显示所有HTML模板，支持选择、编辑、删除操作
+ * 
+ * @param onBackClick 返回点击回调
+ * @param onEditTemplate 编辑模板回调，参数为模板对象，为空表示新建
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CoverHtmlTemplateListScreen(
@@ -40,6 +46,9 @@ fun CoverHtmlTemplateListScreen(
     val containerColor = coverHtmlCardContainerColor()
     val topBarColor = coverHtmlTopBarContainerColor()
     
+    /**
+     * 刷新模板列表
+     */
     fun refreshList() {
         templateList = CoverHtmlTemplateConfig.templateList.toList()
         selectedId = CoverHtmlTemplateConfig.getSelectedTemplate().id
@@ -77,6 +86,7 @@ fun CoverHtmlTemplateListScreen(
         }
     ) { paddingValues ->
         if (templateList.isEmpty()) {
+            // 空状态展示
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -99,6 +109,7 @@ fun CoverHtmlTemplateListScreen(
                 }
             }
         } else {
+            // 模板列表
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -135,6 +146,18 @@ fun CoverHtmlTemplateListScreen(
     }
 }
 
+/**
+ * 模板列表项组件
+ * 
+ * 显示单个模板的信息和操作按钮
+ * 
+ * @param template 模板数据
+ * @param isSelected 是否被选中
+ * @param containerColor 容器颜色
+ * @param onSelect 选中回调
+ * @param onEdit 编辑回调
+ * @param onDelete 删除回调
+ */
 @Composable
 private fun TemplateItem(
     template: CoverHtmlTemplateConfig.Template,
@@ -165,6 +188,7 @@ private fun TemplateItem(
             
             Spacer(modifier = Modifier.width(12.dp))
             
+            // 模板信息
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = template.name.ifEmpty { "未命名模板" },
@@ -191,6 +215,7 @@ private fun TemplateItem(
             
             Spacer(modifier = Modifier.width(12.dp))
             
+            // 编辑按钮
             IconButton(
                 onClick = onEdit,
                 modifier = Modifier.size(40.dp)
@@ -203,6 +228,7 @@ private fun TemplateItem(
                 )
             }
             
+            // 删除按钮
             IconButton(
                 onClick = onDelete,
                 modifier = Modifier.size(40.dp)
@@ -218,6 +244,10 @@ private fun TemplateItem(
     }
 }
 
+/**
+ * 封面HTML卡片容器颜色
+ * 根据背景亮度自适应调整透明度
+ */
 @Composable
 fun coverHtmlCardContainerColor(): Color {
     val background = MaterialTheme.colorScheme.background
@@ -225,6 +255,10 @@ fun coverHtmlCardContainerColor(): Color {
     return MaterialTheme.colorScheme.surface.copy(alpha = alpha)
 }
 
+/**
+ * 封面HTML顶部栏容器颜色
+ * 根据背景亮度自适应调整透明度
+ */
 @Composable
 fun coverHtmlTopBarContainerColor(): Color {
     val background = MaterialTheme.colorScheme.background
@@ -232,6 +266,9 @@ fun coverHtmlTopBarContainerColor(): Color {
     return MaterialTheme.colorScheme.surface.copy(alpha = alpha)
 }
 
+/**
+ * 计算颜色亮度
+ */
 private fun Color.luminance(): Float {
     return (0.299f * red + 0.587f * green + 0.114f * blue)
 }

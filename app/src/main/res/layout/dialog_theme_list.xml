@@ -14,53 +14,63 @@
         app:popupTheme="@style/AppTheme.PopupOverlay"
         app:titleTextAppearance="@style/ToolbarTitle" />
 
-    <!-- Tab 切换区域 -->
-    <LinearLayout
+    <!-- Tab 切换区域 - 带 indicator 滑动动画 -->
+    <FrameLayout
         android:id="@+id/tab_container"
         android:layout_width="match_parent"
         android:layout_height="42dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginTop="10dp"
-        android:orientation="horizontal"
         android:background="@drawable/bg_theme_tab_container">
 
-        <FrameLayout
-            android:id="@+id/tab_day"
-            android:layout_width="0dp"
+        <!-- 滑动指示器 -->
+        <View
+            android:id="@+id/tab_indicator"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:layout_margin="4dp"
-            android:foreground="?attr/selectableItemBackground">
+            android:layout_margin="4dp" />
 
-            <TextView
-                android:id="@+id/tv_tab_day"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="@string/day_theme"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-        </FrameLayout>
-
-        <FrameLayout
-            android:id="@+id/tab_night"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:layout_margin="4dp"
-            android:foreground="?attr/selectableItemBackground">
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/tv_tab_night"
-                android:layout_width="match_parent"
+            <FrameLayout
+                android:id="@+id/tab_day"
+                android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:gravity="center"
-                android:text="@string/night_theme"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-        </FrameLayout>
-    </LinearLayout>
+                android:layout_weight="1"
+                android:foreground="?attr/selectableItemBackground">
+
+                <TextView
+                    android:id="@+id/tv_tab_day"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="@string/day_theme"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/tab_night"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:foreground="?attr/selectableItemBackground">
+
+                <TextView
+                    android:id="@+id/tv_tab_night"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="@string/night_theme"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+        </LinearLayout>
+    </FrameLayout>
 
     <!-- 摘要文本 -->
     <TextView

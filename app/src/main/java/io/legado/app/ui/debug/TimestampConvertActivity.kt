@@ -1,20 +1,14 @@
 package io.legado.app.ui.debug
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
-import io.legado.app.ui.theme.LegadoThemeWithBackground
-import io.legado.app.ui.theme.initLegadoComposeTheme
-import io.legado.app.ui.theme.setLegadoContent
+import io.legado.app.base.BaseComposeActivity
 
-class TimestampConvertActivity : AppCompatActivity() {
+class TimestampConvertActivity : BaseComposeActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        initLegadoComposeTheme()
-        super.onCreate(savedInstanceState)
-        setLegadoContent {
-            TimestampConvertScreen(onBackClick = { finish() })
-        }
+    @Composable
+    override fun ComposeContent() {
+        TimestampConvertScreen(onBackClick = { finish() })
     }
 }
 
@@ -22,7 +16,5 @@ class TimestampConvertActivity : AppCompatActivity() {
 fun TimestampConvertContent(
     onBackClick: () -> Unit
 ) {
-    LegadoThemeWithBackground(backgroundDrawable = null) {
-        TimestampConvertScreen(onBackClick = onBackClick)
-    }
+    TimestampConvertScreen(onBackClick = onBackClick)
 }

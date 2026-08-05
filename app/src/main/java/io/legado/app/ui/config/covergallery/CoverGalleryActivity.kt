@@ -2,19 +2,14 @@ package io.legado.app.ui.config.covergallery
 
 import android.content.Context
 import android.content.Intent
-import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
-import io.legado.app.ui.theme.initLegadoComposeTheme
-import io.legado.app.ui.theme.setLegadoContent
+import androidx.compose.runtime.Composable
+import io.legado.app.base.BaseComposeActivity
 
-class CoverGalleryActivity : AppCompatActivity() {
+class CoverGalleryActivity : BaseComposeActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        initLegadoComposeTheme()
-        super.onCreate(savedInstanceState)
-        setLegadoContent {
-            CoverGalleryScreen(onBackClick = { finish() })
-        }
+    @Composable
+    override fun ComposeContent() {
+        CoverGalleryScreen(onBackClick = { finish() })
     }
 
     companion object {
