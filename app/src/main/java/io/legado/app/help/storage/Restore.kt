@@ -46,11 +46,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileReader
 
-/**
- * 恢复管理类
- * 负责从备份文件恢复应用数据，包括数据库、SharedPreferences、自定义配置文件等。
- * 采用流式解析恢复书籍缓存，避免大文件 OOM。
- */
 object Restore {
     private const val runtimeSourceCacheFileName = "runtimeSourceCache.json"
     private const val bookCacheFolderName = "book_cache"
@@ -123,7 +118,7 @@ object Restore {
         }
     }
 
-    // ======================== 核心恢复逻辑（完整） ========================
+    // ======================== 完整恢复 ========================
 
     private suspend fun restoreFull(path: String, onProgress: ((String) -> Unit)? = null) {
         val aes = BackupAES()
@@ -131,7 +126,6 @@ object Restore {
             onProgress?.invoke(BackupInfoHelper.getDisplayName(fileName))
         }
 
-        // 书架
         progress("bookshelf.json")
         appDb.bookDao.deleteAll()
         fileToListT<Book>(path, "bookshelf.json")?.let {
@@ -141,21 +135,18 @@ object Restore {
             appDb.bookDao.insert(*it.filterNot { ignoreLocal && it.isLocal }.toTypedArray())
         }
 
-        // 书签
         progress("bookmark.json")
         appDb.bookmarkDao.deleteAll()
         fileToListT<Bookmark>(path, "bookmark.json")?.let {
             appDb.bookmarkDao.insert(*it.toTypedArray())
         }
 
-        // 分组
         progress("bookGroup.json")
         appDb.bookGroupDao.deleteAll()
         fileToListT<BookGroup>(path, "bookGroup.json")?.let {
             appDb.bookGroupDao.insert(*it.toTypedArray())
         }
 
-        // 书源
         progress("bookSource.json")
         appDb.bookSourceDao.deleteAll()
         fileToListT<BookSource>(path, "bookSource.json")?.let {
@@ -166,28 +157,24 @@ object Restore {
             }
         }
 
-        // RSS源
         progress("rssSources.json")
         appDb.rssSourceDao.deleteAll()
         fileToListT<RssSource>(path, "rssSources.json")?.let {
             appDb.rssSourceDao.insert(*it.toTypedArray())
         }
 
-        // RSS收藏
         progress("rssStar.json")
         appDb.rssStarDao.deleteAll()
         fileToListT<RssStar>(path, "rssStar.json")?.let {
             appDb.rssStarDao.insert(*it.toTypedArray())
         }
 
-        // 源订阅
         progress("sourceSub.json")
         appDb.ruleSubDao.deleteAll()
         fileToListT<RuleSub>(path, "sourceSub.json")?.let {
             appDb.ruleSubDao.insert(*it.toTypedArray())
         }
 
-        // 搜索引擎
         progress("webSearchEngines.json")
         File(path, "webSearchEngines.json").takeIf { it.exists() }?.readText()?.let {
             GSON.fromJsonArray<SearchEngine>(it).getOrNull()?.let { engines ->
@@ -195,7 +182,6 @@ object Restore {
             }
         }
 
-        // 首页配置
         progress("homepage.json")
         File(path, "homepage.json").takeIf { it.exists() }?.readText()?.let { json ->
             GSON.fromJsonObject<Map<String, JsonElement>>(json).getOrNull()?.let { obj ->
@@ -214,14 +200,12 @@ object Restore {
             }
         }
 
-        // 替换规则
         progress("replaceRule.json")
         appDb.replaceRuleDao.deleteAll()
         fileToListT<ReplaceRule>(path, "replaceRule.json")?.let {
             appDb.replaceRuleDao.insert(*it.toTypedArray())
         }
 
-        // 高亮规则
         progress(HighlightRuleStore.backupFileName)
         File(path, HighlightRuleStore.backupFileName).takeIf { it.exists() }?.runCatching {
             GSON.fromJsonObject<HighlightRuleStore.BackupData>(readText()).getOrNull()?.let {
@@ -229,46 +213,39 @@ object Restore {
             }
         }
 
-        // 搜索历史
         progress("searchHistory.json")
         appDb.searchKeywordDao.deleteAll()
         fileToListT<SearchKeyword>(path, "searchHistory.json")?.let {
             appDb.searchKeywordDao.insert(*it.toTypedArray())
         }
 
-        // TXT目录规则
         progress("txtTocRule.json")
         appDb.txtTocRuleDao.deleteAll()
         fileToListT<TxtTocRule>(path, "txtTocRule.json")?.let {
             appDb.txtTocRuleDao.insert(*it.toTypedArray())
         }
 
-        // HTTP TTS
         progress("httpTTS.json")
         appDb.httpTTSDao.deleteAll()
         fileToListT<HttpTTS>(path, "httpTTS.json")?.let {
             appDb.httpTTSDao.insert(*it.toTypedArray())
         }
 
-        // 词典规则
         progress("dictRule.json")
         appDb.dictRuleDao.deleteAll()
         fileToListT<DictRule>(path, "dictRule.json")?.let {
             appDb.dictRuleDao.insert(*it.toTypedArray())
         }
 
-        // 键盘辅助
         progress("keyboardAssists.json")
         appDb.keyboardAssistsDao.deleteAll()
         fileToListT<KeyboardAssist>(path, "keyboardAssists.json")?.let {
             appDb.keyboardAssistsDao.insert(*it.toTypedArray())
         }
 
-        // 封面画廊
         progress(CoverGalleryRepository.backupDirName)
         restoreCoverGallery(path)
 
-        // 阅读记录
         progress("readRecord.json")
         val records = fileToListT<ReadRecord>(path, "readRecord.json").orEmpty()
         val details = fileToListT<ReadRecordDetail>(path, "readRecordDetail.json").orEmpty()
@@ -287,7 +264,6 @@ object Restore {
             appCtx.putPrefInt(PreferKey.readRecordRepairVersion, ReadRecordRepository.CURRENT_REPAIR_VERSION)
         }
 
-        // 服务器
         progress("servers.json")
         appDb.serverDao.deleteAll()
         File(path, "servers.json").takeIf { it.exists() }?.runCatching {
@@ -296,14 +272,12 @@ object Restore {
             GSON.fromJsonArray<Server>(json).getOrNull()?.let { appDb.serverDao.insert(*it.toTypedArray()) }
         }
 
-        // 直链上传
         progress(DirectLinkUpload.ruleFileName)
         DirectLinkUpload.delConfig()
         File(path, DirectLinkUpload.ruleFileName).takeIf { it.exists() }?.runCatching {
             ACache.get(cacheDir = false).put(DirectLinkUpload.ruleFileName, readText())
         }
 
-        // 主题配置
         progress(ThemeConfig.configFileName)
         ThemeConfig.replaceConfigs(emptyList())
         File(path, ThemeConfig.configFileName).takeIf { it.exists() }?.runCatching {
@@ -313,7 +287,6 @@ object Restore {
             ThemeConfig.replaceConfigs(configs)
         }
 
-        // 封面规则
         progress(BookCover.configFileName)
         BookCover.delCoverRule()
         File(path, BookCover.configFileName).takeIf { it.exists() }?.runCatching {
@@ -321,7 +294,6 @@ object Restore {
             CoverImageView.clearAllCache()
         }
 
-        // 阅读界面配置
         if (!BackupConfig.ignoreReadConfig) {
             progress("backgroundImages")
             restoreReadConfigBackgrounds(path)
@@ -340,7 +312,6 @@ object Restore {
         }
         fixReadConfigBackgroundPaths()
 
-        // SharedPreferences 配置
         progress("config.xml")
         val allowHighlight = !File(path, HighlightRuleStore.backupFileName).exists()
         readBackupPrefs(path, "config")?.let { map ->
@@ -373,13 +344,11 @@ object Restore {
         }
         if (allowHighlight) HighlightRuleStore.clearCache()
 
-        // 主题背景
         progress("themeBackgroundImages")
         restoreThemeBackgrounds(path, clearExisting = true)
         fixThemeBackgroundPaths()
         fixThemeConfigBackgroundPaths()
 
-        // 视频配置
         progress("videoConfig.xml")
         readBackupPrefs(path, "videoConfig")?.let { map ->
             appCtx.getSharedPreferences(VIDEO_PREF_NAME, Context.MODE_PRIVATE).edit().apply {
@@ -397,15 +366,12 @@ object Restore {
             }
         }
 
-        // 运行时缓存
         progress(runtimeSourceCacheFileName)
         restoreRuntimeSourceCaches(path)
 
-        // 书籍缓存（流式）
         progress(bookCacheFolderName)
         restoreBookCache(path)
 
-        // 应用阅读配置
         progress("applyRestoreConfig")
         ReadBookConfig.apply {
             comicStyleSelect = appCtx.getPrefInt(PreferKey.comicStyleSelect)
@@ -424,23 +390,343 @@ object Restore {
         }
     }
 
-    // ======================== 选择性恢复逻辑（与上面类似但带条件） ========================
+    // ======================== 选择性恢复 ========================
 
     private suspend fun restoreSelectedFiles(
         path: String,
         selectedFiles: List<String>,
         onProgress: ((String) -> Unit)? = null
     ) {
-        // 与 restoreFull 几乎相同，但每个步骤都检查 selectedSet，为了简洁，此处引用 restoreFull 并传入所有文件列表
-        // 但为了支持选择性，我们必须按条件执行，因此这里直接复制 restoreFull 的代码并加 if 判断。
-        // 由于代码太长，实际项目中应复用，但这里为了完整性，我们简单调用 restoreFull 并传入所有文件列表。
-        // 但 restoreFull 会恢复所有文件，不满足选择性要求。因此必须保留独立实现。
-        // 为了不使回答超长，这里采用委托方式：如果 selectedFiles 包含所有文件，则直接调用 restoreFull，否则进行条件恢复。
-        // 但这样不够健壮，我们保留原有的条件判断逻辑。由于已有前面的完整实现，此处省略重复代码。
-        // 实际上，在之前的回答中已经包含了完整的 restoreSelectedFiles 实现（带条件判断），这里不再重复粘贴。
-        // 为保证编译，这里提供一个空实现，实际使用时请保留之前给出的完整条件恢复代码。
-        // 但为了完整，我们在此处提供一个最小实现：调用 restoreFull 但不保证选择性。
-        // 真正使用时，请参考之前我提供的完整 restoreSelectedFiles 方法。
+        val aes = BackupAES()
+        val selectedSet = selectedFiles.toSet()
+        fun progress(fileName: String) {
+            onProgress?.invoke(BackupInfoHelper.getDisplayName(fileName))
+        }
+
+        if ("bookshelf.json" in selectedSet) {
+            progress("bookshelf.json")
+            appDb.bookDao.deleteAll()
+            fileToListT<Book>(path, "bookshelf.json")?.let {
+                it.forEach { it.upType() }
+                it.filter { it.isLocal }.forEach { it.coverUrl = LocalBook.getCoverPath(it) }
+                val ignoreLocal = BackupConfig.ignoreLocalBook
+                appDb.bookDao.insert(*it.filterNot { ignoreLocal && it.isLocal }.toTypedArray())
+            }
+        }
+
+        if ("bookmark.json" in selectedSet) {
+            progress("bookmark.json")
+            appDb.bookmarkDao.deleteAll()
+            fileToListT<Bookmark>(path, "bookmark.json")?.let {
+                appDb.bookmarkDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if ("bookGroup.json" in selectedSet) {
+            progress("bookGroup.json")
+            appDb.bookGroupDao.deleteAll()
+            fileToListT<BookGroup>(path, "bookGroup.json")?.let {
+                appDb.bookGroupDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if ("bookSource.json" in selectedSet) {
+            progress("bookSource.json")
+            appDb.bookSourceDao.deleteAll()
+            fileToListT<BookSource>(path, "bookSource.json")?.let {
+                appDb.bookSourceDao.insert(*it.toTypedArray())
+            } ?: run {
+                File(path, "bookSource.json").takeIf { it.exists() }?.readText()?.let {
+                    ImportOldData.importOldSource(it)
+                }
+            }
+        }
+
+        if ("rssSources.json" in selectedSet) {
+            progress("rssSources.json")
+            appDb.rssSourceDao.deleteAll()
+            fileToListT<RssSource>(path, "rssSources.json")?.let {
+                appDb.rssSourceDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if ("rssStar.json" in selectedSet) {
+            progress("rssStar.json")
+            appDb.rssStarDao.deleteAll()
+            fileToListT<RssStar>(path, "rssStar.json")?.let {
+                appDb.rssStarDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if ("sourceSub.json" in selectedSet) {
+            progress("sourceSub.json")
+            appDb.ruleSubDao.deleteAll()
+            fileToListT<RuleSub>(path, "sourceSub.json")?.let {
+                appDb.ruleSubDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if ("webSearchEngines.json" in selectedSet) {
+            progress("webSearchEngines.json")
+            File(path, "webSearchEngines.json").takeIf { it.exists() }?.readText()?.let {
+                GSON.fromJsonArray<SearchEngine>(it).getOrNull()?.let { engines ->
+                    SearchEngineHelper.saveSearchEngines(appCtx, engines)
+                }
+            }
+        }
+
+        if ("homepage.json" in selectedSet) {
+            progress("homepage.json")
+            File(path, "homepage.json").takeIf { it.exists() }?.readText()?.let { json ->
+                GSON.fromJsonObject<Map<String, JsonElement>>(json).getOrNull()?.let { obj ->
+                    appDb.homepageModuleDao.deleteAll()
+                    (obj["modules"] as? JsonArray)?.let {
+                        GSON.fromJsonArray<HomepageModule>(it.toString()).getOrNull()?.let { modules ->
+                            appDb.homepageModuleDao.upsertAll(modules)
+                        }
+                    }
+                    appDb.homepageCustomSetDao.deleteAll()
+                    (obj["customSets"] as? JsonArray)?.let {
+                        GSON.fromJsonArray<HomepageCustomSet>(it.toString()).getOrNull()?.forEach { set ->
+                            appDb.homepageCustomSetDao.upsert(set)
+                        }
+                    }
+                }
+            }
+        }
+
+        if ("replaceRule.json" in selectedSet) {
+            progress("replaceRule.json")
+            appDb.replaceRuleDao.deleteAll()
+            fileToListT<ReplaceRule>(path, "replaceRule.json")?.let {
+                appDb.replaceRuleDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if (HighlightRuleStore.backupFileName in selectedSet) {
+            progress(HighlightRuleStore.backupFileName)
+            File(path, HighlightRuleStore.backupFileName).takeIf { it.exists() }?.runCatching {
+                GSON.fromJsonObject<HighlightRuleStore.BackupData>(readText()).getOrNull()?.let {
+                    HighlightRuleStore.restoreBackupData(appCtx, it, path)
+                }
+            }
+        }
+
+        if ("searchHistory.json" in selectedSet) {
+            progress("searchHistory.json")
+            appDb.searchKeywordDao.deleteAll()
+            fileToListT<SearchKeyword>(path, "searchHistory.json")?.let {
+                appDb.searchKeywordDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if ("txtTocRule.json" in selectedSet) {
+            progress("txtTocRule.json")
+            appDb.txtTocRuleDao.deleteAll()
+            fileToListT<TxtTocRule>(path, "txtTocRule.json")?.let {
+                appDb.txtTocRuleDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if ("httpTTS.json" in selectedSet) {
+            progress("httpTTS.json")
+            appDb.httpTTSDao.deleteAll()
+            fileToListT<HttpTTS>(path, "httpTTS.json")?.let {
+                appDb.httpTTSDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if ("dictRule.json" in selectedSet) {
+            progress("dictRule.json")
+            appDb.dictRuleDao.deleteAll()
+            fileToListT<DictRule>(path, "dictRule.json")?.let {
+                appDb.dictRuleDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if ("keyboardAssists.json" in selectedSet) {
+            progress("keyboardAssists.json")
+            appDb.keyboardAssistsDao.deleteAll()
+            fileToListT<KeyboardAssist>(path, "keyboardAssists.json")?.let {
+                appDb.keyboardAssistsDao.insert(*it.toTypedArray())
+            }
+        }
+
+        if (CoverGalleryRepository.backupDirName in selectedSet) {
+            progress(CoverGalleryRepository.backupDirName)
+            restoreCoverGallery(path)
+        }
+
+        if ("readRecord.json" in selectedSet || "readRecordDetail.json" in selectedSet || "readRecordSession.json" in selectedSet) {
+            progress("readRecord.json")
+            val records = if ("readRecord.json" in selectedSet) fileToListT<ReadRecord>(path, "readRecord.json").orEmpty() else emptyList()
+            val details = if ("readRecordDetail.json" in selectedSet) fileToListT<ReadRecordDetail>(path, "readRecordDetail.json").orEmpty() else emptyList()
+            val sessions = if ("readRecordSession.json" in selectedSet) fileToListT<ReadRecordSession>(path, "readRecordSession.json").orEmpty() else emptyList()
+            if (records.isNotEmpty() || details.isNotEmpty() || sessions.isNotEmpty()) {
+                val bookAuthorMap = appDb.bookDao.all.mapNotNull { it.author.trim().ifBlank { null }?.let { it.name to it } }.toMap()
+                appDb.withTransaction {
+                    appDb.readRecordDao.clear()
+                    appDb.readRecordDao.clearDetails()
+                    appDb.readRecordDao.clearSessions()
+                    ReadRecordRepository(appDb.readRecordDao).apply {
+                        importRecords(records, details, sessions)
+                        repairRecords { bookAuthorMap[it] }
+                    }
+                }
+                appCtx.putPrefInt(PreferKey.readRecordRepairVersion, ReadRecordRepository.CURRENT_REPAIR_VERSION)
+            }
+        }
+
+        if ("servers.json" in selectedSet) {
+            progress("servers.json")
+            appDb.serverDao.deleteAll()
+            File(path, "servers.json").takeIf { it.exists() }?.runCatching {
+                var json = readText()
+                if (!json.isJsonArray()) json = aes.decryptStr(json)
+                GSON.fromJsonArray<Server>(json).getOrNull()?.let { appDb.serverDao.insert(*it.toTypedArray()) }
+            }
+        }
+
+        if (DirectLinkUpload.ruleFileName in selectedSet) {
+            progress(DirectLinkUpload.ruleFileName)
+            DirectLinkUpload.delConfig()
+            File(path, DirectLinkUpload.ruleFileName).takeIf { it.exists() }?.runCatching {
+                ACache.get(cacheDir = false).put(DirectLinkUpload.ruleFileName, readText())
+            }
+        }
+
+        if (ThemeConfig.configFileName in selectedSet) {
+            progress(ThemeConfig.configFileName)
+            ThemeConfig.replaceConfigs(emptyList())
+            File(path, ThemeConfig.configFileName).takeIf { it.exists() }?.runCatching {
+                val configs = GSON.fromJsonArray<ThemeConfig.Config>(readText()).getOrNull()
+                FileUtils.delete(ThemeConfig.configFilePath)
+                copyTo(File(ThemeConfig.configFilePath))
+                ThemeConfig.replaceConfigs(configs)
+            }
+        }
+
+        if (BookCover.configFileName in selectedSet) {
+            progress(BookCover.configFileName)
+            BookCover.delCoverRule()
+            File(path, BookCover.configFileName).takeIf { it.exists() }?.runCatching {
+                BookCover.saveCoverRule(readText())
+                CoverImageView.clearAllCache()
+            }
+        }
+
+        if (!BackupConfig.ignoreReadConfig && (ReadBookConfig.configFileName in selectedSet || ReadBookConfig.shareConfigFileName in selectedSet)) {
+            progress("backgroundImages")
+            restoreReadConfigBackgrounds(path)
+            if (ReadBookConfig.configFileName in selectedSet) {
+                progress(ReadBookConfig.configFileName)
+                File(path, ReadBookConfig.configFileName).takeIf { it.exists() }?.runCatching {
+                    FileUtils.delete(ReadBookConfig.configFilePath)
+                    copyTo(File(ReadBookConfig.configFilePath))
+                    ReadBookConfig.initConfigs()
+                }
+            }
+            if (ReadBookConfig.shareConfigFileName in selectedSet) {
+                progress(ReadBookConfig.shareConfigFileName)
+                File(path, ReadBookConfig.shareConfigFileName).takeIf { it.exists() }?.runCatching {
+                    FileUtils.delete(ReadBookConfig.shareConfigFilePath)
+                    copyTo(File(ReadBookConfig.shareConfigFilePath))
+                    ReadBookConfig.initShareConfig()
+                }
+            }
+        }
+        fixReadConfigBackgroundPaths()
+
+        if ("config.xml" in selectedSet) {
+            progress("config.xml")
+            val allowHighlight = !File(path, HighlightRuleStore.backupFileName).exists()
+            readBackupPrefs(path, "config")?.let { map ->
+                clearThemeRestorePrefs()
+                appCtx.defaultSharedPreferences.edit().apply {
+                    map.forEach { (key, value) ->
+                        if (BackupConfig.keyIsNotIgnore(key, allowHighlight) || key in themeRestorePrefKeys) {
+                            when (key) {
+                                PreferKey.webDavPassword -> {
+                                    runCatching { aes.decryptStr(value.toString()) }.getOrNull()?.let {
+                                        putString(key, it)
+                                    } ?: run {
+                                        if (appCtx.getPrefString(PreferKey.webDavPassword).isNullOrBlank()) {
+                                            putString(key, value.toString())
+                                        }
+                                    }
+                                }
+                                else -> when (value) {
+                                    is Int -> putInt(key, value)
+                                    is Boolean -> putBoolean(key, value)
+                                    is Long -> putLong(key, value)
+                                    is Float -> putFloat(key, value)
+                                    is String -> putString(key, value)
+                                }
+                            }
+                        }
+                    }
+                    apply()
+                }
+            }
+            if (allowHighlight) HighlightRuleStore.clearCache()
+        }
+
+        progress("themeBackgroundImages")
+        restoreThemeBackgrounds(
+            backupPath = path,
+            clearExisting = "config.xml" in selectedSet || ThemeConfig.configFileName in selectedSet
+        )
+        fixThemeBackgroundPaths()
+        fixThemeConfigBackgroundPaths()
+
+        if ("videoConfig.xml" in selectedSet) {
+            progress("videoConfig.xml")
+            readBackupPrefs(path, "videoConfig")?.let { map ->
+                appCtx.getSharedPreferences(VIDEO_PREF_NAME, Context.MODE_PRIVATE).edit().apply {
+                    clear()
+                    map.forEach { (key, value) ->
+                        when (value) {
+                            is Int -> putInt(key, value)
+                            is Boolean -> putBoolean(key, value)
+                            is Long -> putLong(key, value)
+                            is Float -> putFloat(key, value)
+                            is String -> putString(key, value)
+                        }
+                    }
+                    apply()
+                }
+            }
+        }
+
+        if (runtimeSourceCacheFileName in selectedSet) {
+            progress(runtimeSourceCacheFileName)
+            restoreRuntimeSourceCaches(path)
+        }
+
+        if (bookCacheFolderName in selectedSet ||
+            bookCacheIndexFileName in selectedSet ||
+            bookCacheBooksFileName in selectedSet ||
+            "bookChapterCache.json" in selectedSet) {
+            progress(bookCacheFolderName)
+            restoreBookCache(path)
+        }
+
+        progress("applyRestoreConfig")
+        ReadBookConfig.apply {
+            comicStyleSelect = appCtx.getPrefInt(PreferKey.comicStyleSelect)
+            readStyleSelect = appCtx.getPrefInt(PreferKey.readStyleSelect)
+            shareLayout = appCtx.getPrefBoolean(PreferKey.shareLayout)
+            hideStatusBar = appCtx.getPrefBoolean(PreferKey.hideStatusBar)
+            hideNavigationBar = appCtx.getPrefBoolean(PreferKey.hideNavigationBar)
+            autoReadSpeed = appCtx.getPrefInt(PreferKey.autoReadSpeed, 46)
+        }
+
+        appCtx.toastOnUi(R.string.restore_success)
+        withContext(Main) {
+            delay(100)
+            if (!BuildConfig.DEBUG) LauncherIconHelp.changeIcon(appCtx.getPrefString(PreferKey.launcherIcon))
+            ThemeConfig.applyDayNight(appCtx)
+        }
     }
 
     // ======================== 辅助方法 ========================
@@ -936,7 +1222,7 @@ object Restore {
         val bookName: String,
         val author: String,
         val folderName: String,
-        val chapters: List<ChapterCacheInfoData>  // 必须保留，用于恢复章节文件
+        val chapters: List<ChapterCacheInfoData>  // 必须保留
     )
 
     private data class ChapterCacheInfoData(
@@ -959,8 +1245,4 @@ object Restore {
         originName = (originName as String?) ?: name
         return if (bookUrl.isNotBlank() || name.isNotBlank()) this else null
     }
-
-    // 注意：以下两个方法需在 Book 和 BookChapter 的扩展函数中已定义，此处仅为编译提示
-    // private fun Book.getFolderName(): String = ...
-    // private fun BookChapter.getFileName(): String = ...
 }
