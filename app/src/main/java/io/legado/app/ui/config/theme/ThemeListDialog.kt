@@ -436,6 +436,21 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
         requireContext().share(json, "主题分享")
     }
 
+    private fun copyThemeJson(config: ThemeConfig.Config) {
+        runCatching {
+            val json = GSON.toJson(config)
+            val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE)
+                as android.content.ClipboardManager
+            clipboard.setPrimaryClip(
+                android.content.ClipData.newPlainText("theme_config", json)
+            )
+        }.onSuccess {
+            toastOnUi(R.string.copy_complete)
+        }.onFailure {
+            toastOnUi(it.localizedMessage ?: getString(R.string.error))
+        }
+    }
+
     private fun editTheme(position: Int?) {
         val source = position?.let { getFilteredThemes().getOrNull(it) }
         val config = source?.copy() ?: newThemeConfig()
@@ -795,6 +810,7 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
                     cbSelect.isChecked = selectedPositions.contains(holder.layoutPosition)
                     tvApply.visibility = View.GONE
                     tvEdit.visibility = View.GONE
+                    tvCopy.visibility = View.GONE
                     tvMore.visibility = View.GONE
                     ivShare.visibility = View.GONE
                     ivDelete.visibility = View.GONE
@@ -802,6 +818,7 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
                     cbSelect.visibility = View.GONE
                     tvApply.visibility = View.VISIBLE
                     tvEdit.visibility = View.VISIBLE
+                    tvCopy.visibility = View.VISIBLE
                     tvMore.visibility = View.VISIBLE
                     ivShare.visibility = View.GONE
                     ivDelete.visibility = View.GONE
@@ -838,6 +855,13 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
                 tvEdit.setOnClickListener {
                     if (!isMultiSelectMode) {
                         editTheme(holder.layoutPosition)
+                    }
+                }
+                tvCopy.setOnClickListener {
+                    if (!isMultiSelectMode) {
+                        val filteredThemes = getFilteredThemes()
+                        val config = filteredThemes[holder.layoutPosition]
+                        copyThemeJson(config)
                     }
                 }
                 tvMore.setOnClickListener {

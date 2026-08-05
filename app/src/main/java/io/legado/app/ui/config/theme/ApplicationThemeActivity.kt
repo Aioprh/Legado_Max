@@ -1,6 +1,5 @@
 package io.legado.app.ui.config.theme
 
-import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -31,6 +30,7 @@ import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.utils.GSON
 import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
@@ -42,6 +42,9 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import java.io.File
 import java.io.FileOutputStream
 
@@ -355,6 +358,19 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /** 将主题配置的 JSON 复制到剪贴板 */
+    private fun copyThemeJson(config: ApplicationThemeManager.Config) {
+        runCatching {
+            val json = GSON.toJson(config)
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("application_theme", json))
+        }.onSuccess {
+            toastOnUi(R.string.copy_complete)
+        }.onFailure {
+            toastOnUi(it.localizedMessage ?: getString(R.string.error))
+        }
+    }
+
     private fun confirmDelete(config: ApplicationThemeManager.Config) {
         alert(R.string.delete, R.string.sure_del) {
             okButton {
@@ -384,6 +400,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             tvInfo.maxLines = 2
             tvBuiltin.visibility = View.GONE
             tvEdit.visibility = View.VISIBLE
+            tvCopy.visibility = View.VISIBLE
             cbSelect.visibility = View.GONE
             ivShare.visibility = View.GONE
             ivDelete.visibility = View.GONE
@@ -433,6 +450,9 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             }
             binding.tvEdit.setOnClickListener {
                 getItem(holder.layoutPosition)?.config?.let(::openEditor)
+            }
+            binding.tvCopy.setOnClickListener {
+                getItem(holder.layoutPosition)?.config?.let(::copyThemeJson)
             }
             binding.root.setOnClickListener {
                 getItem(holder.layoutPosition)?.config?.let(::apply)
