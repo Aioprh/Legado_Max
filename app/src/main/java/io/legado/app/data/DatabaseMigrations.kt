@@ -22,7 +22,8 @@ object DatabaseMigrations {
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
             migration_95_96, migration_96_97, migration_97_98, migration_98_99,
             migration_99_100,
-            migration_100_101  // ← 新增：从 100 升级到 101
+            migration_100_101,
+            migration_101_102   // ← 新增
         )
     }
 
@@ -481,7 +482,7 @@ object DatabaseMigrations {
         }
     }
 
-    // -------- 后续手动迁移（95 → 100）已存在，现新增 100 → 101 --------
+    // -------- 后续手动迁移（95 → 101）保持不变 --------
 
     private val migration_95_96 = object : Migration(95, 96) {
         override fun migrate(db: SupportSQLiteDatabase) {
@@ -667,16 +668,88 @@ object DatabaseMigrations {
     }
 
     // =======================================================================
-    // 新增迁移：100 → 101
-    // 如果 100 和 101 的 schema 没有变化，此迁移可为空。
-    // 如果存在字段新增/删除/修改，请在此添加相应的 ALTER 语句。
+    // 迁移：100 → 101（空迁移，假设无变化）
     // =======================================================================
     private val migration_100_101 = object : Migration(100, 101) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // 如果您的实体在 100 和 101 之间没有结构变更，留空即可。
-            // 若有变更，请补充 SQL，例如：
-            // db.execSQL("ALTER TABLE books ADD COLUMN new_field TEXT DEFAULT ''")
-            // 注意：若添加非空列需设置默认值，否则迁移会失败。
+            // 空实现
+        }
+    }
+
+    // =======================================================================
+    // 新增迁移：101 → 102
+    // 用于兼容别人已发布的 101 版本，创建缺失的表和列
+    // =======================================================================
+    private val migration_101_102 = object : Migration(101, 102) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // 1. 创建 source_recycle_bin 表（如果不存在）
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `source_recycle_bin` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `type` TEXT NOT NULL,
+                    `key` TEXT NOT NULL,
+                    `name` TEXT NOT NULL,
+                    `groupName` TEXT,
+                    `payload` TEXT NOT NULL,
+                    `deletedAt` INTEGER NOT NULL,
+                    `expireAt` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_source_recycle_bin_type` ON `source_recycle_bin` (`type`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_source_recycle_bin_key` ON `source_recycle_bin` (`key`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_source_recycle_bin_expireAt` ON `source_recycle_bin` (`expireAt`)")
+
+            // 2. 创建 homepage_modules 表（如果不存在）
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `homepage_modules` (
+                    `id` TEXT NOT NULL PRIMARY KEY,
+                    `sourceUrl` TEXT NOT NULL,
+                    `moduleKey` TEXT NOT NULL,
+                    `type` TEXT NOT NULL,
+                    `title` TEXT NOT NULL,
+                    `args` TEXT,
+                    `layoutConfig` TEXT,
+                    `url` TEXT,
+                    `isEnabled` INTEGER NOT NULL DEFAULT 1,
+                    `sortOrder` INTEGER NOT NULL DEFAULT 0,
+                    `customSetId` TEXT,
+                    `isUserCreated` INTEGER NOT NULL DEFAULT 0,
+                    `customTitle` TEXT,
+                    `customSetTitle` TEXT,
+                    `sourceJsonHash` TEXT,
+                    `syncedAt` INTEGER NOT NULL DEFAULT 0
+                )
+                """.trimIndent()
+            )
+
+            // 3. 创建 homepage_custom_sets 表（如果不存在）
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `homepage_custom_sets` (
+                    `id` TEXT NOT NULL PRIMARY KEY,
+                    `name` TEXT NOT NULL,
+                    `sortOrder` INTEGER NOT NULL DEFAULT 0
+                )
+                """.trimIndent()
+            )
+
+            // 4. 在 book_sources 表中添加 homepageModules 列（如果不存在）
+            var hasColumn = false
+            try {
+                db.query("SELECT name FROM pragma_table_info('book_sources') WHERE name='homepageModules'").use { cursor ->
+                    hasColumn = cursor.moveToFirst()
+                }
+            } catch (_: Exception) { /* ignore */ }
+            if (!hasColumn) {
+                try {
+                    db.execSQL("ALTER TABLE book_sources ADD COLUMN homepageModules TEXT DEFAULT ''")
+                } catch (e: Exception) {
+                    android.util.Log.e("DatabaseMigrations", "101→102: 添加 homepageModules 列失败", e)
+                }
+            }
         }
     }
 }
