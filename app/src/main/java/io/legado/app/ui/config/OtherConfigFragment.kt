@@ -16,11 +16,6 @@ import androidx.core.view.postDelayed
 import androidx.fragment.app.activityViewModels
 import androidx.preference.ListPreference
 import androidx.preference.Preference
-import androidx.preference.PreferenceCategory
-import androidx.recyclerview.widget.ItemTouchHelper
-import androidx.recyclerview.widget.LinearLayoutManager
-import io.legado.app.databinding.DialogNavItemSortBinding
-import io.legado.app.ui.main.NavItemSortAdapter
 import com.jeremyliao.liveeventbus.LiveEventBus
 import io.legado.app.R
 import io.legado.app.constant.EventBus
@@ -124,50 +119,25 @@ class OtherConfigFragment : PreferenceFragment(),
                 mode = HandleFileContract.DIR_SYS
             }
 
-            PreferKey.preDownloadNum -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.pre_download))
-                .setMaxValue(9999)
-                .setMinValue(0)
-                .setValue(AppConfig.preDownloadNum)
-                .show {
-                    AppConfig.preDownloadNum = it
-                }
+            PreferKey.preDownloadNum -> showNumberPicker(
+                getString(R.string.pre_download), 9999, 0, AppConfig.preDownloadNum
+            ) { AppConfig.preDownloadNum = it }
 
-            PreferKey.backwardPreDownloadNum -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.backward_pre_download))
-                .setMaxValue(9999)
-                .setMinValue(0)
-                .setValue(AppConfig.backwardPreDownloadNum)
-                .show {
-                    AppConfig.backwardPreDownloadNum = it
-                }
+            PreferKey.backwardPreDownloadNum -> showNumberPicker(
+                getString(R.string.backward_pre_download), 9999, 0, AppConfig.backwardPreDownloadNum
+            ) { AppConfig.backwardPreDownloadNum = it }
 
-            PreferKey.tocPartialLoadInterval -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.pt_toc_partial_load_interval))
-                .setMaxValue(60)
-                .setMinValue(0)
-                .setValue(AppConfig.tocPartialLoadInterval)
-                .show {
-                    AppConfig.tocPartialLoadInterval = it
-                }
+            PreferKey.tocPartialLoadInterval -> showNumberPicker(
+                getString(R.string.pt_toc_partial_load_interval), 60, 0, AppConfig.tocPartialLoadInterval
+            ) { AppConfig.tocPartialLoadInterval = it }
 
-            PreferKey.threadCount -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.threads_num_title))
-                .setMaxValue(999)
-                .setMinValue(1)
-                .setValue(AppConfig.threadCount)
-                .show {
-                    AppConfig.threadCount = it
-                }
+            PreferKey.threadCount -> showNumberPicker(
+                getString(R.string.threads_num_title), 999, 1, AppConfig.threadCount
+            ) { AppConfig.threadCount = it }
 
-            PreferKey.webPort -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.web_port_title))
-                .setMaxValue(60000)
-                .setMinValue(1024)
-                .setValue(AppConfig.webPort)
-                .show {
-                    AppConfig.webPort = it
-                }
+            PreferKey.webPort -> showNumberPicker(
+                getString(R.string.web_port_title), 60000, 1024, AppConfig.webPort
+            ) { AppConfig.webPort = it }
 
             PreferKey.webServiceToken -> showWebServiceTokenDialog()
 
@@ -175,35 +145,20 @@ class OtherConfigFragment : PreferenceFragment(),
             PreferKey.uploadRule -> startActivity(Intent(context, DirectLinkUploadActivity::class.java))
             PreferKey.checkSource -> showDialogFragment<CheckSourceConfig>()
             PreferKey.bitmapCacheSize -> {
-                NumberPickerDialog(requireContext())
-                    .setTitle(getString(R.string.bitmap_cache_size))
-                    .setMaxValue(1024)
-                    .setMinValue(1)
-                    .setValue(AppConfig.bitmapCacheSize)
-                    .show {
-                        AppConfig.bitmapCacheSize = it
-                        ImageProvider.bitmapLruCache.resize(ImageProvider.cacheSize)
-                    }
-            }
-            PreferKey.imageRetainNum -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.image_retain_number))
-                .setMaxValue(999)
-                .setMinValue(0)
-                .setValue(AppConfig.imageRetainNum)
-                .show {
-                    AppConfig.imageRetainNum = it
+                showNumberPicker(
+                    getString(R.string.bitmap_cache_size), 1024, 1, AppConfig.bitmapCacheSize
+                ) {
+                    AppConfig.bitmapCacheSize = it
+                    ImageProvider.bitmapLruCache.resize(ImageProvider.cacheSize)
                 }
-
-            PreferKey.sourceEditMaxLine -> {
-                NumberPickerDialog(requireContext())
-                    .setTitle(getString(R.string.source_edit_text_max_line))
-                    .setMaxValue(Int.MAX_VALUE)
-                    .setMinValue(10)
-                    .setValue(AppConfig.sourceEditMaxLine)
-                    .show {
-                        AppConfig.sourceEditMaxLine = it
-                    }
             }
+            PreferKey.imageRetainNum -> showNumberPicker(
+                getString(R.string.image_retain_number), 999, 0, AppConfig.imageRetainNum
+            ) { AppConfig.imageRetainNum = it }
+
+            PreferKey.sourceEditMaxLine -> showNumberPicker(
+                getString(R.string.source_edit_text_max_line), Int.MAX_VALUE, 10, AppConfig.sourceEditMaxLine
+            ) { AppConfig.sourceEditMaxLine = it }
 
             PreferKey.clearWebViewData -> clearWebViewData()
             PreferKey.navItemOrder -> showNavItemSortDialog()
@@ -235,25 +190,14 @@ class OtherConfigFragment : PreferenceFragment(),
 
             PreferKey.webPort -> {
                 upPreferenceSummary(key, AppConfig.webPort.toString())
-                if (WebService.isRun) {
-                    WebService.stop(requireContext())
-                    WebService.start(requireContext())
-                }
+                restartWebServiceIfRunning()
             }
 
-            PreferKey.webServiceAuthEnabled -> {
-                if (WebService.isRun) {
-                    WebService.stop(requireContext())
-                    WebService.start(requireContext())
-                }
-            }
+            PreferKey.webServiceAuthEnabled -> restartWebServiceIfRunning()
 
             PreferKey.webServiceToken -> {
                 upWebServiceTokenSummary()
-                if (WebService.isRun) {
-                    WebService.stop(requireContext())
-                    WebService.start(requireContext())
-                }
+                restartWebServiceIfRunning()
             }
 
             PreferKey.defaultBookTreeUri -> {
@@ -469,93 +413,33 @@ class OtherConfigFragment : PreferenceFragment(),
 
     /**
      * 打开导航栏拖拽排序对话框
-     *
-     * 长按拖拽可调整顺序，点击 RadioButton 可选择默认主页。
-     * 排序顺序与默认主页选择相互独立。
-     * 确认后保存并通知 MainActivity 立即刷新底部导航栏。
      */
-    @SuppressLint("InflateParams")
     private fun showNavItemSortDialog() {
-        val context = requireContext()
-        val navOrder = AppConfig.navItemOrder
-        val defaultHome = AppConfig.defaultHomePage
-        val showHomepage = AppConfig.showHomepage
-        val showDiscovery = AppConfig.showDiscovery
-        val showRss = AppConfig.showRSS
+        showDialogFragment(NavItemSortDialogFragment())
+    }
 
-        // 构建排序项列表，按当前排序顺序
-        val items = mutableListOf<NavItemSortAdapter.NavItemConfig>()
-        for (key in navOrder) {
-            val config = when (key) {
-                "homepage" -> NavItemSortAdapter.NavItemConfig(
-                    "homepage", getString(R.string.homepage),
-                    R.drawable.ic_bottom_home, showHomepage
-                )
-                "bookshelf" -> NavItemSortAdapter.NavItemConfig(
-                    "bookshelf", getString(R.string.bookshelf),
-                    R.drawable.ic_bottom_books, true
-                )
-                "explore" -> NavItemSortAdapter.NavItemConfig(
-                    "explore", getString(R.string.discovery),
-                    R.drawable.ic_bottom_explore, showDiscovery
-                )
-                "rss" -> NavItemSortAdapter.NavItemConfig(
-                    "rss", getString(R.string.rss),
-                    R.drawable.ic_bottom_rss_feed, showRss
-                )
-                "my" -> NavItemSortAdapter.NavItemConfig(
-                    "my", getString(R.string.my),
-                    R.drawable.ic_bottom_person, true
-                )
-                else -> null
-            }
-            if (config != null) items.add(config)
-        }
+    /**
+     * 弹出数值选择器并直接写入 AppConfig 的便捷方法。
+     */
+    private fun showNumberPicker(
+        title: String,
+        maxValue: Int,
+        minValue: Int,
+        currentValue: Int,
+        onValueChanged: (Int) -> Unit
+    ) {
+        NumberPickerDialog(requireContext())
+            .setTitle(title)
+            .setMaxValue(maxValue)
+            .setMinValue(minValue)
+            .setValue(currentValue)
+            .show(onValueChanged)
+    }
 
-        // 补全可能缺失的项（兼容旧数据）
-        for (key in listOf("bookshelf", "homepage", "explore", "rss", "my")) {
-            if (items.none { it.key == key }) {
-                val config = when (key) {
-                    "homepage" -> NavItemSortAdapter.NavItemConfig(
-                        "homepage", getString(R.string.homepage),
-                        R.drawable.ic_bottom_home, showHomepage
-                    )
-                    "explore" -> NavItemSortAdapter.NavItemConfig(
-                        "explore", getString(R.string.discovery),
-                        R.drawable.ic_bottom_explore, showDiscovery
-                    )
-                    "rss" -> NavItemSortAdapter.NavItemConfig(
-                        "rss", getString(R.string.rss),
-                        R.drawable.ic_bottom_rss_feed, showRss
-                    )
-                    "my" -> NavItemSortAdapter.NavItemConfig(
-                        "my", getString(R.string.my),
-                        R.drawable.ic_bottom_person, true
-                    )
-                    else -> NavItemSortAdapter.NavItemConfig(
-                        "bookshelf", getString(R.string.bookshelf),
-                        R.drawable.ic_bottom_books, true
-                    )
-                }
-                items.add(config)
-            }
-        }
-
-        val adapter = NavItemSortAdapter(context, items, defaultHome)
-
-        alert(getString(R.string.nav_item_sort_dialog_title)) {
-            val dialogBinding = DialogNavItemSortBinding.inflate(layoutInflater)
-            dialogBinding.recyclerView.layoutManager = LinearLayoutManager(context)
-            dialogBinding.recyclerView.adapter = adapter
-            ItemTouchHelper(adapter.itemTouchCallback)
-                .attachToRecyclerView(dialogBinding.recyclerView)
-            customView { dialogBinding.root }
-            okButton {
-                AppConfig.setNavItemOrder(adapter.getOrderKeys())
-                AppConfig.setDefaultHomePage(adapter.getDefaultHomeKey())
-                postEvent(EventBus.NOTIFY_MAIN, true)
-            }
-            cancelButton()
+    private fun restartWebServiceIfRunning() {
+        if (WebService.isRun) {
+            WebService.stop(requireContext())
+            WebService.start(requireContext())
         }
     }
 
@@ -615,49 +499,7 @@ class OtherConfigFragment : PreferenceFragment(),
     }
 
     private fun filterPreferences(query: String) {
-        val lowerQuery = query.lowercase()
-        var firstMatchIndex = -1
-        var currentIndex = 0
-
-        for (i in 0 until preferenceScreen.preferenceCount) {
-            val category = preferenceScreen.getPreference(i)
-            if (category is PreferenceCategory) {
-                var hasVisibleChild = false
-                for (j in 0 until category.preferenceCount) {
-                    val preference = category.getPreference(j)
-                    val title = preference.title?.toString()?.lowercase() ?: ""
-                    val summary = preference.summary?.toString()?.lowercase() ?: ""
-                    val matches = query.isEmpty() || title.contains(lowerQuery) || summary.contains(lowerQuery)
-                    preference.isVisible = matches
-                    if (matches) {
-                        hasVisibleChild = true
-                        if (firstMatchIndex < 0) {
-                            firstMatchIndex = currentIndex
-                        }
-                    }
-                    currentIndex++
-                }
-                category.isVisible = hasVisibleChild || query.isEmpty()
-                if (category.isVisible) {
-                    currentIndex++
-                }
-            } else {
-                val title = category.title?.toString()?.lowercase() ?: ""
-                val summary = category.summary?.toString()?.lowercase() ?: ""
-                val matches = query.isEmpty() || title.contains(lowerQuery) || summary.contains(lowerQuery)
-                category.isVisible = matches
-                if (matches && firstMatchIndex < 0) {
-                    firstMatchIndex = currentIndex
-                }
-                currentIndex++
-            }
-        }
-
-        if (firstMatchIndex >= 0) {
-            listView.post {
-                listView.smoothScrollToPosition(firstMatchIndex)
-            }
-        }
+        PreferenceSearchHelper.filterAndScroll(preferenceScreen, listView, query)
     }
 
 }

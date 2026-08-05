@@ -1,5 +1,7 @@
-package io.legado.app.ui.config
+package io.legado.app.ui.config.theme
 
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -36,8 +38,17 @@ import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.*
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import java.util.Locale
 
+/**
+ * 主题列表 Dialog（旧版 BaseDialogFragment + RecyclerView 实现）。
+ *
+ * 全屏弹窗，展示日间/夜间主题列表，支持应用、编辑、删除、置顶、多选导出等操作。
+ * 内含主题编辑视图（LinearLayout 构建），颜色选择通过 ColorPickerDialog 回调处理。
+ * 保留为旧版兼容入口，Compose 版见 ThemeManageActivity + ThemeEditDialog。
+ */
 class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
     Toolbar.OnMenuItemClickListener,
     ColorPickerDialogListener {
@@ -110,28 +121,96 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
         }
     }
 
-    // 更新 Tab 选中状态
+    // 更新 Tab 选中状态（带 indicator 滑动 + 文字颜色渐变动画）
     private fun updateTabSelection() = binding.run {
         val accentColor = requireContext().accentColor
         val primaryTextColor = ContextCompat.getColor(requireContext(), R.color.primaryText)
-        
-        // 日间 Tab
-        val dayTabSelected = !isNightThemeTab
-        tvTabDay.setTextColor(if (dayTabSelected) accentColor else primaryTextColor)
-        tabDay.background = if (dayTabSelected) {
-            ContextCompat.getDrawable(requireContext(), R.drawable.bg_theme_tab_selected)
-        } else {
-            null
+
+        // 初始化 indicator 背景
+        initIndicatorIfNeeded()
+
+        // 滑动 indicator 到目标位置
+        animateIndicatorTo(if (isNightThemeTab) 1 else 0)
+
+        // 文字颜色渐变动画
+        val dayFromColor = tvTabDay.currentTextColor
+        val dayToColor = if (!isNightThemeTab) accentColor else primaryTextColor
+        val nightFromColor = tvTabNight.currentTextColor
+        val nightToColor = if (isNightThemeTab) accentColor else primaryTextColor
+
+        ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = TAB_ANIM_DURATION
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { animator ->
+                val fraction = animator.animatedFraction
+                tvTabDay.setTextColor(
+                    ArgbEvaluator().evaluate(fraction, dayFromColor, dayToColor) as Int
+                )
+                tvTabNight.setTextColor(
+                    ArgbEvaluator().evaluate(fraction, nightFromColor, nightToColor) as Int
+                )
+            }
+            start()
         }
-        
-        // 夜间 Tab
-        val nightTabSelected = isNightThemeTab
-        tvTabNight.setTextColor(if (nightTabSelected) accentColor else primaryTextColor)
-        tabNight.background = if (nightTabSelected) {
-            ContextCompat.getDrawable(requireContext(), R.drawable.bg_theme_tab_selected)
-        } else {
-            null
+
+        // 根据当前 Tab 对应的主题模式刷新 toolbar 颜色
+        updateToolBarColor()
+    }
+
+    // 初始化 indicator 的圆角背景和初始位置
+    private fun initIndicatorIfNeeded() = binding.run {
+        val indicator = tabIndicator
+        if (indicator.tag != "initialized") {
+            indicator.tag = "initialized"
+            // 设置 indicator 圆角背景
+            val drawable = GradientDrawable()
+            drawable.cornerRadius = 8f.dpToPx()
+            drawable.setColor(ContextCompat.getColor(requireContext(), R.color.background_tab_selected))
+            indicator.background = drawable
+            // 初始位置：根据当前 Tab 设置 translationX
+            indicator.post {
+                val tabWidth = tabContainer.width / 2
+                indicator.layoutParams = indicator.layoutParams.apply {
+                    width = tabWidth - 8.dpToPx()
+                }
+                indicator.translationX = if (isNightThemeTab) tabWidth.toFloat() else 0f
+            }
         }
+    }
+
+    // indicator 滑动动画
+    private fun animateIndicatorTo(targetPosition: Int) = binding.run {
+        val indicator = tabIndicator
+        val tabWidth = tabContainer.width / 2
+        // 确保宽度正确
+        indicator.layoutParams = indicator.layoutParams.apply {
+            width = tabWidth - 8.dpToPx()
+        }
+        val targetX = targetPosition * tabWidth.toFloat()
+        indicator.animate()
+            .translationX(targetX)
+            .setDuration(TAB_ANIM_DURATION)
+            .setInterpolator(android.view.animation.DecelerateInterpolator())
+            .start()
+    }
+
+    // 根据当前 Tab 对应的日间/夜间模式，读取对应 primaryColor 并设置 toolbar
+    private fun updateToolBarColor() = binding.run {
+        val ctx = requireContext()
+        val toolbarColor = if (isNightThemeTab) {
+            // 夜间模式：读取夜间主题的 primaryColor
+            ctx.getPrefInt(
+                io.legado.app.constant.PreferKey.cNPrimary,
+                ContextCompat.getColor(ctx, R.color.default_night_primary)
+            )
+        } else {
+            // 日间模式：读取日间主题的 primaryColor
+            ctx.getPrefInt(
+                io.legado.app.constant.PreferKey.cPrimary,
+                ContextCompat.getColor(ctx, R.color.default_primary)
+            )
+        }
+        toolBar.setBackgroundColor(toolbarColor)
     }
 
     // 更新摘要文本
@@ -166,12 +245,14 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
         when (item?.itemId) {
             R.id.menu_import -> {
                 requireContext().getClipText()?.let { clipText ->
-                    val count = ThemeConfig.addConfig(clipText)
-                    if (count > 0) {
-                        initData()
-                        toastOnUi("成功导入 $count 个主题")
-                    } else {
-                        toastOnUi("格式不对,添加失败")
+                    lifecycleScope.launch {
+                        val count = ThemeConfig.addConfig(clipText)
+                        if (count > 0) {
+                            initData()
+                            toastOnUi("成功导入 $count 个主题")
+                        } else {
+                            toastOnUi("格式不对,添加失败")
+                        }
                     }
                 } ?: toastOnUi("剪贴板为空")
             }
@@ -223,13 +304,15 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
                 0 -> editTheme(null)
                 1 -> {
                     requireContext().getClipText()?.let { clipText ->
-                        val count = ThemeConfig.addConfig(clipText)
-                        if (count > 0) {
-                            initData()
-                            updateSummary()
-                            toastOnUi("成功导入 $count 个主题")
-                        } else {
-                            toastOnUi("格式不对,添加失败")
+                        lifecycleScope.launch {
+                            val count = ThemeConfig.addConfig(clipText)
+                            if (count > 0) {
+                                initData()
+                                updateSummary()
+                                toastOnUi("成功导入 $count 个主题")
+                            } else {
+                                toastOnUi("格式不对,添加失败")
+                            }
                         }
                     } ?: toastOnUi("剪贴板为空")
                 }
@@ -285,18 +368,20 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
                 val filteredThemes = getFilteredThemes()
                 val positions = selectedPositions.sortedDescending()
                 // 需要找到在原始列表中的位置
-                positions.forEach { filteredIndex ->
+                val indicesToDelete = positions.mapNotNull { filteredIndex ->
                     val config = filteredThemes[filteredIndex]
-                    val originalIndex = ThemeConfig.configList.indexOfFirst { 
+                    ThemeConfig.configList.indexOfFirst { 
                         it.themeName == config.themeName && it.isNightTheme == config.isNightTheme 
-                    }
-                    if (originalIndex >= 0) {
+                    }.takeIf { it >= 0 }
+                }
+                lifecycleScope.launch {
+                    indicesToDelete.sortedDescending().forEach { originalIndex ->
                         ThemeConfig.delConfig(originalIndex)
                     }
+                    exitMultiSelectMode()
+                    initData()
+                    updateSummary()
                 }
-                exitMultiSelectMode()
-                initData()
-                updateSummary()
             }
             noButton()
         }
@@ -317,9 +402,11 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
             }
         }.filter { it >= 0 }
         
-        ThemeConfig.toTopConfigs(originalPositions)
-        exitMultiSelectMode()
-        initData()
+        lifecycleScope.launch {
+            ThemeConfig.toTopConfigs(originalPositions)
+            exitMultiSelectMode()
+            initData()
+        }
     }
 
     fun delete(index: Int) {
@@ -332,10 +419,12 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
         alert(R.string.delete, R.string.sure_del) {
             yesButton {
                 if (originalIndex >= 0) {
-                    ThemeConfig.delConfig(originalIndex)
+                    lifecycleScope.launch {
+                        ThemeConfig.delConfig(originalIndex)
+                        initData()
+                        updateSummary()
+                    }
                 }
-                initData()
-                updateSummary()
             }
             noButton()
         }
@@ -345,6 +434,21 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
         val filteredThemes = getFilteredThemes()
         val json = GSON.toJson(filteredThemes[index])
         requireContext().share(json, "主题分享")
+    }
+
+    private fun copyThemeJson(config: ThemeConfig.Config) {
+        runCatching {
+            val json = GSON.toJson(config)
+            val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE)
+                as android.content.ClipboardManager
+            clipboard.setPrimaryClip(
+                android.content.ClipData.newPlainText("theme_config", json)
+            )
+        }.onSuccess {
+            toastOnUi(R.string.copy_complete)
+        }.onFailure {
+            toastOnUi(it.localizedMessage ?: getString(R.string.error))
+        }
     }
 
     private fun editTheme(position: Int?) {
@@ -559,14 +663,16 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
         } else {
             ThemeConfig.configList.add(config)
         }
-        ThemeConfig.save()
-        initData()
-        updateSummary()
-        val current = ThemeConfig.getDurConfig(requireContext())
-        if (current.themeName == config.themeName && current.isNightTheme == config.isNightTheme) {
-            ThemeConfig.applyConfig(requireContext(), config)
+        lifecycleScope.launch {
+            ThemeConfig.save()
+            initData()
+            updateSummary()
+            val current = ThemeConfig.getDurConfig(requireContext())
+            if (current.themeName == config.themeName && current.isNightTheme == config.isNightTheme) {
+                ThemeConfig.applyConfig(requireContext(), config)
+            }
+            toastOnUi("主题已保存")
         }
-        toastOnUi("主题已保存")
     }
 
     private fun findThemeIndex(config: ThemeConfig.Config): Int {
@@ -704,6 +810,7 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
                     cbSelect.isChecked = selectedPositions.contains(holder.layoutPosition)
                     tvApply.visibility = View.GONE
                     tvEdit.visibility = View.GONE
+                    tvCopy.visibility = View.GONE
                     tvMore.visibility = View.GONE
                     ivShare.visibility = View.GONE
                     ivDelete.visibility = View.GONE
@@ -711,6 +818,7 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
                     cbSelect.visibility = View.GONE
                     tvApply.visibility = View.VISIBLE
                     tvEdit.visibility = View.VISIBLE
+                    tvCopy.visibility = View.VISIBLE
                     tvMore.visibility = View.VISIBLE
                     ivShare.visibility = View.GONE
                     ivDelete.visibility = View.GONE
@@ -749,6 +857,13 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
                         editTheme(holder.layoutPosition)
                     }
                 }
+                tvCopy.setOnClickListener {
+                    if (!isMultiSelectMode) {
+                        val filteredThemes = getFilteredThemes()
+                        val config = filteredThemes[holder.layoutPosition]
+                        copyThemeJson(config)
+                    }
+                }
                 tvMore.setOnClickListener {
                     if (!isMultiSelectMode) {
                         val filteredThemes = getFilteredThemes()
@@ -784,11 +899,13 @@ class ThemeListDialog : BaseDialogFragment(R.layout.dialog_theme_list),
     }
 
     private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
+    private val Float.dpToPx: Int get() = (this * resources.displayMetrics.density).toInt()
 
     companion object {
         private const val COLOR_PRIMARY = 401
         private const val COLOR_ACCENT = 402
         private const val COLOR_BACKGROUND = 403
         private const val COLOR_BOTTOM_BACKGROUND = 404
+        private const val TAB_ANIM_DURATION = 250L
     }
 }

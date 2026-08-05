@@ -42,12 +42,17 @@ import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.toastOnUi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.FileOutputStream
 
 @Keep
 object ThemeConfig {
     const val configFileName = "themeConfig.json"
     val configFilePath = FileUtils.getPath(appCtx.filesDir, configFileName)
+
+    /** 单线程调度器，保证所有写操作串行执行，避免并发竞态 */
+    private val ioSerialDispatcher = Dispatchers.IO.limitedParallelism(1)
 
     val configList: ArrayList<Config> by lazy {
         val cList = getConfigs() ?: DefaultData.themeConfigs
@@ -149,7 +154,7 @@ object ThemeConfig {
         return bgImage?.stackBlur(bgImgBlu)?.toDrawable(context.resources)
     }
 
-    fun upConfig() {
+    suspend fun upConfig() {
         addConfigs(DefaultData.themeConfigs)
     }
 
@@ -189,32 +194,34 @@ object ThemeConfig {
         }
     }
 
-    fun replaceConfigs(newConfigs: List<Config>?) {
+    suspend fun replaceConfigs(newConfigs: List<Config>?) {
         val validConfigs = newConfigs?.filter { validateConfig(it) } ?: emptyList()
         configList.clear()
         configList.addAll(validConfigs)
         save()
     }
 
-    fun save() {
+    suspend fun save() {
         val json = GSON.toJson(configList)
-        FileUtils.delete(configFilePath)
-        FileUtils.createFileIfNotExist(configFilePath).writeText(json)
+        withContext(ioSerialDispatcher) {
+            FileUtils.delete(configFilePath)
+            FileUtils.createFileIfNotExist(configFilePath).writeText(json)
+        }
     }
 
-    fun delConfig(index: Int) {
+    suspend fun delConfig(index: Int) {
         configList.removeAt(index)
         save()
     }
 
-    fun toTopConfigs(positions: List<Int>) {
+    suspend fun toTopConfigs(positions: List<Int>) {
         val configs = positions.map { configList[it] }
         positions.sortedDescending().forEach { configList.removeAt(it) }
         configList.addAll(0, configs)
         save()
     }
 
-    fun addConfig(json: String): Int {
+    suspend fun addConfig(json: String): Int {
         val trimmedJson = json.trim { it < ' ' }
         var count = 0
         GSON.fromJsonArray<Config>(trimmedJson).getOrNull()?.let { configs ->
@@ -248,7 +255,7 @@ object ThemeConfig {
         return count
     }
 
-    fun addConfig(newConfig: Config) {
+    suspend fun addConfig(newConfig: Config) {
         if (!validateConfig(newConfig)) {
             return
         }
@@ -266,7 +273,7 @@ object ThemeConfig {
         save()
     }
 
-    fun addConfigs(newConfigs: List<Config>?) {
+    suspend fun addConfigs(newConfigs: List<Config>?) {
         val newConfigs = newConfigs?.filter{
             validateConfig(it)
         }
@@ -428,7 +435,7 @@ object ThemeConfig {
         )
     }
 
-    fun saveDayTheme(context: Context, name: String) {
+    suspend fun saveDayTheme(context: Context, name: String) {
         val config = getDayTheme(context, name)
         addConfig(config)
     }
@@ -467,7 +474,7 @@ object ThemeConfig {
         )
     }
 
-    fun saveNightTheme(context: Context, name: String) {
+    suspend fun saveNightTheme(context: Context, name: String) {
         val config = getNightTheme(context, name)
         addConfig(config)
     }

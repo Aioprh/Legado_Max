@@ -243,13 +243,13 @@
             android:name=".ui.config.NavigationBarManageActivity"
             android:launchMode="standard" />
         <activity
-            android:name=".ui.config.ThemeManageActivity"
+            android:name=".ui.config.theme.ThemeManageActivity"
             android:launchMode="standard" />
         <activity
-            android:name=".ui.config.ApplicationThemeActivity"
+            android:name=".ui.config.theme.ApplicationThemeActivity"
             android:launchMode="standard" />
         <activity
-            android:name=".ui.config.ApplicationThemeEditActivity"
+            android:name=".ui.config.theme.ApplicationThemeEditActivity"
             android:launchMode="standard" />
         <activity
             android:name=".ui.config.TopBarManageActivity"
