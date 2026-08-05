@@ -21,6 +21,7 @@ import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.BookCover
 import io.legado.app.constant.EventBus
 import io.legado.app.ui.config.covergallery.CoverGalleryActivity
+import io.legado.app.ui.config.coverhtml.CoverHtmlActivity
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.image.CoverImageView
 import io.legado.app.utils.FileUtils
