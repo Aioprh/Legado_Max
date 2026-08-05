@@ -84,7 +84,7 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 102,  // ← 关键修改：从 101 改为 102
+    version = 100,
     exportSchema = true,
     entities = [Book::class, BookGroup::class, BookSource::class, BookChapter::class,
         ReplaceRule::class, SearchBook::class, SearchKeyword::class, Cookie::class,
@@ -199,6 +199,7 @@ abstract class AppDatabase : RoomDatabase() {
                     try {
                         Log.d("AppDatabaseCallback", "准备 设置 locale for API ${Build.VERSION.SDK_INT}...")
                         db.setLocale(Locale.CHINESE)
+                        // 在 21 上报错，但无法拦截
                         Log.d("AppDatabaseCallback", "成功 设置 locale for API ${Build.VERSION.SDK_INT}.")
                     } catch (e: Exception) {
                         Log.e("AppDatabaseCallback", "错误 设置 locale in onCreate for API ${Build.VERSION.SDK_INT}", e)
@@ -216,25 +217,32 @@ abstract class AppDatabase : RoomDatabase() {
                 val bookGroupSqls = listOf(
                     """insert into book_groups(groupId, groupName, 'order', show) 
                         select ${BookGroup.IdAll}, '全部', -10, 1
-                        where not exists (select * from book_groups where groupId = ${BookGroup.IdAll})""",
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdAll})"""
+                        .trimIndent(),
                     """insert into book_groups(groupId, groupName, 'order', enableRefresh, show) 
                         select ${BookGroup.IdLocal}, '本地', -9, 0, 1
-                        where not exists (select * from book_groups where groupId = ${BookGroup.IdLocal})""",
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdLocal})"""
+                        .trimIndent(),
                     """insert into book_groups(groupId, groupName, 'order', show) 
                         select ${BookGroup.IdAudio}, '音频', -8, 1
-                        where not exists (select * from book_groups where groupId = ${BookGroup.IdAudio})""",
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdAudio})"""
+                        .trimIndent(),
                     """insert into book_groups(groupId, groupName, 'order', show) 
                         select ${BookGroup.IdNetNone}, '网络未分组', -7, 1
-                        where not exists (select * from book_groups where groupId = ${BookGroup.IdNetNone})""",
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdNetNone})"""
+                        .trimIndent(),
                     """insert into book_groups(groupId, groupName, 'order', show) 
                         select ${BookGroup.IdLocalNone}, '本地未分组', -6, 0
-                        where not exists (select * from book_groups where groupId = ${BookGroup.IdLocalNone})""",
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdLocalNone})"""
+                        .trimIndent(),
                     """insert into book_groups(groupId, groupName, 'order', show) 
                         select ${BookGroup.IdVideo}, '视频', -5, 1
-                        where not exists (select * from book_groups where groupId = ${BookGroup.IdVideo})""",
+                        where not exists (select * from book_groups where groupId = ${BookGroup.IdVideo})"""
+                        .trimIndent(),
                     """insert into book_groups(groupId, groupName, 'order', show) 
                         select ${BookGroup.IdError}, '更新失败', -1, 1
                         where not exists (select * from book_groups where groupId = ${BookGroup.IdError})"""
+                        .trimIndent()
                 )
                 for (sql in bookGroupSqls) {
                     try {
@@ -283,5 +291,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
         }
+
     }
+
 }
