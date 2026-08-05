@@ -77,6 +77,10 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         if (it.uri != null) toastOnUi(R.string.export_success)
     }
 
+    /**
+     * Activity 创建时的初始化。
+     * 设置标题、摘要、列表适配器和点击监听。
+     */
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.titleBar.title = getString(R.string.application_theme_manage)
         binding.tabContainer.visibility = View.GONE
@@ -90,17 +94,28 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         refresh()
     }
 
+    /**
+     * Activity 恢复时刷新列表数据。
+     */
     override fun onResume() {
         super.onResume()
         refresh()
     }
 
+    /**
+     * 监听 LiveBus 事件。
+     * 当收到 RECREATE 事件时通知适配器刷新。
+     */
     override fun observeLiveBus() {
         observeEvent<String>(EventBus.RECREATE) {
             adapter.notifyDataSetChanged()
         }
     }
 
+    /**
+     * 创建选项菜单。
+     * 添加创建、导入、带选项导入、导出四个菜单项。
+     */
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, MENU_CREATE, 0, R.string.application_theme_create)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
@@ -113,6 +128,10 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         return true
     }
 
+    /**
+     * 处理选项菜单项点击事件。
+     * 根据菜单项 ID 执行对应操作。
+     */
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             MENU_CREATE -> { showNameDialog(); true }
@@ -123,6 +142,10 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /**
+     * 启动文件选择器以选择要导入的主题文件。
+     * 支持 zip 和 json 格式。
+     */
     private fun selectImport() {
         importTheme.launch {
             mode = HandleFileContract.FILE
@@ -131,6 +154,10 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /**
+     * 显示导入选项对话框。
+     * 允许用户选择导入时包含哪些组件（主题、顶栏、底栏、封面）以及对应的模式（日间/夜间）。
+     */
     private fun showImportOptionsDialog() {
         val saved = ApplicationThemeManager.getImportOptions(this)
         val container = LinearLayout(this).apply {
@@ -195,6 +222,12 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /**
+     * 从指定 URI 导入主题配置。
+     * 将文件复制到临时目录后调用 [ApplicationThemeManager.importFile] 解析。
+     *
+     * @param uri 要导入的文件 URI
+     */
     private fun importTheme(uri: Uri) {
         val options = ApplicationThemeManager.getImportOptions(this)
         lifecycleScope.launch {
@@ -220,6 +253,10 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /**
+     * 导出当前应用的主题配置。
+     * 将当前配置打包后通过系统分享/保存对话框导出。
+     */
     private fun exportCurrent() {
         lifecycleScope.launch {
             runCatching {
@@ -242,6 +279,10 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /**
+     * 刷新主题列表。
+     * 从 [ApplicationThemeManager] 加载所有配置并更新适配器。
+     */
     private fun refresh() {
         lifecycleScope.launch {
             runCatching {
@@ -267,6 +308,12 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             }
     }
 
+    /**
+     * 显示名称输入对话框。
+     * 用于创建新主题或重命名现有主题。
+     *
+     * @param config 要重命名的配置，为 null 时表示创建新主题
+     */
     private fun showNameDialog(config: ApplicationThemeManager.Config? = null) {
         val input = EditText(this).apply {
             hint = getString(R.string.application_theme_name)
@@ -296,6 +343,12 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /**
+     * 应用指定的主题配置。
+     * 应用成功后显示提示并重建 Activity 以刷新界面。
+     *
+     * @param config 要应用的主题配置
+     */
     private fun apply(config: ApplicationThemeManager.Config) {
         runCatching { ApplicationThemeManager.apply(this, config) }
             .onSuccess {
@@ -305,6 +358,12 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             .onFailure { toastOnUi(it.localizedMessage ?: getString(R.string.error)) }
     }
 
+    /**
+     * 显示主题操作选择器。
+     * 提供编辑、更新当前、重命名、导出、删除等操作选项。
+     *
+     * @param config 要操作的主题配置
+     */
     private fun showActions(config: ApplicationThemeManager.Config) {
         val items = listOf(
             getString(R.string.edit),
@@ -330,6 +389,12 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /**
+     * 导出指定的主题配置。
+     * 将配置打包后通过系统分享/保存对话框导出。
+     *
+     * @param config 要导出的主题配置
+     */
     private fun exportConfig(config: ApplicationThemeManager.Config) {
         lifecycleScope.launch {
             runCatching {
@@ -352,13 +417,22 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /**
+     * 打开主题编辑界面。
+     *
+     * @param config 要编辑的主题配置
+     */
     private fun openEditor(config: ApplicationThemeManager.Config) {
         startActivity<ApplicationThemeEditActivity> {
             putExtra(ApplicationThemeEditActivity.EXTRA_ID, config.id)
         }
     }
 
-    /** 将主题配置的 JSON 复制到剪贴板 */
+    /**
+     * 将主题配置的 JSON 复制到剪贴板。
+     *
+     * @param config 要复制的主题配置
+     */
     private fun copyThemeJson(config: ApplicationThemeManager.Config) {
         runCatching {
             val json = GSON.toJson(config)
@@ -371,6 +445,12 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /**
+     * 显示删除确认对话框。
+     * 用户确认后删除指定的主题配置。
+     *
+     * @param config 要删除的主题配置
+     */
     private fun confirmDelete(config: ApplicationThemeManager.Config) {
         alert(R.string.delete, R.string.sure_del) {
             okButton {
@@ -384,10 +464,17 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
     private inner class Adapter(context: Context) :
         RecyclerAdapter<ApplicationThemeListItem, ItemThemeConfigBinding>(context) {
 
+        /**
+         * 创建列表项的视图绑定。
+         */
         override fun getViewBinding(parent: ViewGroup): ItemThemeConfigBinding {
             return ItemThemeConfigBinding.inflate(inflater, parent, false)
         }
 
+        /**
+         * 绑定数据到列表项视图。
+         * 设置名称、摘要、预览效果和各按钮状态。
+         */
         override fun convert(
             holder: ItemViewHolder,
             binding: ItemThemeConfigBinding,
@@ -441,6 +528,10 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             previewBar2.background = rounded(primary, 2f, 51)
         }
 
+        /**
+         * 注册列表项的点击监听器。
+         * 包括应用、更多操作、编辑、复制和根视图点击。
+         */
         override fun registerListener(holder: ItemViewHolder, binding: ItemThemeConfigBinding) {
             binding.tvApply.setOnClickListener {
                 getItem(holder.layoutPosition)?.config?.let(::apply)
@@ -459,6 +550,13 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             }
         }
 
+        /**
+         * 创建圆角矩形 Drawable。
+         *
+         * @param color   填充颜色
+         * @param radius  圆角半径（px）
+         * @param opacity 透明度（0-255）
+         */
         private fun rounded(color: Int, radius: Float, opacity: Int = 255) = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
@@ -467,10 +565,21 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
     }
 
+    /**
+     * 解析主题颜色字符串。
+     * 解析失败时返回备用颜色。
+     *
+     * @param value    颜色字符串（如 "#RRGGBB"）
+     * @param fallback 备用颜色资源 ID
+     * @return 解析后的颜色值
+     */
     private fun parseThemeColor(value: String?, fallback: Int): Int {
         return runCatching { Color.parseColor(value) }
             .getOrDefault(ContextCompat.getColor(this, fallback))
     }
 
+    /**
+     * dp 转 px 的扩展属性。
+     */
     private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
 }

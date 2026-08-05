@@ -31,6 +31,10 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
     override val binding by viewBinding(ActivityApplicationThemeEditBinding::inflate)
     private var config: ApplicationThemeManager.Config? = null
 
+    /**
+     * Activity 创建时的初始化。
+     * 加载指定 ID 的主题配置，设置标题、绑定操作按钮并渲染界面。
+     */
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         val id = intent.getStringExtra(EXTRA_ID).orEmpty()
         config = runCatching { ApplicationThemeManager.find(id) }.getOrElse {
@@ -51,6 +55,10 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         render()
     }
 
+    /**
+     * 设置底部保存按钮的样式。
+     * 使用圆角矩形背景并设置强调色边框和文字颜色。
+     */
     private fun styleBottomButtons() = binding.run {
         val accent = accentColor
         val saveBg = GradientDrawable().apply {
@@ -63,6 +71,10 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         btnSave.setTextColor(accent)
     }
 
+    /**
+     * 绑定各组件行和底部按钮的点击事件。
+     * 每行点击后弹出对应组件的选择器对话框。
+     */
     private fun bindActions() = binding.run {
         rowDayTheme.setOnClickListener { selectTheme(false) }
         rowNightTheme.setOnClickListener { selectTheme(true) }
@@ -76,6 +88,11 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         btnDelete.setOnClickListener { confirmDelete() }
     }
 
+    /**
+     * 渲染界面，将当前配置的各组件名称显示到对应的行。
+     *
+     * @param updateName 是否更新名称输入框，默认为 true
+     */
     private fun render(updateName: Boolean = true) {
         val item = config ?: return
         if (updateName) binding.etName.setText(item.name)
@@ -90,6 +107,14 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         setRow(binding.rowNightCover, R.string.application_theme_component_cover, covers.getGroupName(item.nightCoverGroupId))
     }
 
+    /**
+     * 设置组件行的显示文本。
+     * 格式为「组件名: 值」，未设置时显示「不设置」。
+     *
+     * @param view     要设置文本的 TextView
+     * @param titleRes 组件名称的字符串资源 ID
+     * @param value    当前选中的值，为 null 表示未设置
+     */
     private fun setRow(view: TextView, titleRes: Int, value: String?) {
         view.text = getString(
             R.string.application_theme_component_value,
@@ -98,6 +123,12 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         )
     }
 
+    /**
+     * 显示主题选择器对话框。
+     * 从已有主题配置中挑选，可设为「不设置」。
+     *
+     * @param isNight 是否选择夜间主题
+     */
     private fun selectTheme(isNight: Boolean) {
         val options = ThemeConfig.configList.filter { it.isNightTheme == isNight }
         val labels = listOf(getString(R.string.application_theme_not_set)) + options.map { it.themeName }
@@ -109,6 +140,12 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         }
     }
 
+    /**
+     * 显示顶栏配置选择器对话框。
+     * 从已有顶栏配置中挑选，可设为「不设置」。
+     *
+     * @param isNight 是否选择夜间顶栏
+     */
     private fun selectTopBar(isNight: Boolean) {
         val options = TopBarConfig.loadEntries(this, isNight)
         val labels = listOf(getString(R.string.application_theme_not_set)) + options.map { it.config.name }
@@ -120,6 +157,12 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         }
     }
 
+    /**
+     * 显示底栏配置选择器对话框。
+     * 从已有底栏配置中挑选，可设为「不设置」。
+     *
+     * @param isNight 是否选择夜间底栏
+     */
     private fun selectBottomBar(isNight: Boolean) {
         val options = NavigationBarConfig.loadConfigs(this).filter { it.isNight == isNight }
         val labels = listOf(getString(R.string.application_theme_not_set)) + options.map { it.name }
@@ -131,6 +174,12 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         }
     }
 
+    /**
+     * 显示封面图集选择器对话框。
+     * 从已有封面图集中挑选，可设为「不设置」。
+     *
+     * @param isNight 是否选择夜间封面图集
+     */
     private fun selectCover(isNight: Boolean) {
         val options = CoverGalleryRepository().allGroupsWithImages().map { it.group }
         val labels = listOf(getString(R.string.application_theme_not_set)) + options.map { it.name }
@@ -142,6 +191,10 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         }
     }
 
+    /**
+     * 保存当前编辑的主题配置。
+     * 校验名称非空后替换原有配置并关闭页面。
+     */
     private fun save() {
         val item = config ?: return
         val name = binding.etName.text.toString().trim()
@@ -159,6 +212,10 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         }
     }
 
+    /**
+     * 显示删除确认对话框。
+     * 用户确认后删除当前配置并关闭页面。
+     */
     private fun confirmDelete() {
         alert(R.string.delete, R.string.sure_del) {
             okButton {
@@ -169,11 +226,25 @@ class ApplicationThemeEditActivity : BaseActivity<ActivityApplicationThemeEditBi
         }
     }
 
+    /**
+     * 根据目录名获取顶栏配置的显示名称。
+     *
+     * @param isNight 是否为夜间模式
+     * @param dirName 顶栏配置目录名
+     * @return 顶栏配置名称，未找到时返回 null
+     */
     private fun topBarName(isNight: Boolean, dirName: String): String? {
         if (dirName.isBlank()) return null
         return TopBarConfig.loadEntries(this, isNight).firstOrNull { it.dirName == dirName }?.config?.name
     }
 
+    /**
+     * 根据 ID 获取底栏配置的显示名称。
+     *
+     * @param isNight 是否为夜间模式
+     * @param id      底栏配置 ID
+     * @return 底栏配置名称，未找到时返回 null
+     */
     private fun bottomBarName(isNight: Boolean, id: String?): String? {
         return NavigationBarConfig.loadConfigs(this).firstOrNull { it.isNight == isNight && it.id == id }?.name
     }
