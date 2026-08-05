@@ -679,6 +679,7 @@ object DatabaseMigrations {
     // =======================================================================
     // 新增迁移：101 → 102
     // 用于兼容别人已发布的 101 版本，创建缺失的表和列
+    // 使用可靠的列存在性检查，确保不会静默失败
     // =======================================================================
     private val migration_101_102 = object : Migration(101, 102) {
         override fun migrate(db: SupportSQLiteDatabase) {
@@ -737,18 +738,15 @@ object DatabaseMigrations {
             )
 
             // 4. 在 book_sources 表中添加 homepageModules 列（如果不存在）
-            var hasColumn = false
-            try {
-                db.query("SELECT name FROM pragma_table_info('book_sources') WHERE name='homepageModules'").use { cursor ->
-                    hasColumn = cursor.moveToFirst()
-                }
-            } catch (_: Exception) { /* ignore */ }
-            if (!hasColumn) {
-                try {
-                    db.execSQL("ALTER TABLE book_sources ADD COLUMN homepageModules TEXT DEFAULT ''")
-                } catch (e: Exception) {
-                    android.util.Log.e("DatabaseMigrations", "101→102: 添加 homepageModules 列失败", e)
-                }
+            // 可靠的列存在性检查：先查询所有列名再判断
+            val cursor = db.query("SELECT name FROM pragma_table_info('book_sources')")
+            val columnNames = mutableListOf<String>()
+            while (cursor.moveToNext()) {
+                columnNames.add(cursor.getString(0))
+            }
+            cursor.close()
+            if (!columnNames.contains("homepageModules")) {
+                db.execSQL("ALTER TABLE book_sources ADD COLUMN homepageModules TEXT DEFAULT ''")
             }
         }
     }
