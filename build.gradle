@@ -4,6 +4,8 @@ buildscript {
     ext {
         compile_sdk_version = 36
     }
+
+
 }
 
 plugins {
@@ -21,7 +23,8 @@ plugins {
     alias libs.plugins.ksp apply false
     alias libs.plugins.google.services apply false
     alias libs.plugins.room apply false
-    id 'com.google.dagger.hilt.android' version '2.57.1' apply false
+    // alias libs.plugins.hilt apply false
+    id 'com.google.dagger.hilt.android' version '2.58' apply false
 
     alias libs.plugins.download apply false
 }
