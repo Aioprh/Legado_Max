@@ -102,6 +102,7 @@ import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.theme.pageTopBarColors
 import io.legado.app.ui.theme.pageTopBarBackground
 import io.legado.app.ui.about.AppLogDialog
+import io.legado.app.ui.book.cache.CacheActivity
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.widget.components.BookBottomSheet
 import io.legado.app.ui.widget.components.card.GlassCard
@@ -277,6 +278,14 @@ fun HomepageScreen(
                                     }
                                 )
                             }
+                            // 缓存管理
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.cache_management)) },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    context.startActivity<CacheActivity>()
+                                }
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.log)) },
                                 onClick = {
