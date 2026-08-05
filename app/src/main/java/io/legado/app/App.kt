@@ -62,9 +62,11 @@ import org.chromium.base.ThreadUtils
 import splitties.init.appCtx
 import splitties.systemservices.notificationManager
 import java.net.URL
+import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import java.util.logging.Level
 
+@HiltAndroidApp
 class App : Application() {
 
     private lateinit var oldConfig: Configuration
