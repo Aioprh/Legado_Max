@@ -9,6 +9,8 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+// FIX: 新增流式解析导入
+import com.google.gson.stream.JsonReader
 import io.legado.app.BuildConfig
 import io.legado.app.R
 import io.legado.app.constant.AppLog
@@ -88,23 +90,25 @@ import kotlinx.coroutines.withContext
 import splitties.init.appCtx
 import java.io.File
 import java.io.FileInputStream
+// FIX: 新增 FileReader 导入
+import java.io.FileReader
 
 /**
  * 恢复管理类
- * 
+ *
  * 负责从备份文件恢复应用数据，包括：
  * - 解压备份ZIP文件
  * - 恢复数据库数据（书籍、书签、书源等）
  * - 恢复SharedPreferences配置
  * - 恢复自定义配置文件
- * 
+ *
  * 恢复流程：
  * 1. 解压ZIP文件到临时目录
  * 2. 读取JSON文件并导入数据库
  * 3. 恢复SharedPreferences配置
  * 4. 应用主题和阅读配置
  * 5. 清理临时文件
- * 
+ *
  * 特殊处理：
  * - 书籍数据：支持忽略本地书籍，更新已存在书籍
  * - 阅读记录：恢复前清空本地记录，再导入备份记录
@@ -143,7 +147,7 @@ object Restore {
     /**
      * 从URI恢复备份
      * 支持SAF（Storage Access Framework）和普通文件路径
-     * 
+     *
      * @param context Android Context
      * @param uri 备份文件URI
      */
@@ -180,7 +184,7 @@ object Restore {
     /**
      * 带锁的恢复方法
      * 使用互斥锁确保同一时间只有一个恢复操作在执行
-     * 
+     *
      * @param path 备份文件解压后的目录路径
      */
     suspend fun restoreLocked(
@@ -195,7 +199,7 @@ object Restore {
     /**
      * 选择性恢复方法
      * 只恢复用户选中的文件
-     * 
+     *
      * @param context Android Context
      * @param path 已解压的备份目录路径
      * @param selectedFiles 选中的文件名列表
@@ -221,7 +225,7 @@ object Restore {
 
     /**
      * 核心选择性恢复逻辑
-     * 
+     *
      * @param path 备份文件解压后的目录路径
      * @param selectedFiles 选中的文件名列表
      */
@@ -628,13 +632,13 @@ object Restore {
 
     /**
      * 核心恢复逻辑
-     * 
+     *
      * 执行步骤：
      * 1. 恢复数据库数据（书籍、书签、书源等）
      * 2. 恢复自定义配置文件（主题、阅读样式等）
      * 3. 恢复SharedPreferences配置
      * 4. 应用配置变更
-     * 
+     *
      * @param path 备份文件解压后的目录路径
      */
     private suspend fun restore(
@@ -1014,7 +1018,7 @@ object Restore {
 
     /**
      * 从JSON文件读取列表数据
-     * 
+     *
      * @param T 数据类型
      * @param path 备份目录路径
      * @param fileName JSON文件名
@@ -1393,7 +1397,7 @@ object Restore {
 
     /**
      * 恢复书籍缓存
-     * 
+     *
      * 流程：
      * 1. 恢复章节目录（如果有）
      * 2. 读取缓存索引文件
@@ -1401,7 +1405,7 @@ object Restore {
      * 4. 获取当前书籍的章节列表
      * 5. 根据章节标题匹配，重命名章节文件
      * 6. 复制缓存文件到对应位置
-     * 
+     *
      * 匹配策略：
      * 1. 优先按章节序号精确匹配
      * 2. 其次按章节标题匹配
@@ -1469,11 +1473,8 @@ object Restore {
         
         LogUtils.d(TAG, "找到书籍缓存索引文件: ${indexFile.absolutePath}, 大小: ${indexFile.length()}")
         
-        val cacheIndexList = runCatching {
-            val json = indexFile.readText()
-            LogUtils.d(TAG, "索引文件内容长度: ${json.length}")
-            parseBookCacheIndexList(json)
-        }.getOrNull() ?: run {
+        // FIX: 使用流式解析，不再读取整个文件内容到内存
+        val cacheIndexList = parseBookCacheIndexList(indexFile) ?: run {
             LogUtils.d(TAG, "解析书籍缓存索引失败")
             AppLog.put("书籍缓存索引文件解析失败")
             return
@@ -1582,7 +1583,7 @@ object Restore {
     /**
      * 恢复章节目录
      * 从 bookChapterCache.json 恢复章节目录数据
-     * 
+     *
      * @param path 备份文件解压后的目录路径
      */
     private fun restoreBookCacheBooks(path: String, cacheIndexList: List<BookCacheIndex>) {
@@ -1729,7 +1730,7 @@ object Restore {
                 val cacheIndexFile = File(path, bookCacheIndexFileName)
                 if (cacheIndexFile.exists()) {
                     val cacheIndexList = runCatching {
-                        parseBookCacheIndexList(cacheIndexFile.readText())
+                        parseBookCacheIndexList(cacheIndexFile)
                     }.getOrNull()
                     
                     val cacheIndex = cacheIndexList?.find { it.bookUrl == bookUrl }
@@ -1764,7 +1765,7 @@ object Restore {
     
     /**
      * 查找匹配的书籍
-     * 
+     *
      * @param cacheIndex 缓存索引信息
      * @param allBooks 所有书籍列表
      * @return 匹配的书籍，未找到返回null
@@ -1789,113 +1790,91 @@ object Restore {
         return null
     }
 
-    private fun parseBookCacheIndexList(json: String): List<BookCacheIndex>? {
+    // FIX: 改为接收 File 参数，使用流式解析
+    private fun parseBookCacheIndexList(file: File): List<BookCacheIndex>? {
         return runCatching {
-            val root = JsonParser.parseString(json)
-            if (!root.isJsonArray) {
-                return@runCatching null
-            }
-            root.asJsonArray.mapNotNull { element ->
-                val obj = element.asJsonObjectOrNull() ?: return@mapNotNull null
-                val bookUrl = obj.stringOrBlank("bookUrl")
-                val bookName = obj.stringOrBlank("bookName")
-                val folderName = obj.stringOrBlank("folderName")
-                if (folderName.isBlank() || (bookUrl.isBlank() && bookName.isBlank())) {
-                    return@mapNotNull null
-                }
-                BookCacheIndex(
-                    bookUrl = bookUrl,
-                    bookName = bookName,
-                    author = obj.stringOrBlank("author"),
-                    folderName = folderName,
-                    chapters = obj.arrayOrEmpty("chapters").mapNotNull { chapterElement ->
-                        val chapter = chapterElement.asJsonObjectOrNull() ?: return@mapNotNull null
-                        val fileName = chapter.stringOrBlank("fileName")
-                        if (fileName.isBlank()) {
-                            return@mapNotNull null
+            val result = mutableListOf<BookCacheIndex>()
+            JsonReader(FileReader(file)).use { reader ->
+                reader.beginArray()
+                while (reader.hasNext()) {
+                    reader.beginObject()
+                    var bookUrl = ""
+                    var bookName = ""
+                    var author = ""
+                    var folderName = ""
+                    val chapters = mutableListOf<ChapterCacheInfo>()
+
+                    while (reader.hasNext()) {
+                        when (reader.nextName()) {
+                            "bookUrl" -> bookUrl = reader.nextString()
+                            "bookName" -> bookName = reader.nextString()
+                            "author" -> author = reader.nextString()
+                            "folderName" -> folderName = reader.nextString()
+                            "chapters" -> {
+                                reader.beginArray()
+                                while (reader.hasNext()) {
+                                    reader.beginObject()
+                                    var index = 0
+                                    var title = ""
+                                    var titleMD5 = ""
+                                    var fileName = ""
+                                    while (reader.hasNext()) {
+                                        when (reader.nextName()) {
+                                            "index" -> index = reader.nextInt()
+                                            "title" -> title = reader.nextString()
+                                            "titleMD5" -> titleMD5 = reader.nextString()
+                                            "fileName" -> fileName = reader.nextString()
+                                        }
+                                    }
+                                    reader.endObject()
+                                    // 仅保留有效的章节记录
+                                    if (fileName.isNotBlank()) {
+                                        chapters.add(ChapterCacheInfo(index, title, titleMD5, fileName))
+                                    }
+                                }
+                                reader.endArray()
+                            }
                         }
-                        ChapterCacheInfo(
-                            index = chapter.intOrZero("index"),
-                            title = chapter.stringOrBlank("title"),
-                            titleMD5 = chapter.stringOrBlank("titleMD5"),
-                            fileName = fileName
-                        )
                     }
-                )
-            }.sanitizeBookCacheIndexes()
+                    reader.endObject()
+
+                    // 仅保留有效的书籍索引（folderName 必有，bookUrl/bookName 至少其一）
+                    if (folderName.isNotBlank() && (bookUrl.isNotBlank() || bookName.isNotBlank())) {
+                        result.add(BookCacheIndex(bookUrl, bookName, author, folderName, chapters))
+                    }
+                }
+                reader.endArray()
+            }
+            // 返回结果，无需二次 sanitize
+            result
         }.onFailure {
-            AppLog.put("$bookCacheIndexFileName\n读取解析出错\n${it.localizedMessage}", it)
+            AppLog.put("$bookCacheIndexFileName\n流式解析出错\n${it.localizedMessage}", it)
         }.getOrNull()
     }
 
-    private fun JsonElement.asJsonObjectOrNull(): JsonObject? {
-        return takeIf { it.isJsonObject }?.asJsonObject
-    }
+    // 辅助数据类（原文件已有，为保证完整保留）
+    private data class BookCacheIndex(
+        val bookUrl: String,
+        val bookName: String,
+        val author: String,
+        val folderName: String,
+        val chapters: List<ChapterCacheInfo>
+    )
 
-    private fun JsonObject.stringOrBlank(name: String): String {
-        val element = get(name) ?: return ""
-        return runCatching {
-            if (element.isJsonNull) "" else element.asString ?: ""
-        }.getOrDefault("")
-    }
+    private data class ChapterCacheInfo(
+        val index: Int,
+        val title: String,
+        val titleMD5: String,
+        val fileName: String
+    )
 
-    private fun JsonObject.intOrZero(name: String): Int {
-        val element = get(name) ?: return 0
-        return runCatching {
-            if (element.isJsonNull) 0 else element.asInt
-        }.getOrDefault(0)
-    }
-
-    private fun JsonObject.arrayOrEmpty(name: String): List<JsonElement> {
-        val element = get(name) ?: return emptyList()
-        return if (element.isJsonArray) element.asJsonArray.toList() else emptyList()
-    }
-
-    private fun List<BookCacheIndex>.sanitizeBookCacheIndexes(): List<BookCacheIndex> {
-        LogUtils.d(TAG, "开始清理书籍缓存索引，原始数量: ${this.size}")
-        
-        return mapNotNull { cacheIndex ->
-            @Suppress("USELESS_CAST")
-            val bookUrl = (cacheIndex.bookUrl as String?) ?: ""
-            @Suppress("USELESS_CAST")
-            val bookName = (cacheIndex.bookName as String?) ?: ""
-            @Suppress("USELESS_CAST")
-            val folderName = (cacheIndex.folderName as String?) ?: ""
-            
-            LogUtils.d(TAG, "处理索引: bookUrl='$bookUrl', bookName='$bookName', folderName='$folderName'")
-            
-            if (folderName.isBlank() || (bookUrl.isBlank() && bookName.isBlank())) {
-                LogUtils.d(TAG, "跳过无效书籍缓存索引: bookUrl=$bookUrl, bookName=$bookName, folderName=$folderName")
-                return@mapNotNull null
-            }
-            @Suppress("USELESS_CAST")
-            val chapters = (cacheIndex.chapters as List<ChapterCacheInfo>?)
-                .orEmpty()
-                .mapNotNull { chapterInfo ->
-                    @Suppress("USELESS_CAST")
-                    val fileName = (chapterInfo.fileName as String?) ?: ""
-                    if (fileName.isBlank()) {
-                        return@mapNotNull null
-                    }
-                    @Suppress("USELESS_CAST")
-                    val title = (chapterInfo.title as String?) ?: ""
-                    @Suppress("USELESS_CAST")
-                    val titleMD5 = (chapterInfo.titleMD5 as String?) ?: ""
-                    chapterInfo.copy(
-                        title = title,
-                        titleMD5 = titleMD5,
-                        fileName = fileName
-                    )
-                }
-            @Suppress("USELESS_CAST")
-            cacheIndex.copy(
-                bookUrl = bookUrl,
-                bookName = bookName,
-                author = (cacheIndex.author as String?) ?: "",
-                folderName = folderName,
-                chapters = chapters
-            )
-        }
+    // 原有 sanitize 方法（已不再使用，但为了兼容可能保留，但可以删除）
+    // 为避免编译错误，保留空实现或直接删除。由于代码中不再调用，可安全删除。
+    // 但为完整，保留并标记弃用。
+    @Deprecated("Replaced by stream parsing", ReplaceWith("parseBookCacheIndexList(File)"))
+    private fun parseBookCacheIndexList(json: String): List<BookCacheIndex>? {
+        // 空实现，防止意外调用
+        return null
     }
 
     private fun Book.sanitizeForCacheRestore(): Book? {
