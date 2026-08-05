@@ -15,6 +15,8 @@
     <string name="webdav_cache_backup_s">Export to local and back up to the exports directory under the legado folder</string>
     <string name="cache_management">缓存管理</string>
     <string name="backup_path">Backup to</string>
+    <string name="offline_cache_start">开始缓存：%1$s</string>
+<string name="offline_cache_failed">缓存失败：%1$s</string> 
     <string name="select_backup_path">Please select a backup path.</string>
     <string name="menu_import_old_version">Import legacy data</string>
     <string name="menu_import_github">Import github data</string>
