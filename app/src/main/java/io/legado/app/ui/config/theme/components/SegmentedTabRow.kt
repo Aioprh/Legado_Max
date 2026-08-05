@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -48,6 +49,12 @@ fun <T> SegmentedTabRow(
                         index = index,
                         count = tabs.size,
                         baseShape = RoundedCornerShape(12.dp)
+                    ),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        activeContentColor = MaterialTheme.colorScheme.primary,
+                        inactiveContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     icon = if (iconContent != null) {
                         { iconContent(tab) }

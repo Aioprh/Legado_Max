@@ -37,7 +37,8 @@ import io.legado.app.ui.config.theme.components.MultiSelectBottomBar
 import io.legado.app.ui.config.theme.components.ThemeCard
 import io.legado.app.ui.config.theme.components.ThemeEditDialog
 import io.legado.app.ui.config.theme.components.ThemeTabRow
-import io.legado.app.ui.theme.pageCardContainerColor
+import io.legado.app.ui.theme.pageTopBarBackground
+import io.legado.app.ui.theme.pageTopBarColors
 
 /**
  * 主题管理主屏幕（Compose）。
@@ -63,7 +64,7 @@ fun ThemeManageScreen(
     onBlurClick: (currentBlur: Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val topBarColor = pageCardContainerColor()
+    val topBarColors = pageTopBarColors()
 
     val eventFlow = viewModel.events
     androidx.compose.runtime.LaunchedEffect(Unit) {
@@ -86,12 +87,13 @@ fun ThemeManageScreen(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                modifier = Modifier.pageTopBarBackground(topBarColors),
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarColor,
-                    scrolledContainerColor = topBarColor,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                    navigationIconContentColor = topBarColors.contentColor,
+                    titleContentColor = topBarColors.contentColor,
+                    actionIconContentColor = topBarColors.contentColor
                 ),
                 title = {
                     Text(
