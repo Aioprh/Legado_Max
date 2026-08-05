@@ -8,13 +8,12 @@
     <string name="tip_perm_request_storage">Legado needs storage access to find and read books. please go "App Settings" to allow "Storage permission".</string>
 
     <!--Other-->
-    <string name="offline_cache_start">开始缓存：%1$s</string>
-<string name="offline_cache_failed">缓存失败：%1$s</string>
     <string name="menu_backup">Home</string>
     <string name="menu_restore">Restore</string>
     <string name="menu_import_old">Import Legado data</string>
     <string name="webdav_cache_backup">Offline cache book backup</string>
     <string name="webdav_cache_backup_s">Export to local and back up to the exports directory under the legado folder</string>
+    <string name="cache_management">缓存管理</string>
     <string name="backup_path">Backup to</string>
     <string name="select_backup_path">Please select a backup path.</string>
     <string name="menu_import_old_version">Import legacy data</string>
