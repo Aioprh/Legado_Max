@@ -251,7 +251,9 @@ object Restore {
         val details = fileToListT<ReadRecordDetail>(path, "readRecordDetail.json").orEmpty()
         val sessions = fileToListT<ReadRecordSession>(path, "readRecordSession.json").orEmpty()
         if (records.isNotEmpty() || details.isNotEmpty() || sessions.isNotEmpty()) {
-            val bookAuthorMap = appDb.bookDao.all.mapNotNull { it.author.trim().ifBlank { null }?.let { it.name to it } }.toMap()
+            val bookAuthorMap = appDb.bookDao.all
+                .filter { it.author.isNotBlank() }
+                .associate { it.name to it.author.trim() }
             appDb.withTransaction {
                 appDb.readRecordDao.clear()
                 appDb.readRecordDao.clearDetails()
@@ -563,7 +565,9 @@ object Restore {
             val details = if ("readRecordDetail.json" in selectedSet) fileToListT<ReadRecordDetail>(path, "readRecordDetail.json").orEmpty() else emptyList()
             val sessions = if ("readRecordSession.json" in selectedSet) fileToListT<ReadRecordSession>(path, "readRecordSession.json").orEmpty() else emptyList()
             if (records.isNotEmpty() || details.isNotEmpty() || sessions.isNotEmpty()) {
-                val bookAuthorMap = appDb.bookDao.all.mapNotNull { it.author.trim().ifBlank { null }?.let { it.name to it } }.toMap()
+                val bookAuthorMap = appDb.bookDao.all
+                    .filter { it.author.isNotBlank() }
+                    .associate { it.name to it.author.trim() }
                 appDb.withTransaction {
                     appDb.readRecordDao.clear()
                     appDb.readRecordDao.clearDetails()
@@ -1109,17 +1113,7 @@ object Restore {
         var restoredChapterCount = 0
 
         byBook.forEach { (bookUrl, chapterList) ->
-            var book = appDb.bookDao.getBook(bookUrl)
-            if (book == null) {
-                val firstChapter = chapterList.firstOrNull()
-                if (firstChapter != null) {
-                    val matched = appDb.bookDao.all.find {
-                        it.name == firstChapter.bookName && it.author?.trim() == firstChapter.bookAuthor?.trim()
-                    }
-                    if (matched != null) book = matched
-                }
-            }
-
+            val book = appDb.bookDao.getBook(bookUrl)
             if (book != null) {
                 appDb.bookChapterDao.delByBook(book.bookUrl)
                 val updated = chapterList.map { it.copy(bookUrl = book.bookUrl) }
@@ -1128,7 +1122,7 @@ object Restore {
                 restoredChapterCount += updated.size
                 LogUtils.d(TAG, "恢复章节目录: ${book.name}, ${updated.size} 章")
             } else {
-                LogUtils.d(TAG, "未找到匹配书籍，跳过章节目录: $bookUrl")
+                LogUtils.d(TAG, "未找到匹配书籍（bookUrl=$bookUrl），跳过章节目录恢复")
             }
         }
 
@@ -1222,7 +1216,7 @@ object Restore {
         val bookName: String,
         val author: String,
         val folderName: String,
-        val chapters: List<ChapterCacheInfoData>  // 必须保留
+        val chapters: List<ChapterCacheInfoData>
     )
 
     private data class ChapterCacheInfoData(
