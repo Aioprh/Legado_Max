@@ -21,10 +21,12 @@ object DatabaseMigrations {
             migration_35_36, migration_36_37, migration_37_38, migration_38_39,
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
             migration_95_96, migration_96_97, migration_97_98, migration_98_99,
-            migration_99_100
+            migration_99_100,
+            migration_100_101  // ← 新增：从 100 升级到 101
         )
     }
 
+    // -------- 原有迁移（10~42）保持不变 --------
     private val migration_10_11 = object : Migration(10, 11) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("DROP TABLE txtTocRules")
@@ -327,9 +329,10 @@ object DatabaseMigrations {
     }
 
 
+    // -------- AutoMigration 规范类（保持不变） --------
+
     @Suppress("ClassName")
     class Migration_54_55 : AutoMigrationSpec {
-
         override fun onPostMigrate(db: SupportSQLiteDatabase) {
             db.execSQL(
                 """
@@ -362,9 +365,7 @@ object DatabaseMigrations {
             """.trimIndent()
             )
         }
-
     }
-
 
     @Suppress("ClassName")
     @DeleteColumn(
@@ -480,6 +481,8 @@ object DatabaseMigrations {
         }
     }
 
+    // -------- 后续手动迁移（95 → 100）已存在，现新增 100 → 101 --------
+
     private val migration_95_96 = object : Migration(95, 96) {
         override fun migrate(db: SupportSQLiteDatabase) {
             val cursor = db.query("PRAGMA table_info(book_sources)")
@@ -534,10 +537,6 @@ object DatabaseMigrations {
         }
     }
 
-    // =======================================================================
-    // 96 → 97：readRecordSession 表新增 durChapterTitle 列
-    // 记录每次阅读会话结束时所在的章节名称，用于阅读记录详情页按会话显示章节
-    // =======================================================================
     private val migration_96_97 = object : Migration(96, 97) {
         override fun migrate(db: SupportSQLiteDatabase) {
             val cursor = db.query("PRAGMA table_info(readRecordSession)")
@@ -616,15 +615,8 @@ object DatabaseMigrations {
         }
     }
 
-    // =======================================================================
-    // 99 → 100：创建首页模块相关表 + book_sources 表新增 homepageModules 列
-    // homepage_modules 表用于存储首页模块配置
-    // homepage_custom_sets 表用于存储用户自定义集
-    // book_sources 表新增 homepageModules 列，用于存储书源关联的首页模块定义
-    // =======================================================================
     private val migration_99_100 = object : Migration(99, 100) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            // 创建首页模块表
             db.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `homepage_modules` (
@@ -647,7 +639,6 @@ object DatabaseMigrations {
                 )
                 """.trimIndent()
             )
-            // 创建首页自定义集表
             db.execSQL(
                 """
                 CREATE TABLE IF NOT EXISTS `homepage_custom_sets` (
@@ -657,26 +648,35 @@ object DatabaseMigrations {
                 )
                 """.trimIndent()
             )
-            // book_sources 表新增 homepageModules 列
-            // 使用 PRAGMA table_info 检查列是否已存在，避免在旧版本 SQLite 上因重复添加导致迁移失败
             var hasHomepageModules = false
             try {
                 db.query("SELECT name FROM pragma_table_info('book_sources') WHERE name='homepageModules'").use { cursor ->
                     hasHomepageModules = cursor.moveToFirst()
                 }
             } catch (_: Exception) {
-                // 如果 PRAGMA 查询失败（极老的 SQLite 版本），尝试直接 ALTER，
-                // 让 SQLite 自身的 "duplicate column name" 错误来判断
+                // ignore
             }
             if (!hasHomepageModules) {
                 try {
                     db.execSQL("ALTER TABLE book_sources ADD COLUMN homepageModules TEXT DEFAULT ''")
                 } catch (e: Exception) {
-                    // 列可能已存在（多进程并发迁移等极端场景），忽略错误继续
                     android.util.Log.e("DatabaseMigrations", "99→100: 添加 homepageModules 列失败", e)
                 }
             }
         }
     }
 
+    // =======================================================================
+    // 新增迁移：100 → 101
+    // 如果 100 和 101 的 schema 没有变化，此迁移可为空。
+    // 如果存在字段新增/删除/修改，请在此添加相应的 ALTER 语句。
+    // =======================================================================
+    private val migration_100_101 = object : Migration(100, 101) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // 如果您的实体在 100 和 101 之间没有结构变更，留空即可。
+            // 若有变更，请补充 SQL，例如：
+            // db.execSQL("ALTER TABLE books ADD COLUMN new_field TEXT DEFAULT ''")
+            // 注意：若添加非空列需设置默认值，否则迁移会失败。
+        }
+    }
 }
