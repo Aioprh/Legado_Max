@@ -17,10 +17,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.legado.app.R
 
+/**
+ * 多选模式底部操作栏。
+ *
+ * 在主题列表多选模式下显示，展示已选数量并提供置顶、导出、删除操作按钮。
+ *
+ * @param selectedCount 已选中的主题数量
+ * @param onToTop       点击置顶按钮的回调
+ * @param onExport      点击导出按钮的回调
+ * @param onDelete      点击删除按钮的回调
+ */
 @Composable
 fun MultiSelectBottomBar(
     selectedCount: Int,
@@ -70,5 +81,21 @@ fun MultiSelectBottomBar(
                 }
             }
         }
+    }
+}
+
+/**
+ * MultiSelectBottomBar 预览。
+ */
+@Preview(showBackground = true)
+@Composable
+private fun MultiSelectBottomBarPreview() {
+    MaterialTheme {
+        MultiSelectBottomBar(
+            selectedCount = 3,
+            onToTop = {},
+            onExport = {},
+            onDelete = {}
+        )
     }
 }
