@@ -11,6 +11,27 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.utils.ColorUtils
 
+/**
+ * Legado 自定义 Compose 主题。
+ *
+ * 根据当前主题配置（日间/夜间、主色、背景色等）构建 Material3 [ColorScheme]，
+ * 并通过 [MaterialTheme] 提供给子组件使用。
+ *
+ * ## 主题响应机制
+ * 主题切换后 Activity 会 `recreate()`，整个 Compose 树重建，
+ * 此时会重新从 [ThemeStore] 读取最新的颜色值构建 [ColorScheme]。
+ *
+ * ## 使用方式
+ * ```kotlin
+ * setLegadoContent {
+ *     LegadoTheme {
+ *         // 你的 Compose 内容
+ *     }
+ * }
+ * ```
+ *
+ * @param content 子组件内容，可在其中通过 MaterialTheme.colorScheme 获取主题色
+ */
 @Composable
 fun LegadoTheme(
     content: @Composable () -> Unit
