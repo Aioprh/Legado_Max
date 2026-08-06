@@ -1,4 +1,4 @@
-package io.legado.app.help.gsyVideo
+package io.legado.app.ui.video.player
 
 import android.annotation.SuppressLint
 import android.content.Context

@@ -43,7 +43,7 @@ import io.legado.app.help.TextViewTagHandler
 import io.legado.app.help.WebCacheManager
 import io.legado.app.help.book.removeType
 import io.legado.app.help.config.AppConfig
-import io.legado.app.help.gsyVideo.VideoPlayer
+import io.legado.app.ui.video.player.VideoPlayer
 import io.legado.app.help.webView.PooledWebView
 import io.legado.app.help.webView.Scope
 import io.legado.app.help.webView.WebJsExtensions
