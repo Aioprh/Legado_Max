@@ -81,6 +81,7 @@
     <string name="donate">捐赠</string>
     <string name="exit">退出</string>
     <string name="exit_no_save">尚未保存，是否继续编辑</string>
+    <string name="save_ing">正在保存，请稍候…</string>
     <string name="read_style">阅读样式设置</string>
     <string name="version">版本</string>
     <string name="local">本地</string>

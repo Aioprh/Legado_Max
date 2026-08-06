@@ -83,6 +83,7 @@
     <string name="donate">Donations</string>
     <string name="exit">Exit</string>
     <string name="exit_no_save">It has not been saved. Do you want to continue editing?</string>
+    <string name="save_ing">Saving, please wait…</string>
     <string name="read_style">Book styles</string>
     <string name="version">Version</string>
     <string name="local">Local</string>
