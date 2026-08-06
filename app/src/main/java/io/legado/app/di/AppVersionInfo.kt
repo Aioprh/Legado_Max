@@ -1,4 +1,4 @@
-package io.legado.app.help.di
+package io.legado.app.di
 
 /**
  * 应用版本信息（注入示例）
