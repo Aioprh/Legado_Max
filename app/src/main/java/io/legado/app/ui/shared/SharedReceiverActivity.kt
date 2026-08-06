@@ -1,4 +1,4 @@
-package io.legado.app.receiver
+package io.legado.app.ui.shared
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.main.MainActivity
 import io.legado.app.utils.startActivity
+import io.legado.app.receiver.MediaButtonReceiver
 import splitties.init.appCtx
 
 class SharedReceiverActivity : AppCompatActivity() {
