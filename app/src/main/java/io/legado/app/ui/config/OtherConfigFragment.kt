@@ -31,7 +31,7 @@ import io.legado.app.lib.prefs.fragment.PreferenceFragment
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.CheckSource
 import io.legado.app.model.ImageProvider
-import io.legado.app.receiver.SharedReceiverActivity
+import io.legado.app.ui.shared.SharedReceiverActivity
 import io.legado.app.service.WebService
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.upload.DirectLinkUploadActivity

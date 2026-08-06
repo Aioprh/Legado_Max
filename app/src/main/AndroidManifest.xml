@@ -468,7 +468,7 @@
             android:theme="@style/AppTheme.Transparent" />
         <!-- 文字处理 -->
         <activity
-            android:name=".receiver.SharedReceiverActivity"
+            android:name=".ui.shared.SharedReceiverActivity"
             android:exported="true"
             android:label="@string/receiving_shared_label"
             android:theme="@style/AppTheme.Transparent">

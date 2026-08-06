@@ -43,7 +43,7 @@ import io.legado.app.constant.NotificationId
 import io.legado.app.help.MediaHelp
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.glide.ImageLoader
-import io.legado.app.help.gsyVideo.FloatingPlayer
+import io.legado.app.ui.video.player.FloatingPlayer
 import io.legado.app.model.VideoPlay
 import io.legado.app.model.BookCover
 import io.legado.app.receiver.MediaButtonReceiver
