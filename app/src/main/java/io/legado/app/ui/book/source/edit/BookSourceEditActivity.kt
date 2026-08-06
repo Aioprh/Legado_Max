@@ -98,6 +98,10 @@ class BookSourceEditActivity :
     private var lastFocusedEditText: EditText? = null
     private var lastFocusedFieldKey: String = ""
     private var lastFocusedTabKey: String = ""
+
+    // 标记保存是否正在进行，防止保存未完成时退出导致数据丢失
+    @Volatile
+    private var isSaving = false
     
     // 二维码扫描结果回调：用于从二维码导入书源
     private val qrCodeResult = registerForActivityResult(QrCodeResult()) {
@@ -473,6 +477,11 @@ class BookSourceEditActivity :
      * 如果有未保存的修改，弹出确认对话框
      */
     override fun finish() {
+        if (isSaving) {
+            // 保存正在进行中，阻止退出，避免协程被取消导致数据丢失
+            toastOnUi(R.string.save_ing)
+            return
+        }
         val source = getSource()
         if (!source.equal(viewModel.bookSource ?: BookSource())) {
             alert(R.string.exit) {
@@ -483,6 +492,12 @@ class BookSourceEditActivity :
                 }
             }
         } else {
+            // 数据与 viewModel.bookSource 一致，说明保存已成功（execute 块已执行 bookSource = source）。
+            // 但 Coroutine 的 onSuccess 回调可能因竞态未触发，导致 setResult(RESULT_OK) 未调用。
+            // 此处补设 RESULT_OK，确保调用方（如 ReadBookActivity）能刷新书源缓存。
+            viewModel.bookSource?.let {
+                setResult(RESULT_OK, Intent().putExtra("origin", it.bookSourceUrl))
+            }
             super.finish()
         }
     }
@@ -658,9 +673,12 @@ class BookSourceEditActivity :
         source: BookSource,
         onSuccess: ((BookSource) -> Unit)? = null
     ) {
+        isSaving = true
         val oldUrl = viewModel.bookSource?.bookSourceUrl
         val urlChanged = !oldUrl.isNullOrBlank() && oldUrl != source.bookSourceUrl
-        viewModel.save(source) { savedSource ->
+        viewModel.save(source, {
+            isSaving = false
+        }) { savedSource ->
             if (urlChanged && oldUrl != null) {
                 lifecycleScope.launch {
                     val hasBooks = withContext(IO) { appDb.bookDao.hasBookByOrigin(oldUrl) }
