@@ -1,4 +1,4 @@
-package io.legado.app.help.di
+package io.legado.app.di
 
 import dagger.Module
 import dagger.Provides
