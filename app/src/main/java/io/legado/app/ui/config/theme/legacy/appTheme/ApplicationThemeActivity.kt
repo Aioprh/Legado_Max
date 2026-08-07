@@ -1,4 +1,4 @@
-package io.legado.app.ui.config.theme
+package io.legado.app.ui.config.theme.legacy.appTheme
 
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -38,6 +38,7 @@ import io.legado.app.utils.observeEvent
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.ui.config.theme.legacy.appTheme.ApplicationThemeEditActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

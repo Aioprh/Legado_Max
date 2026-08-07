@@ -1,4 +1,4 @@
-package io.legado.app.ui.config.theme
+package io.legado.app.ui.config.theme.legacy.appTheme
 
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle

@@ -1,4 +1,4 @@
-package io.legado.app.ui.config.theme
+package io.legado.app.ui.config.theme.legacy
 
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
