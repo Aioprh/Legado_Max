@@ -102,7 +102,13 @@ class BookSourceEditActivity :
     // 标记保存是否正在进行，防止保存未完成时退出导致数据丢失
     @Volatile
     private var isSaving = false
-    
+
+    // 进入编辑页时加载的书源引用。
+    // save() 成功后 viewModel.bookSource 会被替换为新对象（引用变化），
+    // 以此区分"本次会话确实保存过书源"与"未修改直接返回"，
+    // 避免后者误触发调用方（详情页/换源对话框/阅读页）的刷新逻辑。
+    private var initialSource: BookSource? = null
+
     // 二维码扫描结果回调：用于从二维码导入书源
     private val qrCodeResult = registerForActivityResult(QrCodeResult()) {
         it ?: return@registerForActivityResult
@@ -134,6 +140,7 @@ class BookSourceEditActivity :
         softKeyboardTool.attachToWindow(window)
         initView()
         viewModel.initData(intent) {
+            initialSource = viewModel.bookSource
             upSourceView(viewModel.bookSource)
             // 处理从源内容查询界面跳转来的定位请求
             val tabKey = intent.getStringExtra("tabKey")
@@ -494,9 +501,14 @@ class BookSourceEditActivity :
         } else {
             // 数据与 viewModel.bookSource 一致，说明保存已成功（execute 块已执行 bookSource = source）。
             // 但 Coroutine 的 onSuccess 回调可能因竞态未触发，导致 setResult(RESULT_OK) 未调用。
-            // 此处补设 RESULT_OK，确保调用方（如 ReadBookActivity）能刷新书源缓存。
-            viewModel.bookSource?.let {
-                setResult(RESULT_OK, Intent().putExtra("origin", it.bookSourceUrl))
+            // 此处仅当本次会话确实保存过书源（bookSource 引用已更新）时补设 RESULT_OK，
+            // 确保调用方（如 ReadBookActivity）能刷新书源缓存。
+            // 若用户未修改直接返回（引用未变化），保持默认 RESULT_CANCELED，
+            // 避免误触发详情页 refreshBook、换源对话框自动搜索等刷新逻辑。
+            if (viewModel.bookSource !== initialSource) {
+                viewModel.bookSource?.let {
+                    setResult(RESULT_OK, Intent().putExtra("origin", it.bookSourceUrl))
+                }
             }
             super.finish()
         }
@@ -679,6 +691,10 @@ class BookSourceEditActivity :
         viewModel.save(source, {
             isSaving = false
         }) { savedSource ->
+            // 修复竞态：Coroutine 的 onSuccess 先于 onFinally 执行，
+            // 若不在此先复位 isSaving，onSuccess 内触发的 finish() 会被
+            // isSaving 保护拦截，导致保存成功后 Activity 不退出。
+            isSaving = false
             if (urlChanged && oldUrl != null) {
                 lifecycleScope.launch {
                     val hasBooks = withContext(IO) { appDb.bookDao.hasBookByOrigin(oldUrl) }
