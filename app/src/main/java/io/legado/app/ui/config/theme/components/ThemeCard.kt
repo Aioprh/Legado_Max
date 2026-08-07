@@ -1,6 +1,7 @@
 package io.legado.app.ui.config.theme.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,12 +29,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +49,9 @@ import androidx.core.graphics.toColorInt
 import io.legado.app.R
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.ui.config.theme.ThemeItem
+import io.legado.app.utils.BitmapUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 主题卡片（Compose）。
@@ -108,6 +118,7 @@ fun ThemeCard(
                 primaryColor = Color(primaryColor),
                 accentColor = Color(accentColor),
                 backgroundColor = Color(backgroundColor),
+                backgroundImgPath = config.backgroundImgPath,
                 isCurrent = false // TODO: compare with current applied theme
             )
 
@@ -183,56 +194,97 @@ fun ThemeCard(
     }
 }
 
+/**
+ * 主题预览卡片：在背景色（+可选背景图片）之上叠加主色块、强调色条。
+ *
+ * 背景图片使用 [produceState] 在 IO 线程异步解码，解码失败时仅显示背景色。
+ */
 @Composable
 private fun ThemePreviewCard(
     primaryColor: Color,
     accentColor: Color,
     backgroundColor: Color,
+    backgroundImgPath: String? = null,
     isCurrent: Boolean
 ) {
+    // 异步解码背景图片缩略图
+    val backgroundImage: ImageBitmap? by produceState<ImageBitmap?>(initialValue = null, backgroundImgPath) {
+        value = withContext(Dispatchers.IO) {
+            if (backgroundImgPath.isNullOrBlank()) {
+                null
+            } else {
+                runCatching { BitmapUtils.decodeBitmap(backgroundImgPath, 128)?.asImageBitmap() }.getOrNull()
+            }
+        }
+    }
+
     Box(
         modifier = Modifier
             .size(width = 74.dp, height = 102.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(backgroundColor)
-            .padding(8.dp)
     ) {
-        // 主色块
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(primaryColor)
-        )
-
-        // 强调色条
-        Box(
-            modifier = Modifier
-                .padding(top = 36.dp)
-                .size(width = 56.dp, height = 8.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(accentColor)
-        )
-
-        // 次要色条
-        Box(
-            modifier = Modifier
-                .padding(top = 48.dp)
-                .size(width = 40.dp, height = 8.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(accentColor.copy(alpha = 0.5f))
-        )
-
-        // 当前标记
-        if (isCurrent) {
-            Icon(
-                Icons.Default.Check,
+        // 背景图片（铺满整个预览卡片）
+        backgroundImage?.let { bmp ->
+            Image(
+                bitmap = bmp,
                 contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurface
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(8.dp))
             )
+        }
+
+        // 半透明遮罩层，确保色块在背景图上仍然可读
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.15f))
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+        ) {
+            // 主色块
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(primaryColor)
+            )
+
+            // 强调色条
+            Box(
+                modifier = Modifier
+                    .padding(top = 36.dp)
+                    .size(width = 56.dp, height = 8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(accentColor)
+            )
+
+            // 次要色条
+            Box(
+                modifier = Modifier
+                    .padding(top = 48.dp)
+                    .size(width = 40.dp, height = 8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(accentColor.copy(alpha = 0.5f))
+            )
+
+            // 当前标记
+            if (isCurrent) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
         }
     }
 }
