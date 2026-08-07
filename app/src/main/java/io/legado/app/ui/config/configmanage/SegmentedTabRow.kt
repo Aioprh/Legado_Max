@@ -1,4 +1,4 @@
-package io.legado.app.ui.config.theme.manage.components
+package io.legado.app.ui.config.configmanage
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
