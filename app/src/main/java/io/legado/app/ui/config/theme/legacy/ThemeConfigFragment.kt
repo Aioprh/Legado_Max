@@ -1,4 +1,4 @@
-package io.legado.app.ui.config.theme
+package io.legado.app.ui.config.theme.legacy
 
 import android.annotation.SuppressLint
 import android.content.SharedPreferences
@@ -38,6 +38,8 @@ import io.legado.app.ui.config.ConfigTag
 import io.legado.app.ui.config.NavigationBarManageActivity
 import io.legado.app.ui.config.TopBarManageActivity
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.ui.config.theme.manage.ThemeManageActivity
+import io.legado.app.ui.config.theme.legacy.appTheme.ApplicationThemeActivity
 import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
 import io.legado.app.utils.ColorUtils

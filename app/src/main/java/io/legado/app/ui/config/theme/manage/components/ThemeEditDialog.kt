@@ -1,5 +1,6 @@
-package io.legado.app.ui.config.theme.components
+package io.legado.app.ui.config.theme.manage.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,19 +25,28 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import io.legado.app.R
 import io.legado.app.help.config.ThemeConfig
+import io.legado.app.utils.BitmapUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 主题编辑弹窗（Compose 版）。
@@ -123,10 +134,9 @@ fun ThemeEditDialog(
                 )
 
                 // 背景图片
-                OptionRow(
+                BackgroundImageRow(
                     title = stringResource(R.string.background_image),
-                    value = config.backgroundImgPath?.substringAfterLast('/')?.substringAfterLast('\\')?.ifBlank { config.backgroundImgPath }
-                        ?: stringResource(R.string.select_image),
+                    path = config.backgroundImgPath,
                     onClick = onSelectImage
                 )
 
@@ -261,6 +271,92 @@ private fun OptionRow(
 }
 
 /**
+ * 背景图片行：左边标题，中间缩略图预览（异步解码，失败显示占位块），右边文件名。
+ *
+ * 预览不做虚化渲染，仅用于确认已选图片；虚化值在应用主题时生效。
+ */
+@Composable
+private fun BackgroundImageRow(
+    title: String,
+    path: String?,
+    onClick: () -> Unit
+) {
+    // 在 IO 线程异步解码缩略图，避免阻塞主线程；解码失败或未选图时置空显示占位块
+    val thumbnail: ImageBitmap? by produceState<ImageBitmap?>(initialValue = null, path) {
+        value = withContext(Dispatchers.IO) {
+            if (path.isNullOrBlank()) {
+                null
+            } else {
+                runCatching { BitmapUtils.decodeBitmap(path, 256)?.asImageBitmap() }.getOrNull()
+            }
+        }
+    }
+
+    val fileName = remember(path) {
+        path?.substringAfterLast('/')
+            ?.substringAfterLast('\\')
+            ?.ifBlank { path }
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontSize = 15.sp,
+                modifier = Modifier.weight(1f)
+            )
+
+            // 缩略图预览：解码成功显示图片，否则显示灰色占位块
+            Box(
+                modifier = Modifier
+                    .size(width = 48.dp, height = 40.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                thumbnail?.let { image ->
+                    Image(
+                        bitmap = image,
+                        contentDescription = title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(4.dp))
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            Text(
+                text = fileName ?: stringResource(R.string.select_image),
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.MiddleEllipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+/**
  * 开关行：左边标题，右边Switch
  */
 @Composable
@@ -296,5 +392,61 @@ private fun SwitchRow(
                 onCheckedChange = onCheckedChange
             )
         }
+    }
+}
+
+// ── 预览 ────────────────────────────────────────────────────
+
+@Preview(showBackground = true)
+@Composable
+private fun ThemeEditDialogPreview() {
+    MaterialTheme {
+        ThemeEditDialog(
+            draft = ThemeConfig.Config(
+                themeName = "我的主题",
+                isNightTheme = false,
+                primaryColor = "#FF607D8B",
+                accentColor = "#FF8BC34A",
+                backgroundColor = "#FFF5F5F5",
+                bottomBackground = "#FF424242",
+                transparentNavBar = true,
+                backgroundImgPath = null,
+                backgroundImgBlur = 0
+            ),
+            isNew = false,
+            onDismiss = {},
+            onSave = {},
+            onSelectImage = {},
+            onUpdateDraft = {},
+            onColorClick = { _, _ -> },
+            onBlurClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ThemeEditDialogNewPreview() {
+    MaterialTheme {
+        ThemeEditDialog(
+            draft = ThemeConfig.Config(
+                themeName = "新建主题",
+                isNightTheme = true,
+                primaryColor = "#FF1A1A2E",
+                accentColor = "#FFE94560",
+                backgroundColor = "#FF16213E",
+                bottomBackground = "#FF0F3460",
+                transparentNavBar = false,
+                backgroundImgPath = null,
+                backgroundImgBlur = 50
+            ),
+            isNew = true,
+            onDismiss = {},
+            onSave = {},
+            onSelectImage = {},
+            onUpdateDraft = {},
+            onColorClick = { _, _ -> },
+            onBlurClick = {}
+        )
     }
 }

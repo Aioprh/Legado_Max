@@ -1,4 +1,4 @@
-package io.legado.app.ui.config.theme.components
+package io.legado.app.ui.config.theme.manage.components
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -11,7 +11,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
-import io.legado.app.ui.config.theme.ThemeTab
+import io.legado.app.ui.config.theme.manage.ThemeTab
 
 /**
  * 主题列表的日间/夜间 Tab 行。

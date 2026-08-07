@@ -1,4 +1,4 @@
-package io.legado.app.ui.config.theme.components
+package io.legado.app.ui.config.theme.manage.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
