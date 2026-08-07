@@ -31,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,9 +94,16 @@ fun ThemeCard(
     onToggleSelect: () -> Unit
 ) {
     val config = item.config
-    val primaryColor = runCatching { config.primaryColor.toColorInt() }.getOrDefault(0xFF607D8B.toInt())
-    val accentColor = runCatching { config.accentColor.toColorInt() }.getOrDefault(0xFF8BC34A.toInt())
-    val backgroundColor = runCatching { config.backgroundColor.toColorInt() }.getOrDefault(0xFFF5F5F5.toInt())
+    // remember 缓存颜色解析结果，避免每次 recomposition 重复 toColorInt()
+    val primaryColor = remember(config.primaryColor) {
+        runCatching { config.primaryColor.toColorInt() }.getOrDefault(0xFF607D8B.toInt())
+    }
+    val accentColor = remember(config.accentColor) {
+        runCatching { config.accentColor.toColorInt() }.getOrDefault(0xFF8BC34A.toInt())
+    }
+    val backgroundColor = remember(config.backgroundColor) {
+        runCatching { config.backgroundColor.toColorInt() }.getOrDefault(0xFFF5F5F5.toInt())
+    }
 
     // 自适应透明度：亮色背景略高（保持可读），暗色背景略低（透出背景图）
     val isLightBg = MaterialTheme.colorScheme.background.luminance() > 0.5f

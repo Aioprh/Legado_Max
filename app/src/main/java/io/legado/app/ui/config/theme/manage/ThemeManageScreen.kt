@@ -81,7 +81,8 @@ fun ThemeManageScreen(
     val themeSummary = stringResource(R.string.theme_summary)
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    val currentConfig = ThemeConfig.getDurConfig(context)
+    // remember 缓存当前主题配置，避免每次 recomposition 重复读取 SharedPreferences（8次 getPref*）
+    val currentConfig = remember { ThemeConfig.getDurConfig(context) }
 
     // ── 编辑弹窗草稿（主题专用，由 Screen 层持有） ─────────
     var editDraft by remember { mutableStateOf<ThemeConfig.Config?>(null) }
