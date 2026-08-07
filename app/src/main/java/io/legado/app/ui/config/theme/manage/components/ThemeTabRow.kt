@@ -11,32 +11,35 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
-import io.legado.app.ui.config.theme.manage.ThemeTab
+import io.legado.app.ui.config.configmanage.ConfigTab
+import io.legado.app.ui.config.configmanage.SegmentedTabRow
 
 /**
  * 主题列表的日间/夜间 Tab 行。
- * 内部使用通用的 [SegmentedTabRow]。
+ *
+ * @deprecated [DayNightPager] 已内置 Tab 渲染，此组件仅保留兼容。
+ * 新代码请直接使用 [DayNightPager] 或 [SegmentedTabRow] + [ConfigTab]。
  */
 @Composable
 fun ThemeTabRow(
-    selectedTab: ThemeTab,
-    onTabClick: (ThemeTab) -> Unit
+    selectedTab: ConfigTab,
+    onTabClick: (ConfigTab) -> Unit
 ) {
     SegmentedTabRow(
-        tabs = ThemeTab.entries,
+        tabs = ConfigTab.entries,
         selected = selectedTab,
         onTabClick = onTabClick,
         labelText = { tab ->
             when (tab) {
-                ThemeTab.DAY -> stringResource(R.string.day)
-                ThemeTab.NIGHT -> stringResource(R.string.night)
+                ConfigTab.DAY -> stringResource(R.string.day)
+                ConfigTab.NIGHT -> stringResource(R.string.night)
             }
         },
         iconContent = { tab ->
             Icon(
                 imageVector = when (tab) {
-                    ThemeTab.DAY -> Icons.Default.LightMode
-                    ThemeTab.NIGHT -> Icons.Default.DarkMode
+                    ConfigTab.DAY -> Icons.Default.LightMode
+                    ConfigTab.NIGHT -> Icons.Default.DarkMode
                 },
                 contentDescription = null,
                 modifier = Modifier.size(18.dp)
@@ -49,7 +52,7 @@ fun ThemeTabRow(
 @Composable
 private fun ThemeTabRowPreview() {
     ThemeTabRow(
-        selectedTab = ThemeTab.DAY,
+        selectedTab = ConfigTab.DAY,
         onTabClick = {}
     )
 }

@@ -5,6 +5,7 @@ import io.legado.app.R
 import io.legado.app.base.BaseViewModel
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
+import io.legado.app.ui.config.configmanage.ConfigTab
 import io.legado.app.utils.GSON
 import io.legado.app.utils.getClipText
 import kotlinx.coroutines.channels.Channel
@@ -15,176 +16,48 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * 主题管理 ViewModel。
+ * 主题管理 ViewModel（组合模式重构版）。
  *
- * 持有主题列表的 UiState（日间/夜间Tab、多选状态、编辑弹窗状态），
- * 所有 ThemeConfig 的写操作（addConfig / delConfig / toTopConfigs / save）
- * 均通过 BaseViewModel.execute 在协程中执行，避免主线程阻塞。
- * 一次性事件（Toast、分享、Recreate等）通过 Channel 向上抛给 Activity 处理。
+ * 仅负责主题数据的加载、增删改查和一次性事件发送。
+ * 通用的 Tab/多选/编辑弹窗状态由 [ConfigManageState] 在 Composable 层持有，
+ * ViewModel 不再管理这些 UI 交互状态。
+ *
+ * 数据操作通过 BaseViewModel.execute 在协程中执行，
+ * 一次性事件通过 Channel 向上抛给 Activity 处理。
  */
 class ThemeManageViewModel(application: Application) : BaseViewModel(application) {
 
-    private val _uiState = MutableStateFlow(ThemeManageUiState())
-    val uiState: StateFlow<ThemeManageUiState> = _uiState.asStateFlow()
+    private val _items = MutableStateFlow<List<ThemeItem>>(emptyList())
+    val items: StateFlow<List<ThemeItem>> = _items.asStateFlow()
 
     private val _events = Channel<ThemeEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
     init {
-        val initialTab = if (AppConfig.isNightTheme) ThemeTab.NIGHT else ThemeTab.DAY
-        loadThemes(initialTab)
+        loadThemes()
     }
 
     // ── 数据加载 ──────────────────────────────────────────
 
-    fun loadThemes(initialTab: ThemeTab? = null) {
+    fun loadThemes() {
         ThemeConfig.configList // 触发 lazy init
-        val items = ThemeConfig.configList.mapIndexed { index, config ->
+        val itemList = ThemeConfig.configList.mapIndexed { index, config ->
             ThemeItem(config = config, originalIndex = index)
         }
-        val tab = initialTab ?: _uiState.value.tab
-        _uiState.update { state ->
-            state.copy(
-                tab = tab,
-                allItems = items,
-                visibleItems = items.filter { it.config.isNightTheme == tab.isNight }
-            )
-        }
+        _items.value = itemList
     }
 
-    // ── Tab 切换 ──────────────────────────────────────────
-
-    fun switchTab(tab: ThemeTab) {
-        _uiState.update { state ->
-            if (state.tab == tab) return@update state
-            state.copy(
-                tab = tab,
-                multiSelect = MultiSelectState(),
-                visibleItems = state.allItems.filter { it.config.isNightTheme == tab.isNight }
-            )
-        }
-    }
-
-    // ── 多选 ──────────────────────────────────────────────
-
-    fun enterMultiSelect(originalIndex: Int) {
-        _uiState.update { state ->
-            state.copy(
-                multiSelect = MultiSelectState(
-                    active = true,
-                    selectedOriginalIndices = setOf(originalIndex)
-                )
-            )
-        }
-    }
-
-    fun exitMultiSelect() {
-        _uiState.update { state -> state.copy(multiSelect = MultiSelectState()) }
-    }
-
-    fun toggleSelection(originalIndex: Int) {
-        _uiState.update { state ->
-            val current = state.multiSelect.selectedOriginalIndices
-            val updated = if (originalIndex in current) current - originalIndex else current + originalIndex
-            if (updated.isEmpty()) {
-                state.copy(multiSelect = MultiSelectState())
-            } else {
-                state.copy(multiSelect = state.multiSelect.copy(selectedOriginalIndices = updated))
-            }
-        }
-    }
-
-    fun selectAllVisible() {
-        _uiState.update { state ->
-            if (state.allVisibleSelected) {
-                state.copy(multiSelect = MultiSelectState())
-            } else {
-                val all = state.visibleItems.map { it.originalIndex }.toSet()
-                state.copy(multiSelect = state.multiSelect.copy(selectedOriginalIndices = all))
-            }
-        }
-    }
-
-    // ── 批量操作 ──────────────────────────────────────────
-
-    fun requestDeleteSelected() {
-        if (_uiState.value.multiSelect.isEmpty) {
-            _events.trySend(ThemeEvent.Toast(R.string.select_theme))
-            return
-        }
-        _events.trySend(ThemeEvent.DeleteConfirm)
-    }
-
-    fun executeDeleteSelected() {
-        val state = _uiState.value
-        val currentConfig = ThemeConfig.getDurConfig(getApplication())
-        // 过滤掉正在使用的主题
-        val indices = state.multiSelect.selectedOriginalIndices
-            .filterNot { idx ->
-                val item = state.allItems.getOrNull(idx)
-                item != null
-                    && item.config.themeName == currentConfig.themeName
-                    && item.config.isNightTheme == currentConfig.isNightTheme
-            }
-            .sortedDescending()
-        execute {
-            indices.forEach { ThemeConfig.delConfig(it) }
-            exitMultiSelect()
-            loadThemes()
-        }
-    }
-
-    fun toTopSelected() {
-        if (_uiState.value.multiSelect.isEmpty) {
-            _events.trySend(ThemeEvent.Toast(R.string.select_theme))
-            return
-        }
-        val positions = _uiState.value.multiSelect.selectedOriginalIndices.sorted()
-        execute {
-            ThemeConfig.toTopConfigs(positions)
-            exitMultiSelect()
-            loadThemes()
-        }
-    }
-
-    fun exportSelected() {
-        val state = _uiState.value
-        val configs = state.multiSelect.selectedOriginalIndices
-            .sorted()
-            .mapNotNull { idx -> state.allItems.getOrNull(idx)?.config }
-        if (configs.isEmpty()) return
-        _events.trySend(ThemeEvent.ShareJson(GSON.toJson(configs)))
-        exitMultiSelect()
-    }
-
-    fun importFromClipboard() {
-        execute {
-            val clipText = getApplication<Application>().getClipText()
-            if (clipText.isNullOrBlank()) {
-                _events.trySend(ThemeEvent.ImportEmpty)
-                return@execute
-            }
-            val count = ThemeConfig.addConfig(clipText)
-            if (count > 0) {
-                loadThemes()
-                _events.trySend(ThemeEvent.ImportSuccess)
-            } else {
-                _events.trySend(ThemeEvent.ImportFailed)
-            }
-        }
+    /**
+     * 获取指定 Tab 下的可见条目。
+     */
+    fun getItemsForTab(tab: ConfigTab): List<ThemeItem> {
+        return _items.value.filter { it.config.isNightTheme == tab.isNight }
     }
 
     // ── 单项操作 ──────────────────────────────────────────
 
     fun applyConfig(item: ThemeItem) {
         ThemeConfig.applyConfig(getApplication(), item.config)
-        val newTab = if (item.config.isNightTheme) ThemeTab.NIGHT else ThemeTab.DAY
-        _uiState.update { state ->
-            state.copy(
-                tab = newTab,
-                visibleItems = state.allItems.filter { it.config.isNightTheme == newTab.isNight }
-            )
-        }
         _events.trySend(ThemeEvent.Applied(item.config.themeName))
         _events.trySend(ThemeEvent.Recreate)
     }
@@ -208,83 +81,122 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
         _events.trySend(ThemeEvent.ShareJson(GSON.toJson(item.config)))
     }
 
-    // ── 编辑弹窗 ──────────────────────────────────────────
+    // ── 批量操作 ──────────────────────────────────────────
 
-    fun openEditDialog(sourceItem: ThemeItem? = null) {
-        val config = sourceItem?.config?.copy() ?: newThemeConfig()
-        _uiState.update { state ->
-            state.copy(
-                editDialog = EditDialogState(
-                    visible = true,
-                    isNew = sourceItem == null,
-                    editingIndex = sourceItem?.originalIndex ?: -1,
-                    draft = config
-                )
-            )
+    fun requestDeleteSelected(selectedIndices: Set<Int>) {
+        if (selectedIndices.isEmpty()) {
+            _events.trySend(ThemeEvent.Toast(R.string.select_theme))
+            return
         }
+        _events.trySend(ThemeEvent.DeleteConfirm)
     }
 
-    fun closeEditDialog() {
-        _uiState.update { state -> state.copy(editDialog = EditDialogState()) }
-    }
-
-    fun updateDraft(transform: (ThemeConfig.Config) -> ThemeConfig.Config) {
-        _uiState.update { state ->
-            val draft = state.editDialog.draft ?: return@update state
-            state.copy(editDialog = state.editDialog.copy(draft = transform(draft)))
-        }
-    }
-
-    fun saveEditedTheme() {
-        val state = _uiState.value
-        val config = state.editDialog.draft ?: return
-        val targetIndex = state.editDialog.editingIndex
-
+    fun executeDeleteSelected(selectedIndices: Set<Int>) {
+        val currentConfig = ThemeConfig.getDurConfig(getApplication())
+        val indices = selectedIndices
+            .filterNot { idx ->
+                val item = _items.value.getOrNull(idx)
+                item != null
+                    && item.config.themeName == currentConfig.themeName
+                    && item.config.isNightTheme == currentConfig.isNightTheme
+            }
+            .sortedDescending()
         execute {
-            if (targetIndex >= 0) {
-                ThemeConfig.configList[targetIndex] = config
+            indices.forEach { ThemeConfig.delConfig(it) }
+            loadThemes()
+        }
+    }
+
+    fun toTopSelected(selectedIndices: Set<Int>) {
+        if (selectedIndices.isEmpty()) {
+            _events.trySend(ThemeEvent.Toast(R.string.select_theme))
+            return
+        }
+        val positions = selectedIndices.sorted()
+        execute {
+            ThemeConfig.toTopConfigs(positions)
+            loadThemes()
+        }
+    }
+
+    fun exportSelected(selectedIndices: Set<Int>) {
+        val configs = selectedIndices
+            .sorted()
+            .mapNotNull { idx -> _items.value.getOrNull(idx)?.config }
+        if (configs.isEmpty()) return
+        _events.trySend(ThemeEvent.ShareJson(GSON.toJson(configs)))
+    }
+
+    fun importFromClipboard() {
+        execute {
+            val clipText = getApplication<Application>().getClipText()
+            if (clipText.isNullOrBlank()) {
+                _events.trySend(ThemeEvent.ImportEmpty)
+                return@execute
+            }
+            val count = ThemeConfig.addConfig(clipText)
+            if (count > 0) {
+                loadThemes()
+                _events.trySend(ThemeEvent.ImportSuccess)
             } else {
-                ThemeConfig.configList.add(config)
+                _events.trySend(ThemeEvent.ImportFailed)
+            }
+        }
+    }
+
+    // ── 编辑弹窗：数据操作 ────────────────────────────────
+
+    /**
+     * 创建编辑弹窗的草稿数据。
+     * 返回 (draft, isNew, editingIndex) 三元组，由调用方传入 ConfigManageState.openEditDialog。
+     */
+    fun createDraft(sourceItem: ThemeItem?): ThemeEditDraft {
+        val config = sourceItem?.config?.copy() ?: newThemeConfig()
+        return ThemeEditDraft(
+            config = config,
+            isNew = sourceItem == null,
+            editingIndex = sourceItem?.originalIndex ?: -1
+        )
+    }
+
+    fun saveEditedTheme(draft: ThemeConfig.Config, editingIndex: Int) {
+        execute {
+            if (editingIndex >= 0) {
+                ThemeConfig.configList[editingIndex] = draft
+            } else {
+                ThemeConfig.configList.add(draft)
             }
             ThemeConfig.save()
             loadThemes()
-            closeEditDialog()
 
             val current = ThemeConfig.getDurConfig(getApplication())
-            if (current.themeName == config.themeName && current.isNightTheme == config.isNightTheme) {
-                ThemeConfig.applyConfig(getApplication(), config)
+            if (current.themeName == draft.themeName && current.isNightTheme == draft.isNightTheme) {
+                ThemeConfig.applyConfig(getApplication(), draft)
                 _events.trySend(ThemeEvent.Recreate)
             }
             _events.trySend(ThemeEvent.Toast(R.string.success))
         }
     }
 
-    // ── 背景图处理（由 Activity 回调） ────────────────────
+    // ── 背景图 / 颜色 / 虚化回调（由 Activity 触发） ──────
 
-    fun onBackgroundImageSelected(path: String) {
-        updateDraft { it.copy(backgroundImgPath = path) }
-    }
-
-    // ── 颜色选择处理（由 Activity ColorPickerDialog 回调） ──
-
-    fun onColorSelected(colorKey: String, color: Int) {
-        // ColorPickerDialog 关闭了alpha滑块，但保险起见补齐8位
+    fun onColorSelected(colorKey: String, color: Int, currentDraft: ThemeConfig.Config): ThemeConfig.Config {
         val hex = "#" + Integer.toHexString(color).padStart(8, '0').uppercase()
-        updateDraft { draft ->
-            when (colorKey) {
-                "primaryColor" -> draft.copy(primaryColor = hex)
-                "accentColor" -> draft.copy(accentColor = hex)
-                "backgroundColor" -> draft.copy(backgroundColor = hex)
-                "bottomBackground" -> draft.copy(bottomBackground = hex)
-                else -> draft
-            }
+        return when (colorKey) {
+            "primaryColor" -> currentDraft.copy(primaryColor = hex)
+            "accentColor" -> currentDraft.copy(accentColor = hex)
+            "backgroundColor" -> currentDraft.copy(backgroundColor = hex)
+            "bottomBackground" -> currentDraft.copy(bottomBackground = hex)
+            else -> currentDraft
         }
     }
 
-    // ── 虚化值处理（由 Activity NumberPickerDialog 回调） ──
+    fun onBlurSelected(blur: Int, currentDraft: ThemeConfig.Config): ThemeConfig.Config {
+        return currentDraft.copy(backgroundImgBlur = blur)
+    }
 
-    fun onBlurSelected(blur: Int) {
-        updateDraft { it.copy(backgroundImgBlur = blur) }
+    fun onBackgroundImageSelected(path: String, currentDraft: ThemeConfig.Config): ThemeConfig.Config {
+        return currentDraft.copy(backgroundImgPath = path)
     }
 
     // ── 内部 ──────────────────────────────────────────────
@@ -293,14 +205,14 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
         val app = getApplication<Application>()
         return ThemeConfig.getDurConfig(app).copy(
             themeName = getNextThemeName(),
-            isNightTheme = _uiState.value.tab.isNight
+            isNightTheme = AppConfig.isNightTheme
         )
     }
 
     private fun getNextThemeName(): String {
         val base = getApplication<Application>().getString(R.string.add_theme)
         val usedNames = ThemeConfig.configList
-            .filter { it.isNightTheme == _uiState.value.tab.isNight }
+            .filter { it.isNightTheme == AppConfig.isNightTheme }
             .map { it.themeName }
             .toSet()
         if (!usedNames.contains(base)) return base
@@ -311,3 +223,12 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
         return "$base ${System.currentTimeMillis()}"
     }
 }
+
+/**
+ * 编辑弹窗草稿数据（由 ViewModel 创建，传递给 Screen 层组装）。
+ */
+data class ThemeEditDraft(
+    val config: ThemeConfig.Config,
+    val isNew: Boolean,
+    val editingIndex: Int
+)

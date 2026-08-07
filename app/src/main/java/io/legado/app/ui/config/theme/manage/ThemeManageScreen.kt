@@ -1,78 +1,54 @@
 package io.legado.app.ui.config.theme.manage
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
-import io.legado.app.ui.config.theme.manage.components.MultiSelectBottomBar
+import io.legado.app.ui.config.configmanage.ConfigList
+import io.legado.app.ui.config.configmanage.ConfigManageScaffold
+import io.legado.app.ui.config.configmanage.ConfigTab
+import io.legado.app.ui.config.configmanage.ConfigMultiSelectBar
+import io.legado.app.ui.config.configmanage.DayNightPager
+import io.legado.app.ui.config.configmanage.ImportFromClipboardAction
+import io.legado.app.ui.config.configmanage.MultiSelectAction
+import io.legado.app.ui.config.configmanage.SelectAllAction
+import io.legado.app.ui.config.configmanage.rememberConfigManageState
 import io.legado.app.ui.config.theme.manage.components.ThemeCard
 import io.legado.app.ui.config.theme.manage.components.ThemeEditDialog
-import io.legado.app.ui.config.theme.manage.components.ThemeTabRow
-import io.legado.app.ui.theme.pageTopBarBackground
-import io.legado.app.ui.theme.pageTopBarColors
-import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
- * 主题管理主屏幕（Compose）。
+ * 主题管理主屏幕（Compose，组合模式重构版）。
  *
- * 订阅 ViewModel 的 UiState 渲染主题列表、Tab切换、多选操作栏、编辑弹窗。
- * 一次性事件（Toast、分享、Recreate等）通过 LaunchedEffect 收集并回调给 Activity。
+ * 通过组合通用零件组装：
+ * - [rememberConfigManageState]：通用状态 Holder（Tab/多选/编辑弹窗）
+ * - [ConfigManageScaffold]：通用 Scaffold + TopAppBar 骨架
+ * - [DayNightPager]：通用日/夜 Tab + Pager 联动
+ * - [ConfigList]：通用列表 + 空状态
+ * - [ConfigMultiSelectBar]：通用多选底栏（可配置操作项）
+ * - [ThemeCard]：主题专用卡片
+ * - [ThemeEditDialog]：主题专用编辑弹窗
  *
- * ## 日间/夜间切换
- * 通过 [HorizontalPager] 实现左右滑动切换日间/夜间主题列表，顶部 [ThemeTabRow] 胶囊
- * 作为指示器和点击入口，两者双向联动：
- * - 点击胶囊 → [androidx.compose.foundation.pager.PagerState.animateScrollToPage] 滑动到对应页
- * - 左右滑动 → 更新 [ThemeManageViewModel] 的 tab 状态
- * 多选模式下禁用滑动（`userScrollEnabled = false`）。
+ * ViewModel 只负责数据操作，不管理 UI 交互状态。
  *
- * ## 架构
- * - **状态驱动**：所有 UI 状态由 [ThemeManageViewModel.uiState] 驱动
- * - **事件转发**：ViewModel 的一次性事件通过 Channel 向上转发，由 Activity 处理
- * - **双模式**：普通模式（应用/编辑/分享/删除）与多选模式（置顶/导出/批量删除）
- *
- * ## 参数说明
- * - `onToast`：显示资源 ID 类型的 Toast（如"请选择主题"）
- * - `onToastMsg`：显示动态字符串 Toast（如"已应用主题: xxx"）
- * - `onRecreate`：通知 Activity 重建以应用新主题
+ * ## Activity 回调注册
+ * 颜色选择 / 虚化值 / 背景图选择的结果需要从 Activity 平台侧回传到 Compose 层，
+ * 通过 `register*` 系列参数注册回调实现。
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeManageScreen(
     viewModel: ThemeManageViewModel = viewModel(),
@@ -87,220 +63,210 @@ fun ThemeManageScreen(
     onToast: (Int) -> Unit = {},
     onToastMsg: (String) -> Unit = {},
     onColorClick: (colorKey: String, currentColor: String) -> Unit = { _, _ -> },
-    onBlurClick: (currentBlur: Int) -> Unit = {}
+    onBlurClick: (currentBlur: Int) -> Unit = {},
+    // Activity 回调注册：平台侧结果回传
+    registerOnColorResult: ((String, Int) -> Unit) -> Unit = {},
+    registerOnBlurResult: ((Int) -> Unit) -> Unit = {},
+    registerOnBackgroundImageResult: ((String) -> Unit) -> Unit = {},
+    registerGetDraftBgPath: (() -> String?) -> Unit = {},
+    registerGetSelectedIndices: (() -> Set<Int>) -> Unit = {}
 ) {
-    // 订阅 UI 状态
-    val uiState by viewModel.uiState.collectAsState()
-    val topBarColors = pageTopBarColors()
-    // 预取「已应用主题」提示的格式化模板（stringResource 只能在 Composable 上下文中调用）
-    val appliedThemeTemplate = stringResource(R.string.applied_theme_config)
+    // ── 通用状态（组合） ──────────────────────────────────
+    val initialTab = if (AppConfig.isNightTheme) ConfigTab.NIGHT else ConfigTab.DAY
+    val state = rememberConfigManageState(initialTab)
 
-    // 获取当前应用的主题，用于判断卡片是否为当前主题
-    val context = LocalContext.current
+    // ── 数据订阅 ──────────────────────────────────────────
+    val allItems by viewModel.items.collectAsState()
+    val appliedThemeTemplate = stringResource(R.string.applied_theme_config)
+    val themeSummary = stringResource(R.string.theme_summary)
+
+    val context = androidx.compose.ui.platform.LocalContext.current
     val currentConfig = ThemeConfig.getDurConfig(context)
 
-    // 收集一次性事件，转发给 Activity 处理
+    // ── 编辑弹窗草稿（主题专用，由 Screen 层持有） ─────────
+    var editDraft by remember { mutableStateOf<ThemeConfig.Config?>(null) }
+
+    // ── 注册回调：供 Activity 获取/回传数据 ────────────────
+    DisposableEffect(Unit) {
+        registerOnColorResult { key, color ->
+            editDraft?.let { draft ->
+                editDraft = viewModel.onColorSelected(key, color, draft)
+            }
+        }
+        registerOnBlurResult { blur ->
+            editDraft?.let { draft ->
+                editDraft = viewModel.onBlurSelected(blur, draft)
+            }
+        }
+        registerOnBackgroundImageResult { path ->
+            editDraft?.let { draft ->
+                editDraft = viewModel.onBackgroundImageSelected(path, draft)
+            }
+        }
+        registerGetDraftBgPath { editDraft?.backgroundImgPath }
+        registerGetSelectedIndices { state.multiSelect.selectedIndices }
+        onDispose { }
+    }
+
+    // ── 一次性事件收集 ────────────────────────────────────
     val eventFlow = viewModel.events
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         eventFlow.collect { event ->
             when (event) {
-                is ThemeEvent.Toast -> onToast(event.resId) // 资源ID Toast（如"请选择主题"）
-                is ThemeEvent.ToastMsg -> onToastMsg(event.msg) // 动态字符串 Toast
-                is ThemeEvent.ImportSuccess -> onImportFromClipboard() // 导入成功后刷新列表
+                is ThemeEvent.Toast -> onToast(event.resId)
+                is ThemeEvent.ToastMsg -> onToastMsg(event.msg)
+                is ThemeEvent.ImportSuccess -> onImportFromClipboard()
                 is ThemeEvent.ImportEmpty -> onImportEmpty()
                 is ThemeEvent.ImportFailed -> onImportFailed()
-                is ThemeEvent.ShareJson -> onShareJson(event.json) // 分享 JSON 给外部应用
-                is ThemeEvent.Recreate -> onRecreate() // 应用主题后重建 Activity
+                is ThemeEvent.ShareJson -> onShareJson(event.json)
+                is ThemeEvent.Recreate -> onRecreate()
                 is ThemeEvent.DeleteConfirm -> onDeleteConfirm()
                 is ThemeEvent.Applied -> onToastMsg(appliedThemeTemplate.format(event.themeName))
             }
         }
     }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        topBar = {
-            // 顶部导航栏：标题 + 返回/全选按钮 + 导入按钮
-            TopAppBar(
-                modifier = Modifier.pageTopBarBackground(topBarColors),
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                    navigationIconContentColor = topBarColors.contentColor,
-                    titleContentColor = topBarColors.contentColor,
-                    actionIconContentColor = topBarColors.contentColor
-                ),
-                title = {
-                    Text(
-                        text = stringResource(R.string.theme_list),
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    )
-                },
-                navigationIcon = {
-                    // 返回按钮：多选模式下退出多选，否则返回上一页
-                    IconButton(onClick = {
-                        if (uiState.isMultiSelectMode) {
-                            viewModel.exitMultiSelect()
-                        } else {
-                            onBackClick()
-                        }
-                    }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back)
-                        )
-                    }
-                },
-                actions = {
-                    if (uiState.isMultiSelectMode) {
-                        // 多选模式：全选/取消全选切换按钮
-                        Text(
-                            text = stringResource(R.string.select_all),
-                            modifier = Modifier.padding(horizontal = 12.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        IconButton(onClick = { viewModel.selectAllVisible() }) {
-                            Text(
-                                text = if (uiState.allVisibleSelected)
-                                    stringResource(R.string.cancel)
-                                else
-                                    stringResource(R.string.select_all),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                        }
-                    } else {
-                        // 普通模式：从剪贴板导入主题
-                        IconButton(onClick = { viewModel.importFromClipboard() }) {
-                            Icon(
-                                Icons.Default.ContentPaste,
-                                contentDescription = stringResource(R.string.top_bar_import_clipboard)
-                            )
-                        }
-                    }
+    // ── 当前 Tab 的可见条目 ───────────────────────────────
+    val dayItems = remember(allItems) {
+        allItems.filter { !it.config.isNightTheme }
+    }
+    val nightItems = remember(allItems) {
+        allItems.filter { it.config.isNightTheme }
+    }
+    val visibleItems = if (state.tab == ConfigTab.DAY) dayItems else nightItems
+    val visibleIndices = remember(visibleItems) {
+        visibleItems.map { it.originalIndex }
+    }
+
+    // ── 组装 Scaffold ────────────────────────────────────
+    ConfigManageScaffold(
+        title = stringResource(R.string.theme_list),
+        isMultiSelectMode = state.isMultiSelectMode,
+        onBackClick = onBackClick,
+        onExitMultiSelect = { state.exitMultiSelect() },
+        actions = {
+            if (state.isMultiSelectMode) {
+                SelectAllAction(
+                    isAllSelected = state.isAllSelected(visibleIndices),
+                    onSelectAll = { state.selectAllVisible(visibleIndices) }
+                )
+            } else {
+                ImportFromClipboardAction {
+                    viewModel.importFromClipboard()
                 }
-            )
+            }
         },
         bottomBar = {
-            // 多选操作栏：置顶 / 导出 / 删除
-            if (uiState.isMultiSelectMode) {
-                MultiSelectBottomBar(
-                    selectedCount = uiState.selectedCount,
-                    onToTop = { viewModel.toTopSelected() },
-                    onExport = { viewModel.exportSelected() },
-                    onDelete = { viewModel.requestDeleteSelected() }
+            if (state.isMultiSelectMode) {
+                ConfigMultiSelectBar(
+                    selectedCount = state.selectedCount,
+                    actions = listOf(
+                        MultiSelectAction(
+                            icon = Icons.Default.VerticalAlignTop,
+                            contentDescription = stringResource(R.string.to_top),
+                            onClick = {
+                                viewModel.toTopSelected(state.multiSelect.selectedIndices)
+                                state.exitMultiSelect()
+                            }
+                        ),
+                        MultiSelectAction(
+                            icon = Icons.Default.Share,
+                            contentDescription = stringResource(R.string.export),
+                            onClick = {
+                                viewModel.exportSelected(state.multiSelect.selectedIndices)
+                                state.exitMultiSelect()
+                            }
+                        ),
+                        MultiSelectAction(
+                            icon = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.delete),
+                            tint = MaterialTheme.colorScheme.error,
+                            onClick = {
+                                viewModel.requestDeleteSelected(state.multiSelect.selectedIndices)
+                            }
+                        )
+                    )
                 )
             }
         }
-    ) { paddingValues ->
-        // PagerState：0 = 日间，1 = 夜间
-        val pagerState = rememberPagerState(
-            initialPage = if (uiState.tab == ThemeTab.DAY) 0 else 1,
-            pageCount = { 2 }
-        )
-
-        // Tab → Pager：点击胶囊时滑动到对应页
-        LaunchedEffect(uiState.tab) {
-            val targetPage = if (uiState.tab == ThemeTab.DAY) 0 else 1
-            if (pagerState.currentPage != targetPage) {
-                pagerState.animateScrollToPage(targetPage)
-            }
-        }
-
-        // Pager → Tab：左右滑动时更新 tab
-        LaunchedEffect(pagerState) {
-            snapshotFlow { pagerState.currentPage }
-                .distinctUntilChanged()
-                .collect { page ->
-                    val newTab = if (page == 0) ThemeTab.DAY else ThemeTab.NIGHT
-                    if (uiState.tab != newTab) {
-                        viewModel.switchTab(newTab)
-                    }
-                }
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // 日间/夜间主题切换 Tab（胶囊指示器 + 点击入口）
-            ThemeTabRow(
-                selectedTab = uiState.tab,
-                onTabClick = { viewModel.switchTab(it) }
-            )
-
-            // 左右滑动切换日间/夜间主题列表
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.fillMaxSize(),
-                userScrollEnabled = !uiState.isMultiSelectMode
-            ) { page ->
-                val tab = if (page == 0) ThemeTab.DAY else ThemeTab.NIGHT
-                val pageItems = remember(uiState.allItems, tab) {
-                    uiState.allItems.filter { it.config.isNightTheme == tab.isNight }
-                }
-
-                if (pageItems.isEmpty()) {
-                    // 空状态提示
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.empty),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+    ) {
+        // ── 组装日/夜 Pager ───────────────────────────────
+        DayNightPager(
+            state = state,
+            onTabChange = { state.switchTab(it) },
+            summaryText = themeSummary,
+            scrollEnabled = !state.isMultiSelectMode,
+            dayContent = {
+                ConfigList(
+                    items = dayItems,
+                    itemKey = { it.originalIndex },
+                    itemContent = { item ->
+                        ThemeCard(
+                            item = item,
+                            isMultiSelectMode = state.isMultiSelectMode,
+                            isSelected = item.originalIndex in state.multiSelect.selectedIndices,
+                            isCurrent = item.config.themeName == currentConfig.themeName
+                                && !item.config.isNightTheme == !currentConfig.isNightTheme,
+                            onApply = { viewModel.applyConfig(item) },
+                            onEdit = {
+                                val draft = viewModel.createDraft(item)
+                                editDraft = draft.config
+                                state.openEditDialog(draft.isNew, draft.editingIndex)
+                            },
+                            onShare = { viewModel.shareItem(item) },
+                            onDelete = { viewModel.deleteItem(item) },
+                            onLongClick = { state.enterMultiSelect(item.originalIndex) },
+                            onToggleSelect = { state.toggleSelection(item.originalIndex) }
                         )
                     }
-                } else {
-                    // 主题卡片列表
-                    LazyColumn(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(
-                            items = pageItems,
-                            key = { it.originalIndex }
-                        ) { item ->
-                            ThemeCard(
-                                item = item,
-                                isMultiSelectMode = uiState.isMultiSelectMode,
-                                isSelected = item.originalIndex in uiState.multiSelect.selectedOriginalIndices,
-                                isCurrent = item.config.themeName == currentConfig.themeName
-                                    && item.config.isNightTheme == currentConfig.isNightTheme,
-                                onApply = { viewModel.applyConfig(item) },
-                                onEdit = { viewModel.openEditDialog(item) },
-                                onShare = { viewModel.shareItem(item) },
-                                onDelete = { viewModel.deleteItem(item) },
-                                onLongClick = { viewModel.enterMultiSelect(item.originalIndex) },
-                                onToggleSelect = { viewModel.toggleSelection(item.originalIndex) }
-                            )
-                        }
-                        item {
-                            // 底部留出安全距离，避免被系统导航栏遮挡
-                            Spacer(Modifier.height(80.dp))
-                        }
+                )
+            },
+            nightContent = {
+                ConfigList(
+                    items = nightItems,
+                    itemKey = { it.originalIndex },
+                    itemContent = { item ->
+                        ThemeCard(
+                            item = item,
+                            isMultiSelectMode = state.isMultiSelectMode,
+                            isSelected = item.originalIndex in state.multiSelect.selectedIndices,
+                            isCurrent = item.config.themeName == currentConfig.themeName
+                                && item.config.isNightTheme == currentConfig.isNightTheme,
+                            onApply = { viewModel.applyConfig(item) },
+                            onEdit = {
+                                val draft = viewModel.createDraft(item)
+                                editDraft = draft.config
+                                state.openEditDialog(draft.isNew, draft.editingIndex)
+                            },
+                            onShare = { viewModel.shareItem(item) },
+                            onDelete = { viewModel.deleteItem(item) },
+                            onLongClick = { state.enterMultiSelect(item.originalIndex) },
+                            onToggleSelect = { state.toggleSelection(item.originalIndex) }
+                        )
                     }
-                }
+                )
             }
-        }
+        )
     }
 
-    // 编辑/新建主题弹窗
-    if (uiState.editDialog.visible) {
+    // ── 主题专用编辑弹窗 ──────────────────────────────────
+    if (state.editDialog.visible && editDraft != null) {
         ThemeEditDialog(
-            draft = uiState.editDialog.draft,
-            isNew = uiState.editDialog.isNew,
-            onDismiss = { viewModel.closeEditDialog() },
-            onSave = { viewModel.saveEditedTheme() },
+            draft = editDraft!!,
+            isNew = state.editDialog.isNew,
+            onDismiss = {
+                state.closeEditDialog()
+                editDraft = null
+            },
+            onSave = {
+                viewModel.saveEditedTheme(editDraft!!, state.editDialog.editingIndex)
+                state.closeEditDialog()
+                editDraft = null
+            },
             onSelectImage = onSelectImage,
-            onUpdateDraft = { viewModel.updateDraft(it) },
+            onUpdateDraft = { transform ->
+                editDraft = transform(editDraft!!)
+            },
             onColorClick = onColorClick,
             onBlurClick = onBlurClick
         )
@@ -313,8 +279,6 @@ fun ThemeManageScreen(
 @Composable
 private fun ThemeManageScreenPreview() {
     MaterialTheme {
-        // 注意：Preview 模式下 viewModel() 会创建真实实例，
-        // 但 AppDatabase 等 Android 依赖可能不可用，此处仅预览 UI 结构。
         ThemeManageScreen(
             onBackClick = {},
             onImportFromClipboard = {},

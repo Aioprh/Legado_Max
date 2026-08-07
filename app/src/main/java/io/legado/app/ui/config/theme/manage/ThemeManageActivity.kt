@@ -22,11 +22,14 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 /**
- * 主题管理 Activity（Compose 版）。
+ * 主题管理 Activity（Compose 版，组合模式重构）。
  *
  * 入口页面，展示日间/夜间主题列表，支持应用、编辑、删除、置顶、多选导出等操作。
- * UI 层使用 Jetpack Compose（ThemeManageScreen），ViewModel 通过 StateFlow 驱动渲染，
- * 平台侧逻辑（ColorPickerDialog、NumberPickerDialog、文件选择）由 Activity 回调处理。
+ * UI 层使用 Jetpack Compose（ThemeManageScreen），ViewModel 仅负责数据操作，
+ * 通用 UI 状态（Tab/多选/编辑弹窗）由 ConfigManageState 在 Composable 层持有。
+ *
+ * 平台侧逻辑（ColorPickerDialog、NumberPickerDialog、文件选择）由 Activity 回调处理，
+ * 结果通过 lambda 回传给 Screen 层更新 draft。
  */
 class ThemeManageActivity : BaseComposeActivity(), ColorPickerDialogListener {
 
@@ -35,15 +38,21 @@ class ThemeManageActivity : BaseComposeActivity(), ColorPickerDialogListener {
     // 当前颜色选择器对应的属性key，用于 onColorSelected 回调
     private var pendingColorKey: String? = null
 
+    // 由 Screen 层注册的回调：颜色选择 / 虚化值 / 背景图选择结果回传
+    private var onColorResult: ((String, Int) -> Unit)? = null
+    private var onBlurResult: ((Int) -> Unit)? = null
+    private var onBackgroundImageResult: ((String) -> Unit)? = null
+
+    // 由 Screen 层注册：获取当前 draft 中的背景图路径（用于清理旧文件）
+    private var getCurrentDraftBgPath: (() -> String?)? = null
+
+    // 由 Screen 层注册：删除确认时获取当前选中索引
+    private var getSelectedIndicesForDelete: (() -> Set<Int>)? = null
+
     /**
      * 图片选择回调。
      *
-     * 将选中的图片复制到应用外部文件目录（externalFiles/bgImage，与旧版
-     * ThemeConfigFragment.setBgFromUri、主题导入导出所使用的同一背景图约定目录），
-     * 然后将稳定绝对的私有路径传递给 ViewModel。
-     *
-     * 注意：在 Android 10+ (Scoped Storage) 上，RealPathUtil.getPath()
-     * 无法将 content:// URI 转换为真实文件路径，因此需要手动复制文件而非保存原始路径。
+     * 将选中的图片复制到应用外部文件目录（externalFiles/bgImage），然后传递路径给 Screen。
      */
     private val selectImage = registerForActivityResult(HandleFileContract()) { result ->
         result.uri?.let { uri ->
@@ -70,12 +79,12 @@ class ThemeManageActivity : BaseComposeActivity(), ColorPickerDialogListener {
                             input.copyTo(output)
                         }
                     }
-                    // 删除当前草稿里旧背景图文件，仅当它仍然位于统一背景图目录内，避免垃圾文件累积
-                    val oldPath = viewModel.uiState.value.editDialog.draft?.backgroundImgPath
+                    // 删除当前草稿里旧背景图文件
+                    val oldPath = getCurrentDraftBgPath?.invoke()
                     if (!oldPath.isNullOrBlank() && oldFileInside(backgroundsDir, oldPath)) {
                         File(oldPath).delete()
                     }
-                    viewModel.onBackgroundImageSelected(destFile.absolutePath)
+                    onBackgroundImageResult?.invoke(destFile.absolutePath)
                     toastOnUi(R.string.success)
                 } catch (e: Exception) {
                     toastOnUi(R.string.select_image_failed)
@@ -119,7 +128,10 @@ class ThemeManageActivity : BaseComposeActivity(), ColorPickerDialogListener {
                 AlertDialog.Builder(this)
                     .setTitle(R.string.delete)
                     .setMessage(R.string.sure_del)
-                    .setPositiveButton(R.string.yes) { _, _ -> viewModel.executeDeleteSelected() }
+                    .setPositiveButton(R.string.yes) { _, _ ->
+                        val indices = getSelectedIndicesForDelete?.invoke() ?: emptySet()
+                        viewModel.executeDeleteSelected(indices)
+                    }
                     .setNegativeButton(R.string.no, null)
                     .show()
             },
@@ -149,15 +161,21 @@ class ThemeManageActivity : BaseComposeActivity(), ColorPickerDialogListener {
                     .setMinValue(0)
                     .setMaxValue(25)
                     .setValue(currentBlur)
-                    .show { blur -> viewModel.onBlurSelected(blur) }
-            }
+                    .show { blur -> onBlurResult?.invoke(blur) }
+            },
+            // ── 注册回调：供 Activity 回传结果给 Screen 层 ──
+            registerOnColorResult = { callback -> onColorResult = callback },
+            registerOnBlurResult = { callback -> onBlurResult = callback },
+            registerOnBackgroundImageResult = { callback -> onBackgroundImageResult = callback },
+            registerGetDraftBgPath = { callback -> getCurrentDraftBgPath = callback },
+            registerGetSelectedIndices = { callback -> getSelectedIndicesForDelete = callback }
         )
     }
 
     override fun onColorSelected(dialogId: Int, color: Int) {
         if (dialogId == DIALOG_ID_THEME_COLOR) {
             val key = pendingColorKey ?: return
-            viewModel.onColorSelected(key, color)
+            onColorResult?.invoke(key, color)
         }
     }
 
