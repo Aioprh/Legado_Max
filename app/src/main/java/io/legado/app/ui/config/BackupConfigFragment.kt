@@ -8,14 +8,6 @@ import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
-import android.view.ViewGroup
-import android.widget.FrameLayout
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -32,14 +24,10 @@ import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
 import io.legado.app.help.storage.BackupConfig
-import io.legado.app.help.storage.BackupFileValidator
-import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.help.storage.BackupSelectorConfig
 import io.legado.app.help.storage.BookCacheSelectorConfig
 import io.legado.app.help.storage.ImportOldData
 import io.legado.app.help.storage.Restore
-import io.legado.app.help.storage.ValidationResult
-import io.legado.app.help.storage.ValidationState
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.permission.Permissions
@@ -47,15 +35,13 @@ import io.legado.app.lib.permission.PermissionsCompat
 import io.legado.app.lib.prefs.fragment.PreferenceFragment
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.about.AppLogDialog
+import io.legado.app.ui.config.backup.RestoreFileSelectorDialogFragment
 import io.legado.app.ui.file.HandleFileContract
-import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.widget.dialog.BackupInfoDialog
 import io.legado.app.ui.widget.dialog.BackupSelectorDialog
 import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.FileUtils
-import io.legado.app.utils.GSON
-import io.legado.app.utils.LogUtils
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.compress.ZipUtils
 import io.legado.app.utils.checkWrite
@@ -524,145 +510,13 @@ class BackupConfigFragment : PreferenceFragment(),
      * 从已解压的目录显示恢复文件选择器
      */
     private fun showRestoreSelectorFromPath(tempPath: String) {
-        lifecycleScope.launch {
-            try {
-                // 获取文件和目录列表
-                val files = withContext(IO) {
-                    java.io.File(tempPath).listFiles()
-                        ?.filter { it.isFile && (it.name.endsWith(".json") || it.name.endsWith(".xml")) || it.isDirectory }
-                        ?.map { entry ->
-                            val size = if (entry.isDirectory) {
-                                entry.walkTopDown().filter { f -> f.isFile }.sumOf { f -> f.length() }
-                            } else {
-                                entry.length()
-                            }
-                            BackupInfoHelper.BackupFileInfo(
-                                fileName = entry.name,
-                                displayName = BackupInfoHelper.displayNameMap[entry.name] ?: entry.name,
-                                size = size,
-                                selected = true
-                            )
-                        } ?: emptyList()
-                }
-
-                waitDialog.dismiss()
-
-                if (files.isEmpty()) {
-                    appCtx.toastOnUi(getString(R.string.fvd_backup_empty))
-                    return@launch
-                }
-
-                // 显示选择对话框
-                showFileSelectionDialog(files, tempPath)
-            } catch (e: Exception) {
-                waitDialog.dismiss()
-                AppLog.put("读取备份文件出错\n${e.localizedMessage}", e)
-                appCtx.toastOnUi(getString(R.string.fvd_read_backup_error, e.localizedMessage))
-            }
-        }
-    }
-    
-    private var validationResults = mutableMapOf<String, ValidationResult>()
-    private var validationJob: Job? = null
-    private var composeDialogView: View? = null
-    
-    private fun showFileSelectionDialog(
-        files: List<BackupInfoHelper.BackupFileInfo>,
-        backupPath: String
-    ) {
-        validationResults.clear()
-        dismissComposeDialog()
-        
-        val activity = requireActivity()
-        val rootView = activity.window.decorView as? ViewGroup ?: return
-        
-        var showDialog by mutableStateOf(true)
-        var showErrorDialog by mutableStateOf<ValidationResult?>(null)
-        val results = mutableStateMapOf<String, ValidationResult>()
-        
-        val composeView = ComposeView(activity).apply {
-            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent {
-                LegadoTheme {
-                    if (showDialog) {
-                        FileValidationDialog(
-                            files = files,
-                            validationResults = results,
-                            onValidate = {
-                                validationJob?.cancel()
-                                validationJob = lifecycleScope.launch {
-                                    try {
-                                        BackupFileValidator.validateFiles(backupPath, files.map { it.fileName }) { fileName, result ->
-                                            results[fileName] = result
-                                            validationResults[fileName] = result
-                                        }
-                                    } catch (e: Exception) {
-                                        appCtx.toastOnUi(getString(R.string.fvd_format_detect_error, e.message))
-                                    }
-                                }
-                            },
-                            onConfirm = { selectedFiles ->
-                                if (selectedFiles.isEmpty()) {
-                                    appCtx.toastOnUi(getString(R.string.fvd_select_at_least_one))
-                                    return@FileValidationDialog
-                                }
-                                showDialog = false
-                                dismissComposeDialog()
-                                
-                                validationJob?.cancel()
-                                waitDialog.setText(getString(R.string.fvd_restoring))
-                                waitDialog.show()
-                                val task = Coroutine.async {
-                                    Restore.restoreSelected(appCtx, backupPath, selectedFiles) { itemName ->
-                                        updateWaitDialog(getString(R.string.restore), itemName)
-                                    }
-                                }.onFinally {
-                                    waitDialog.dismiss()
-                                }
-                                waitDialog.setOnCancelListener {
-                                    task.cancel()
-                                }
-                            },
-                            onDismiss = {
-                                showDialog = false
-                                dismissComposeDialog()
-                                validationJob?.cancel()
-                            },
-                            onInfoClick = { result ->
-                                showErrorDialog = result
-                            }
-                        )
-                        
-                        showErrorDialog?.let { result ->
-                            ValidationErrorDetailDialog(
-                                result = result,
-                                onDismiss = { showErrorDialog = null }
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        
-        val layoutParams = FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT
+        showDialogFragment(
+            RestoreFileSelectorDialogFragment.newInstance(tempPath)
         )
-        rootView.addView(composeView, layoutParams)
-        composeDialogView = composeView
-    }
-    
-    private fun dismissComposeDialog() {
-        composeDialogView?.let { view ->
-            val parent = view.parent as? ViewGroup
-            parent?.removeView(view)
-        }
-        composeDialogView = null
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        dismissComposeDialog()
         waitDialog.dismiss()
     }
 

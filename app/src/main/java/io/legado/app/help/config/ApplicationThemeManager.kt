@@ -533,7 +533,7 @@ object ApplicationThemeManager {
         return path
     }
 
-    private fun restoreThemeAsset(
+    private suspend fun restoreThemeAsset(
         zip: ZipFile,
         temp: File,
         theme: ThemeConfig.Config?,

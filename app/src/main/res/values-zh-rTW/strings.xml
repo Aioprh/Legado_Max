@@ -72,6 +72,7 @@
     <string name="donate">捐贈</string>
     <string name="exit">退出</string>
     <string name="exit_no_save">尚未儲存，是否繼續編輯</string>
+    <string name="save_ing">正在儲存，請稍候…</string>
     <string name="read_style">閱讀樣式設定</string>
     <string name="version">版本</string>
     <string name="local">本機</string>
@@ -269,6 +270,7 @@
     <string name="dark_status_icon">深色狀態欄圖示</string>
     <string name="content">內容</string>
     <string name="copy_text">複製內容</string>
+    <string name="copy">複製</string>
     <string name="download_all">一鍵快取</string>
     <string name="content_sl">這是一段測試文字\n\u3000\u3000只是讓你看看效果的</string>
     <string name="text_bg_style">文字顏色和背景(長按自訂)</string>
@@ -593,6 +595,7 @@
     <string name="bg_color">背景顏色</string>
     <string name="text_color">文字顏色</string>
     <string name="select_image">選擇圖片</string>
+    <string name="select_image_failed">選擇圖片失敗</string>
     <string name="group_manage">分組管理</string>
     <string name="group_select">分組選擇</string>
     <string name="group_edit">編輯分組</string>
@@ -1746,6 +1749,7 @@
 <string name="applied_top_bar_config">已应用顶栏包: %s</string>
 <string name="apply">应用</string>
 <string name="apply_theme">应用</string>
+<string name="cannot_delete_current_theme">不能刪除正在使用的主題</string>
 <string name="bottom_background_color">底栏背景色</string>
 <string name="bottom_bar_border_alpha">底栏边框不透明度</string>
 <string name="bottom_bar_border_color">底栏边框颜色</string>
