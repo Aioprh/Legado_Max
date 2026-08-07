@@ -595,6 +595,7 @@
     <string name="bg_color">背景顏色</string>
     <string name="text_color">文字顏色</string>
     <string name="select_image">選擇圖片</string>
+    <string name="select_image_failed">選擇圖片失敗</string>
     <string name="group_manage">分組管理</string>
     <string name="group_select">分組選擇</string>
     <string name="group_edit">編輯分組</string>

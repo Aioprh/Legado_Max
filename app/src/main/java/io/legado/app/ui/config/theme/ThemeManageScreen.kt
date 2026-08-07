@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -76,6 +77,8 @@ fun ThemeManageScreen(
     // 订阅 UI 状态
     val uiState by viewModel.uiState.collectAsState()
     val topBarColors = pageTopBarColors()
+    // 预取「已应用主题」提示的格式化模板（stringResource 只能在 Composable 上下文中调用）
+    val appliedThemeTemplate = stringResource(R.string.applied_theme_config)
 
     // 收集一次性事件，转发给 Activity 处理
     val eventFlow = viewModel.events
@@ -90,7 +93,7 @@ fun ThemeManageScreen(
                 is ThemeEvent.ShareJson -> onShareJson(event.json) // 分享 JSON 给外部应用
                 is ThemeEvent.Recreate -> onRecreate() // 应用主题后重建 Activity
                 is ThemeEvent.DeleteConfirm -> onDeleteConfirm()
-                is ThemeEvent.Applied -> onToastMsg(stringResource(R.string.applied_theme_config, event.themeName))
+                is ThemeEvent.Applied -> onToastMsg(appliedThemeTemplate.format(event.themeName))
             }
         }
     }
@@ -127,7 +130,7 @@ fun ThemeManageScreen(
                         }
                     }) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back)
                         )
                     }
@@ -241,6 +244,31 @@ fun ThemeManageScreen(
             onUpdateDraft = { viewModel.updateDraft(it) },
             onColorClick = onColorClick,
             onBlurClick = onBlurClick
+        )
+    }
+}
+
+// ── 预览 ────────────────────────────────────────────────────
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun ThemeManageScreenPreview() {
+    MaterialTheme {
+        // 注意：Preview 模式下 viewModel() 会创建真实实例，
+        // 但 AppDatabase 等 Android 依赖可能不可用，此处仅预览 UI 结构。
+        ThemeManageScreen(
+            onBackClick = {},
+            onImportFromClipboard = {},
+            onImportEmpty = {},
+            onImportFailed = {},
+            onSelectImage = {},
+            onShareJson = {},
+            onRecreate = {},
+            onDeleteConfirm = {},
+            onToast = {},
+            onToastMsg = {},
+            onColorClick = { _, _ -> },
+            onBlurClick = {}
         )
     }
 }
