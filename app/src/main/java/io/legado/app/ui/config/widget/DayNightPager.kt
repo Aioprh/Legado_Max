@@ -11,6 +11,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -84,6 +89,16 @@ fun DayNightPager(
                     ConfigTab.DAY -> stringResource(R.string.day)
                     ConfigTab.NIGHT -> stringResource(R.string.night)
                 }
+            },
+            iconContent = { tab ->
+                Icon(
+                    imageVector = when (tab) {
+                        ConfigTab.DAY -> Icons.Default.LightMode
+                        ConfigTab.NIGHT -> Icons.Default.DarkMode
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         )
 
