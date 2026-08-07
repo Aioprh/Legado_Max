@@ -349,7 +349,8 @@ private fun BackgroundImageRow(
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                overflow = TextOverflow.MiddleEllipsis
+                overflow = TextOverflow.MiddleEllipsis,
+                modifier = Modifier.weight(1f)
             )
         }
     }
