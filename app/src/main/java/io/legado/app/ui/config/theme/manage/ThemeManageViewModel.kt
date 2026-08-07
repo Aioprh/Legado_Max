@@ -1,6 +1,7 @@
 package io.legado.app.ui.config.theme.manage
 
 import android.app.Application
+import android.content.ClipData
 import io.legado.app.R
 import io.legado.app.base.BaseViewModel
 import io.legado.app.help.config.AppConfig
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
+import splitties.systemservices.clipboardManager
 
 /**
  * 主题管理 ViewModel（组合模式重构版）。
@@ -79,6 +81,13 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
 
     fun shareItem(item: ThemeItem) {
         _events.trySend(ThemeEvent.ShareJson(GSON.toJson(item.config)))
+    }
+
+    fun copyItem(item: ThemeItem) {
+        val json = GSON.toJson(item.config)
+        val clipData = ClipData.newPlainText(null, json)
+        clipboardManager.setPrimaryClip(clipData)
+        _events.trySend(ThemeEvent.ToastMsg("${item.config.themeName}主题已拷贝"))
     }
 
     // ── 批量操作 ──────────────────────────────────────────
