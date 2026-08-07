@@ -216,6 +216,7 @@ fun ThemeManageScreen(
                             },
                             onShare = { viewModel.shareItem(item) },
                             onDelete = { viewModel.deleteItem(item) },
+                            onCopy = { viewModel.copyItem(item) },
                             onLongClick = { state.enterMultiSelect(item.originalIndex) },
                             onToggleSelect = { state.toggleSelection(item.originalIndex) }
                         )
@@ -241,6 +242,7 @@ fun ThemeManageScreen(
                             },
                             onShare = { viewModel.shareItem(item) },
                             onDelete = { viewModel.deleteItem(item) },
+                            onCopy = { viewModel.copyItem(item) },
                             onLongClick = { state.enterMultiSelect(item.originalIndex) },
                             onToggleSelect = { state.toggleSelection(item.originalIndex) }
                         )

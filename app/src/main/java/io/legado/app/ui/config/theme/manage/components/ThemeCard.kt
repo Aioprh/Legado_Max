@@ -73,6 +73,7 @@ import kotlinx.coroutines.withContext
  * @param onEdit 编辑主题回调
  * @param onShare 分享主题回调
  * @param onDelete 删除主题回调
+ * @param onCopy 复制主题 JSON 到剪贴板回调
  * @param onLongClick 长按回调（进入多选模式）
  * @param onToggleSelect 切换选中状态回调（多选模式下短按触发）
  */
@@ -87,6 +88,7 @@ fun ThemeCard(
     onEdit: () -> Unit,
     onShare: () -> Unit,
     onDelete: () -> Unit,
+    onCopy: () -> Unit,
     onLongClick: () -> Unit,
     onToggleSelect: () -> Unit
 ) {
@@ -144,6 +146,7 @@ fun ThemeCard(
                         text = config.themeName,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
+                        color = onColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -174,6 +177,13 @@ fun ThemeCard(
                     TextButton(onClick = onEdit) {
                         Text(
                             text = stringResource(R.string.edit_theme),
+                            fontSize = 13.sp,
+                            color = buttonTextColor
+                        )
+                    }
+                    TextButton(onClick = onCopy) {
+                        Text(
+                            text = stringResource(R.string.copy),
                             fontSize = 13.sp,
                             color = buttonTextColor
                         )
@@ -336,6 +346,7 @@ private fun ThemeCardDayPreview() {
             onEdit = {},
             onShare = {},
             onDelete = {},
+            onCopy = {},
             onLongClick = {},
             onToggleSelect = {}
         )
@@ -369,6 +380,7 @@ private fun ThemeCardNightPreview() {
             onEdit = {},
             onShare = {},
             onDelete = {},
+            onCopy = {},
             onLongClick = {},
             onToggleSelect = {}
         )
@@ -402,6 +414,7 @@ private fun ThemeCardMultiSelectPreview() {
             onEdit = {},
             onShare = {},
             onDelete = {},
+            onCopy = {},
             onLongClick = {},
             onToggleSelect = {}
         )
