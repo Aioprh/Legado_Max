@@ -29,6 +29,8 @@ import io.legado.app.utils.getPrefString
 import io.legado.app.utils.hexString
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.printOnDebug
+import androidx.core.content.edit
+import io.legado.app.utils.defaultSharedPreferences
 import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.putPrefString
 import io.legado.app.utils.stackBlur
@@ -40,14 +42,18 @@ import io.legado.app.help.http.newCallResponse
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.getPrefBoolean
-import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.toastOnUi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.FileOutputStream
 
 @Keep
 object ThemeConfig {
     const val configFileName = "themeConfig.json"
     val configFilePath = FileUtils.getPath(appCtx.filesDir, configFileName)
+
+    /** 单线程调度器，保证所有写操作串行执行，避免并发竞态 */
+    private val ioSerialDispatcher = Dispatchers.IO.limitedParallelism(1)
 
     val configList: ArrayList<Config> by lazy {
         val cList = getConfigs() ?: DefaultData.themeConfigs
@@ -149,7 +155,7 @@ object ThemeConfig {
         return bgImage?.stackBlur(bgImgBlu)?.toDrawable(context.resources)
     }
 
-    fun upConfig() {
+    suspend fun upConfig() {
         addConfigs(DefaultData.themeConfigs)
     }
 
@@ -189,32 +195,34 @@ object ThemeConfig {
         }
     }
 
-    fun replaceConfigs(newConfigs: List<Config>?) {
+    suspend fun replaceConfigs(newConfigs: List<Config>?) {
         val validConfigs = newConfigs?.filter { validateConfig(it) } ?: emptyList()
         configList.clear()
         configList.addAll(validConfigs)
         save()
     }
 
-    fun save() {
+    suspend fun save() {
         val json = GSON.toJson(configList)
-        FileUtils.delete(configFilePath)
-        FileUtils.createFileIfNotExist(configFilePath).writeText(json)
+        withContext(ioSerialDispatcher) {
+            FileUtils.delete(configFilePath)
+            FileUtils.createFileIfNotExist(configFilePath).writeText(json)
+        }
     }
 
-    fun delConfig(index: Int) {
+    suspend fun delConfig(index: Int) {
         configList.removeAt(index)
         save()
     }
 
-    fun toTopConfigs(positions: List<Int>) {
+    suspend fun toTopConfigs(positions: List<Int>) {
         val configs = positions.map { configList[it] }
         positions.sortedDescending().forEach { configList.removeAt(it) }
         configList.addAll(0, configs)
         save()
     }
 
-    fun addConfig(json: String): Int {
+    suspend fun addConfig(json: String): Int {
         val trimmedJson = json.trim { it < ' ' }
         var count = 0
         GSON.fromJsonArray<Config>(trimmedJson).getOrNull()?.let { configs ->
@@ -248,7 +256,7 @@ object ThemeConfig {
         return count
     }
 
-    fun addConfig(newConfig: Config) {
+    suspend fun addConfig(newConfig: Config) {
         if (!validateConfig(newConfig)) {
             return
         }
@@ -266,7 +274,7 @@ object ThemeConfig {
         save()
     }
 
-    fun addConfigs(newConfigs: List<Config>?) {
+    suspend fun addConfigs(newConfigs: List<Config>?) {
         val newConfigs = newConfigs?.filter{
             validateConfig(it)
         }
@@ -357,24 +365,27 @@ object ThemeConfig {
                 }
             }
             val backgroundBlur = config.backgroundImgBlur
-            if (isNightTheme) {
-                context.putPrefString(PreferKey.dNThemeName, config.themeName)
-                context.putPrefInt(PreferKey.cNPrimary, primary)
-                context.putPrefInt(PreferKey.cNAccent, accent)
-                context.putPrefInt(PreferKey.cNBackground, background)
-                context.putPrefInt(PreferKey.cNBBackground, bBackground)
-                context.putPrefBoolean(PreferKey.tNavBarN, transparentNavBar)
-                context.putPrefString(PreferKey.bgImageN, backgroundPath)
-                context.putPrefInt(PreferKey.bgImageNBlurring, backgroundBlur)
-            } else {
-                context.putPrefString(PreferKey.dThemeName, config.themeName)
-                context.putPrefInt(PreferKey.cPrimary, primary)
-                context.putPrefInt(PreferKey.cAccent, accent)
-                context.putPrefInt(PreferKey.cBackground, background)
-                context.putPrefInt(PreferKey.cBBackground, bBackground)
-                context.putPrefBoolean(PreferKey.tNavBar, transparentNavBar)
-                context.putPrefString(PreferKey.bgImage, backgroundPath)
-                context.putPrefInt(PreferKey.bgImageBlurring, backgroundBlur)
+            // 批量写入：合并为单次 edit()，减少 8 次 Editor 创建 + 8 次磁盘调度为 1 次
+            context.defaultSharedPreferences.edit {
+                if (isNightTheme) {
+                    putString(PreferKey.dNThemeName, config.themeName)
+                    putInt(PreferKey.cNPrimary, primary)
+                    putInt(PreferKey.cNAccent, accent)
+                    putInt(PreferKey.cNBackground, background)
+                    putInt(PreferKey.cNBBackground, bBackground)
+                    putBoolean(PreferKey.tNavBarN, transparentNavBar)
+                    putString(PreferKey.bgImageN, backgroundPath)
+                    putInt(PreferKey.bgImageNBlurring, backgroundBlur)
+                } else {
+                    putString(PreferKey.dThemeName, config.themeName)
+                    putInt(PreferKey.cPrimary, primary)
+                    putInt(PreferKey.cAccent, accent)
+                    putInt(PreferKey.cBackground, background)
+                    putInt(PreferKey.cBBackground, bBackground)
+                    putBoolean(PreferKey.tNavBar, transparentNavBar)
+                    putString(PreferKey.bgImage, backgroundPath)
+                    putInt(PreferKey.bgImageBlurring, backgroundBlur)
+                }
             }
             if (applyNow) {
                 AppConfig.isNightTheme = isNightTheme
@@ -428,7 +439,7 @@ object ThemeConfig {
         )
     }
 
-    fun saveDayTheme(context: Context, name: String) {
+    suspend fun saveDayTheme(context: Context, name: String) {
         val config = getDayTheme(context, name)
         addConfig(config)
     }
@@ -467,7 +478,7 @@ object ThemeConfig {
         )
     }
 
-    fun saveNightTheme(context: Context, name: String) {
+    suspend fun saveNightTheme(context: Context, name: String) {
         val config = getNightTheme(context, name)
         addConfig(config)
     }

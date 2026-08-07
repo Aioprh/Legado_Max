@@ -3,13 +3,30 @@ package io.legado.app.ui.debug
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
-import io.legado.app.ui.theme.LegadoThemeWithBackground
-import io.legado.app.ui.theme.initLegadoComposeTheme
-import io.legado.app.ui.theme.setLegadoContent
+import io.legado.app.base.BaseComposeActivity
 
-class RegexTestActivity : AppCompatActivity() {
+class RegexTestActivity : BaseComposeActivity() {
+
+    private var pattern: String = ""
+    private var replacement: String = ""
+    private var isRegex: Boolean = true
+
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        pattern = intent.getStringExtra("pattern") ?: ""
+        replacement = intent.getStringExtra("replacement") ?: ""
+        isRegex = intent.getBooleanExtra("isRegex", true)
+    }
+
+    @Composable
+    override fun ComposeContent() {
+        RegexTestScreen(
+            onBackClick = { finish() },
+            initialPattern = pattern,
+            initialReplacement = replacement,
+            initialIsRegex = isRegex
+        )
+    }
 
     companion object {
         fun startIntent(
@@ -25,24 +42,6 @@ class RegexTestActivity : AppCompatActivity() {
             }
         }
     }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        initLegadoComposeTheme()
-        super.onCreate(savedInstanceState)
-
-        val pattern = intent.getStringExtra("pattern") ?: ""
-        val replacement = intent.getStringExtra("replacement") ?: ""
-        val isRegex = intent.getBooleanExtra("isRegex", true)
-
-        setLegadoContent {
-            RegexTestScreen(
-                onBackClick = { finish() },
-                initialPattern = pattern,
-                initialReplacement = replacement,
-                initialIsRegex = isRegex
-            )
-        }
-    }
 }
 
 @Composable
@@ -52,12 +51,10 @@ fun RegexTestContent(
     initialReplacement: String = "",
     initialIsRegex: Boolean = true
 ) {
-    LegadoThemeWithBackground(backgroundDrawable = null) {
-        RegexTestScreen(
-            onBackClick = onBackClick,
-            initialPattern = initialPattern,
-            initialReplacement = initialReplacement,
-            initialIsRegex = initialIsRegex
-        )
-    }
+    RegexTestScreen(
+        onBackClick = onBackClick,
+        initialPattern = initialPattern,
+        initialReplacement = initialReplacement,
+        initialIsRegex = initialIsRegex
+    )
 }

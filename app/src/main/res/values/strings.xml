@@ -83,6 +83,7 @@
     <string name="donate">Donations</string>
     <string name="exit">Exit</string>
     <string name="exit_no_save">It has not been saved. Do you want to continue editing?</string>
+    <string name="save_ing">Saving, please wait…</string>
     <string name="read_style">Book styles</string>
     <string name="version">Version</string>
     <string name="local">Local</string>
@@ -290,6 +291,7 @@
     <string name="dark_status_icon">Darken the status bar\'s icon color</string>
     <string name="content">Content</string>
     <string name="copy_text">Copy</string>
+    <string name="copy">Copy</string>
     <string name="download_all">Download all</string>
     <string name="content_sl">This is a test text, \n\u3000\u3000 just to show you the effect</string>
     <string name="text_bg_style">Color and background (long tap to customize)</string>
@@ -632,6 +634,7 @@
     <string name="text_color">Text color</string>
     <string name="text_accent_color">Accent Color</string>
     <string name="select_image">Select a picture</string>
+    <string name="select_image_failed">Failed to select image</string>
     <string name="group_manage">Group management</string>
     <string name="group_select">Group selection</string>
     <string name="group_edit">Group editing</string>
@@ -2154,6 +2157,7 @@
 <string name="applied_top_bar_config">Applied top bar config: %s</string>
 <string name="apply">Apply</string>
 <string name="apply_theme">Apply</string>
+<string name="cannot_delete_current_theme">Cannot delete the theme in use</string>
 <string name="bottom_background_color">Bottom background color</string>
 <string name="bottom_bar_border_alpha">Bottom bar border opacity</string>
 <string name="bottom_bar_border_color">Bottom bar border color</string>

@@ -36,10 +36,10 @@ import io.legado.app.help.book.update
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.globalExecutor
-import io.legado.app.help.gsyVideo.ExoVideoManager
-import io.legado.app.help.gsyVideo.ExoVideoManager.Companion.FULLSCREEN_ID
-import io.legado.app.help.gsyVideo.FloatingPlayer
-import io.legado.app.help.gsyVideo.VideoPlayer
+import io.legado.app.ui.video.player.ExoVideoManager
+import io.legado.app.ui.video.player.ExoVideoManager.Companion.FULLSCREEN_ID
+import io.legado.app.ui.video.player.FloatingPlayer
+import io.legado.app.ui.video.player.VideoPlayer
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.rss.Rss
 import io.legado.app.model.webBook.WebBook
@@ -75,7 +75,7 @@ object VideoPlay : CoroutineScope by MainScope(){
         set(value) {
             videoPrefs.edit { putBoolean("autoPlay", value) }
         }
-    /**  直接全屏，需先启用自动播放  **/
+    /**  直接全屏，需先启用自动播放 **/
     var startFull
         get() = videoPrefs.getBoolean("startFull", false)
         set(value) {
@@ -180,7 +180,7 @@ object VideoPlay : CoroutineScope by MainScope(){
     var episodes: List<BookChapter>? =  null
     /**  在当前episodes中的位置  **/
     var chapterInVolumeIndex = 0
-    /**  卷章节 -> 线路或者季数  **/
+    /**  卷章节-> 线路或者季  **/
     var durVolumeIndex = 0
     /**  当前卷  **/
     var durVolume: BookChapter? = null
@@ -288,7 +288,7 @@ object VideoPlay : CoroutineScope by MainScope(){
         (source as? RssSource)?.let { s ->
             val rssArticle = rssStar?.toRssArticle() ?: rssRecord?.toRssArticle()
             if (rssArticle == null) {
-                appCtx.toastOnUi("未找到订阅")
+                appCtx.toastOnUi("未找到订阅文章")
                 return
             }
             val ruleContent = s.ruleContent
@@ -415,7 +415,7 @@ object VideoPlay : CoroutineScope by MainScope(){
     }
 
     /**
-     * 退出全屏，主要用于返回键
+     * 退出全屏，主要用于返回
      *
      * @return 返回是否全屏
      */
@@ -434,8 +434,8 @@ object VideoPlay : CoroutineScope by MainScope(){
         return backFrom
     }
     /**
-     * 停止当前播放（释放媒体播放器），但不重置状态。
-     * 用于新会话启动时清理旧媒体，防止 onResume 恢复旧视频。
+     * 停止当前播放（释放媒体播放器），但不重置状态
+     * 用于新会话启动时清理旧媒体，防止 onResume 恢复旧视频
      */
     fun stopPlayback() {
         if (videoManager.listener() != null) {
@@ -513,7 +513,7 @@ object VideoPlay : CoroutineScope by MainScope(){
         }
     }
 
-    //播放器移植 - 辅助函数
+    //播放器移除 - 辅助函数
     @SuppressLint("StaticFieldLeak")
     private var sSwitchVideo: StandardGSYVideoPlayer? = null
     private var sMediaPlayerListener: GSYMediaPlayerListener? = null
@@ -589,7 +589,7 @@ object VideoPlay : CoroutineScope by MainScope(){
             appCtx.toastOnUi("未找到源")
             return false
         }
-        record?.let{ //订阅源
+        record?.let{ //订阅记录
             val sourceKey = sourceKey ?: return@let
             rssStar =appDb.rssStarDao.get(sourceKey, it)?.also{ r ->
                 durChapterPos = r.durPos

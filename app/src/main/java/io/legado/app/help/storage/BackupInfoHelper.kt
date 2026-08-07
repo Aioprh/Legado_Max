@@ -14,7 +14,7 @@ import java.io.File
 
 /**
  * 备份/恢复信息工具类.
- * 这里统计的是当前本机数据和当前配置规则，不解析某一个 ZIP 备份文件。
+ * 统计本机数据、配置规则，以及扫描已解压的备份目录。
  */
 object BackupInfoHelper {
 
@@ -337,6 +337,39 @@ object BackupInfoHelper {
             size < 1024 * 1024 -> String.format("%.1f KB", size / 1024.0)
             else -> String.format("%.2f MB", size / (1024.0 * 1024))
         }
+    }
+
+    /**
+     * 扫描已解压的备份目录，返回文件列表。
+     *
+     * 筛选 .json / .xml 文件以及子目录，计算每个条目的大小。
+     * 与 [getBackupOverview] 不同：这个方法解析的是 ZIP 解压后的实际目录，
+     * 而非本地数据库/配置。
+     *
+     * @param path 已解压的备份目录路径
+     * @return 文件信息列表，空目录返回空列表
+     */
+    fun scanRestoreDirectory(path: String): List<BackupFileInfo> {
+        return File(path).listFiles()
+            ?.filter { entry ->
+                entry.isFile && (entry.name.endsWith(".json") || entry.name.endsWith(".xml"))
+                        || entry.isDirectory
+            }
+            ?.map { entry ->
+                val size = if (entry.isDirectory) {
+                    entry.walkTopDown()
+                        .filter { f -> f.isFile }
+                        .sumOf { f -> f.length() }
+                } else {
+                    entry.length()
+                }
+                BackupFileInfo(
+                    fileName = entry.name,
+                    displayName = displayNameMap[entry.name] ?: entry.name,
+                    size = size,
+                    selected = true
+                )
+            } ?: emptyList()
     }
 
     /**
