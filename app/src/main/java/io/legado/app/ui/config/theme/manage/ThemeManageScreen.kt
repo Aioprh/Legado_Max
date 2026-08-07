@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentPaste
@@ -22,8 +24,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,12 +47,20 @@ import io.legado.app.ui.config.theme.manage.components.ThemeEditDialog
 import io.legado.app.ui.config.theme.manage.components.ThemeTabRow
 import io.legado.app.ui.theme.pageTopBarBackground
 import io.legado.app.ui.theme.pageTopBarColors
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
  * 主题管理主屏幕（Compose）。
  *
  * 订阅 ViewModel 的 UiState 渲染主题列表、Tab切换、多选操作栏、编辑弹窗。
  * 一次性事件（Toast、分享、Recreate等）通过 LaunchedEffect 收集并回调给 Activity。
+ *
+ * ## 日间/夜间切换
+ * 通过 [HorizontalPager] 实现左右滑动切换日间/夜间主题列表，顶部 [ThemeTabRow] 胶囊
+ * 作为指示器和点击入口，两者双向联动：
+ * - 点击胶囊 → [androidx.compose.foundation.pager.PagerState.animateScrollToPage] 滑动到对应页
+ * - 左右滑动 → 更新 [ThemeManageViewModel] 的 tab 状态
+ * 多选模式下禁用滑动（`userScrollEnabled = false`）。
  *
  * ## 架构
  * - **状态驱动**：所有 UI 状态由 [ThemeManageViewModel.uiState] 驱动
@@ -185,56 +198,94 @@ fun ThemeManageScreen(
             }
         }
     ) { paddingValues ->
+        // PagerState：0 = 日间，1 = 夜间
+        val pagerState = rememberPagerState(
+            initialPage = if (uiState.tab == ThemeTab.DAY) 0 else 1,
+            pageCount = { 2 }
+        )
+
+        // Tab → Pager：点击胶囊时滑动到对应页
+        LaunchedEffect(uiState.tab) {
+            val targetPage = if (uiState.tab == ThemeTab.DAY) 0 else 1
+            if (pagerState.currentPage != targetPage) {
+                pagerState.animateScrollToPage(targetPage)
+            }
+        }
+
+        // Pager → Tab：左右滑动时更新 tab
+        LaunchedEffect(pagerState) {
+            snapshotFlow { pagerState.currentPage }
+                .distinctUntilChanged()
+                .collect { page ->
+                    val newTab = if (page == 0) ThemeTab.DAY else ThemeTab.NIGHT
+                    if (uiState.tab != newTab) {
+                        viewModel.switchTab(newTab)
+                    }
+                }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // 日间/夜间主题切换 Tab
+            // 日间/夜间主题切换 Tab（胶囊指示器 + 点击入口）
             ThemeTabRow(
                 selectedTab = uiState.tab,
                 onTabClick = { viewModel.switchTab(it) }
             )
 
-            if (uiState.visibleItems.isEmpty()) {
-                // 空状态提示
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            // 左右滑动切换日间/夜间主题列表
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                userScrollEnabled = !uiState.isMultiSelectMode
+            ) { page ->
+                val tab = if (page == 0) ThemeTab.DAY else ThemeTab.NIGHT
+                val pageItems = remember(uiState.allItems, tab) {
+                    uiState.allItems.filter { it.config.isNightTheme == tab.isNight }
                 }
-            } else {
-                // 主题卡片列表
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(
-                        items = uiState.visibleItems,
-                        key = { it.originalIndex }
-                    ) { item ->
-                        ThemeCard(
-                            item = item,
-                            isMultiSelectMode = uiState.isMultiSelectMode,
-                            isSelected = item.originalIndex in uiState.multiSelect.selectedOriginalIndices,
-                            isCurrent = item.config.themeName == currentConfig.themeName
-                                && item.config.isNightTheme == currentConfig.isNightTheme,
-                            onApply = { viewModel.applyConfig(item) },
-                            onEdit = { viewModel.openEditDialog(item) },
-                            onShare = { viewModel.shareItem(item) },
-                            onDelete = { viewModel.deleteItem(item) },
-                            onLongClick = { viewModel.enterMultiSelect(item.originalIndex) },
-                            onToggleSelect = { viewModel.toggleSelection(item.originalIndex) }
+
+                if (pageItems.isEmpty()) {
+                    // 空状态提示
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    item {
-                        // 底部留出安全距离，避免被系统导航栏遮挡
-                        Spacer(Modifier.height(80.dp))
+                } else {
+                    // 主题卡片列表
+                    LazyColumn(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            items = pageItems,
+                            key = { it.originalIndex }
+                        ) { item ->
+                            ThemeCard(
+                                item = item,
+                                isMultiSelectMode = uiState.isMultiSelectMode,
+                                isSelected = item.originalIndex in uiState.multiSelect.selectedOriginalIndices,
+                                isCurrent = item.config.themeName == currentConfig.themeName
+                                    && item.config.isNightTheme == currentConfig.isNightTheme,
+                                onApply = { viewModel.applyConfig(item) },
+                                onEdit = { viewModel.openEditDialog(item) },
+                                onShare = { viewModel.shareItem(item) },
+                                onDelete = { viewModel.deleteItem(item) },
+                                onLongClick = { viewModel.enterMultiSelect(item.originalIndex) },
+                                onToggleSelect = { viewModel.toggleSelection(item.originalIndex) }
+                            )
+                        }
+                        item {
+                            // 底部留出安全距离，避免被系统导航栏遮挡
+                            Spacer(Modifier.height(80.dp))
+                        }
                     }
                 }
             }
