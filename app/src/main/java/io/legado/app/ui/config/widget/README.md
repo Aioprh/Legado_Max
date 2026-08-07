@@ -1,4 +1,4 @@
-# configmanage/ — 配置管理通用零件（Compose）
+# widget/ — 配置管理通用零件（Compose）
 
 所有配置管理页（主题、顶栏、底栏等）共享的通用 UI 状态和 Composable 组件，
 采用组合模式而非继承模式实现复用。
@@ -24,17 +24,17 @@
 ## 与具体管理页的关系
 
 ```
-configmanage/（通用零件）          theme/manage/（主题专用）
-─────────────────────────         ──────────────────────────
-ConfigManageState          ←──    rememberConfigManageState()
-ConfigManageScaffold       ←──    组装 Screen
-DayNightPager              ←──    传入 dayContent / nightContent
-ConfigMultiSelectBar       ←──    传入 MultiSelectAction 列表
-ConfigList                 ←──    渲染 ThemeCard
+widget/（通用零件）          theme/manage/（主题专用）
+────────────────────         ──────────────────────────
+ConfigManageState      ←──    rememberConfigManageState()
+ConfigManageScaffold   ←──    组装 Screen
+DayNightPager          ←──    传入 dayContent / nightContent
+ConfigMultiSelectBar   ←──    传入 MultiSelectAction 列表
+ConfigList             ←──    渲染 ThemeCard
 
-                                   ThemeManageViewModel（仅数据操作）
-                                   ThemeCard（主题专用卡片）
-                                   ThemeEditDialog（主题专用弹窗）
+                             ThemeManageViewModel（仅数据操作）
+                             ThemeCard（主题专用卡片）
+                             ThemeEditDialog（主题专用弹窗）
 ```
 
 新增配置管理页时：
