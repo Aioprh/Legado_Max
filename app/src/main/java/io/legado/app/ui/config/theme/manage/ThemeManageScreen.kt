@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
+import io.legado.app.help.config.ThemeConfig
 import io.legado.app.ui.config.theme.manage.components.MultiSelectBottomBar
 import io.legado.app.ui.config.theme.manage.components.ThemeCard
 import io.legado.app.ui.config.theme.manage.components.ThemeEditDialog
@@ -79,6 +81,10 @@ fun ThemeManageScreen(
     val topBarColors = pageTopBarColors()
     // 预取「已应用主题」提示的格式化模板（stringResource 只能在 Composable 上下文中调用）
     val appliedThemeTemplate = stringResource(R.string.applied_theme_config)
+
+    // 获取当前应用的主题，用于判断卡片是否为当前主题
+    val context = LocalContext.current
+    val currentConfig = ThemeConfig.getDurConfig(context)
 
     // 收集一次性事件，转发给 Activity 处理
     val eventFlow = viewModel.events
@@ -216,6 +222,8 @@ fun ThemeManageScreen(
                             item = item,
                             isMultiSelectMode = uiState.isMultiSelectMode,
                             isSelected = item.originalIndex in uiState.multiSelect.selectedOriginalIndices,
+                            isCurrent = item.config.themeName == currentConfig.themeName
+                                && item.config.isNightTheme == currentConfig.isNightTheme,
                             onApply = { viewModel.applyConfig(item) },
                             onEdit = { viewModel.openEditDialog(item) },
                             onShare = { viewModel.shareItem(item) },

@@ -116,7 +116,17 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
     }
 
     fun executeDeleteSelected() {
-        val indices = _uiState.value.multiSelect.selectedOriginalIndices.sortedDescending()
+        val state = _uiState.value
+        val currentConfig = ThemeConfig.getDurConfig(getApplication())
+        // 过滤掉正在使用的主题
+        val indices = state.multiSelect.selectedOriginalIndices
+            .filterNot { idx ->
+                val item = state.allItems.getOrNull(idx)
+                item != null
+                    && item.config.themeName == currentConfig.themeName
+                    && item.config.isNightTheme == currentConfig.isNightTheme
+            }
+            .sortedDescending()
         execute {
             indices.forEach { ThemeConfig.delConfig(it) }
             exitMultiSelect()
@@ -180,6 +190,14 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
     }
 
     fun deleteItem(item: ThemeItem) {
+        // 阻止删除正在使用的主题
+        val currentConfig = ThemeConfig.getDurConfig(getApplication())
+        if (item.config.themeName == currentConfig.themeName
+            && item.config.isNightTheme == currentConfig.isNightTheme
+        ) {
+            _events.trySend(ThemeEvent.Toast(R.string.cannot_delete_current_theme))
+            return
+        }
         execute {
             ThemeConfig.delConfig(item.originalIndex)
             loadThemes()

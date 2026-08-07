@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +67,7 @@ import kotlinx.coroutines.withContext
  * @param item 主题条目（含原始索引）
  * @param isMultiSelectMode 是否处于多选模式
  * @param isSelected 当前条目是否被选中（多选模式下生效）
+ * @param isCurrent 当前条目是否为正在应用的主题
  * @param onApply 应用主题回调
  * @param onEdit 编辑主题回调
  * @param onShare 分享主题回调
@@ -79,6 +81,7 @@ fun ThemeCard(
     item: ThemeItem,
     isMultiSelectMode: Boolean,
     isSelected: Boolean,
+    isCurrent: Boolean = false,
     onApply: () -> Unit,
     onEdit: () -> Unit,
     onShare: () -> Unit,
@@ -117,7 +120,9 @@ fun ThemeCard(
                 accentColor = Color(accentColor),
                 backgroundColor = Color(backgroundColor),
                 backgroundImgPath = config.backgroundImgPath,
-                isCurrent = false // TODO: compare with current applied theme
+                isCurrent = isCurrent,
+                isMultiSelectMode = isMultiSelectMode,
+                isNightTheme = config.isNightTheme
             )
 
             Spacer(Modifier.width(12.dp))
@@ -146,17 +151,25 @@ fun ThemeCard(
                 Spacer(Modifier.height(8.dp))
 
                 // 操作按钮
+                val buttonTextColor = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
+                    Color.Black
+                } else {
+                    Color.White
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onApply) {
                         Text(
-                            text = stringResource(R.string.apply_theme),
-                            fontSize = 13.sp
+                            text = if (isCurrent) stringResource(R.string.applied)
+                                   else stringResource(R.string.apply_theme),
+                            fontSize = 13.sp,
+                            color = buttonTextColor
                         )
                     }
                     TextButton(onClick = onEdit) {
                         Text(
                             text = stringResource(R.string.edit_theme),
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
+                            color = buttonTextColor
                         )
                     }
                 }
@@ -203,7 +216,9 @@ private fun ThemePreviewCard(
     accentColor: Color,
     backgroundColor: Color,
     backgroundImgPath: String? = null,
-    isCurrent: Boolean
+    isCurrent: Boolean,
+    isMultiSelectMode: Boolean = false,
+    isNightTheme: Boolean = false
 ) {
     // 异步解码背景图片缩略图
     val backgroundImage: ImageBitmap? by produceState<ImageBitmap?>(initialValue = null, backgroundImgPath) {
@@ -272,15 +287,15 @@ private fun ThemePreviewCard(
                     .background(accentColor.copy(alpha = 0.5f))
             )
 
-            // 当前标记
-            if (isCurrent) {
+            // 当前标记（多选模式下不显示）
+            if (isCurrent && !isMultiSelectMode) {
                 Icon(
                     Icons.Default.Check,
                     contentDescription = null,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurface
+                    tint = if (isNightTheme) Color.White else Color.Black
                 )
             }
         }
@@ -310,6 +325,7 @@ private fun ThemeCardDayPreview() {
             ),
             isMultiSelectMode = false,
             isSelected = false,
+            isCurrent = true,
             onApply = {},
             onEdit = {},
             onShare = {},
@@ -342,6 +358,7 @@ private fun ThemeCardNightPreview() {
             ),
             isMultiSelectMode = false,
             isSelected = false,
+            isCurrent = true,
             onApply = {},
             onEdit = {},
             onShare = {},
@@ -374,6 +391,7 @@ private fun ThemeCardMultiSelectPreview() {
             ),
             isMultiSelectMode = true,
             isSelected = true,
+            isCurrent = false,
             onApply = {},
             onEdit = {},
             onShare = {},

@@ -1749,6 +1749,7 @@
 <string name="applied_top_bar_config">已应用顶栏包: %s</string>
 <string name="apply">应用</string>
 <string name="apply_theme">应用</string>
+<string name="cannot_delete_current_theme">不能刪除正在使用的主題</string>
 <string name="bottom_background_color">底栏背景色</string>
 <string name="bottom_bar_border_alpha">底栏边框不透明度</string>
 <string name="bottom_bar_border_color">底栏边框颜色</string>
