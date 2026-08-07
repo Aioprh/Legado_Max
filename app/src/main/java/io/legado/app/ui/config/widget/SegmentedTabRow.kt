@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 
 /**
@@ -43,6 +44,11 @@ fun <T> SegmentedTabRow(
 ) {
     require(tabs.isNotEmpty()) { "tabs must not be empty" }
 
+    // 自适应透明度：与 ThemeCard 风格保持一致
+    val isLightBg = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val containerAlpha = if (isLightBg) 0.15f else 0.12f
+    val borderAlpha = if (isLightBg) 0.06f else 0.10f
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -67,16 +73,16 @@ fun <T> SegmentedTabRow(
                             MaterialTheme.colorScheme.surfaceVariant,
                             MaterialTheme.colorScheme.primary,
                             0.25f
-                        ),
+                        ).copy(alpha = containerAlpha),
                         activeContentColor = MaterialTheme.colorScheme.primary,
-                        inactiveContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        inactiveContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = containerAlpha),
                         inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         activeBorderColor = lerp(
                             MaterialTheme.colorScheme.surfaceVariant,
                             MaterialTheme.colorScheme.primary,
                             0.25f
-                        ),
-                        inactiveBorderColor = MaterialTheme.colorScheme.surfaceVariant
+                        ).copy(alpha = borderAlpha),
+                        inactiveBorderColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = borderAlpha)
                     ),
                     icon = if (iconContent != null) {
                         { iconContent(tab) }

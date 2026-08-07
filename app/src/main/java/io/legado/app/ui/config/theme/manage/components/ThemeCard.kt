@@ -99,9 +99,9 @@ fun ThemeCard(
 
     // 自适应透明度：亮色背景略高（保持可读），暗色背景略低（透出背景图）
     val isLightBg = MaterialTheme.colorScheme.background.luminance() > 0.5f
-    val cardAlpha = if (isLightBg) 0.82f else 0.62f
+    val cardAlpha = if (isLightBg) 0.55f else 0.42f
     val cardColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = cardAlpha)
-    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = if (isLightBg) 0.12f else 0.18f)
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = if (isLightBg) 0.06f else 0.10f)
     val onColor = MaterialTheme.colorScheme.onSurfaceVariant
     val iconTint = onColor.copy(alpha = 0.85f)
 
@@ -109,7 +109,7 @@ fun ThemeCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .border(0.5.dp, borderColor, RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = {
                     if (isMultiSelectMode) onToggleSelect()
@@ -120,7 +120,7 @@ fun ThemeCard(
             ),
         shape = RoundedCornerShape(12.dp),
         color = cardColor,
-        shadowElevation = 1.dp
+        shadowElevation = 0.dp
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -155,11 +155,18 @@ fun ThemeCard(
 
                 Spacer(Modifier.height(4.dp))
 
-                Text(
-                    text = if (config.isNightTheme) stringResource(R.string.night) else stringResource(R.string.day),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = onColor.copy(alpha = 0.8f)
-                )
+                // 日/夜标签胶囊（半透明背景）
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = if (isLightBg) 0.15f else 0.12f)
+                ) {
+                    Text(
+                        text = if (config.isNightTheme) stringResource(R.string.night) else stringResource(R.string.day),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = onColor.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
 
                 Spacer(Modifier.height(8.dp))
 
@@ -269,7 +276,7 @@ private fun ThemePreviewCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.15f))
+                .background(Color.Black.copy(alpha = 0.08f))
         )
 
         Box(
