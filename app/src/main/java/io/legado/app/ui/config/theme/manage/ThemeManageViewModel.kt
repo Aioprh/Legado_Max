@@ -5,7 +5,7 @@ import io.legado.app.R
 import io.legado.app.base.BaseViewModel
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
-import io.legado.app.ui.config.configmanage.ConfigTab
+import io.legado.app.ui.config.widget.ConfigTab
 import io.legado.app.utils.GSON
 import io.legado.app.utils.getClipText
 import kotlinx.coroutines.channels.Channel

@@ -11,8 +11,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
-import io.legado.app.ui.config.configmanage.ConfigTab
-import io.legado.app.ui.config.configmanage.SegmentedTabRow
+import io.legado.app.ui.config.widget.ConfigTab
+import io.legado.app.ui.config.widget.SegmentedTabRow
 
 /**
  * 主题列表的日间/夜间 Tab 行。

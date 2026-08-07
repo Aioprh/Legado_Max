@@ -19,15 +19,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
-import io.legado.app.ui.config.configmanage.ConfigList
-import io.legado.app.ui.config.configmanage.ConfigManageScaffold
-import io.legado.app.ui.config.configmanage.ConfigTab
-import io.legado.app.ui.config.configmanage.ConfigMultiSelectBar
-import io.legado.app.ui.config.configmanage.DayNightPager
-import io.legado.app.ui.config.configmanage.ImportFromClipboardAction
-import io.legado.app.ui.config.configmanage.MultiSelectAction
-import io.legado.app.ui.config.configmanage.SelectAllAction
-import io.legado.app.ui.config.configmanage.rememberConfigManageState
+import io.legado.app.ui.config.widget.ConfigList
+import io.legado.app.ui.config.widget.ConfigManageScaffold
+import io.legado.app.ui.config.widget.ConfigTab
+import io.legado.app.ui.config.widget.ConfigMultiSelectBar
+import io.legado.app.ui.config.widget.DayNightPager
+import io.legado.app.ui.config.widget.ImportFromClipboardAction
+import io.legado.app.ui.config.widget.MultiSelectAction
+import io.legado.app.ui.config.widget.SelectAllAction
+import io.legado.app.ui.config.widget.rememberConfigManageState
 import io.legado.app.ui.config.theme.manage.components.ThemeCard
 import io.legado.app.ui.config.theme.manage.components.ThemeEditDialog
 
@@ -104,7 +104,7 @@ fun ThemeManageScreen(
             }
         }
         registerGetDraftBgPath { editDraft?.backgroundImgPath }
-        registerGetSelectedIndices { state.multiSelect.selectedIndices }
+        registerGetSelectedIndices { state.multiSelect.selectedIndices.toSet() }
         onDispose { }
     }
 
@@ -165,7 +165,7 @@ fun ThemeManageScreen(
                             icon = Icons.Default.VerticalAlignTop,
                             contentDescription = stringResource(R.string.to_top),
                             onClick = {
-                                viewModel.toTopSelected(state.multiSelect.selectedIndices)
+                                viewModel.toTopSelected(state.multiSelect.selectedIndices.toSet())
                                 state.exitMultiSelect()
                             }
                         ),
@@ -173,7 +173,7 @@ fun ThemeManageScreen(
                             icon = Icons.Default.Share,
                             contentDescription = stringResource(R.string.export),
                             onClick = {
-                                viewModel.exportSelected(state.multiSelect.selectedIndices)
+                                viewModel.exportSelected(state.multiSelect.selectedIndices.toSet())
                                 state.exitMultiSelect()
                             }
                         ),
@@ -182,20 +182,21 @@ fun ThemeManageScreen(
                             contentDescription = stringResource(R.string.delete),
                             tint = MaterialTheme.colorScheme.error,
                             onClick = {
-                                viewModel.requestDeleteSelected(state.multiSelect.selectedIndices)
+                                viewModel.requestDeleteSelected(state.multiSelect.selectedIndices.toSet())
                             }
                         )
                     )
                 )
             }
         }
-    ) {
+    ) { contentPadding ->
         // ── 组装日/夜 Pager ───────────────────────────────
         DayNightPager(
             state = state,
             onTabChange = { state.switchTab(it) },
             summaryText = themeSummary,
             scrollEnabled = !state.isMultiSelectMode,
+            contentPadding = contentPadding,
             dayContent = {
                 ConfigList(
                     items = dayItems,
