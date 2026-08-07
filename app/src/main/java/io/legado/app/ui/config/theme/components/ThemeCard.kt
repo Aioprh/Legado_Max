@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +43,28 @@ import io.legado.app.R
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.ui.config.theme.ThemeItem
 
+/**
+ * 主题卡片（Compose）。
+ *
+ * 展示单个主题的预览与操作入口，包含：
+ * - 左侧 [ThemePreviewCard]：以色块形式预览主色、强调色、背景色
+ * - 中间信息区：主题名称 + 日/夜标签 + 「应用」「编辑」按钮
+ * - 右侧操作区：普通模式下显示「分享」「删除」图标按钮；多选模式下显示 [Checkbox]
+ *
+ * 交互：
+ * - 短按：多选模式下切换选中状态
+ * - 长按：普通模式下进入多选模式
+ *
+ * @param item 主题条目（含原始索引）
+ * @param isMultiSelectMode 是否处于多选模式
+ * @param isSelected 当前条目是否被选中（多选模式下生效）
+ * @param onApply 应用主题回调
+ * @param onEdit 编辑主题回调
+ * @param onShare 分享主题回调
+ * @param onDelete 删除主题回调
+ * @param onLongClick 长按回调（进入多选模式）
+ * @param onToggleSelect 切换选中状态回调（多选模式下短按触发）
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ThemeCard(
@@ -211,5 +234,102 @@ private fun ThemePreviewCard(
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }
+    }
+}
+
+// ── 预览 ────────────────────────────────────────────────────
+//日间主题卡片预览
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ThemeCardDayPreview() {
+    MaterialTheme {
+        ThemeCard(
+            item = ThemeItem(
+                config = ThemeConfig.Config(
+                    themeName = "日间主题",
+                    isNightTheme = false,
+                    primaryColor = "#FF607D8B",
+                    accentColor = "#FF8BC34A",
+                    backgroundColor = "#FFF5F5F5",
+                    bottomBackground = "#FF424242",
+                    transparentNavBar = true,
+                    backgroundImgPath = null,
+                    backgroundImgBlur = 0
+                ),
+                originalIndex = 0
+            ),
+            isMultiSelectMode = false,
+            isSelected = false,
+            onApply = {},
+            onEdit = {},
+            onShare = {},
+            onDelete = {},
+            onLongClick = {},
+            onToggleSelect = {}
+        )
+    }
+}
+
+//夜间主题卡片预览
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ThemeCardNightPreview() {
+    MaterialTheme {
+        ThemeCard(
+            item = ThemeItem(
+                config = ThemeConfig.Config(
+                    themeName = "夜间主题",
+                    isNightTheme = true,
+                    primaryColor = "#FF1A1A2E",
+                    accentColor = "#FFE94560",
+                    backgroundColor = "#FF16213E",
+                    bottomBackground = "#FF0F3460",
+                    transparentNavBar = false,
+                    backgroundImgPath = null,
+                    backgroundImgBlur = 10
+                ),
+                originalIndex = 1
+            ),
+            isMultiSelectMode = false,
+            isSelected = false,
+            onApply = {},
+            onEdit = {},
+            onShare = {},
+            onDelete = {},
+            onLongClick = {},
+            onToggleSelect = {}
+        )
+    }
+}
+
+//多选模式（Checkbox 选中状态）
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ThemeCardMultiSelectPreview() {
+    MaterialTheme {
+        ThemeCard(
+            item = ThemeItem(
+                config = ThemeConfig.Config(
+                    themeName = "多选模式主题",
+                    isNightTheme = false,
+                    primaryColor = "#FF607D8B",
+                    accentColor = "#FF8BC34A",
+                    backgroundColor = "#FFF5F5F5",
+                    bottomBackground = "#FF424242",
+                    transparentNavBar = true,
+                    backgroundImgPath = null,
+                    backgroundImgBlur = 0
+                ),
+                originalIndex = 2
+            ),
+            isMultiSelectMode = true,
+            isSelected = true,
+            onApply = {},
+            onEdit = {},
+            onShare = {},
+            onDelete = {},
+            onLongClick = {},
+            onToggleSelect = {}
+        )
     }
 }
