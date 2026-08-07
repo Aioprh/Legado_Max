@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -94,10 +95,19 @@ fun ThemeCard(
     val accentColor = runCatching { config.accentColor.toColorInt() }.getOrDefault(0xFF8BC34A.toInt())
     val backgroundColor = runCatching { config.backgroundColor.toColorInt() }.getOrDefault(0xFFF5F5F5.toInt())
 
+    // 自适应透明度：亮色背景略高（保持可读），暗色背景略低（透出背景图）
+    val isLightBg = MaterialTheme.colorScheme.background.luminance() > 0.5f
+    val cardAlpha = if (isLightBg) 0.82f else 0.62f
+    val cardColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = cardAlpha)
+    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = if (isLightBg) 0.12f else 0.18f)
+    val onColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val iconTint = onColor.copy(alpha = 0.85f)
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = {
                     if (isMultiSelectMode) onToggleSelect()
@@ -107,8 +117,8 @@ fun ThemeCard(
                 }
             ),
         shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shadowElevation = 2.dp
+        color = cardColor,
+        shadowElevation = 1.dp
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -145,17 +155,13 @@ fun ThemeCard(
                 Text(
                     text = if (config.isNightTheme) stringResource(R.string.night) else stringResource(R.string.day),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = onColor.copy(alpha = 0.8f)
                 )
 
                 Spacer(Modifier.height(8.dp))
 
                 // 操作按钮
-                val buttonTextColor = if (MaterialTheme.colorScheme.background.luminance() > 0.5f) {
-                    Color.Black
-                } else {
-                    Color.White
-                }
+                val buttonTextColor = if (isLightBg) Color.Black else Color.White
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onApply) {
                         Text(
@@ -183,7 +189,7 @@ fun ThemeCard(
                             Icons.Default.Share,
                             contentDescription = stringResource(R.string.share),
                             modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = iconTint
                         )
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
@@ -191,7 +197,7 @@ fun ThemeCard(
                             Icons.Default.Delete,
                             contentDescription = stringResource(R.string.delete),
                             modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = iconTint
                         )
                     }
                 }
