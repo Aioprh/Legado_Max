@@ -67,7 +67,13 @@ fun <T> SegmentedTabRow(
                         ),
                         activeContentColor = MaterialTheme.colorScheme.primary,
                         inactiveContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        inactiveContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        activeBorderColor = lerp(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            MaterialTheme.colorScheme.primary,
+                            0.25f
+                        ),
+                        inactiveBorderColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     icon = if (iconContent != null) {
                         { iconContent(tab) }
