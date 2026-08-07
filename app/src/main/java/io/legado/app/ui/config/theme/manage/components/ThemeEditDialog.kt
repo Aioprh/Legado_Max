@@ -1,4 +1,4 @@
-package io.legado.app.ui.config.theme.components
+package io.legado.app.ui.config.theme.manage.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background

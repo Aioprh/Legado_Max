@@ -1,4 +1,4 @@
-package io.legado.app.ui.config.theme
+package io.legado.app.ui.config.theme.manage
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,10 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
-import io.legado.app.ui.config.theme.components.MultiSelectBottomBar
-import io.legado.app.ui.config.theme.components.ThemeCard
-import io.legado.app.ui.config.theme.components.ThemeEditDialog
-import io.legado.app.ui.config.theme.components.ThemeTabRow
+import io.legado.app.ui.config.theme.manage.components.MultiSelectBottomBar
+import io.legado.app.ui.config.theme.manage.components.ThemeCard
+import io.legado.app.ui.config.theme.manage.components.ThemeEditDialog
+import io.legado.app.ui.config.theme.manage.components.ThemeTabRow
 import io.legado.app.ui.theme.pageTopBarBackground
 import io.legado.app.ui.theme.pageTopBarColors
 
