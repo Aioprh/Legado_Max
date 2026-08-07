@@ -243,13 +243,13 @@
             android:name=".ui.config.NavigationBarManageActivity"
             android:launchMode="standard" />
         <activity
-            android:name=".ui.config.theme.ThemeManageActivity"
+            android:name=".ui.config.theme.manage.ThemeManageActivity"
             android:launchMode="standard" />
         <activity
-            android:name=".ui.config.theme.ApplicationThemeActivity"
+            android:name=".ui.config.theme.legacy.appTheme.ApplicationThemeActivity"
             android:launchMode="standard" />
         <activity
-            android:name=".ui.config.theme.ApplicationThemeEditActivity"
+            android:name=".ui.config.theme.legacy.appTheme.ApplicationThemeEditActivity"
             android:launchMode="standard" />
         <activity
             android:name=".ui.config.TopBarManageActivity"
@@ -411,7 +411,7 @@
             android:hardwareAccelerated="true" />
         <!-- HTML封面模板配置 -->
         <activity
-            android:name=".ui.config.CoverHtmlActivity"
+            android:name=".ui.config.coverhtml.CoverHtmlActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
         <!-- 直链上传配置 -->

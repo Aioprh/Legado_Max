@@ -1,4 +1,4 @@
-package io.legado.app.ui.config.theme
+package io.legado.app.ui.config.theme.manage
 
 import android.os.Bundle
 import androidx.appcompat.app.AlertDialog
