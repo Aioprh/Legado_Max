@@ -2157,6 +2157,7 @@
 <string name="applied_top_bar_config">Applied top bar config: %s</string>
 <string name="apply">Apply</string>
 <string name="apply_theme">Apply</string>
+<string name="cannot_delete_current_theme">Cannot delete the theme in use</string>
 <string name="bottom_background_color">Bottom background color</string>
 <string name="bottom_bar_border_alpha">Bottom bar border opacity</string>
 <string name="bottom_bar_border_color">Bottom bar border color</string>
