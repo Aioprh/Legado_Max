@@ -45,6 +45,16 @@ import io.legado.app.ui.theme.pageTopBarColors
  *
  * 订阅 ViewModel 的 UiState 渲染主题列表、Tab切换、多选操作栏、编辑弹窗。
  * 一次性事件（Toast、分享、Recreate等）通过 LaunchedEffect 收集并回调给 Activity。
+ *
+ * ## 架构
+ * - **状态驱动**：所有 UI 状态由 [ThemeManageViewModel.uiState] 驱动
+ * - **事件转发**：ViewModel 的一次性事件通过 Channel 向上转发，由 Activity 处理
+ * - **双模式**：普通模式（应用/编辑/分享/删除）与多选模式（置顶/导出/批量删除）
+ *
+ * ## 参数说明
+ * - `onToast`：显示资源 ID 类型的 Toast（如"请选择主题"）
+ * - `onToastMsg`：显示动态字符串 Toast（如"已应用主题: xxx"）
+ * - `onRecreate`：通知 Activity 重建以应用新主题
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,22 +73,24 @@ fun ThemeManageScreen(
     onColorClick: (colorKey: String, currentColor: String) -> Unit = { _, _ -> },
     onBlurClick: (currentBlur: Int) -> Unit = {}
 ) {
+    // 订阅 UI 状态
     val uiState by viewModel.uiState.collectAsState()
     val topBarColors = pageTopBarColors()
 
+    // 收集一次性事件，转发给 Activity 处理
     val eventFlow = viewModel.events
     androidx.compose.runtime.LaunchedEffect(Unit) {
         eventFlow.collect { event ->
             when (event) {
-                is ThemeEvent.Toast -> onToast(event.resId)
-                is ThemeEvent.ToastMsg -> onToastMsg(event.msg)
-                is ThemeEvent.ImportSuccess -> onImportFromClipboard()
+                is ThemeEvent.Toast -> onToast(event.resId) // 资源ID Toast（如"请选择主题"）
+                is ThemeEvent.ToastMsg -> onToastMsg(event.msg) // 动态字符串 Toast
+                is ThemeEvent.ImportSuccess -> onImportFromClipboard() // 导入成功后刷新列表
                 is ThemeEvent.ImportEmpty -> onImportEmpty()
                 is ThemeEvent.ImportFailed -> onImportFailed()
-                is ThemeEvent.ShareJson -> onShareJson(event.json)
-                is ThemeEvent.Recreate -> onRecreate()
+                is ThemeEvent.ShareJson -> onShareJson(event.json) // 分享 JSON 给外部应用
+                is ThemeEvent.Recreate -> onRecreate() // 应用主题后重建 Activity
                 is ThemeEvent.DeleteConfirm -> onDeleteConfirm()
-                is ThemeEvent.Applied -> {}
+                is ThemeEvent.Applied -> onToastMsg(stringResource(R.string.applied_theme_config, event.themeName))
             }
         }
     }
@@ -86,6 +98,7 @@ fun ThemeManageScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
+            // 顶部导航栏：标题 + 返回/全选按钮 + 导入按钮
             TopAppBar(
                 modifier = Modifier.pageTopBarBackground(topBarColors),
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -105,6 +118,7 @@ fun ThemeManageScreen(
                     )
                 },
                 navigationIcon = {
+                    // 返回按钮：多选模式下退出多选，否则返回上一页
                     IconButton(onClick = {
                         if (uiState.isMultiSelectMode) {
                             viewModel.exitMultiSelect()
@@ -120,6 +134,7 @@ fun ThemeManageScreen(
                 },
                 actions = {
                     if (uiState.isMultiSelectMode) {
+                        // 多选模式：全选/取消全选切换按钮
                         Text(
                             text = stringResource(R.string.select_all),
                             modifier = Modifier.padding(horizontal = 12.dp),
@@ -127,7 +142,6 @@ fun ThemeManageScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium
                         )
-                        // 点击切换全选/取消全选 — 用 IconButton 包装
                         IconButton(onClick = { viewModel.selectAllVisible() }) {
                             Text(
                                 text = if (uiState.allVisibleSelected)
@@ -139,6 +153,7 @@ fun ThemeManageScreen(
                             )
                         }
                     } else {
+                        // 普通模式：从剪贴板导入主题
                         IconButton(onClick = { viewModel.importFromClipboard() }) {
                             Icon(
                                 Icons.Default.ContentPaste,
@@ -150,6 +165,7 @@ fun ThemeManageScreen(
             )
         },
         bottomBar = {
+            // 多选操作栏：置顶 / 导出 / 删除
             if (uiState.isMultiSelectMode) {
                 MultiSelectBottomBar(
                     selectedCount = uiState.selectedCount,
@@ -165,12 +181,14 @@ fun ThemeManageScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // 日间/夜间主题切换 Tab
             ThemeTabRow(
                 selectedTab = uiState.tab,
                 onTabClick = { viewModel.switchTab(it) }
             )
 
             if (uiState.visibleItems.isEmpty()) {
+                // 空状态提示
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -182,6 +200,7 @@ fun ThemeManageScreen(
                     )
                 }
             } else {
+                // 主题卡片列表
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -203,6 +222,7 @@ fun ThemeManageScreen(
                         )
                     }
                     item {
+                        // 底部留出安全距离，避免被系统导航栏遮挡
                         Spacer(Modifier.height(80.dp))
                     }
                 }
@@ -210,7 +230,7 @@ fun ThemeManageScreen(
         }
     }
 
-    // 编辑弹窗
+    // 编辑/新建主题弹窗
     if (uiState.editDialog.visible) {
         ThemeEditDialog(
             draft = uiState.editDialog.draft,
