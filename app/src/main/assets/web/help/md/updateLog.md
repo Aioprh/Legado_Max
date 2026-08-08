@@ -17,6 +17,9 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/08**
+- fix(订阅收藏): 修复收藏详情页刷新后仍显示旧内容的问题
+
 **2026/8/07**
 - 主题列表UI改造，日间/夜间切换改为胶囊按钮
 - 主题卡片支持背景图片预览，新增日夜滑动切换
