@@ -149,12 +149,16 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
     private var findTotalCount = 0
     private fun refresh() {
         if (viewModel.rssSource?.singleUrl == true) {
+            // 刷新时强制走网络，避免 WebView 磁盘缓存命中旧资源（视频/图片等）
+            currentWebView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
             currentWebView.reload()
             return
         }
         currentWebView.title?.let {
             refreshNameList.add(it)
         }
+        // 刷新时强制走网络，避免 WebView 磁盘缓存命中旧资源（视频/图片等）
+        currentWebView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
         viewModel.refresh {
             binding.progressBar.visible()
             binding.progressBar.setDurProgress(30)
@@ -1017,6 +1021,12 @@ class ReadRssActivity : VMBaseActivity<ActivityRssReadBinding, ReadRssViewModel>
          */
         override fun onPageFinished(view: WebView, url: String) {
             super.onPageFinished(view, url)
+            
+            // 页面加载完成后恢复订阅源配置的缓存模式（刷新时临时设为 LOAD_NO_CACHE）
+            viewModel.rssSource?.let {
+                view.settings.cacheMode =
+                    if (it.cacheFirst) WebSettings.LOAD_CACHE_ELSE_NETWORK else WebSettings.LOAD_DEFAULT
+            }
             
             // 阶段5：DOM渲染完成，记录性能数据
             if (viewModel.rssSource?.showWebLog == true) {
