@@ -27,41 +27,66 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 suspend fun OkHttpClient.newCallResponse(
-    retry: Int = 0,
+    retry: Int = 2,   // 默认重试2次，应对连接重置等临时问题
     builder: Request.Builder.() -> Unit
 ): Response {
-    val requestBuilder = Request.Builder()
-    requestBuilder.apply(builder)
-    var response: Response? = null
-    var currentRequest = requestBuilder.build()
-    
-    for (i in 0..retry) {
-        response = newCall(currentRequest).await()
-        
-        if (response.isSuccessful) {
-            return response
-        }
-        
-        if (response.code == 307 || response.code == 308) {
-            response.header("Location")?.let { location ->
-                val redirectRequest = currentRequest.newBuilder()
-                    .url(location)
-                    .method(currentRequest.method, currentRequest.body)
-                    .headers(currentRequest.headers)
-                    .build()
-                response.close()
-                response = newCall(redirectRequest).await()
-                
-                if (response.isSuccessful) {
-                    return response
+    var lastException: IOException? = null
+
+    repeat(retry + 1) { attempt ->
+        try {
+            // 每次重试重新构造请求，避免Body被消费
+            val requestBuilder = Request.Builder()
+            requestBuilder.apply(builder)
+            var request = requestBuilder.build()
+
+            var response = newCall(request).await()
+
+            // 处理重定向（307/308）
+            if (response.code == 307 || response.code == 308) {
+                response.header("Location")?.let { location ->
+                    val redirectRequest = request.newBuilder()
+                        .url(location)
+                        .method(request.method, request.body)
+                        .headers(request.headers)
+                        .build()
+                    response.close()
+                    response = newCall(redirectRequest).await()
+                    if (response.isSuccessful) {
+                        return response
+                    }
+                    // 重定向后若不成功，继续后续重试
+                    request = redirectRequest
+                } ?: run {
+                    // 无Location头，视为失败
+                    if (attempt == retry) return response
+                    response.close()
+                    return@repeat
                 }
-                
-                currentRequest = redirectRequest
             }
+
+            // 成功直接返回
+            if (response.isSuccessful) {
+                return response
+            }
+
+            // 非成功响应，若不是最后一次，关闭响应并继续重试
+            if (attempt < retry) {
+                response.close()
+            } else {
+                return response  // 最后一次，返回该响应（即使非成功）
+            }
+
+        } catch (e: IOException) {
+            lastException = e
+            if (attempt == retry) {
+                throw e   // 最后一次重试仍失败，抛出异常
+            }
+            // 否则继续重试（可考虑增加短暂延迟，但暂不添加）
         }
     }
-    
-    return response!!
+
+    // 不会到达此处，但为完整性
+    throw lastException ?: IOException("Unexpected error in newCallResponse")
 }
 
 suspend fun OkHttpClient.newCallResponseBody(
