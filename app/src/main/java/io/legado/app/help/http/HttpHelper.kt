@@ -50,8 +50,8 @@ val cookieJar by lazy {
 
 val okHttpClient: OkHttpClient by lazy {
     val specs = arrayListOf(
+        ConnectionSpec.COMPATIBLE_TLS,   // 优先使用兼容模式，覆盖更多服务器
         ConnectionSpec.MODERN_TLS,
-        ConnectionSpec.COMPATIBLE_TLS,
         ConnectionSpec.CLEARTEXT
     )
 
@@ -61,6 +61,7 @@ val okHttpClient: OkHttpClient by lazy {
         .readTimeout(60, TimeUnit.SECONDS)
         .callTimeout(60, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
+        .pingInterval(30, TimeUnit.SECONDS)   // 保持连接活跃，减少中间设备超时断开
         .connectionSpecs(specs)
         .followRedirects(true)
         .followSslRedirects(true)
