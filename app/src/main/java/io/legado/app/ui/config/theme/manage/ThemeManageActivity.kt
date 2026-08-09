@@ -1,7 +1,6 @@
 package io.legado.app.ui.config.theme.manage
 
 import android.os.Bundle
-import androidx.core.view.postOnAnimation
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
