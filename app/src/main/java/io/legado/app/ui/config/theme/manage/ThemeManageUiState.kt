@@ -21,6 +21,5 @@ sealed class ThemeEvent {
     data object ImportEmpty : ThemeEvent()
     data object ImportFailed : ThemeEvent()
     data object DeleteConfirm : ThemeEvent()
-    data object Recreate : ThemeEvent()
     data class ShareJson(val json: String) : ThemeEvent()
 }
