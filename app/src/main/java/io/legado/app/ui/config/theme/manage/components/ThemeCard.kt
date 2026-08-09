@@ -3,8 +3,8 @@ package io.legado.app.ui.config.theme.manage.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -117,21 +117,23 @@ fun ThemeCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .border(0.5.dp, borderColor, RoundedCornerShape(12.dp))
-            .combinedClickable(
-                onClick = {
-                    if (isMultiSelectMode) onToggleSelect()
-                },
-                onLongClick = {
-                    if (!isMultiSelectMode) onLongClick()
-                }
-            ),
+            .border(0.5.dp, borderColor, RoundedCornerShape(12.dp)),
         shape = RoundedCornerShape(12.dp),
         color = cardColor,
         shadowElevation = 0.dp
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = {
+                        if (isMultiSelectMode) onToggleSelect()
+                    },
+                    onLongClick = {
+                        if (!isMultiSelectMode) onLongClick()
+                    }
+                )
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 预览卡片
