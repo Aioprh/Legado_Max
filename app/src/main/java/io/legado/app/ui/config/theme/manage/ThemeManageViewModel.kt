@@ -59,9 +59,10 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
     // ── 单项操作 ──────────────────────────────────────────
 
     fun applyConfig(item: ThemeItem) {
-        ThemeConfig.applyConfig(getApplication(), item.config)
-        _events.trySend(ThemeEvent.Applied(item.config.themeName))
-        _events.trySend(ThemeEvent.Recreate)
+        execute {
+            ThemeConfig.applyConfig(getApplication(), item.config)
+            _events.send(ThemeEvent.Applied(item.config.themeName))
+        }
     }
 
     fun deleteItem(item: ThemeItem) {
@@ -140,15 +141,15 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
         execute {
             val clipText = getApplication<Application>().getClipText()
             if (clipText.isNullOrBlank()) {
-                _events.trySend(ThemeEvent.ImportEmpty)
+                _events.send(ThemeEvent.ImportEmpty)
                 return@execute
             }
             val count = ThemeConfig.addConfig(clipText)
             if (count > 0) {
                 loadThemes()
-                _events.trySend(ThemeEvent.ImportSuccess)
+                _events.send(ThemeEvent.ImportSuccess)
             } else {
-                _events.trySend(ThemeEvent.ImportFailed)
+                _events.send(ThemeEvent.ImportFailed)
             }
         }
     }
@@ -181,9 +182,8 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
             val current = ThemeConfig.getDurConfig(getApplication())
             if (current.themeName == draft.themeName && current.isNightTheme == draft.isNightTheme) {
                 ThemeConfig.applyConfig(getApplication(), draft)
-                _events.trySend(ThemeEvent.Recreate)
             }
-            _events.trySend(ThemeEvent.Toast(R.string.success))
+            _events.send(ThemeEvent.Toast(R.string.success))
         }
     }
 

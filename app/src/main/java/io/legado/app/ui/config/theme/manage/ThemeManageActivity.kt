@@ -17,6 +17,8 @@ import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.share
 import io.legado.app.utils.toastOnUi
+import io.legado.app.constant.EventBus
+import io.legado.app.utils.observeEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
@@ -113,6 +115,13 @@ class ThemeManageActivity : BaseComposeActivity(), ColorPickerDialogListener {
         viewModel = ViewModelProvider(this)[ThemeManageViewModel::class.java]
     }
 
+    override fun observeLiveBus() {
+        super.observeLiveBus()
+        observeEvent<String>(EventBus.RECREATE) {
+            recreate()
+        }
+    }
+
     @androidx.compose.runtime.Composable
     override fun ComposeContent() {
         ThemeManageScreen(
@@ -123,7 +132,6 @@ class ThemeManageActivity : BaseComposeActivity(), ColorPickerDialogListener {
             onImportFailed = { toastOnUi(R.string.import_failed) },
             onSelectImage = { selectImage.launch { mode = HandleFileContract.IMAGE } },
             onShareJson = { json -> share(json) },
-            onRecreate = { recreate() },
             onDeleteConfirm = {
                 AlertDialog.Builder(this)
                     .setTitle(R.string.delete)

@@ -58,7 +58,6 @@ fun ThemeManageScreen(
     onImportFailed: () -> Unit,
     onSelectImage: () -> Unit,
     onShareJson: (String) -> Unit,
-    onRecreate: () -> Unit,
     onDeleteConfirm: () -> Unit,
     onToast: (Int) -> Unit = {},
     onToastMsg: (String) -> Unit = {},
@@ -120,7 +119,6 @@ fun ThemeManageScreen(
                 is ThemeEvent.ImportEmpty -> onImportEmpty()
                 is ThemeEvent.ImportFailed -> onImportFailed()
                 is ThemeEvent.ShareJson -> onShareJson(event.json)
-                is ThemeEvent.Recreate -> onRecreate()
                 is ThemeEvent.DeleteConfirm -> onDeleteConfirm()
                 is ThemeEvent.Applied -> onToastMsg(appliedThemeTemplate.format(event.themeName))
             }
@@ -290,7 +288,6 @@ private fun ThemeManageScreenPreview() {
             onImportFailed = {},
             onSelectImage = {},
             onShareJson = {},
-            onRecreate = {},
             onDeleteConfirm = {},
             onToast = {},
             onToastMsg = {},
