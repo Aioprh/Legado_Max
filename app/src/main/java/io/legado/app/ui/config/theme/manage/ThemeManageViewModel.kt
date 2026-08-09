@@ -9,12 +9,13 @@ import io.legado.app.help.config.ThemeConfig
 import io.legado.app.ui.config.widget.ConfigTab
 import io.legado.app.utils.GSON
 import io.legado.app.utils.getClipText
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 import splitties.systemservices.clipboardManager
 
 /**
@@ -36,7 +37,8 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
     val events = _events.receiveAsFlow()
 
     init {
-        loadThemes()
+        // configList 首次访问会读磁盘 JSON，扔到 IO 线程，别在 ViewModel 初始化时卡主线程
+        execute { loadThemes() }
     }
 
     // ── 数据加载 ──────────────────────────────────────────
@@ -60,7 +62,11 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
 
     fun applyConfig(item: ThemeItem) {
         execute {
-            ThemeConfig.applyConfig(getApplication(), item.config)
+            // applyConfig 内部有 SP 批量写入和 LiveEventBus.post(RECREATE)，post 必须在主线程调用，
+            // 这里从 IO 切回 Main 再执行；SP 用的是 apply() 批量提交，不会阻塞 UI
+            withContext(Dispatchers.Main) {
+                ThemeConfig.applyConfig(getApplication(), item.config)
+            }
             _events.send(ThemeEvent.Applied(item.config.themeName))
         }
     }
@@ -171,18 +177,26 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
 
     fun saveEditedTheme(draft: ThemeConfig.Config, editingIndex: Int) {
         execute {
+            // ThemeConfig 没有按索引更新的 API，addConfig(Config) 按 themeName 匹配，
+            // 编辑时若改了主题名会重复插入，因此保持索引直写 + save() 的语义
+            //（ThemeConfig 内部各写 API 也是同样直接操作 configList，风格保持一致）
             if (editingIndex >= 0) {
                 ThemeConfig.configList[editingIndex] = draft
             } else {
                 ThemeConfig.configList.add(draft)
             }
             ThemeConfig.save()
-            loadThemes()
 
+            // 若编辑的正是当前生效主题，立即应用新配置（内部会 post EventBus.RECREATE）。
+            // 同理，postEvent 要求主线程，切回 Main 执行
             val current = ThemeConfig.getDurConfig(getApplication())
             if (current.themeName == draft.themeName && current.isNightTheme == draft.isNightTheme) {
-                ThemeConfig.applyConfig(getApplication(), draft)
+                withContext(Dispatchers.Main) {
+                    ThemeConfig.applyConfig(getApplication(), draft)
+                }
             }
+
+            loadThemes()
             _events.send(ThemeEvent.Toast(R.string.success))
         }
     }

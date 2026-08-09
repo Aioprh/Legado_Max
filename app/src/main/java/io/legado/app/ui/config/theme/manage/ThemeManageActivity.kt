@@ -1,6 +1,7 @@
 package io.legado.app.ui.config.theme.manage
 
 import android.os.Bundle
+import androidx.core.view.postOnAnimation
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
@@ -115,10 +116,18 @@ class ThemeManageActivity : BaseComposeActivity(), ColorPickerDialogListener {
         viewModel = ViewModelProvider(this)[ThemeManageViewModel::class.java]
     }
 
+    private var recreatePending = false
+
     override fun observeLiveBus() {
         super.observeLiveBus()
         observeEvent<String>(EventBus.RECREATE) {
-            recreate()
+            if (recreatePending || isFinishing || isDestroyed) return@observeEvent
+            recreatePending = true
+            // 不要在 Compose onClick 的 UP 事件调用栈里同步销毁窗口。
+            // 下一帧再重建，让当前 PointerEvent 完整收尾，避免新窗口触摸状态异常。
+            window.decorView.postOnAnimation {
+                if (!isFinishing && !isDestroyed) recreate()
+            }
         }
     }
 
