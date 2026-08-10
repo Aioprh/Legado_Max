@@ -6,7 +6,6 @@ import io.legado.app.R
 import io.legado.app.base.BaseViewModel
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
-import io.legado.app.ui.config.widget.ConfigTab
 import io.legado.app.utils.GSON
 import io.legado.app.utils.getClipText
 import kotlinx.coroutines.Dispatchers
@@ -42,15 +41,19 @@ class ThemeManageViewModel(
     private val _editDraft = MutableStateFlow<ThemeConfig.Config?>(null)
     val editDraft: StateFlow<ThemeConfig.Config?> = _editDraft.asStateFlow()
 
+    private var currentConfig: ThemeConfig.Config? = null
+    private var pendingDeleteKeys: Set<String> = emptySet()
+    private var nextItemKey = 0L
+
     init {
-        execute { loadThemes() }
+        execute { refreshThemes() }
     }
 
-    private fun loadThemes() {
-        val itemList = repository.getThemes().mapIndexed { index, config ->
-            ThemeItem(config = config, originalIndex = index)
+    private suspend fun refreshThemes() {
+        currentConfig = repository.getDurConfig()
+        _items.value = repository.getThemes().map { config ->
+            ThemeItem(key = GSON.toJson(config), config = config)
         }
-        _items.value = itemList
     }
 
     fun applyConfig(item: ThemeItem) {
@@ -63,16 +66,16 @@ class ThemeManageViewModel(
     }
 
     fun deleteItem(item: ThemeItem) {
-        val currentConfig = repository.getDurConfig()
-        if (item.config.themeName == currentConfig.themeName &&
-            item.config.isNightTheme == currentConfig.isNightTheme
-        ) {
-            _events.trySend(ThemeEvent.Toast(R.string.cannot_delete_current_theme))
-            return
-        }
         execute {
-            repository.deleteConfig(item.originalIndex)
-            loadThemes()
+            val currentConfig = repository.getDurConfig()
+            if (item.config.themeName == currentConfig.themeName &&
+                item.config.isNightTheme == currentConfig.isNightTheme
+            ) {
+                _events.send(ThemeEvent.Toast(R.string.cannot_delete_current_theme))
+                return@execute
+            }
+            repository.deleteConfig(item.config)
+            refreshThemes()
         }
     }
 
@@ -87,46 +90,46 @@ class ThemeManageViewModel(
         _events.trySend(ThemeEvent.ToastMsg("${item.config.themeName}主题已拷贝"))
     }
 
-    fun requestDeleteSelected(selectedIndices: Set<Int>) {
-        if (selectedIndices.isEmpty()) {
+    fun requestDeleteSelected(selectedKeys: Set<String>) {
+        if (selectedKeys.isEmpty()) {
             _events.trySend(ThemeEvent.Toast(R.string.select_theme))
             return
         }
+        pendingDeleteKeys = selectedKeys
         _events.trySend(ThemeEvent.DeleteConfirm)
     }
 
-    fun executeDeleteSelected(selectedIndices: Set<Int>) {
-        val currentConfig = repository.getDurConfig()
-        val indices = selectedIndices
-            .filterNot { idx ->
-                val item = _items.value.getOrNull(idx)
-                item != null &&
-                item.config.themeName == currentConfig.themeName &&
-                item.config.isNightTheme == currentConfig.isNightTheme
-            }
-            .sortedDescending()
+    fun executeDeleteSelected() {
+        val keys = pendingDeleteKeys
+        pendingDeleteKeys = emptySet()
         execute {
-            indices.forEach { repository.deleteConfig(it) }
-            loadThemes()
+            val currentConfig = repository.getDurConfig()
+            _items.value
+                .filter { it.key in keys }
+                .map { it.config }
+                .filterNot { config ->
+                    config.themeName == currentConfig.themeName &&
+                        config.isNightTheme == currentConfig.isNightTheme
+                }
+                .forEach { repository.deleteConfig(it) }
+            refreshThemes()
         }
     }
 
-    fun toTopSelected(selectedIndices: Set<Int>) {
-        if (selectedIndices.isEmpty()) {
+    fun toTopSelected(selectedKeys: Set<String>) {
+        val configs = _items.value.filter { it.key in selectedKeys }.map { it.config }
+        if (configs.isEmpty()) {
             _events.trySend(ThemeEvent.Toast(R.string.select_theme))
             return
         }
-        val positions = selectedIndices.sorted()
         execute {
-            repository.toTopConfigs(positions)
-            loadThemes()
+            repository.toTopConfigs(configs)
+            refreshThemes()
         }
     }
 
-    fun exportSelected(selectedIndices: Set<Int>) {
-        val configs = selectedIndices
-            .sorted()
-            .mapNotNull { idx -> _items.value.getOrNull(idx)?.config }
+    fun exportSelected(selectedKeys: Set<String>) {
+        val configs = _items.value.filter { it.key in selectedKeys }.map { it.config }
         if (configs.isEmpty()) return
         _events.trySend(ThemeEvent.ShareJson(GSON.toJson(configs)))
     }
@@ -140,7 +143,7 @@ class ThemeManageViewModel(
             }
             val count = repository.addConfig(clipText)
             if (count > 0) {
-                loadThemes()
+                refreshThemes()
                 _events.send(ThemeEvent.ImportSuccess)
             } else {
                 _events.send(ThemeEvent.ImportFailed)
@@ -149,12 +152,16 @@ class ThemeManageViewModel(
     }
 
     fun startEdit(item: ThemeItem?): ThemeEditDraft {
-        val config = item?.config?.copy() ?: newThemeConfig()
+        val config = item?.config?.copy() ?: currentConfig?.copy()?.apply {
+            themeName = getNextThemeName()
+            isNightTheme = AppConfig.isNightTheme
+        } ?: error("Theme config is not loaded")
         _editDraft.value = config
         return ThemeEditDraft(
             config = config,
             isNew = item == null,
-            editingIndex = item?.originalIndex ?: -1
+            editingKey = item?.key.orEmpty(),
+            originalConfig = item?.config
         )
     }
 
@@ -162,17 +169,18 @@ class ThemeManageViewModel(
         _editDraft.value = null
     }
 
-    fun saveEditedTheme(editingIndex: Int) {
+    fun saveEditedTheme(editingKey: String) {
         val draft = _editDraft.value ?: return
+        val original = _items.value.firstOrNull { it.key == editingKey }?.config
         execute {
-            repository.saveTheme(draft, editingIndex)
+            repository.saveTheme(draft, original)
             val current = repository.getDurConfig()
             if (current.themeName == draft.themeName && current.isNightTheme == draft.isNightTheme) {
                 withContext(Dispatchers.Main) {
                     repository.applyTheme(draft)
                 }
             }
-            loadThemes()
+            refreshThemes()
             _events.send(ThemeEvent.Toast(R.string.success))
             clearEditDraft()
         }
@@ -205,30 +213,25 @@ class ThemeManageViewModel(
         _editDraft.value = transform(currentDraft)
     }
 
-    private fun newThemeConfig(): ThemeConfig.Config {
-        return repository.getDurConfig().copy(
-            themeName = getNextThemeName(),
-            isNightTheme = AppConfig.isNightTheme
-        )
-    }
-
     private fun getNextThemeName(): String {
         val base = getApplication<Application>().getString(R.string.add_theme)
-        val usedNames = repository.getThemes()
-            .filter { it.isNightTheme == AppConfig.isNightTheme }
-            .map { it.themeName }
+        val usedNames = _items.value
+            .filter { it.config.isNightTheme == AppConfig.isNightTheme }
+            .map { it.config.themeName }
             .toSet()
-        if (!usedNames.contains(base)) return base
+        if (base !in usedNames) return base
         for (i in 2..999) {
             val name = "$base $i"
-            if (!usedNames.contains(name)) return name
+            if (name !in usedNames) return name
         }
         return "$base ${System.currentTimeMillis()}"
     }
 }
 
+/** 主题管理界面中的编辑草稿，保存原配置快照以支持稳定定位更新目标。 */
 data class ThemeEditDraft(
     val config: ThemeConfig.Config,
     val isNew: Boolean,
-    val editingIndex: Int
+    val editingKey: String,
+    val originalConfig: ThemeConfig.Config?
 )
