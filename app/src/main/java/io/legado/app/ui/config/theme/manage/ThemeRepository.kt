@@ -12,11 +12,11 @@ import io.legado.app.help.config.ThemeConfig
  */
 interface ThemeRepository {
     fun getThemes(): List<ThemeConfig.Config>
-    fun saveTheme(config: ThemeConfig.Config, index: Int)
+    suspend fun saveTheme(config: ThemeConfig.Config, index: Int)
     fun applyTheme(config: ThemeConfig.Config)
-    fun deleteConfig(index: Int)
-    fun toTopConfigs(positions: List<Int>)
-    fun addConfig(json: String): Int
+    suspend fun deleteConfig(index: Int)
+    suspend fun toTopConfigs(positions: List<Int>)
+    suspend fun addConfig(json: String): Int
     fun getDurConfig(): ThemeConfig.Config
 }
 
@@ -33,7 +33,7 @@ class ThemeRepositoryImpl(
 ) : ThemeRepository {
     override fun getThemes(): List<ThemeConfig.Config> = ThemeConfig.configList.toList()
 
-    override fun saveTheme(config: ThemeConfig.Config, index: Int) {
+    override suspend fun saveTheme(config: ThemeConfig.Config, index: Int) {
         if (index >= 0) {
             ThemeConfig.configList[index] = config
         } else {
@@ -46,15 +46,15 @@ class ThemeRepositoryImpl(
         ThemeConfig.applyConfig(context, config)
     }
 
-    override fun deleteConfig(index: Int) {
+    override suspend fun deleteConfig(index: Int) {
         ThemeConfig.delConfig(index)
     }
 
-    override fun toTopConfigs(positions: List<Int>) {
+    override suspend fun toTopConfigs(positions: List<Int>) {
         ThemeConfig.toTopConfigs(positions)
     }
 
-    override fun addConfig(json: String): Int {
+    override suspend fun addConfig(json: String): Int {
         return ThemeConfig.addConfig(json)
     }
 
