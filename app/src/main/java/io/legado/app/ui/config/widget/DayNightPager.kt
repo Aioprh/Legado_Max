@@ -60,9 +60,17 @@ fun DayNightPager(
         pageCount = { 2 }
     )
 
-    // Pager → Tab 联动
-    LaunchedEffect(pagerState.currentPage) {
-        val newTab = if (pagerState.currentPage == 0) ConfigTab.DAY else ConfigTab.NIGHT
+    // 强制对齐初始状态，干掉 rememberSaveable 恢复旧页面的副作用
+    LaunchedEffect(Unit) {
+        val targetPage = if (state.tab == ConfigTab.NIGHT) 1 else 0
+        if (pagerState.currentPage != targetPage) {
+            pagerState.scrollToPage(targetPage)
+        }
+    }
+
+    // Pager → Tab 联动 (必须用 settledPage，防动画过程中状态反复横跳)
+    LaunchedEffect(pagerState.settledPage) {
+        val newTab = if (pagerState.settledPage == 0) ConfigTab.DAY else ConfigTab.NIGHT
         if (state.tab != newTab) {
             state.tab = newTab
         }
@@ -119,7 +127,7 @@ fun DayNightPager(
         androidx.compose.foundation.pager.HorizontalPager(
             state = pagerState,
             userScrollEnabled = scrollEnabled,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.weight(1f).fillMaxWidth()
         ) { page ->
             if (page == 0) dayContent() else nightContent()
         }
