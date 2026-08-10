@@ -38,9 +38,6 @@ class ThemeManageActivity : BaseComposeActivity(), ColorPickerDialogListener {
     }
 
     private var pendingColorKey: String? = null
-    
-    // 多选模式下请求删除时的索引暂存
-    private var pendingDeleteIndices: Set<Int>? = null
 
     private val selectImage = registerForActivityResult(HandleFileContract()) { result ->
         result.uri?.let { uri ->
@@ -118,21 +115,13 @@ class ThemeManageActivity : BaseComposeActivity(), ColorPickerDialogListener {
             onImportFailed = { toastOnUi(R.string.import_failed) },
             onSelectImage = { selectImage.launch { mode = HandleFileContract.IMAGE } },
             onShareJson = { json -> share(json) },
-            onDeleteConfirm = { indices ->
-                pendingDeleteIndices = indices
+            onDeleteConfirm = {
                 AlertDialog.Builder(this)
                     .setTitle(R.string.delete)
                     .setMessage(R.string.sure_del)
                     .setPositiveButton(R.string.yes) { _, _ ->
-                        pendingDeleteIndices?.let { 
-                            viewModel.executeDeleteSelected(it)
-                        }
-                        pendingDeleteIndices = null
+                        viewModel.executeDeleteSelected()
                     }
-                    .setNegativeButton(R.string.no) { _, _ ->
-                        pendingDeleteIndices = null
-                    }
-                    .setOnCancelListener { pendingDeleteIndices = null }
                     .show()
             },
             onToast = { toastOnUi(it) },
