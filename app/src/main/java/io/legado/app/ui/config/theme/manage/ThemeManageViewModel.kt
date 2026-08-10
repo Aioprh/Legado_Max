@@ -19,16 +19,19 @@ import kotlinx.coroutines.withContext
 import splitties.systemservices.clipboardManager
 
 /**
- * 主题管理 ViewModel（组合模式重构版）。
- *
- * 仅负责主题数据的加载、增删改查和一次性事件发送。
- * 通用的 Tab/多选/编辑弹窗状态由 [ConfigManageState] 在 Composable 层持有，
- * ViewModel 不再管理这些 UI 交互状态。
- *
- * 数据操作通过 BaseViewModel.execute 在协程中执行，
- * 一次性事件通过 Channel 向上抛给 Activity 处理。
+ * 主题管理的 ViewModel 层
+ * 
+ * 架构决策（为什么这么写）：
+ * 1. 严格遵循 UDF (单向数据流)：UI 的所有核心状态（列表 items、草稿 editDraft）必须在这里收拢，
+ *    仅对外暴露只读的 StateFlow。绝对禁止 UI 层相互注册脏回调来“反向掏取”数据。
+ * 2. 剥离直接的磁盘 IO：所有数据获取和保存操作依赖 [ThemeRepository]，彻底与静态单例解耦。
+ * 3. 一次性事件防丢失与防重放：采用 Channel(BUFFERED) 收拢弹 Toast 等动作，利用 receiveAsFlow 消费，
+ *    避免横竖屏切换时状态重建引发的重复弹窗。
  */
-class ThemeManageViewModel(application: Application) : BaseViewModel(application) {
+class ThemeManageViewModel(
+    private val repository: ThemeRepository,
+    application: Application
+) : BaseViewModel(application) {
 
     private val _items = MutableStateFlow<List<ThemeItem>>(emptyList())
     val items: StateFlow<List<ThemeItem>> = _items.asStateFlow()
@@ -36,52 +39,39 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
     private val _events = Channel<ThemeEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
+    private val _editDraft = MutableStateFlow<ThemeConfig.Config?>(null)
+    val editDraft: StateFlow<ThemeConfig.Config?> = _editDraft.asStateFlow()
+
     init {
-        // configList 首次访问会读磁盘 JSON，扔到 IO 线程，别在 ViewModel 初始化时卡主线程
         execute { loadThemes() }
     }
 
-    // ── 数据加载 ──────────────────────────────────────────
-
-    fun loadThemes() {
-        ThemeConfig.configList // 触发 lazy init
-        val itemList = ThemeConfig.configList.mapIndexed { index, config ->
+    private fun loadThemes() {
+        val itemList = repository.getThemes().mapIndexed { index, config ->
             ThemeItem(config = config, originalIndex = index)
         }
         _items.value = itemList
     }
 
-    /**
-     * 获取指定 Tab 下的可见条目。
-     */
-    fun getItemsForTab(tab: ConfigTab): List<ThemeItem> {
-        return _items.value.filter { it.config.isNightTheme == tab.isNight }
-    }
-
-    // ── 单项操作 ──────────────────────────────────────────
-
     fun applyConfig(item: ThemeItem) {
         execute {
-            // applyConfig 内部有 SP 批量写入和 LiveEventBus.post(RECREATE)，post 必须在主线程调用，
-            // 这里从 IO 切回 Main 再执行；SP 用的是 apply() 批量提交，不会阻塞 UI
             withContext(Dispatchers.Main) {
-                ThemeConfig.applyConfig(getApplication(), item.config)
+                repository.applyTheme(item.config)
             }
             _events.send(ThemeEvent.Applied(item.config.themeName))
         }
     }
 
     fun deleteItem(item: ThemeItem) {
-        // 阻止删除正在使用的主题
-        val currentConfig = ThemeConfig.getDurConfig(getApplication())
-        if (item.config.themeName == currentConfig.themeName
-            && item.config.isNightTheme == currentConfig.isNightTheme
+        val currentConfig = repository.getDurConfig()
+        if (item.config.themeName == currentConfig.themeName &&
+            item.config.isNightTheme == currentConfig.isNightTheme
         ) {
             _events.trySend(ThemeEvent.Toast(R.string.cannot_delete_current_theme))
             return
         }
         execute {
-            ThemeConfig.delConfig(item.originalIndex)
+            repository.deleteConfig(item.originalIndex)
             loadThemes()
         }
     }
@@ -97,8 +87,6 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
         _events.trySend(ThemeEvent.ToastMsg("${item.config.themeName}主题已拷贝"))
     }
 
-    // ── 批量操作 ──────────────────────────────────────────
-
     fun requestDeleteSelected(selectedIndices: Set<Int>) {
         if (selectedIndices.isEmpty()) {
             _events.trySend(ThemeEvent.Toast(R.string.select_theme))
@@ -108,17 +96,17 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
     }
 
     fun executeDeleteSelected(selectedIndices: Set<Int>) {
-        val currentConfig = ThemeConfig.getDurConfig(getApplication())
+        val currentConfig = repository.getDurConfig()
         val indices = selectedIndices
             .filterNot { idx ->
                 val item = _items.value.getOrNull(idx)
-                item != null
-                    && item.config.themeName == currentConfig.themeName
-                    && item.config.isNightTheme == currentConfig.isNightTheme
+                item != null &&
+                item.config.themeName == currentConfig.themeName &&
+                item.config.isNightTheme == currentConfig.isNightTheme
             }
             .sortedDescending()
         execute {
-            indices.forEach { ThemeConfig.delConfig(it) }
+            indices.forEach { repository.deleteConfig(it) }
             loadThemes()
         }
     }
@@ -130,7 +118,7 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
         }
         val positions = selectedIndices.sorted()
         execute {
-            ThemeConfig.toTopConfigs(positions)
+            repository.toTopConfigs(positions)
             loadThemes()
         }
     }
@@ -150,7 +138,7 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
                 _events.send(ThemeEvent.ImportEmpty)
                 return@execute
             }
-            val count = ThemeConfig.addConfig(clipText)
+            val count = repository.addConfig(clipText)
             if (count > 0) {
                 loadThemes()
                 _events.send(ThemeEvent.ImportSuccess)
@@ -160,52 +148,40 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
         }
     }
 
-    // ── 编辑弹窗：数据操作 ────────────────────────────────
-
-    /**
-     * 创建编辑弹窗的草稿数据。
-     * 返回 (draft, isNew, editingIndex) 三元组，由调用方传入 ConfigManageState.openEditDialog。
-     */
-    fun createDraft(sourceItem: ThemeItem?): ThemeEditDraft {
-        val config = sourceItem?.config?.copy() ?: newThemeConfig()
+    fun startEdit(item: ThemeItem?): ThemeEditDraft {
+        val config = item?.config?.copy() ?: newThemeConfig()
+        _editDraft.value = config
         return ThemeEditDraft(
             config = config,
-            isNew = sourceItem == null,
-            editingIndex = sourceItem?.originalIndex ?: -1
+            isNew = item == null,
+            editingIndex = item?.originalIndex ?: -1
         )
     }
 
-    fun saveEditedTheme(draft: ThemeConfig.Config, editingIndex: Int) {
-        execute {
-            // ThemeConfig 没有按索引更新的 API，addConfig(Config) 按 themeName 匹配，
-            // 编辑时若改了主题名会重复插入，因此保持索引直写 + save() 的语义
-            //（ThemeConfig 内部各写 API 也是同样直接操作 configList，风格保持一致）
-            if (editingIndex >= 0) {
-                ThemeConfig.configList[editingIndex] = draft
-            } else {
-                ThemeConfig.configList.add(draft)
-            }
-            ThemeConfig.save()
+    fun clearEditDraft() {
+        _editDraft.value = null
+    }
 
-            // 若编辑的正是当前生效主题，立即应用新配置（内部会 post EventBus.RECREATE）。
-            // 同理，postEvent 要求主线程，切回 Main 执行
-            val current = ThemeConfig.getDurConfig(getApplication())
+    fun saveEditedTheme(editingIndex: Int) {
+        val draft = _editDraft.value ?: return
+        execute {
+            repository.saveTheme(draft, editingIndex)
+            val current = repository.getDurConfig()
             if (current.themeName == draft.themeName && current.isNightTheme == draft.isNightTheme) {
                 withContext(Dispatchers.Main) {
-                    ThemeConfig.applyConfig(getApplication(), draft)
+                    repository.applyTheme(draft)
                 }
             }
-
             loadThemes()
             _events.send(ThemeEvent.Toast(R.string.success))
+            clearEditDraft()
         }
     }
 
-    // ── 背景图 / 颜色 / 虚化回调（由 Activity 触发） ──────
-
-    fun onColorSelected(colorKey: String, color: Int, currentDraft: ThemeConfig.Config): ThemeConfig.Config {
+    fun updateDraftColor(colorKey: String, color: Int) {
+        val currentDraft = _editDraft.value ?: return
         val hex = "#" + Integer.toHexString(color).padStart(8, '0').uppercase()
-        return when (colorKey) {
+        _editDraft.value = when (colorKey) {
             "primaryColor" -> currentDraft.copy(primaryColor = hex)
             "accentColor" -> currentDraft.copy(accentColor = hex)
             "backgroundColor" -> currentDraft.copy(backgroundColor = hex)
@@ -214,19 +190,23 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
         }
     }
 
-    fun onBlurSelected(blur: Int, currentDraft: ThemeConfig.Config): ThemeConfig.Config {
-        return currentDraft.copy(backgroundImgBlur = blur)
+    fun updateDraftBlur(blur: Int) {
+        val currentDraft = _editDraft.value ?: return
+        _editDraft.value = currentDraft.copy(backgroundImgBlur = blur)
     }
 
-    fun onBackgroundImageSelected(path: String, currentDraft: ThemeConfig.Config): ThemeConfig.Config {
-        return currentDraft.copy(backgroundImgPath = path)
+    fun updateDraftBackgroundImage(path: String) {
+        val currentDraft = _editDraft.value ?: return
+        _editDraft.value = currentDraft.copy(backgroundImgPath = path)
     }
-
-    // ── 内部 ──────────────────────────────────────────────
+    
+    fun updateDraftConfig(transform: (ThemeConfig.Config) -> ThemeConfig.Config) {
+        val currentDraft = _editDraft.value ?: return
+        _editDraft.value = transform(currentDraft)
+    }
 
     private fun newThemeConfig(): ThemeConfig.Config {
-        val app = getApplication<Application>()
-        return ThemeConfig.getDurConfig(app).copy(
+        return repository.getDurConfig().copy(
             themeName = getNextThemeName(),
             isNightTheme = AppConfig.isNightTheme
         )
@@ -234,7 +214,7 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
 
     private fun getNextThemeName(): String {
         val base = getApplication<Application>().getString(R.string.add_theme)
-        val usedNames = ThemeConfig.configList
+        val usedNames = repository.getThemes()
             .filter { it.isNightTheme == AppConfig.isNightTheme }
             .map { it.themeName }
             .toSet()
@@ -247,9 +227,6 @@ class ThemeManageViewModel(application: Application) : BaseViewModel(application
     }
 }
 
-/**
- * 编辑弹窗草稿数据（由 ViewModel 创建，传递给 Screen 层组装）。
- */
 data class ThemeEditDraft(
     val config: ThemeConfig.Config,
     val isNew: Boolean,
