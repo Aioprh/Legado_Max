@@ -151,17 +151,29 @@ class ThemeManageViewModel(
         }
     }
 
-    fun startEdit(item: ThemeItem?): ThemeEditDraft {
-        val config = item?.config?.copy() ?: currentConfig?.copy()?.apply {
-            themeName = getNextThemeName()
-            isNightTheme = AppConfig.isNightTheme
+    fun startNew(isNightTheme: Boolean): ThemeEditDraft {
+        val config = currentConfig?.copy()?.apply {
+            themeName = getNextThemeName(isNightTheme)
+            this.isNightTheme = isNightTheme
         } ?: error("Theme config is not loaded")
         _editDraft.value = config
         return ThemeEditDraft(
             config = config,
-            isNew = item == null,
-            editingKey = item?.key.orEmpty(),
-            originalConfig = item?.config
+            isNew = true,
+            editingKey = "",
+            originalConfig = null
+        )
+    }
+
+    fun startEdit(item: ThemeItem?): ThemeEditDraft {
+        if (item == null) return startNew(AppConfig.isNightTheme)
+        val config = item.config.copy()
+        _editDraft.value = config
+        return ThemeEditDraft(
+            config = config,
+            isNew = false,
+            editingKey = item.key,
+            originalConfig = item.config
         )
     }
 
@@ -213,10 +225,10 @@ class ThemeManageViewModel(
         _editDraft.value = transform(currentDraft)
     }
 
-    private fun getNextThemeName(): String {
+    private fun getNextThemeName(isNightTheme: Boolean): String {
         val base = getApplication<Application>().getString(R.string.add_theme)
         val usedNames = _items.value
-            .filter { it.config.isNightTheme == AppConfig.isNightTheme }
+            .filter { it.config.isNightTheme == isNightTheme }
             .map { it.config.themeName }
             .toSet()
         if (base !in usedNames) return base

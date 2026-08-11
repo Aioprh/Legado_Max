@@ -1,16 +1,28 @@
 package io.legado.app.ui.config.theme.manage
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VerticalAlignTop
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
@@ -117,6 +129,13 @@ fun ThemeManageScreen(
                         )
                     )
                 )
+            } else {
+                ThemeAddBottomBar(
+                    onClick = {
+                        val draft = viewModel.startNew(state.tab.isNight)
+                        state.openEditDialog(isNew = true, editingKey = draft.editingKey)
+                    }
+                )
             }
         }
     ) { contentPadding ->
@@ -151,6 +170,30 @@ fun ThemeManageScreen(
             onUpdateDraft = viewModel::updateDraftConfig,
             onColorClick = onColorClick,
             onBlurClick = onBlurClick
+        )
+    }
+}
+
+@Composable
+private fun ThemeAddBottomBar(onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(8.dp),
+        color = colorResource(R.color.background_add_button),
+        border = BorderStroke(1.dp, colorResource(R.color.border_add_button))
+    ) {
+        Text(
+            text = stringResource(R.string.add_theme),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 13.dp),
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyLarge
         )
     }
 }
