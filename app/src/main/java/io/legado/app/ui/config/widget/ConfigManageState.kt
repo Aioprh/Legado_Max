@@ -3,7 +3,6 @@ package io.legado.app.ui.config.widget
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -16,7 +15,7 @@ import androidx.compose.runtime.toMutableStateList
  * 封装主题/顶栏/底栏等管理界面共有的交互状态：
  * - 日/夜 Tab 切换
  * - 多选模式（进入/退出、选中集合、全选/取消全选）
- * - 编辑弹窗（可见性、是否新建、正在编辑的原始索引）
+ * - 编辑弹窗（可见性、是否新建、正在编辑的会话 key）
  *
  * 通过 [rememberConfigManageState] 在 Composable 中创建。
  */
@@ -45,12 +44,12 @@ class ConfigManageState(initialTab: ConfigTab) {
 
     // ── 多选操作 ────────────────────────────────────────────
 
-    fun enterMultiSelect(index: Int) {
+    fun enterMultiSelect(key: String) {
         if (!isMultiSelectMode) {
             isMultiSelectMode = true
             multiSelect.clear()
         }
-        multiSelect.add(index)
+        multiSelect.add(key)
     }
 
     fun exitMultiSelect() {
@@ -58,34 +57,34 @@ class ConfigManageState(initialTab: ConfigTab) {
         multiSelect.clear()
     }
 
-    fun toggleSelection(index: Int) {
-        if (index in multiSelect.selectedIndices) {
-            multiSelect.remove(index)
+    fun toggleSelection(key: String) {
+        if (key in multiSelect.selectedKeys) {
+            multiSelect.remove(key)
         } else {
-            multiSelect.add(index)
+            multiSelect.add(key)
         }
-        if (multiSelect.selectedIndices.isEmpty()) {
+        if (multiSelect.selectedKeys.isEmpty()) {
             isMultiSelectMode = false
         }
     }
 
-    val selectedCount: Int get() = multiSelect.selectedIndices.size
+    val selectedCount: Int get() = multiSelect.selectedKeys.size
 
-    fun isAllSelected(visibleIndices: List<Int>): Boolean {
-        if (visibleIndices.isEmpty()) return false
-        return visibleIndices.all { it in multiSelect.selectedIndices }
+    fun isAllSelected(visibleKeys: List<String>): Boolean {
+        if (visibleKeys.isEmpty()) return false
+        return visibleKeys.all { it in multiSelect.selectedKeys }
     }
 
-    fun selectAllVisible(visibleIndices: List<Int>) {
-        visibleIndices.forEach { multiSelect.add(it) }
+    fun selectAllVisible(visibleKeys: List<String>) {
+        visibleKeys.forEach { multiSelect.add(it) }
     }
 
     // ── 编辑弹窗操作 ────────────────────────────────────────
 
-    fun openEditDialog(isNew: Boolean, editingIndex: Int = -1) {
+    fun openEditDialog(isNew: Boolean, editingKey: String = "") {
         editDialog.visible = true
         editDialog.isNew = isNew
-        editDialog.editingIndex = editingIndex
+        editDialog.editingKey = editingKey
     }
 
     fun closeEditDialog() {
@@ -97,20 +96,18 @@ class ConfigManageState(initialTab: ConfigTab) {
 
 @Stable
 class MultiSelectState {
-    val selectedIndices: SnapshotStateList<Int> = emptyList<Int>().toMutableStateList()
+    val selectedKeys: SnapshotStateList<String> = emptyList<String>().toMutableStateList()
 
-    fun add(index: Int) {
-        if (index !in selectedIndices) {
-            selectedIndices.add(index)
-        }
+    fun add(key: String) {
+        if (key !in selectedKeys) selectedKeys.add(key)
     }
 
-    fun remove(index: Int) {
-        selectedIndices.remove(index)
+    fun remove(key: String) {
+        selectedKeys.remove(key)
     }
 
     fun clear() {
-        selectedIndices.clear()
+        selectedKeys.clear()
     }
 }
 
@@ -120,7 +117,7 @@ class MultiSelectState {
 class EditDialogState {
     var visible: Boolean by mutableStateOf(false)
     var isNew: Boolean by mutableStateOf(true)
-    var editingIndex: Int by mutableIntStateOf(-1)
+    var editingKey: String by mutableStateOf("")
 }
 
 // ── 通用数据类 ──────────────────────────────────────────────

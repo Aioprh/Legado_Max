@@ -14,4 +14,5 @@
 <file path="/.gitignore"/>
 <file path="/.github/workflows/lint.yaml"/>
     <file path="/app/src/main/java/io/legado/app/ui/book/read/page/provider/TextChapterLayout.kt"/>
+<file path="/docs/主题列表应用主题后UI卡死根因分析.md"/>
 </aml>
