@@ -1256,6 +1256,9 @@
     <string name="disable_horizontal_page_snap">禁用水平翻頁效果</string>
     <string name="enable_manga_gray">啟用圖片灰色</string>
     <string name="sure_cache_book">是否確認開始快存？</string>
+    <string name="auto_backup_title">自動備份</string>
+    <string name="auto_backup_summary">退出 APP 時自動 Webdav備份和本地備份（距上次備份超過24小時）</string>
+
     <string name="auto_check_new_backup_t">自動檢查新備份</string>
     <string name="auto_check_new_backup_s">打開軟體時檢查是否有新備份，有新備份時提示是否更新</string>
     <string name="sys_image_picker">系统圖片选择器</string>

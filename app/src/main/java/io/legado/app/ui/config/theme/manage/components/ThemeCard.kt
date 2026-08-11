@@ -1,10 +1,10 @@
 package io.legado.app.ui.config.theme.manage.components
 
+import android.widget.ImageView
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,55 +29,59 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.toColorInt
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import io.legado.app.R
-import io.legado.app.help.config.ThemeConfig
 import io.legado.app.ui.config.theme.manage.ThemeItem
-import io.legado.app.utils.BitmapUtils
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
- * 主题卡片（Compose）。
- *
- * 展示单个主题的预览与操作入口，包含：
- * - 左侧 [ThemePreviewCard]：以色块形式预览主色、强调色、背景色
- * - 中间信息区：主题名称 + 日/夜标签 + 「应用」「编辑」按钮
- * - 右侧操作区：普通模式下显示「分享」「删除」图标按钮；多选模式下显示 [Checkbox]
- *
- * 交互：
- * - 短按：多选模式下切换选中状态
- * - 长按：普通模式下进入多选模式
- *
- * @param item 主题条目（含原始索引）
- * @param isMultiSelectMode 是否处于多选模式
- * @param isSelected 当前条目是否被选中（多选模式下生效）
- * @param isCurrent 当前条目是否为正在应用的主题
- * @param onApply 应用主题回调
- * @param onEdit 编辑主题回调
- * @param onShare 分享主题回调
- * @param onDelete 删除主题回调
- * @param onCopy 复制主题 JSON 到剪贴板回调
- * @param onLongClick 长按回调（进入多选模式）
- * @param onToggleSelect 切换选中状态回调（多选模式下短按触发）
+ * 基于 Glide 的 Compose 图片加载封装
+ * 
+ * 为什么不用原生的 produceState 读磁盘：
+ * 列表滚动时会频繁触发 Compose 重组。如果在这里用协程+文件 IO 解码位图，
+ * 必然会导致不可挽回的列表掉帧和内存泄漏。
+ * 改造为 AndroidView 包裹 ImageView，交由项目已有的 Glide 接管后，
+ * 借由 Glide 底层的内存/磁盘多级缓存机制与 Bitmap 复用池，彻底根治列表滑动时的卡顿顽疾。
  */
+@Composable
+fun GlideImage(path: String?, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx -> 
+            ImageView(ctx).apply { 
+                scaleType = ImageView.ScaleType.CENTER_CROP 
+            } 
+        },
+        update = { imageView ->
+            if (path.isNullOrBlank()) {
+                imageView.setImageDrawable(null)
+            } else {
+                Glide.with(context)
+                    .load(path)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .into(imageView)
+            }
+        }
+    )
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ThemeCard(
@@ -94,7 +98,6 @@ fun ThemeCard(
     onToggleSelect: () -> Unit
 ) {
     val config = item.config
-    // remember 缓存颜色解析结果，避免每次 recomposition 重复 toColorInt()
     val primaryColor = remember(config.primaryColor) {
         runCatching { config.primaryColor.toColorInt() }.getOrDefault(0xFF607D8B.toInt())
     }
@@ -105,7 +108,6 @@ fun ThemeCard(
         runCatching { config.backgroundColor.toColorInt() }.getOrDefault(0xFFF5F5F5.toInt())
     }
 
-    // 自适应透明度：亮色背景略高（保持可读），暗色背景略低（透出背景图）
     val isLightBg = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val cardAlpha = if (isLightBg) 0.55f else 0.42f
     val cardColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = cardAlpha)
@@ -117,24 +119,25 @@ fun ThemeCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .border(0.5.dp, borderColor, RoundedCornerShape(12.dp))
-            .combinedClickable(
-                onClick = {
-                    if (isMultiSelectMode) onToggleSelect()
-                },
-                onLongClick = {
-                    if (!isMultiSelectMode) onLongClick()
-                }
-            ),
+            .border(0.5.dp, borderColor, RoundedCornerShape(12.dp)),
         shape = RoundedCornerShape(12.dp),
         color = cardColor,
         shadowElevation = 0.dp
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = {
+                        if (isMultiSelectMode) onToggleSelect()
+                    },
+                    onLongClick = {
+                        if (!isMultiSelectMode) onLongClick()
+                    }
+                )
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 预览卡片
             ThemePreviewCard(
                 primaryColor = Color(primaryColor),
                 accentColor = Color(accentColor),
@@ -147,7 +150,6 @@ fun ThemeCard(
 
             Spacer(Modifier.width(12.dp))
 
-            // 信息区域
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -163,7 +165,6 @@ fun ThemeCard(
 
                 Spacer(Modifier.height(4.dp))
 
-                // 日/夜标签胶囊（半透明背景）
                 Surface(
                     shape = RoundedCornerShape(50),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = if (isLightBg) 0.15f else 0.12f)
@@ -178,7 +179,6 @@ fun ThemeCard(
 
                 Spacer(Modifier.height(8.dp))
 
-                // 操作按钮
                 val buttonTextColor = if (isLightBg) Color.Black else Color.White
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onApply) {
@@ -206,7 +206,6 @@ fun ThemeCard(
                 }
             }
 
-            // 单行操作图标
             if (!isMultiSelectMode) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     IconButton(onClick = onShare, modifier = Modifier.size(32.dp)) {
@@ -236,11 +235,6 @@ fun ThemeCard(
     }
 }
 
-/**
- * 主题预览卡片：在背景色（+可选背景图片）之上叠加主色块、强调色条。
- *
- * 背景图片使用 [produceState] 在 IO 线程异步解码，解码失败时仅显示背景色。
- */
 @Composable
 private fun ThemePreviewCard(
     primaryColor: Color,
@@ -251,36 +245,21 @@ private fun ThemePreviewCard(
     isMultiSelectMode: Boolean = false,
     isNightTheme: Boolean = false
 ) {
-    // 异步解码背景图片缩略图
-    val backgroundImage: ImageBitmap? by produceState<ImageBitmap?>(initialValue = null, backgroundImgPath) {
-        value = withContext(Dispatchers.IO) {
-            if (backgroundImgPath.isNullOrBlank()) {
-                null
-            } else {
-                runCatching { BitmapUtils.decodeBitmap(backgroundImgPath, 128)?.asImageBitmap() }.getOrNull()
-            }
-        }
-    }
-
     Box(
         modifier = Modifier
             .size(width = 74.dp, height = 102.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(backgroundColor)
     ) {
-        // 背景图片（铺满整个预览卡片）
-        backgroundImage?.let { bmp ->
-            Image(
-                bitmap = bmp,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
+        if (!backgroundImgPath.isNullOrBlank()) {
+            GlideImage(
+                path = backgroundImgPath,
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(8.dp))
             )
         }
 
-        // 半透明遮罩层，确保色块在背景图上仍然可读
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -292,7 +271,6 @@ private fun ThemePreviewCard(
                 .fillMaxSize()
                 .padding(8.dp)
         ) {
-            // 主色块
             Box(
                 modifier = Modifier
                     .size(32.dp)
@@ -300,7 +278,6 @@ private fun ThemePreviewCard(
                     .background(primaryColor)
             )
 
-            // 强调色条
             Box(
                 modifier = Modifier
                     .padding(top = 36.dp)
@@ -309,7 +286,6 @@ private fun ThemePreviewCard(
                     .background(accentColor)
             )
 
-            // 次要色条
             Box(
                 modifier = Modifier
                     .padding(top = 48.dp)
@@ -318,7 +294,6 @@ private fun ThemePreviewCard(
                     .background(accentColor.copy(alpha = 0.5f))
             )
 
-            // 当前标记（多选模式下不显示）
             if (isCurrent && !isMultiSelectMode) {
                 Icon(
                     Icons.Default.Check,
@@ -330,108 +305,5 @@ private fun ThemePreviewCard(
                 )
             }
         }
-    }
-}
-
-// ── 预览 ────────────────────────────────────────────────────
-//日间主题卡片预览
-@Preview(showBackground = true, widthDp = 360)
-@Composable
-private fun ThemeCardDayPreview() {
-    MaterialTheme {
-        ThemeCard(
-            item = ThemeItem(
-                config = ThemeConfig.Config(
-                    themeName = "日间主题",
-                    isNightTheme = false,
-                    primaryColor = "#FF607D8B",
-                    accentColor = "#FF8BC34A",
-                    backgroundColor = "#FFF5F5F5",
-                    bottomBackground = "#FF424242",
-                    transparentNavBar = true,
-                    backgroundImgPath = null,
-                    backgroundImgBlur = 0
-                ),
-                originalIndex = 0
-            ),
-            isMultiSelectMode = false,
-            isSelected = false,
-            isCurrent = true,
-            onApply = {},
-            onEdit = {},
-            onShare = {},
-            onDelete = {},
-            onCopy = {},
-            onLongClick = {},
-            onToggleSelect = {}
-        )
-    }
-}
-
-//夜间主题卡片预览
-@Preview(showBackground = true, widthDp = 360)
-@Composable
-private fun ThemeCardNightPreview() {
-    MaterialTheme {
-        ThemeCard(
-            item = ThemeItem(
-                config = ThemeConfig.Config(
-                    themeName = "夜间主题",
-                    isNightTheme = true,
-                    primaryColor = "#FF1A1A2E",
-                    accentColor = "#FFE94560",
-                    backgroundColor = "#FF16213E",
-                    bottomBackground = "#FF0F3460",
-                    transparentNavBar = false,
-                    backgroundImgPath = null,
-                    backgroundImgBlur = 10
-                ),
-                originalIndex = 1
-            ),
-            isMultiSelectMode = false,
-            isSelected = false,
-            isCurrent = true,
-            onApply = {},
-            onEdit = {},
-            onShare = {},
-            onDelete = {},
-            onCopy = {},
-            onLongClick = {},
-            onToggleSelect = {}
-        )
-    }
-}
-
-//多选模式（Checkbox 选中状态）
-@Preview(showBackground = true, widthDp = 360)
-@Composable
-private fun ThemeCardMultiSelectPreview() {
-    MaterialTheme {
-        ThemeCard(
-            item = ThemeItem(
-                config = ThemeConfig.Config(
-                    themeName = "多选模式主题",
-                    isNightTheme = false,
-                    primaryColor = "#FF607D8B",
-                    accentColor = "#FF8BC34A",
-                    backgroundColor = "#FFF5F5F5",
-                    bottomBackground = "#FF424242",
-                    transparentNavBar = true,
-                    backgroundImgPath = null,
-                    backgroundImgBlur = 0
-                ),
-                originalIndex = 2
-            ),
-            isMultiSelectMode = true,
-            isSelected = true,
-            isCurrent = false,
-            onApply = {},
-            onEdit = {},
-            onShare = {},
-            onDelete = {},
-            onCopy = {},
-            onLongClick = {},
-            onToggleSelect = {}
-        )
     }
 }

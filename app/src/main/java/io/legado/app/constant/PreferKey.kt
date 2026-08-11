@@ -209,6 +209,7 @@ object PreferKey {
     const val showWaitUpCount = "showWaitUpCount"
     const val clearWebViewData = "clearWebViewData"
     const val onlyLatestBackup = "onlyLatestBackup"
+    const val autoBackup = "autoBackup"
     const val brightnessVwPos = "brightnessVwPos"
     const val shrinkDatabase = "shrinkDatabase"
     const val batchChangeSourceDelay = "batchChangeSourceDelay"
