@@ -147,10 +147,38 @@ fun ThemeManageScreen(
             scrollEnabled = !state.isMultiSelectMode,
             contentPadding = contentPadding,
             dayContent = {
-                ThemeList(dayItems, state, currentConfig, viewModel)
+                ThemeList(
+                    items = dayItems,
+                    state = state,
+                    currentConfig = currentConfig,
+                    onApply = viewModel::applyConfig,
+                    onEdit = { item ->
+                        val draft = viewModel.startEdit(item)
+                        state.openEditDialog(draft.isNew, draft.editingKey)
+                    },
+                    onShare = viewModel::shareItem,
+                    onDelete = viewModel::deleteItem,
+                    onCopy = viewModel::copyItem,
+                    onLongClick = { item -> state.enterMultiSelect(item.key) },
+                    onToggleSelect = { item -> state.toggleSelection(item.key) }
+                )
             },
             nightContent = {
-                ThemeList(nightItems, state, currentConfig, viewModel)
+                ThemeList(
+                    items = nightItems,
+                    state = state,
+                    currentConfig = currentConfig,
+                    onApply = viewModel::applyConfig,
+                    onEdit = { item ->
+                        val draft = viewModel.startEdit(item)
+                        state.openEditDialog(draft.isNew, draft.editingKey)
+                    },
+                    onShare = viewModel::shareItem,
+                    onDelete = viewModel::deleteItem,
+                    onCopy = viewModel::copyItem,
+                    onLongClick = { item -> state.enterMultiSelect(item.key) },
+                    onToggleSelect = { item -> state.toggleSelection(item.key) }
+                )
             }
         )
     }
@@ -204,7 +232,13 @@ private fun ThemeList(
     items: List<ThemeItem>,
     state: io.legado.app.ui.config.widget.ConfigManageState,
     currentConfig: ThemeConfig.Config,
-    viewModel: ThemeManageViewModel
+    onApply: (ThemeItem) -> Unit,
+    onEdit: (ThemeItem) -> Unit,
+    onShare: (ThemeItem) -> Unit,
+    onDelete: (ThemeItem) -> Unit,
+    onCopy: (ThemeItem) -> Unit,
+    onLongClick: (ThemeItem) -> Unit,
+    onToggleSelect: (ThemeItem) -> Unit
 ) {
     ConfigList(
         items = items,
@@ -216,16 +250,13 @@ private fun ThemeList(
                 isSelected = item.key in state.multiSelect.selectedKeys,
                 isCurrent = item.config.themeName == currentConfig.themeName &&
                     item.config.isNightTheme == currentConfig.isNightTheme,
-                onApply = { viewModel.applyConfig(item) },
-                onEdit = {
-                    val draft = viewModel.startEdit(item)
-                    state.openEditDialog(draft.isNew, draft.editingKey)
-                },
-                onShare = { viewModel.shareItem(item) },
-                onDelete = { viewModel.deleteItem(item) },
-                onCopy = { viewModel.copyItem(item) },
-                onLongClick = { state.enterMultiSelect(item.key) },
-                onToggleSelect = { state.toggleSelection(item.key) }
+                onApply = { onApply(item) },
+                onEdit = { onEdit(item) },
+                onShare = { onShare(item) },
+                onDelete = { onDelete(item) },
+                onCopy = { onCopy(item) },
+                onLongClick = { onLongClick(item) },
+                onToggleSelect = { onToggleSelect(item) }
             )
         }
     )
