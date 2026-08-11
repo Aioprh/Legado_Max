@@ -1571,6 +1571,9 @@
     <string name="adding_books">正在添加 %d 本书…</string>
     <string name="add_books_success">成功添加 %d 本书</string>
     <string name="all_books_in_shelf">列表书籍已全部在书架</string>
+    <string name="auto_backup_title">自动备份</string>
+    <string name="auto_backup_summary">退出 APP 时自动 Webdav备份和本地备份（距上次备份超过24小时）</string>
+
     <string name="auto_check_new_backup_t">自动检查新备份</string>
     <string name="auto_check_new_backup_s">打开软件时检查是否有新备份，有新备份时提示是否更新</string>
     <string name="r_preloadJs">预加载Js（preloadJs）</string>
