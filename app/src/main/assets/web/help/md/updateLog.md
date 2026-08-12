@@ -17,6 +17,10 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/11**
+- 优化主题列表界面，补齐功能
+- 增加自动备份开关，可自己选择是否开启
+
 **2026/8/08**
 - fix(订阅收藏): 修复收藏详情页刷新后仍显示旧内容的问题
 

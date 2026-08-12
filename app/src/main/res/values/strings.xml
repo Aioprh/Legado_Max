@@ -1635,6 +1635,9 @@
     <string name="adding_books">Adding %d books…</string>
     <string name="add_books_success">Successfully added %d books</string>
     <string name="all_books_in_shelf">All books in list are already on shelf</string>
+    <string name="auto_backup_title">Auto Backup</string>
+    <string name="auto_backup_summary">Auto WebDAV and local backup when exiting (24h cooldown)</string>
+
     <string name="auto_check_new_backup_t">Auto Check New Backup</string>
     <string name="auto_check_new_backup_s">Check for new backup when opening app, prompt to update if found</string>
     <string name="r_preloadJs">Preload JS (preloadJs)</string>
