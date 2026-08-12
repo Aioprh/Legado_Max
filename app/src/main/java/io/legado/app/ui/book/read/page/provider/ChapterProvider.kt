@@ -149,7 +149,7 @@ object ChapterProvider {
         chapterSize: Int,
     ): TextChapter {
 
-        val safeContent = if (bookContent.textList.all { it.isBlank() }) {
+        val safeContent = if (bookContent.textList.all { it.isBlank() } && !bookChapter.isVolume) {
             bookContent.copy(textList = listOf("本章节内容为空，请刷新目录或更换书源"))
         } else bookContent
 
