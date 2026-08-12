@@ -66,6 +66,7 @@ import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.lib.theme.uiTypeface
 import io.legado.app.ui.config.ShareNoteTemplateManageActivity
+import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.share
 import io.legado.app.utils.toastOnUi
@@ -233,7 +234,9 @@ class ShareNotePreviewOverlay private constructor(
         bottomBar.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         bottomBar.installViewTreeOwnersFrom(this, activity)
         bottomBar.setContent {
-            ShareNoteQuickPanel()
+            LegadoTheme {
+                ShareNoteQuickPanel()
+            }
         }
         addView(
             bottomBar,
