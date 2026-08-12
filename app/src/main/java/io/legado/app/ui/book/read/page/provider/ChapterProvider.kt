@@ -149,16 +149,20 @@ object ChapterProvider {
         chapterSize: Int,
     ): TextChapter {
 
+        val safeContent = if (bookContent.content.isBlank()) {
+            bookContent.copy(content = "本章节内容为空，请刷新目录或更换书源")
+        } else bookContent
+
         val textChapter = TextChapter(
             bookChapter,
             bookChapter.index, displayTitle,
             chapterSize,
-            bookContent.sameTitleRemoved,
+            safeContent.sameTitleRemoved,
             bookChapter.isVip,
             bookChapter.isPay,
-            bookContent.effectiveReplaceRules
+            safeContent.effectiveReplaceRules
         ).apply {
-            createLayout(scope, book, bookContent)
+            createLayout(scope, book, safeContent)
         }
 
         return textChapter
