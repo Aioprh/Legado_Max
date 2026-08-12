@@ -291,11 +291,14 @@ object ApplicationThemeManager {
     private fun addImported(imported: Config): Config {
         val items = load()
         val baseName = imported.name.trim().ifBlank { appCtx.getString(io.legado.app.R.string.application_theme_manage) }
-        var name = baseName
-        var suffix = 2
-        while (items.any { it.name == name }) name = "$baseName ${suffix++}"
-        val next = imported.copy(id = UUID.randomUUID().toString(), name = name, updatedAt = System.currentTimeMillis())
-        items.add(next)
+        // 同名配置直接覆盖（复用原有 ID），避免反复追加“名称 2”
+        val existingIndex = items.indexOfFirst { it.name == baseName }
+        val next = if (existingIndex >= 0) {
+            imported.copy(id = items[existingIndex].id, name = baseName, updatedAt = System.currentTimeMillis())
+        } else {
+            imported.copy(id = UUID.randomUUID().toString(), name = baseName, updatedAt = System.currentTimeMillis())
+        }
+        if (existingIndex >= 0) items[existingIndex] = next else items.add(next)
         save(items)
         return next
     }
@@ -556,9 +559,7 @@ object ApplicationThemeManager {
         }
         if (registerTheme) {
             // 将导入的主题添加到 ThemeConfig.configList，使其在主题管理列表中可见
-            val usedNames = ThemeConfig.configList.filter { it.isNightTheme == isNight }.map { it.themeName }.toSet()
-            val uniqueThemeName = uniqueName(restored.themeName, usedNames)
-            restored = restored.copy(themeName = uniqueThemeName)
+            // ThemeConfig.addConfig 已支持同名覆盖，无需 uniqueName
             ThemeConfig.addConfig(restored)
         }
         return restored
@@ -575,10 +576,12 @@ object ApplicationThemeManager {
         if (originalDir == TopBarConfig.DEFAULT_DIR_NAME) return TopBarConfig.DEFAULT_DIR_NAME
         val source = packaged ?: throw IllegalArgumentException(appCtx.getString(R.string.app_theme_missing_top_bar))
         val wallpaper = source.wallpaperPath?.let { extractAsset(zip, temp, it)?.absolutePath }
-        val usedNames = TopBarConfig.loadEntries(appCtx, isNight).map { it.config.name }.toSet()
-        val name = uniqueName(source.name, usedNames)
+        // 同名顶栏直接复用已有条目进行更新，避免追加“名称 2”
+        val existingEntry = TopBarConfig.loadEntries(appCtx, isNight)
+            .firstOrNull { it.config.name == source.name.trim() }
         return TopBarConfig.addOrUpdate(
-            source.copy(name = name, isNightMode = isNight, wallpaperPath = wallpaper)
+            source.copy(isNightMode = isNight, wallpaperPath = wallpaper),
+            oldEntry = existingEntry
         ).dirName
     }
 
@@ -593,7 +596,10 @@ object ApplicationThemeManager {
             return NavigationBarConfig.loadConfigs(appCtx)
                 .firstOrNull { it.isNight == isNight && it.isBuiltin }?.id
         }
-        val id = UUID.randomUUID().toString()
+        val existing = NavigationBarConfig.loadConfigs(appCtx)
+        // 同名底栏直接覆盖已有配置，避免追加"名称 2"
+        val existingIndex = existing.indexOfFirst { it.isNight == isNight && it.name == packaged.name.trim() && !it.isBuiltin }
+        val id = if (existingIndex >= 0) existing[existingIndex].id else UUID.randomUUID().toString()
         val iconDir = appCtx.externalFiles.getFile("navigationBarIcons", id).apply { mkdirs() }
         val icons = packaged.icons.mapNotNull { (key, path) ->
             extractAsset(zip, temp, path)?.let { source ->
@@ -602,10 +608,8 @@ object ApplicationThemeManager {
                 key to target.absolutePath
             }
         }.toMap()
-        val existing = NavigationBarConfig.loadConfigs(appCtx)
-        val name = uniqueName(packaged.name, existing.filter { it.isNight == isNight }.map { it.name }.toSet())
-        val next = packaged.copy(id = id, name = name, isNight = isNight, isBuiltin = false, icons = icons)
-        existing.add(next)
+        val next = packaged.copy(id = id, name = packaged.name.trim(), isNight = isNight, isBuiltin = false, icons = icons)
+        if (existingIndex >= 0) existing[existingIndex] = next else existing.add(next)
         NavigationBarConfig.saveConfigs(appCtx, existing)
         return id
     }
@@ -613,8 +617,10 @@ object ApplicationThemeManager {
     private suspend fun restoreCover(zip: ZipFile, temp: File, payload: CoverPayload?): Long? {
         payload ?: return null
         val repository = CoverGalleryRepository()
-        val usedNames = repository.allGroupsWithImages().map { it.group.name }.toSet()
-        val groupId = repository.addGroup(uniqueName(payload.name, usedNames))
+        val baseName = payload.name.trim().ifBlank { appCtx.getString(R.string.app_theme_component_default_name) }
+        // 同名封面图集直接复用已有图集，避免管理列表堆积重复组件
+        val existingGroup = repository.allGroupsWithImages().firstOrNull { it.group.name == baseName }
+        val groupId = existingGroup?.group?.id ?: repository.addGroup(baseName)
         val files = payload.images.mapNotNull { extractAsset(zip, temp, it) }
         if (files.isNotEmpty()) repository.addImageFiles(appCtx, groupId, files)
         return groupId
