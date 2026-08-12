@@ -132,81 +132,88 @@
             android:layout_width="0dp"
             android:layout_height="8dp" />
 
-        <!-- 底部按钮 -->
-        <LinearLayout
+        <!-- 底部按钮（可横向滚动，避免大字号时"更多"按钮被遮挡） -->
+        <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:scrollbars="none"
+            android:overScrollMode="never">
 
-            <!-- 应用按钮 -->
-            <TextView
-                android:id="@+id/tv_apply"
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:minWidth="56dp"
-                android:paddingHorizontal="12dp"
-                android:gravity="center"
-                android:text="@string/apply_theme"
-                android:textSize="13sp"
-                android:textColor="@color/primaryText"
-                android:background="@drawable/bg_action_button"
-                android:foreground="?attr/selectableItemBackground" />
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
 
-            <Space
-                android:layout_width="8dp"
-                android:layout_height="0dp" />
+                <!-- 应用按钮 -->
+                <TextView
+                    android:id="@+id/tv_apply"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:minWidth="56dp"
+                    android:paddingHorizontal="12dp"
+                    android:gravity="center"
+                    android:text="@string/apply_theme"
+                    android:textSize="13sp"
+                    android:textColor="@color/primaryText"
+                    android:background="@drawable/bg_action_button"
+                    android:foreground="?attr/selectableItemBackground" />
 
-            <!-- 编辑按钮 -->
-            <TextView
-                android:id="@+id/tv_edit"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:minWidth="56dp"
-                android:paddingHorizontal="12dp"
-                android:gravity="center"
-                android:text="@string/edit_theme"
-                android:textSize="13sp"
-                android:textColor="@color/primaryText"
-                android:background="@drawable/bg_action_button"
-                android:foreground="?attr/selectableItemBackground"
-                android:visibility="gone" />
+                <Space
+                    android:layout_width="8dp"
+                    android:layout_height="0dp" />
 
-            <Space
-                android:layout_width="8dp"
-                android:layout_height="0dp" />
+                <!-- 编辑按钮 -->
+                <TextView
+                    android:id="@+id/tv_edit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:minWidth="56dp"
+                    android:paddingHorizontal="12dp"
+                    android:gravity="center"
+                    android:text="@string/edit_theme"
+                    android:textSize="13sp"
+                    android:textColor="@color/primaryText"
+                    android:background="@drawable/bg_action_button"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:visibility="gone" />
 
-            <!-- 复制按钮 -->
-            <TextView
-                android:id="@+id/tv_copy"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:minWidth="56dp"
-                android:paddingHorizontal="12dp"
-                android:gravity="center"
-                android:text="@string/copy"
-                android:textSize="13sp"
-                android:textColor="@color/primaryText"
-                android:background="@drawable/bg_action_button"
-                android:foreground="?attr/selectableItemBackground" />
+                <Space
+                    android:layout_width="8dp"
+                    android:layout_height="0dp" />
 
-            <Space
-                android:layout_width="8dp"
-                android:layout_height="0dp" />
+                <!-- 复制按钮 -->
+                <TextView
+                    android:id="@+id/tv_copy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:minWidth="56dp"
+                    android:paddingHorizontal="12dp"
+                    android:gravity="center"
+                    android:text="@string/copy"
+                    android:textSize="13sp"
+                    android:textColor="@color/primaryText"
+                    android:background="@drawable/bg_action_button"
+                    android:foreground="?attr/selectableItemBackground" />
 
-            <!-- 更多按钮 -->
-            <TextView
-                android:id="@+id/tv_more"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:minWidth="56dp"
-                android:paddingHorizontal="12dp"
-                android:gravity="center"
-                android:text="@string/more"
-                android:textSize="13sp"
-                android:textColor="@color/primaryText"
-                android:background="@drawable/bg_action_button"
-                android:foreground="?attr/selectableItemBackground" />
-        </LinearLayout>
+                <Space
+                    android:layout_width="8dp"
+                    android:layout_height="0dp" />
+
+                <!-- 更多按钮 -->
+                <TextView
+                    android:id="@+id/tv_more"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:minWidth="56dp"
+                    android:paddingHorizontal="12dp"
+                    android:gravity="center"
+                    android:text="@string/more"
+                    android:textSize="13sp"
+                    android:textColor="@color/primaryText"
+                    android:background="@drawable/bg_action_button"
+                    android:foreground="?attr/selectableItemBackground" />
+            </LinearLayout>
+        </HorizontalScrollView>
 
         <!-- 多选模式下的 CheckBox -->
         <CheckBox
