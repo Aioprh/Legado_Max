@@ -259,6 +259,9 @@
             android:name=".ui.config.BubbleManageActivity"
             android:launchMode="standard" />
         <activity
+            android:name=".ui.config.ShareNoteTemplateManageActivity"
+            android:launchMode="standard" />
+        <activity
             android:name=".ui.book.search.SearchActivity"
             android:launchMode="standard" />
         <!-- 关于界面 -->

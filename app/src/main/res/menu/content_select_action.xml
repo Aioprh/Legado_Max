@@ -23,6 +23,11 @@
         android:title="@string/dict" />
 
     <item
+        android:id="@+id/menu_share_image"
+        android:title="@string/share_note_menu"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_web_search"
         android:title="@string/web_search" />
 

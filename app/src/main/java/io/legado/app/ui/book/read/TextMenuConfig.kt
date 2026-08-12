@@ -52,6 +52,7 @@ object TextMenuConfig {
         MenuItemInfo(R.id.menu_bookmark, R.string.bookmark),
         MenuItemInfo(R.id.menu_aloud, R.string.read_aloud),
         MenuItemInfo(R.id.menu_dict, R.string.dict),
+        MenuItemInfo(R.id.menu_share_image, R.string.share_note_menu),
         MenuItemInfo(R.id.menu_web_search, R.string.web_search),
         MenuItemInfo(R.id.menu_text_menu_config, R.string.menu_config),
         MenuItemInfo(R.id.menu_highlight_rule, R.string.menu_highlight_rule),

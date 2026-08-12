@@ -44,10 +44,12 @@ import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.isLocalTxt
 import io.legado.app.help.book.isMobi
 import io.legado.app.help.book.removeType
+import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.book.update
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ReadTipConfig
+import io.legado.app.help.config.ShareNoteTemplateManager
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.source.getSourceType
 import io.legado.app.help.storage.Backup
@@ -128,6 +130,7 @@ import io.legado.app.utils.navigationBarGravity
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.observeEventSticky
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.share
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.showHelp
 import io.legado.app.utils.startActivity
@@ -148,6 +151,9 @@ import androidx.lifecycle.Lifecycle
 import com.script.rhino.runScriptWithContext
 import io.legado.app.model.analyzeRule.AnalyzeUrl.Companion.paramPattern
 import io.legado.app.ui.login.SourceLoginJsExtensions
+import java.text.DateFormat
+import java.text.DecimalFormat
+import java.util.Date
 
 /**
  * 阅读界面
@@ -227,6 +233,7 @@ class ReadBookActivity : BaseReadBookActivity(),
     private var menu: Menu? = null
     private var backupJob: Job? = null
     private var tts: TTS? = null
+    private var shareNotePreviewOverlay: ShareNotePreviewOverlay? = null
     val textActionMenu: TextActionMenu by lazy {
         TextActionMenu(this, this)
     }
@@ -996,8 +1003,222 @@ class ReadBookActivity : BaseReadBookActivity(),
                 showDialogFragment(DictDialog(selectedText))
                 return true
             }
+
+            R.id.menu_share_image -> {
+                showShareNotePreviewOverlay(selectedText)
+                return true
+            }
         }
         return false
+    }
+
+    /**
+     * 摘录分享：展示分享图片预览弹层
+     */
+    private fun showShareNotePreviewOverlay(selection: String) {
+        val text = selection.trim()
+        if (text.isBlank()) return
+        lifecycleScope.launch {
+            val payload = buildShareNotePayload(text)
+            val entries = runCatching {
+                withContext(IO) {
+                    ShareNoteTemplateManager.loadEntries()
+                }
+            }.getOrElse {
+                AppLog.put("摘录分享模板加载失败\n${it.localizedMessage}", it, true)
+                toastOnUi(it.localizedMessage ?: getString(R.string.error))
+                return@launch
+            }
+            val entry = entries.firstOrNull { it.dirName == ShareNoteTemplateManager.lastDirName() }
+                ?: entries.firstOrNull()
+            if (entry == null) {
+                toastOnUi(R.string.share_note_no_template)
+                return@launch
+            }
+            shareNotePreviewOverlay?.dismiss()
+            shareNotePreviewOverlay = ShareNotePreviewOverlay.show(
+                activity = this@ReadBookActivity,
+                parent = binding.root,
+                entry = entry,
+                payload = payload
+            )
+        }
+    }
+
+    /**
+     * 构建摘录分享图片所需的载荷数据
+     */
+    private suspend fun buildShareNotePayload(text: String): ShareNoteImageRenderer.Payload {
+        val book = ReadBook.book
+        val now = Date()
+        val readTimeMs = book?.let { currentShareNoteReadTime(it, now.time) } ?: 0L
+        val readTimeText = readTimeMs.takeIf { it > 0L }?.let(::formatShareNoteDuration).orEmpty()
+        val progressText = currentShareNoteProgressText()
+        val tags = book?.shareNoteTags().orEmpty()
+        return ShareNoteImageRenderer.Payload(
+            generatedAt = DateFormat.getDateTimeInstance().format(now),
+            profile = ShareNoteImageRenderer.Profile(
+                name = "读者",
+                avatar = null
+            ),
+            book = ShareNoteImageRenderer.Book(
+                title = book?.name.orEmpty().ifBlank { getString(R.string.book_name) },
+                author = book?.getRealAuthor().orEmpty(),
+                description = book?.getDisplayIntro().orEmpty(),
+                cover = book?.getDisplayCover()?.let(::normalizeShareNoteCoverUrl),
+                type = tags,
+                kind = tags,
+                tags = tags,
+                wordCountText = book?.wordCount.orEmpty(),
+                readTimeText = readTimeText,
+                readStatusText = readTimeText.takeIf { it.isNotBlank() }?.let { "阅读 $it" }.orEmpty(),
+                readProgressText = progressText,
+                readProgressPercent = parseShareNoteProgressPercent(progressText),
+                lastReadTime = book?.durChapterTime?.takeIf { it > 0L }?.let {
+                    DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(it))
+                }.orEmpty()
+            ),
+            note = ShareNoteImageRenderer.Note(
+                createAt = DateFormat.getDateInstance().format(now),
+                sectionName = currentShareNoteChapterTitle(),
+                description = text
+            )
+        )
+    }
+
+    private suspend fun currentShareNoteReadTime(book: Book, now: Long): Long {
+        val saved = appDb.readRecordDao.getReadTime(AppConst.androidId, book.name, book.getRealAuthor()) ?: 0L
+        val live = if (AppConfig.enableReadRecord && ReadBook.book?.bookUrl == book.bookUrl) {
+            (now - ReadBook.readStartTime).coerceAtLeast(0L)
+        } else {
+            0L
+        }
+        return saved + live
+    }
+
+    private fun formatShareNoteDuration(mss: Long): String {
+        val days = mss / (1000 * 60 * 60 * 24)
+        val hours = mss % (1000 * 60 * 60 * 24) / (1000 * 60 * 60)
+        val minutes = mss % (1000 * 60 * 60) / (1000 * 60)
+        val seconds = mss % (1000 * 60) / 1000
+        val d = if (days > 0) getString(R.string.duration_day, days) else ""
+        val h = if (hours > 0) getString(R.string.duration_hour, hours) else ""
+        val m = if (minutes > 0) getString(R.string.duration_minute, minutes) else ""
+        val s = if (seconds > 0 && days == 0L && hours == 0L) {
+            getString(R.string.duration_second, seconds)
+        } else {
+            ""
+        }
+        return "$d$h$m$s".ifBlank { getString(R.string.duration_zero) }
+    }
+
+    private fun currentShareNoteProgressText(): String {
+        return runCatching {
+            currentTextShareNoteProgressText()
+        }.getOrDefault("")
+    }
+
+    private fun currentTextShareNoteProgressText(): String {
+        val chapterSize = currentShareNoteChapterSize()
+        if (chapterSize <= 0) return ""
+        val textChapter = ReadBook.curTextChapter
+        val currentPage = runCatching { binding.readView.curPage.textPage }.getOrNull()
+        val chapterIndex = firstValidChapterIndex(
+            chapterSize,
+            textChapter?.chapter?.index,
+            ReadBook.durChapterIndex,
+            ReadBook.book?.durChapterIndex,
+            currentPage?.takeIf { it.chapterSize > 0 }?.chapterIndex
+        )
+        val pageSize = textChapter?.pageSize?.takeIf { it > 0 }
+            ?: currentPage?.pageSize?.takeIf { it > 0 }
+            ?: 0
+        val pageIndex = textChapter
+            ?.getPageIndexByCharIndex(ReadBook.durChapterPos)
+            ?.takeIf { it >= 0 }
+            ?: currentPage?.index?.takeIf { it >= 0 }
+            ?: 0
+        return shareNoteProgressText(chapterIndex, chapterSize, pageIndex, pageSize)
+    }
+
+    private fun currentShareNoteChapterSize(): Int {
+        return ReadBook.simulatedChapterSize.takeIf { it > 0 }
+            ?: ReadBook.chapterSize.takeIf { it > 0 }
+            ?: ReadBook.book?.simulatedTotalChapterNum()?.takeIf { it > 0 }
+            ?: ReadBook.book?.totalChapterNum?.takeIf { it > 0 }
+            ?: 0
+    }
+
+    private fun firstValidChapterIndex(chapterSize: Int, vararg candidates: Int?): Int {
+        return candidates.firstOrNull { it != null && it in 0 until chapterSize } ?: 0
+    }
+
+    private fun parseShareNoteProgressPercent(progressText: String): Float? {
+        val valueText = shareNoteProgressPercentRegex.find(progressText)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?: progressText.trim()
+        return valueText.replace(',', '.')
+            .toFloatOrNull()
+            ?.div(100f)
+            ?.coerceIn(0f, 1f)
+    }
+
+    private fun shareNoteProgressText(
+        chapterIndex: Int,
+        chapterSize: Int,
+        pageIndex: Int,
+        pageSize: Int
+    ): String {
+        if (chapterSize <= 0) return ""
+        val safeChapterIndex = chapterIndex.coerceIn(0, chapterSize - 1)
+        val safePageSize = pageSize.coerceAtLeast(0)
+        val safePageIndex = if (safePageSize > 0) {
+            pageIndex.coerceIn(0, safePageSize - 1)
+        } else {
+            0
+        }
+        val progress = if (safePageSize <= 0) {
+            (safeChapterIndex + 1.0) / chapterSize.toDouble()
+        } else {
+            safeChapterIndex.toDouble() / chapterSize.toDouble() +
+                (safePageIndex + 1.0) / safePageSize.toDouble() / chapterSize.toDouble()
+        }.coerceIn(0.0, 1.0)
+        return DecimalFormat("0.0%").format(progress)
+    }
+
+    private fun Book.shareNoteTags(): String {
+        return customTag?.trim()?.takeIf { it.isNotBlank() }
+            ?: kind?.trim()?.takeIf { it.isNotBlank() }
+            ?: when {
+                isAudio -> "音频"
+                isEpub -> "EPUB"
+                isMobi -> "MOBI"
+                isLocalTxt -> "TXT"
+                isLocal -> getString(R.string.local)
+                else -> ""
+            }
+    }
+
+    private fun currentShareNoteChapterTitle(): String {
+        return ReadBook.curTextChapter?.chapter?.title
+            ?: ReadBook.book?.durChapterTitle
+            ?: ""
+    }
+
+    private fun normalizeShareNoteCoverUrl(raw: String): String? {
+        val value = raw.trim()
+        if (value.isBlank()) return null
+        if (value.startsWith("http", ignoreCase = true) ||
+            value.startsWith("file:", ignoreCase = true) ||
+            value.startsWith("content:", ignoreCase = true) ||
+            value.startsWith("data:", ignoreCase = true)
+        ) {
+            return value
+        }
+        return runCatching {
+            java.io.File(value).takeIf { it.exists() }?.toURI()?.toString()
+        }.getOrNull() ?: value
     }
 
     /**
@@ -1881,6 +2102,8 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun onDestroy() {
         super.onDestroy()
+        shareNotePreviewOverlay?.dismiss()
+        shareNotePreviewOverlay = null
         tts?.clearTts()
         textActionMenu.dismiss()
         popupAction.dismiss()
@@ -2016,6 +2239,7 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     companion object {
         const val RESULT_DELETED = 100
+        private val shareNoteProgressPercentRegex = Regex("""(\d+(?:[,.]\d+)?)\s*%""")
     }
 
 }

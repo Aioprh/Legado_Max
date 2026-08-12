@@ -36,6 +36,7 @@ import io.legado.app.ui.config.BubbleManageActivity
 import io.legado.app.ui.config.ConfigActivity
 import io.legado.app.ui.config.ConfigTag
 import io.legado.app.ui.config.NavigationBarManageActivity
+import io.legado.app.ui.config.ShareNoteTemplateManageActivity
 import io.legado.app.ui.config.TopBarManageActivity
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.config.theme.manage.ThemeManageActivity
@@ -284,6 +285,8 @@ class ThemeConfigFragment : PreferenceFragment(),
             "coverConfig" -> startActivity<ConfigActivity> {
                 putExtra("configTag", ConfigTag.COVER_CONFIG)
             }
+
+            "shareNoteTemplateManage" -> startActivity<ShareNoteTemplateManageActivity>()
 
             "navigationBarManage" -> startActivity<NavigationBarManageActivity>()
 
