@@ -50,7 +50,7 @@ data class TextPage(
     val lines: List<TextLine> get() = textLines
     val lineSize: Int get() = textLines.size
     val charSize: Int get() = text.length.coerceAtLeast(1)
-    val chapterPosition: Int get() = textLines.first().chapterPosition
+    val chapterPosition: Int get() = textLines.firstOrNull()?.chapterPosition ?: 0
     val searchResult = hashSetOf<TextBaseColumn>()
     var isMsgPage: Boolean = false
     var canvasRecorder = CanvasRecorderFactory.create(true)
@@ -73,6 +73,7 @@ data class TextPage(
         get() {
             val paragraphs = arrayListOf<TextParagraph>()
             val lines = textLines.filter { it.paragraphNum > 0 }
+            if (lines.isEmpty()) return paragraphs
             val offset = lines.first().paragraphNum - 1
             lines.forEach { line ->
                 if (paragraphs.lastIndex < line.paragraphNum - offset - 1) {
@@ -93,7 +94,7 @@ data class TextPage(
 
     fun getLine(index: Int): TextLine {
         return textLines.getOrElse(index) {
-            textLines.last()
+            textLines.lastOrNull() ?: TextLine()
         }
     }
 
