@@ -17,6 +17,12 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/12**
+- fix(调试): 移除悬浮球show/hide的success冗余日志避免刷屏
+- fix(主题): 优化重复导入处理同名项覆盖或复用不再追加名称2
+- fix(主题): 修复应用主题列表大字号时更多按钮被遮挡的问题
+- feat(阅读): 实现正文长按摘录分享功能参考archive
+
 **2026/8/11**
 - 优化主题列表界面，补齐功能
 - 增加自动备份开关，可自己选择是否开启
