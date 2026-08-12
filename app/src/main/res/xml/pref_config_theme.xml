@@ -122,6 +122,14 @@
             app:allowDividerBelow="false"
             app:iconSpaceReserved="false" />
 
+        <io.legado.app.lib.prefs.Preference
+            android:key="shareNoteTemplateManage"
+            android:title="@string/share_note_template_manage"
+            android:summary="@string/share_note_template_manage_summary"
+            app:allowDividerAbove="false"
+            app:allowDividerBelow="false"
+            app:iconSpaceReserved="false" />
+
         <io.legado.app.lib.prefs.NameListPreference
             android:defaultValue="0"
             android:entries="@array/bookshelf_icon_style_entries"
