@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?><root project="/storage/emulated/0/AndroidPEProjects/Legado_Max" diag="true" inlayhint="true">
+<?xml version="1.0" encoding="UTF-8"?><root project="/storage/emulated/0/AndroidPEProjects/Legado_Max" diag="false" inlayhint="true">
     <module path=":app" absolutePath="/storage/emulated/0/AndroidPEProjects/Legado_Max/app" classPath="" sourceRes="/storage/emulated/0/AndroidPEProjects/Legado_Max/app/src/main/res" sourcePath="/storage/emulated/0/AndroidPEProjects/Legado_Max/app/src/main/java:/storage/emulated/0/AndroidPEProjects/Legado_Max/modules/book/src/main/java:/storage/emulated/0/AndroidPEProjects/Legado_Max/modules/rhino/src/main/java"/>
     <module path=":modules:book" absolutePath="/storage/emulated/0/AndroidPEProjects/Legado_Max/modules/book" classPath="" sourceRes="" sourcePath="/storage/emulated/0/AndroidPEProjects/Legado_Max/modules/book/src/main/java"/>
     <module path=":modules:rhino" absolutePath="/storage/emulated/0/AndroidPEProjects/Legado_Max/modules/rhino" classPath="" sourceRes="" sourcePath="/storage/emulated/0/AndroidPEProjects/Legado_Max/modules/rhino/src/main/java"/>

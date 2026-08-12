@@ -377,6 +377,10 @@ object Backup {
      * @return true表示需要备份，false表示不需要
      */
     private fun shouldBackup(): Boolean {
+        if (!AppConfig.autoBackup) {
+            // 用户关闭了自动备份开关，跳过。不清 lastBackup，避免下次打开时立即触发。
+            return false
+        }
         val lastBackup = LocalConfig.lastBackup
         return lastBackup + TimeUnit.DAYS.toMillis(1) < System.currentTimeMillis()
     }

@@ -8,8 +8,9 @@ Jetpack Compose 实现的主题管理模块，是当前主开发目标。
 |------|------|
 | `ThemeManageActivity.kt` | 入口 Activity，处理平台侧回调（ColorPickerDialog、NumberPickerDialog、文件选择、分享等）。 |
 | `ThemeManageScreen.kt` | Compose 主屏幕，渲染主题列表、Tab 切换、多选操作栏、编辑弹窗，收集一次性事件转发给 Activity。 |
-| `ThemeManageViewModel.kt` | ViewModel，持有 UiState 并通过 StateFlow 驱动渲染，所有 ThemeConfig 写操作在协程中执行。 |
-| `ThemeManageUiState.kt` | UiState 数据类定义：`ThemeItem`、`MultiSelectState`、`EditDialogState`、`ThemeTab`、`ThemeEvent`、`ThemeAction`、`ThemeManageUiState`。 |
+| `ThemeManageViewModel.kt` | ViewModel，持有列表、编辑草稿和一次性事件，通过 StateFlow/Channel 驱动渲染；所有 ThemeConfig 读写通过 ThemeRepository 在协程中执行。 |
+| `ThemeManageUiState.kt` | 主题条目和一次性事件定义。 |
+| `ThemeRepository.kt` | 主题配置数据源抽象，负责 IO 调度、写入串行化和配置快照定位。 |
 
 ## 架构模式
 
@@ -19,4 +20,4 @@ Jetpack Compose 实现的主题管理模块，是当前主开发目标。
 
 ## 子目录
 
-- `components/` — 主题管理专用的 Compose UI 组件
+- `components/` — 主题管理专用的 Compose UI 组件（ThemeCard、ThemePreview、ThemeBackgroundImage、ThemeEditDialog）
