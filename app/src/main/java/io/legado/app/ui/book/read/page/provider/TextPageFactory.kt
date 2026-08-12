@@ -110,7 +110,12 @@ class TextPageFactory(dataSource: DataSource) : PageFactory<TextPage>(dataSource
             }
             currentChapter?.let {
                 return@with it.getPage(pageIndex)
-                    ?: TextPage(title = it.title).apply { textChapter = it }.format()
+                    ?: TextPage(title = it.title).apply {
+                        textChapter = it
+                        if (it.pageSize <= 0) {
+                            text = "本章节内容为空，请刷新目录或更换书源"
+                        }
+                    }.format()
             }
             return TextPage().format()
         }
