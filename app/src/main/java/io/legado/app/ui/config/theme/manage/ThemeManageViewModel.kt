@@ -155,6 +155,10 @@ class ThemeManageViewModel(
         val config = currentConfig?.copy()?.apply {
             themeName = getNextThemeName(isNightTheme)
             this.isNightTheme = isNightTheme
+            // 背景图是主题专属资源，绝不能从当前主题继承，否则会产生多主题共享同一资源、
+            // 删除主题时误删背景图的风险。颜色可作起点，背景图必须从空白开始。
+            backgroundImgPath = null
+            backgroundImgBlur = 0
         } ?: error("Theme config is not loaded")
         _editDraft.value = config
         return ThemeEditDraft(

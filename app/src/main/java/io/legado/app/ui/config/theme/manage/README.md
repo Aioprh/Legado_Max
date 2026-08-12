@@ -20,4 +20,4 @@ Jetpack Compose 实现的主题管理模块，是当前主开发目标。
 
 ## 子目录
 
-- `components/` — 主题管理专用的 Compose UI 组件
+- `components/` — 主题管理专用的 Compose UI 组件（ThemeCard、ThemePreview、ThemeBackgroundImage、ThemeEditDialog）

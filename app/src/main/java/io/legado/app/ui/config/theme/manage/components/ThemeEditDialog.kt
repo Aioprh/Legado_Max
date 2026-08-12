@@ -137,7 +137,8 @@ fun ThemeEditDialog(
                 BackgroundImageRow(
                     title = stringResource(R.string.background_image),
                     path = config.backgroundImgPath,
-                    onClick = onSelectImage
+                    onClick = onSelectImage,
+                    onClear = { onUpdateDraft { cfg -> cfg.copy(backgroundImgPath = null, backgroundImgBlur = 0) } }
                 )
 
                 // 背景图片虚化
@@ -279,7 +280,8 @@ private fun OptionRow(
 private fun BackgroundImageRow(
     title: String,
     path: String?,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onClear: () -> Unit
 ) {
     // 在 IO 线程异步解码缩略图，避免阻塞主线程；解码失败或未选图时置空显示占位块
     val thumbnail: ImageBitmap? by produceState<ImageBitmap?>(initialValue = null, path) {
@@ -352,6 +354,20 @@ private fun BackgroundImageRow(
                 overflow = TextOverflow.MiddleEllipsis,
                 modifier = Modifier.weight(1f)
             )
+
+            if (path != null) {
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.clear),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .clickable(onClick = onClear)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }
