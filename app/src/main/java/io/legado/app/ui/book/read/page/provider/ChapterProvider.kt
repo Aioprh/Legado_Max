@@ -149,8 +149,8 @@ object ChapterProvider {
         chapterSize: Int,
     ): TextChapter {
 
-        val safeContent = if (bookContent.content.isBlank()) {
-            bookContent.copy(content = "本章节内容为空，请刷新目录或更换书源")
+        val safeContent = if (bookContent.text.isBlank()) {
+            bookContent.copy(text = "本章节内容为空，请刷新目录或更换书源")
         } else bookContent
 
         val textChapter = TextChapter(
