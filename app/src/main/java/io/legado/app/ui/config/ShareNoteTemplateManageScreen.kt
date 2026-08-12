@@ -20,11 +20,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -227,6 +233,8 @@ private fun ShareNoteTemplateItemCard(
     onEdit: () -> Unit,
     moreActions: List<ShareNoteMenuAction>
 ) {
+    val canEdit = entry.source == ShareNoteTemplateManager.Source.LOCAL
+    var moreMenuExpanded by remember { mutableStateOf(false) }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -282,22 +290,61 @@ private fun ShareNoteTemplateItemCard(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onApply) {
-                    Text(if (isActive) "已应用" else "应用")
+                TextButton(
+                    onClick = onApply,
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Text(
+                        text = if (isActive) "已应用" else "应用",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                TextButton(onClick = onEdit, enabled = entry.source == ShareNoteTemplateManager.Source.LOCAL) {
-                    Text("编辑")
+                TextButton(
+                    onClick = onEdit,
+                    enabled = canEdit,
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Text(
+                        text = "编辑",
+                        color = if (canEdit) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        }
+                    )
                 }
-                moreActions.forEach { action ->
-                    TextButton(onClick = action.onClick) {
+                Box {
+                    TextButton(
+                        onClick = { moreMenuExpanded = true },
+                        contentPadding = PaddingValues(horizontal = 8.dp)
+                    ) {
                         Text(
-                            text = action.label,
-                            color = if (action.danger) {
-                                MaterialTheme.colorScheme.error
-                            } else {
-                                MaterialTheme.colorScheme.primary
-                            }
+                            text = "更多",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                    DropdownMenu(
+                        expanded = moreMenuExpanded,
+                        onDismissRequest = { moreMenuExpanded = false }
+                    ) {
+                        moreActions.forEach { action ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = action.label,
+                                        color = if (action.danger) {
+                                            MaterialTheme.colorScheme.error
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        }
+                                    )
+                                },
+                                onClick = {
+                                    moreMenuExpanded = false
+                                    action.onClick()
+                                }
+                            )
+                        }
                     }
                 }
             }
