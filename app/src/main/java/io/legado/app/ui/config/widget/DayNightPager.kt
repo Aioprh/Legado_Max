@@ -20,14 +20,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
-import kotlinx.coroutines.launch
 
 /**
  * 日/夜分页管理器。
@@ -53,28 +55,36 @@ fun DayNightPager(
     contentPadding: PaddingValues = PaddingValues(0.dp),
     dayContent: @Composable () -> Unit,
     nightContent: @Composable () -> Unit
-) {
-    val scope = rememberCoroutineScope()
+ ) {
     val pagerState = androidx.compose.foundation.pager.rememberPagerState(
         initialPage = if (state.tab == ConfigTab.NIGHT) 1 else 0,
         pageCount = { 2 }
     )
+    var initialSyncComplete by remember { mutableStateOf(false) }
 
-    // Pager → Tab 联动
-    LaunchedEffect(pagerState.currentPage) {
-        val newTab = if (pagerState.currentPage == 0) ConfigTab.DAY else ConfigTab.NIGHT
+    // 恢复状态可能把 Pager 留在旧页，初始化时以当前配置 Tab 为准。
+    LaunchedEffect(Unit) {
+        val targetPage = if (state.tab == ConfigTab.NIGHT) 1 else 0
+        if (pagerState.currentPage != targetPage) {
+            pagerState.scrollToPage(targetPage)
+        }
+        initialSyncComplete = true
+    }
+
+    // 初始化完成前禁止旧 Pager 状态反向覆盖当前 Tab。
+    LaunchedEffect(pagerState.settledPage, initialSyncComplete) {
+        if (!initialSyncComplete) return@LaunchedEffect
+        val newTab = if (pagerState.settledPage == 0) ConfigTab.DAY else ConfigTab.NIGHT
         if (state.tab != newTab) {
             state.tab = newTab
         }
     }
 
-    // Tab → Pager 联动
+    // Tab 变化时直接在当前 Effect 中执行动画，避免旧动画脱离 Effect 生命周期继续运行。
     LaunchedEffect(state.tab) {
         val targetPage = if (state.tab == ConfigTab.NIGHT) 1 else 0
         if (pagerState.currentPage != targetPage) {
-            scope.launch {
-                pagerState.animateScrollToPage(targetPage)
-            }
+            pagerState.animateScrollToPage(targetPage)
         }
     }
 
@@ -119,7 +129,7 @@ fun DayNightPager(
         androidx.compose.foundation.pager.HorizontalPager(
             state = pagerState,
             userScrollEnabled = scrollEnabled,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.weight(1f).fillMaxWidth()
         ) { page ->
             if (page == 0) dayContent() else nightContent()
         }

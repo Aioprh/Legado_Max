@@ -51,6 +51,7 @@ fun ConfigManageScaffold(
     Scaffold(
         modifier = modifier,
         containerColor = Color.Transparent,
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 modifier = Modifier.pageTopBarBackground(topBarColors),
