@@ -1058,7 +1058,7 @@ class ReadBookActivity : BaseReadBookActivity(),
         return ShareNoteImageRenderer.Payload(
             generatedAt = DateFormat.getDateTimeInstance().format(now),
             profile = ShareNoteImageRenderer.Profile(
-                name = "读者",
+                name = getString(R.string.share_note_reader),
                 avatar = null
             ),
             book = ShareNoteImageRenderer.Book(
@@ -1071,7 +1071,8 @@ class ReadBookActivity : BaseReadBookActivity(),
                 tags = tags,
                 wordCountText = book?.wordCount.orEmpty(),
                 readTimeText = readTimeText,
-                readStatusText = readTimeText.takeIf { it.isNotBlank() }?.let { "阅读 $it" }.orEmpty(),
+                readStatusText = readTimeText.takeIf { it.isNotBlank() }
+                    ?.let { getString(R.string.share_note_read_prefix, it) }.orEmpty(),
                 readProgressText = progressText,
                 readProgressPercent = parseShareNoteProgressPercent(progressText),
                 lastReadTime = book?.durChapterTime?.takeIf { it > 0L }?.let {

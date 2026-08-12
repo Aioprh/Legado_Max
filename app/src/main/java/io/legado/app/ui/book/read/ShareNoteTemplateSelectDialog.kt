@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -35,7 +36,6 @@ import androidx.compose.ui.unit.sp
 import io.legado.app.R
 import io.legado.app.constant.AppLog
 import io.legado.app.help.config.ShareNoteTemplateManager
-import io.legado.app.ui.config.ShareNoteTemplatePreview
 import io.legado.app.ui.widget.components.dialog.BaseComposeDialogFragment
 import io.legado.app.utils.dpToPx
 import kotlinx.coroutines.CancellationException
@@ -112,7 +112,7 @@ class ShareNoteTemplateSelectDialog : BaseComposeDialogFragment() {
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
                 Text(
-                    text = "选择分享模板",
+                    text = stringResource(R.string.share_note_select_template),
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -140,10 +140,10 @@ class ShareNoteTemplateSelectDialog : BaseComposeDialogFragment() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             ShareNoteTemplatePreview(
-                                previewFile = previews[entry.dirName],
                                 modifier = Modifier
                                     .width(60.dp)
-                                    .heightIn(min = 84.dp)
+                                    .heightIn(min = 84.dp),
+                                previewFile = previews[entry.dirName]
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
@@ -175,7 +175,7 @@ class ShareNoteTemplateSelectDialog : BaseComposeDialogFragment() {
                         dismissAllowingStateLoss()
                         onManage?.invoke()
                     }) {
-                        Text("管理模板")
+                        Text(stringResource(R.string.share_note_manage_templates))
                     }
                     TextButton(onClick = { dismissAllowingStateLoss() }) {
                         Text(getString(R.string.cancel))

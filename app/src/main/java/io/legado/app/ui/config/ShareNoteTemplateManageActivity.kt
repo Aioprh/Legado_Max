@@ -116,11 +116,13 @@ class ShareNoteTemplateManageActivity : BaseComposeActivity() {
             shareStyle = shareStyleState.value,
             previewFiles = previewFilesState.value,
             onBackClick = { finish() },
-            onApply = ::applyTemplate,
-            onStyleChange = ::updateShareStyle,
-            onEdit = ::editTemplate,
-            onMoreActions = ::templateActions,
-            onAddClick = ::showAddActions
+            args = ShareNoteTemplateManageArgs(
+                onApply = ::applyTemplate,
+                onStyleChange = ::updateShareStyle,
+                onEdit = ::editTemplate,
+                onMoreActions = ::templateActions,
+                onAddClick = ::showAddActions
+            )
         )
     }
 
@@ -199,19 +201,23 @@ class ShareNoteTemplateManageActivity : BaseComposeActivity() {
 
     private fun showAddActions() {
         selector(
-            "添加模板",
-            listOf("复制内置模板新建", "导入 HTML", "导入 ZIP")
+            getString(R.string.share_note_add_template),
+            listOf(
+                getString(R.string.share_note_add_copy_builtin),
+                getString(R.string.share_note_import_html),
+                getString(R.string.share_note_import_zip)
+            )
         ) { _, index ->
             when (index) {
                 0 -> copyTemplate(ShareNoteTemplateManager.builtinEntry(), editAfterCopy = true)
                 1 -> importTemplate.launch {
                     mode = HandleFileContract.FILE
-                    title = "导入 HTML"
+                    title = getString(R.string.share_note_import_html)
                     allowExtensions = arrayOf("html", "htm")
                 }
                 2 -> importTemplate.launch {
                     mode = HandleFileContract.FILE
-                    title = "导入 ZIP"
+                    title = getString(R.string.share_note_import_zip)
                     allowExtensions = arrayOf("zip")
                 }
             }
@@ -220,12 +226,12 @@ class ShareNoteTemplateManageActivity : BaseComposeActivity() {
 
     private fun templateActions(entry: ShareNoteTemplateManager.Entry): List<ShareNoteMenuAction> {
         return buildList {
-            add(ShareNoteMenuAction("预览头部") { openPreview(entry) })
-            add(ShareNoteMenuAction("复制新建") { copyTemplate(entry, editAfterCopy = true) })
-            add(ShareNoteMenuAction("导出 HTML") { exportHtml(entry) })
-            add(ShareNoteMenuAction("导出 ZIP") { exportZip(entry) })
+            add(ShareNoteMenuAction(getString(R.string.share_note_action_preview)) { openPreview(entry) })
+            add(ShareNoteMenuAction(getString(R.string.share_note_action_copy)) { copyTemplate(entry, editAfterCopy = true) })
+            add(ShareNoteMenuAction(getString(R.string.share_note_export_html)) { exportHtml(entry) })
+            add(ShareNoteMenuAction(getString(R.string.share_note_export_zip)) { exportZip(entry) })
             if (entry.source == ShareNoteTemplateManager.Source.LOCAL) {
-                add(ShareNoteMenuAction("删除", danger = true) { confirmDelete(entry) })
+                add(ShareNoteMenuAction(getString(R.string.delete), danger = true) { confirmDelete(entry) })
             }
         }
     }
@@ -307,7 +313,7 @@ class ShareNoteTemplateManageActivity : BaseComposeActivity() {
                     )
                 }
             }.onFailure {
-                toastOnUi(it.localizedMessage ?: "导出失败")
+                toastOnUi(it.localizedMessage ?: getString(R.string.share_note_export_failed))
             }
         }
     }
