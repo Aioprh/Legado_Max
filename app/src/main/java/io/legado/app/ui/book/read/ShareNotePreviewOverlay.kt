@@ -308,7 +308,7 @@ class ShareNotePreviewOverlay private constructor(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             ShareNotePanelButton(
-                text = "模板",
+                text = activity.getString(R.string.share_note_template),
                 enabled = !busyState,
                 onClick = ::showTemplatePanel,
                 modifier = Modifier.weight(1f)
@@ -343,7 +343,7 @@ class ShareNotePreviewOverlay private constructor(
         ) {
             Column {
                 Text(
-                    text = "更换模板",
+                    text = activity.getString(R.string.share_note_change_template),
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -361,20 +361,20 @@ class ShareNotePreviewOverlay private constructor(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ShareNotePanelButton(
-                    text = "管理",
+                    text = activity.getString(R.string.share_note_manage),
                     modifier = Modifier.width(70.dp),
                     enabled = !busyState,
                     onClick = ::openTemplateManage
                 )
                 ShareNotePanelButton(
-                    text = "完成",
+                    text = activity.getString(R.string.share_note_done),
                     modifier = Modifier.width(70.dp),
                     enabled = !busyState,
                     onClick = ::showActionPanel
                 )
             }
         }
-        ShareNoteSectionCard(title = "模板") {
+        ShareNoteSectionCard(title = activity.getString(R.string.share_note_template)) {
             ShareNoteSegmentedOptions(
                 options = templateEntries.map { it.dirName to it.meta.name },
                 selectedValue = selectedDirName,
@@ -383,7 +383,7 @@ class ShareNotePreviewOverlay private constructor(
                 }
             )
         }
-        ShareNoteSectionCard(title = "配色") {
+        ShareNoteSectionCard(title = activity.getString(R.string.share_note_palette)) {
             ShareNoteSegmentedOptions(
                 options = ShareNoteTemplateManager.stylePalettes.map { it.id to it.name },
                 selectedValue = shareStyle.paletteId,
@@ -392,7 +392,7 @@ class ShareNotePreviewOverlay private constructor(
                 }
             )
         }
-        ShareNoteSectionCard(title = "字体") {
+        ShareNoteSectionCard(title = activity.getString(R.string.share_note_font)) {
             ShareNoteSegmentedOptions(
                 options = ShareNoteTemplateManager.fontFamilies.map {
                     it to ShareNoteTemplateManager.fontLabel(it)
