@@ -43,11 +43,11 @@
       "chapterName": "$.N",
       "chapterUrl": "https://full.hnxianxin.cn/qd/content.php?book_id={{book.bookUrl.match(/book_id=(\\d+)/)[1]}}&chapter_id={{$.C}}",
       "isVip": "$.V",
-      "isPay": "$.V",
-      "updateTime": "$.DisplayTime"
+      "isPay": "",
+      "updateTime": "{{$.W}}字"
     },
     "ruleContent": {
-      "content": "$.Content"
+      "content": "@js:try{var o=JSON.parse(result);o.Content||o.detail||''}catch(e){'【正文获取失败，可能为VIP章节或站点有反爬限制】'}"
     },
     "exploreUrl": "人气榜::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=11&page=1&page_size=20&category_id=0\n最近更新::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=1&page=1&page_size=20&category_id=0\n最新入V::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=14&page=1&page_size=20&category_id=0\n月票最多::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=4&page=1&page_size=20&category_id=0\n收藏最多::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=3&page=1&page_size=20&category_id=0",
     "ruleExplore": {
