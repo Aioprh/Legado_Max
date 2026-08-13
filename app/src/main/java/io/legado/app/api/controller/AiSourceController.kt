@@ -40,13 +40,14 @@ object AiSourceController {
                 val body = response.body ?: return returnData.setErrorMsg("响应无内容")
 
                 // 限量读取，避免把超大响应整体读入内存
+                // okio 的 read(ByteArray, Int, Int) 返回 Int（-1 表示流结束）
                 val source = body.source()
                 val buffer = ByteArray(MAX_BYTES)
                 var total = 0
                 while (total < MAX_BYTES) {
                     val read = source.read(buffer, total, MAX_BYTES - total)
-                    if (read == -1L) break
-                    total += read.toInt()
+                    if (read == -1) break
+                    total += read
                 }
                 val limitedBytes = buffer.copyOf(total)
                 if (limitedBytes.isEmpty()) return returnData.setErrorMsg("响应为空")
