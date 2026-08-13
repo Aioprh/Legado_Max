@@ -37,9 +37,18 @@ class BookSourceEditViewModel(application: Application) : BaseViewModel(applicat
     fun initData(intent: Intent, onFinally: () -> Unit) {
         execute {
             val sourceUrl = intent.getStringExtra("sourceUrl")
+            val sourceJson = intent.getStringExtra("sourceJson")
             var source: BookSource? = null
-            if (sourceUrl != null) {
-                source = appDb.bookSourceDao.getBookSource(sourceUrl)
+            when {
+                sourceUrl != null -> {
+                    source = appDb.bookSourceDao.getBookSource(sourceUrl)
+                }
+                // 从 AI 生成等来源导入的完整书源 JSON
+                !sourceJson.isNullOrBlank() -> {
+                    source = runCatching {
+                        GSON.fromJsonObject<BookSource>(sourceJson).getOrThrow()
+                    }.getOrNull()
+                }
             }
             source?.let {
                 bookSource = it
