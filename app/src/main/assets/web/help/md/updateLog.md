@@ -17,6 +17,11 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/13**
+- 修复摘录分享功能在release包无法使用的问题
+- fix(视频播放): 修复部分m3u8视频无法播放的问题
+- fix(摘录分享): 模板管理界面补充添加模板入口
+
 **2026/8/12**
 - fix(调试): 移除悬浮球show/hide的success冗余日志避免刷屏
 - fix(主题): 优化重复导入处理同名项覆盖或复用不再追加名称2
