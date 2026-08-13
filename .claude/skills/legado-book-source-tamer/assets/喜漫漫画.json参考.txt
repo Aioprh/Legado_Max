@@ -1,0 +1,45 @@
+[
+  {
+    "bookSourceComment": "2025/5/13\nby天天的鸟蛋蛋 \n2025/10/2 辞&柚屿&小寒&另一个书友圈 技术指导 CJ’sPig算法提供 天天的鸟蛋蛋 解密\n2025/10/29 库存 合并方法jslib ",
+    "bookSourceName": "原版（favcomic）喜漫漫画",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://www.favcomic.net#原版",
+    "coverDecodeJs": "decode(result);",
+    "customOrder": 24,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "header": "{\n  \"User-Agent\": \"Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36 EdgA/137.0.0.0\",\n  \"accept-language\": \"zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,zh-TW;q=0.6,zh-HK;q=0.5\"\n}",
+    "jsLib": "var ByteArrayOutputStream = Packages.java.io.ByteArrayOutputStream;\nvar InputStream=Packages.java.io.InputStream\n\n\nfunction decode(input) {\n    try {\n        const {java} = this;\n        const a = decodeSimple('7Y,c7'),\n        b = decodeSimple('/F?ctY');\n        const c = decodeSimple('c~,>O'),\n        key = a + b + c;\n        var bytes;\n        //判断是输入流还是字节流 封面和正文图片解密一体(jslib版)统一方法 正文图片内容为字节流；封面图片内容为输入流。\n        if (input instanceof  InputStream) {\n        \t//输入流转字节流\n            var out = new ByteArrayOutputStream();\n            var byteVal;\n            while ((byteVal = input.read()) != -1) {\n                out.write(byteVal);\n            }\n            bytes = out.toByteArray();\n        } else {\n            bytes = input;\n        }        \nvar keyBytes = java.strToBytes(key, \"UTF-8\");\n        var iv = bytes.slice(0, 16);\n        var encryptedData = bytes.slice(16);       \n    var result = java.createSymmetricCrypto(\n            \"AES/CBC/PKCS5Padding\",\n            keyBytes,\n            iv\n        ).decrypt(encryptedData);\n        return result;       \n    } catch (e) {\n        return null;\n    }\n}\nfunction decodeSimple(_0x190256) {\n  return _0x190256.split('').map(function(_0x8cac37) {\n    return String.fromCharCode(_0x8cac37.charCodeAt(0) - 1);\n  }).join('');\n}",
+    "lastUpdateTime": 1764164404037,
+    "loginCheckJs": "function bypassCloudFlare(result) {\n    var src = result.body();\n    var url = result.url();\n    \n    var cfPatterns = [\n        /Just a moment/,\n        /Checking your browser/,\n        /DDoS protection/,\n        /cloudflare/,\n        /challenge/,\n        /Please wait/,\n        /Enable JavaScript and cookies/,\n        /challenge-platform/\n    ];\n    \n    var isBlocked = cfPatterns.some(function(pattern) {\n        return src.match(pattern);\n          });\n    \n    if (!isBlocked) {\n        source.put(\"cf_block_count\", \"0\");\n        return result; \n    }\n    java.log(isBlocked);\n    \n    var blockCount = parseInt(source.get(\"cf_block_count\") || \"0\");\n    blockCount++;\n    source.put(\"cf_block_count\", blockCount.toString());\n    \n    // 清除Cookie\n    cookie.removeCookie(source.bookSourceUrl);\n    cookie.removeCookie(baseUrl);\n    cookie.removeCookie(url);\n    \n    // 根据拦截次数选择策略\n    if (blockCount == 1) {\n        // 首次拦截，先尝试WebView\n        java.log(\"首次拦截，尝试WebView自动处理\");\n        var webResult = java.webView(url, url, \n            \"setTimeout(function() {\" +\n            \"    window.legado.getHTML(document.documentElement.outerHTML);\" +\n            \"}, 10000);\"  // 增加到10秒等待\n        );\n        \n        // 仔细检查WebView结果\n        var webViewSuccess = true;\n        if (webResult) {\n            for (var i = 0; i < cfPatterns.length; i++) {\n                if (webResult.match(cfPatterns[i])) {\n                    webViewSuccess = false;\n                    java.log(\"WebView检测到CF模式: \" + cfPatterns[i]);\n                    break;\n                }\n            }\n        } else {\n            webViewSuccess = false;\n        }\n        \n        if (webViewSuccess) {\n            java.log(\"WebView自动处理成功\");\n            source.put(\"cf_block_count\", \"0\");\n            result = java.connect(url);\n        } else {\n            java.log(\"WebView自动处理失败，使用手动验证\");\n            java.toast(\"需要验证CloudFlare，请完成验证\");\n            java.startBrowserAwait(url, \"CloudFlare验证\");\n            source.put(\"cf_block_count\", \"0\");\n            result = java.connect(url);\n        }\n        \n    } else if (blockCount == 3) {\n        // 多次拦截，直接使用手动验证\n        java.log(\"多次拦截(\" + blockCount + \")，使用手动验证\");\n        java.toast(\"需要验证CloudFlare，请完成验证\");\n        java.startBrowserAwait(url, \"CloudFlare验证\");\n        source.put(\"cf_block_count\", \"0\");\n        result = java.connect(url);\n    }\n    \n    return result;\n}\n\nresult = bypassCloudFlare(result);\nresult;\n",
+    "loginUrl": "https://www.favcomic.net",
+    "respondTime": 180000,
+    "ruleBookInfo": {
+      "author": ".author.0@a@text",
+      "coverUrl": "[property$=image]@content",
+      "intro": "<br>\n{{@@.translation_agency_box@text}}\n<br>\n简介：\n{{@@[property$=description]@content}}\n<br>",
+      "name": ".info_box@h1@text"
+    },
+    "ruleContent": {
+      "content": "<js>\nvar match = src.match(/\"images\":\\s*(\\[[^\\]]*?\\])/);\nvar data = [];\nif (match) {\n    var arrStr = match[1];\n    try {\n        \n        data = JSON.parse(arrStr.replace(/'/g, '\"'));\n    } catch (e) {\n        \n        data = eval(arrStr);\n    }\n}\nvar imgTags = data.map(item => `<img src=\"https://ccdeoo.ykxbo.cn/file/e-media/app${item}\">`).join('\\n');\nimgTags;\n\n</js>",
+      "imageDecode": "decode(result);"
+    },
+    "ruleExplore": {},
+    "ruleSearch": {
+      "author": ".txt@text",
+      "bookList": ".comic_list@.comic_li",
+      "bookUrl": "a@href",
+      "coverUrl": ".cover_box@img@data-src",
+      "kind": ".brief_box@img@alt",
+      "name": "a@text"
+    },
+    "ruleToc": {
+      "chapterList": ".right_box:nth-child(2)@a",
+      "chapterName": ".title@text",
+      "chapterUrl": "href"
+    },
+    "searchUrl": "https://www.favcomic.net/search?keyword={{key}}",
+    "weight": 0
+  }
+]

@@ -1,0 +1,31 @@
+[
+  {
+    "bookSourceName": "笔趣阁测试",
+    "bookSourceUrl": "https://www.biquge.com",
+    "bookSourceType": 0,
+    "searchUrl": "/search.php?q={{key}}",
+    "ruleSearch": {
+      "bookList": ".result-list .result-item",
+      "name": ".result-game-item-title-link@text",
+      "author": ".result-game-item-info-tag:nth-child(1)@text##作\\s*者：",
+      "bookUrl": ".result-game-item-title-link@href",
+      "coverUrl": ".result-game-item-pic img@src",
+      "intro": ".result-game-item-desc@text"
+    },
+    "ruleBookInfo": {
+      "name": "#info h1@text",
+      "author": "#info p:nth-child(1)@text##作.*?：",
+      "coverUrl": "#fmimg img@src",
+      "intro": "#intro@text",
+      "lastChapter": "#info p:nth-child(4) a@text"
+    },
+    "ruleToc": {
+      "chapterList": "#list dd a",
+      "chapterName": "text",
+      "chapterUrl": "href"
+    },
+    "ruleContent": {
+      "content": "#content@html##<script[\\s\\S]*?</script>|请收藏.*"
+    }
+  }
+]

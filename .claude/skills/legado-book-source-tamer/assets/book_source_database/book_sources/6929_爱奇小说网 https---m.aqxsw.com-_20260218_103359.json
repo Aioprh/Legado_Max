@@ -1,0 +1,47 @@
+[
+  {
+    "bookSourceComment": "搞不定搜索，百度后直接复制详情页看吧",
+    "bookSourceName": "爱奇小说网",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://m.aqxsw.com/",
+    "customButton": false,
+    "customOrder": 7,
+    "enabled": true,
+    "enabledCookieJar": false,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "玄幻魔法::/fenlei/1/\n武侠修真::/fenlei/2/\n都市言情::/fenlei/3/\n历史军事::/fenlei/4/\n科幻恐怖::/fenlei/5/\n网游动漫::/fenlei/6/\n穿越言情::/fenlei/7/",
+    "lastUpdateTime": "1770440607865",
+    "respondTime": 182949,
+    "ruleBookInfo": {
+      "author": "class.info@tag.p.0@text##作者：",
+      "coverUrl": "img@src",
+      "intro": "class.introbar@text##简介：",
+      "kind": "class.info@tag.p.1@text##类别：",
+      "lastChapter": "class.newest@a@text",
+      "name": "tag.h2@class.title@text",
+      "tocUrl": "/index.html"
+    },
+    "ruleContent": {
+      "content": "id.content@html",
+      "nextContentUrl": "class.pagebar@a.-1@href",
+      "title": ".title@text"
+    },
+    "ruleExplore": {
+      "author": "class.info@tag.p.0@text##作者：",
+      "bookList": "id.list@article",
+      "bookUrl": "article@a@href",
+      "coverUrl": "img@src",
+      "intro": "class.intro@text##简介：",
+      "name": "tag.h2@class.title@text"
+    },
+    "ruleSearch": [],
+    "ruleToc": {
+      "chapterList": "-class.chapter@li",
+      "chapterName": "a@text",
+      "chapterUrl": "a@href",
+      "nextTocUrl": "class.right@a.-1@href"
+    },
+    "weight": 0
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "bookSourceName": "歌书网",
+    "bookSourceType": 0,
+    "bookSourceUrl": "",
+    "customButton": false,
+    "customOrder": 0,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "eventListener": false,
+    "lastUpdateTime": 1771405491509,
+    "respondTime": 180000,
+    "ruleBookInfo": {
+      "author": ".author@text##作者：##",
+      "coverUrl": ".synopsisArea_detail img@src",
+      "intro": ".review@text",
+      "kind": ".sort@text##类别：##",
+      "lastChapter": ".directoryArea p:first-child a@text",
+      "name": ".synopsisArea_detail img@alt"
+    },
+    "ruleContent": {
+      "content": "#chaptercontent@html##<div id=\"content_tip\">[\\s\\S]*?</div>|本章节未完，点击下一页继续阅读##"
+    },
+    "ruleExplore": {},
+    "ruleSearch": {
+      "author": ".author.0@text##.*作者：(.*)##$1",
+      "bookList": ".hot_sale",
+      "bookUrl": "a@href",
+      "kind": ".author.0@text&&.author.1@text##\\|.*：##,",
+      "lastChapter": ".author:last-child@text##.*更新：##",
+      "name": ".title@text"
+    },
+    "ruleToc": {
+      "chapterList": ".directoryArea p",
+      "chapterName": "a@text",
+      "chapterUrl": "a@href"
+    },
+    "searchUrl": "/s.php,{\"method\":\"POST\",\"body\":\"keyword={{key}}&t=1\"}",
+    "weight": 0
+  }
+]

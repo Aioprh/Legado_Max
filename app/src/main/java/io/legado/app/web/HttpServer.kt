@@ -3,6 +3,7 @@ package io.legado.app.web
 import android.graphics.Bitmap
 import fi.iki.elonen.NanoHTTPD
 import io.legado.app.api.ReturnData
+import io.legado.app.api.controller.AiSourceController
 import io.legado.app.api.controller.BackupController
 import io.legado.app.api.controller.BookController
 import io.legado.app.api.controller.BookSourceController
@@ -34,7 +35,8 @@ class HttpServer(port: Int) : NanoHTTPD(port) {
         "/saveBookSource", "/saveBookSources", "/deleteBookSources",
         "/saveBook", "/deleteBook", "/saveBookProgress", "/addLocalBook", "/saveReadConfig",
         "/saveRssSource", "/saveRssSources", "/deleteRssSources",
-        "/saveReplaceRule", "/deleteReplaceRule", "/testReplaceRule"
+        "/saveReplaceRule", "/deleteReplaceRule", "/testReplaceRule",
+        "/fetchHtml"
     )
 
     private fun isApiRequest(uri: String): Boolean = uri in apiPaths
@@ -159,6 +161,7 @@ class HttpServer(port: Int) : NanoHTTPD(port) {
                         "/getRssSources" -> RssSourceController.sources
                         "/getReplaceRules" -> ReplaceRuleController.allRules
                         "/backupPreview" -> BackupController.getBackupPreview()
+                        "/fetchHtml" -> AiSourceController.fetchHtml(parameters)
                         else -> null
                     }
                 }

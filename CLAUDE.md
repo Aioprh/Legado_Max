@@ -176,3 +176,26 @@ Skills 位于 `.claude/skills/` 目录，每个 skill 有独立的 `SKILL.md` �
 
 如果你认为哪怕只有 1% 的可能性某个 skill 适用于你正在做的事情，你必须调用该 skill 检查。
 <!-- superpowers-zh:end -->
+
+## Legado 书源驯兽师技能包（移植自 DandanLLab/legadoSkill，MIT）
+
+本仓库已移植适配 `legadoSkill` 项目，技能包位于 `.claude/skills/legado-book-source-tamer/`：
+
+- **作用**：辅助 AI 代理自动化分析网站结构、生成 / 验证 / 调试符合 Legado 规范的书源 JSON。
+- **组成**：`SKILL.md`（核心指令）、`assets/`（1751 个真实书源案例 + CSS 选择器 / 编码 / 正则等知识库）、`config/`（系统提示词）、`debugger/`（Python 模拟调试引擎）、`docs/`（文档）。
+- **使用时机**：任务涉及"写书源 / 调试书源 / 学习书源开发"时，用 `Skill` 工具加载 `legado-book-source-tamer` 并遵循其流程。
+- **适配约定**：
+  - 书源源码引用指向本仓库 `app/src/main/java/io/legado/app/`（本仓库即 Legado 真实源码，为最权威依据）。
+  - 生成的书源 JSON 统一输出到技能包 `output/` 目录，不污染 Android 工程根目录。
+  - `debugger/` 仅为近似模拟，规则验证以 `app/` 源码与 Legado App 实测为准。
+
+## AI 生成书源（产品功能，书源编辑器内）
+
+将 legadoSkill 的能力下沉为「书源编辑器」内置的产品功能（`modules/web` + App 内嵌 HTTP 服务）：
+
+- **后端**：`app/src/main/java/io/legado/app/api/controller/AiSourceController.kt` 提供 `GET /fetchHtml?url=...`，由 App 代理抓取目标网站 HTML（绕过浏览器 CORS），自动检测编码（`EncodingDetect`）并截断返回。已注册进 `HttpServer.kt`。
+- **前端**：书源编辑页新增「AI 生成」标签页（`modules/web/src/components/SourceAiGenerate.vue`，仅在 `/bookSource` 页显示）：
+  - 抓取 HTML → 填写 OpenAI 兼容接口配置（baseURL / API Key / 模型，存 localStorage）→ AI 生成书源 JSON。
+  - 内置「验证规则」（必填字段 + 正则成对检查）与「导入编辑器」（填入 `SourceTabTools` 编辑表单，可继续保存 / 走 `调试源` 标签用 App 真实调试）。
+  - 生成提示词提炼自技能包 `assets/书源输出模板_严格模式.md` 与 CSS/正则知识库，见 `SourceAiGenerate.vue` 中的 `SYSTEM_PROMPT`。
+- **注意事项**：LLM 请求由浏览器直接发往用户配置的 OpenAI 兼容接口，不在 App 内转发；仅对**书源**（bookSource）生效，订阅源不显示该标签页。

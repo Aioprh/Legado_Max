@@ -1,0 +1,38 @@
+[
+  {
+    "bookSourceComment": "by天天的鸟蛋蛋 2025/2/22\n修复目录乱序 通过源变量 输入\"目录乱序\"来开启变量",
+    "bookSourceGroup": "漫画",
+    "bookSourceName": "TapManga",
+    "bookSourceType": 2,
+    "bookSourceUrl": "https://www.antbyw.com",
+    "customOrder": 60,
+    "enabled": true,
+    "enabledCookieJar": true,
+    "enabledExplore": true,
+    "header": "{'User-Agent': \"Mozilla/5.0 (Linux; Android 13; PFJM10 Build/TP1A.220905.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/132.0.6834.163 Mobile Safari/537.36\"}",
+    "lastUpdateTime": 1771322134013,
+    "respondTime": 180000,
+    "ruleBookInfo": {},
+    "ruleContent": {
+      "content": "@js:\na=result.match(/urls = \\[(.*)\\]/)[1]\na.split(\",\").map(x=>'<img src='+x+'>').join(\"\\n\")"
+    },
+    "ruleExplore": {},
+    "ruleSearch": {
+      "author": "span.0@text",
+      "bookList": ".tabul@li",
+      "bookUrl": "a@href",
+      "checkKeyWord": "https://www.antbyw.com/plugin.php?id=jameson_manhua&c=index&a=bofang&kuid=166641",
+      "coverUrl": "img@src",
+      "kind": "span.1:2:3@text##更新時間\\:|Tags\\:|\\s|\\/##,",
+      "name": ".item-title@text"
+    },
+    "ruleToc": {
+      "chapterList": "<js>\nvar Jsoup = Packages.org.jsoup.Jsoup;\nvar Document = Packages.org.jsoup.nodes.Document;\nvar Element = Packages.org.jsoup.nodes.Element;\nvar Elements = Packages.org.jsoup.select.Elements;\nvar document = Jsoup.parse(src);\nvar volMap = {};\nvar tabs = document.select(\".buttons-tab a\");\nfor (var i = 0; i < tabs.size(); i++) {\n    var element = tabs.get(i);\n    var text = element.text();\n    var href = element.attr(\"href\").substring(1);  \n    volMap[href] = text;\n}\nvar result = [];\nvar tabsDiv = document.select(\".tabs .tab\");\nvar z = source.getVariable(); // 获取用户变量\njava.log(z)\nfor (var i = 0; i < tabsDiv.size(); i++) {\n    var tab = tabsDiv.get(i);\n    var tabId = tab.id();  \n    var vol = volMap[tabId];  \n\n    var items = tab.select(\"ul li .item-link\");\n    var tempItems = [];  \n\n    for (var j = 0; j < items.size(); j++) {\n        var item = items.get(j);\n        var link = item.select(\"a\").first();\n        var text = link.text().trim();\n        var href = link.attr(\"href\");\n        tempItems.push({ text: text, url: href, vol: vol });\n    }\n\n    // 根据变量z判断排序方式\n    if (z == \"目录乱序\") {\n        // 按数字升序排序\n        tempItems.sort(function(a, b) {\n            var numA = (a.text.match(/\\d+/) || [0])[0];\n            var numB = (b.text.match(/\\d+/) || [0])[0];\n            return parseInt(numA, 10) - parseInt(numB, 10);\n        });\n    } else {\n        // 默认倒序\n        tempItems.reverse();\n    }\n\n    result = result.concat(tempItems);\n}\n\nresult;\n\n</js>",
+      "chapterName": "text",
+      "chapterUrl": "url",
+      "updateTime": "vol"
+    },
+    "searchUrl": "/plugin.php?keyword={{key}}&formhash=5192ccf0&id=jameson_manhua&c=index&a=search&page={{page}}",
+    "weight": 0
+  }
+]

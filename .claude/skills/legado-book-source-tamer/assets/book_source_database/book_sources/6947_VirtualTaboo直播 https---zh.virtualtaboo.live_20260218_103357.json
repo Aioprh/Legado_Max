@@ -1,0 +1,49 @@
+[
+  {
+    "bookSourceGroup": "视频直播",
+    "bookSourceName": "VirtualTaboo直播",
+    "bookSourceType": 4,
+    "bookSourceUrl": "https://zh.virtualtaboo.live",
+    "customButton": false,
+    "customOrder": 1,
+    "enabled": true,
+    "enabledCookieJar": false,
+    "enabledExplore": true,
+    "eventListener": false,
+    "exploreUrl": "[{\"title\":\"🔥全部主播\",\"url\":\"/api/front/v2/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls\",\"style\":{\"layout_flexBasisPercent\":1,\"layout_flexGrow\":1}},\n{\"title\":\"🇨🇳中文\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageChinese\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇯🇵日本\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageJapanese\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇻🇳越南\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageVietnamese\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇰🇷韩国\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageKorean\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇷🇺俄罗斯\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageRussianSpeaking\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇺🇦乌克兰\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageUkrainian\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇺🇸美国\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageUSModels\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇮🇳印度\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"ethnicityIndian\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇪🇸西班牙\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageSpanishSpeaking\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇧🇷巴西\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageBrazilian\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇨🇴哥伦比亚\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageColombian\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇻🇪委内瑞拉\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageVenezuelan\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇬🇧英国\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageUKModels\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇫🇷法国\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageFrench\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇩🇪德国\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageGermanSpeaking\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇮🇹意大利\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageItalian\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇷🇴罗马尼亚\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageRomanian\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🌍非洲裔\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageAfrican\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇰🇪肯尼亚\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageKenyan\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🇿🇦南非\",\"url\":\"/api/front/models?limit=60&offset={{(page-1)*60}}&primaryTag=girls&filterGroupTags=[[\\\"tagLanguageSouthAfrican\\\"]]&sortBy=stripRanking\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}},\n{\"title\":\"🌈老实人\",\"url\":\"/api/front/models?removeShows=true&limit=60&offset={{(page-1)*60}}&primaryTag=trans&sortBy=viewersRating&guestHash=1bfd7d8fc02d7aa6befe15537b4858355ecaee6dcf48f52bde8ee7bf247529ff\",\"style\":{\"layout_flexBasisPercent\":0.25,\"layout_flexGrow\":1}}]",
+    "lastUpdateTime": "1771228213588",
+    "loginUrl": "https://zh.virtualtaboo.live###可能要挂梯",
+    "respondTime": 180000,
+    "ruleBookInfo": {
+      "coverUrl": "https://img.strpst.com/thumbs/{{$.user.user.snapshotTimestamp}}/{{$.cam.streamName}}_webp",
+      "intro": "&nbsp;&nbsp;\n👸🏻姓名:{{$.user.user.name}}\n性别:{{$.user.user.broadcastGender}}\n年龄:{{$.user.user.age}}岁\n🎂:{{$.user.user.birthDate}}\n🆔::{{$.user.user.id}}\n❤️收藏:{{$.user.user.favoritedCount}}人\n🌍国家:{{$.user.user.country}}  地区:{{$.user.user.region}}  城市:{{$.user.user.city}}\n🗣️语言:{{$.user.user.languages}}\n⭐评分:{{$.user.user.ratingPrivate}}\n评分数量:{{$.user.user.ratingPrivateUsers}}\n🏆排名:{{$.user.currPosition}}\n主播积分:{{$.user.currPoints}}\n上次在线日期:{{$.user.user.offlineStatusUpdatedAt}}\n📝介绍:{{$.cam.topic}}\n📢公告:{{$.user.user.offlineStatus}}\n个人描述:{{$.user.user.description}}\n社交媒体\nx:{{$.user.socialLinks.twitter}}\ninstagram:{{$.user.socialLinks.instagram}}\nsnapchat:{{$.user.socialLinks.snapchat}}\nxhamster:{{$.user.socialLinks.xhamster}}\nfancentro:{{$.user.socialLinks.fancentro}}\nxhamsterPornstar:{{$.user.socialLinks.xhamsterPornstar}}\nmyClub:{{$.user.socialLinks.myClub}}",
+      "name": "{{$.user.user.username}}",
+      "tocUrl": "https://zh.virtualtaboo.live/api/front/v1/broadcasts/{{$.user.user.username}}?uniq="
+    },
+    "ruleContent": [],
+    "ruleExplore": {
+      "bookList": "$.blocks..models[*]&&$.models[*]",
+      "bookUrl": "https://zh.virtualtaboo.live/api/front/v2/models/username/{{$.username}}/cam?timezoneOffset=-480&triggerRequest=loadCam&primaryTag=girls&isRevised=true&uniq=",
+      "coverUrl": "https://img.strpst.com/thumbs/{{$.snapshotTimestamp}}/{{$.streamName}}_webp",
+      "kind": "@js: ( ({ 'public': '免费', 'groupShow': '收费' }[result.status] || result.status) + ' • ' + result.viewersCount + '人在看' )",
+      "name": "@js:\nif (\"{{$.status}}\"==\"public\"){result=\"{{$.username}}\"}else{result=\"\"}"
+    },
+    "ruleSearch": {
+      "author": "$.streamName",
+      "bookList": "$.models",
+      "bookUrl": "https://zh.virtualtaboo.live/api/front/v2/models/username/{{$.username}}/cam?timezoneOffset=-480&triggerRequest=loadCam&primaryTag=girls&isRevised=true&uniq=",
+      "checkKeyWord": "_Aimy_",
+      "coverUrl": "@js:result.snapshotTimestamp && result.streamName ? 'https://img.doppiocdn.com/thumbs/' + result.snapshotTimestamp + '/' + result.streamName + '_webp' : result.snapshotUrl",
+      "intro": "$.groupShowTopic",
+      "kind": "@js: ( ({ 'public': '免费', 'groupShow': '收费' }[result.status] || result.status) + ' • ' + result.viewersCount + '人在看' )",
+      "name": "@js:\nif (\"{{$.isLive}}\"==\"true\"){result=\"{{$.username}}\"}else{result=\"\"}"
+    },
+    "ruleToc": {
+      "chapterList": "$..item",
+      "chapterName": "@js: ( ({ 'true': '在线', 'false': '离线' }[result.isLive] || result.isLive)+({ 'public': '免费', 'groupShow': '收费', 'p2p': '一对一','off':' ' }[result.status] || result.status) )",
+      "chapterUrl": "@js: 'https://edge-hls.growcdnssedge.com/hls/'+result.streamName+'/master/'+result.streamName+'_'+({ 'public': '480p', 'groupShow': '160p_blurred', 'p2p': '160p_blurred','off':' ' }[result.status] || result.status)+'.m3u8'"
+    },
+    "searchUrl": "https://zh.virtualtaboo.live/api/front/v4/models/search/group/username?query={{key}}&limit=500&offset={{(page-1)*500}}&primaryTag=girls&uniq=",
+    "weight": 0
+  }
+]

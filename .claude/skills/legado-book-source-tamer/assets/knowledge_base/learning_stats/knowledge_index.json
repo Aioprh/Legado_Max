@@ -1,0 +1,5864 @@
+{
+  "entries": {
+    "rule_书源规则：从入门到入土.md_1": {
+      "id": "rule_书源规则：从入门到入土.md_1",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()Legado书源规则说明",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_书源规则：从入门到入土.md_3": {
+      "id": "rule_书源规则：从入门到入土.md_3",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()概况",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_书源规则：从入门到入土.md_5": {
+      "id": "rule_书源规则：从入门到入土.md_5",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()1、语法说明",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_书源规则：从入门到入土.md_7": {
+      "id": "rule_书源规则：从入门到入土.md_7",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()2、Legado的特殊规则",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_书源规则：从入门到入土.md_9": {
+      "id": "rule_书源规则：从入门到入土.md_9",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()3、书源之「基本」",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_书源规则：从入门到入土.md_11": {
+      "id": "rule_书源规则：从入门到入土.md_11",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()4、书源之「搜索」",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_书源规则：从入门到入土.md_13": {
+      "id": "rule_书源规则：从入门到入土.md_13",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()5、书源之「发现」",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_书源规则：从入门到入土.md_15": {
+      "id": "rule_书源规则：从入门到入土.md_15",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()6、书源之「详情」",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_书源规则：从入门到入土.md_17": {
+      "id": "rule_书源规则：从入门到入土.md_17",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()7、书源之「目录」",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_书源规则：从入门到入土.md_19": {
+      "id": "rule_书源规则：从入门到入土.md_19",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()8、书源之「正文」",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_书源规则：从入门到入土.md_21": {
+      "id": "rule_书源规则：从入门到入土.md_21",
+      "source_file": "书源规则：从入门到入土.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()9、补充说明",
+      "tags": [
+        "rule",
+        "explanation",
+        "书源规则：从入门到入土_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_1": {
+      "id": "rule_legado_knowledge_base.md_1",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "Legado书源知识库 - 完整版",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_5": {
+      "id": "rule_legado_knowledge_base.md_5",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. BookSource（书源主类）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_7": {
+      "id": "rule_legado_knowledge_base.md_7",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "2. SearchRule（搜索规则）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_9": {
+      "id": "rule_legado_knowledge_base.md_9",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "3. BookInfoRule（书籍信息规则）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_11": {
+      "id": "rule_legado_knowledge_base.md_11",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "4. TocRule（目录规则）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_13": {
+      "id": "rule_legado_knowledge_base.md_13",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "5. ContentRule（正文规则）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_15": {
+      "id": "rule_legado_knowledge_base.md_15",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "6. ExploreRule（发现规则）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_17": {
+      "id": "rule_legado_knowledge_base.md_17",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "7. Book（书籍实体）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_19": {
+      "id": "rule_legado_knowledge_base.md_19",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "8. BookChapter（章节实体）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_23": {
+      "id": "rule_legado_knowledge_base.md_23",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 基本语法格式",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_27": {
+      "id": "rule_legado_knowledge_base.md_27",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "@text - 提取所有文本",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_29": {
+      "id": "rule_legado_knowledge_base.md_29",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "@ownText - 只提取当前元素的文本",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_31": {
+      "id": "rule_legado_knowledge_base.md_31",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "@html - 提取完整HTML结构",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_33": {
+      "id": "rule_legado_knowledge_base.md_33",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "@textNode - 提取文本节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_35": {
+      "id": "rule_legado_knowledge_base.md_35",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "@属性名 - 提取属性值",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_39": {
+      "id": "rule_legado_knowledge_base.md_39",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "元素选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_41": {
+      "id": "rule_legado_knowledge_base.md_41",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "类选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_43": {
+      "id": "rule_legado_knowledge_base.md_43",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ID选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_45": {
+      "id": "rule_legado_knowledge_base.md_45",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "属性选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_49": {
+      "id": "rule_legado_knowledge_base.md_49",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "后代选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_51": {
+      "id": "rule_legado_knowledge_base.md_51",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "子元素选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_53": {
+      "id": "rule_legado_knowledge_base.md_53",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "相邻兄弟选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_55": {
+      "id": "rule_legado_knowledge_base.md_55",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "通用兄弟选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_59": {
+      "id": "rule_legado_knowledge_base.md_59",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "位置伪类",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_61": {
+      "id": "rule_legado_knowledge_base.md_61",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "状态伪类",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_63": {
+      "id": "rule_legado_knowledge_base.md_63",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "内容伪类",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_67": {
+      "id": "rule_legado_knowledge_base.md_67",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "基本替换",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_69": {
+      "id": "rule_legado_knowledge_base.md_69",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "替换为指定内容",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_71": {
+      "id": "rule_legado_knowledge_base.md_71",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取匹配内容",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_75": {
+      "id": "rule_legado_knowledge_base.md_75",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "书籍列表页",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_77": {
+      "id": "rule_legado_knowledge_base.md_77",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "正文内容页",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_79": {
+      "id": "rule_legado_knowledge_base.md_79",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "书籍详情页",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_83": {
+      "id": "rule_legado_knowledge_base.md_83",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 基本格式",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_87": {
+      "id": "rule_legado_knowledge_base.md_87",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "class - 按class选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_89": {
+      "id": "rule_legado_knowledge_base.md_89",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "id - 按id选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_91": {
+      "id": "rule_legado_knowledge_base.md_91",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "tag - 按标签选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_93": {
+      "id": "rule_legado_knowledge_base.md_93",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "text - 按文本内容选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_95": {
+      "id": "rule_legado_knowledge_base.md_95",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "children - 获取所有子标签",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_99": {
+      "id": "rule_legado_knowledge_base.md_99",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "正数位置",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_101": {
+      "id": "rule_legado_knowledge_base.md_101",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "负数位置",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_103": {
+      "id": "rule_legado_knowledge_base.md_103",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "排除位置",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_105": {
+      "id": "rule_legado_knowledge_base.md_105",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "区间位置",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_107": {
+      "id": "rule_legado_knowledge_base.md_107",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "步长位置",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_111": {
+      "id": "rule_legado_knowledge_base.md_111",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取第一个元素",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_113": {
+      "id": "rule_legado_knowledge_base.md_113",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取最后一个元素",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_115": {
+      "id": "rule_legado_knowledge_base.md_115",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取指定范围",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_117": {
+      "id": "rule_legado_knowledge_base.md_117",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "组合使用",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_123": {
+      "id": "rule_legado_knowledge_base.md_123",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "绝对路径",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_125": {
+      "id": "rule_legado_knowledge_base.md_125",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "相对路径",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_129": {
+      "id": "rule_legado_knowledge_base.md_129",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ancestor - 祖先节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_131": {
+      "id": "rule_legado_knowledge_base.md_131",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "descendant - 后代节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_133": {
+      "id": "rule_legado_knowledge_base.md_133",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "following - 后面的节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_135": {
+      "id": "rule_legado_knowledge_base.md_135",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "preceding - 前面的节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_139": {
+      "id": "rule_legado_knowledge_base.md_139",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "text() - 提取文本",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_141": {
+      "id": "rule_legado_knowledge_base.md_141",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "contains() - 包含匹配",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_143": {
+      "id": "rule_legado_knowledge_base.md_143",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "starts-with() - 以...开头",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_145": {
+      "id": "rule_legado_knowledge_base.md_145",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "position() - 位置",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_147": {
+      "id": "rule_legado_knowledge_base.md_147",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "last() - 最后一个",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_149": {
+      "id": "rule_legado_knowledge_base.md_149",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "4. 属性选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_153": {
+      "id": "rule_legado_knowledge_base.md_153",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取书名",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_155": {
+      "id": "rule_legado_knowledge_base.md_155",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取链接",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_157": {
+      "id": "rule_legado_knowledge_base.md_157",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取包含特定文本的元素",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_159": {
+      "id": "rule_legado_knowledge_base.md_159",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取第3个章节",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_163": {
+      "id": "rule_legado_knowledge_base.md_163",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 基本语法",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_167": {
+      "id": "rule_legado_knowledge_base.md_167",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "根节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_169": {
+      "id": "rule_legado_knowledge_base.md_169",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "子节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_171": {
+      "id": "rule_legado_knowledge_base.md_171",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "数组索引",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_173": {
+      "id": "rule_legado_knowledge_base.md_173",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "通配符",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_175": {
+      "id": "rule_legado_knowledge_base.md_175",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "递归搜索",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_179": {
+      "id": "rule_legado_knowledge_base.md_179",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取数组中的第一个元素",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_181": {
+      "id": "rule_legado_knowledge_base.md_181",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取数组中的所有标题",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_183": {
+      "id": "rule_legado_knowledge_base.md_183",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取符合条件的元素",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_189": {
+      "id": "rule_legado_knowledge_base.md_189",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "字符类",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_191": {
+      "id": "rule_legado_knowledge_base.md_191",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "量词",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_193": {
+      "id": "rule_legado_knowledge_base.md_193",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "特殊字符",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_197": {
+      "id": "rule_legado_knowledge_base.md_197",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "匹配章节标题",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_199": {
+      "id": "rule_legado_knowledge_base.md_199",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "匹配日期",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_201": {
+      "id": "rule_legado_knowledge_base.md_201",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "匹配URL",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_203": {
+      "id": "rule_legado_knowledge_base.md_203",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "匹配手机号",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_205": {
+      "id": "rule_legado_knowledge_base.md_205",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "3. 在规则中的应用",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_211": {
+      "id": "rule_legado_knowledge_base.md_211",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "JavaScript引擎",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_213": {
+      "id": "rule_legado_knowledge_base.md_213",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "变量声明注意事项",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_215": {
+      "id": "rule_legado_knowledge_base.md_215",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "Java类调用",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_217": {
+      "id": "rule_legado_knowledge_base.md_217",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "安全限制",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_219": {
+      "id": "rule_legado_knowledge_base.md_219",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "2. 基本语法",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_221": {
+      "id": "rule_legado_knowledge_base.md_221",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "3. 核心变量",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_227": {
+      "id": "rule_legado_knowledge_base.md_227",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ajax - 访问网络",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_229": {
+      "id": "rule_legado_knowledge_base.md_229",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ajaxAll - 并发访问多个网络地址",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_231": {
+      "id": "rule_legado_knowledge_base.md_231",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ajaxTestAll - 测试多个网络地址",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_233": {
+      "id": "rule_legado_knowledge_base.md_233",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "connect - 访问网络，返回StrResponse对象",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_235": {
+      "id": "rule_legado_knowledge_base.md_235",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "get、head、post",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_237": {
+      "id": "rule_legado_knowledge_base.md_237",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "webView - 使用webView访问网络",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_239": {
+      "id": "rule_legado_knowledge_base.md_239",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "webViewGetOverrideUrl - 使用webView获取跳转url",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_241": {
+      "id": "rule_legado_knowledge_base.md_241",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "webViewGetSource - 使用webView获取资源url",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_243": {
+      "id": "rule_legado_knowledge_base.md_243",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "startBrowser - 使用内置浏览器打开链接",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_245": {
+      "id": "rule_legado_knowledge_base.md_245",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "startBrowserAwait - 使用内置浏览器打开链接并等待结果",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_249": {
+      "id": "rule_legado_knowledge_base.md_249",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "getString - 获取文本",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_251": {
+      "id": "rule_legado_knowledge_base.md_251",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "getStringList - 获取文本列表",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_253": {
+      "id": "rule_legado_knowledge_base.md_253",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "setContent - 设置解析内容",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_255": {
+      "id": "rule_legado_knowledge_base.md_255",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "getElement - 获取Element",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_257": {
+      "id": "rule_legado_knowledge_base.md_257",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "getElements - 获取Element列表",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_261": {
+      "id": "rule_legado_knowledge_base.md_261",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "downloadFile - 下载文件",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_263": {
+      "id": "rule_legado_knowledge_base.md_263",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "readTxtFile - 读取文本文件",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_265": {
+      "id": "rule_legado_knowledge_base.md_265",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "deleteFile - 删除文件",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_267": {
+      "id": "rule_legado_knowledge_base.md_267",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "unArchiveFile - 解压压缩文件",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_269": {
+      "id": "rule_legado_knowledge_base.md_269",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "getTxtInFolder - 读取文件夹内所有文本文件",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_271": {
+      "id": "rule_legado_knowledge_base.md_271",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "getZipStringContent - 获取压缩文件内指定文件的内容",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_275": {
+      "id": "rule_legado_knowledge_base.md_275",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "importScript - 导入JavaScript脚本",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_277": {
+      "id": "rule_legado_knowledge_base.md_277",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "cacheFile - 缓存网络文件",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_281": {
+      "id": "rule_legado_knowledge_base.md_281",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "base64编码解码",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_283": {
+      "id": "rule_legado_knowledge_base.md_283",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "Hex编码解码",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_285": {
+      "id": "rule_legado_knowledge_base.md_285",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ByteArray转换",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_287": {
+      "id": "rule_legado_knowledge_base.md_287",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "URI编码",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_289": {
+      "id": "rule_legado_knowledge_base.md_289",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "繁简转换",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_293": {
+      "id": "rule_legado_knowledge_base.md_293",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "timeFormat - 时间格式化",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_295": {
+      "id": "rule_legado_knowledge_base.md_295",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "timeFormatUTC - UTC时间格式化",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_299": {
+      "id": "rule_legado_knowledge_base.md_299",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "htmlFormat - HTML格式化",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_301": {
+      "id": "rule_legado_knowledge_base.md_301",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "toast - 弹窗提示",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_303": {
+      "id": "rule_legado_knowledge_base.md_303",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "log - 日志输出",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_305": {
+      "id": "rule_legado_knowledge_base.md_305",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "getVerificationCode - 获取用户输入的验证码",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_307": {
+      "id": "rule_legado_knowledge_base.md_307",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "getWebViewUA - 获取SystemWebView User-Agent",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_309": {
+      "id": "rule_legado_knowledge_base.md_309",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "randomUUID - 生成UUID",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_311": {
+      "id": "rule_legado_knowledge_base.md_311",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "androidId - 获取Android ID",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_313": {
+      "id": "rule_legado_knowledge_base.md_313",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "openUrl - 跳转外部链接/应用",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_315": {
+      "id": "rule_legado_knowledge_base.md_315",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "openVideoPlayer - 打开视频播放器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_319": {
+      "id": "rule_legado_knowledge_base.md_319",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "5.1 属性",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_323": {
+      "id": "rule_legado_knowledge_base.md_323",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "变量存取",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_327": {
+      "id": "rule_legado_knowledge_base.md_327",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "6.1 属性",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_331": {
+      "id": "rule_legado_knowledge_base.md_331",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "变量存取",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_333": {
+      "id": "rule_legado_knowledge_base.md_333",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "存储额外信息",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_339": {
+      "id": "rule_legado_knowledge_base.md_339",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "获取书源URL",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_341": {
+      "id": "rule_legado_knowledge_base.md_341",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "变量存取",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_343": {
+      "id": "rule_legado_knowledge_base.md_343",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "登录头操作",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_345": {
+      "id": "rule_legado_knowledge_base.md_345",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "登录信息操作",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_347": {
+      "id": "rule_legado_knowledge_base.md_347",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "书源缓存刷新",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_349": {
+      "id": "rule_legado_knowledge_base.md_349",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "8. cookie对象",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_351": {
+      "id": "rule_legado_knowledge_base.md_351",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "9. cache对象",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_355": {
+      "id": "rule_legado_knowledge_base.md_355",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "10.1 对称加密",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_357": {
+      "id": "rule_legado_knowledge_base.md_357",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "10.2 非对称加密",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_359": {
+      "id": "rule_legado_knowledge_base.md_359",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "10.3 签名",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_361": {
+      "id": "rule_legado_knowledge_base.md_361",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "10.4 摘要",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_363": {
+      "id": "rule_legado_knowledge_base.md_363",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "10.5 MD5",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_365": {
+      "id": "rule_legado_knowledge_base.md_365",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "10.6 HMac",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_369": {
+      "id": "rule_legado_knowledge_base.md_369",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "11.1 使用ajax获取内容",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_371": {
+      "id": "rule_legado_knowledge_base.md_371",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "11.2 使用connect获取响应对象",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_373": {
+      "id": "rule_legado_knowledge_base.md_373",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "11.3 使用base64解码",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_375": {
+      "id": "rule_legado_knowledge_base.md_375",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "11.4 使用正则处理内容",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_377": {
+      "id": "rule_legado_knowledge_base.md_377",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "11.5 加密请求参数",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_379": {
+      "id": "rule_legado_knowledge_base.md_379",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "11.6 繁简转换",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_381": {
+      "id": "rule_legado_knowledge_base.md_381",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "11.7 使用book对象",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_383": {
+      "id": "rule_legado_knowledge_base.md_383",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "11.8 使用chapter对象",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_387": {
+      "id": "rule_legado_knowledge_base.md_387",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 基本格式",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_391": {
+      "id": "rule_legado_knowledge_base.md_391",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "User-Agent",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_393": {
+      "id": "rule_legado_knowledge_base.md_393",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "Referer",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_395": {
+      "id": "rule_legado_knowledge_base.md_395",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "Cookie",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_397": {
+      "id": "rule_legado_knowledge_base.md_397",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "Accept",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_399": {
+      "id": "rule_legado_knowledge_base.md_399",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "3. 在规则中的应用",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_403": {
+      "id": "rule_legado_knowledge_base.md_403",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 为什么需要动态加载",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_407": {
+      "id": "rule_legado_knowledge_base.md_407",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "方法一：直接添加webView参数",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_409": {
+      "id": "rule_legado_knowledge_base.md_409",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "方法二：正则替换",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_411": {
+      "id": "rule_legado_knowledge_base.md_411",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "方法三：JS拼接",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_413": {
+      "id": "rule_legado_knowledge_base.md_413",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "方法四：利用{{}}拼接",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_415": {
+      "id": "rule_legado_knowledge_base.md_415",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "3. 注意事项",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_419": {
+      "id": "rule_legado_knowledge_base.md_419",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 适用场景",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_421": {
+      "id": "rule_legado_knowledge_base.md_421",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "2. 可用方法",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_425": {
+      "id": "rule_legado_knowledge_base.md_425",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "检查登录状态并重新访问",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_431": {
+      "id": "rule_legado_knowledge_base.md_431",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "网页类型",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_433": {
+      "id": "rule_legado_knowledge_base.md_433",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "图片类型",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_435": {
+      "id": "rule_legado_knowledge_base.md_435",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "视频类型",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_439": {
+      "id": "rule_legado_knowledge_base.md_439",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "sourceUrl - 源URL（必填）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_441": {
+      "id": "rule_legado_knowledge_base.md_441",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "sourceName - 源名称（必填）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_443": {
+      "id": "rule_legado_knowledge_base.md_443",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "sourceIcon - 源图标（可选）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_445": {
+      "id": "rule_legado_knowledge_base.md_445",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "sourceGroup - 源分组（可选）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_449": {
+      "id": "rule_legado_knowledge_base.md_449",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ruleArticles - 列表规则",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_451": {
+      "id": "rule_legado_knowledge_base.md_451",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ruleTitle - 标题规则",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_453": {
+      "id": "rule_legado_knowledge_base.md_453",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ruleLink - 链接规则（必填）",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_455": {
+      "id": "rule_legado_knowledge_base.md_455",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "rulePubDate - 时间规则",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_457": {
+      "id": "rule_legado_knowledge_base.md_457",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ruleDescription - 描述规则",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_459": {
+      "id": "rule_legado_knowledge_base.md_459",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ruleContent - 内容规则",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_461": {
+      "id": "rule_legado_knowledge_base.md_461",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "ruleImage - 图片url规则",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_463": {
+      "id": "rule_legado_knowledge_base.md_463",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "4. 订阅源示例",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_467": {
+      "id": "rule_legado_knowledge_base.md_467",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. CloudFlare验证问题",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_469": {
+      "id": "rule_legado_knowledge_base.md_469",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "2. 内容显示\"加载中\"",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_471": {
+      "id": "rule_legado_knowledge_base.md_471",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "3. 目录顺序是乱的",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_473": {
+      "id": "rule_legado_knowledge_base.md_473",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "4. 正文里有广告",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_475": {
+      "id": "rule_legado_knowledge_base.md_475",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "5. 需要分页",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_477": {
+      "id": "rule_legado_knowledge_base.md_477",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "6. 图片防盗链",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_479": {
+      "id": "rule_legado_knowledge_base.md_479",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "7. POST请求",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_483": {
+      "id": "rule_legado_knowledge_base.md_483",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 选择器选择优先级",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_485": {
+      "id": "rule_legado_knowledge_base.md_485",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "2. 提取类型选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_487": {
+      "id": "rule_legado_knowledge_base.md_487",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "3. 性能优化",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_489": {
+      "id": "rule_legado_knowledge_base.md_489",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "4. 规则调试",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_491": {
+      "id": "rule_legado_knowledge_base.md_491",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "5. 代码规范",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_493": {
+      "id": "rule_legado_knowledge_base.md_493",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "6. 安全注意事项",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_495": {
+      "id": "rule_legado_knowledge_base.md_495",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "十三、规则标志速查",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_497": {
+      "id": "rule_legado_knowledge_base.md_497",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "十四、完整书源JSON模板",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_501": {
+      "id": "rule_legado_knowledge_base.md_501",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "常用CSS选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_503": {
+      "id": "rule_legado_knowledge_base.md_503",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "常用提取类型",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_505": {
+      "id": "rule_legado_knowledge_base.md_505",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "常用正则表达式",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_507": {
+      "id": "rule_legado_knowledge_base.md_507",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "常用JavaScript函数",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_511": {
+      "id": "rule_legado_knowledge_base.md_511",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 基本概念",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_515": {
+      "id": "rule_legado_knowledge_base.md_515",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "标准格式",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_517": {
+      "id": "rule_legado_knowledge_base.md_517",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "选择器类型",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_521": {
+      "id": "rule_legado_knowledge_base.md_521",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "@text - 文本内容",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_523": {
+      "id": "rule_legado_knowledge_base.md_523",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "@ownText - 自身文本",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_525": {
+      "id": "rule_legado_knowledge_base.md_525",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "@html - HTML结构",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_527": {
+      "id": "rule_legado_knowledge_base.md_527",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "@属性名 - 属性值",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_531": {
+      "id": "rule_legado_knowledge_base.md_531",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "基本替换",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_533": {
+      "id": "rule_legado_knowledge_base.md_533",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "删除匹配",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_535": {
+      "id": "rule_legado_knowledge_base.md_535",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "替换内容",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_539": {
+      "id": "rule_legado_knowledge_base.md_539",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "多重替换",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_541": {
+      "id": "rule_legado_knowledge_base.md_541",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "正则分组",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_543": {
+      "id": "rule_legado_knowledge_base.md_543",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "贪婪匹配",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_547": {
+      "id": "rule_legado_knowledge_base.md_547",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取书名",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_549": {
+      "id": "rule_legado_knowledge_base.md_549",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取作者",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_551": {
+      "id": "rule_legado_knowledge_base.md_551",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取简介",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_553": {
+      "id": "rule_legado_knowledge_base.md_553",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取封面",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_557": {
+      "id": "rule_legado_knowledge_base.md_557",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 基本概念",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_561": {
+      "id": "rule_legado_knowledge_base.md_561",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "元素选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_563": {
+      "id": "rule_legado_knowledge_base.md_563",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "属性选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_565": {
+      "id": "rule_legado_knowledge_base.md_565",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "文本选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_569": {
+      "id": "rule_legado_knowledge_base.md_569",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "绝对路径",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_571": {
+      "id": "rule_legado_knowledge_base.md_571",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "相对路径",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_573": {
+      "id": "rule_legado_knowledge_base.md_573",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "通配符",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_577": {
+      "id": "rule_legado_knowledge_base.md_577",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "子节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_579": {
+      "id": "rule_legado_knowledge_base.md_579",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "父节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_581": {
+      "id": "rule_legado_knowledge_base.md_581",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "祖先节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_583": {
+      "id": "rule_legado_knowledge_base.md_583",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "后代节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_585": {
+      "id": "rule_legado_knowledge_base.md_585",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "兄弟节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_589": {
+      "id": "rule_legado_knowledge_base.md_589",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "位置选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_591": {
+      "id": "rule_legado_knowledge_base.md_591",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "属性选择",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_593": {
+      "id": "rule_legado_knowledge_base.md_593",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "条件组合",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_597": {
+      "id": "rule_legado_knowledge_base.md_597",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "文本函数",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_599": {
+      "id": "rule_legado_knowledge_base.md_599",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "字符串函数",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_601": {
+      "id": "rule_legado_knowledge_base.md_601",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "数值函数",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_605": {
+      "id": "rule_legado_knowledge_base.md_605",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取书名",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_607": {
+      "id": "rule_legado_knowledge_base.md_607",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取作者",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_609": {
+      "id": "rule_legado_knowledge_base.md_609",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取链接",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_611": {
+      "id": "rule_legado_knowledge_base.md_611",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取所有章节",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_615": {
+      "id": "rule_legado_knowledge_base.md_615",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 基本概念",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_619": {
+      "id": "rule_legado_knowledge_base.md_619",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "根节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_621": {
+      "id": "rule_legado_knowledge_base.md_621",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "当前节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_623": {
+      "id": "rule_legado_knowledge_base.md_623",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "数组索引",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_625": {
+      "id": "rule_legado_knowledge_base.md_625",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "数组切片",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_629": {
+      "id": "rule_legado_knowledge_base.md_629",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "子节点",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_631": {
+      "id": "rule_legado_knowledge_base.md_631",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "递归查找",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_633": {
+      "id": "rule_legado_knowledge_base.md_633",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "通配符",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_635": {
+      "id": "rule_legado_knowledge_base.md_635",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "脚本表达式",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_639": {
+      "id": "rule_legado_knowledge_base.md_639",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "比较操作",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_641": {
+      "id": "rule_legado_knowledge_base.md_641",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "逻辑操作",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_643": {
+      "id": "rule_legado_knowledge_base.md_643",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "存在性检查",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_647": {
+      "id": "rule_legado_knowledge_base.md_647",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取书名",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_649": {
+      "id": "rule_legado_knowledge_base.md_649",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取作者",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_651": {
+      "id": "rule_legado_knowledge_base.md_651",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取章节列表",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_653": {
+      "id": "rule_legado_knowledge_base.md_653",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取封面URL",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_659": {
+      "id": "rule_legado_knowledge_base.md_659",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "字符类",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_661": {
+      "id": "rule_legado_knowledge_base.md_661",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "量词",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_663": {
+      "id": "rule_legado_knowledge_base.md_663",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "边界",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_667": {
+      "id": "rule_legado_knowledge_base.md_667",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取章节号",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_669": {
+      "id": "rule_legado_knowledge_base.md_669",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取日期",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_671": {
+      "id": "rule_legado_knowledge_base.md_671",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取URL",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_673": {
+      "id": "rule_legado_knowledge_base.md_673",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "去除HTML标签",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_677": {
+      "id": "rule_legado_knowledge_base.md_677",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "分组",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_679": {
+      "id": "rule_legado_knowledge_base.md_679",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "引用",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_681": {
+      "id": "rule_legado_knowledge_base.md_681",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "非捕获分组",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_685": {
+      "id": "rule_legado_knowledge_base.md_685",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "清理广告",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_687": {
+      "id": "rule_legado_knowledge_base.md_687",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取纯文本",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_689": {
+      "id": "rule_legado_knowledge_base.md_689",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取数字",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_691": {
+      "id": "rule_legado_knowledge_base.md_691",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "格式化文本",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_695": {
+      "id": "rule_legado_knowledge_base.md_695",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 基本概念",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_699": {
+      "id": "rule_legado_knowledge_base.md_699",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "book对象 - 书籍信息",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_701": {
+      "id": "rule_legado_knowledge_base.md_701",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "chapter对象 - 章节信息",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_703": {
+      "id": "rule_legado_knowledge_base.md_703",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "source对象 - 书源信息",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_705": {
+      "id": "rule_legado_knowledge_base.md_705",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "cache对象 - 缓存数据",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_709": {
+      "id": "rule_legado_knowledge_base.md_709",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "HTTP请求",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_711": {
+      "id": "rule_legado_knowledge_base.md_711",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "字符串处理",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_713": {
+      "id": "rule_legado_knowledge_base.md_713",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "时间处理",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_715": {
+      "id": "rule_legado_knowledge_base.md_715",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "JSON处理",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_717": {
+      "id": "rule_legado_knowledge_base.md_717",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "4. 正则表达式",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_721": {
+      "id": "rule_legado_knowledge_base.md_721",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "动态生成URL",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_723": {
+      "id": "rule_legado_knowledge_base.md_723",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "处理加密数据",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_725": {
+      "id": "rule_legado_knowledge_base.md_725",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "提取复杂结构",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_731": {
+      "id": "rule_legado_knowledge_base.md_731",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "设置请求头",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_733": {
+      "id": "rule_legado_knowledge_base.md_733",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "常用请求头",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_737": {
+      "id": "rule_legado_knowledge_base.md_737",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "Cookie配置",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_739": {
+      "id": "rule_legado_knowledge_base.md_739",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "并发控制",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_741": {
+      "id": "rule_legado_knowledge_base.md_741",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "超时配置",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_745": {
+      "id": "rule_legado_knowledge_base.md_745",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "反爬虫应对",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_747": {
+      "id": "rule_legado_knowledge_base.md_747",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "登录状态保持",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_753": {
+      "id": "rule_legado_knowledge_base.md_753",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "问题原因",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_755": {
+      "id": "rule_legado_knowledge_base.md_755",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "解决方案",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_759": {
+      "id": "rule_legado_knowledge_base.md_759",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "问题原因",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_761": {
+      "id": "rule_legado_knowledge_base.md_761",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "解决方案",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_765": {
+      "id": "rule_legado_knowledge_base.md_765",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "问题原因",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_767": {
+      "id": "rule_legado_knowledge_base.md_767",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "解决方案",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_771": {
+      "id": "rule_legado_knowledge_base.md_771",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "问题原因",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_773": {
+      "id": "rule_legado_knowledge_base.md_773",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "解决方案",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_779": {
+      "id": "rule_legado_knowledge_base.md_779",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "优先使用稳定的选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_781": {
+      "id": "rule_legado_knowledge_base.md_781",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "使用后代选择器而非标签选择器",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_785": {
+      "id": "rule_legado_knowledge_base.md_785",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "使用非贪婪匹配",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_787": {
+      "id": "rule_legado_knowledge_base.md_787",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "避免复杂的回溯",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_791": {
+      "id": "rule_legado_knowledge_base.md_791",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "减少不必要的请求",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_793": {
+      "id": "rule_legado_knowledge_base.md_793",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "使用缓存",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_797": {
+      "id": "rule_legado_knowledge_base.md_797",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "添加注释",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_799": {
+      "id": "rule_legado_knowledge_base.md_799",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "统一命名",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_805": {
+      "id": "rule_legado_knowledge_base.md_805",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "启用调试模式",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_807": {
+      "id": "rule_legado_knowledge_base.md_807",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "查看调试日志",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_811": {
+      "id": "rule_legado_knowledge_base.md_811",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "测试URL",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_813": {
+      "id": "rule_legado_knowledge_base.md_813",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "测试请求",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_815": {
+      "id": "rule_legado_knowledge_base.md_815",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "测试解析",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_817": {
+      "id": "rule_legado_knowledge_base.md_817",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "3. 常用调试函数",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_821": {
+      "id": "rule_legado_knowledge_base.md_821",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "1. 简单文本书源",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_823": {
+      "id": "rule_legado_knowledge_base.md_823",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "2. 复杂JSON书源",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_825": {
+      "id": "rule_legado_knowledge_base.md_825",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "3. 动态加载书源",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_829": {
+      "id": "rule_legado_knowledge_base.md_829",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "常用选择器速查",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_831": {
+      "id": "rule_legado_knowledge_base.md_831",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "常用正则表达式速查",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_legado_knowledge_base.md_833": {
+      "id": "rule_legado_knowledge_base.md_833",
+      "source_file": "legado_knowledge_base.md",
+      "type": "explanation",
+      "category": "general",
+      "title": "常用JavaScript函数速查",
+      "tags": [
+        "rule",
+        "explanation",
+        "legado_knowledge_base_md"
+      ]
+    },
+    "rule_订阅源规则：从入门到再入门 (4).md_1": {
+      "id": "rule_订阅源规则：从入门到再入门 (4).md_1",
+      "source_file": "订阅源规则：从入门到再入门 (4).md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()Legado订阅源规则说明",
+      "tags": [
+        "rule",
+        "explanation",
+        "订阅源规则：从入门到再入门 (4)_md"
+      ]
+    },
+    "rule_订阅源规则：从入门到再入门 (4).md_3": {
+      "id": "rule_订阅源规则：从入门到再入门 (4).md_3",
+      "source_file": "订阅源规则：从入门到再入门 (4).md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()概况",
+      "tags": [
+        "rule",
+        "explanation",
+        "订阅源规则：从入门到再入门 (4)_md"
+      ]
+    },
+    "rule_订阅源规则：从入门到再入门 (4).md_5": {
+      "id": "rule_订阅源规则：从入门到再入门 (4).md_5",
+      "source_file": "订阅源规则：从入门到再入门 (4).md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()1、语法说明",
+      "tags": [
+        "rule",
+        "explanation",
+        "订阅源规则：从入门到再入门 (4)_md"
+      ]
+    },
+    "rule_订阅源规则：从入门到再入门 (4).md_7": {
+      "id": "rule_订阅源规则：从入门到再入门 (4).md_7",
+      "source_file": "订阅源规则：从入门到再入门 (4).md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()2、Legado的特殊规则",
+      "tags": [
+        "rule",
+        "explanation",
+        "订阅源规则：从入门到再入门 (4)_md"
+      ]
+    },
+    "rule_订阅源规则：从入门到再入门 (4).md_9": {
+      "id": "rule_订阅源规则：从入门到再入门 (4).md_9",
+      "source_file": "订阅源规则：从入门到再入门 (4).md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()3、解析流程",
+      "tags": [
+        "rule",
+        "explanation",
+        "订阅源规则：从入门到再入门 (4)_md"
+      ]
+    },
+    "rule_订阅源规则：从入门到再入门 (4).md_11": {
+      "id": "rule_订阅源规则：从入门到再入门 (4).md_11",
+      "source_file": "订阅源规则：从入门到再入门 (4).md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()4、规则概述",
+      "tags": [
+        "rule",
+        "explanation",
+        "订阅源规则：从入门到再入门 (4)_md"
+      ]
+    },
+    "rule_订阅源规则：从入门到再入门 (4).md_13": {
+      "id": "rule_订阅源规则：从入门到再入门 (4).md_13",
+      "source_file": "订阅源规则：从入门到再入门 (4).md",
+      "type": "explanation",
+      "category": "general",
+      "title": "[]()5、附录",
+      "tags": [
+        "rule",
+        "explanation",
+        "订阅源规则：从入门到再入门 (4)_md"
+      ]
+    },
+    "rule_订阅源规则帮助.txt_1": {
+      "id": "rule_订阅源规则帮助.txt_1",
+      "source_file": "订阅源规则帮助.txt",
+      "type": "explanation",
+      "category": "general",
+      "title": "订阅源规则帮助",
+      "tags": [
+        "rule",
+        "explanation",
+        "订阅源规则帮助_txt"
+      ]
+    },
+    "css_1": {
+      "id": "css_1",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "核心速览",
+      "tags": [
+        "css",
+        "selector",
+        "核心速览"
+      ]
+    },
+    "css_5": {
+      "id": "css_5",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "1. 基本语法",
+      "tags": [
+        "css",
+        "selector",
+        "1. 基本语法"
+      ]
+    },
+    "css_7": {
+      "id": "css_7",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "2. 提取类型",
+      "tags": [
+        "css",
+        "selector",
+        "2. 提取类型"
+      ]
+    },
+    "css_11": {
+      "id": "css_11",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "1. 基础选择器",
+      "tags": [
+        "css",
+        "selector",
+        "1. 基础选择器"
+      ]
+    },
+    "css_13": {
+      "id": "css_13",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "2. 组合选择器",
+      "tags": [
+        "css",
+        "selector",
+        "2. 组合选择器"
+      ]
+    },
+    "css_15": {
+      "id": "css_15",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "3. 伪类选择器",
+      "tags": [
+        "css",
+        "selector",
+        "3. 伪类选择器"
+      ]
+    },
+    "css_19": {
+      "id": "css_19",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "1. 搜索模块",
+      "tags": [
+        "css",
+        "selector",
+        "1. 搜索模块"
+      ]
+    },
+    "css_21": {
+      "id": "css_21",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "2. 详情页模块",
+      "tags": [
+        "css",
+        "selector",
+        "2. 详情页模块"
+      ]
+    },
+    "css_23": {
+      "id": "css_23",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "3. 目录页模块",
+      "tags": [
+        "css",
+        "selector",
+        "3. 目录页模块"
+      ]
+    },
+    "css_25": {
+      "id": "css_25",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "4. 正文页模块",
+      "tags": [
+        "css",
+        "selector",
+        "4. 正文页模块"
+      ]
+    },
+    "css_29": {
+      "id": "css_29",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "1. 调试方法",
+      "tags": [
+        "css",
+        "selector",
+        "1. 调试方法"
+      ]
+    },
+    "css_31": {
+      "id": "css_31",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "2. 性能优化",
+      "tags": [
+        "css",
+        "selector",
+        "2. 性能优化"
+      ]
+    },
+    "css_35": {
+      "id": "css_35",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "1. 乱码问题",
+      "tags": [
+        "css",
+        "selector",
+        "1. 乱码问题"
+      ]
+    },
+    "css_37": {
+      "id": "css_37",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "2. 登录验证",
+      "tags": [
+        "css",
+        "selector",
+        "2. 登录验证"
+      ]
+    },
+    "css_39": {
+      "id": "css_39",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "3. 分页处理",
+      "tags": [
+        "css",
+        "selector",
+        "3. 分页处理"
+      ]
+    },
+    "css_41": {
+      "id": "css_41",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "4. 动态加载",
+      "tags": [
+        "css",
+        "selector",
+        "4. 动态加载"
+      ]
+    },
+    "css_43": {
+      "id": "css_43",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "5. 反爬破解",
+      "tags": [
+        "css",
+        "selector",
+        "5. 反爬破解"
+      ]
+    },
+    "css_47": {
+      "id": "css_47",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "1. 核心原则",
+      "tags": [
+        "css",
+        "selector",
+        "1. 核心原则"
+      ]
+    },
+    "css_49": {
+      "id": "css_49",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "2. 实用技巧",
+      "tags": [
+        "css",
+        "selector",
+        "2. 实用技巧"
+      ]
+    },
+    "css_51": {
+      "id": "css_51",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "3. 调试要点",
+      "tags": [
+        "css",
+        "selector",
+        "3. 调试要点"
+      ]
+    },
+    "css_53": {
+      "id": "css_53",
+      "source_file": "css选择器规则.txt",
+      "type": "explanation",
+      "category": "css",
+      "title": "关键问题及回答",
+      "tags": [
+        "css",
+        "selector",
+        "关键问题及回答"
+      ]
+    },
+    "ref_3a.json参考.txt_357": {
+      "id": "ref_3a.json参考.txt_357",
+      "source_file": "3a.json参考.txt",
+      "type": "example",
+      "category": "configuration",
+      "title": "3a.json参考.txt 配置示例",
+      "tags": [
+        "reference",
+        "example",
+        "3a.json参考.txt"
+      ]
+    },
+    "ref_Legado书源驯兽师加载器.txt_358": {
+      "id": "ref_Legado书源驯兽师加载器.txt_358",
+      "source_file": "Legado书源驯兽师加载器.txt",
+      "type": "example",
+      "category": "configuration",
+      "title": "Legado书源驯兽师加载器.txt 配置示例",
+      "tags": [
+        "reference",
+        "example",
+        "Legado书源驯兽师加载器.txt"
+      ]
+    },
+    "ref_Legado书源驯兽师加载器.txt_359": {
+      "id": "ref_Legado书源驯兽师加载器.txt_359",
+      "source_file": "Legado书源驯兽师加载器.txt",
+      "type": "example",
+      "category": "configuration",
+      "title": "Legado书源驯兽师加载器.txt 配置示例",
+      "tags": [
+        "reference",
+        "example",
+        "Legado书源驯兽师加载器.txt"
+      ]
+    },
+    "ref_Legado书源驯兽师加载器.txt_360": {
+      "id": "ref_Legado书源驯兽师加载器.txt_360",
+      "source_file": "Legado书源驯兽师加载器.txt",
+      "type": "example",
+      "category": "configuration",
+      "title": "Legado书源驯兽师加载器.txt 配置示例",
+      "tags": [
+        "reference",
+        "example",
+        "Legado书源驯兽师加载器.txt"
+      ]
+    },
+    "ref_Legado书源驯兽师加载器.txt_361": {
+      "id": "ref_Legado书源驯兽师加载器.txt_361",
+      "source_file": "Legado书源驯兽师加载器.txt",
+      "type": "example",
+      "category": "configuration",
+      "title": "Legado书源驯兽师加载器.txt 配置示例",
+      "tags": [
+        "reference",
+        "example",
+        "Legado书源驯兽师加载器.txt"
+      ]
+    },
+    "ref_TapManga.json参考.txt_362": {
+      "id": "ref_TapManga.json参考.txt_362",
+      "source_file": "TapManga.json参考.txt",
+      "type": "example",
+      "category": "configuration",
+      "title": "TapManga.json参考.txt 配置示例",
+      "tags": [
+        "reference",
+        "example",
+        "TapManga.json参考.txt"
+      ]
+    },
+    "ref_TapManga.json参考.txt_363": {
+      "id": "ref_TapManga.json参考.txt_363",
+      "source_file": "TapManga.json参考.txt",
+      "type": "example",
+      "category": "configuration",
+      "title": "TapManga.json参考.txt 配置示例",
+      "tags": [
+        "reference",
+        "example",
+        "TapManga.json参考.txt"
+      ]
+    },
+    "ref_喜漫漫画.json参考.txt_364": {
+      "id": "ref_喜漫漫画.json参考.txt_364",
+      "source_file": "喜漫漫画.json参考.txt",
+      "type": "example",
+      "category": "configuration",
+      "title": "喜漫漫画.json参考.txt 配置示例",
+      "tags": [
+        "reference",
+        "example",
+        "喜漫漫画.json参考.txt"
+      ]
+    },
+    "ref_喜漫漫画.json参考.txt_365": {
+      "id": "ref_喜漫漫画.json参考.txt_365",
+      "source_file": "喜漫漫画.json参考.txt",
+      "type": "example",
+      "category": "configuration",
+      "title": "喜漫漫画.json参考.txt 配置示例",
+      "tags": [
+        "reference",
+        "example",
+        "喜漫漫画.json参考.txt"
+      ]
+    },
+    "ref_霹雳书屋.json参考.txt_366": {
+      "id": "ref_霹雳书屋.json参考.txt_366",
+      "source_file": "霹雳书屋.json参考.txt",
+      "type": "example",
+      "category": "configuration",
+      "title": "霹雳书屋.json参考.txt 配置示例",
+      "tags": [
+        "reference",
+        "example",
+        "霹雳书屋.json参考.txt"
+      ]
+    },
+    "tech_方法-JS扩展类.md_1": {
+      "id": "tech_方法-JS扩展类.md_1",
+      "source_file": "方法-JS扩展类.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "网络请求相关",
+      "tags": [
+        "technique",
+        "方法-JS扩展类.md",
+        "网络请求相关"
+      ]
+    },
+    "tech_方法-JS扩展类.md_3": {
+      "id": "tech_方法-JS扩展类.md_3",
+      "source_file": "方法-JS扩展类.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "文件操作相关",
+      "tags": [
+        "technique",
+        "方法-JS扩展类.md",
+        "文件操作相关"
+      ]
+    },
+    "tech_方法-JS扩展类.md_5": {
+      "id": "tech_方法-JS扩展类.md_5",
+      "source_file": "方法-JS扩展类.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "编码解码相关",
+      "tags": [
+        "technique",
+        "方法-JS扩展类.md",
+        "编码解码相关"
+      ]
+    },
+    "tech_方法-JS扩展类.md_7": {
+      "id": "tech_方法-JS扩展类.md_7",
+      "source_file": "方法-JS扩展类.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "字符串处理相关",
+      "tags": [
+        "technique",
+        "方法-JS扩展类.md",
+        "字符串处理相关"
+      ]
+    },
+    "tech_方法-JS扩展类.md_9": {
+      "id": "tech_方法-JS扩展类.md_9",
+      "source_file": "方法-JS扩展类.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "字体处理相关",
+      "tags": [
+        "technique",
+        "方法-JS扩展类.md",
+        "字体处理相关"
+      ]
+    },
+    "tech_方法-JS扩展类.md_11": {
+      "id": "tech_方法-JS扩展类.md_11",
+      "source_file": "方法-JS扩展类.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "其他",
+      "tags": [
+        "technique",
+        "方法-JS扩展类.md",
+        "其他"
+      ]
+    },
+    "tech_方法-加密解密.md_1": {
+      "id": "tech_方法-加密解密.md_1",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "消息摘要/散列消息鉴别码",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "消息摘要/散列消息鉴别码"
+      ]
+    },
+    "tech_方法-加密解密.md_3": {
+      "id": "tech_方法-加密解密.md_3",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "对称加密解密",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "对称加密解密"
+      ]
+    },
+    "tech_方法-加密解密.md_5": {
+      "id": "tech_方法-加密解密.md_5",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "非对称加密解密",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "非对称加密解密"
+      ]
+    },
+    "tech_方法-加密解密.md_7": {
+      "id": "tech_方法-加密解密.md_7",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "签名",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "签名"
+      ]
+    },
+    "tech_方法-加密解密.md_9": {
+      "id": "tech_方法-加密解密.md_9",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "MD5",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "MD5"
+      ]
+    },
+    "tech_方法-加密解密.md_11": {
+      "id": "tech_方法-加密解密.md_11",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "已废弃的对称加密解密方法",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "已废弃的对称加密解密方法"
+      ]
+    },
+    "tech_方法-加密解密.md_13": {
+      "id": "tech_方法-加密解密.md_13",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "AES 解码",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "AES 解码"
+      ]
+    },
+    "tech_方法-加密解密.md_15": {
+      "id": "tech_方法-加密解密.md_15",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "AES 加密",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "AES 加密"
+      ]
+    },
+    "tech_方法-加密解密.md_17": {
+      "id": "tech_方法-加密解密.md_17",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "DES 解码",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "DES 解码"
+      ]
+    },
+    "tech_方法-加密解密.md_19": {
+      "id": "tech_方法-加密解密.md_19",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "DES 加密",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "DES 加密"
+      ]
+    },
+    "tech_方法-加密解密.md_21": {
+      "id": "tech_方法-加密解密.md_21",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "3DES 解码",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "3DES 解码"
+      ]
+    },
+    "tech_方法-加密解密.md_23": {
+      "id": "tech_方法-加密解密.md_23",
+      "source_file": "方法-加密解密.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "3DES 加密",
+      "tags": [
+        "technique",
+        "方法-加密解密.md",
+        "3DES 加密"
+      ]
+    },
+    "tech_方法-登录检查JS.md_1": {
+      "id": "tech_方法-登录检查JS.md_1",
+      "source_file": "方法-登录检查JS.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "AnalyzeUrl 构造函数",
+      "tags": [
+        "technique",
+        "方法-登录检查JS.md",
+        "AnalyzeUrl 构造函数"
+      ]
+    },
+    "tech_方法-登录检查JS.md_3": {
+      "id": "tech_方法-登录检查JS.md_3",
+      "source_file": "方法-登录检查JS.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "主要方法",
+      "tags": [
+        "technique",
+        "方法-登录检查JS.md",
+        "主要方法"
+      ]
+    },
+    "tech_方法-登录检查JS.md_7": {
+      "id": "tech_方法-登录检查JS.md_7",
+      "source_file": "方法-登录检查JS.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "UrlOption",
+      "tags": [
+        "technique",
+        "方法-登录检查JS.md",
+        "UrlOption"
+      ]
+    },
+    "tech_方法-登录检查JS.md_9": {
+      "id": "tech_方法-登录检查JS.md_9",
+      "source_file": "方法-登录检查JS.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "ConcurrentRecord",
+      "tags": [
+        "technique",
+        "方法-登录检查JS.md",
+        "ConcurrentRecord"
+      ]
+    },
+    "tech_方法-登录检查JS.md_13": {
+      "id": "tech_方法-登录检查JS.md_13",
+      "source_file": "方法-登录检查JS.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "创建`AnalyzeUrl`对象",
+      "tags": [
+        "technique",
+        "方法-登录检查JS.md",
+        "创建`AnalyzeUrl`对象"
+      ]
+    },
+    "tech_方法-登录检查JS.md_15": {
+      "id": "tech_方法-登录检查JS.md_15",
+      "source_file": "方法-登录检查JS.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "执行网络请求并获取响应",
+      "tags": [
+        "technique",
+        "方法-登录检查JS.md",
+        "执行网络请求并获取响应"
+      ]
+    },
+    "tech_方法-登录检查JS.md_17": {
+      "id": "tech_方法-登录检查JS.md_17",
+      "source_file": "方法-登录检查JS.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "上传文件",
+      "tags": [
+        "technique",
+        "方法-登录检查JS.md",
+        "上传文件"
+      ]
+    },
+    "tech_方法-登录检查JS.md_19": {
+      "id": "tech_方法-登录检查JS.md_19",
+      "source_file": "方法-登录检查JS.md",
+      "type": "technique",
+      "category": "technique",
+      "title": "注意事项",
+      "tags": [
+        "technique",
+        "方法-登录检查JS.md",
+        "注意事项"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_1": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_1",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "js变量和函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "js变量和函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_5": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_5",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "[RssJsExtensions](https://github.com/Luoyacheng/legado/blob/main/app/src/main/java/io/legado/app/ui/rss/read/RssJsExtensions.kt)独有函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "[RssJsExtensions](https://github.com/Luoyacheng/legado/blob/main/app/src/main/java/io/legado/app/ui/rss/read/RssJsExtensions.kt)独有函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_7": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_7",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "[SourceLoginJsExtensions](https://github.com/Luoyacheng/legado/blob/main/app/src/main/java/io/legado/app/ui/login/SourceLoginJsExtensions.kt)独有函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "[SourceLoginJsExtensions](https://github.com/Luoyacheng/legado/blob/main/app/src/main/java/io/legado/app/ui/login/SourceLoginJsExtensions.kt)独有函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_9": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_9",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "[AnalyzeUrl](https://github.com/gedoor/legado/blob/master/app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt) 部分函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "[AnalyzeUrl](https://github.com/gedoor/legado/blob/master/app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt) 部分函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_11": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_11",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "[AnalyzeRule](https://github.com/gedoor/legado/blob/master/app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt) 部分函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "[AnalyzeRule](https://github.com/gedoor/legado/blob/master/app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt) 部分函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_13": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_13",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "[js扩展类](https://github.com/gedoor/legado/blob/master/app/src/main/java/io/legado/app/help/JsExtensions.kt) 部分函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "[js扩展类](https://github.com/gedoor/legado/blob/master/app/src/main/java/io/legado/app/help/JsExtensions.kt) 部分函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_15": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_15",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "[js加解密类](https://github.com/gedoor/legado/blob/master/app/src/main/java/io/legado/app/help/JsEncodeUtils.kt) 部分函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "[js加解密类](https://github.com/gedoor/legado/blob/master/app/src/main/java/io/legado/app/help/JsEncodeUtils.kt) 部分函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_19": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_19",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "属性",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "属性"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_21": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_21",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "book对象的部分可用函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "book对象的部分可用函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_23": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_23",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "chapter对象的部分可用属性",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "chapter对象的部分可用属性"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_25": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_25",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "source对象的部分可用函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "source对象的部分可用函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_27": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_27",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "cookie对象的部分可用函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "cookie对象的部分可用函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_29": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_29",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "cache对象的部分可用函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "cache对象的部分可用函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_31": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_31",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "跳转外部链接/应用函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "跳转外部链接/应用函数"
+      ]
+    },
+    "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_33": {
+      "id": "tech_阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt_33",
+      "source_file": "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+      "type": "technique",
+      "category": "technique",
+      "title": "视频播放器函数",
+      "tags": [
+        "technique",
+        "阅读js ai提示词文档基本通用(注：我使用的版本为lcy的).txt",
+        "视频播放器函数"
+      ]
+    }
+  },
+  "book_sources": {
+    "1751_🏷晋江文学_书源_20260218_102134.md": {
+      "source_name": "1751_🏷晋江文学_书源_20260218_102134",
+      "source_url": "",
+      "tags": [
+        "1751"
+      ]
+    },
+    "1751_🏷晋江文学_书源_20260218_103141.md": {
+      "source_name": "1751_🏷晋江文学_书源_20260218_103141",
+      "source_url": "",
+      "tags": [
+        "1751"
+      ]
+    },
+    "4925_📚豆瓣阅读_书源_20260218_103229.md": {
+      "source_name": "4925_📚豆瓣阅读_书源_20260218_103229",
+      "source_url": "",
+      "tags": [
+        "4925"
+      ]
+    },
+    "5718_书耽_书源_20260218_103302.md": {
+      "source_name": "5718_书耽_书源_20260218_103302",
+      "source_url": "",
+      "tags": [
+        "5718"
+      ]
+    },
+    "6077_同人小说网_书源_20260218_102141.md": {
+      "source_name": "6077_同人小说网_书源_20260218_102141",
+      "source_url": "",
+      "tags": [
+        "6077"
+      ]
+    },
+    "6077_同人小说网_书源_20260218_103149.md": {
+      "source_name": "6077_同人小说网_书源_20260218_103149",
+      "source_url": "",
+      "tags": [
+        "6077"
+      ]
+    },
+    "6112_🌈网易云音乐_书源_20260218_103251.md": {
+      "source_name": "6112_🌈网易云音乐_书源_20260218_103251",
+      "source_url": "",
+      "tags": [
+        "6112"
+      ]
+    },
+    "6332_🔞完本小说网_书源_20260218_102153.md": {
+      "source_name": "6332_🔞完本小说网_书源_20260218_102153",
+      "source_url": "",
+      "tags": [
+        "6332"
+      ]
+    },
+    "6332_🔞完本小说网_书源_20260218_103159.md": {
+      "source_name": "6332_🔞完本小说网_书源_20260218_103159",
+      "source_url": "",
+      "tags": [
+        "6332"
+      ]
+    },
+    "6746_🌞A晴天聚合5.2.03(终极版)_书源_20260218_102156.md": {
+      "source_name": "6746_🌞A晴天聚合5.2.03(终极版)_书源_20260218_102156",
+      "source_url": "",
+      "tags": [
+        "6746"
+      ]
+    },
+    "6746_🌞A晴天聚合5.2.03(终极版)_书源_20260218_103201.md": {
+      "source_name": "6746_🌞A晴天聚合5.2.03(终极版)_书源_20260218_103201",
+      "source_url": "",
+      "tags": [
+        "6746"
+      ]
+    },
+    "6752_旧钢笔_书源_20260218_103342.md": {
+      "source_name": "6752_旧钢笔_书源_20260218_103342",
+      "source_url": "",
+      "tags": [
+        "6752"
+      ]
+    },
+    "6753_kuronavi漫画raw_书源_20260218_103340.md": {
+      "source_name": "6753_kuronavi漫画raw_书源_20260218_103340",
+      "source_url": "",
+      "tags": [
+        "6753"
+      ]
+    },
+    "6754_云轩阁小说网_书源_20260218_103339.md": {
+      "source_name": "6754_云轩阁小说网_书源_20260218_103339",
+      "source_url": "",
+      "tags": [
+        "6754"
+      ]
+    },
+    "6758_亲亲小说qinqinxiaoshuo_书源_20260218_103337.md": {
+      "source_name": "6758_亲亲小说qinqinxiaoshuo_书源_20260218_103337",
+      "source_url": "",
+      "tags": [
+        "6758"
+      ]
+    },
+    "6759_🄼 八一_书源_20260218_103335.md": {
+      "source_name": "6759_🄼 八一_书源_20260218_103335",
+      "source_url": "",
+      "tags": [
+        "6759"
+      ]
+    },
+    "6760_ꂵ 30读书_书源_20260218_103334.md": {
+      "source_name": "6760_ꂵ 30读书_书源_20260218_103334",
+      "source_url": "",
+      "tags": [
+        "6760"
+      ]
+    },
+    "6761_番茄（发现）_书源_20260218_103333.md": {
+      "source_name": "6761_番茄（发现）_书源_20260218_103333",
+      "source_url": "",
+      "tags": [
+        "6761"
+      ]
+    },
+    "6763_九桃小说_书源_20260218_103332.md": {
+      "source_name": "6763_九桃小说_书源_20260218_103332",
+      "source_url": "",
+      "tags": [
+        "6763"
+      ]
+    },
+    "6771_600小说网_书源_20260218_103331.md": {
+      "source_name": "6771_600小说网_书源_20260218_103331",
+      "source_url": "",
+      "tags": [
+        "6771"
+      ]
+    },
+    "6772_顶点小说_书源_20260218_103329.md": {
+      "source_name": "6772_顶点小说_书源_20260218_103329",
+      "source_url": "",
+      "tags": [
+        "6772"
+      ]
+    },
+    "6773_🄼冰清阁小说_书源_20260218_103328.md": {
+      "source_name": "6773_🄼冰清阁小说_书源_20260218_103328",
+      "source_url": "",
+      "tags": [
+        "6773"
+      ]
+    },
+    "6774_小说520_书源_20260218_103327.md": {
+      "source_name": "6774_小说520_书源_20260218_103327",
+      "source_url": "",
+      "tags": [
+        "6774"
+      ]
+    },
+    "6775_365小说网_书源_20260218_103326.md": {
+      "source_name": "6775_365小说网_书源_20260218_103326",
+      "source_url": "",
+      "tags": [
+        "6775"
+      ]
+    },
+    "6776_全能书源_书源_20260218_103324.md": {
+      "source_name": "6776_全能书源_书源_20260218_103324",
+      "source_url": "",
+      "tags": [
+        "6776"
+      ]
+    },
+    "6777_🌈笔趣中文网_书源_20260218_103323.md": {
+      "source_name": "6777_🌈笔趣中文网_书源_20260218_103323",
+      "source_url": "",
+      "tags": [
+        "6777"
+      ]
+    },
+    "6778_🎨禁漫天堂_书源_20260218_103322.md": {
+      "source_name": "6778_🎨禁漫天堂_书源_20260218_103322",
+      "source_url": "",
+      "tags": [
+        "6778"
+      ]
+    },
+    "6779_ESJ Zone_书源_20260218_103321.md": {
+      "source_name": "6779_ESJ Zone_书源_20260218_103321",
+      "source_url": "",
+      "tags": [
+        "6779"
+      ]
+    },
+    "6781_看看影院_书源_20260218_103319.md": {
+      "source_name": "6781_看看影院_书源_20260218_103319",
+      "source_url": "",
+      "tags": [
+        "6781"
+      ]
+    },
+    "6782_夜读集小说_书源_20260218_103318.md": {
+      "source_name": "6782_夜读集小说_书源_20260218_103318",
+      "source_url": "",
+      "tags": [
+        "6782"
+      ]
+    },
+    "6783_爱下电子书_书源_20260218_103317.md": {
+      "source_name": "6783_爱下电子书_书源_20260218_103317",
+      "source_url": "",
+      "tags": [
+        "6783"
+      ]
+    },
+    "6785_必去读书库_书源_20260218_103316.md": {
+      "source_name": "6785_必去读书库_书源_20260218_103316",
+      "source_url": "",
+      "tags": [
+        "6785"
+      ]
+    },
+    "6792_天天看小说🪜_书源_20260218_103315.md": {
+      "source_name": "6792_天天看小说🪜_书源_20260218_103315",
+      "source_url": "",
+      "tags": [
+        "6792"
+      ]
+    },
+    "6803_百草露小说_书源_20260218_103313.md": {
+      "source_name": "6803_百草露小说_书源_20260218_103313",
+      "source_url": "",
+      "tags": [
+        "6803"
+      ]
+    },
+    "6806_🌸绅士漫画_书源_20260218_103312.md": {
+      "source_name": "6806_🌸绅士漫画_书源_20260218_103312",
+      "source_url": "",
+      "tags": [
+        "6806"
+      ]
+    },
+    "6807_哔哩哔哩_书源_20260218_102201.md": {
+      "source_name": "6807_哔哩哔哩_书源_20260218_102201",
+      "source_url": "",
+      "tags": [
+        "6807"
+      ]
+    },
+    "6807_哔哩哔哩_书源_20260218_103202.md": {
+      "source_name": "6807_哔哩哔哩_书源_20260218_103202",
+      "source_url": "",
+      "tags": [
+        "6807"
+      ]
+    },
+    "6808_笔趣阁_书源_20260218_103311.md": {
+      "source_name": "6808_笔趣阁_书源_20260218_103311",
+      "source_url": "",
+      "tags": [
+        "6808"
+      ]
+    },
+    "6809_八叉书库_书源_20260218_103310.md": {
+      "source_name": "6809_八叉书库_书源_20260218_103310",
+      "source_url": "",
+      "tags": [
+        "6809"
+      ]
+    },
+    "6810_爱下电子书_书源_20260218_103308.md": {
+      "source_name": "6810_爱下电子书_书源_20260218_103308",
+      "source_url": "",
+      "tags": [
+        "6810"
+      ]
+    },
+    "6812_🌸Hitomi漫_书源_20260218_103307.md": {
+      "source_name": "6812_🌸Hitomi漫_书源_20260218_103307",
+      "source_url": "",
+      "tags": [
+        "6812"
+      ]
+    },
+    "6813_爱看书吧_书源_20260218_103306.md": {
+      "source_name": "6813_爱看书吧_书源_20260218_103306",
+      "source_url": "",
+      "tags": [
+        "6813"
+      ]
+    },
+    "6814_八叉书库_书源_20260218_103305.md": {
+      "source_name": "6814_八叉书库_书源_20260218_103305",
+      "source_url": "",
+      "tags": [
+        "6814"
+      ]
+    },
+    "6815_🌸肉漫屋( 韩漫+ )_书源_20260218_103303.md": {
+      "source_name": "6815_🌸肉漫屋( 韩漫+ )_书源_20260218_103303",
+      "source_url": "",
+      "tags": [
+        "6815"
+      ]
+    },
+    "6816_🌸爱丽丝书屋(免翻)_书源_20260218_103301.md": {
+      "source_name": "6816_🌸爱丽丝书屋(免翻)_书源_20260218_103301",
+      "source_url": "",
+      "tags": [
+        "6816"
+      ]
+    },
+    "6817_番茄四合一_书源_20260218_103300.md": {
+      "source_name": "6817_番茄四合一_书源_20260218_103300",
+      "source_url": "",
+      "tags": [
+        "6817"
+      ]
+    },
+    "6819_CA 情色小说（修复）_书源_20260218_103259.md": {
+      "source_name": "6819_CA 情色小说（修复）_书源_20260218_103259",
+      "source_url": "",
+      "tags": [
+        "6819"
+      ]
+    },
+    "6820_🌸肉漫屋( 韩漫+ )_书源_20260218_103257.md": {
+      "source_name": "6820_🌸肉漫屋( 韩漫+ )_书源_20260218_103257",
+      "source_url": "",
+      "tags": [
+        "6820"
+      ]
+    },
+    "6830_万能精品源_书源_20260218_103256.md": {
+      "source_name": "6830_万能精品源_书源_20260218_103256",
+      "source_url": "",
+      "tags": [
+        "6830"
+      ]
+    },
+    "6832_茶杯狐_书源_20260218_103255.md": {
+      "source_name": "6832_茶杯狐_书源_20260218_103255",
+      "source_url": "",
+      "tags": [
+        "6832"
+      ]
+    },
+    "6834_天命皆烬小说_书源_20260218_103254.md": {
+      "source_name": "6834_天命皆烬小说_书源_20260218_103254",
+      "source_url": "",
+      "tags": [
+        "6834"
+      ]
+    },
+    "6835_茶马小说 [耽美]_书源_20260218_103252.md": {
+      "source_name": "6835_茶马小说 [耽美]_书源_20260218_103252",
+      "source_url": "",
+      "tags": [
+        "6835"
+      ]
+    },
+    "6837_美女图片网_书源_20260218_103250.md": {
+      "source_name": "6837_美女图片网_书源_20260218_103250",
+      "source_url": "",
+      "tags": [
+        "6837"
+      ]
+    },
+    "6841_🍅大灰狼聚合5.2.2(完全版)_书源_20260218_102216.md": {
+      "source_name": "6841_🍅大灰狼聚合5.2.2(完全版)_书源_20260218_102216",
+      "source_url": "",
+      "tags": [
+        "6841"
+      ]
+    },
+    "6841_🍅大灰狼聚合5.2.2(完全版)_书源_20260218_103213.md": {
+      "source_name": "6841_🍅大灰狼聚合5.2.2(完全版)_书源_20260218_103213",
+      "source_url": "",
+      "tags": [
+        "6841"
+      ]
+    },
+    "6842_汉书书_书源_20260218_103249.md": {
+      "source_name": "6842_汉书书_书源_20260218_103249",
+      "source_url": "",
+      "tags": [
+        "6842"
+      ]
+    },
+    "6844_速读谷_书源_20260218_103247.md": {
+      "source_name": "6844_速读谷_书源_20260218_103247",
+      "source_url": "",
+      "tags": [
+        "6844"
+      ]
+    },
+    "6857_多平台精品源_书源_20260218_103246.md": {
+      "source_name": "6857_多平台精品源_书源_20260218_103246",
+      "source_url": "",
+      "tags": [
+        "6857"
+      ]
+    },
+    "6873_📖Lofter_书源_20260218_102132.md": {
+      "source_name": "6873_📖Lofter_书源_20260218_102132",
+      "source_url": "",
+      "tags": [
+        "6873"
+      ]
+    },
+    "6873_📖Lofter_书源_20260218_102731.md": {
+      "source_name": "6873_📖Lofter_书源_20260218_102731",
+      "source_url": "",
+      "tags": [
+        "6873"
+      ]
+    },
+    "6873_📖Lofter_书源_20260218_103117.md": {
+      "source_name": "6873_📖Lofter_书源_20260218_103117",
+      "source_url": "",
+      "tags": [
+        "6873"
+      ]
+    },
+    "6874_无插件 - 赛事直播_书源_20260218_103245.md": {
+      "source_name": "6874_无插件 - 赛事直播_书源_20260218_103245",
+      "source_url": "",
+      "tags": [
+        "6874"
+      ]
+    },
+    "6875_顶点小说ddxsmf_书源_20260218_103244.md": {
+      "source_name": "6875_顶点小说ddxsmf_书源_20260218_103244",
+      "source_url": "",
+      "tags": [
+        "6875"
+      ]
+    },
+    "6876_18r（免梯子）_书源_20260218_103243.md": {
+      "source_name": "6876_18r（免梯子）_书源_20260218_103243",
+      "source_url": "",
+      "tags": [
+        "6876"
+      ]
+    },
+    "6880_速读谷_书源_20260218_103241.md": {
+      "source_name": "6880_速读谷_书源_20260218_103241",
+      "source_url": "",
+      "tags": [
+        "6880"
+      ]
+    },
+    "6881_ncode_syosetu(成为小说家吧)_书源_20260218_103240.md": {
+      "source_name": "6881_ncode_syosetu(成为小说家吧)_书源_20260218_103240",
+      "source_url": "",
+      "tags": [
+        "6881"
+      ]
+    },
+    "6882_八叉书库_书源_20260218_103239.md": {
+      "source_name": "6882_八叉书库_书源_20260218_103239",
+      "source_url": "",
+      "tags": [
+        "6882"
+      ]
+    },
+    "6883_🎨 177漫画🔥_书源_20260218_103238.md": {
+      "source_name": "6883_🎨 177漫画🔥_书源_20260218_103238",
+      "source_url": "",
+      "tags": [
+        "6883"
+      ]
+    },
+    "6884_🍅团夕小说_书源_20260218_103236.md": {
+      "source_name": "6884_🍅团夕小说_书源_20260218_103236",
+      "source_url": "",
+      "tags": [
+        "6884"
+      ]
+    },
+    "6885_🔞UAA-免梯-已绕过会员_书源_20260218_103235.md": {
+      "source_name": "6885_🔞UAA-免梯-已绕过会员_书源_20260218_103235",
+      "source_url": "",
+      "tags": [
+        "6885"
+      ]
+    },
+    "6887_🎉 八零小说_书源_20260218_103233.md": {
+      "source_name": "6887_🎉 八零小说_书源_20260218_103233",
+      "source_url": "",
+      "tags": [
+        "6887"
+      ]
+    },
+    "6890_苦读书_书源_20260218_103232.md": {
+      "source_name": "6890_苦读书_书源_20260218_103232",
+      "source_url": "",
+      "tags": [
+        "6890"
+      ]
+    },
+    "6892_🍅番茄专业户_书源_20260218_103228.md": {
+      "source_name": "6892_🍅番茄专业户_书源_20260218_103228",
+      "source_url": "",
+      "tags": [
+        "6892"
+      ]
+    },
+    "6895_篱笆好_书源_20260218_102230.md": {
+      "source_name": "6895_篱笆好_书源_20260218_102230",
+      "source_url": "",
+      "tags": [
+        "6895"
+      ]
+    },
+    "6895_篱笆好_书源_20260218_103227.md": {
+      "source_name": "6895_篱笆好_书源_20260218_103227",
+      "source_url": "",
+      "tags": [
+        "6895"
+      ]
+    },
+    "6896_元小说_书源_20260218_102228.md": {
+      "source_name": "6896_元小说_书源_20260218_102228",
+      "source_url": "",
+      "tags": [
+        "6896"
+      ]
+    },
+    "6896_元小说_书源_20260218_103225.md": {
+      "source_name": "6896_元小说_书源_20260218_103225",
+      "source_url": "",
+      "tags": [
+        "6896"
+      ]
+    },
+    "6897_篱笆好文（优+++）_书源_20260218_102227.md": {
+      "source_name": "6897_篱笆好文（优+++）_书源_20260218_102227",
+      "source_url": "",
+      "tags": [
+        "6897"
+      ]
+    },
+    "6897_篱笆好文（优+++）_书源_20260218_103224.md": {
+      "source_name": "6897_篱笆好文（优+++）_书源_20260218_103224",
+      "source_url": "",
+      "tags": [
+        "6897"
+      ]
+    },
+    "6900_闲看免费小说_书源_20260218_102226.md": {
+      "source_name": "6900_闲看免费小说_书源_20260218_102226",
+      "source_url": "",
+      "tags": [
+        "6900"
+      ]
+    },
+    "6900_闲看免费小说_书源_20260218_103223.md": {
+      "source_name": "6900_闲看免费小说_书源_20260218_103223",
+      "source_url": "",
+      "tags": [
+        "6900"
+      ]
+    },
+    "6904_🍅 番茄的缘_书源_20260218_102225.md": {
+      "source_name": "6904_🍅 番茄的缘_书源_20260218_102225",
+      "source_url": "",
+      "tags": [
+        "6904"
+      ]
+    },
+    "6904_🍅 番茄的缘_书源_20260218_103222.md": {
+      "source_name": "6904_🍅 番茄的缘_书源_20260218_103222",
+      "source_url": "",
+      "tags": [
+        "6904"
+      ]
+    },
+    "6905_🍅番茄，七猫，塔读，得间，书旗(段评版聚合源)_书源_20260218_102143.md": {
+      "source_name": "6905_🍅番茄，七猫，塔读，得间，书旗(段评版聚合源)_书源_20260218_102143",
+      "source_url": "",
+      "tags": [
+        "6905"
+      ]
+    },
+    "6905_🍅番茄，七猫，塔读，得间，书旗(段评版聚合源)_书源_20260218_103150.md": {
+      "source_name": "6905_🍅番茄，七猫，塔读，得间，书旗(段评版聚合源)_书源_20260218_103150",
+      "source_url": "",
+      "tags": [
+        "6905"
+      ]
+    },
+    "6906_速读谷伪_书源_20260218_102223.md": {
+      "source_name": "6906_速读谷伪_书源_20260218_102223",
+      "source_url": "",
+      "tags": [
+        "6906"
+      ]
+    },
+    "6906_速读谷伪_书源_20260218_103221.md": {
+      "source_name": "6906_速读谷伪_书源_20260218_103221",
+      "source_url": "",
+      "tags": [
+        "6906"
+      ]
+    },
+    "6907_💫悦恋免费小说 - [☆星眠☆]_书源_20260218_102222.md": {
+      "source_name": "6907_💫悦恋免费小说 - [☆星眠☆]_书源_20260218_102222",
+      "source_url": "",
+      "tags": [
+        "6907"
+      ]
+    },
+    "6907_💫悦恋免费小说 - [☆星眠☆]_书源_20260218_103219.md": {
+      "source_name": "6907_💫悦恋免费小说 - [☆星眠☆]_书源_20260218_103219",
+      "source_url": "",
+      "tags": [
+        "6907"
+      ]
+    },
+    "6917_龙头小说_书源_20260218_102221.md": {
+      "source_name": "6917_龙头小说_书源_20260218_102221",
+      "source_url": "",
+      "tags": [
+        "6917"
+      ]
+    },
+    "6917_龙头小说_书源_20260218_103218.md": {
+      "source_name": "6917_龙头小说_书源_20260218_103218",
+      "source_url": "",
+      "tags": [
+        "6917"
+      ]
+    },
+    "6918_📖笔趣网_书源_20260218_102220.md": {
+      "source_name": "6918_📖笔趣网_书源_20260218_102220",
+      "source_url": "",
+      "tags": [
+        "6918"
+      ]
+    },
+    "6918_📖笔趣网_书源_20260218_103217.md": {
+      "source_name": "6918_📖笔趣网_书源_20260218_103217",
+      "source_url": "",
+      "tags": [
+        "6918"
+      ]
+    },
+    "6921_📚书山聚合_书源_20260218_102219.md": {
+      "source_name": "6921_📚书山聚合_书源_20260218_102219",
+      "source_url": "",
+      "tags": [
+        "6921"
+      ]
+    },
+    "6921_📚书山聚合_书源_20260218_103216.md": {
+      "source_name": "6921_📚书山聚合_书源_20260218_103216",
+      "source_url": "",
+      "tags": [
+        "6921"
+      ]
+    },
+    "6923_久久漫画_书源_20260218_102217.md": {
+      "source_name": "6923_久久漫画_书源_20260218_102217",
+      "source_url": "",
+      "tags": [
+        "6923"
+      ]
+    },
+    "6923_久久漫画_书源_20260218_103214.md": {
+      "source_name": "6923_久久漫画_书源_20260218_103214",
+      "source_url": "",
+      "tags": [
+        "6923"
+      ]
+    },
+    "6927_书豪小说网_书源_20260218_102215.md": {
+      "source_name": "6927_书豪小说网_书源_20260218_102215",
+      "source_url": "",
+      "tags": [
+        "6927"
+      ]
+    },
+    "6927_书豪小说网_书源_20260218_103212.md": {
+      "source_name": "6927_书豪小说网_书源_20260218_103212",
+      "source_url": "",
+      "tags": [
+        "6927"
+      ]
+    },
+    "6928_速读谷_书源_20260218_102213.md": {
+      "source_name": "6928_速读谷_书源_20260218_102213",
+      "source_url": "",
+      "tags": [
+        "6928"
+      ]
+    },
+    "6928_速读谷_书源_20260218_103211.md": {
+      "source_name": "6928_速读谷_书源_20260218_103211",
+      "source_url": "",
+      "tags": [
+        "6928"
+      ]
+    },
+    "6930_东方小说网_书源_20260218_102211.md": {
+      "source_name": "6930_东方小说网_书源_20260218_102211",
+      "source_url": "",
+      "tags": [
+        "6930"
+      ]
+    },
+    "6930_东方小说网_书源_20260218_103208.md": {
+      "source_name": "6930_东方小说网_书源_20260218_103208",
+      "source_url": "",
+      "tags": [
+        "6930"
+      ]
+    },
+    "6931_梦想家文学_书源_20260218_102210.md": {
+      "source_name": "6931_梦想家文学_书源_20260218_102210",
+      "source_url": "",
+      "tags": [
+        "6931"
+      ]
+    },
+    "6931_梦想家文学_书源_20260218_103207.md": {
+      "source_name": "6931_梦想家文学_书源_20260218_103207",
+      "source_url": "",
+      "tags": [
+        "6931"
+      ]
+    },
+    "6932_🍓番茄免费小说-[春节限定版]_书源_20260218_102209.md": {
+      "source_name": "6932_🍓番茄免费小说-[春节限定版]_书源_20260218_102209",
+      "source_url": "",
+      "tags": [
+        "6932"
+      ]
+    },
+    "6932_🍓番茄免费小说-[春节限定版]_书源_20260218_103206.md": {
+      "source_name": "6932_🍓番茄免费小说-[春节限定版]_书源_20260218_103206",
+      "source_url": "",
+      "tags": [
+        "6932"
+      ]
+    },
+    "6933_漫小肆20251217_书源_20260218_102207.md": {
+      "source_name": "6933_漫小肆20251217_书源_20260218_102207",
+      "source_url": "",
+      "tags": [
+        "6933"
+      ]
+    },
+    "6933_漫小肆20251217_书源_20260218_103205.md": {
+      "source_name": "6933_漫小肆20251217_书源_20260218_103205",
+      "source_url": "",
+      "tags": [
+        "6933"
+      ]
+    },
+    "6934_东方小说网_书源_20260218_102203.md": {
+      "source_name": "6934_东方小说网_书源_20260218_102203",
+      "source_url": "",
+      "tags": [
+        "6934"
+      ]
+    },
+    "6934_东方小说网_书源_20260218_103203.md": {
+      "source_name": "6934_东方小说网_书源_20260218_103203",
+      "source_url": "",
+      "tags": [
+        "6934"
+      ]
+    },
+    "6935_速读谷_书源_20260218_102154.md": {
+      "source_name": "6935_速读谷_书源_20260218_102154",
+      "source_url": "",
+      "tags": [
+        "6935"
+      ]
+    },
+    "6935_速读谷_书源_20260218_103200.md": {
+      "source_name": "6935_速读谷_书源_20260218_103200",
+      "source_url": "",
+      "tags": [
+        "6935"
+      ]
+    },
+    "6936_得奇小说网_书源_20260218_102152.md": {
+      "source_name": "6936_得奇小说网_书源_20260218_102152",
+      "source_url": "",
+      "tags": [
+        "6936"
+      ]
+    },
+    "6936_得奇小说网_书源_20260218_103157.md": {
+      "source_name": "6936_得奇小说网_书源_20260218_103157",
+      "source_url": "",
+      "tags": [
+        "6936"
+      ]
+    },
+    "6937_🎆起点中文网(按钮筛选)_书源_20260218_102151.md": {
+      "source_name": "6937_🎆起点中文网(按钮筛选)_书源_20260218_102151",
+      "source_url": "",
+      "tags": [
+        "6937"
+      ]
+    },
+    "6937_🎆起点中文网(按钮筛选)_书源_20260218_103156.md": {
+      "source_name": "6937_🎆起点中文网(按钮筛选)_书源_20260218_103156",
+      "source_url": "",
+      "tags": [
+        "6937"
+      ]
+    },
+    "6940_📪第一版主820_书源_20260218_102149.md": {
+      "source_name": "6940_📪第一版主820_书源_20260218_102149",
+      "source_url": "",
+      "tags": [
+        "6940"
+      ]
+    },
+    "6940_📪第一版主820_书源_20260218_103155.md": {
+      "source_name": "6940_📪第一版主820_书源_20260218_103155",
+      "source_url": "",
+      "tags": [
+        "6940"
+      ]
+    },
+    "6941_🍓番茄免费小说-[春节限定版]_书源_20260218_102148.md": {
+      "source_name": "6941_🍓番茄免费小说-[春节限定版]_书源_20260218_102148",
+      "source_url": "",
+      "tags": [
+        "6941"
+      ]
+    },
+    "6941_🍓番茄免费小说-[春节限定版]_书源_20260218_103154.md": {
+      "source_name": "6941_🍓番茄免费小说-[春节限定版]_书源_20260218_103154",
+      "source_url": "",
+      "tags": [
+        "6941"
+      ]
+    },
+    "6942_万能精品聚合_书源_20260218_102146.md": {
+      "source_name": "6942_万能精品聚合_书源_20260218_102146",
+      "source_url": "",
+      "tags": [
+        "6942"
+      ]
+    },
+    "6942_万能精品聚合_书源_20260218_103152.md": {
+      "source_name": "6942_万能精品聚合_书源_20260218_103152",
+      "source_url": "",
+      "tags": [
+        "6942"
+      ]
+    },
+    "6943_📪第一版主820_书源_20260218_102144.md": {
+      "source_name": "6943_📪第一版主820_书源_20260218_102144",
+      "source_url": "",
+      "tags": [
+        "6943"
+      ]
+    },
+    "6943_📪第一版主820_书源_20260218_103151.md": {
+      "source_name": "6943_📪第一版主820_书源_20260218_103151",
+      "source_url": "",
+      "tags": [
+        "6943"
+      ]
+    },
+    "6946_📪第一版主_书源_20260218_102140.md": {
+      "source_name": "6946_📪第一版主_书源_20260218_102140",
+      "source_url": "",
+      "tags": [
+        "6946"
+      ]
+    },
+    "6946_📪第一版主_书源_20260218_103147.md": {
+      "source_name": "6946_📪第一版主_书源_20260218_103147",
+      "source_url": "",
+      "tags": [
+        "6946"
+      ]
+    },
+    "6948_乐乐_书源_20260218_102138.md": {
+      "source_name": "6948_乐乐_书源_20260218_102138",
+      "source_url": "",
+      "tags": [
+        "6948"
+      ]
+    },
+    "6948_乐乐_书源_20260218_103145.md": {
+      "source_name": "6948_乐乐_书源_20260218_103145",
+      "source_url": "",
+      "tags": [
+        "6948"
+      ]
+    },
+    "6949_🔞乐成漫画_书源_20260218_102136.md": {
+      "source_name": "6949_🔞乐成漫画_书源_20260218_102136",
+      "source_url": "",
+      "tags": [
+        "6949"
+      ]
+    },
+    "6949_🔞乐成漫画_书源_20260218_103144.md": {
+      "source_name": "6949_🔞乐成漫画_书源_20260218_103144",
+      "source_url": "",
+      "tags": [
+        "6949"
+      ]
+    },
+    "6965_📖笔趣阁手机版_书源_20260218_102135.md": {
+      "source_name": "6965_📖笔趣阁手机版_书源_20260218_102135",
+      "source_url": "",
+      "tags": [
+        "6965"
+      ]
+    },
+    "6965_📖笔趣阁手机版_书源_20260218_103143.md": {
+      "source_name": "6965_📖笔趣阁手机版_书源_20260218_103143",
+      "source_url": "",
+      "tags": [
+        "6965"
+      ]
+    },
+    "unknown_无插件 - 赛事直播_书源_20260218_103125.md": {
+      "source_name": "unknown_无插件 - 赛事直播_书源_20260218_103125",
+      "source_url": "",
+      "tags": [
+        "unknown"
+      ]
+    }
+  },
+  "patterns": [],
+  "selectors": [
+    ".book-name",
+    ".author",
+    ".cover",
+    ".content",
+    ".div",
+    ".-1",
+    "#content",
+    "#main",
+    ".container",
+    ".item",
+    ".book-item",
+    ".title",
+    ".author-info",
+    ".intro",
+    ".cover-img",
+    ".chapter-list",
+    ".next-page",
+    ".log",
+    ".toString",
+    ".get",
+    ".put"
+  ]
+}

@@ -1,0 +1,487 @@
+阅读书源编写终极教程（从入门到入土，完整无缺版）
+
+本教程假设你是个小白，会用手机、会上网、能分清“书名”和“作者”。如果连这都不会……那还是先去看两本小说吧。
+
+第一章：书源是个啥？用冰箱打个比方
+
+你家的冰箱里放着各种食物：牛奶、鸡蛋、青菜。
+
+· 冰箱地址：就是小说网站的网址（比如 www.xxx.com）。
+· 食物清单：告诉阅读APP去哪里找书名、作者、章节、正文。
+· 规则：就是写在清单上的说明书，比如“书名藏在 <a class='book-name'> 这个盒子里，把里面的字拿出来”。
+
+所以，书源 = 网址 + 一堆规则。有了它，APP就能自动从网站里把小说搬进你的书架。
+
+第二章：准备工具（就三样，不能再少了）
+
+1. 一台电脑或手机
+   · 电脑推荐用 Chrome 浏览器，按 F12 就能打开“开发者工具”。
+   · 手机可以用“查看网页源码”功能（浏览器里一般有），或者用电脑更方便。
+2. 阅读APP
+     里面有个“书源管理”或“编辑书源”的按钮，点进去就能新建书源。
+      （如果你还没装，先去装一个，版本要新一点的。）
+3. 目标网站
+      你想抓取的那个小说网站。
+
+准备好了吗？开干！
+
+第三章：怎么找到规则？（检查元素三步走）
+
+这是最核心的技能，学会了就能对付99%的网站。
+
+· 第一步：在网站上右键点击你想抓的东西（比如书名），选择“检查”（或“审查元素”）。
+· 第二步：右边会弹出代码框，你点的那块代码会高亮，比如 <a class="book-name">斗罗大陆</a>。
+· 第三步：看标签名字（a）、类名（book-name）、有没有 id 等。这些就是写规则的线索。
+
+记住：规则就是“怎么找到这个标签，并取出里面的内容”。
+
+· 用类名：.book-name
+· 用标签名：a
+· 用id：#book-name
+· 组合：div.list li a（先找父容器，再找子元素）
+
+第四章：核心规则讲解（四大块）
+
+一个完整的书源要填好这四个部分：搜索、详情、目录、正文。我们一个一个来。
+
+4.1 搜索规则——怎么找到书
+
+搜索规则告诉APP：用户输入关键词后，怎么去网站上找书。
+
+· 搜索地址：网站搜索页面的网址，把关键词替换成 {{key}}，页码替换成 {{page}}。
+  ```
+  https://www.xxx.com/search?q={{key}}&page={{page}}
+  ```
+  有些网站是POST请求，后面会专门讲。
+· 书籍列表规则：告诉APP从哪里开始找每一本书。
+    比如 div.book-list li，意思是“找所有 class 为 book-list 的 div 里面的 li 标签”。
+· 书名规则：在刚才找到的每个 li 里面，再定位书名。
+    比如 h2 a@text，意思是“找 h2 下的 a 标签，取它里面的文字”。
+· 作者规则：类似 span.author@text。
+· 封面规则：img@src（取图片地址）。
+· 详情页链接规则：a@href（取链接，用于点进去看详情）。
+
+例子：假设搜索结果页面结构是这样的：
+
+```html
+<div class="book-list">
+  <ul>
+    <li>
+      <h2><a href="/book/123">斗罗大陆</a></h2>
+      <span class="author">唐家三少</span>
+      <img src="/cover/123.jpg">
+      <p class="intro">这是一个魂师的故事...</p>
+    </li>
+    <!-- 更多书 -->
+  </ul>
+</div>
+```
+
+那么搜索规则可以写成：
+
+· 书籍列表规则：.book-list li
+· 书名规则：h2 a@text
+· 作者规则：.author@text
+· 封面规则：img@src
+· 详情页链接：h2 a@href
+
+4.2 详情页规则——书的详细信息
+
+点进一本书后，要拿到更详细的信息。
+
+· 书名规则：详情页里取书名的规则，比如 h1@text。
+· 作者规则：span.author@text。
+· 分类规则：span.category@text。
+· 简介规则：div.intro@text（或 @html 保留格式）。
+· 封面规则：img.cover@src。
+· 目录页链接规则：有些网站的目录页和详情页是分开的，需要提取目录页的地址。比如 a.toc@href。
+
+4.3 目录规则——所有章节列表
+
+· 章节列表规则：找到装所有章节的容器，比如 ul.chapter-list li。
+· 章节名称规则：在每一个 li 里找章节名，比如 a@text。
+· 章节链接规则：a@href。
+· 目录下一页规则：如果目录有很多页，要找到“下一页”的链接，比如 a.next@href。
+
+注意：有些网站章节顺序是倒着的（最新章在前），可以在列表规则前加一个减号 - 来倒序，比如 -ul.chapter-list li。不过不是所有网站都支持，试试看。
+
+4.4 正文规则——阅读内容
+
+· 正文规则：找到放正文的标签，比如 div.content@html（保留段落）或 div.content@ownText（只取文字，不要广告）。
+· 正文下一页规则：如果正文分页，找“下一页”链接，比如 a.next-page@href。
+
+补充：@ownText 只取当前标签自己的文字，不取子标签里的，非常适合去广告（广告常常是放在子标签里的链接）。
+
+第五章：提取类型有哪些？（@后面跟什么）
+
+类型 作用 示例
+@text 取里面的所有文字（包括子标签里的） h2@text → "斗罗大陆"
+@ownText 只取当前标签自己的文字，不要子标签里的 p@ownText → 只取p标签直接包含的文字 
+@textNode 跟这个类似，只是会分段。
+@html 取完整的HTML代码（保留图片、链接） div.content@html → 带标签的正文
+@href 取链接地址 a@href → "/book/123"
+@src 取图片或视频地址 img@src → "/cover/123.jpg"
+@data-xxx 取自定义属性 div@data-id → "123"
+
+第六章：怎么写规则？（口诀 + 例子）
+
+口诀：
+
+```
+列表定位不加@，字段提取必带@。
+位置默认就是0，不写也行。
+text全都要，ownText最干净。
+html带标签，属性加@不能忘。
+净化放最后，网站千变要灵活。
+```
+
+解释：
+
+· 列表规则（比如 bookList）只写选择器，不加 @。
+    正确：.book-list li
+    错误：.book-list li@text
+· 字段规则（比如 name）必须写 选择器@提取类型。
+    正确：h2 a@text
+· 位置默认是第一个，所以 li@text 等价于 li.0@text。如果要取第二个，写 li.1@text。
+· @text 最全，@ownText 最干净（去广告）。
+· 提取属性必须加 @，比如 a@href，不能只写 a。
+· 净化广告的正则放在最后，比如 div.content@text##广告词##。
+
+第七章：常见问题怎么办？（基础篇）
+
+7.1 遇到加密网站（内容显示“加载中”）
+
+很多网站的内容是用JS动态生成的，直接拿源码是空的。解决办法：让APP用内置浏览器加载网页，等它渲染完再取内容。
+
+方法：在链接后面加 ,{"webView":true}。
+比如搜索地址写成：
+
+```
+https://www.xxx.com/chapter/123,{"webView":true}
+```
+
+这样APP就会打开一个浏览器内核去加载这个网页，再提取内容。
+
+7.2 目录顺序是乱的
+
+在目录列表规则前面加一个减号 -，比如 -ul.chapter-list li，APP会尝试把列表倒序。
+注意：不是所有网站都有效，如果不行，可能需要用JS排序（后面会讲）。
+
+7.3 正文里有广告
+
+· 方法一：用 @ownText 代替 @text，只取自己的文字，不要子标签里的广告链接。
+· 方法二：用正则净化，在正文规则后面加 ##广告词##，比如：
+  ```
+  div.content@text##免费小说就上某某网##
+  ```
+  如果有多个广告词，可以用 | 分隔：##广告1|广告2|广告3##。
+
+7.4 需要分页（目录或正文有多页）
+
+· 在目录下一页规则或正文下一页规则里填上“下一页”的链接提取规则，比如 a.next@href。
+· 如果链接是相对路径（比如 /page/2.html），需要拼接成完整地址，可以用 @js: 处理：
+  ```
+  @js:'https://www.xxx.com' + result
+  ```
+  （这里的 result 就是上一步提取到的相对链接）
+
+7.5 遇到 CloudFlare 验证（弹窗让你点）
+
+有些网站会弹出“请确认你不是机器人”的验证页面。APP自己过不去，需要你手动点一下。
+
+解决方法：在规则里加一段JS，让APP打开浏览器让你手动验证，验证完再继续。
+
+```js
+function pureManualCF(result) {
+  var cfPatterns = [/Just a moment/, /Checking your browser/, /DDoS protection/]
+  var finalUrl = result.url();
+  java.startBrowserAwait(finalUrl, "CloudFlare验证");
+    var newResult = java.connect(finalUrl);
+    return
+    }
+pureManualCF(result)
+```
+
+把网址换成你自己的，放在搜索规则或正文规则里（一般放在最前面）。
+
+第八章：调试技巧（怎么知道写错了）
+
+· 加日志：在规则里加一句 java.log('当前结果：' + result)，然后点测试，APP的日志里会输出结果。
+    你可以在书源编辑界面找到“日志”按钮查看。
+· 测试顺序：先测试搜索能不能拿到书籍列表 → 再测试详情页信息 → 然后目录 → 最后正文。这样容易定位问题。
+· 如果某个规则没拿到内容：回到浏览器，重新检查元素，看标签名或类名有没有变化（有些网站会动态改变类名）。
+
+---
+
+以上是基础篇，你已经能对付大部分普通网站了。但是有些网站比较狡猾，会用加密、动态加载、需要登录等高级手段。这时候就需要第二关——JavaScript篇。
+
+---
+
+第二关：JavaScript 闯关秘籍
+
+第九章：为什么要学JS？
+
+基础规则就像“按图索骥”，但有些网站：
+
+· 链接是动态生成的（比如根据时间戳加密）
+· 内容需要先登录才能看
+· 正文被AES加密了，需要解密
+· 目录需要自动翻页（比如点击“加载更多”）
+· 需要处理字体反爬（文字显示乱码）
+
+这时候，就需要用JavaScript（简称JS）来写一些小程序，让APP执行。别怕，JS没那么难，咱们还是用冰箱的比方：
+
+· 基础规则是“打开冰箱找到牛奶盒”，
+· JS就是“如果牛奶盒上锁了，你输入密码打开它”。
+
+第十章：认识几个JS帮手（核心变量）
+
+在书源的JS里，有几个常用的“帮手”，记住它们：
+
+名字 它是谁 有什么用
+java 万能工具箱 啥都能干：发请求、加解密、存数据、打开浏览器
+baseUrl 当前页面的网址 有时需要拼接链接
+result 上一步规则拿到的内容 比如你从列表拿到一个链接，result就是那个链接
+book 当前这本书的信息 book.name（书名）、book.author（作者）
+chapter 当前这一章的信息 chapter.title（章节名）
+source 这个书源自己 可以存东西、取东西（source.put(key, value)）
+cookie 网站的饼干 管理登录状态（cookie.getCookie(url)）
+cache 缓存 存点东西，下次用就不用重新下载（cache.put(key, value)）
+
+第十一章：JS能帮你做什么？（四大功能）
+
+11.1 网络请求——让APP帮你访问网页
+
+最简单的 GET 请求：
+java.ajax('https://www.xxx.com')
+直接返回网页源码（字符串）。
+
+POST 请求（比如提交表单）：
+
+```js
+java.post('https://www.xxx.com/login', 'username=aaa&password=bbb', {'User-Agent': 'Mozilla/5.0'})
+```
+
+参数分别是：网址、请求体（字符串）、请求头（对象）。
+
+同时请求多个链接：
+java.ajaxAll(['url1', 'url2'])
+返回一个数组，每个元素是对应链接的响应结果。
+
+11.2 内容解析——从网页里挖东西
+
+你在基础规则里用CSS选择器挖内容，JS里也可以：
+
+```js
+// 从当前页面（result是源码）提取文本列表
+java.getStringList('div.book@text', result)
+
+// 提取单个文本
+java.getString('h1@text', result)
+
+// 提取元素（可以再进一步操作）
+var element = java.getElement('.content', result)
+var text = element.text()
+```
+
+11.3 动态渲染——对付那些懒加载的网站
+
+有些网站的内容是用JS后生成的，直接拿源码是空的。这时候要用“浏览器模式”。
+
+方法一：在链接后面加 ,{"webView":true}（前面讲过）。
+方法二：用JS函数 java.webView：
+
+```js
+var html = java.webView(null, 'https://www.xxx.com', 'document.body.innerText', true)
+```
+
+参数解释：
+
+· 第一个参数：null 表示用网页自己，如果传入HTML字符串，则直接加载该HTML。
+· 第二个参数：网址（如果第一个参数是HTML，这个网址用来处理相对路径）。
+· 第三个参数：要执行的JS，返回值作为结果（这里是取body的文字）。
+· 第四个参数：true 表示优先用缓存。
+
+11.4 加解密——对付加密内容
+
+MD5加密：
+java.md5Encode('你好')
+
+Base64编码/解码：
+
+```js
+java.base64Encode('你好')
+java.base64Decode('5L2g5aW9')
+```
+
+AES解密（需要密钥和初始向量）：
+
+```js
+var cipher = java.createSymmetricCrypto('AES/CBC/PKCS5Padding', '密钥', '初始向量')
+var decrypted = cipher.decryptStr('加密的内容')
+```
+
+字体反爬（有些网站用自定义字体乱码）：
+
+```js
+var font = java.queryTTF('字体文件地址')
+var correctFont = java.queryTTF('正常字体地址')
+var text = java.replaceFont(乱码文本, font, correctFont)
+```
+
+第十二章：实战场景（JS怎么用在规则里）
+
+场景1：搜索地址是动态的
+
+比如搜索地址第一页是 index.html，第二页是 index_2.html。
+可以在搜索地址里用三元表达式：
+
+```
+https://www.xxx.com/index{{page == 1 ? '' : '_' + page}}.html
+```
+
+或者用JS（在搜索地址里写 @js:）：
+
+```
+@js:'https://www.xxx.com/index' + (page == 1 ? '' : '_' + page) + '.html'
+```
+
+场景2：目录链接需要拼接
+
+你从详情页拿到一个ID，比如 bookId=123，然后目录地址是 `https://www.xxx.com/book/123/catalog`。
+可以在目录URL规则里写：
+
+```js
+@js:'https://www.xxx.com/book/' + result + '/catalog'
+```
+
+这里的 result 就是上一步拿到的ID。
+
+场景3：正文加密了
+
+正文源码是一堆乱码，需要解密。可以在正文规则里写：
+
+```js
+@js:
+var encrypted = result
+var cipher = java.createSymmetricCrypto('AES/CBC/PKCS5Padding', '密钥', '向量')
+cipher.decryptStr(encrypted)
+```
+
+场景4：需要登录后才能看
+
+在书源的“登录URL”里填上登录页面的网址，比如 `https://www.xxx.com/login`。
+这样当你需要登录时，点击书源右上角的菜单，选择“登录”，APP会打开浏览器让你手动登录。登录成功后，APP会自动保存Cookie，后续请求就会带上登录状态。
+
+如果登录过程比较复杂（比如需要输入验证码），可以在“登录UI”里配置表单，这里不展开。
+
+场景5：分页拼接（目录有N页）
+
+比如目录第一页是 list.html，后面是 list_2.html、list_3.html……一直到N页。
+你可以在目录下一页规则里写JS，自动生成所有页面的链接：
+
+```js
+@js:
+var total = 10  // 假设总共10页，这个数字可以从网页里提取
+var list = []
+for (var i = 2; i <= total; i++) {
+    list.push('list_' + i + '.html')
+}
+list
+```
+
+这样APP就会自动加载第2页到第10页的目录。
+
+场景6：从网页里提取数字
+
+比如页码藏在“共10页”的文字里，可以用正则提取：
+
+```js
+var total = result.match(/共(\d+)页/)[1]
+```
+
+场景7：POST请求实战（重点！）
+
+很多网站搜索用的是POST请求，比如 bqge8.com。
+看这个例子：
+
+```
+https://bqge8.com/modules/article/search.php,{
+  "body": "searchkey={{key}}",
+  "charset": "GBK",
+  "method": "POST"
+}
+```
+
+逐词解释：
+
+· `https://bqge8.com/modules/article/search.php`：这是搜索接口的网址。
+· 逗号：用来分隔网址和请求参数，不可省略。没有逗号，APP就不知道后面是参数。
+· {} 里面是一个JSON对象，包含请求的详细信息：
+  · "body": 请求体，就是POST提交的数据。searchkey={{key}} 表示把用户输入的关键词替换进去。
+  · "charset": "GBK"：指定网站返回内容的编码是GBK。很多中文老网站用GBK，如果不指定，可能会乱码。
+  · "method": "POST"：明确告诉APP用POST方法。
+
+如何判断一个网站是GET还是POST？
+
+1. 用浏览器开发者工具（F12）→ 切换到 Network 标签 → 在网站上搜索一本书 → 找到那个搜索请求，看它的 Request Method。
+2. 如果是GET，参数会挂在URL后面（比如 ?searchkey=斗破）；如果是POST，参数在 Request Body 里。
+3. 如果网站编码不是UTF-8，可以在响应头里找 Content-Type，比如 text/html; charset=GBK。
+
+POST请求的进阶用法：有时候需要带请求头，比如 Content-Type。可以这样写：
+
+```
+https://example.com/search,{
+  "method": "POST",
+  "body": "key={{key}}",
+  "charset": "UTF-8",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "User-Agent": "Mozilla/5.0"
+  }
+}
+```
+
+第十三章：调试——让JS告诉你哪里出错了
+
+在JS代码里加一句 java.log('看看这是啥：' + 变量)，然后点测试，APP的日志里会输出。
+比如：
+
+```js
+java.log('当前页面源码：' + result)
+java.log('提取的数字：' + total)
+```
+
+如果报错了，日志里会显示错误信息，比如“某某变量未定义”或“JSON解析错误”。
+
+第十四章：避坑指南（新手最容易踩的坑）
+
+1. 变量必须用 var 声明，不能用 const 或 let（阅读用的JS引擎不支持块级作用域）。
+      ✅ 正确：var a = 1
+      ❌ 错误：const a = 1
+2. java 是唯一的入口，不要自己定义叫 java 的变量，会覆盖掉。
+3. 异步操作要小心，比如 java.startBrowserAwait 会等待用户操作，后面的代码要等它完成。不能在它后面立即使用结果，因为还没返回。
+4. 缓存别滥用，cache.put 可以存数据，但别存太大的（比如几十MB），大的用 cache.putFile。
+5. 不要死循环，比如用 for 生成链接，记得限制次数，比如最多50页，否则可能卡死。
+6. 正则表达式中的反斜杠要转义，比如 \d 在字符串里要写成 \\d。
+
+第十五章：口诀（JS版）
+
+```
+网络请求用 ajax，渲染页面 webView。
+加解密找 java，存数据用 source。
+调试日志 java.log，变量声明记得 var。
+动态链接自己拼，分页循环生成它。
+遇到加密别害怕，AES、MD5拿下它。
+POST请求逗号隔，body里面放参数。
+编码不对就 charset，headers也能随意加。
+```
+
+
+第十六章：最后的嘱咐
+
+每个网站的结构都不一样，没有一套规则能通用所有网站。
+记住：能抓到内容的方法就是好方法！
+多试试不同的写法，卡住了就加 java.log 看看。遇到问题先深呼吸，看看网页源码，总能找到办法。
+
+好了，现在你已经从入门到入土了。哦不，是到精通了。去征服星辰大海吧！

@@ -1,0 +1,45 @@
+[
+  {
+    "bookSourceComment": "这是小说下载源",
+    "bookSourceName": "奇书网",
+    "bookSourceType": 3,
+    "bookSourceUrl": "https://m.qishu99.cc/",
+    "customOrder": 2,
+    "enabled": true,
+    "enabledCookieJar": false,
+    "enabledExplore": true,
+    "exploreUrl": "[\n  {\n  \t  \"title\":\"🔖书库🔖\",\n    \"url\":\"/all/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":1\n    }\n  },\n  {\n  \t  \"title\":\"男生小说\",\n    \"url\":\"/nansheng/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":0.25\n    }\n  },\n  {\n  \t  \"title\":\"女生言情\",\n    \"url\":\"/yanqing/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":0.25\n    }\n  },\n  {\n  \t  \"title\":\"耽美同人\",\n    \"url\":\"/tongren/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":0.25\n    }\n  },\n  {\n  \t  \"title\":\"都市小说\",\n    \"url\":\"/dushi/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":0.25\n    }\n  },\n  {\n  \t  \"title\":\"玄幻奇幻\",\n    \"url\":\"/xuanhuan/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":0.25\n    }\n  },\n  {\n  \t  \"title\":\"武侠修真\",\n    \"url\":\"/xiuzhen/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":0.25\n    }\n  },\n  {\n  \t  \"title\":\"网游竞技\",\n    \"url\":\"/wangyou/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":0.25\n    }\n  },\n  {\n  \t  \"title\":\"历史军事\",\n    \"url\":\"/lishi/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":0.25\n    }\n  },\n  {\n  \t  \"title\":\"科幻灵异\",\n    \"url\":\"/kehuan/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":0.25\n    }\n  },\n  {\n  \t  \"title\":\"其他小说\",\n    \"url\":\"/qita/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":0.25\n    }\n  },\n  {\n  \t  \"title\":\"🔖排行🔖\",\n    \"url\":\"/hot/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":1\n    }\n  },\n  {\n  \t  \"title\":\"🔖推荐🔖\",\n    \"url\":\"/recommendall/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":1\n    }\n  },\n  {\n  \t  \"title\":\"🔖最新🔖\",\n    \"url\":\"/new/index_{{page}}.html\",\n    \"style\":\n    {\n    \t  \"layout_flexGrow\":1,\n       \"layout_flexBasisPersent\":1\n    }\n  }\n]",
+    "lastUpdateTime": "1764908000121",
+    "respondTime": 180000,
+    "ruleBookInfo": {
+      "author": ".bookcover@.mt10@text##作者：",
+      "coverUrl": ".bookcover@img@src",
+      "downloadUrls": ".bookbutton@a@href",
+      "intro": ".bookintro@.con@text",
+      "kind": ".bookcover@.gray.0@text##分类：",
+      "lastChapter": ".bookcover@.gray.3@text##更新：",
+      "name": ".bookcover@.title@text"
+    },
+    "ruleContent": [],
+    "ruleExplore": {
+      "author": ".author@text",
+      "bookList": ".imgtextlist@li",
+      "bookUrl": "a@href",
+      "coverUrl": "img@src",
+      "intro": ".intro@text",
+      "name": ".title@text"
+    },
+    "ruleSearch": {
+      "author": ".author.0@a@text",
+      "bookList": ".imgtextlist@li",
+      "bookUrl": "a@href",
+      "coverUrl": "Img@src",
+      "intro": ".intro@text",
+      "lastChapter": ".author.1@text##更新：",
+      "name": ".title@text"
+    },
+    "ruleToc": [],
+    "searchUrl": "/e/search/index.php,{\n\t\"method\":\"post\",\n\t\"body\":\"show=title,softsay,softwriter&keyboard={{key}}&tbname=download&tempid=1&Submit22=搜索\"\n\t}",
+    "weight": 0
+  }
+]
