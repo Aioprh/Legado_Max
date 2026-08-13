@@ -23,21 +23,21 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 
     /** AI 接口地址（OpenAI 兼容） */
     var baseUrl: String
-        get() = LocalConfig.getString(KEY_BASE_URL, "https://api.deepseek.com/v1")
+        get() = LocalConfig.getString(KEY_BASE_URL, "https://api.deepseek.com/v1") ?: ""
         set(value) {
             LocalConfig.putString(KEY_BASE_URL, value)
         }
 
     /** API Key */
     var apiKey: String
-        get() = LocalConfig.getString(KEY_API_KEY, "")
+        get() = LocalConfig.getString(KEY_API_KEY, "") ?: ""
         set(value) {
             LocalConfig.putString(KEY_API_KEY, value)
         }
 
     /** 模型名 */
     var model: String
-        get() = LocalConfig.getString(KEY_MODEL, "deepseek-chat")
+        get() = LocalConfig.getString(KEY_MODEL, "deepseek-chat") ?: ""
         set(value) {
             LocalConfig.putString(KEY_MODEL, value)
         }
@@ -86,7 +86,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                     ?.getAsJsonObject("message")?.get("content")?.asString ?: ""
             }.getOrDefault("")
             if (content.isBlank()) throw RuntimeException("模型未返回内容")
-            stripCodeFence(content)
+            return stripCodeFence(content)
         }
     }
 
