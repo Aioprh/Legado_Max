@@ -44,9 +44,10 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 
     /**
      * 抓取目标网站 HTML 并自动检测编码（供本页使用）
+     * @param keyword 搜索关键词（可选），用于自动探测 JSON API 并抓取搜索/目录示例
      */
-    fun fetchHtml(url: String): Result<AiSourceController.HtmlContent> =
-        AiSourceController.fetchHtmlContent(url)
+    fun fetchHtml(url: String, keyword: String? = null): Result<AiSourceController.HtmlContent> =
+        AiSourceController.fetchHtmlContent(url, keyword)
 
     /**
      * 调用 LLM 生成书源 JSON
@@ -159,7 +160,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 - Default 语法：class.booklist@tag.li 或 .booklist li@tag.a；简单 CSS 选择器不要加 @css 前缀
 - 复杂 CSS：@css:.detail p:nth-child(2)@text
 - XPath：//div[@id='content']、//h3/a/text()、//img/@src
-- JSONPath（返回 JSON 的网站）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL
+- JSONPath（返回 JSON 的网站）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL；正文/目录接口若 URL 模板缺参，按 Legado 约定补 book_id 与 chapter_id（book_id 用 {{book.bookUrl}} 正则提取，chapter_id 用目录章节对象的 ID 字段）
 - 正则：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"
 - 注意转义：正则里的 \d、\s 等需写双反斜杠
 
