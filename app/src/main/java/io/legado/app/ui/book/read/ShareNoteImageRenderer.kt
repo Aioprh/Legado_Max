@@ -18,6 +18,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.annotation.Keep
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
 import com.bumptech.glide.request.RequestOptions
@@ -67,6 +68,7 @@ object ShareNoteImageRenderer {
     private val renderMutex = Mutex()
     private var html2CanvasScriptCache: String? = null
 
+    @Keep
     data class Payload(
         val type: String = "note",
         val generatedAt: String,
@@ -77,12 +79,14 @@ object ShareNoteImageRenderer {
         val note: Note
     )
 
+    @Keep
     data class Profile(
         val name: String = "读者",
         val bio: String = "一段认真读过的文字",
         val avatar: String? = null
     )
 
+    @Keep
     data class Appearance(
         val hideComment: Boolean = false,
         val colorTheme: ColorTheme? = null,
@@ -93,6 +97,7 @@ object ShareNoteImageRenderer {
         val backgroundMaskOpacity: Float = 0f
     )
 
+    @Keep
     data class ColorTheme(
         val backgroundColor: String,
         val textColor: String,
@@ -102,6 +107,7 @@ object ShareNoteImageRenderer {
         val dividerColor: String = mutedColor
     )
 
+    @Keep
     data class Book(
         val title: String,
         val author: String = "",
@@ -120,6 +126,7 @@ object ShareNoteImageRenderer {
         val lastReadTime: String = ""
     )
 
+    @Keep
     data class Note(
         val createAt: String,
         val sectionName: String,
