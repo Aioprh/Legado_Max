@@ -142,6 +142,18 @@ const deleteSource = (data: Source[]) =>
     ? ajax.post<LeagdoApiResponse<string>>('deleteBookSources', data)
     : ajax.post<LeagdoApiResponse<string>>('deleteRssSources', data)
 
+/** AI 生成书源：抓取目标网站 HTML（由 App 内嵌 HTTP 服务代理，绕过浏览器 CORS） */
+export interface AiFetchHtmlResult {
+  url: string
+  charset: string
+  length: number
+  html: string
+}
+const fetchHtml = (url: string) =>
+  ajax.get<LeagdoApiResponse<AiFetchHtmlResult>>(
+    'fetchHtml?url=' + encodeURIComponent(url),
+  )
+
 // webSocket
 const debug = (
   /** @type {string} */ sourceUrl: string,
@@ -241,6 +253,8 @@ export default {
   saveSource,
   deleteSource,
   debug,
+
+  fetchHtml,
 
   getProxyCoverUrl,
   getProxyImageUrl,

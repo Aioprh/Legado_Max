@@ -1,0 +1,67 @@
+function bypassCloudFlare(result) {
+    try {
+        var url = result.url(), src = result.body(), responseCode = result.code();
+  
+        
+     
+        var isBlocked = false;
+        if (src && (responseCode === 403 || responseCode === 503 || responseCode === 429 || 
+            (responseCode === 200 && (src.match(/Just a moment/) || src.match(/Checking your browser/) || src.match(/DDoS protection/))))) {
+            isBlocked = true;
+            java.log("检测到cf ，蛋蛋正在拿小玩具追它ヽ(ー_ー )ノ");
+        }
+        
+        if (!isBlocked) {
+            source.put("cf_block_count", "0");
+            java.log("你看起来很安全耶！！！居然没有检测到cf。(⑅˃◡˂⑅)");
+            return result;
+        }
+        
+        // 处理拦截
+        var blockCount = parseInt(source.get("cf_block_count") || "0");
+        blockCount = isNaN(blockCount) ? 1 : blockCount + 1;
+        source.put("cf_block_count", blockCount.toString());
+        java.log("当前拦截次数: " + blockCount);
+        
+        try { cookie.removeCookie(source.bookSourceUrl); } catch (e) {}
+        
+        if (blockCount <= 3) {
+            java.log("正在处理中……");
+            var webViewSuccess = false;
+            
+            for (var retryCount = 0; retryCount <= 1 && !webViewSuccess; retryCount++) {
+                java.log("第 " + (retryCount + 1) + " 次自动验证尝试");
+                try {
+                    var webResult = java.webView(url, url,
+                        "setTimeout(function() { window.legado.getHTML(document.documentElement.outerHTML); }, 5000);"
+                    );
+                    
+                    if (webResult && !webResult.match(/Just a moment|Checking your browser|DDoS protection/)) {
+                        java.log("看起来已经过了,不放心再看一遍(｀・ω・´)");
+                        result = java.connect(url);
+                        if (result.code() === 200) {
+                            webViewSuccess = true;
+                            source.put("cf_block_count", "0");
+                        }
+                    }
+                } catch (e) { java.log("WebView错误: " + e); }
+            }
+        }
+        
+        if (!webViewSuccess || blockCount > 3) {
+            java.log("保驾护航失败，请你自己手动点一下吧。就一下下。");
+            java.toast("需要验证CloudFlare，请在浏览器中完成验证");
+            java.startBrowserAwait(url, "CloudFlare验证");
+            source.put("cf_block_count", "0");
+            result = java.connect(url);
+        }
+        
+        return result;
+    } catch (e) {
+        java.log("CF绕过错误: " + e)
+        return result;
+    }
+}
+
+result = bypassCloudFlare(result);
+result;

@@ -1,0 +1,54 @@
+{
+  "bookSourceComment": "群里有人用ai写的，搜索搜不到东西，正文有验证，但是通过js解密绕过了验证",
+  "bookSourceGroup": "AI生成",
+  "bookSourceName": "笔趣阁m.bqgui.cc",
+  "bookSourceType": 0,
+  "bookSourceUrl": "https://m.bqgui.cc##群里",
+  "customOrder": 4,
+  "enabled": true,
+  "enabledCookieJar": true,
+  "enabledExplore": true,
+  "exploreUrl": "玄幻::https://5b78c.bqg353.xyz/api/sort?sort=xuanhuan&page={{page}}\n武侠::https://5b78c.bqg353.xyz/api/sort?sort=wuxia&page={{page}}\n都市::https://5b78c.bqg353.xyz/api/sort?sort=dushi&page={{page}}\n历史::https://5b78c.bqg353.xyz/api/sort?sort=lishi&page={{page}}\n网游::https://5b78c.bqg353.xyz/api/sort?sort=wangyou&page={{page}}\n科幻::https://5b78c.bqg353.xyz/api/sort?sort=kehuan&page={{page}}\n女生::https://5b78c.bqg353.xyz/api/sort?sort=mm&page={{page}}\n排行榜::https://5b78c.bqg353.xyz/api/sort?sort=top&page={{page}}\n完本::https://5b78c.bqg353.xyz/api/sort?sort=finish&page={{page}}",
+  "header": "{\"Cookie\": \"getsite=bqgui\", \"User-Agent\": \"Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36\"}",
+  "lastUpdateTime": 1772974315679,
+  "respondTime": 180000,
+  "ruleBookInfo": {
+    "author": ".dd_box span@text##作者：",
+    "coverUrl": ".cover img@src",
+    "intro": ".book_about dd@text",
+    "kind": ".dd_box span@text##分类：",
+    "lastChapter": ".book_last dd a@text",
+    "name": "dt.name@text",
+    "tocUrl": "@js:\nurl = java.getString('.book_more a@href');\nurl ? url + '?view=1' : ''"
+  },
+  "ruleContent": {
+    "content": "@js:\nvar html = java.getString('.Readarea.ReadAjax_content@html');\nvar url = String(result);\nvar idx1 = url.indexOf('book/');\nvar idx2 = url.indexOf('/', idx1 + 5);\nvar idx3 = url.indexOf('.html', idx2);\nvar content = html;\nif (idx1 >= 0 && idx2 >= 0 && idx3 >= 0) {\n  var bookId = url.substring(idx1 + 5, idx2);\n  var chapterId = url.substring(idx2 + 1, idx3);\n  try {\n    var bookInfoUrl = 'https://5b78c.bqg353.xyz/api/book?id=' + bookId;\n    var bookInfo = java.ajax(bookInfoUrl);\n    var bookData = JSON.parse(bookInfo);\n    var dirid = bookData.dirid ? bookData.dirid : bookId;\n    var chapterUrl = 'https://5b78c.bqg353.xyz/api/chapter?id=' + dirid + '&chapterid=' + chapterId;\n    var chapterInfo = java.ajax(chapterUrl);\n    var chapterData = JSON.parse(chapterInfo);\n    var txt = chapterData.txt;\n    if (txt) {\n      txt = txt.replace('更*多`精;彩小*说尽|在.01bz.第一;*小说*站', '');\n      txt = txt.replace('downloadchmdepilernow', '');\n      txt = txt.split('\\n').join('<br>');\n      content = txt;\n    }\n  } catch (e) {\n    content = html;\n  }\n}\ncontent;",
+    "nextContentUrl": "id.pb_next@href@js:result ? result + '?view=1' : ''"
+  },
+  "ruleExplore": {
+    "author": "$.author",
+    "bookList": "$.data",
+    "bookUrl": "@js:\nvar id = result.id;\n'https://m.bqgui.cc/book/' + id + '/';",
+    "coverUrl": "@js:\nvar id = result.id;\n'https://www.bqgui.cc/bookimg/' + Math.floor(id/1000) + '/' + id + '.jpg';",
+    "intro": "$.intro",
+    "name": "$.title"
+  },
+  "ruleReview": {
+    "enabled": false
+  },
+  "ruleSearch": {
+    "author": "$.author",
+    "bookList": "$",
+    "bookUrl": "https://m.bqgui.cc{{$.url_list}}",
+    "coverUrl": "$url_img",
+    "intro": "$.intro",
+    "name": "$.articlename"
+  },
+  "ruleToc": {
+    "chapterList": ".book_last dd a[href*='/book/']",
+    "chapterName": "text",
+    "chapterUrl": "href@js:result + '?view=1'"
+  },
+  "searchUrl": "https://m.bqgui.cc/user/search.html?q={{key}}",
+  "weight": 0
+}

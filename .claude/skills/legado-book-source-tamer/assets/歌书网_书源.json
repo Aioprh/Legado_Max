@@ -1,0 +1,60 @@
+[
+  {
+    "bookSourceComment": "歌书网手机版书源，支持搜索、阅读、目录等功能",
+    "bookSourceName": "歌书网",
+    "bookSourceGroup": "小说",
+    "bookSourceType": 0,
+    "bookSourceUrl": "http://m.gashuw.com",
+    "enabled": true,
+    "enabledExplore": true,
+    "exploreUrl": "[{\"name\":\"强推\",\"url\":\"http://m.gashuw.com\",\"style\":{\"layout_flexGrow\":1,\"layout_flexBasisPercent\":1}}]",
+    "header": "{\"User-Agent\":\"Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.105 Mobile Safari/537.36\"}",
+    "lastUpdateTime": 1739877674000,
+    "order": 0,
+    "ruleBookInfo": {
+      "author": ".synopsisArea_detail .author@text##^作者：##",
+      "coverUrl": ".synopsisArea_detail img@src",
+      "intro": ".review@text",
+      "kind": ".synopsisArea_detail .sort@text##^类别：##",
+      "lastChapter": ".recommend .directoryArea p:first-child a@text",
+      "name": "span.title@text",
+      "tocUrl": "",
+      "wordCount": ""
+    },
+    "ruleContent": {
+      "content": "div.Readarea.ReadAjax_content#chaptercontent@text",
+      "nextContentUrl": "a:contains(\"下一章\")@href",
+      "prevContentUrl": "a:contains(\"上一章\")@href",
+      "replaceRegex": "##<script.*?</script>##<style.*?</style>##<!--.*?-->##"
+    },
+    "ruleExplore": {
+      "author": ".author:first-child@text##^[^|]*##",
+      "bookList": ".hot_sale",
+      "bookUrl": "a@href",
+      "coverUrl": "",
+      "intro": "",
+      "kind": ".author:first-child@text##^[^|]*##",
+      "lastChapter": ".author:last-child@text##.*更新：##",
+      "name": ".title@text"
+    },
+    "ruleSearch": {
+      "author": ".author:first-child@text##.*作者：##",
+      "bookList": ".hot_sale",
+      "bookUrl": "a@href",
+      "coverUrl": "",
+      "intro": "",
+      "kind": ".author:first-child@text##^[^|]*##",
+      "lastChapter": ".author:last-child@text##.*更新：##",
+      "name": ".title@text"
+    },
+    "ruleToc": {
+      "chapterList": ".directoryArea p",
+      "chapterName": "a@text",
+      "chapterUrl": "a@href",
+      "nextTocUrl": ".listpage .right a@href###all##"
+    },
+    "searchUrl": "http://m.gashuw.com/s.php,{\"method\":\"POST\",\"body\":\"keyword={{key}}&t=1\"}",
+    "userAgent": "Mozilla/5.0 (Linux; Android 10; SM-G973F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.105 Mobile Safari/537.36",
+    "weight": 0
+  }
+]

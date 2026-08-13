@@ -1,0 +1,43 @@
+{
+    "config": {
+        "temperature": 0.7,
+        "frequency_penalty": 0,
+        "top_p": 0.9,
+        "max_tokens": 4096,
+        "max_completion_tokens": 32768,
+        "thinking_type": "enabled",
+        "reasoning_effort": "medium",
+        "response_format": "text",
+        "json_schema": "{\"name\":\"\",\"description\":\"\",\"strict\":false,\"schema\":{}}",
+        "model": "doubao-seed-1-8-251228"
+    },
+    "sp": "系统提示词将从文件中读取",
+    "sp_file": "config/system_prompt.md",
+    "tools": [
+        "search_knowledge",
+        "search_knowledge_index",
+        "get_css_selector_rules",
+        "get_real_book_source_examples",
+        "get_book_source_templates",
+        "list_all_knowledge_files",
+        "read_file_paginated",
+        "get_file_summary",
+        "smart_fetch_html",
+        "smart_web_analyzer",
+        "smart_bookinfo_analyzer",
+        "smart_toc_analyzer",
+        "smart_content_analyzer",
+        "smart_full_analyzer",
+        "knowledge_learner",
+        "knowledge_applier",
+        "knowledge_enhanced_analyzer",
+        "user_intervention",
+        "collaborative_edit",
+        "knowledge_auditor",
+        "learn_knowledge_base",
+        "audit_knowledge_base",
+        "edit_book_source",
+        "detect_charset",
+        "detect_charset_from_html"
+    ]
+}

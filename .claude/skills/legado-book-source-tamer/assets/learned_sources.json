@@ -1,0 +1,672 @@
+{
+  "sources": {
+    "6873": {
+      "name": "📖Lofter",
+      "url": "📖Lofter",
+      "learned_at": "2026-02-18T10:31:17.511174",
+      "original_file": null
+    },
+    "unknown": {
+      "name": "无插件 - 赛事直播",
+      "url": "http://www.wuchajian.xyz",
+      "learned_at": "2026-02-18T10:31:25.493738",
+      "original_file": "/tmp/test_source_6874.json"
+    },
+    "1751": {
+      "name": "🏷晋江文学",
+      "url": "https://m.jjwxc.net/channel/",
+      "learned_at": "2026-02-18T10:31:41.837937",
+      "original_file": null
+    },
+    "6965": {
+      "name": "📖笔趣阁手机版",
+      "url": "http://www.biqugem.cc",
+      "learned_at": "2026-02-18T10:31:43.057325",
+      "original_file": null
+    },
+    "6949": {
+      "name": "🔞乐成漫画",
+      "url": "https://www.lcmhx.asia",
+      "learned_at": "2026-02-18T10:31:44.307958",
+      "original_file": null
+    },
+    "6948": {
+      "name": "乐乐",
+      "url": "https://www.lcmhx.asia",
+      "learned_at": "2026-02-18T10:31:45.515070",
+      "original_file": null
+    },
+    "6946": {
+      "name": "📪第一版主",
+      "url": "https://www.bz33333333.com/",
+      "learned_at": "2026-02-18T10:31:47.948496",
+      "original_file": null
+    },
+    "6077": {
+      "name": "同人小说网",
+      "url": "https://www.tongrenxsw.com",
+      "learned_at": "2026-02-18T10:31:49.181431",
+      "original_file": null
+    },
+    "6905": {
+      "name": "🍅番茄，七猫，塔读，得间，书旗(段评版聚合源)",
+      "url": "晴天融合VIP5.0",
+      "learned_at": "2026-02-18T10:31:50.428021",
+      "original_file": null
+    },
+    "6943": {
+      "name": "📪第一版主820",
+      "url": "https://www.bz88888.net////##",
+      "learned_at": "2026-02-18T10:31:51.663399",
+      "original_file": null
+    },
+    "6942": {
+      "name": "万能精品聚合",
+      "url": "万能精品聚合",
+      "learned_at": "2026-02-18T10:31:52.906355",
+      "original_file": null
+    },
+    "6941": {
+      "name": "🍓番茄免费小说-[春节限定版]",
+      "url": "https://xingmian.cmcure.com",
+      "learned_at": "2026-02-18T10:31:54.145598",
+      "original_file": null
+    },
+    "6940": {
+      "name": "📪第一版主820",
+      "url": "https://www.bz444444.net",
+      "learned_at": "2026-02-18T10:31:55.369304",
+      "original_file": null
+    },
+    "6937": {
+      "name": "🎆起点中文网(按钮筛选)",
+      "url": "https://m.qidian.com#按钮筛选",
+      "learned_at": "2026-02-18T10:31:56.594577",
+      "original_file": null
+    },
+    "6936": {
+      "name": "得奇小说网",
+      "url": "https://www.deqixs.co",
+      "learned_at": "2026-02-18T10:31:57.802704",
+      "original_file": null
+    },
+    "6332": {
+      "name": "🔞完本小说网",
+      "url": "https://www.finalbooks.work",
+      "learned_at": "2026-02-18T10:31:59.018763",
+      "original_file": null
+    },
+    "6935": {
+      "name": "速读谷",
+      "url": "https://www.sudugu.org/",
+      "learned_at": "2026-02-18T10:32:00.242954",
+      "original_file": null
+    },
+    "6746": {
+      "name": "🌞A晴天聚合5.2.03(终极版)",
+      "url": "晴天融合VIP4.0",
+      "learned_at": "2026-02-18T10:32:01.483058",
+      "original_file": null
+    },
+    "6807": {
+      "name": "哔哩哔哩",
+      "url": "哔哩哔哩",
+      "learned_at": "2026-02-18T10:32:02.721186",
+      "original_file": null
+    },
+    "6934": {
+      "name": "东方小说网",
+      "url": "https://m.cndfzw.com",
+      "learned_at": "2026-02-18T10:32:03.924750",
+      "original_file": null
+    },
+    "6933": {
+      "name": "漫小肆20251217",
+      "url": "https://www.jjmh.top/",
+      "learned_at": "2026-02-18T10:32:05.157315",
+      "original_file": null
+    },
+    "6932": {
+      "name": "🍓番茄免费小说-[春节限定版]",
+      "url": "http://rose.novel.lzink.icu",
+      "learned_at": "2026-02-18T10:32:06.373468",
+      "original_file": null
+    },
+    "6931": {
+      "name": "梦想家文学",
+      "url": "http://www.mxjtedu.com/",
+      "learned_at": "2026-02-18T10:32:07.614075",
+      "original_file": null
+    },
+    "6930": {
+      "name": "东方小说网",
+      "url": "https://www.cndfzw.com",
+      "learned_at": "2026-02-18T10:32:08.821848",
+      "original_file": null
+    },
+    "6928": {
+      "name": "速读谷",
+      "url": "https://www.sudugu.org/",
+      "learned_at": "2026-02-18T10:32:11.220239",
+      "original_file": null
+    },
+    "6927": {
+      "name": "书豪小说网",
+      "url": "https://www.shuhaoxs.com",
+      "learned_at": "2026-02-18T10:32:12.437036",
+      "original_file": null
+    },
+    "6841": {
+      "name": "🍅大灰狼聚合5.2.2(完全版)",
+      "url": "大灰狼融合5.0",
+      "learned_at": "2026-02-18T10:32:13.673535",
+      "original_file": null
+    },
+    "6923": {
+      "name": "久久漫画",
+      "url": "https://www.jjmhw.cc",
+      "learned_at": "2026-02-18T10:32:14.881147",
+      "original_file": null
+    },
+    "6921": {
+      "name": "📚书山聚合",
+      "url": "https://search.shusan.icu",
+      "learned_at": "2026-02-18T10:32:16.114216",
+      "original_file": null
+    },
+    "6918": {
+      "name": "📖笔趣网",
+      "url": "http://www.bqgu.cc",
+      "learned_at": "2026-02-18T10:32:17.353016",
+      "original_file": null
+    },
+    "6917": {
+      "name": "龙头小说",
+      "url": "http://m.ltxs.la/",
+      "learned_at": "2026-02-18T10:32:18.582546",
+      "original_file": null
+    },
+    "6907": {
+      "name": "💫悦恋免费小说 - [☆星眠☆]",
+      "url": "情不知所起一往而深，\n情不知所终一笑而泯。\n––––––––––––––––@星眠",
+      "learned_at": "2026-02-18T10:32:19.848475",
+      "original_file": null
+    },
+    "6906": {
+      "name": "速读谷伪",
+      "url": "http://www.sudugu.co",
+      "learned_at": "2026-02-18T10:32:21.092428",
+      "original_file": null
+    },
+    "6904": {
+      "name": "🍅 番茄的缘",
+      "url": "https://reading.snssdk.com#0",
+      "learned_at": "2026-02-18T10:32:22.308500",
+      "original_file": null
+    },
+    "6900": {
+      "name": "闲看免费小说",
+      "url": "http://nav.jijia-co.com",
+      "learned_at": "2026-02-18T10:32:23.534074",
+      "original_file": null
+    },
+    "6897": {
+      "name": "篱笆好文（优+++）",
+      "url": "https://m.libahao.com",
+      "learned_at": "2026-02-18T10:32:24.732165",
+      "original_file": null
+    },
+    "6896": {
+      "name": "元小说",
+      "url": "https://metanetnovel.com/",
+      "learned_at": "2026-02-18T10:32:25.982170",
+      "original_file": null
+    },
+    "6895": {
+      "name": "篱笆好",
+      "url": "https://m.libahao.com",
+      "learned_at": "2026-02-18T10:32:27.207210",
+      "original_file": null
+    },
+    "6892": {
+      "name": "🍅番茄专业户",
+      "url": "番茄和精品",
+      "learned_at": "2026-02-18T10:32:28.433605",
+      "original_file": null
+    },
+    "4925": {
+      "name": "📚豆瓣阅读",
+      "url": "https://read.douban.com",
+      "learned_at": "2026-02-18T10:32:29.719002",
+      "original_file": null
+    },
+    "6890": {
+      "name": "苦读书",
+      "url": "http://www.kudushu.org",
+      "learned_at": "2026-02-18T10:32:32.157695",
+      "original_file": null
+    },
+    "6887": {
+      "name": "🎉 八零小说",
+      "url": "http://www.80zw.la",
+      "learned_at": "2026-02-18T10:32:33.373464",
+      "original_file": null
+    },
+    "6885": {
+      "name": "🔞UAA-免梯-已绕过会员",
+      "url": "https://api.qiubai.icu",
+      "learned_at": "2026-02-18T10:32:35.790257",
+      "original_file": null
+    },
+    "6884": {
+      "name": "🍅团夕小说",
+      "url": "https://novel.snssdk.com",
+      "learned_at": "2026-02-18T10:32:36.980107",
+      "original_file": null
+    },
+    "6883": {
+      "name": "🎨 177漫画🔥",
+      "url": "http://www.177pic.info",
+      "learned_at": "2026-02-18T10:32:38.188073",
+      "original_file": null
+    },
+    "6882": {
+      "name": "八叉书库",
+      "url": "https://bcshuku.com/",
+      "learned_at": "2026-02-18T10:32:39.387673",
+      "original_file": null
+    },
+    "6881": {
+      "name": "ncode_syosetu(成为小说家吧)",
+      "url": "https://ncode.syosetu.com/",
+      "learned_at": "2026-02-18T10:32:40.621986",
+      "original_file": null
+    },
+    "6880": {
+      "name": "速读谷",
+      "url": "https://www.sudugu.org",
+      "learned_at": "2026-02-18T10:32:41.848467",
+      "original_file": null
+    },
+    "6876": {
+      "name": "18r（免梯子）",
+      "url": "https://jiek.qiubai.icu/",
+      "learned_at": "2026-02-18T10:32:43.072451",
+      "original_file": null
+    },
+    "6875": {
+      "name": "顶点小说ddxsmf",
+      "url": "https://www.ddxsmf.com",
+      "learned_at": "2026-02-18T10:32:44.295563",
+      "original_file": null
+    },
+    "6874": {
+      "name": "无插件 - 赛事直播",
+      "url": "http://www.wuchajian.xyz",
+      "learned_at": "2026-02-18T10:32:45.495269",
+      "original_file": null
+    },
+    "6857": {
+      "name": "多平台精品源",
+      "url": "多平台精品源",
+      "learned_at": "2026-02-18T10:32:46.696256",
+      "original_file": null
+    },
+    "6844": {
+      "name": "速读谷",
+      "url": "https://www.sudugu.org",
+      "learned_at": "2026-02-18T10:32:47.918057",
+      "original_file": null
+    },
+    "6842": {
+      "name": "汉书书",
+      "url": "https://m.hanshubooks.com/",
+      "learned_at": "2026-02-18T10:32:49.161311",
+      "original_file": null
+    },
+    "6837": {
+      "name": "美女图片网",
+      "url": "https://m.ku1372.cc",
+      "learned_at": "2026-02-18T10:32:50.385854",
+      "original_file": null
+    },
+    "6112": {
+      "name": "🌈网易云音乐",
+      "url": "https://网易云音乐.luoyacheng.ip-ddns.com",
+      "learned_at": "2026-02-18T10:32:51.642975",
+      "original_file": null
+    },
+    "6835": {
+      "name": "茶马小说 [耽美]",
+      "url": "https://www.chamabooks.net",
+      "learned_at": "2026-02-18T10:32:52.885439",
+      "original_file": null
+    },
+    "6834": {
+      "name": "天命皆烬小说",
+      "url": "https://www.genwohua.com",
+      "learned_at": "2026-02-18T10:32:54.125544",
+      "original_file": null
+    },
+    "6832": {
+      "name": "茶杯狐",
+      "url": "https://www.cupfox7.com/",
+      "learned_at": "2026-02-18T10:32:55.359807",
+      "original_file": null
+    },
+    "6830": {
+      "name": "万能精品源",
+      "url": "精品源",
+      "learned_at": "2026-02-18T10:32:56.614202",
+      "original_file": null
+    },
+    "6820": {
+      "name": "🌸肉漫屋( 韩漫+ )",
+      "url": "https://roum26.xyz",
+      "learned_at": "2026-02-18T10:32:57.852722",
+      "original_file": null
+    },
+    "6819": {
+      "name": "CA 情色小说（修复）",
+      "url": "https://canovel.com",
+      "learned_at": "2026-02-18T10:32:59.073204",
+      "original_file": null
+    },
+    "6817": {
+      "name": "番茄四合一",
+      "url": "http://103.189.141.163:9587",
+      "learned_at": "2026-02-18T10:33:00.293173",
+      "original_file": null
+    },
+    "6816": {
+      "name": "🌸爱丽丝书屋(免翻)",
+      "url": "https://xn--vcsx64d.alicesw12.xyz/",
+      "learned_at": "2026-02-18T10:33:01.507632",
+      "original_file": null
+    },
+    "5718": {
+      "name": "书耽",
+      "url": "https://app.shubl.com",
+      "learned_at": "2026-02-18T10:33:02.730355",
+      "original_file": null
+    },
+    "6815": {
+      "name": "🌸肉漫屋( 韩漫+ )",
+      "url": "https://roum26.xyz",
+      "learned_at": "2026-02-18T10:33:03.982567",
+      "original_file": null
+    },
+    "6814": {
+      "name": "八叉书库",
+      "url": "https://www.8xsk.info",
+      "learned_at": "2026-02-18T10:33:05.238611",
+      "original_file": null
+    },
+    "6813": {
+      "name": "爱看书吧",
+      "url": "https://m.aidushu8.com",
+      "learned_at": "2026-02-18T10:33:06.469967",
+      "original_file": null
+    },
+    "6812": {
+      "name": "🌸Hitomi漫",
+      "url": "https://hitomi.si/",
+      "learned_at": "2026-02-18T10:33:07.694575",
+      "original_file": null
+    },
+    "6810": {
+      "name": "爱下电子书",
+      "url": "https://ixdzs8.com",
+      "learned_at": "2026-02-18T10:33:08.943626",
+      "original_file": null
+    },
+    "6809": {
+      "name": "八叉书库",
+      "url": "https://www.8xsk.info",
+      "learned_at": "2026-02-18T10:33:10.170487",
+      "original_file": null
+    },
+    "6808": {
+      "name": "笔趣阁",
+      "url": "https://www.bqquge.com",
+      "learned_at": "2026-02-18T10:33:11.386368",
+      "original_file": null
+    },
+    "6806": {
+      "name": "🌸绅士漫画",
+      "url": "https://www.wn06.ru/",
+      "learned_at": "2026-02-18T10:33:12.603601",
+      "original_file": null
+    },
+    "6803": {
+      "name": "百草露小说",
+      "url": "https://m.baicaolu.com",
+      "learned_at": "2026-02-18T10:33:13.843641",
+      "original_file": null
+    },
+    "6792": {
+      "name": "天天看小说🪜",
+      "url": "https://ttks.tw/",
+      "learned_at": "2026-02-18T10:33:15.059582",
+      "original_file": null
+    },
+    "6785": {
+      "name": "必去读书库",
+      "url": "http://m.biqugei.org",
+      "learned_at": "2026-02-18T10:33:16.291955",
+      "original_file": null
+    },
+    "6783": {
+      "name": "爱下电子书",
+      "url": "https://ixdzs.tw/",
+      "learned_at": "2026-02-18T10:33:17.515931",
+      "original_file": null
+    },
+    "6782": {
+      "name": "夜读集小说",
+      "url": "https://www.yeduji.com",
+      "learned_at": "2026-02-18T10:33:18.740504",
+      "original_file": null
+    },
+    "6781": {
+      "name": "看看影院",
+      "url": "http://k9.9967.top/",
+      "learned_at": "2026-02-18T10:33:19.971223",
+      "original_file": null
+    },
+    "6779": {
+      "name": "ESJ Zone",
+      "url": "https://www.esjzone.cc",
+      "learned_at": "2026-02-18T10:33:21.224261",
+      "original_file": null
+    },
+    "6778": {
+      "name": "🎨禁漫天堂",
+      "url": "https://18comic.vip",
+      "learned_at": "2026-02-18T10:33:22.457140",
+      "original_file": null
+    },
+    "6777": {
+      "name": "🌈笔趣中文网",
+      "url": "http://www.bqgz.cc",
+      "learned_at": "2026-02-18T10:33:23.680487",
+      "original_file": null
+    },
+    "6776": {
+      "name": "全能书源",
+      "url": "全能书源",
+      "learned_at": "2026-02-18T10:33:24.901384",
+      "original_file": null
+    },
+    "6775": {
+      "name": "365小说网",
+      "url": "http://www.shukuge.com/",
+      "learned_at": "2026-02-18T10:33:26.114945",
+      "original_file": null
+    },
+    "6774": {
+      "name": "小说520",
+      "url": "https://www.xs520.com/",
+      "learned_at": "2026-02-18T10:33:27.346644",
+      "original_file": null
+    },
+    "6773": {
+      "name": "🄼冰清阁小说",
+      "url": "https://m.bqgcn.com/",
+      "learned_at": "2026-02-18T10:33:28.564571",
+      "original_file": null
+    },
+    "6772": {
+      "name": "顶点小说",
+      "url": "https://www.dingdian6.com",
+      "learned_at": "2026-02-18T10:33:29.805023",
+      "original_file": null
+    },
+    "6771": {
+      "name": "600小说网",
+      "url": "http://www.600zz.com",
+      "learned_at": "2026-02-18T10:33:31.040324",
+      "original_file": null
+    },
+    "6763": {
+      "name": "九桃小说",
+      "url": "https://k09.a506wge.cc",
+      "learned_at": "2026-02-18T10:33:32.278104",
+      "original_file": null
+    },
+    "6761": {
+      "name": "番茄（发现）",
+      "url": "https://fanqienovel.com####嘿嘿",
+      "learned_at": "2026-02-18T10:33:33.522041",
+      "original_file": null
+    },
+    "6760": {
+      "name": "ꂵ 30读书",
+      "url": "https://www.30dushu.com/",
+      "learned_at": "2026-02-18T10:33:34.786659",
+      "original_file": null
+    },
+    "6759": {
+      "name": "🄼 八一",
+      "url": "https://www.blxs.info/",
+      "learned_at": "2026-02-18T10:33:35.993759",
+      "original_file": null
+    },
+    "6758": {
+      "name": "亲亲小说qinqinxiaoshuo",
+      "url": "https://www.qinqinxiaoshuo.cc",
+      "learned_at": "2026-02-18T10:33:37.202598",
+      "original_file": null
+    },
+    "6754": {
+      "name": "云轩阁小说网",
+      "url": "http://www.yunxuange.cc/",
+      "learned_at": "2026-02-18T10:33:39.593888",
+      "original_file": null
+    },
+    "6753": {
+      "name": "kuronavi漫画raw",
+      "url": "https://kuronavi.blog",
+      "learned_at": "2026-02-18T10:33:40.809982",
+      "original_file": null
+    },
+    "6752": {
+      "name": "旧钢笔",
+      "url": "https://p.jiugangbi.com",
+      "learned_at": "2026-02-18T10:33:42.054041",
+      "original_file": null
+    }
+  },
+  "urls": {
+    "📖Lofter": "6873",
+    "http://www.wuchajian.xyz": "6874",
+    "https://m.jjwxc.net/channel/": "1751",
+    "http://www.biqugem.cc": "6965",
+    "https://www.lcmhx.asia": "6948",
+    "https://www.bz33333333.com/": "6946",
+    "https://www.tongrenxsw.com": "6077",
+    "晴天融合VIP5.0": "6905",
+    "https://www.bz88888.net////##": "6943",
+    "万能精品聚合": "6942",
+    "https://xingmian.cmcure.com": "6941",
+    "https://www.bz444444.net": "6940",
+    "https://m.qidian.com#按钮筛选": "6937",
+    "https://www.deqixs.co": "6936",
+    "https://www.finalbooks.work": "6332",
+    "https://www.sudugu.org/": "6928",
+    "晴天融合VIP4.0": "6746",
+    "哔哩哔哩": "6807",
+    "https://m.cndfzw.com": "6934",
+    "https://www.jjmh.top/": "6933",
+    "http://rose.novel.lzink.icu": "6932",
+    "http://www.mxjtedu.com/": "6931",
+    "https://www.cndfzw.com": "6930",
+    "https://www.shuhaoxs.com": "6927",
+    "大灰狼融合5.0": "6841",
+    "https://www.jjmhw.cc": "6923",
+    "https://search.shusan.icu": "6921",
+    "http://www.bqgu.cc": "6918",
+    "http://m.ltxs.la/": "6917",
+    "情不知所起一往而深，\n情不知所终一笑而泯。\n––––––––––––––––@星眠": "6907",
+    "http://www.sudugu.co": "6906",
+    "https://reading.snssdk.com#0": "6904",
+    "http://nav.jijia-co.com": "6900",
+    "https://m.libahao.com": "6895",
+    "https://metanetnovel.com/": "6896",
+    "番茄和精品": "6892",
+    "https://read.douban.com": "4925",
+    "http://www.kudushu.org": "6890",
+    "http://www.80zw.la": "6887",
+    "https://api.qiubai.icu": "6885",
+    "https://novel.snssdk.com": "6884",
+    "http://www.177pic.info": "6883",
+    "https://bcshuku.com/": "6882",
+    "https://ncode.syosetu.com/": "6881",
+    "https://www.sudugu.org": "6844",
+    "https://jiek.qiubai.icu/": "6876",
+    "https://www.ddxsmf.com": "6875",
+    "多平台精品源": "6857",
+    "https://m.hanshubooks.com/": "6842",
+    "https://m.ku1372.cc": "6837",
+    "https://网易云音乐.luoyacheng.ip-ddns.com": "6112",
+    "https://www.chamabooks.net": "6835",
+    "https://www.genwohua.com": "6834",
+    "https://www.cupfox7.com/": "6832",
+    "精品源": "6830",
+    "https://roum26.xyz": "6815",
+    "https://canovel.com": "6819",
+    "http://103.189.141.163:9587": "6817",
+    "https://xn--vcsx64d.alicesw12.xyz/": "6816",
+    "https://app.shubl.com": "5718",
+    "https://www.8xsk.info": "6809",
+    "https://m.aidushu8.com": "6813",
+    "https://hitomi.si/": "6812",
+    "https://ixdzs8.com": "6810",
+    "https://www.bqquge.com": "6808",
+    "https://www.wn06.ru/": "6806",
+    "https://m.baicaolu.com": "6803",
+    "https://ttks.tw/": "6792",
+    "http://m.biqugei.org": "6785",
+    "https://ixdzs.tw/": "6783",
+    "https://www.yeduji.com": "6782",
+    "http://k9.9967.top/": "6781",
+    "https://www.esjzone.cc": "6779",
+    "https://18comic.vip": "6778",
+    "http://www.bqgz.cc": "6777",
+    "全能书源": "6776",
+    "http://www.shukuge.com/": "6775",
+    "https://www.xs520.com/": "6774",
+    "https://m.bqgcn.com/": "6773",
+    "https://www.dingdian6.com": "6772",
+    "http://www.600zz.com": "6771",
+    "https://k09.a506wge.cc": "6763",
+    "https://fanqienovel.com####嘿嘿": "6761",
+    "https://www.30dushu.com/": "6760",
+    "https://www.blxs.info/": "6759",
+    "https://www.qinqinxiaoshuo.cc": "6758",
+    "http://www.yunxuange.cc/": "6754",
+    "https://kuronavi.blog": "6753",
+    "https://p.jiugangbi.com": "6752"
+  },
+  "last_update": "2026-02-18T10:33:42.054049"
+}

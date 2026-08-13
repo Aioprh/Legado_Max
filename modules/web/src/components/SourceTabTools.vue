@@ -10,6 +10,7 @@
       <source-debug v-if="index == 1" />
       <source-list v-if="index == 2" />
       <source-help v-if="index == 3" />
+      <source-ai-generate v-if="index == 4 && isBookSource" />
     </el-tab-pane>
   </el-tabs>
 </template>
@@ -18,6 +19,8 @@
 import { useSourceStore } from '@/store'
 
 const store = useSourceStore()
+
+const isBookSource = /bookSource/i.test(window.location.href)
 
 const current_tab = computed({
   get: () => store.currentTab,
@@ -29,6 +32,7 @@ const tabData = ref([
   ['editDebug', '调试源'],
   ['editList', '源列表'],
   ['editHelp', '帮助信息'],
+  ...(isBookSource ? (['editAi', 'AI生成'] as const) : []),
 ])
 </script>
 

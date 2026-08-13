@@ -1,0 +1,1848 @@
+// ==UserScript==
+// @name         仿M浏览器元素审查
+// @namespace    https://viayoo.com/81gzxv
+// @version      6.9
+// @description  利用AI模仿并生成M浏览器的元素审查（感谢M浏览器原生交互灵感），在脚本菜单开启元素审查，专注精准AD规则生成与编辑，支持DOM树浏览、实时编辑（文字/代码/删除/换图/撤销）、存储管理、JS终端等功能。
+// @author       Via && Gemini
+// @match        *://*/*
+// @grant        GM_addStyle
+// @grant        GM_setClipboard
+// @grant        GM_registerMenuCommand
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_xmlhttpRequest
+// @connect      *
+// @run-at       document-start
+// @license       MIT
+// @icon        data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAAAXNSR0IArs4c6QAAAARzQklUCAgICHwIZIgAAAmCSURBVHic7Z1PTBzXHce/b2dn/7MGGxZYXMsgq6AqpqqB2AdfMLn0EOgFS0ndQ61EMpEq0li2e0j/RLZU2VETaKUQCeKemkj2pZhIzsEY5RDJDpCDY1VBclSqlsFeijFedg07u/t6cBeY3RnvvPmzs7Dvc1pm5r338/v6vd/v/d6bXYDD4XA4HA6Hw+FwOBxO+UCsrrD9yNFjWUJfJ0AXBRoJaB0ICVjdjiNQmqQgSwRYpMB0Fpm//WN29q6VTVgiyMGDB33BfXWnXQRnAdJiRZ07BUrxAKAfrC0v/XV+fn7dbH2mBGlvbw9mRe8ACM4SkAazxuxkKOhDQsn78eXYR2aEcZkxIuvxnSOEvF/pYgAAAWkAwZ+q9tWdN1OPYLCc66XOl8cI8Gszje9KCOmORJsOxKSFzwFQ1uKGBDnc0fVHQsivjJStBAjwk/rGqC+2KN1iLcssyOGOrt+AkN+zlqs4CDle19C4urQo3WEqxvLwoUOHvL7qmnnuM/RBKV1cW15qYXHyTE7dG64e4GLohxDSGNxbe4alDJMgxEXeYTOJQwhhCnx0C9J+5OgxAvIDdpMqG0LIgfYjR4/pfV63IJRkf2bMJA5L3zEIAt0qc5Sw9J1uQQjAnblBWPpOv1OnXBDDMPSdfkEI2WPIGA5T35lKLnKshwtSZnBBygwuSJmx4wXpFgO4Fo7iZvV+dIs7f+u+bAQJhkIIhkLM5S4E96JN9KJJEDHgry5Zu3bhdtoAAHjjjTfR29sLALhx4wbGxkZ1l40K4ubnNtFbsnbtwnFBBgcH0dPzyubfvb29IIRidHSs5O0GgwEMDw/b2m4xHJ2y8jslx6uv9tk6jQRDIdV2e3peweDgoG3t6sExQbTEcBqnRXFEkGJiTEyMI7G2pnm/U/ThnL8Gn4QLU0SfhBtwzl+D1m2+JZ/E2homJsY17zspSsl9SDExbk9OavqPPk8QZwI1aHpBZ3eJfnSJfvwiUI2FjIyR5ApupBIFz42OjiEYCOFET49qPTkbS+1TdJ86qY82/cFsY3rEGBoeKrjeKogYqWrASf8ehF36D8qEXQJOeIPoFgP4Sn6GOM0q7t+5ewf1kXo0t6iffm1paUEkEsHdu+aP78akhff0PFcyQYyK0Sn6MFLVgCa39qgoRq3gRq83hHuZDUjZtOJeqUQpK0HMiHE13AgvKXR1U6kEvthIoEv0K66PJFewRrNoFjyK617iQp+3CtPpdUdE0SuI7T7EzDQ1FIoUXJ+TU3g3EcNcRgYADARqFPdHnj3ZLH8pGEGrqBRmKBTByVWpQJScDU77FFujLKNiAMClYKTAX4wkV9D/dGFTDACQtn2ek1NbnzMy+p8uYCS5oqgj7BJUhQaei3J7clLT3lJEX7ZNWWbE6PME0e8PK66NJFc2//dvZyGTRovLgxSyGEquYD4rK+7PpNdRRVxoF32b12oFN6SMrBA2h13Tl94pS/dR0sOdL+s+yW1GDAD4onq/Ikc1J6fQ/3RBb/OqXA83KaavhYyMnz75j+bzbw++rTl9AcDk5C2m6evbma919bXlU5ZZMTpFn0IMAHg3ETNtV34dTYL4wsWjU9OXpYKYFQMATuTtaUylEqpTCwBEXW4MhSK4Wb0fN6v3YygUQdSlHqfMZWRM5S0Q+7xVL7TFCVEsi7KsEAMA2tzKqOi7dEr1uajLjWt7ogrH3ySI6BR9qlFUrq5uT1CzLTVKHX1Z4kOMiNEtBjDgr9a9h7GQkXEl8RhTchIAMFwVUXTudqZSCQzGY5a0k6OYT5mYGH/hlkHJfIhWKjuH1sjI7fTpJX9HsNPt03z2h9sWhWbbyVFs+rJqy8D2bC9lf81OE6JzQJt911urHSv/LVqYFsRoKvty4rFiIVcMKSPjo2dbi7yZtPZLSXOZrXrNtpPD7JaBXixbh1gVt18NN6BzW35Ka0EYdblxfU8UVXmr+Xg2g34Npz7gr1akWmbkZzj99GFRm6wIWEq+DrEqRMyPqrQiISmbRv+qhKlUAlJGhvT/sFZLDLW6tCK47VgVPerF0uSiFSHibTmJU/6ts8ndniBaBVF1LSJl05vRVDFaBbEgKhvfiL+wTKnFAGxw6mZHyoy8rkgYAsDFYJ1puy4FlQlFrVxWDifEAGyKssyKkp+hbRO9mofg9JxcPB/YW5CGz29jO06JAdiY7TWTNZ3LyDghBlErbJnXJfpBURhdfRyuR7Pbg7BLQLNLxPW8aeh8YK9iCgSeJysvJpdV7bJLDL3ZXlvXIWZGyuDaI8SzGcW1twI1uBaOKpKCWicXWwUR18LRAjHi2QwG1x6pt+ngyMhh+xau0ZESp1ncy2wUJABrBTdO+sJoFTw4KIgFW7gUwClfGBdCtagVCmOWU6sS5lWiMLvFKKs9daOiSNk0ptPrOCEGCvbVm92eAjGA51Nbs0qoHM9mMBB/hG9VQt1SjIyyEgQwJ8pXchI/FnwKn8LCnJzC6fhDxQo+R6mmqbITBDAuyjLN4vpGHFJGRpvbU7A610LKyLiSWMbF5HLBmSygtD6jbE6d5KNn8ZhMJlRT2eOpBMZTCbQKIvq8VWhzexRpFuB5OuS7dArjG/GyXGcUw5Y9dT0Uy3299vprupJ19/Y1K/5uX/5n0TLBUAifffqZ5n07xHBsT10vxUJip3BqZORw9P0QLVGsSmVrobVl4LQYQBm8Yzg0PKTonGJboVYxOjpW0K7TYgAO+pB8ctufrCNj+xkuI+e3jLbLil4f4vg7hjmMdsjlxGO85a9BlYuo7vTZ1a5dlI0gRpmSkwUnRHYyjvsQjhIuSJnBBSkzuCBlBsNX/NFVG+3Y3TD0HcNX/KH4ASaOOgx9p/9rYsEFMQpL3+n/mlgKpm/552zB0ncMgrj+bswcDkvfMR0Uf6mj61+EkAPsJlUuFPTf92emdfcZU9hLKf2Q3aTKhmbpByzPMwmSePzfjymli2wmVS4U9OHG0ycjLGWYBJmfn1+nIL9jM6tyoZT89sGDBxssZZjP1SwtLnxT3xj1g5DjrGUrCkov35+dvsJazNBBp9iidKs+Go0CpMNI+d0OpfjL/dnps0bKGv0dQ8Qk6fP6xigFId1G69iNUOC9+7NfXzBa3rAgABBblL6MNES/JyDHQaD+jnKlQBGjlJ65Pzv9ZzPVWPbjxKF9db8EyDuE4JAVde4UKMUDCvphYnnpquM/TqzGjzo6jrog/LwSfr7bRcmn9765y1NKHA6Hw+FwOBwOh8Ph7Fr+B/wycH3EQc9uAAAAAElFTkSuQmCC
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    let isDebugMode = false;
+    let isLogging = false;
+    let isPicking = false;
+    let isCollapsed = false;
+    let isEditingText = false;
+    let currentTarget = null;
+    let activePreviewStyle = null;
+    let adUpdateTimer = null;
+    let historyStack = [];
+    let searchResults = [];
+    let currentSearchIdx = -1;
+    
+    const DEFAULT_SVG = `<svg viewBox="0 0 24 24"> <rect x="6" y="6" width="14" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8" fill="none" style="color:var(--mb-text); opacity:0.7;"/> <path d="M9 10h8M9 13h5M9 16h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" style="color:var(--mb-text); opacity:0.4;"/><g transform="translate(2, 2)"><path d="M4.5 4.5l6.5 6.5M4.5 4.5v5.5M4.5 4.5h5.5" stroke="#007aff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`;
+    const host = document.createElement('div');
+    host.id = 'mb-debug-host';
+    host.style.cssText = 'position:absolute;top:0;left:0;width:0;height:0;z-index:2147483647;';
+    document.documentElement.appendChild(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+
+    const api = {
+        addStyle: (css) => {
+            const style = document.createElement('style');
+            style.textContent = css;
+            shadow.appendChild(style);
+        },
+        setClipboard: (text) => {
+            if (typeof GM_setClipboard !== 'undefined') {
+                GM_setClipboard(text);
+                alert('已复制');
+            } else {
+                navigator.clipboard.writeText(text).then(() => alert('已复制')).catch(() => {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    alert('已复制');
+                });
+            }
+        },
+        registerMenu: (name, fn) => {
+            if (typeof GM_registerMenuCommand !== 'undefined') {
+                GM_registerMenuCommand(name, fn);
+            }
+        },
+        getValue: (key, def) => {
+            if (typeof GM_getValue !== 'undefined') {
+                return GM_getValue(key, def);
+            }
+            const val = localStorage.getItem(key);
+            return val === null ? def : JSON.parse(val);
+        },
+        setValue: (key, val) => {
+            if (typeof GM_setValue !== 'undefined') {
+                GM_setValue(key, val);
+            } else {
+                localStorage.setItem(key, JSON.stringify(val));
+            }
+        }
+    };
+    
+    const formatAndHighlight = (code, lang) => {
+        if (!code) return "";
+        let fmt = code.replace(/\{/g, ' {\n    ').replace(/\}/g, '\n}\n').replace(/;/g, ';\n    ').replace(/\n\s*\n/g, '\n');
+        let level = 0;
+        let result = fmt.split('\n').map(line => {
+            line = line.trim();
+            if (line.includes('}')) level--;
+            let l = '    '.repeat(Math.max(0, level)) + line;
+            if (line.includes('{')) level++;
+            return l;
+        }).join('\n');
+
+        if (result.length > 15000) result = result.substring(0, 15000) + "\n...[此处代码过长已截断]";
+        const escapeHTML = (str) => str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#039;"}[m]));
+        
+        if (lang === 'js') {
+            let safeJS = escapeHTML(result);
+            return safeJS
+                .replace(/(&quot;.*?&quot;|&#039;.*?&#039;|`.*?`)/g, '<span style="color:#7fb4ca">$1</span>')
+                .replace(/\b(var|let|const|function|if|else|return|for|while|new|try|catch|async|await|case|switch|break|default)\b/g, '<span style="color:#d197d9">$1</span>');
+        } else {
+            let safeCSS = escapeHTML(result);
+            return safeCSS
+                .replace(/^(\s*)([^{}\n]+)(\s*\{)/gm, '$1<span style="color:#deb887">$2</span>$3')
+                .replace(/:(\s*)([^;#}\n]+)(;|\n)/g, ':<span style="color:#7fb4ca">$1$2</span>$3');
+        }
+    };
+
+    api.addStyle(`
+        :host {
+            --mb-bg: #ffffff; --mb-text: #333; --mb-header-bg: #f1f1f1; --mb-border: #ddd; --mb-item-bg: #fdfdfd;
+            --mb-code-key: #881280; --mb-code-attr: #994500; --mb-code-val: #1a1aa6;
+            --mb-glass-bg: rgba(255, 255, 255, 0.7); --mb-glass-border: rgba(255, 255, 255, 0.5);
+            font-weight: 700 !important;
+            font-size: 14px !important; line-height: 1.4 !important; font-family: sans-serif !important; -webkit-text-size-adjust: 100% !important;
+        }
+        @media (prefers-color-scheme: dark) {
+            :host {
+                --mb-bg: #1e1e1e; --mb-text: #ccc; --mb-header-bg: #2d2d2d; --mb-border: #444; --mb-item-bg: #252525;
+                --mb-code-key: #d197d9; --mb-code-attr: #deb887; --mb-code-val: #7fb4ca;
+                --mb-glass-bg: rgba(45, 45, 45, 0.7); --mb-glass-border: rgba(255, 255, 255, 0.1);
+            }
+        }
+        #mb-debug-panel {
+            position: fixed; left: 0; bottom: 0; width: 100%; height: 50%;
+            background: var(--mb-bg) !important; z-index: 2147483647 !important; 
+            display: none; flex-direction: column; box-shadow: 0 -2px 15px rgba(0,0,0,0.3);
+            border-top: 1px solid var(--mb-border);
+            transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1); color: var(--mb-text);
+        }
+        #mb-debug-panel * { text-align: left; box-sizing: border-box; font-size: 14px; }
+        #mb-main-stage { display: flex; flex-wrap: nowrap; width: auto; height: calc(100% - 40px); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .mb-page { width: 100%; flex: 0 0 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+        #mb-debug-header { display: flex; align-items: center; background: var(--mb-header-bg); height: 40px; border-bottom: 1px solid var(--mb-border); flex-shrink: 0; padding: 0; }
+        .mb-header-left, .mb-header-right { flex-shrink: 0; display: flex; align-items: center; padding: 0 12px; }
+        .mb-header-middle { flex: 1; display: flex; align-items: center; overflow-x: auto; white-space: nowrap; }
+        .mb-header-middle::-webkit-scrollbar { display: none; }
+        
+        .mb-tool-btn { margin-right: 18px; cursor: pointer; color: var(--mb-text); font-size: 14px; user-select: none; flex-shrink: 0; }
+        .mb-tool-btn.active { color: #ff4757 !important; font-weight: bold; }
+        #mb-btn-close { margin-right: 0; font-size: 18px; }
+
+        #mb-debug-content, #mb-ad-content, #mb-data-content, #mb-icon-content { flex: 1; overflow: auto; padding: 10px; background: var(--mb-bg) !important; }
+        
+        .ad-rule-item, .data-group-box, .icon-config-card { background: var(--mb-item-bg); border: 1px solid var(--mb-border); border-radius: 6px; padding: 12px; margin-bottom: 15px; }
+        .ad-rule-display, .data-row-display { display: block; word-break: break-all; font-weight: bold; margin-bottom: 10px; font-size: 14px; line-height: 1.4; font-family: monospace; }
+        .hl-domain { color: #ff8c00; } .hl-sep { color: #007bff; } .hl-selector { color: #808080; } .hl-url { color: #ff0000; }
+
+        .ad-action-bar, .data-action-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+        .ad-mini-btn { padding: 5px 12px; font-size: 12px !important; border: 1px solid var(--mb-border); background: var(--mb-bg); cursor: pointer; border-radius: 4px; color: var(--mb-text); }
+        
+        .icon-config-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 14px; }
+        .icon-config-row span { font-size: 14px; }
+        .icon-input { width: 80px; padding: 4px; border: 1px solid var(--mb-border); background: var(--mb-bg); color: var(--mb-text); border-radius: 4px; font-size: 14px; }
+        .icon-area { width: 100%; height: 80px; margin-top: 8px; font-family: monospace; font-size: 12px; padding: 6px; border: 1px solid var(--mb-border); background: var(--mb-bg); color: var(--mb-text); resize: none; }
+
+        .data-item-card { border-top: 1px solid var(--mb-border); padding: 8px 0; margin-top: 8px; }
+        .data-key-label { color: var(--mb-code-attr); font-weight: bold; font-size: 13px; }
+
+        .node-wrapper { margin-left: 14px; border-left: 1px solid var(--mb-border); font-family: monospace; font-size: 13px; }
+        .node-row { padding: 2px 4px; cursor: pointer; white-space: pre-wrap; word-break: break-all; display: flex; color: var(--mb-text); font-size: 13px; }
+        .node-row.selected { background: rgba(30, 144, 255, 0.2); outline: 1px solid #1e90ff; }
+        .node-row span { font-size: 13px; }
+        .toggle-btn { width: 18px; flex-shrink: 0; text-align: center; font-size: 10px; color: #999; cursor: pointer; }
+
+        #mb-debug-trigger { position: fixed; right: 16px; width: 32px; height: 32px; background: var(--mb-glass-bg); backdrop-filter: blur(15px) saturate(160%); -webkit-backdrop-filter: blur(15px) saturate(160%); border-radius: 14px; border: 1.5px solid var(--mb-glass-border); box-shadow: 0 6px 16px rgba(0,0,0,0.12), inset 0 0 2px rgba(255,255,255,0.8); cursor: pointer; z-index: 2147483646; display: none; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); user-select: none; -webkit-tap-highlight-color: transparent; }
+        #mb-debug-trigger svg { filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.15)); }
+
+        #mb-js-content {height: 100%;display: flex;flex-direction: column; padding: 10px; box-sizing: border-box;background: var(--mb-bg) !important;}
+        #mb-js-log {flex: 1; margin-top: 10px;overflow-y: auto !important;font-family: monospace;font-size: 11px;border-top: 1px solid var(--mb-border);padding-top: 5px;-webkit-overflow-scrolling: touch;}
+        #mb-js-input {flex-shrink: 0; height: 100px; background: var(--mb-bg); color: var(--mb-text); border: 1px solid var(--mb-border); padding: 8px; font-size: 13px;}
+        .log-item { border-bottom: 0.5px solid var(--mb-border); padding: 4px 0; white-space: pre-wrap; font-size: 11px;}
+        .log-warn { color: #f1c40f; }
+        .log-error { color: #ff4757; background: rgba(255, 71, 87, 0.05); }
+        .log-result { color: #2ecc71; }
+ 
+        #mb-debug-content { display: flex; flex-direction: column; height: 100%; padding: 0 !important; margin: 0; }
+        #mb-dom-tree { flex: 1; overflow-y: auto; padding: 10px; }
+        #mb-node-actions { display: none; gap: 8px; padding: 10px; background: var(--mb-header-bg); border-top: 1px solid var(--mb-border); flex-wrap: wrap; flex-shrink: 0; }
+        .edit-btn { padding: 6px 12px; border-radius: 4px; border: 1px solid var(--mb-border); background: var(--mb-bg); color: var(--mb-text); cursor: pointer; font-size: 12px; font-weight: bold; }
+        .edit-btn.active { background: #ff4757; color: #fff; border-color: #ff4757; }
+        .html-edit-area { background: #1e1e1e !important; color: #fab1a0 !important; width: calc(100% - 20px); min-height: 80px; outline: none; padding: 8px; margin: 5px 0 5px 18px; font-family: monospace; font-size: 12px; display: none; white-space: pre-wrap; word-break: break-all; border: 1px dashed #ff4757; position: relative; z-index: 10; }
+        body.mb-editing-text a, body.mb-editing-text button { pointer-events: none !important; }
+
+        .hl-domain { color: #ff8c00; } .hl-sep { color: #007bff; } .hl-selector { color: #808080; } .hl-url { color: #ff0000; }
+        .hl-pseudo { color: #d197d9; } .hl-paren { color: #deb887; }
+
+        @media (min-width: 768px) {
+            #mb-js-content { flex-direction: row; gap: 12px; }
+            #mb-js-input { flex: 1; height: auto !important; }
+            #mb-js-log { flex: 1; margin-top: 0; border-top: none; border-left: 1px solid var(--mb-border); padding-left: 10px; }
+            #mb-ad-content, #mb-data-content, #mb-icon-content { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; align-content: start; }
+        }
+    `);
+
+    const globalStyle = document.createElement('style');
+    globalStyle.textContent = `
+        .mb-inspect-hl { outline: 2px dashed #ff4757 !important; outline-offset: 2px !important; background: rgba(255, 71, 87, 0.1) !important; }
+        body.mb-picking-mode { cursor: crosshair !important; }
+        body.mb-picking-mode a, body.mb-picking-mode button, body.mb-picking-mode [onclick], body.mb-picking-mode input { cursor: crosshair !important; pointer-events: auto !important; }
+    `;
+    document.head.appendChild(globalStyle);
+
+    const panel = document.createElement('div');
+    panel.id = 'mb-debug-panel';
+    panel.innerHTML = `
+        <div id="mb-debug-header">
+            <div class="mb-header-left">
+                <span class="mb-tool-btn" id="mb-btn-pick">🎯选取</span>
+            </div>
+            <div class="mb-header-middle">
+                <span class="mb-tool-btn" id="mb-btn-fold">▼收起</span>
+                <span class="mb-tool-btn" id="mb-btn-back" style="display:none;">⬅ 返回</span>
+                <span class="mb-tool-btn" id="mb-btn-parent">父</span>
+                <span class="mb-tool-btn" id="mb-btn-restore">恢复</span>
+                <span class="mb-tool-btn" id="mb-btn-to-ad" style="color:#d11; font-weight:bold;">AD规则</span>
+                <span class="mb-tool-btn" id="mb-btn-to-js" style="color:#f1c40f; font-weight:bold;">JS代码</span>
+                <span class="mb-tool-btn" id="mb-btn-to-net" style="color:#0fb9b1; font-weight:bold;">网络</span>
+                <span class="mb-tool-btn" id="mb-btn-to-data" style="color:#009432; font-weight:bold;">🛡️数据</span>
+                <span class="mb-tool-btn" id="mb-btn-copy-html">📋复制</span>
+                <span class="mb-tool-btn" id="mb-btn-to-icon" style="color:#007aff; font-weight:bold;">🧩图标</span>
+            </div>
+            <div class="mb-header-right">
+                <span class="mb-tool-btn" id="mb-btn-close">✕</span>
+            </div>
+        </div>
+
+        <div id="mb-main-stage">
+            <div class="mb-page" id="page-dom" style="padding:0;">
+                <div id="mb-debug-content">
+                    <div id="mb-dom-tree"></div>
+                    <div id="mb-node-actions">
+                        <button class="edit-btn" id="btn-edit-html">🏗️代码模式</button>
+                        <button class="edit-btn" id="btn-edit-node">📝文字模式</button>
+                        <button class="edit-btn" id="btn-edit-img" style="display:none;">🖼️换图</button>
+                        <button class="edit-btn" id="btn-del-node" style="color:#e74c3c;">✂️删除</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-page" id="page-js">
+                <div id="mb-js-content">
+                    <textarea id="mb-js-input" placeholder="输入 JS 代码..."></textarea>
+                    <div class="ad-action-bar" style="margin-top:8px;">
+                        <button class="ad-mini-btn" id="btn-js-run" style="background:#f1c40f; color:#000; border:none; font-weight:bold;">执行</button>
+                        <button class="ad-mini-btn" id="btn-js-clear">清空日志</button>
+                        <button class="ad-mini-btn" id="btn-js-copy-all">复制日志</button>
+                        <button class="ad-mini-btn" id="btn-log-switch">监听网页日志</button>
+                    </div>
+                    <div id="mb-js-log"></div>
+                </div>
+            </div>
+
+            <div class="mb-page" id="page-ad">
+                <div id="mb-ad-content"></div>
+            </div>
+
+            <div class="mb-page" id="page-data">
+                <div id="mb-data-content"></div>
+            </div>
+
+            <div class="mb-page" id="page-icon">
+                <div id="mb-icon-content"></div>
+            </div>
+            
+            <div class="mb-page" id="page-copy-options">
+                <div id="mb-copy-content" style="padding:15px; display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:12px;">
+                    <div class="data-group-box" id="copy-box-html" style="cursor:pointer; text-align:center; padding:20px;">
+                        <div style="font-size:24px; margin-bottom:8px;">📄</div>
+                        <div style="font-weight:bold;">复制 HTML</div>
+                        <div style="font-size:10px; opacity:0.6; margin-top:4px;">原始代码</div>
+                    </div>
+                    <div class="data-group-box" id="copy-box-text" style="cursor:pointer; text-align:center; padding:20px;">
+                        <div style="font-size:24px; margin-bottom:8px;">📝</div>
+                        <div style="font-weight:bold;">提取文字</div>
+                        <div style="font-size:10px; opacity:0.6; margin-top:4px;">排版去空格</div>
+                    </div>
+                    <div class="data-group-box" id="copy-box-xpath" style="cursor:pointer; text-align:center; padding:20px;">
+                        <div style="font-size:24px; margin-bottom:8px;">📍</div>
+                        <div style="font-weight:bold;">复制 XPath</div>
+                        <div style="font-size:10px; opacity:0.6; margin-top:4px;">元素路径</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-page" id="page-code">
+                <div id="mb-debug-header-code" style="display:flex; align-items:center; background:var(--mb-header-bg); height:40px; border-bottom:1px solid var(--mb-border);">
+                    <div class="mb-header-left"><span class="mb-tool-btn" id="mb-btn-code-back">⬅ 返回</span></div>
+                    <div class="mb-header-middle"><span id="mb-code-title" style="font-size:12px;opacity:0.8;">代码查看</span></div>
+                    <div class="mb-header-right"><span class="mb-tool-btn" id="mb-btn-code-copy">复制全部</span></div>
+                </div>
+                <div id="mb-code-display" style="flex:1; overflow:auto; padding:15px; font-family:monospace; font-size:12px; white-space:pre; background:var(--mb-item-bg); line-height:1.5;"></div>
+            </div>
+
+            <div class="mb-page" id="page-editor">
+                <div id="mb-editor-header" style="display:flex; align-items:center; background:var(--mb-header-bg); height:40px; border-bottom:1px solid var(--mb-border); flex-shrink:0;">
+                    <div class="mb-header-left"><span class="mb-tool-btn" id="mb-btn-editor-back">⬅ 返回</span></div>
+                    <div class="mb-header-middle"><span style="font-size:12px;opacity:0.8;">HTML 自由编辑模式</span></div>
+                    <div class="mb-header-right"><span class="mb-tool-btn" id="mb-btn-editor-save" style="color:#2ecc71; font-weight:bold;">完成同步</span></div>
+                </div>
+                <div id="mb-editor-container" style="flex:1; position:relative; overflow:hidden; background:#1e1e1e;">
+                    <textarea id="mb-editor-input" spellcheck="false" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:2; background:transparent; color:transparent; caret-color:#fff; border:none; padding:15px; font-family:monospace; font-size:13px; line-height:1.5; resize:none; outline:none; white-space:pre; overflow:auto;"></textarea>
+                    <div id="mb-editor-pre" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; padding:15px; font-family:monospace; font-size:13px; line-height:1.5; white-space:pre; overflow:hidden; pointer-events:none; background:#1e1e1e;"></div>
+                </div>
+            </div>
+            
+          <div class="mb-page" id="page-net" style="flex-direction:column;">
+                <div id="mb-net-container" style="flex:1; display:flex; flex-direction:column; overflow:hidden;"></div>
+          </div>
+
+        </div>
+    `;
+    shadow.appendChild(panel);
+
+    const trigger = document.createElement('div');
+    trigger.id = 'mb-debug-trigger';
+    shadow.appendChild(trigger);
+
+    const domContent = shadow.getElementById('mb-debug-content');
+    const adContent = shadow.getElementById('mb-ad-content');
+    const dataContent = shadow.getElementById('mb-data-content');
+    const iconContent = shadow.getElementById('mb-icon-content');
+    const stage = shadow.getElementById('mb-main-stage');
+    const btnPick = shadow.getElementById('mb-btn-pick');
+    const btnFold = shadow.getElementById('mb-btn-fold');
+    const jsLog = shadow.getElementById('mb-js-log');
+    const jsInput = shadow.getElementById('mb-js-input');
+    const btnLogSwitch = shadow.getElementById('btn-log-switch');
+
+    function addLog(args, type = '') {
+        const isManualRun = (type === 'log-result' || type === 'log-error');
+        if (!isManualRun && !isLogging && !type.startsWith('script')) return;
+        if (jsLog.childNodes.length >= 300) jsLog.lastChild.remove();
+        const div = document.createElement('div');
+        div.className = `log-item ${type}`;
+        div.style.cssText = "word-break:break-all;line-height:1.4;margin-bottom:2px;font-size:12px;";
+        const time = `[${new Date().toLocaleTimeString(undefined, {hour12: false})}] `;
+        const ArrayArgs = Array.isArray(args) ? args : [args];
+        if (type === 'log-table' || (ArrayArgs.length === 1 && ArrayArgs[0] && typeof ArrayArgs[0] === 'object' && !ArrayArgs[0].nodeType)) {
+            try {
+                const data = ArrayArgs[0];
+                const table = document.createElement('table');
+                table.style.cssText = "border-collapse:collapse;width:100%;margin:5px 0;border:1px solid var(--mb-border);font-size:10px;";
+                const isArr = Array.isArray(data);
+                const keys = isArr ? (data[0] && typeof data[0] === 'object' ? Object.keys(data[0]) : ['Value']) : Object.keys(data);
+                
+                const head = table.insertRow();
+                ['(idx)', ...keys].forEach(k => {
+                    const th = document.createElement('th');
+                    th.style.cssText = "border:1px solid var(--mb-border);padding:2px;background:var(--mb-header-bg);";
+                    th.innerText = k;
+                    head.appendChild(th);
+                });
+                const rows = isArr ? data : [data];
+                rows.forEach((row, i) => {
+                    const tr = table.insertRow();
+                    tr.insertCell().innerText = i;
+                    keys.forEach(k => {
+                        const td = tr.insertCell();
+                        td.style.border = "1px solid var(--mb-border)";
+                        const val = (isArr && typeof row !== 'object') ? row : row[k];
+                        td.innerText = val !== undefined ? String(val) : '';
+                    });
+                });
+                div.innerText = time;
+                div.appendChild(table);
+            } catch (e) { div.innerText = time + "[Table解析失败] " + String(ArrayArgs[0]); }
+        }
+        else if (typeof ArrayArgs[0] === 'string' && ArrayArgs[0].includes('%c')) {
+            div.innerText = time;
+            let parts = ArrayArgs[0].split('%c'), styles = ArrayArgs.slice(1);
+            if (parts[0]) div.appendChild(document.createTextNode(parts[0]));
+            for (let i = 1; i < parts.length; i++) {
+                const span = document.createElement('span');
+                span.innerText = parts[i];
+                if (styles[i-1]) span.style.cssText = styles[i-1];
+                div.appendChild(span);
+            }
+        }
+        else {
+            const out = ArrayArgs.map(arg => {
+                if (arg === null) return 'null';
+                if (typeof arg === 'object') {
+                    try { return JSON.stringify(arg, (k,v) => typeof v === 'bigint' ? v.toString() : v, 2); }
+                    catch(e) { return Object.prototype.toString.call(arg); }
+                }
+                return String(arg);
+            }).join(' ');
+            div.innerText = time + (out.length > 5000 ? out.substring(0, 5000) + "..." : out);
+        }
+        jsLog.prepend(div);
+    }
+    (function initLogHook() {
+        const levels = { log:'', error:'log-error', warn:'log-warn', info:'log-result', table:'log-table' };
+        for (const key in levels) {
+            const original = console[key];
+            console[key] = function(...args) {
+                original.apply(console, args);
+                const isStackIdx = new Error().stack?.includes('eval') || new Error().stack?.includes('anonymous');
+                if (isLogging || isStackIdx || key === 'error') {
+                    addLog(args, levels[key]);
+                }
+            };
+        }
+    })();
+
+    function updateLogBtnUI() {
+        if (isLogging) {
+            btnLogSwitch.style.background = '#f1c40f';
+            btnLogSwitch.style.color = '#000';
+            btnLogSwitch.innerText = '停止监听';
+        } else {
+            btnLogSwitch.style.background = 'var(--mb-bg)';
+            btnLogSwitch.style.color = 'var(--mb-text)';
+            btnLogSwitch.innerText = '监听网页日志';
+        }
+    }
+    btnLogSwitch.onclick = () => {
+        isLogging = !isLogging;
+        updateLogBtnUI();
+        isLogging ? addLog("已开启网页日志监听", "log-result") : addLog("已停止网页日志监听", "log-warn");
+    };
+ 
+    function switchToPage(index) {
+        stage.style.transform = `translateX(-${index * 100}%)`;
+        const btnBack = shadow.getElementById('mb-btn-back');
+        const btnPick = shadow.getElementById('mb-btn-pick');
+        if (btnBack && btnPick) {
+            if (index === 0 || index === 6) {
+                btnBack.style.display = 'none';
+            } else {
+                btnBack.style.display = 'inline-block';
+                btnPick.after(btnBack);
+            }
+        }
+    }
+
+    function updateFoldState() {
+        if (isCollapsed) {
+            panel.style.height = '40px';
+            btnFold.innerText = '▲展开';
+        } else {
+            const adaptiveHeight = window.innerHeight < 600 ? '40%' : '50%';
+            panel.style.height = adaptiveHeight;
+            document.body.style.paddingBottom = adaptiveHeight.replace('%', 'vh');
+            btnFold.innerText = '▼收起';
+        }
+    }
+    
+    const toggleIframePointer = (disabled) => {
+        document.querySelectorAll('iframe').forEach(iframe => {
+            if (disabled) {
+                if (!iframe.hasAttribute('data-mb-pe')) {
+                    iframe.setAttribute('data-mb-pe', iframe.style.pointerEvents || 'auto');
+                    iframe.style.pointerEvents = 'none';
+                }
+            } else {
+                if (iframe.hasAttribute('data-mb-pe')) {
+                    iframe.style.pointerEvents = iframe.getAttribute('data-mb-pe');
+                    iframe.removeAttribute('data-mb-pe');
+                }
+            }
+        });
+    };
+
+    function startPicking() {
+        isPicking = true;
+        btnPick.classList.add('active');
+        document.body.classList.add('mb-picking-mode');
+        toggleIframePointer(true);
+        window.onbeforeunload = () => { if (isPicking) return "正在审查元素"; };
+    }
+
+    function stopPicking() {
+        isPicking = false;
+        btnPick.classList.remove('active');
+        document.body.classList.remove('mb-picking-mode');
+        toggleIframePointer(false);
+        window.onbeforeunload = null;
+    }
+
+    function togglePanel(show) {
+        isDebugMode = show;
+        panel.style.display = show ? 'flex' : 'none';
+        if (show) {
+            document.body.style.paddingBottom = '50vh';
+            isCollapsed = false;
+            updateFoldState();
+            startPicking();
+        } else {
+            document.body.style.removeProperty('padding-bottom');
+            stopPicking();
+            if (currentTarget) currentTarget.classList.remove('mb-inspect-hl');
+        }
+    }
+
+    function highlightAdRule(rule) {
+        const match = rule.match(/^(.*?)(###?)(.*)$/);
+        if (!match) return `<span>${rule}</span>`;
+        let rest = match[3].replace(/("(.*?)")/g, '<span class="hl-url">"$2"</span>').replace(/(:(?:has|not|is|where|nth-child|hover|focus|active))(\(.*?\))?/g, '<span class="hl-pseudo">$1</span><span class="hl-paren">$2</span>');
+        return `<span class="hl-domain">${match[1]}</span><span class="hl-sep">${match[2]}</span><span class="hl-selector">${rest}</span>`;
+    }
+    
+    function getXPath(el) {
+        if (el.id !== "") return `//*[@id="${el.id}"]`;
+        if (el === document.body) return '/html/body';
+        let ix = 0;
+        let siblings = el.parentNode.childNodes;
+        for (let i = 0; i < siblings.length; i++) {
+            let sibling = siblings[i];
+            if (sibling === el) return getXPath(el.parentNode) + '/' + el.tagName.toLowerCase() + '[' + (ix + 1) + ']';
+            if (sibling.nodeType === 1 && sibling.tagName === el.tagName) ix++;
+        }
+    }
+    
+    /* 参考了[轻量规则](https://raw.githubusercontent.com/damengzhu/abpmerge/main/abpmerge.txt) (Abpmerge)
+    [混合规则](https://raw.githubusercontent.com/lingeringsound/adblock_auto/main/Rules/adblock_auto_lite.txt)
+    !! 感谢 ！！
+    */
+    function generateSmartRules(el) {
+        const domain = window.location.hostname;
+        const tagName = el.tagName.toLowerCase();
+        let rules = [];
+        const uaMatch = navigator.userAgent.match(/Chrome\/([\d.]+)/i);
+        const chromeVersion = uaMatch ? parseInt(uaMatch[1]) : 0;
+        const isInvalid = (str) => !str || /^[:\d]/.test(str) || str.includes(':') || str.includes('(') || str.includes(')');
+        const adKeywords = /(?:(?:^|[-_ \b])(?:ad|popup|modal|gg|google|float|fixed|sticky|overlay|iframe|script|click|gtag)(?:$|[-_ \b]))|(?:ads|adv|banner|sponsor|推广|广告|棋牌|葡京|威尼斯|太阳城|新葡京|约炮|直播|成人|抖阴|黄播|博彩|体育|下注|开奖|娱乐城|美高梅|金沙|银河|皇冠|开元|利记|沙巴|亚星|迷情|春药|元|领|点击|图标|横幅|外接|同城)/i;
+        const getAttr = (node, name) => node.getAttribute(name) || "";
+        const hasAttr = (node, name) => node.hasAttribute(name);
+
+        const getBestSubSelector = (node) => {
+            if (node.id && !isInvalid(node.id)) return '#' + node.id;
+            const classes = Array.from(node.classList).filter(c => !isInvalid(c) && c !== 'mb-inspect-hl' && !/\d{5,}/.test(c));
+            if (classes.length > 0) return node.tagName.toLowerCase() + '.' + classes[0];
+            const style = getAttr(node, 'style');
+            if (style) {
+                const parts = style.split(';').map(s => s.trim()).filter(s => s.includes(':') && !s.includes('url'));
+                if (parts.length > 0) return node.tagName.toLowerCase() + '[style*="' + parts[0].split(':')[0] + '"]';
+            }
+            return node.tagName.toLowerCase();
+        };
+
+        const getAllSelectors = (node) => {
+            let res = [];
+            const tag = node.tagName.toLowerCase();
+            if (node.id && !isInvalid(node.id)) res.push('#' + node.id);
+            const classes = Array.from(node.classList).filter(c => !isInvalid(c) && c !== 'mb-inspect-hl' && !/\d{5,}/.test(c));
+            classes.forEach(c => res.push(tag + '.' + c));
+            if (res.length === 0) res.push(tag);
+            return res;
+        };
+
+        const getNotStr = (node) => {
+            let s = "";
+            if (!node.id) s += ":not([id])";
+            if (node.classList.length === 0) s += ":not([class])";
+            if (!node.getAttribute('style')) s += ":not([style])";
+            return s;
+        };
+
+        if (el.id && !isInvalid(el.id)) {
+            rules.push(`${domain}###${el.id}`);
+            if (adKeywords.test(el.id)) rules.push(`###${el.id}`);
+        }
+
+        const classList = Array.from(el.classList).filter(c => 
+            !/\d{5,}/.test(c) && c.length < 35 && c !== 'mb-inspect-hl' && !isInvalid(c)
+        );
+        if (classList.length > 0) {
+            classList.forEach(c => {
+                rules.push(`${domain}##.${c}`);
+                if (adKeywords.test(c)) {
+                    rules.push(`##.${c}`);
+                    rules.push(`${domain}##${tagName}.${c}`);
+                }
+            });
+            if (classList.length >= 2) {
+                const pair = classList.slice(0, 2).join('.');
+                rules.push(`${domain}##.${pair}`);
+                if (adKeywords.test(pair)) rules.push(`##.${pair}`);
+            }
+        }
+
+        if (el.previousElementSibling) {
+            const prev = el.previousElementSibling;
+            const prevSList = getAllSelectors(prev);
+            const currSList = getAllSelectors(el);
+            prevSList.forEach(ps => {
+                currSList.forEach(cs => {
+                    const psHasFeat = ps.includes('.') || ps.includes('#');
+                    const csHasFeat = cs.includes('.') || cs.includes('#');
+                    if (psHasFeat || csHasFeat) {
+                        rules.push(`${domain}##${ps} + ${cs}`);
+                    }
+                });
+            });
+        }
+
+        let advancedRules = [];
+        if (el.previousElementSibling && chromeVersion >= 37) {
+            const prev = el.previousElementSibling;
+            const ps = getBestSubSelector(prev);
+            const cs = getBestSubSelector(el);
+            const psHasFeat = ps.includes('.') || ps.includes('#');
+            const csHasFeat = cs.includes('.') || cs.includes('#');
+            if (psHasFeat || csHasFeat) {
+                advancedRules.push(`${domain}##${ps} ~ ${cs}${getNotStr(el)}`);
+            }
+        }
+
+        if (chromeVersion >= 105) {
+            let probe = el;
+            for (let i = 0; i < 2; i++) {
+                const targetChild = probe.querySelector('iframe[src*="://"], a[href*="://"], img[src*="://"], [style*="://"]');
+                let step = null;
+                if (targetChild) {
+                    const attrName = targetChild.hasAttribute('src') ? 'src' : (targetChild.hasAttribute('href') ? 'href' : '');
+                    const rawVal = attrName ? getAttr(targetChild, attrName) : (getAttr(targetChild, 'style').match(/url\(['"]?([^'"]+)['"]?\)/)?.[1] || "");
+                    if (rawVal && rawVal.length < 300) {
+                        const isRandom = /[\?&][a-z0-9]{10,}|[a-z0-9]{20,}/i.test(rawVal);
+                        const tag = targetChild.tagName.toLowerCase();
+                        if (!isRandom && !rawVal.includes('?') && rawVal.length < 120 && attrName) {
+                            step = `${tag}[${attrName}="${rawVal}"]`;
+                        } else {
+                            try {
+                                const url = new URL(rawVal, window.location.href);
+                                let pathParts = url.pathname.split('/').filter(p => p && !['img', 'image', 'images', 'assets', 'pic', 'library'].includes(p.toLowerCase()));
+                                let domainPart = url.hostname;
+                                if (domainPart === window.location.hostname) {
+                                    domainPart = url.origin + (pathParts.length > 0 ? '/' + pathParts[0].substring(0, 10) : "");
+                                } else {
+                                    domainPart = "//" + domainPart;
+                                }
+                                if (!isRandom && pathParts.length > 0 && attrName) {
+                                    const baseUrl = rawVal.split(pathParts[pathParts.length - 1])[0] + pathParts[pathParts.length - 1];
+                                    step = `${tag}[${attrName}^="${baseUrl}"]`;
+                                } else if (attrName) {
+                                    step = `${tag}[${attrName}*="${domainPart}"]`;
+                                } else {
+                                    step = `${tag}[style*="${domainPart}"]`;
+                                }
+                            } catch (e) {
+                                if (attrName) step = `${tag}[${attrName}*="${rawVal.substring(0, 20)}"]`;
+                            }
+                        }
+                    } else if (getAttr(targetChild, 'style').includes('://')) {
+                        const m = getAttr(targetChild, 'style').match(/:\/\/[^"']+/);
+                        if (m) step = targetChild.tagName.toLowerCase() + `[style*="${m[0].substring(0, 12)}"]`;
+                    }
+                }
+                if (!step) {
+                    const adChild = probe.querySelector('*');
+                    if (adChild) {
+                        for (let node = adChild; node && node !== probe; node = node.parentElement) {
+                            let found = false, candidateStep = null;
+                            const txt = (node.textContent || '').trim();
+                            if (adKeywords.test(txt) && txt.length > 0 && txt.length < 120) {
+                                found = true;
+                                candidateStep = node.tagName.toLowerCase();
+                            } else {
+                                for (let attr of node.attributes) {
+                                    const name = attr.name.toLowerCase();
+                                    const val = attr.value;
+                                    if (adKeywords.test(val) || adKeywords.test(name)) {
+                                        found = true;
+                                        candidateStep = node.tagName.toLowerCase() + `[${name}*="${val.substring(0, 30)}"]`;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (found) { step = candidateStep; break; }
+                        }
+                    }
+                }
+                if (step) {
+                    const probeSelector = getBestSubSelector(probe);
+                    const isTooGeneric = ['main-body', 'container', 'content', 'main-container', 'view-list'].some(c => probe.classList.contains(c));
+                    if (isTooGeneric && i === 0 && probe.parentElement) {
+                        step = null;
+                        continue;
+                    }
+                    const isGenericProbe = !probeSelector.includes('.') && !probeSelector.includes('#');
+                    const finalProbe = isGenericProbe ? (probeSelector + getNotStr(probe)) : probeSelector;
+                    let prefix = "";
+                    if (probe.parentElement && probe.parentElement.tagName !== 'BODY') {
+                        prefix = getBestSubSelector(probe.parentElement) + " > ";
+                    }
+                    advancedRules.push(`${domain}##${prefix}${finalProbe}:has(${step})`);
+                    break;
+                }
+                if (probe.parentElement && probe.parentElement.tagName !== 'BODY') probe = probe.parentElement;
+                else break;
+            }
+        }
+
+        if (chromeVersion >= 37) {
+            const ns = getNotStr(el);
+            const sub = getBestSubSelector(el);
+            if (ns && (sub.includes('.') || sub.includes('#'))) {
+                advancedRules.push(`${domain}##${sub}${ns}`);
+            }
+        }
+
+        let parentStr = "";
+        if (el.parentElement && el.parentElement.id && !isInvalid(el.parentElement.id) && el.parentElement.tagName !== 'BODY') {
+            const parentSelector = `#${el.parentElement.id} > `;
+            const currSList = getAllSelectors(el);
+            currSList.forEach(cs => {
+                rules.push(`${domain}##${parentSelector}${cs}`);
+            });
+            parentStr = parentSelector;
+        }
+
+        let attrRules = [];
+        let sizeBundle = "";
+        let smartAttrCount = 0;
+        for (let attr of el.attributes) {
+            let val = attr.value;
+            const attrName = attr.name.toLowerCase();
+            if (!val || ['id', 'class'].includes(attrName)) continue;
+            if (['srcid', 'tpl', 'data-module'].includes(attrName)) {
+                rules.push(`${domain}##${tagName}[${attrName}="${val}"]`);
+            }
+            if (['width', 'height'].includes(attrName)) {
+                sizeBundle += `[${attrName}="${val}"]`;
+                continue;
+            }
+            if (attrName === 'style') {
+                const isFixed = /fixed|sticky|absolute/.test(val);
+                const isHighZ = /z-index\s*:\s*(99\d+|2147483647)/.test(val);
+                if (isFixed || isHighZ) {
+                    if (isFixed) rules.push(`${domain}##${tagName}[style*="fixed"]`);
+                    if (isHighZ) rules.push(`${domain}##${tagName}[style*="z-index"]`);
+                }
+                continue;
+            }
+            if (val.startsWith('data:')) {
+                const b64 = val.match(/^data:[^;]+;base64,[A-Za-z0-9+/=]{20,50}/);
+                if (b64) attrRules.push(`${domain}##${tagName}[${attrName}^="${b64[0]}"]`);
+                continue;
+            }
+            const isStandard = ['src', 'href', 'title', 'alt', 'ref', 'rel', 'onclick', 'aria-label', 'target'].includes(attrName);
+            if (!isStandard && !attrName.startsWith('data-') && smartAttrCount < 3 && val.length < 30) {
+                const currentSub = getBestSubSelector(el);
+                rules.push(`${domain}##${parentStr}${currentSub}[${attrName}="${val}"]`);
+                if (val.length > 3) {
+                    rules.push(`${domain}##${tagName}[${attrName}*="${val.substring(0, Math.floor(val.length/2))}"]`);
+                }
+                smartAttrCount++;
+            }
+            if (attrName.startsWith('data-') || isStandard) {
+                const isAdContent = adKeywords.test(attrName) || adKeywords.test(val);
+                if (isAdContent) {
+                    const subV = val.substring(0, 25);
+                    rules.push(`${domain}##${tagName}[${attrName}*="${subV}"]`);
+                    rules.push(`##${tagName}[${attrName}*="${subV}"]`);
+                    if (attrName === 'onclick') {
+                        const kws = val.match(new RegExp(adKeywords.source, 'gi'));
+                        if (kws && kws.length >= 2) rules.push(`##${tagName}[onclick*="${kws[0]}"][onclick*="${kws[1]}"]`);
+                    }
+                }
+                if (/^(https?:|)\/\//.test(val)) {
+                    const m = val.match(/^((?:https?:|)\/\/[^\/]+\/)/);
+                    if (m) {
+                        attrRules.push(`${domain}##${tagName}[${attrName}^="${m[1]}"]`);
+                        if (isAdContent) rules.push(`##${tagName}[${attrName}^="${m[1]}"]`);
+                    }
+                } else if (val.length > 0 && val.length < 100) {
+                    if (attrName !== 'target') {
+                        attrRules.push(`${domain}##${tagName}[${attrName}*="${val}"]`);
+                    }
+                }
+            }
+        }
+
+        if (tagName === 'a' || (tagName === 'img' && el.closest('a'))) {
+            const anchor = tagName === 'a' ? el : el.closest('a');
+            const href = getAttr(anchor, 'href');
+            const target = getAttr(anchor, 'target');
+            const onclick = getAttr(anchor, 'onclick');
+            const rel = getAttr(anchor, 'rel');
+            if (href && !href.startsWith('javascript') && href !== '#') {
+                const isBlank = target === '_blank';
+                let part = href;
+                try {
+                    const url = new URL(href, window.location.href);
+                    part = url.hostname.replace('www.', '') + (url.pathname.length > 1 ? url.pathname.substring(0, 8) : "");
+                } catch(e) { part = href.substring(0, 12); }
+                const targetStr = isBlank ? '[target="_blank"]' : '';
+                rules.push(`${domain}##a[href*="${part}"]${targetStr}`);
+                if (adKeywords.test(href) || adKeywords.test(part)) rules.push(`##a[href*="${part}"]${targetStr}`);
+                if (onclick && adKeywords.test(onclick)) {
+                    const kw = (onclick.match(adKeywords) || [""])[0];
+                    if (kw) rules.push(`##a[href][target="_blank"][onclick*="${kw}"]`);
+                }
+            }
+            if (onclick && (href && href.includes('javascript'))) {
+                const funcName = onclick.split('(')[0].substring(0, 20);
+                if (funcName) rules.push(`##a[href^="javascript"][onclick*="${funcName}"]`);
+            }
+            if (rel === 'nofollow' && target === '_new' && anchor.querySelector('img')) {
+                rules.push(`##a[rel="nofollow"][target="_new"] > img[src]`);
+            }
+            const img = anchor.querySelector('img');
+            const aLabel = getAttr(anchor, 'aria-label') || getAttr(anchor, 'title');
+            const imgAlt = img ? (getAttr(img, 'alt') || getAttr(img, 'aria-label')) : "";
+            const keyLabel = (aLabel || imgAlt || "").split('-')[0].substring(0, 10);
+            const aOnclick = hasAttr(anchor, 'onclick');
+            const aRef = getAttr(anchor, 'ref') || getAttr(anchor, 'rel');
+            if (aOnclick || adKeywords.test(aRef)) {
+                let base = aOnclick ? `a[onclick]` : `a[ref*="sponsored"]`;
+                if (keyLabel) {
+                    rules.push(`${domain}##${base}[aria-label*="${keyLabel}"]`);
+                    if (img) {
+                        rules.push(`${domain}##${base} > img[alt*="${keyLabel}"]`);
+                        rules.push(`${domain}##a[href] img[alt*="${keyLabel}"]`);
+                    }
+                }
+            }
+        }
+
+        if (sizeBundle) rules.push(`${domain}##${tagName}${sizeBundle}`);
+        attrRules.forEach(r => rules.push(r));
+        if (['iframe', 'embed', 'ins', 'object'].includes(tagName)) rules.push(`${domain}##${tagName}`);
+
+        rules = [...new Set(rules)];
+        rules.sort((a, b) => {
+            const getWeight = (s) => {
+                if (s.includes(' + ')) return 0;
+                const hasDomain = s.includes(domain);
+                if (adKeywords.test(s)) return hasDomain ? 1 : 2;
+                if (s.includes('[onclick]') || s.includes('[srcid') || s.includes('[tpl') || s.includes('[ref*=')) return 2;
+                if (s.includes('###') || s.includes('##.')) return hasDomain ? 3 : 4;
+                if (s.includes('[href') || s.includes('[width')) return hasDomain ? 5 : 6;
+                return 7;
+            };
+            return getWeight(a) - getWeight(b) || a.length - b.length;
+        });
+
+        if (advancedRules.length > 0) {
+            const finalAdv = [...new Set(advancedRules)].slice(0, 2);
+            rules.splice(3, 0, ...finalAdv);
+        }
+
+        const genericTags = ['div', 'span', 'p', 'li', 'ul', 'ins', 'section', 'article'];
+        return rules.filter(r => {
+            const parts = r.split(/###?/);
+            const host = parts[0];
+            const selector = parts[1];
+            if (!selector) return false;
+            if (selector.includes('target=') && !selector.includes('href') && !selector.includes('onclick')) return false;
+            if (!host && selector === 'a') return false;
+            const hasSmartAttr = /\[(?!(?:style|width|height|class|id)\b)[^\]]+[\*^]?=/.test(selector);
+            if (selector.includes(':has(') || selector.includes(':not(') || selector.includes(' ~ ')) return true;
+            if (selector.includes('[srcid') || selector.includes('[tpl') || r.includes(' + ') || hasSmartAttr || selector.startsWith('a[')) return true;
+            return !genericTags.includes(selector.split('[')[0]);
+        });
+    }
+
+    function renderAdPage() {
+        if (!adContent) return;
+        adContent.innerHTML = '';
+        if (!currentTarget) {
+            adContent.innerHTML = '<div style="color:#999;padding:20px;">请先在网页上点击选取一个元素...</div>';
+            return;
+        }
+        const rules = generateSmartRules(currentTarget);
+        window.viaApiInject = function(rule) {
+            if (!rule) return;
+            let host = location.hostname;
+            let filter = rule.trim();
+            if (filter.includes('##')) {
+                const parts = filter.split('##');
+                host = parts[0].trim() || location.host;
+                filter = parts[1].trim();
+            }
+            if (typeof window.via === "object" && typeof window.via.record === "function") {
+                try {
+                    window.via.record(host, filter);
+                    window.via.toast(`添加一条自定义规则${host}${filter}`);
+                    return;
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            if (!window.via?.cmd) return;
+            let target = filter;
+            const _s = JSON.stringify;
+            JSON.stringify = function(a) {
+                if (target && a && typeof a === 'object') {
+                    if (a.action === 102 || a.action === 103) {
+                        a.host = host;
+                        a.filter = target;
+                        return _s.apply(this, [a]);
+                    }
+                }
+                return _s.apply(this, arguments);
+            };
+            via.cmd(517);
+            setTimeout(() => {
+                const el = document.createElement('via-proxy');
+                el.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none;";
+                document.body.appendChild(el);
+                el.click();
+                if (window.__getMarkerFilter) window.__getMarkerFilter();
+                setTimeout(() => {
+                    el.remove();
+                    target = "";
+                    JSON.stringify = _s;
+                    if (window.__setMarkerEnabled) window.__setMarkerEnabled(false);
+                }, 300);
+            }, 100);
+        };
+        if (rules.length === 0) {
+            adContent.innerHTML = '<div style="color:#999;padding:20px;">该元素特征不足，未生成自动规则。</div>';
+            return;
+        }
+        rules.forEach(ruleText => {
+            let currentRule = ruleText;
+            const originalRule = ruleText;
+            const item = document.createElement('div');
+            item.className = 'ad-rule-item';
+            const updateUI = (isEditing = false) => {
+                const isVia = !!(window.via && window.via.cmd);
+                const mb = window.mbrowser;
+                let isRealX = false;
+                try { isRealX = mb && typeof mb.getTotalRules === 'function' && typeof mb.getTotalRules() === 'number'; } catch(e) {}
+                const isX = !!(isRealX && (mb.addCustomAdRule || mb.addAdBlockRule));
+                const isBZ = typeof bzhome !== 'undefined' && !!bzhome.exec;
+                let btnText = isBZ ? '添加到B仔' : (isVia ? '添加到Via' : (isX ? '添加到Xbrowser' : '复制'));
+                item.innerHTML = `
+                    <div class="ad-rule-display" ${isEditing ? 'contenteditable="true" style="border:1px solid #007bff; padding:5px; outline:none; background:var(--mb-bg);"' : ''}>${isEditing ? currentRule : highlightAdRule(currentRule)}</div>
+                    <div class="ad-action-bar">
+                        ${isEditing ? `
+                            <button class="ad-mini-btn btn-save" style="background:#28a745; color:#fff; border:none;">保存</button>
+                            <button class="ad-mini-btn btn-undo">撤销</button>
+                        ` : `
+                            <button class="ad-mini-btn btn-copy">${btnText}</button>
+                            <button class="ad-mini-btn btn-pre">预览执行</button>
+                            <button class="ad-mini-btn btn-res">恢复单条</button>
+                            <button class="ad-mini-btn btn-edit">编辑</button>
+                        `}
+                    </div>
+                `;
+                if (isEditing) {
+                    const display = item.querySelector('.ad-rule-display');
+                    setTimeout(() => display.focus(), 10);
+                    item.querySelector('.btn-save').onclick = () => { currentRule = display.innerText.trim(); updateUI(false); };
+                    item.querySelector('.btn-undo').onclick = () => { currentRule = originalRule; updateUI(false); };
+                } else {
+                    item.querySelector('.btn-copy').onclick = () => {
+                        if (isBZ) {
+                            bzhome.exec(JSON.stringify({ _f: "addCustomRule", rule: currentRule }));
+                        }
+                        else if (isX) {
+                            if (typeof mb.addCustomAdRule === 'function') mb.addCustomAdRule(currentRule);
+                            else mb.addAdBlockRule(currentRule, location.host, location.href, 3);
+                        }
+                        else if (isVia) window.viaApiInject(currentRule);
+                        else api.setClipboard(currentRule);
+                    };
+                    item.querySelector('.btn-edit').onclick = () => updateUI(true);
+                    item.querySelector('.btn-pre').onclick = () => {
+                        if (activePreviewStyle) activePreviewStyle.remove();
+                        activePreviewStyle = document.createElement('style');
+                        try {
+                            const isIdRule = currentRule.includes('###');
+                            let selector = currentRule.split(/###?/)[1];
+                            if (isIdRule && !selector.startsWith('#')) selector = '#' + selector;
+                            activePreviewStyle.innerHTML = `${selector} { display: none !important; }`;
+                            document.head.appendChild(activePreviewStyle);
+                        } catch (e) { alert("语法错误"); }
+                    };
+                    item.querySelector('.btn-res').onclick = () => { if (activePreviewStyle) activePreviewStyle.remove(); };
+                }
+            };
+            updateUI();
+            adContent.appendChild(item);
+        });
+    }
+
+    function renderDataPage() {
+        dataContent.innerHTML = '';
+        const getPaths = () => {
+            const p = window.location.pathname;
+            const s = p.split('/').filter(Boolean);
+            const r = ['/', p];
+            let c = '';
+            s.forEach(seg => { c += '/' + seg; r.push(c); });
+            return [...new Set(r)];
+        };
+        const getDoms = () => {
+            const d = window.location.hostname;
+            const r = [d, '.' + d];
+            const p = d.split('.');
+            if (p.length > 2) {
+                const root = p.slice(-2).join('.');
+                r.push(root, '.' + root, 'www.' + root, '.www.' + root);
+            }
+            return [...new Set(r)];
+        };
+        const configs = [
+            {
+                label: 'Cookies', emoji: '🍪',
+                get: () => document.cookie.split('; ').reduce((acc, c) => { const [k, v] = c.split('='); if (k) acc[k] = decodeURIComponent(v); return acc; }, {}),
+                set: (k, v) => { document.cookie = `${encodeURIComponent(k)}=${encodeURIComponent(v)}; path=/`; },
+                del: (k) => {
+                    const ps = getPaths();
+                    const ds = getDoms();
+                    ps.forEach(p => {
+                        ds.forEach(d => {
+                            document.cookie = `${encodeURIComponent(k)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${p}; domain=${d}`;
+                            document.cookie = `${encodeURIComponent(k)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${p}; domain=${d}; SameSite=None; Secure`;
+                            document.cookie = `${encodeURIComponent(k)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=${p}`;
+                        });
+                    });
+                }
+            },
+            { label: 'SessionStorage', emoji: '💬', get: () => ({ ...sessionStorage }), set: (k, v) => sessionStorage.setItem(k, v), del: (k) => sessionStorage.removeItem(k) },
+            { label: 'LocalStorage', emoji: '🌐', get: () => ({ ...localStorage }), set: (k, v) => localStorage.setItem(k, v), del: (k) => localStorage.removeItem(k) }
+        ];
+
+        configs.forEach(conf => {
+            const data = conf.get();
+            const box = document.createElement('div');
+            box.className = 'data-group-box';
+            const keys = Object.keys(data);
+            box.innerHTML = `
+                <div style="font-weight:bold; font-size:16px; margin-bottom:10px;">${conf.emoji} ${conf.label} (${keys.length})</div>
+                <div class="data-action-bar">
+                    <button class="ad-mini-btn btn-copy-all">一键复制</button>
+                    <button class="ad-mini-btn btn-clear-all" style="color:#d11;">一键清理</button>
+                </div>
+                <div class="data-items-list" style="display:none; margin-top:10px;"></div>
+            `;
+            const list = box.querySelector('.data-items-list');
+            box.onclick = (e) => { if (e.target === box || e.target.parentElement === box) list.style.display = list.style.display === 'none' ? 'block' : 'none'; };
+            box.querySelector('.btn-copy-all').onclick = (e) => { e.stopPropagation(); api.setClipboard(JSON.stringify(data, null, 2)); };
+            box.querySelector('.btn-clear-all').onclick = (e) => { e.stopPropagation(); if (confirm('确定清理全部?')) { keys.forEach(k => conf.del(k)); renderDataPage(); } };
+
+            keys.forEach(k => {
+                const item = document.createElement('div');
+                item.className = 'data-item-card';
+                let currentVal = data[k];
+                const updateItemUI = (isEditing = false) => {
+                    item.innerHTML = `
+                        <div class="data-row-display">
+                            <span class="data-key-label">${k}</span> : 
+                            <span class="data-val-text" ${isEditing ? 'contenteditable="true" style="border:1px solid #007bff; padding:2px; outline:none; background:var(--mb-bg);"' : ''}>${currentVal}</span>
+                        </div>
+                        <div class="data-action-bar">
+                            ${isEditing ? `<button class="ad-mini-btn btn-save">确定</button><button class="ad-mini-btn btn-cancel">取消</button>` : `<button class="ad-mini-btn btn-copy">复制</button><button class="ad-mini-btn btn-edit">修改</button><button class="ad-mini-btn btn-del" style="color:#d11;">删除</button>`}
+                        </div>
+                    `;
+                    if (isEditing) {
+                        const vDom = item.querySelector('.data-val-text');
+                        setTimeout(() => vDom.focus(), 10);
+                        item.querySelector('.btn-save').onclick = () => { conf.set(k, vDom.innerText.trim()); currentVal = vDom.innerText.trim(); updateItemUI(false); };
+                        item.querySelector('.btn-cancel').onclick = () => updateItemUI(false);
+                    } else {
+                        item.querySelector('.btn-copy').onclick = () => api.setClipboard(currentVal);
+                        item.querySelector('.btn-edit').onclick = () => updateItemUI(true);
+                        item.querySelector('.btn-del').onclick = () => { conf.del(k); item.remove(); };
+                    }
+                };
+                updateItemUI();
+                list.appendChild(item);
+            });
+            dataContent.appendChild(box);
+        });
+    }
+
+    function renderIconPage() {
+        iconContent.innerHTML = `
+            <div class="icon-config-card">
+                <div style="font-weight:bold; margin-bottom:10px;">位置与尺寸</div>
+                <div class="icon-config-row"><span>大小 (px):</span><input type="number" class="icon-input" id="in-icon-size" value="${api.getValue('mb_icon_size', 32)}"></div>
+                <div class="icon-config-row"><span>距离底部 (px):</span><input type="number" class="icon-input" id="in-icon-bottom" value="${api.getValue('mb_icon_bottom', 95)}"></div>
+                <div class="icon-config-row"><span>距离右侧 (px):</span><input type="number" class="icon-input" id="in-icon-right" value="${api.getValue('mb_icon_right', 16)}"></div>
+            </div>
+            <div class="icon-config-card">
+                <div style="font-weight:bold;">自定义 SVG 代码</div>
+                <textarea class="icon-area" id="in-icon-svg">${api.getValue('mb_icon_svg', DEFAULT_SVG)}</textarea>
+                <div class="ad-action-bar" style="margin-top:10px;">
+                    <button class="ad-mini-btn" id="btn-icon-save" style="background:#007aff; color:#fff; border:none;">应用并保存</button>
+                    <button class="ad-mini-btn" id="btn-icon-reset">恢复默认</button>
+                    <button class="ad-mini-btn" id="btn-icon-temp-hide" style="color:#ff4757;">临时隐藏图标</button>
+                </div>
+            </div>
+        `;
+        shadow.getElementById('btn-icon-save').onclick = () => {
+            api.setValue('mb_icon_size', parseInt(shadow.getElementById('in-icon-size').value));
+            api.setValue('mb_icon_bottom', parseInt(shadow.getElementById('in-icon-bottom').value));
+            api.setValue('mb_icon_right', parseInt(shadow.getElementById('in-icon-right').value));
+            api.setValue('mb_icon_svg', shadow.getElementById('in-icon-svg').value);
+            updateIconStyle();
+            alert('保存成功');
+        };
+        shadow.getElementById('btn-icon-reset').onclick = () => {
+            if(confirm('确定恢复默认图标设置吗？')){
+                api.setValue('mb_icon_size', 32);
+                api.setValue('mb_icon_bottom', 95);
+                api.setValue('mb_icon_right', 16);
+                api.setValue('mb_icon_svg', DEFAULT_SVG);
+                renderIconPage();
+                updateIconStyle();
+            }
+        };
+        shadow.getElementById('btn-icon-temp-hide').onclick = () => {
+            if (trigger) trigger.style.display = 'none';
+            alert('图标已临时隐藏，刷新页面即可恢复。');
+        };
+    }
+    
+    const netState = { logs: [], pageStack: ['main'], currentLog: null, activeTab: 'network', resFilter: 'all', lastScrollTop: 0};
+    function initNetworkInterceptor() {
+        const addLog = (l) => { if (l.reqH && (l.reqH['x-mb-is-script'] || l.reqH['X-MB-IS-SCRIPT'])) return; if (!netState.logs.includes(l)) netState.logs.unshift(l); if (netState.logs.length > 300) netState.logs.pop(); if (shadow.querySelector('#page-net')?.style.display !== 'none' && netState.pageStack.length === 1) renderNetworkPage(); };
+        const rawOpen = XMLHttpRequest.prototype.open;
+        const rawSend = XMLHttpRequest.prototype.send;
+        const rawSetHeader = XMLHttpRequest.prototype.setRequestHeader;
+        XMLHttpRequest.prototype.open = function(m, u) {
+            this._l = { method: m.toUpperCase(), url: new URL(u, location.href).href, reqH: {}, startTime: Date.now(), type: 'XHR', source: 'network', status: 'pending', duration: 0, response: '', resH: '' };
+            addLog(this._l); return rawOpen.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.setRequestHeader = function(h, v) { if (this._l) this._l.reqH[h] = v; return rawSetHeader.apply(this, arguments); };
+        XMLHttpRequest.prototype.send = function(d) {
+            if (this._l) {
+                this._l.payload = d;
+                this.addEventListener('readystatechange', () => {
+                    if (this.readyState === 2) this._l.resH = this.getAllResponseHeaders();
+                    if (this.readyState === 4) { this._l.status = this.status; this._l.duration = Date.now() - this._l.startTime; this._l.response = this.responseText; if (shadow.querySelector('#page-net')?.style.display !== 'none' && netState.pageStack.length === 1) renderNetworkPage(); }
+                });
+            }
+            return rawSend.apply(this, arguments);
+        };
+        const rawFetch = window.fetch;
+        window.fetch = async (...args) => {
+            const u = args[0] instanceof Request ? args[0].url : args[0];
+            const opt = (args[0] instanceof Request ? args[0] : args[1]) || {};
+            const log = { method: (opt.method || 'GET').toUpperCase(), url: new URL(u, location.href).href, reqH: opt.headers || {}, payload: opt.body, type: 'Fetch', source: 'network', startTime: Date.now(), status: 'pending', duration: 0, response: '', resH: '' };
+            if (log.reqH['x-mb-is-script'] || (log.reqH.get && log.reqH.get('x-mb-is-script'))) return rawFetch(...args);
+            addLog(log);
+            try {
+                const r = await rawFetch(...args);
+                log.status = r.status; log.resH = Object.fromEntries(r.headers.entries()); log.duration = Date.now() - log.startTime;
+                r.clone().text().then(t => { log.response = t; if (shadow.querySelector('#page-net')?.style.display !== 'none' && netState.pageStack.length === 1) renderNetworkPage(); }).catch(() => { log.response = '[Binary]'; });
+                return r;
+            } catch (e) { log.status = 'Fail'; log.response = e.message; throw e; }
+        };
+    }
+
+    async function renderNetworkPage() {
+        const container = shadow.querySelector('#mb-net-container'); if (!container) return;
+        const esc = (s) => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#039;"}[m]));
+        const currPage = netState.pageStack[netState.pageStack.length - 1];
+        const generateAdRules = (url) => {
+            try {
+                const u = new URL(url);
+                const domain = u.hostname;
+                const isThird = domain !== window.location.hostname;
+                const suffix = isThird ? '$third-party' : '$~third-party';
+                const path = u.pathname;
+                const search = u.search;
+                let smartSearch = search.replace(/([?&](ver|t|time|_)==?\d{7,13})[0-9]*/g, '$1').replace(/([?&])\d{10,13}/g, '$1');
+                const rules = [
+                    { title: '基础域名', code: `||${domain}^` },
+                    { title: '智能路径', code: `.${domain.split('.').slice(-2).join('.')}${path}${smartSearch}${suffix}` },
+                    { title: '目录规则', code: `||${domain}${path.substring(0, path.lastIndexOf('/') + 1)}` },
+                    { title: '完整路径', code: `${url}` }
+                ];
+                return rules;
+            } catch(e) { return []; }
+        };
+        if (currPage === 'detail' && netState.currentLog) {
+            const l = netState.currentLog;
+            const reqStr = typeof l.reqH==='object'?JSON.stringify(l.reqH,null,2):l.reqH;
+            const resHStr = typeof l.resH==='object'?JSON.stringify(l.resH,null,2):l.resH;
+            const respBody = l.response || '';
+            container.innerHTML = `<div style="flex:1;overflow-y:auto;padding:10px;background:var(--mb-bg);"><button class="ad-mini-btn" id="net-detail-back">⬅ 返回列表</button>
+                <div class="ad-rule-item" style="margin-top:10px;position:relative;padding-top:30px;">
+                   <button class="ad-mini-btn" id="gen-ad-rule" style="float:right;zoom:0.8;margin-top:-22px;background:var(--mb-border);">AD规则</button>
+                    <div id="ad-rule-panel" style="display:none;margin-bottom:12px;background:#1a1a1a;border-radius:6px;padding:10px;border:1px solid var(--mb-active);box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                        <div id="ad-rule-slider" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;align-items:center;-webkit-overflow-scrolling:touch;"></div>
+                        <div id="ad-rule-dots" style="display:flex;justify-content:center;gap:6px;margin-top:8px;"></div>
+                        <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;">
+                            <button class="ad-mini-btn" id="ad-copy" style="zoom:0.8;background:#333;color:#fff;border:1px solid #444;">复制</button>
+                            <button class="ad-mini-btn" id="ad-edit" style="zoom:0.8;background:#333;color:#fff;border:1px solid #444;">编辑</button>
+                            <button class="ad-mini-btn" id="ad-reset" style="zoom:0.8;background:#333;color:#fff;border:1px solid #444;">撤销修改</button>
+                        </div>
+                    </div>
+                    <div class="data-row-display" style="color:var(--mb-text);"><span class="hl-domain">URL:</span> ${esc(l.url)}</div>
+                    <div class="data-row-display" style="color:var(--mb-text);"><span class="hl-sep">Method:</span> ${l.method} | <span class="hl-selector">Status:</span> ${l.status} | <span class="hl-pseudo">Time:</span> ${l.duration}ms</div>
+                </div>
+                ${l.source === 'network' ? `
+                <div class="data-group-box"><div class="data-key-label">Request Headers:</div><button class="ad-mini-btn btn-copy" data-type="req" style="float:right;zoom:0.8;margin-top:-22px;background:var(--mb-border);">复制</button><pre style="font-size:11px;overflow:auto;max-height:120px;background:var(--mb-header-bg);padding:5px;border:1px solid var(--mb-border);color:var(--mb-text);">${esc(reqStr)}</pre></div>
+                <div class="data-group-box"><div class="data-key-label">Response Headers:</div><button class="ad-mini-btn btn-copy" data-type="resH" style="float:right;zoom:0.8;margin-top:-22px;background:var(--mb-border);">复制</button><pre style="font-size:11px;overflow:auto;max-height:120px;background:var(--mb-header-bg);padding:5px;border:1px solid var(--mb-border);color:var(--mb-text);">${esc(resHStr)}</pre></div>
+                <div class="data-group-box"><div class="data-key-label">Response:</div><button class="ad-mini-btn btn-copy" data-type="resB" style="float:right;zoom:0.8;margin-top:-22px;background:var(--mb-border);">复制</button><pre style="font-size:11px;overflow:auto;max-height:350px;background:#000;color:#fff;padding:8px;border-radius:4px;white-space:pre-wrap;word-break:break-all;">${formatAndHighlight(respBody || '(Empty)', 'js')}</pre></div>
+                ` : `<div class="data-group-box"><div class="data-key-label">Preview:</div><div id="res-preview" style="padding:10px;text-align:center;font-size:12px;color:var(--mb-text);">Loading...</div></div>`}</div>`;
+            const doCopy = (btn, text) => { GM_setClipboard(text); const old = btn.innerText; btn.innerText = '已复制'; setTimeout(() => { btn.innerText = old; }, 1000); };
+            let currentAdIdx = 0;
+            const adRules = generateAdRules(l.url);
+            const panel = container.querySelector('#ad-rule-panel');
+            const renderAdSlider = () => {
+                const slider = container.querySelector('#ad-rule-slider');
+                const dots = container.querySelector('#ad-rule-dots');
+                slider.innerHTML = adRules.map((r, i) => `<div class="ad-slide" data-idx="${i}" style="min-width:100%;scroll-snap-align:start;padding:2px;box-sizing:border-box;">
+                    <div style="color:#888;font-size:9px;margin-bottom:2px;">预览规则 ${i+1} (${r.title}):</div>
+                    <code class="ad-code-view" contenteditable="false" inputmode="text" style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:#00ff00;background:#000;padding:4px 6px;border-radius:3px;font-family:monospace;border:1px solid #333;outline:none;">${esc(r.code)}</code>
+                </div>`).join('');
+                dots.innerHTML = adRules.map((_, i) => `<div style="width:5px;height:5px;border-radius:50%;background:${i===currentAdIdx?'var(--mb-active)':'#555'};cursor:pointer;"></div>`).join('');
+                dots.querySelectorAll('div').forEach((d, i) => d.onclick = () => { currentAdIdx = i; slider.scrollTo({left: slider.offsetWidth * i, behavior: 'smooth'}); });
+                slider.onscroll = () => {
+                    const idx = Math.round(slider.scrollLeft / slider.offsetWidth);
+                    if(idx !== currentAdIdx) { currentAdIdx = idx; dots.querySelectorAll('div').forEach((d, i) => d.style.background = (i === idx ? 'var(--mb-active)' : '#555')); }
+                };
+            };
+            container.querySelector('#gen-ad-rule').onclick = () => {
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+                if(panel.style.display === 'block') renderAdSlider();
+            };
+            container.querySelector('#ad-copy').onclick = (e) => doCopy(e.target, adRules[currentAdIdx].code);
+            container.querySelector('#ad-edit').onclick = (e) => {
+                const slides = container.querySelectorAll('.ad-slide');
+                const codeEl = slides[currentAdIdx].querySelector('.ad-code-view');
+                if (codeEl.contentEditable !== 'true') {
+                    codeEl.contentEditable = 'true';
+                    codeEl.style.whiteSpace = 'pre-wrap';
+                    codeEl.style.overflow = 'visible';
+                    codeEl.style.border = '1px solid var(--mb-active)';
+                    setTimeout(() => codeEl.focus(), 50);
+                    e.target.innerText = '保存';
+                } else {
+                    codeEl.contentEditable = 'false';
+                    codeEl.style.whiteSpace = 'nowrap';
+                    codeEl.style.overflow = 'hidden';
+                    codeEl.style.border = '1px solid #333';
+                    adRules[currentAdIdx].code = codeEl.innerText;
+                    e.target.innerText = '编辑';
+                }
+            };
+            container.querySelector('#ad-reset').onclick = () => {
+                const fresh = generateAdRules(l.url);
+                adRules[currentAdIdx].code = fresh[currentAdIdx].code;
+                renderAdSlider();
+            };
+            container.querySelectorAll('.btn-copy').forEach(btn => { btn.onclick = (e) => { e.stopPropagation(); const type = btn.dataset.type; if(type === 'req') doCopy(btn, reqStr); else if(type === 'resH') doCopy(btn, resHStr); else if(type === 'resB') doCopy(btn, respBody); }; });
+            container.querySelector('#net-detail-back').onclick = () => { netState.pageStack.pop(); renderNetworkPage(); };
+            if (l.source === 'resource') {
+                const preview = container.querySelector('#res-preview');
+                const urlNoQuery = l.url.split('?')[0];
+                const isImgPath = /\.(jpg|jpeg|png|gif|webp|svg|ico|icon)$/i.test(urlNoQuery) || l.resType?.includes('img');
+                const isFont = /\.(ttf|otf|woff2?|eot)$/i.test(urlNoQuery) || l.resType?.includes('font');
+                const fetchAndCheck = async () => {
+                    const fetchRes = (text) => {
+                        const isLikelyJS = /const\s+\w+|var\s+\w+|function\s*\(|eval\(|document\./.test(text) || (text.length > 50 && !text.includes('<html') && text.includes(';'));
+                        preview.style.textAlign = 'left';
+                        preview.innerHTML = `<button class="ad-mini-btn" id="copy-res-pre" style="float:right;zoom:0.8;margin-top:-22px;background:var(--mb-border);">复制</button>
+                                            <pre style="font-size:11px;overflow:auto;max-height:350px;background:#000;color:#fff;padding:8px;white-space:pre-wrap;">${formatAndHighlight(text, (l.url.includes('.css')?'css':(isLikelyJS?'js':'text')))}</pre>`;
+                        container.querySelector('#copy-res-pre').onclick = (e) => doCopy(e.target, text);
+                    };
+                    if (isFont) {
+                        const fontId = 'mb-preview-font-' + Math.random().toString(36).slice(2, 8);
+                        preview.innerHTML = `<style>
+                            @font-face { font-family: '${fontId}'; src: url('${l.url}'); }
+                            .font-preview-box { font-family: '${fontId}'; font-size: 16px; line-height: 1.6; color: var(--mb-text); background: var(--mb-header-bg); padding: 15px; border-radius: 4px; border: 1px solid var(--mb-border); text-align: left; word-break: break-all; }
+                        </style>
+                        <div class="font-preview-box">
+                            <div style="font-size:10px;color:var(--mb-active);margin-bottom:8px;font-family:sans-serif;">字体预览 (十问歌):</div>
+                            一问寒热二问汗，三问头身四问便，五问饮食，六问胸，七聋八渴俱当辨，九问旧病十问因，再兼服药参机变，妇女尤必问经期，迟速闭崩皆可见，再问片语告儿科，天花麻疹全占验。
+                        </div>
+                        <div style="margin-top:10px;font-size:11px;opacity:0.6;">URL: ${esc(l.url)}</div>`;
+                        return;
+                    }
+                    if (typeof GM_xmlhttpRequest !== 'undefined') {
+                        GM_xmlhttpRequest({ method: "GET", url: l.url, headers: { "x-mb-is-script": "true" }, onload: (res) => {
+                            if (isImgPath && res.responseText.length > 2000 && !/const|var|function/.test(res.responseText.slice(0,500))) {
+                                preview.innerHTML = `<img src="${l.url}" style="max-width:100%;max-height:300px;border:1px solid var(--mb-border);">`;
+                            } else { fetchRes(res.responseText); }
+                        }, onerror: () => { preview.innerHTML = '<span style="color:#ff4d4f">Fetch Failed</span>'; } });
+                    } else {
+                        try { 
+                            const res = await fetch(l.url, { headers: { "x-mb-is-script": "true" } }); const text = await res.text(); 
+                            if (isImgPath && text.length > 2000 && !/const|var|function/.test(text.slice(0,500))) {
+                                preview.innerHTML = `<img src="${l.url}" style="max-width:100%;max-height:300px;border:1px solid var(--mb-border);">`;
+                            } else { fetchRes(text); }
+                        } catch(e) { preview.innerHTML = '<span style="color:#ff4d4f">CORS Blocked</span>'; }
+                    }
+                };
+                fetchAndCheck();
+            }
+            return;
+        }
+        let list = netState.activeTab === 'network' ? netState.logs : performance.getEntriesByType('resource').reverse().map(r => ({ method: 'GET', url: r.name, type: (r.initiatorType === 'link' && r.name.includes('.css')) ? 'STYLESHEET' : r.initiatorType.toUpperCase(), source: 'resource', status: '200', duration: Math.round(r.duration), resType: r.initiatorType }));
+        const adReg = /\/(ads|foot|head|top)\.(js|php)|\.(js|php)\?(?:[A-Za-z]+)?1[6-9]\d{8,}|\/js+\/[A-Za-z][0-9]?\.js|\/(adv|banner)\/|\/(?:[A-Za-z]+_)?gg\.js|\/v[hjk][0-9]\/|:[89][0-9]+\/[a-z]{2,4}\//i;
+        if (netState.resFilter === 'ads') {
+            list = list.filter(l => {
+                try { const u = new URL(l.url); return adReg.test(u.pathname) || adReg.test(u.search); } catch(e) { return false; }
+            });
+        } else if (netState.resFilter !== 'all') {
+            list = list.filter(l => (l.type||'').toLowerCase() === netState.resFilter || (netState.resFilter === 'other' && !['script', 'stylesheet', 'img', 'xmlhttprequest', 'fetch'].includes((l.type||'').toLowerCase())));
+        }
+        container.innerHTML = `<div style="display:flex;padding:0 5px;background:var(--mb-header-bg);border-bottom:1px solid var(--mb-border);flex-shrink:0;align-items:center;height:35px;">
+            <button class="ad-mini-btn" id="net-to-main" style="background:transparent;border:none;font-size:16px;flex-shrink:0;">🏠</button>
+            <div style="display:flex;gap:4px;overflow-x:auto;flex:1;scrollbar-width:none;margin:0 8px;align-items:center;">
+                <button class="ad-mini-btn" id="net-tab-net" style="background:transparent;border:none;color:${netState.activeTab==='network'?'var(--mb-active)':'var(--mb-text)'};font-weight:${netState.activeTab==='network'?'bold':'normal'};white-space:nowrap;padding:0 5px;">Network</button>
+                <button class="ad-mini-btn" id="net-tab-resource" style="background:transparent;border:none;color:${netState.activeTab==='resource'?'var(--mb-active)':'var(--mb-text)'};font-weight:${netState.activeTab==='resource'?'bold':'normal'};white-space:nowrap;padding:0 5px;">Resource</button>
+                <div style="width:1px;height:15px;background:var(--mb-border);flex-shrink:0;"></div>
+                ${(netState.activeTab==='network'?['all','xhr','fetch']:['all','ads','script','stylesheet','img','other']).map(f => {
+                    const isActive = netState.resFilter===f;
+                    return `<button class="ad-mini-btn" data-f="${f}" style="transition:all 0.2s;background:transparent;border:none;color:${isActive?'var(--mb-active)':'var(--mb-text)'};font-size:11px;white-space:nowrap;padding:0 5px;font-weight:${isActive?'bold':'normal'};transform:${isActive?'translateY(-2px)':'none'};">${f.toUpperCase()}</button>`;
+                }).join('')}
+            </div>
+            <button class="ad-mini-btn" id="net-clear" style="background:transparent;border:none;color:#ff4d4f;font-size:12px;white-space:nowrap;flex-shrink:0;">清空</button></div>
+            <div id="mb-net-list-scroll" style="flex:1;overflow-y:auto;background:var(--mb-bg);">${list.map((l, i) => {
+                const typeColor = { 'SCRIPT': '#f1c40f', 'STYLESHEET': '#3498db', 'IMG': '#e67e22', 'FETCH': '#9b59b6', 'XMLHTTPREQUEST': '#1abc9c' }[l.type] || 'var(--mb-text)';
+                const urlParts = l.url.split('/'); const fileName = urlParts[urlParts.length-1].split('?')[0] || urlParts[urlParts.length-2] || l.url;
+                return `<div class="node-row net-item" data-idx="${i}" style="border-bottom:0.5px solid var(--mb-border);padding:6px 10px;display:block;cursor:pointer;">
+                <div style="font-size:11px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center;">
+                    <div style="display:flex;align-items:center;gap:5px;">
+                        <span style="background:#444;color:#fff;padding:0px 3px;border-radius:2px;zoom:0.8;">${l.method}</span>
+                        <span style="color:${l.status>=400||l.status==='Fail'?'#ff4d4f':(l.status==='pending'?'#f1c40f':'#2ecc71')};font-weight:bold;">${l.status}</span>
+                        <span style="color:${typeColor};font-weight:600;zoom:0.9;">[${l.type}]</span>
+                    </div>
+                    <span style="opacity:0.5;zoom:0.8;color:var(--mb-text);">${l.duration}ms</span>
+                </div>
+                <div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:monospace;color:var(--mb-text);">
+                    <span class="hl-domain" style="font-weight:bold;">${esc(fileName)}</span>
+                    <span style="opacity:0.4;margin-left:4px;zoom:0.9;">${esc(l.url)}</span>
+                </div></div>`}).join('') || '<div style="padding:20px;text-align:center;opacity:0.4;color:var(--mb-text);">No Records</div>'}</div>`;
+        const scrollBox = container.querySelector('#mb-net-list-scroll');
+        if (scrollBox && netState.lastScrollTop) scrollBox.scrollTop = netState.lastScrollTop;
+        container.querySelector('#net-to-main').onclick = () => { shadow.querySelectorAll('.mb-page').forEach(p => p.style.display = ''); switchToPage(0); shadow.querySelectorAll('.mb-tool-btn').forEach(b => b.classList.remove('active')); netState.pageStack = ['main']; netState.lastScrollTop = 0; };
+        container.querySelector('#net-tab-net').onclick = () => { netState.activeTab = 'network'; netState.resFilter = 'all'; netState.lastScrollTop = 0; renderNetworkPage(); };
+        container.querySelector('#net-tab-resource').onclick = () => { netState.activeTab = 'resource'; netState.resFilter = 'all'; netState.lastScrollTop = 0; renderNetworkPage(); };
+        container.querySelector('#net-clear').onclick = () => { if(netState.activeTab==='network') netState.logs=[]; renderNetworkPage(); };
+        container.querySelectorAll('[data-f]').forEach(btn => btn.onclick = () => { netState.resFilter = btn.dataset.f; netState.lastScrollTop = 0; renderNetworkPage(); });
+        container.querySelectorAll('.net-item').forEach(el => el.onclick = () => { netState.lastScrollTop = scrollBox.scrollTop; netState.currentLog = list[el.dataset.idx]; netState.pageStack.push('detail'); renderNetworkPage(); });
+    }
+
+    function renderSearchUI(bar) {
+        bar.innerHTML = `
+            <div style="display:flex; flex-direction:column; width:100%; gap:8px;" id="mb-search-container">
+                <div style="display:flex; align-items:center; gap:5px; width:100%;">
+                    <button class="edit-btn" id="btn-search-prev">◀</button>
+                    <input type="text" id="mb-search-input" placeholder="输入关键词..." style="flex:1; height:30px; padding:0 8px; border:1px solid var(--mb-border); background:var(--mb-bg); color:var(--mb-text); border-radius:4px; outline:none; font-size:13px;">
+                    <button class="edit-btn" id="btn-search-go" style="background:#3498db; color:#fff; border:none; padding:0 10px;">搜索</button>
+                    <button class="edit-btn" id="btn-search-next">▶</button>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; opacity:0.8;">
+                    <span id="mb-search-count">就绪</span>
+                    <span class="edit-btn" id="btn-search-exit" style="color:#e74c3c; cursor:pointer;">退出搜索</span>
+                </div>
+            </div>
+        `;
+
+        const input = bar.querySelector('#mb-search-input');
+        const countLab = bar.querySelector('#mb-search-count');
+        const stopProp = (e) => e.stopPropagation();
+        const evTypes = ['keydown', 'keyup', 'keypress', 'input', 'touchstart', 'mousedown', 'click'];
+        const updateSelection = () => {
+            if (searchResults.length > 0) {
+                currentSearchIdx = (currentSearchIdx + searchResults.length) % searchResults.length;
+                const target = searchResults[currentSearchIdx];
+                if (currentTarget) currentTarget.classList.remove('mb-inspect-hl');
+                currentTarget = target;
+                currentTarget.classList.add('mb-inspect-hl');
+                const treeContainer = shadow.getElementById('mb-dom-tree');
+                if (treeContainer) {
+                    treeContainer.innerHTML = '';
+                    const parent = currentTarget.parentElement || currentTarget;
+                    treeContainer.appendChild(buildTree(parent, true));
+                    setTimeout(() => {
+                        const targetLine = treeContainer.querySelector('.mb-tree-line.active');
+                        if (targetLine) {
+                            targetLine.scrollIntoView({ behavior: 'auto', block: 'center' });
+                        }
+                    }, 100);
+                }
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                countLab.innerText = `结果: ${currentSearchIdx + 1} / ${searchResults.length}`;
+            } else {
+                countLab.innerText = '未找到匹配';
+            }
+        };
+        const doSearch = () => {
+            const val = input.value.trim().toLowerCase();
+            if (!val) { countLab.innerText = '请输入内容'; return; }
+            input.blur(); 
+            searchResults = [];
+            currentSearchIdx = 0;
+            countLab.innerText = '搜索中...';
+            setTimeout(() => {
+                try {
+                    const selectorMatches = document.querySelectorAll(val);
+                    selectorMatches.forEach(el => {
+                        if (!host.contains(el) && el !== document.documentElement && el !== document.body) searchResults.push(el);
+                    });
+                } catch (e) {}
+                const allElements = document.querySelectorAll('*');
+                allElements.forEach(el => {
+                    if (host.contains(el) || searchResults.includes(el)) return;
+                    const matchTag = el.tagName.toLowerCase().includes(val);
+                    const matchText = Array.from(el.childNodes).some(n => n.nodeType === 3 && n.textContent.toLowerCase().includes(val));
+                    const matchAttr = Array.from(el.attributes).some(a => a.name.toLowerCase().includes(val) || a.value.toLowerCase().includes(val));
+                    if (matchTag || matchText || matchAttr) searchResults.push(el);
+                });
+                searchResults = [...new Set(searchResults)];
+                updateSelection();
+            }, 100);
+        };
+        evTypes.forEach(type => input.addEventListener(type, stopProp, { capture: true }));
+        bar.querySelector('#btn-search-go').onclick = (e) => { e.stopPropagation(); doSearch(); };
+        bar.querySelector('#btn-search-prev').onclick = (e) => { e.stopPropagation(); if (searchResults.length) { currentSearchIdx--; updateSelection(); } };
+        bar.querySelector('#btn-search-next').onclick = (e) => { e.stopPropagation(); if (searchResults.length) { currentSearchIdx++; updateSelection(); } };
+        bar.querySelector('#btn-search-exit').onclick = (e) => { e.stopPropagation(); evTypes.forEach(type => input.removeEventListener(type, stopProp, { capture: true })); searchResults = [];  currentSearchIdx = -1; bar.removeAttribute('data-mode'); renderDOM(); if (currentTarget) highlight(currentTarget); };
+        setTimeout(() => input.focus(), 100);
+    }
+
+    const clearAllHighlights = () => {
+        const highlighters = shadow.querySelectorAll('[id^="mb-highlighter"]');
+        highlighters.forEach(el => el.remove());
+        if (currentTarget) {
+            currentTarget.classList.remove('mb-inspect-hl');
+            currentTarget.contentEditable = 'false';
+            currentTarget.style.outline = '';
+            currentTarget.style.backgroundColor = '';
+        }
+    };
+
+    function updateNodeActions() {
+        const actionsBar = shadow.getElementById('mb-node-actions');
+        if (!currentTarget || !actionsBar) return;
+        actionsBar.style.display = 'flex';
+        const isSearching = actionsBar.getAttribute('data-mode') === 'search';
+        if (isSearching) {
+            renderSearchUI(actionsBar);
+            return;
+        }
+        actionsBar.innerHTML = '';
+        const btnHtml = document.createElement('button'); btnHtml.className = 'edit-btn'; btnHtml.id = 'btn-edit-html'; btnHtml.innerText = '🏗️代码模式'; actionsBar.appendChild(btnHtml);
+        const btnEdit = document.createElement('button'); btnEdit.className = 'edit-btn'; btnEdit.id = 'btn-edit-node'; actionsBar.appendChild(btnEdit);
+        const btnImg = document.createElement('button'); btnImg.className = 'edit-btn'; btnImg.id = 'btn-edit-img'; actionsBar.appendChild(btnImg);
+        const btnDel = document.createElement('button'); btnDel.className = 'edit-btn'; btnDel.id = 'btn-del-node'; btnDel.style.color = '#e74c3c'; btnDel.innerText = '✂️删除'; actionsBar.appendChild(btnDel);
+        const btnHide = document.createElement('button'); btnHide.className = 'edit-btn'; btnHide.id = 'btn-hide-inspect'; btnHide.style.cssText = 'color:#95a5a6; border-color:#95a5a6;'; btnHide.innerText = '🚫隐藏选取'; actionsBar.appendChild(btnHide);
+        const btnSearch = document.createElement('button'); btnSearch.className = 'edit-btn'; btnSearch.id = 'btn-search-node'; btnSearch.style.cssText = 'color:#3498db; border-color:#3498db;'; btnSearch.innerText = '🔍搜索元素'; actionsBar.appendChild(btnSearch);
+        const btnUndo = document.createElement('button'); btnUndo.className = 'edit-btn'; btnUndo.id = 'btn-undo-node'; btnUndo.style.cssText = 'color:#2ecc71; border-color:#2ecc71;'; btnUndo.innerText = '↩️撤销'; actionsBar.appendChild(btnUndo);
+
+        btnEdit.innerText = (currentTarget.contentEditable === 'true' || currentTarget.getAttribute('contenteditable') === 'true') ? '✅完成文字' : '📝文字模式';
+        btnEdit.classList.toggle('active', (currentTarget.contentEditable === 'true' || currentTarget.getAttribute('contenteditable') === 'true'));
+        btnUndo.style.display = historyStack.length > 0 ? 'block' : 'none';
+        const isImg = currentTarget.tagName === 'IMG';
+        const hasBg = window.getComputedStyle(currentTarget).backgroundImage !== 'none';
+        btnImg.style.display = (isImg || hasBg) ? 'block' : 'none';
+        btnImg.innerText = '🖼️换图';
+
+        const saveHistory = () => {
+            const parent = currentTarget.parentElement;
+            if (!parent) return;
+            const index = Array.from(parent.children).indexOf(currentTarget);
+            historyStack.push({ parent, index, outerHTML: currentTarget.outerHTML });
+        };
+        const preventInteraction = (e) => {
+            if (host.contains(e.target) || e.target === currentTarget || currentTarget.contains(e.target)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            return false;
+        };
+        const finishTextEdit = () => {
+            isEditingText = false;
+            currentTarget.setAttribute('contenteditable', 'false');
+            currentTarget.style.outline = ''; currentTarget.style.backgroundColor = '';
+            currentTarget.onblur = null; currentTarget.onkeydown = null;
+            ['click', 'mousedown', 'mouseup', 'touchstart', 'touchend'].forEach(evName => { document.removeEventListener(evName, preventInteraction, { capture: true }); });
+            isCollapsed = false; updateFoldState(); startPicking(); clearAllHighlights(); renderDOM(); highlight(currentTarget); updateNodeActions();
+        };
+        const formatHTML = (node) => {
+            const clone = node.cloneNode(true);
+            const clean = (el) => {
+                el.classList.remove('mb-inspect-hl');
+                if (el.classList.length === 0) el.removeAttribute('class');
+                if (el.getAttribute('contenteditable')) el.removeAttribute('contenteditable');
+                Array.from(el.children).forEach(clean);
+            };
+            clean(clone);
+            let xml = clone.outerHTML.replace(/>\s+</g, '><').replace(/\s{2,}/g, ' ').trim();
+            let formatted = '';
+            let indent = '';
+            const nodes = xml.split(/(?=<)/).filter(n => n.trim() !== '');
+            nodes.forEach(n => {
+                if (n.startsWith('</')) indent = indent.substring(4);
+                formatted += indent + n + '\n';
+                if (n.startsWith('<') && !n.startsWith('</') && !n.endsWith('/>') && !n.match(/<(input|img|br|hr|meta|link|source|link|area|base|col|embed|param|track|wbr)/i)) {
+                    indent += '    ';
+                }
+            });
+            return formatted.trim();
+        };
+        btnHtml.onclick = (e) => {
+            e.stopPropagation();
+            saveHistory();
+            const input = shadow.getElementById('mb-editor-input');
+            const pre = shadow.getElementById('mb-editor-pre');
+            const editorPage = shadow.getElementById('page-editor');
+            const container = shadow.getElementById('mb-editor-container');
+            container.style.backgroundColor = '#1e1e1e';
+            input.style.cssText = `position:absolute; top:0; left:0; width:100%; height:100%; padding:15px; font-family:monospace; font-size:13px; line-height:1.6; color:#d4d4d4; background:#1e1e1e; border:none; outline:none; resize:none; white-space:pre; overflow:auto; box-sizing:border-box; z-index:10; tab-size:4;`;
+            pre.style.display = 'none'; 
+            input.value = formatHTML(currentTarget);
+            stage.style.transform = `translateX(-${editorPage.offsetLeft}px)`;
+            shadow.getElementById('mb-btn-editor-back').onclick = () => { stage.style.transform = 'translateX(0)'; };
+            shadow.getElementById('mb-btn-editor-save').onclick = () => {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = input.value.trim();
+                const newNode = tempDiv.firstElementChild;
+                if (newNode) {
+                    currentTarget.replaceWith(newNode);
+                    currentTarget = newNode;
+                }
+                stage.style.transform = 'translateX(0)';
+                clearAllHighlights(); renderDOM(); highlight(currentTarget); updateNodeActions();
+            };
+        };
+        btnSearch.onclick = (e) => { e.stopPropagation(); actionsBar.setAttribute('data-mode', 'search'); updateNodeActions(); };
+        btnHide.onclick = (e) => { e.stopPropagation(); clearAllHighlights(); currentTarget = null; renderDOM(); };
+        btnEdit.onclick = (e) => {
+            e.stopPropagation();
+            if (currentTarget.contentEditable !== 'true' && currentTarget.getAttribute('contenteditable') !== 'true') {
+                saveHistory(); stopPicking(); isEditingText = true;
+                ['click', 'mousedown', 'mouseup', 'touchstart', 'touchend'].forEach(evName => { document.addEventListener(evName, preventInteraction, { capture: true });});
+                isCollapsed = true; updateFoldState();
+                currentTarget.setAttribute('contenteditable', 'true');
+                currentTarget.style.outline = '2px dashed #ff4757';
+                currentTarget.style.minWidth = '20px';
+                setTimeout(() => {
+                    currentTarget.focus();
+                    try {
+                        const range = document.createRange(); const sel = window.getSelection();
+                        range.selectNodeContents(currentTarget); range.collapse(false);
+                        sel.removeAllRanges(); sel.addRange(range);
+                    } catch (err) {}
+                }, 0);
+                currentTarget.onblur = () => finishTextEdit();
+                currentTarget.onkeydown = (ev) => { 
+                    ev.stopPropagation();
+                    if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); currentTarget.blur(); } 
+                };
+            } else {
+                finishTextEdit();
+            }
+            updateNodeActions();
+        };
+        btnDel.onclick = (e) => {
+            e.stopPropagation();
+            if (confirm('确定删除该元素？')) {
+                saveHistory(); clearAllHighlights();
+                const p = currentTarget.parentElement;
+                const nextTarget = currentTarget.nextElementSibling || currentTarget.previousElementSibling || p;
+                currentTarget.remove();
+                currentTarget = (nextTarget && nextTarget !== document.documentElement) ? nextTarget : null;
+                renderDOM(); if (currentTarget) highlight(currentTarget);
+            }
+        };
+        btnImg.onclick = (e) => {
+            e.stopPropagation();
+            const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
+            input.onchange = ev => {
+                const reader = new FileReader();
+                reader.onload = (rev) => { saveHistory(); clearAllHighlights(); if (currentTarget.tagName === 'IMG') currentTarget.src = rev.target.result; else currentTarget.style.backgroundImage = `url(${rev.target.result})`; renderDOM(); highlight(currentTarget); };
+                reader.readAsDataURL(ev.target.files[0]);
+            };
+            input.click();
+        };
+        btnUndo.onclick = (e) => {
+            e.stopPropagation(); const last = historyStack.pop(); if (!last || !last.parent) return;
+            if (currentTarget) {
+                isEditingText = false;
+                currentTarget.setAttribute('contenteditable', 'false'); currentTarget.onblur = null; currentTarget.onkeydown = null; currentTarget.style.outline = '';
+                ['click', 'mousedown', 'mouseup', 'touchstart', 'touchend'].forEach(evName => { document.removeEventListener(evName, preventInteraction, { capture: true }); });
+            }
+            clearAllHighlights();
+            const temp = document.createElement('div'); temp.innerHTML = last.outerHTML;
+            const restoredNode = temp.firstElementChild;
+            const existingNode = last.parent.children[last.index];
+            if (existingNode) existingNode.replaceWith(restoredNode); else last.parent.appendChild(restoredNode);
+            currentTarget = restoredNode; isCollapsed = false; updateFoldState(); startPicking(); renderDOM(); highlight(currentTarget); updateNodeActions();
+        };
+    }
+
+    function updateIconStyle() {
+        if (!trigger) return;
+        const size = api.getValue('mb_icon_size', 32);
+        const bottom = api.getValue('mb_icon_bottom', 95);
+        const right = api.getValue('mb_icon_right', 16);
+        const svgCode = api.getValue('mb_icon_svg', DEFAULT_SVG);
+        trigger.style.width = size + 'px';
+        trigger.style.height = size + 'px';
+        trigger.style.bottom = bottom + 'px';
+        trigger.style.right = right + 'px';
+        trigger.innerHTML = svgCode;
+        const svgEl = trigger.querySelector('svg');
+        if (svgEl) {
+            svgEl.style.width = (size * 0.7) + 'px';
+            svgEl.style.height = (size * 0.7) + 'px';
+        }
+    }
+
+    function buildTree(el, isRoot = false) {
+        if (!el) return null;
+        if (el.nodeType === 3) {
+            const text = el.textContent.trim();
+            if (!text) return null;
+            const textDiv = document.createElement('div');
+            textDiv.className = 'node-row';
+            textDiv.style.cssText = "margin-left: 18px; white-space: pre-wrap; cursor: default;";
+            textDiv.innerText = text.length > 8000 ? text.substring(0, 8000) + "..." : text;
+            return textDiv;
+        }
+        if (el.nodeType !== 1) return null;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'node-wrapper';
+        const row = document.createElement('div');
+        const isSelected = el === currentTarget;
+        row.className = 'node-row' + (isSelected ? ' selected' : '');
+        const hasChildren = el.childNodes.length > 0;
+        const arrow = document.createElement('span');
+        arrow.className = 'toggle-btn';
+        arrow.innerText = (hasChildren && (isRoot || isSelected)) ? '▼' : (hasChildren ? '▶' : ' ');
+        row.appendChild(arrow);
+        let html = `<span style="color:var(--mb-code-key);font-weight:bold;">&lt;${el.tagName.toLowerCase()}</span>`;
+        for (let attr of el.attributes) {
+            let val = attr.value;
+            if (attr.name === 'class') { val = val.replace('mb-inspect-hl', '').trim(); if (!val) continue; }
+            html += ` <span style="color:var(--mb-code-attr);"> ${attr.name}=</span><span style="color:var(--mb-code-val);">"${val}"</span>`;
+        }
+        html += `<span style="color:var(--mb-code-key);font-weight:bold;">&gt;</span>`;
+        const label = document.createElement('span');
+        label.className = 'node-content';
+        label.innerHTML = html;
+        row.appendChild(label);
+        if (isSelected) {
+            const editArea = document.createElement('div');
+            editArea.className = 'html-edit-area';
+            editArea.innerText = el.innerHTML;
+            editArea.onclick = (e) => e.stopPropagation();
+            editArea.onkeydown = (e) => e.stopPropagation();
+            row.appendChild(editArea);
+            if (el.contentEditable === 'true') {
+                el.style.outline = '2px dashed #ff4757';
+                el.style.backgroundColor = 'rgba(255,71,87,0.1)';
+            }
+        }
+        const isInternalScript = el.tagName === 'SCRIPT' && !el.hasAttribute('src') && el.textContent.trim().length > 0;
+        const isInternalStyle = el.tagName === 'STYLE' && !el.hasAttribute('href') && el.textContent.trim().length > 0;
+        if (isInternalScript || isInternalStyle) {
+            const viewBtn = document.createElement('span');
+            viewBtn.innerText = ' [查看代码]';
+            viewBtn.style.cssText = "color:#007aff; cursor:pointer; font-weight:bold; margin-left:8px;";
+            viewBtn.onclick = (e) => {
+                e.stopPropagation();
+                const display = shadow.getElementById('mb-code-display');
+                const title = shadow.getElementById('mb-code-title');
+                const isJS = el.tagName === 'SCRIPT';
+                title.innerText = isJS ? 'JavaScript 格式化查看' : 'CSS 格式化查看';
+                display.innerHTML = formatAndHighlight(el.textContent, isJS ? 'js' : 'css');
+                shadow.getElementById('mb-btn-code-copy').onclick = () => api.setClipboard(el.textContent);
+                switchToPage(6); 
+            };
+            row.appendChild(viewBtn);
+        }
+        wrapper.appendChild(row);
+        const cBox = document.createElement('div');
+        if (hasChildren && (isRoot || isSelected)) {
+            cBox.style.display = 'block';
+            Array.from(el.childNodes).forEach(c => { const childNode = buildTree(c, false); if (childNode) cBox.appendChild(childNode); });
+        } else { cBox.style.display = 'none'; }
+        wrapper.appendChild(cBox);
+        arrow.onclick = (e) => {
+            e.stopPropagation();
+            if (cBox.style.display === 'none') {
+                if (cBox.innerHTML === '') { 
+                    Array.from(el.childNodes).forEach(c => { const childNode = buildTree(c, false); if (childNode) cBox.appendChild(childNode); }); 
+                }
+                cBox.style.display = 'block'; arrow.innerText = '▼';
+            } else { cBox.style.display = 'none'; arrow.innerText = '▶'; }
+        };
+        row.onclick = (e) => { e.stopPropagation(); highlight(el); renderDOM(); };
+        return wrapper;
+    }
+    
+    function renderDOM() {
+        const treeContainer = shadow.getElementById('mb-dom-tree');
+        if (!treeContainer) return;
+        treeContainer.innerHTML = '';
+        if (!currentTarget) {
+            const bar = shadow.getElementById('mb-node-actions');
+            if (bar) bar.style.display = 'none';
+            return;
+        }
+        const parent = currentTarget.parentElement || currentTarget;
+        treeContainer.appendChild(buildTree(parent, true));
+        updateNodeActions();
+        setTimeout(() => {
+            const selected = treeContainer.querySelector('.node-row.selected');
+            if (selected) selected.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+    }
+    
+    const highlight = (el) => {
+        if (currentTarget) currentTarget.classList.remove('mb-inspect-hl');
+        currentTarget = el;
+        currentTarget.classList.add('mb-inspect-hl');
+        if (stage.style.transform.includes('translateX(-200%)')) {
+            if (adUpdateTimer) clearTimeout(adUpdateTimer);
+            adUpdateTimer = setTimeout(() => renderAdPage(), 500);
+        }
+    };
+
+    const triggerParentAction = (isLong) => {
+        if (!currentTarget) return;
+        const targetNode = isLong ? currentTarget.firstElementChild : currentTarget.parentElement;
+        if (targetNode && targetNode !== document.documentElement) {
+            highlight(targetNode);
+            renderDOM();
+            if (stage.style.transform.includes('translateX(-200%)')) renderAdPage();
+        }
+    };
+
+    const setupParentEvents = (btn) => {
+        let timer = null;
+        const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
+        const start = (e) => {
+            if (e.pointerType === 'touch' && e.type === 'mousedown') return;
+            btn.dataset.isLong = "false";
+            timer = setTimeout(() => {
+                btn.dataset.isLong = "true";
+                if (parentHistory.length > 0) {
+                    const lastEl = parentHistory.pop();
+                    highlight(lastEl);
+                    renderDOM();
+                } else {
+                    triggerParentAction(true);
+                }
+            }, 600);
+        };
+        const end = (e) => {
+            const isLong = btn.dataset.isLong === "true";
+            clear();
+            if (e.type === 'touchend') e.preventDefault();
+            if (!isLong) {
+                if (currentTarget) {
+                    parentHistory.push(currentTarget);
+                    if (parentHistory.length > 2) parentHistory.shift();
+                }
+                triggerParentAction(false);
+            }
+        };
+        btn.onclick = (e) => { e.stopPropagation(); delete btn.dataset.isLong; };
+        btn.addEventListener('touchstart', start, { passive: true });
+        btn.addEventListener('touchend', end, { passive: false });
+        btn.addEventListener('mousedown', start);
+        btn.addEventListener('mouseup', end);
+        btn.addEventListener('mouseleave', clear);
+    };
+
+    function updateTriggerVisibility() {
+        if (trigger) {
+            trigger.style.display = api.getValue('mb_icon_visible', true) ? 'flex' : 'none';
+        }
+    }
+    
+    function toggleIconVisible() {
+        const currentState = api.getValue('mb_icon_visible', true);
+        api.setValue('mb_icon_visible', !currentState);
+        updateTriggerVisibility();
+    }
+
+    function createDebugTrigger() {
+        updateIconStyle();
+        updateTriggerVisibility();
+    }
+    
+    let parentHistory = [];
+    const btnParent = shadow.getElementById('mb-btn-parent');
+    const btnToNet = shadow.querySelector('#mb-btn-to-net');
+    const pageNet = shadow.querySelector('#page-net');
+    btnToNet.onclick = () => { shadow.querySelectorAll('.mb-page').forEach(p => p.style.display = ''); switchToPage(8); shadow.querySelectorAll('.mb-tool-btn').forEach(b => b.classList.remove('active')); btnToNet.classList.add('active'); netState.pageStack = ['main']; renderNetworkPage(); };
+    setupParentEvents(btnParent);
+    initNetworkInterceptor();
+
+    btnPick.onclick = (e) => { e.stopPropagation(); isPicking ? stopPicking() : startPicking(); };
+    btnFold.onclick = (e) => { e.stopPropagation(); isCollapsed = !isCollapsed; updateFoldState(); };
+    shadow.getElementById('mb-btn-to-js').onclick = () => switchToPage(1);
+    shadow.getElementById('mb-btn-to-ad').onclick = () => { if (!currentTarget) return; renderAdPage(); switchToPage(2); };
+    shadow.getElementById('mb-btn-to-data').onclick = () => { renderDataPage(); switchToPage(3); };
+    shadow.getElementById('mb-btn-to-icon').onclick = () => { renderIconPage(); switchToPage(4); };
+    shadow.getElementById('mb-btn-back').onclick = () => switchToPage(0);
+    shadow.getElementById('mb-btn-code-back').onclick = () => switchToPage(0);
+    shadow.getElementById('mb-btn-close').onclick = () => togglePanel(false);
+    shadow.getElementById('mb-btn-copy-html').onclick = () => { if (!currentTarget) return alert('请先选取元素');switchToPage(5);};
+    shadow.getElementById('copy-box-html').onclick = () => { if (!currentTarget) return; let clone = currentTarget.cloneNode(true); clone.classList.remove('mb-inspect-hl'); if (clone.getAttribute('class') === "") clone.removeAttribute('class'); api.setClipboard(clone.outerHTML);};
+    shadow.getElementById('copy-box-text').onclick = () => { if (!currentTarget) return; let text = currentTarget.innerText || currentTarget.textContent; let formattedText = text.split('\n').map(line => line.trim()).filter(line => line.length > 0).join('\n'); api.setClipboard(formattedText);};
+    shadow.getElementById('copy-box-xpath').onclick = () => { if (!currentTarget) return; api.setClipboard(getXPath(currentTarget));};
+    shadow.getElementById('mb-btn-parent').onclick = () => { if (currentTarget && currentTarget.parentElement) { highlight(currentTarget.parentElement); renderDOM(); } };
+    shadow.getElementById('mb-btn-restore').onclick = () => { if (activePreviewStyle) { activePreviewStyle.remove(); activePreviewStyle = null; } };
+    shadow.getElementById('btn-js-clear').onclick = () => { jsLog.innerHTML = ''; };
+    shadow.getElementById('btn-js-run').onclick = () => { const code = jsInput.value.trim(); if (!code) return; try { const result = window.eval(code); if (result !== undefined) addLog(result, 'log-result'); } catch (e) { addLog(e.stack || e.message, 'log-error');}};
+    shadow.getElementById('btn-js-copy-all').onclick = () => { const logs = Array.from(jsLog.querySelectorAll('.log-item')); if (logs.length === 0) { alert('没有可复制的日志'); return;} const text = logs.map(el => el.innerText).reverse().join('\n'); api.setClipboard(text);};
+
+    api.registerMenu("开启/关闭审查面板", () => togglePanel(!isDebugMode));
+    api.registerMenu("显示/隐藏悬浮图标", () => toggleIconVisible());
+
+    if (document.readyState === 'complete') createDebugTrigger();
+    else window.addEventListener('load', createDebugTrigger);
+    
+    trigger.onclick = () => togglePanel(!isDebugMode);
+
+    let startX, startY;
+    const handler = (e) => {
+        if (!isDebugMode || !isPicking || host.contains(e.target)) return;
+        if (isEditingText) return;
+        if (e.type === 'mousedown' || e.type === 'touchstart' || e.type === 'pointerdown') {
+            const touch = e.touches ? e.touches[0] : e; startX = touch.clientX; startY = touch.clientY;
+            return; 
+        }
+        if (e.type === 'click' || e.type === 'pointerup' || e.type === 'touchend') {
+            const touch = e.changedTouches ? e.changedTouches[0] : e; const diffX = Math.abs(touch.clientX - startX); const diffY = Math.abs(touch.clientY - startY);
+            if (diffX < 10 && diffY < 10) { 
+                e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); highlight(e.target);
+                if (e.target.tagName === 'SCRIPT' || e.target.tagName === 'STYLE') {
+                    if (window.mbFormatTimer) clearTimeout(window.mbFormatTimer);
+                    window.mbFormatTimer = setTimeout(() => { if (currentTarget === e.target) renderDOM(); }, 600);
+                }
+                renderDOM();
+                if (isCollapsed) { isCollapsed = false; updateFoldState(); }
+                return false;
+            }
+        }
+    };
+    const events = ['mousedown', 'touchstart', 'pointerdown', 'click', 'pointerup', 'touchend'];
+    events.forEach(type => { window.addEventListener(type, handler, { capture: true, passive: false });
+    });
+})();

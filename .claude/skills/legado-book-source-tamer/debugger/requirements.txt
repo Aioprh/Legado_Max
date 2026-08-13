@@ -1,0 +1,19 @@
+# Legado Book Source Debugger Dependencies
+# Python packages required for the debugging engine
+
+# Web scraping and parsing
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+html5lib>=1.1
+
+# HTTP requests
+requests>=2.28.0
+
+# JSONPath support
+jsonpath-ng>=1.5.3
+
+# Optional: JavaScript execution (for advanced rules)
+# PyExecJS>=1.5.1
+
+# Optional: Better encoding detection
+# chardet>=5.0.0
