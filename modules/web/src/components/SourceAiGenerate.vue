@@ -92,6 +92,27 @@
     />
     <div v-if="html" class="hint">
       编码：{{ htmlCharset }}，共 {{ htmlLength }} 字符（已截断）
+      <span v-if="apiEndpoints.length">
+        ；自动发现 {{ apiEndpoints.length }} 个 JSON API 接口，搜索示例 {{ sampleSearch?.ok ? '成功' : '失败' }}
+      </span>
+    </div>
+
+    <div v-if="apiEndpoints.length" class="api-panel">
+      <div class="api-title">自动发现 JSON API 接口（SPA 站点，LLM 将据此编写 JSONPath 规则）</div>
+      <div v-for="e in apiEndpoints" :key="e.type" class="api-line">
+        <span class="api-type">{{ e.type }}</span>
+        <span class="api-url">{{ e.url }}</span>
+      </div>
+      <div v-if="sampleSearch" class="api-sample">
+        <div class="api-sample-title">
+          {{ sampleSearch.ok ? '搜索接口示例响应：' : '搜索接口探测失败：' + sampleSearch.error }}
+        </div>
+        <pre v-if="sampleSearch.ok">{{ sampleSearch.json.slice(0, 600) }}</pre>
+      </div>
+      <div v-if="sampleCatalog && sampleCatalog.ok" class="api-sample">
+        <div class="api-sample-title">目录接口示例响应（已截断）：</div>
+        <pre>{{ sampleCatalog.json.slice(0, 600) }}</pre>
+      </div>
     </div>
 
     <el-input
@@ -116,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import API from '@api'
+import API, { type AiSampleResult } from '@api'
 import { normalizeSource } from '@utils/souce'
 import {
   Link,
@@ -155,6 +176,9 @@ const htmlCharset = ref('')
 const htmlLength = ref(0)
 const resultText = ref('')
 const checks = ref<{ name: string; pass: boolean; msg: string }[]>([])
+const apiEndpoints = ref<{ type: string; url: string }[]>([])
+const sampleSearch = ref<AiSampleResult | null>(null)
+const sampleCatalog = ref<AiSampleResult | null>(null)
 
 const htmlPreview = computed(() => html.value)
 
@@ -165,13 +189,19 @@ const fetchHtml = async () => {
   if (!url.value.trim()) return ElMessage.warning('请先填写网站地址')
   fetching.value = true
   try {
-    const { data } = await API.fetchHtml(url.value.trim())
+    const { data } = await API.fetchHtml(url.value.trim(), keyword.value.trim())
     if (!data.isSuccess) throw new Error(data.errorMsg || '抓取失败')
     html.value = data.data.html
     htmlCharset.value = data.data.charset
     htmlLength.value = data.data.length
+    apiEndpoints.value = data.data.apiEndpoints || []
+    sampleSearch.value = data.data.sampleSearch || null
+    sampleCatalog.value = data.data.sampleCatalog || null
+    const apiCount = apiEndpoints.value.length
+    const sampleOk = sampleSearch.value?.ok ? 1 : 0
     ElMessage.success(
-      `抓取成功（编码 ${htmlCharset.value}，共 ${htmlLength.value} 字符，已截断）`,
+      `抓取成功（编码 ${htmlCharset.value}，共 ${htmlLength.value} 字符，已截断）` +
+        (apiCount ? `，发现 ${apiCount} 个接口，搜索示例 ${sampleOk ? '成功' : '失败'}` : ''),
     )
   } catch (e) {
     ElMessage.error('抓取失败: ' + (e as Error).message)
@@ -190,15 +220,54 @@ const stripCodeFence = (text: string) => {
   return text.trim()
 }
 
-const buildPrompt = () =>
-  `网站地址：${url.value.trim()}
-搜索关键词：${keyword.value.trim() || '（未提供）'}
-书源类型：${sourceTypes[sourceType.value]}（${sourceType.value}）
-已抓取到的网页 HTML（编码 ${htmlCharset.value}，共 ${htmlLength.value} 字符）：
-----------
-${html.value}
-----------
-请分析以上 HTML 结构，按系统要求输出完整书源 JSON 数组。`
+const PROMPT_HTML_LIMIT = 40000
+
+const buildPrompt = () => {
+  const lines: string[] = []
+  lines.push(`网站地址：${url.value.trim()}`)
+  lines.push(`搜索关键词：${keyword.value.trim() || '（未提供）'}`)
+  lines.push(`书源类型：${sourceTypes[sourceType.value]}（${sourceType.value}）`)
+  if (apiEndpoints.value.length) {
+    lines.push('')
+    lines.push('【重要】本站为前端 JS 动态渲染（SPA）站点，静态 HTML 中不含书籍数据。自动发现以下 JSON API 接口，请优先基于这些接口编写 JSONPath 规则：')
+    apiEndpoints.value.forEach(e => lines.push(`- ${e.type}: ${e.url}`))
+  }
+  const ss = sampleSearch.value
+  if (ss) {
+    lines.push('')
+    if (ss.ok) {
+      lines.push('搜索接口示例响应（JSON）：')
+      lines.push('----------')
+      lines.push(ss.json)
+      lines.push('----------')
+    } else {
+      lines.push(`搜索接口探测失败：${ss.error}`)
+    }
+  }
+  const sc = sampleCatalog.value
+  if (sc) {
+    lines.push('')
+    if (sc.ok) {
+      lines.push('目录接口示例响应（JSON，用于编写目录/正文规则）：')
+      lines.push('----------')
+      lines.push(sc.json)
+      lines.push('----------')
+    } else {
+      lines.push(`目录接口探测失败：${sc.error}`)
+    }
+  }
+  lines.push('')
+  lines.push(`已抓取到的网页 HTML（预处理后，编码 ${htmlCharset.value}，共 ${htmlLength.value} 字符，已截断）：`)
+  lines.push('----------')
+  const h =
+    html.value.length > PROMPT_HTML_LIMIT
+      ? html.value.slice(0, PROMPT_HTML_LIMIT) + '\n...(已截断)'
+      : html.value
+  lines.push(h)
+  lines.push('----------')
+  lines.push('请分析以上内容，按系统要求输出完整书源 JSON 数组。若提供了 JSON API 接口与示例响应，请优先使用 JSONPath 规则。')
+  return lines.join('\n')
+}
 
 const generate = async () => {
   if (!baseUrl.value.trim() || !apiKey.value.trim()) {
@@ -323,6 +392,9 @@ const clearAll = () => {
   html.value = ''
   resultText.value = ''
   checks.value = []
+  apiEndpoints.value = []
+  sampleSearch.value = null
+  sampleCatalog.value = null
 }
 
 /**
@@ -406,6 +478,55 @@ const SYSTEM_PROMPT = `你是"Legado书源驯兽师"，精通 Legado（阅读）
   font-size: 12px;
   color: var(--el-text-color-secondary);
   margin-bottom: 8px;
+}
+.api-panel {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: var(--el-fill-color-lighter);
+}
+.api-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-color-primary);
+  margin-bottom: 6px;
+}
+.api-line {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+.api-type {
+  flex-shrink: 0;
+  color: var(--el-color-primary);
+  font-weight: 600;
+}
+.api-url {
+  color: var(--el-text-color-regular);
+}
+.api-sample {
+  margin-top: 8px;
+  border-top: 1px dashed var(--el-border-color-lighter);
+  padding-top: 6px;
+}
+.api-sample-title {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-bottom: 4px;
+}
+.api-sample pre {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--el-fill-color);
+  padding: 6px;
+  border-radius: 4px;
 }
 .checks {
   margin-top: 8px;

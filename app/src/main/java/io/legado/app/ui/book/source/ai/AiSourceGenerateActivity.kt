@@ -23,6 +23,11 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 class AiSourceGenerateActivity :
     VMBaseActivity<ActivityAiSourceGenerateBinding, AiSourceGenerateViewModel>() {
 
+    /** 喂给 LLM 的 HTML 最大字符数，避免超上下文 */
+    private companion object {
+        const val PROMPT_HTML_LIMIT = 40_000
+    }
+
     override val binding by viewBinding(ActivityAiSourceGenerateBinding::inflate)
     override val viewModel by viewModels<AiSourceGenerateViewModel>()
 
@@ -51,13 +56,21 @@ class AiSourceGenerateActivity :
             toastOnUi("请先填写网站地址")
             return
         }
+        val keyword = binding.etKeyword.text?.toString()?.trim()
         binding.btnFetchHtml.isEnabled = false
         viewModel.execute {
-            viewModel.fetchHtml(url).getOrElse { throw it }
+            viewModel.fetchHtml(url, keyword).getOrElse { throw it }
         }.onSuccess { content ->
             htmlContent = content
             binding.etHtmlPreview.setText(content.html)
-            binding.tvHtmlHint.text = "编码：${content.charset}，共 ${content.length} 字符（已截断）"
+            val apiInfo = content.apiEndpoints.joinToString("；") { "${it.type}: ${it.url}" }
+            binding.tvHtmlHint.text = buildString {
+                append("编码：${content.charset}，共 ${content.length} 字符（已截断）")
+                if (apiInfo.isNotBlank()) append("；发现接口：$apiInfo")
+                if (!content.sampleSearch.ok && content.sampleSearch.error.isNotBlank()) {
+                    append("；接口探测：${content.sampleSearch.error}")
+                }
+            }
             binding.tvHtmlHint.visibility = View.VISIBLE
             toastOnUi("抓取成功（编码 ${content.charset}，共 ${content.length} 字符）")
         }.onError {
@@ -91,11 +104,44 @@ class AiSourceGenerateActivity :
             appendLine("网站地址：$url")
             appendLine("搜索关键词：${keyword ?: "（未提供）"}")
             appendLine("书源类型：$typeName（$typeIndex）")
-            appendLine("已抓取到的网页 HTML（编码 ${content?.charset}，共 ${content?.length} 字符）：")
+            content?.apiEndpoints?.takeIf { it.isNotEmpty() }?.let { endpoints ->
+                appendLine()
+                appendLine("【重要】本站为前端 JS 动态渲染（SPA）站点，静态 HTML 中不含书籍数据。自动发现以下 JSON API 接口，请优先基于这些接口编写 JSONPath 规则：")
+                endpoints.forEach { appendLine("- ${it.type}: ${it.url}") }
+            }
+            content?.sampleSearch?.let { ss ->
+                appendLine()
+                if (ss.ok) {
+                    appendLine("搜索接口示例响应（JSON）：")
+                    appendLine("----------")
+                    appendLine(ss.json)
+                    appendLine("----------")
+                } else {
+                    appendLine("搜索接口探测失败：${ss.error}")
+                }
+            }
+            content?.sampleCatalog?.let { sc ->
+                appendLine()
+                if (sc.ok) {
+                    appendLine("目录接口示例响应（JSON，用于编写目录/正文规则）：")
+                    appendLine("----------")
+                    appendLine(sc.json)
+                    appendLine("----------")
+                } else {
+                    appendLine("目录接口探测失败：${sc.error}")
+                }
+            }
+            appendLine()
+            appendLine("已抓取到的网页 HTML（预处理后，编码 ${content?.charset}，共 ${content?.length} 字符，已截断）：")
             appendLine("----------")
-            appendLine(html)
+            val htmlForPrompt = if (html.length > PROMPT_HTML_LIMIT) {
+                html.substring(0, PROMPT_HTML_LIMIT) + "\n...(已截断)"
+            } else {
+                html
+            }
+            appendLine(htmlForPrompt)
             appendLine("----------")
-            appendLine("请分析以上 HTML 结构，按系统要求输出完整书源 JSON 数组。")
+            appendLine("请分析以上内容，按系统要求输出完整书源 JSON 数组。若提供了 JSON API 接口与示例响应，请优先使用 JSONPath 规则。")
         }
         binding.btnGenerate.isEnabled = false
         viewModel.execute {

@@ -143,15 +143,30 @@ const deleteSource = (data: Source[]) =>
     : ajax.post<LeagdoApiResponse<string>>('deleteRssSources', data)
 
 /** AI 生成书源：抓取目标网站 HTML（由 App 内嵌 HTTP 服务代理，绕过浏览器 CORS） */
+export interface AiApiEndpoint {
+  type: string
+  url: string
+}
+export interface AiSampleResult {
+  ok: boolean
+  url: string
+  json: string
+  error: string
+}
 export interface AiFetchHtmlResult {
   url: string
   charset: string
   length: number
   html: string
+  apiEndpoints: AiApiEndpoint[]
+  sampleSearch: AiSampleResult
+  sampleCatalog: AiSampleResult
 }
-const fetchHtml = (url: string) =>
+const fetchHtml = (url: string, keyword = '') =>
   ajax.get<LeagdoApiResponse<AiFetchHtmlResult>>(
-    'fetchHtml?url=' + encodeURIComponent(url),
+    'fetchHtml?url=' +
+      encodeURIComponent(url) +
+      (keyword ? '&keyword=' + encodeURIComponent(keyword) : ''),
   )
 
 // webSocket
