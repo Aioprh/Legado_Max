@@ -58,6 +58,13 @@ public class VerifyFilter {
             }
         }
 
+        // ---------- EXPLORE (ranking) 过滤 ----------
+        ReadContext ranking = JsonPath.parse(load("qd_ranking.json"));
+        List<?> rk1 = ranking.read("$.Data.Books[?(@.BookType == 1)]");
+        dump("发现过滤 Books[?()]:", rk1);
+        List<?> rkAll = ranking.read("$.Data.Books");
+        System.out.println("发现总数=" + rkAll.size());
+
         System.out.println("========================");
     }
 }
