@@ -12,6 +12,7 @@ import androidx.core.content.edit
 import com.shuyu.gsyvideoplayer.listener.GSYMediaPlayerListener
 import com.shuyu.gsyvideoplayer.utils.CommonUtil
 import com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer
+import com.shuyu.gsyvideoplayer.video.base.GSYBaseVideoPlayer
 import io.legado.app.R
 import io.legado.app.constant.AppConst
 import io.legado.app.constant.AppLog
@@ -167,6 +168,35 @@ object VideoPlay : CoroutineScope by MainScope(){
     var isPortraitVideo = false
 
     val videoManager by lazy { ExoVideoManager() }
+
+    /**
+     * 根据 URL 设置播放器的 overrideExtension，确保 ExoPlayer 能正确识别流媒体类型。
+     *
+     * 当 URL 的 path 部分没有明确的文件扩展名（如 API 接口 URL），
+     * 但实际返回的是 HLS(m3u8)/DASH(mpd) 流时，ExoSourceManager 会通过
+     * Util.inferContentType(Uri) 从 path 扩展名推断类型，导致识别失败。
+     *
+     * 此方法检查 URL 中是否包含 m3u8/mpd 关键字（包括 query 参数值中），
+     * 若检测到则设置对应的 overrideExtension，使 ExoSourceManager 能创建
+     * 正确的 MediaSource（HlsMediaSource / DashMediaSource）。
+     */
+    private fun applyOverrideExtension(player: GSYBaseVideoPlayer, url: String?) {
+        if (url.isNullOrBlank()) return
+        val lowerUrl = url.lowercase()
+        when {
+            // HLS: 检测 URL 中是否包含 .m3u8（可能在 path 或 query 参数值中）
+            lowerUrl.contains(".m3u8") -> {
+                player.setOverrideExtension("m3u8")
+            }
+            // DASH: 检测 URL 中是否包含 .mpd（可能在 path 或 query 参数值中）
+            lowerUrl.contains(".mpd") -> {
+                player.setOverrideExtension("mpd")
+            }
+            else -> {
+                player.setOverrideExtension(null)
+            }
+        }
+    }
     private var isLoading = false
     private val loadScope = CoroutineScope(SupervisorJob() + IO)
     var videoUrl: String? = null //播放链接
@@ -273,6 +303,7 @@ object VideoPlay : CoroutineScope by MainScope(){
                 withContext(Main) {
                     player.mapHeadData = analyzeUrl.headerMap
                     val url = analyzeUrl.url
+                    applyOverrideExtension(player, url)
                     player.setUp(url, false, File(appCtx.externalCache, "exoplayer"), videoTitle)
                     if (autoPlay) {
                         player.startPlayLogic()
@@ -303,6 +334,7 @@ object VideoPlay : CoroutineScope by MainScope(){
                     )
                     withContext(Main) {
                         player.mapHeadData = analyzeUrl.headerMap
+                        applyOverrideExtension(player, analyzeUrl.url)
                         player.setUp(
                             analyzeUrl.url,
                             false,
@@ -339,6 +371,7 @@ object VideoPlay : CoroutineScope by MainScope(){
                         val playUrl = analyzeUrl.url
                         withContext(Main) {
                             player.mapHeadData = analyzeUrl.headerMap
+                            applyOverrideExtension(player, playUrl)
                             player.setUp(playUrl, false, File(appCtx.externalCache, "exoplayer"), rssArticle.title)
                             if (autoPlay) {
                                 player.startPlayLogic()
@@ -403,6 +436,7 @@ object VideoPlay : CoroutineScope by MainScope(){
                 val playUrl = analyzeUrl.url
                 withContext(Main) {
                     player.mapHeadData = analyzeUrl.headerMap
+                    applyOverrideExtension(player, playUrl)
                     player.setUp(playUrl, false, File(appCtx.externalCache, "exoplayer"), chapter.title)
                     if (autoPlay) {
                         player.startPlayLogic()
