@@ -1,0 +1,55 @@
+[
+  {
+    "bookSourceUrl": "https://full.hnxianxin.cn/qd",
+    "bookSourceName": "起点书城(qd)",
+    "bookSourceGroup": "AI生成",
+    "bookSourceType": 1,
+    "customOrder": 0,
+    "enabled": true,
+    "enabledExplore": false,
+    "loginUrl": "",
+    "weight": 0,
+    "ruleSearch": {
+      "bookList": "$.Data.CardList[*].Body[*].ItemData",
+      "name": "$.BookName",
+      "author": "$.AuthorName",
+      "detail": "$.Description",
+      "coverUrl": "https://bookcover.yuewen.com/qdbimg/349573/{{$.BookId}}/180",
+      "bookUrl": "https://full.hnxianxin.cn/qd/detail.php?book_id={{$.BookId}}",
+      "kind": "$.CategoryName",
+      "wordCount": "$.WordsCount",
+      "lastChapter": ""
+    },
+    "ruleDetail": {
+      "name": "$.Data.BaseBookInfo.BookName",
+      "author": "$.Data.AuthorInfo.Author",
+      "coverUrl": "https://bookcover.yuewen.com/qdbimg/349573/{{$.Data.BaseBookInfo.BookId}}/180",
+      "intro": "$.Data.BaseBookInfo.Description",
+      "kind": "$.Data.BaseBookInfo.CategoryName",
+      "wordCount": "$.Data.BaseBookInfo.WordsCnt",
+      "lastChapter": "$.Data.BaseBookInfo.LastChapter"
+    },
+    "ruleCatalog": {
+      "bookUrl": "https://full.hnxianxin.cn/qd/catalog.php?book_id={{book.bookUrl.match(/book_id=(\\d+)/)[1]}}",
+      "chapterList": "$.Data.Chapters[?(@.C > 0)]",
+      "name": "$.N",
+      "chapterUrl": "https://full.hnxianxin.cn/qd/content.php?book_id={{book.bookUrl.match(/book_id=(\\d+)/)[1]}}&chapter_id={{$.C}}",
+      "vipFlag": "$.V",
+      "payFlag": "$.V"
+    },
+    "ruleContent": {
+      "content": "$.Content"
+    },
+    "ruleToc": null,
+    "ruleExplore": null,
+    "ruleBookInfo": null,
+    "ruleTip": null,
+    "searchUrl": "https://full.hnxianxin.cn/qd/search.php?keyword={{key}}&page={{page}}&page_size=20",
+    "detailUrl": "https://full.hnxianxin.cn/qd/detail.php?book_id={{book.bookUrl.match(/book_id=(\\d+)/)[1]}}",
+    "catalogUrl": "https://full.hnxianxin.cn/qd/catalog.php?book_id={{book.bookUrl.match(/book_id=(\\d+)/)[1]}}",
+    "header": "",
+    "exploreUrl": "",
+    "concurrentRate": 1,
+    "charset": "UTF-8"
+  }
+]
