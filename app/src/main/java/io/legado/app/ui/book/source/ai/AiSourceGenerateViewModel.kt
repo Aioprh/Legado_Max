@@ -1,0 +1,174 @@
+package io.legado.app.ui.book.source.ai
+
+import android.app.Application
+import com.google.gson.JsonParser
+import io.legado.app.api.controller.AiSourceController
+import io.legado.app.base.BaseViewModel
+import io.legado.app.help.config.LocalConfig
+import io.legado.app.help.http.okHttpClient
+import io.legado.app.utils.GSON
+import io.legado.app.utils.putString
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+
+/**
+ * AI 生成书源 ViewModel
+ *
+ * 移植自 DandanLLab/legadoSkill（MIT）的 AI 写书源能力：
+ * 抓取目标网站 HTML -> 调用 OpenAI 兼容接口让 LLM 分析网页结构 -> 生成符合 Legado 规范的书源 JSON。
+ * AI 接口配置通过 [LocalConfig] 持久化到本地。
+ */
+class AiSourceGenerateViewModel(application: Application) : BaseViewModel(application) {
+
+    /** AI 接口地址（OpenAI 兼容） */
+    var baseUrl: String
+        get() = LocalConfig.getString(KEY_BASE_URL, "https://api.deepseek.com/v1")
+        set(value) {
+            LocalConfig.putString(KEY_BASE_URL, value)
+        }
+
+    /** API Key */
+    var apiKey: String
+        get() = LocalConfig.getString(KEY_API_KEY, "")
+        set(value) {
+            LocalConfig.putString(KEY_API_KEY, value)
+        }
+
+    /** 模型名 */
+    var model: String
+        get() = LocalConfig.getString(KEY_MODEL, "deepseek-chat")
+        set(value) {
+            LocalConfig.putString(KEY_MODEL, value)
+        }
+
+    /**
+     * 抓取目标网站 HTML 并自动检测编码（供本页使用）
+     */
+    fun fetchHtml(url: String): Result<AiSourceController.HtmlContent> =
+        AiSourceController.fetchHtmlContent(url)
+
+    /**
+     * 调用 LLM 生成书源 JSON
+     * 成功返回剥离 markdown 代码块后的 JSON 文本
+     */
+    suspend fun generate(
+        baseUrl: String,
+        apiKey: String,
+        model: String,
+        systemPrompt: String,
+        userPrompt: String
+    ): String {
+        val endpoint = baseUrl.trim().trimEnd('/') + "/chat/completions"
+        val body = GSON.toJson(
+            mapOf(
+                "model" to model.ifBlank { "gpt-4o-mini" },
+                "temperature" to 0.3,
+                "messages" to listOf(
+                    mapOf("role" to "system", "content" to systemPrompt),
+                    mapOf("role" to "user", "content" to userPrompt)
+                )
+            )
+        )
+        val request = Request.Builder()
+            .url(endpoint)
+            .header("Authorization", "Bearer ${apiKey.trim()}")
+            .post(body.toRequestBody("application/json; charset=UTF-8".toMediaType()))
+            .build()
+        okHttpClient.newCall(request).execute().use { response ->
+            val text = response.body?.string() ?: ""
+            if (!response.isSuccessful) {
+                throw RuntimeException("HTTP ${response.code}: ${text.take(200)}")
+            }
+            val content = runCatching {
+                val root = JsonParser.parseString(text).asJsonObject
+                root.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject
+                    ?.getAsJsonObject("message")?.get("content")?.asString ?: ""
+            }.getOrDefault("")
+            if (content.isBlank()) throw RuntimeException("模型未返回内容")
+            stripCodeFence(content)
+        }
+    }
+
+    companion object {
+        private const val KEY_BASE_URL = "ai_base_url"
+        private const val KEY_API_KEY = "ai_api_key"
+        private const val KEY_MODEL = "ai_model"
+
+        /** 剥离 markdown 代码块，提取 JSON 片段 */
+        fun stripCodeFence(text: String): String {
+            val fence = Regex("```(?:json)?\\s*([\\s\\S]*?)```").find(text)
+            if (fence != null) return fence.groupValues[1].trim()
+            val start = text.indexOfFirst { it == '[' || it == '{' }
+            val end = maxOf(text.lastIndexOf('}'), text.lastIndexOf(']'))
+            if (start > -1 && end > start) return text.substring(start, end + 1)
+            return text.trim()
+        }
+
+        /**
+         * AI 生成书源系统提示词
+         * 提炼自 .claude/skills/legado-book-source-tamer/（DandanLLab/legadoSkill，MIT）
+         */
+        val SYSTEM_PROMPT: String = """
+你是"Legado书源驯兽师"，精通 Legado（阅读）App 书源 JSON 开发的专家。你的任务是分析用户提供的网站 HTML，生成符合 Legado 规范的完整书源 JSON。
+
+【书源 JSON 字段结构】
+{
+  "bookSourceName": "书源名称（必填）",
+  "bookSourceUrl": "网站首页地址（必填，http/https）",
+  "bookSourceGroup": "分组名（可选）",
+  "bookSourceType": 0,
+  "bookSourceComment": "说明（可选）",
+  "searchUrl": "搜索地址（必填），搜索关键字用 {{key}} 占位，如 /search?q={{key}}；POST 请求写成 /search,{"method":"POST","body":"keyword={{key}}","charset":"gbk"}",
+  "ruleSearch": {
+    "bookList": "书籍列表选择器（必填）",
+    "name": "书名规则（必填）",
+    "author": "作者规则",
+    "coverUrl": "封面规则",
+    "intro": "简介规则",
+    "kind": "分类规则",
+    "wordCount": "字数规则",
+    "lastChapter": "最新章节规则",
+    "bookUrl": "详情页 URL 规则（必填）"
+  },
+  "ruleBookInfo": {
+    "name": "详情页书名",
+    "author": "详情页作者",
+    "coverUrl": "详情页封面",
+    "intro": "详情页简介",
+    "kind": "分类",
+    "lastChapter": "最新章节",
+    "tocUrl": "目录页 URL（与详情页不同时填写）"
+  },
+  "ruleToc": {
+    "chapterList": "章节列表选择器（必填）",
+    "chapterName": "章节名规则（必填）",
+    "chapterUrl": "章节 URL 规则（必填）",
+    "nextTocUrl": "下一页目录 URL"
+  },
+  "ruleContent": {
+    "content": "正文规则（必填）",
+    "nextContentUrl": "下一章 URL",
+    "webJs": "需 JS 渲染时注入的脚本",
+    "replaceRegex": "正文净化正则，如 ##<script[\s\S]*?</script>|请收藏.*##"
+  }
+}
+
+【规则语法（Default 语法优先）】
+- 提取类型：@text 取文本、@html 取 HTML、@href 取链接、@src 取图片、@textNode、@ownText
+- Default 语法：class.booklist@tag.li 或 .booklist li@tag.a；简单 CSS 选择器不要加 @css 前缀
+- 复杂 CSS：@css:.detail p:nth-child(2)@text
+- XPath：//div[@id='content']、//h3/a/text()、//img/@src
+- JSONPath（返回 JSON 的网站）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL
+- 正则：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"
+- 注意转义：正则里的 \d、\s 等需写双反斜杠
+
+【输出要求】
+1. 严格输出 JSON，最外层必须是数组 [...]，即使只有一个书源
+2. 所有规则必须基于提供的 HTML 真实分析，禁止编造不存在的选择器
+3. 只输出 JSON 本身，不要添加解释文字或 markdown 代码块标记
+4. 无法推断的字段填空字符串 ""
+5. 若 HTML 是 JSON 数据，使用 JSONPath 语法
+""".trimIndent()
+    }
+}

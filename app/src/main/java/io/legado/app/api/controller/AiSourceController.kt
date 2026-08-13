@@ -21,23 +21,31 @@ object AiSourceController {
     /** 返回给前端的最大字符数，超出截断避免 prompt 过大 */
     private const val MAX_CHARS = 200_000
 
-    fun fetchHtml(parameters: Map<String, List<String>>): ReturnData {
-        val returnData = ReturnData()
-        val url = parameters["url"]?.firstOrNull()?.trim()
-        if (url.isNullOrEmpty()) {
-            return returnData.setErrorMsg("参数url不能为空，请填写需要分析的网站地址")
+    /** 抓取结果 */
+    data class HtmlContent(
+        val url: String,
+        val charset: String,
+        val length: Int,
+        val html: String
+    )
+
+    /**
+     * 抓取目标网站 HTML 并自动检测编码（供 HTTP 接口与原生 AI 生成页共用）
+     */
+    fun fetchHtmlContent(url: String): Result<HtmlContent> {
+        if (url.isBlank()) {
+            return Result.failure(IllegalArgumentException("参数url不能为空，请填写需要分析的网站地址"))
         }
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            return returnData.setErrorMsg("url必须以http://或https://开头")
+            return Result.failure(IllegalArgumentException("url必须以http://或https://开头"))
         }
-
         return runCatching {
             val request = Request.Builder().url(url).build()
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    return returnData.setErrorMsg("请求失败: HTTP ${response.code}")
+                    throw RuntimeException("请求失败: HTTP ${response.code}")
                 }
-                val body = response.body ?: return returnData.setErrorMsg("响应无内容")
+                val body = response.body ?: throw RuntimeException("响应无内容")
 
                 // 限量读取，避免把超大响应整体读入内存
                 // okio 的 read(ByteArray, Int, Int) 返回 Int（-1 表示流结束）
@@ -50,7 +58,7 @@ object AiSourceController {
                     total += read
                 }
                 val limitedBytes = buffer.copyOf(total)
-                if (limitedBytes.isEmpty()) return returnData.setErrorMsg("响应为空")
+                if (limitedBytes.isEmpty()) throw RuntimeException("响应为空")
 
                 // 自动检测编码（优先 <meta> 标签，其次 ICU 探测），再转成字符串
                 val charset = runCatching {
@@ -63,17 +71,31 @@ object AiSourceController {
                 }
                 val truncated = if (html.length > MAX_CHARS) html.substring(0, MAX_CHARS) else html
 
+                HtmlContent(url, charset, html.length, truncated)
+            }
+        }
+    }
+
+    fun fetchHtml(parameters: Map<String, List<String>>): ReturnData {
+        val returnData = ReturnData()
+        val url = parameters["url"]?.firstOrNull()?.trim()
+        if (url.isNullOrEmpty()) {
+            return returnData.setErrorMsg("参数url不能为空，请填写需要分析的网站地址")
+        }
+        return fetchHtmlContent(url).fold(
+            onSuccess = {
                 returnData.setData(
                     mapOf(
-                        "url" to url,
-                        "charset" to charset,
-                        "length" to html.length,
-                        "html" to truncated
+                        "url" to it.url,
+                        "charset" to it.charset,
+                        "length" to it.length,
+                        "html" to it.html
                     )
                 )
+            },
+            onFailure = {
+                returnData.setErrorMsg("抓取失败: ${it.message ?: it.javaClass.simpleName}")
             }
-        }.getOrElse {
-            returnData.setErrorMsg("抓取失败: ${it.message ?: it.javaClass.simpleName}")
-        }
+        )
     }
 }
