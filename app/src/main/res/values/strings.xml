@@ -217,6 +217,7 @@
     <string name="ai_fetch_html">Fetch HTML</string>
     <string name="ai_generate">AI generate</string>
     <string name="ai_validate">Validate</string>
+    <string name="ai_auto_fix">Auto fix</string>
     <string name="ai_import_editor">Import to editor</string>
     <string name="ai_html_preview_hint">Fetched HTML (truncated preview)</string>
     <string name="ai_result_hint">AI generated source JSON (editable)</string>
