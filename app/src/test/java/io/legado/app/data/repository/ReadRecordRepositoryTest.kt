@@ -1,5 +1,6 @@
 package io.legado.app.data.repository
 
+import io.legado.app.data.dao.BookDailySessionStat
 import io.legado.app.data.dao.BookReadTime
 import io.legado.app.data.dao.DailyReadStat
 import io.legado.app.data.dao.ReadRecordDao
@@ -742,6 +743,49 @@ class ReadRecordRepositoryTest {
                 it.deviceId == deviceId && it.bookName == bookName && it.bookAuthor == bookAuthor
             }.sumOf { it.readTime }
             return flowOf(maxOf(recordTime, detailTime))
+        }
+
+        override fun getDailySessionStats(
+            deviceId: String,
+            bookName: String,
+            bookAuthor: String
+        ): Flow<List<BookDailySessionStat>> {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd")
+            return flowOf(
+                sessions
+                    .filter {
+                        it.deviceId == deviceId && it.bookName == bookName && it.bookAuthor == bookAuthor
+                    }
+                    .groupBy { sdf.format(java.util.Date(it.startTime)) }
+                    .map { (date, grouped) ->
+                        BookDailySessionStat(
+                            date = date,
+                            sessionCount = grouped.size,
+                            totalDuration = grouped.sumOf { it.endTime - it.startTime }
+                        )
+                    }
+                    .sortedByDescending { it.date }
+            )
+        }
+
+        override fun getSessionsByBookAndDateFlow(
+            deviceId: String,
+            bookName: String,
+            bookAuthor: String,
+            date: String
+        ): Flow<List<ReadRecordSession>> {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd")
+            return flowOf(
+                sessions
+                    .filter {
+                        it.deviceId == deviceId &&
+                            it.bookName == bookName &&
+                            it.bookAuthor == bookAuthor &&
+                            sdf.format(java.util.Date(it.startTime)) == date
+                    }
+                    .sortedByDescending { it.startTime }
+                    .map { it.copy() }
+            )
         }
     }
 
