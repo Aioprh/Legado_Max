@@ -6,6 +6,89 @@ import io.legado.app.utils.RegexCache
 import java.util.UUID
 
 /**
+ * 表示一条已解析完毕的屏蔽规则，将原始 [BlockRule] 中与匹配无关的字段剥离，
+ * 并将 scope 字符串预解析为列表，避免每次匹配时重复 split/trim/filter。
+ *
+ * 供 [BlockRuleStore] 在过滤流程中构建并缓存，所有过滤方法直接使用此对象。
+ */
+class CompiledBlockRule(
+    val id: String,
+    val pattern: String,
+    val isRegex: Boolean,
+    val targetScope: Int,
+    val rssTargetScope: Int,
+    val scopeItems: List<String>,      // 预解析的书源作用域列表，空列表=对所有书源生效
+    val rssScopeItems: List<String>,   // 预解析的订阅源作用域列表，空列表=对所有订阅源生效
+) {
+    /** 缓存的正则表达式，仅在 isRegex 且 pattern 非空时编译 */
+    private val regex: Regex? =
+        if (isRegex && pattern.isNotBlank()) RegexCache.getOrCompile(pattern) else null
+
+    /** 检查书源作用范围是否包含指定的标志 */
+    fun hasScope(flag: Int): Boolean = (targetScope and flag) != 0
+
+    /** 检查订阅源作用范围是否包含指定的标志 */
+    fun hasRssScope(flag: Int): Boolean = (rssTargetScope and flag) != 0
+
+    /**
+     * 判断规则是否对指定书源生效
+     * scopeItems 为空时对所有书源生效，否则检查 sourceUrl 是否包含任一 scope 项
+     */
+    fun matchesScope(sourceUrl: String): Boolean {
+        if (scopeItems.isEmpty()) return true
+        return scopeItems.any { sourceUrl.contains(it) }
+    }
+
+    /**
+     * 判断规则是否对指定订阅源生效
+     * rssScopeItems 为空时对所有订阅源生效，否则检查 sourceUrl 是否包含任一 scope 项
+     */
+    fun matchesRssScope(sourceUrl: String): Boolean {
+        if (rssScopeItems.isEmpty()) return true
+        return rssScopeItems.any { sourceUrl.contains(it) }
+    }
+
+    /**
+     * 对单个文本执行关键词或正则匹配
+     * 正则匹配使用 runCatching 防止非法正则导致崩溃
+     */
+    private fun matchText(text: String): Boolean {
+        val r = regex ?: return text.contains(pattern)
+        return runCatching { r.containsMatchIn(text) }.getOrDefault(false)
+    }
+
+    /**
+     * 判断书籍是否匹配该屏蔽规则
+     * 根据书源作用范围（位掩码）选择匹配字段，仅当 targetScope != 0 时生效
+     * 使用短路条件判断，避免 MutableList 分配
+     */
+    fun matches(book: SearchBook): Boolean {
+        if (targetScope == 0 || pattern.isBlank()) return false
+        if (hasScope(BlockRule.SCOPE_TITLE) && matchText(book.name)) return true
+        if (hasScope(BlockRule.SCOPE_AUTHOR) && matchText(book.author)) return true
+        if (hasScope(BlockRule.SCOPE_KIND) && matchText(book.kind.orEmpty())) return true
+        if (hasScope(BlockRule.SCOPE_INTRO) && matchText(book.intro.orEmpty())) return true
+        if (hasScope(BlockRule.SCOPE_WORD_COUNT) && matchText(book.wordCount.orEmpty())) return true
+        return false
+    }
+
+    /**
+     * 判断RSS文章是否匹配该屏蔽规则
+     * 根据订阅源作用范围（位掩码）选择匹配字段，仅当 rssTargetScope != 0 时生效
+     * 使用短路条件判断，避免 MutableList 分配
+     */
+    fun matchesRssArticle(article: RssArticle): Boolean {
+        if (rssTargetScope == 0 || pattern.isBlank()) return false
+        if (hasRssScope(BlockRule.SCOPE_RSS_TITLE) && matchText(article.title)) return true
+        if (hasRssScope(BlockRule.SCOPE_RSS_TIME) && matchText(article.pubDate.orEmpty())) return true
+        return false
+    }
+
+    /** 关联回原始 BlockRule 的 ID，用于匹配结果报告 */
+    fun toBlockRuleId(): String = id
+}
+
+/**
  * 屏蔽规则数据模型
  *
  * 用于屏蔽发现、搜索、订阅列表中匹配关键词或正则表达式的内容。
@@ -44,86 +127,31 @@ data class BlockRule(
     fun hasRssScope(flag: Int): Boolean = (rssTargetScope and flag) != 0
 
     /**
-     * 获取缓存的正则表达式对象
-     * 避免每次匹配都重新编译正则，大幅减少内存和CPU消耗
+     * 将此规则编译为 [CompiledBlockRule]，预解析 scope 字符串为列表，避免后续重复 split/trim/filter。
+     * 调用方应缓存编译结果（如 BlockRuleStore 中缓存），不要在每次匹配时调用。
      */
-    private fun getCompiledRegex(): Regex? {
-        if (!isRegex || pattern.isBlank()) return null
-        return RegexCache.getOrCompile(pattern)
-    }
-
-    /**
-     * 判断书籍是否匹配该屏蔽规则
-     * 根据书源作用范围（位掩码）选择匹配字段，仅当 targetScope != 0 时生效
-     */
-    fun matches(book: SearchBook): Boolean {
-        if (targetScope == 0) return false
-        val searchTargets = mutableListOf<String>()
-        if (hasScope(SCOPE_TITLE)) searchTargets.add(book.name)
-        if (hasScope(SCOPE_AUTHOR)) searchTargets.add(book.author)
-        if (hasScope(SCOPE_KIND)) searchTargets.add(book.kind.orEmpty())
-        if (hasScope(SCOPE_INTRO)) searchTargets.add(book.intro.orEmpty())
-        if (hasScope(SCOPE_WORD_COUNT)) searchTargets.add(book.wordCount.orEmpty())
-        if (searchTargets.isEmpty()) return false
-
-        val regex = getCompiledRegex()
-        return searchTargets.any { text ->
-            if (regex != null) {
-                runCatching { regex.containsMatchIn(text) }.getOrDefault(false)
-            } else {
-                text.contains(pattern)
-            }
-        }
-    }
-
-    /**
-     * 判断规则是否对指定书源生效
-     * - scope 为空时，默认对所有书源生效
-     * - scope 非空时，仅对匹配书源URL的书源生效
-     */
-    fun matchesScope(sourceUrl: String): Boolean {
-        val scopeVal = scope
-        if (!scopeVal.isNullOrBlank()) {
-            val items = scopeVal.split(";").map { it.trim() }.filter { it.isNotBlank() }
-            if (!items.any { sourceUrl.contains(it) }) return false
-        }
-        return true
-    }
-
-    /**
-     * 判断规则是否对指定订阅源生效
-     * - rssScope 为空时，默认对所有订阅源生效
-     * - rssScope 非空时，仅对匹配订阅源URL的订阅源生效
-     */
-    fun matchesRssScope(sourceUrl: String): Boolean {
-        val rssScopeVal = rssScope
-        if (!rssScopeVal.isNullOrBlank()) {
-            val items = rssScopeVal.split(";").map { it.trim() }.filter { it.isNotBlank() }
-            if (!items.any { sourceUrl.contains(it) }) return false
-        }
-        return true
-    }
-
-    /**
-     * 判断RSS文章是否匹配该屏蔽规则
-     * 根据订阅源作用范围（位掩码）选择匹配字段，仅当 rssTargetScope != 0 时生效
-     * 标题对应 SCOPE_RSS_TITLE，时间对应 SCOPE_RSS_TIME
-     */
-    fun matchesRssArticle(article: RssArticle): Boolean {
-        if (rssTargetScope == 0) return false
-        val searchTargets = mutableListOf<String>()
-        if (hasRssScope(SCOPE_RSS_TITLE)) searchTargets.add(article.title)
-        if (hasRssScope(SCOPE_RSS_TIME)) searchTargets.add(article.pubDate.orEmpty())
-        if (searchTargets.isEmpty()) return false
-
-        val regex = getCompiledRegex()
-        return searchTargets.any { text ->
-            if (regex != null) {
-                runCatching { regex.containsMatchIn(text) }.getOrDefault(false)
-            } else {
-                text.contains(pattern)
-            }
-        }
+    fun compile(): CompiledBlockRule {
+        val scopeItems = scope
+            ?.takeIf { it.isNotBlank() }
+            ?.split(";")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+        val rssScopeItems = rssScope
+            ?.takeIf { it.isNotBlank() }
+            ?.split(";")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+        return CompiledBlockRule(
+            id = id,
+            pattern = pattern,
+            isRegex = isRegex,
+            targetScope = targetScope,
+            rssTargetScope = rssTargetScope,
+            scopeItems = scopeItems,
+            rssScopeItems = rssScopeItems,
+        )
     }
 
     /** 返回作用范围摘要文本，分别显示书源和订阅源的作用范围 */

@@ -485,7 +485,8 @@ private fun BlockRuleConfigContent(
                 } else if (allRssArticles.isNotEmpty()) {
                     LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                         items(activeMatchedRules, key = { it.id }) { rule ->
-                            val matchedArticles = allRssArticles.filter { rule.matchesRssArticle(it) }
+                            val compiled = rule.compile()
+                            val matchedArticles = allRssArticles.filter { compiled.matchesRssArticle(it) }
                             ActiveRssRuleItem(rule = rule, matchedArticles = matchedArticles)
                             HorizontalDivider()
                         }
@@ -493,7 +494,8 @@ private fun BlockRuleConfigContent(
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                         items(activeMatchedRules, key = { it.id }) { rule ->
-                            val matchedBooks = allBooks.filter { rule.matches(it) }
+                            val compiled = rule.compile()
+                            val matchedBooks = allBooks.filter { compiled.matches(it) }
                             ActiveRuleItem(rule = rule, matchedBooks = matchedBooks)
                             HorizontalDivider()
                         }
