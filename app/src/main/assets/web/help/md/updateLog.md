@@ -17,6 +17,15 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/14**
+- feat(AI写书源): 从 [legadoSkill](https://github.com/Invinciblezz/legadoSkill) 移植并增强 AI 自动生成书源能力
+  - 新增「自动修复」功能：生成后用真实搜索引擎（WebBook）验证，失败则将错误信息反馈给 LLM 自动修正，最多迭代 3 轮
+  - 新增 `autoFix()` 与 `verifyByRealSearch()`，真正验证搜索/详情/目录规则能否取到数据，而不只是静态字段检查
+  - 新增 `toSourceJson()`，将验证通过的书源序列化回 JSON 并保留 header、loginUrl 等原始字段
+  - 在 AI 生成书源页面增加「自动修复」按钮及修复日志展示
+  - 修复原始 AI 生成提示词未覆盖复杂 JS 正文、段评/章评、VIP 登录逻辑的问题
+- 更新日志新增本版功能说明与 AI 写书源能力来源标注
+
 **2026/8/03**
 - feat: 阅读时间显示支持天单位，超过24小时显示为X天Y小时
 - feat: 首页排行榜支持分页加载，每页5行，滑到底自动加载更多，支持页码记忆
