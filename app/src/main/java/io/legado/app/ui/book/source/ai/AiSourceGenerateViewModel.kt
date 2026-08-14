@@ -11,8 +11,10 @@ import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.GSON
 import io.legado.app.utils.putString
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 
 /**
  * AI 生成书源 ViewModel
@@ -78,7 +80,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             .header("Authorization", "Bearer ${apiKey.trim()}")
             .post(body.toRequestBody("application/json; charset=UTF-8".toMediaType()))
             .build()
-        okHttpClient.newCall(request).execute().use { response ->
+        aiHttpClient.newCall(request).execute().use { response ->
             val text = response.body?.string() ?: ""
             if (!response.isSuccessful) {
                 throw RuntimeException("HTTP ${response.code}: ${text.take(200)}")
@@ -182,6 +184,16 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     )
 
     companion object {
+        /** AI API 调用专用 HTTP 客户端，使用 5 分钟超时避免大模型响应慢而失败 */
+        private val aiHttpClient: OkHttpClient by lazy {
+            okHttpClient.newBuilder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(300, TimeUnit.SECONDS)   // 5 分钟，大模型逐字生成可能较慢
+                .writeTimeout(60, TimeUnit.SECONDS)
+                .callTimeout(300, TimeUnit.SECONDS)   // 5 分钟总超时
+                .build()
+        }
+
         private const val KEY_BASE_URL = "ai_base_url"
         private const val KEY_API_KEY = "ai_api_key"
         private const val KEY_MODEL = "ai_model"
