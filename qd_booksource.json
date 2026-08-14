@@ -3,8 +3,8 @@
     "bookSourceUrl": "https://full.hnxianxin.cn/qd",
     "bookSourceName": "起点书城(qd)",
     "bookSourceGroup": "AI生成",
-    "bookSourceType": 1,
-    "bookSourceComment": "SPA 站点，全部基于 JSON API（JSONPath）。免费章节可读；VIP 正文/整本下载需登录（需图片验证码+token，Legado 内可能受限）",
+    "bookSourceType": 0,
+    "bookSourceComment": "SPA 站点，全部基于 JSON API（JSONPath）。已过滤仅保留小说(BookType=1)。免费章节可读；VIP 正文/整本下载需登录（需图片验证码+token，Legado 内可能受限）。",
     "customOrder": 0,
     "enabled": true,
     "enabledExplore": true,
@@ -17,7 +17,7 @@
     "loginCheckJs": "",
     "searchUrl": "https://full.hnxianxin.cn/qd/search.php?keyword={{key}}&page={{page}}&page_size=20",
     "ruleSearch": {
-      "bookList": "$.Data.CardList[*].Body[*].ItemData",
+      "bookList": "$.Data.CardList[*].Body[*].ItemData[?(@.BookType == 1)]",
       "name": "$.BookName",
       "author": "$.AuthorName",
       "intro": "$.Description",
@@ -34,7 +34,7 @@
       "intro": "$.Data.BaseBookInfo.Description",
       "kind": "$.Data.BaseBookInfo.CategoryName",
       "wordCount": "$.Data.BaseBookInfo.WordsCnt",
-      "lastChapter": "$.Data.BaseBookInfo.LastChapter",
+      "lastChapter": "$.Data.BaseBookInfo.ChapterInfo.LastUpdateChapterName",
       "tocUrl": "https://full.hnxianxin.cn/qd/catalog.php?book_id={{$.Data.BaseBookInfo.BookId}}",
       "downloadUrls": "https://full.hnxianxin.cn/qd/download.php?book_id={{$.Data.BaseBookInfo.BookId}}"
     },
@@ -42,16 +42,16 @@
       "chapterList": "$.Data.Chapters[?(@.C > 0)]",
       "chapterName": "$.N",
       "chapterUrl": "https://full.hnxianxin.cn/qd/content.php?book_id={{book.bookUrl.match(/book_id=(\\d+)/)[1]}}&chapter_id={{$.C}}",
-      "isVip": "$.V",
+      "isVip": "@js:result.rules.get(\"$.V\")==1",
       "isPay": "",
       "updateTime": "{{$.W}}字"
     },
     "ruleContent": {
-      "content": "@js:try{var o=JSON.parse(result);o.Content||o.detail||''}catch(e){'【正文获取失败，可能为VIP章节或站点有反爬限制】'}"
+      "content": "@js:try{var o=JSON.parse(result);var content=o.Content||o.detail||'';content}catch(e){'【正文获取失败，可能为VIP章节或站点有反爬限制】'}"
     },
-    "exploreUrl": "人气榜::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=11&page=1&page_size=20&category_id=0\n最近更新::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=1&page=1&page_size=20&category_id=0\n最新入V::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=14&page=1&page_size=20&category_id=0\n月票最多::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=4&page=1&page_size=20&category_id=0\n收藏最多::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=3&page=1&page_size=20&category_id=0",
+    "exploreUrl": "人气榜::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=11&page={{page}}&page_size=20&category_id=0\n最近更新::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=1&page={{page}}&page_size=20&category_id=0\n最新入V::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=14&page={{page}}&page_size=20&category_id=0\n月票最多::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=4&page={{page}}&page_size=20&category_id=0\n收藏最多::https://full.hnxianxin.cn/qd/ranking.php?action=ranking&site_id=11&order=3&page={{page}}&page_size=20&category_id=0",
     "ruleExplore": {
-      "bookList": "$.Data.Books",
+      "bookList": "$.Data.Books[?(@.BookType == 1)]",
       "name": "$.BookName",
       "author": "$.AuthorName",
       "intro": "$.Description",
