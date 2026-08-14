@@ -87,7 +87,13 @@ if (m) {
     try { option = JSON.parse(optionStr); click = option.click; } catch (e) { console.log('JSON 解析失败:', e.message); }
     console.log('click 提取成功:', !!click);
     if (click) {
-      console.log('--- click 前 80 字符:', click.slice(0, 80));
+      console.log('--- click 前 100 字符:', click.slice(0, 100));
+      // 检查是否含有 +bid+ 或 +cid+（bug）
+      if (click.includes('+bid+') || click.includes('+cid+')) {
+        console.log('BUG: click 脚本仍包含 +bid+ 或 +cid+ 变量引用');
+      } else {
+        console.log('OK: click 脚本已包含实际 book_id 和 chapter_id 值');
+      }
       // 模拟执行 click
       let showed = null;
       const java2 = {

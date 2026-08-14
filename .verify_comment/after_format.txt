@@ -1,0 +1,23 @@
+第1段正文。
+第2段正文。
+第3段正文。
+第4段正文。
+第5段正文。
+第6段正文。
+第7段正文。
+第8段正文。
+第9段正文。
+第10段正文。
+第11段正文。
+第12段正文。<img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc2MCcgaGVpZ2h0PScyNCc+PHJlY3Qgcng9JzEyJyB3aWR0aD0nNjAnIGhlaWdodD0nMjQnIGZpbGw9JyNlOGYwZmUnIHN0cm9rZT0nIzRhNmNmNycgc3Ryb2tlLXdpZHRoPScxJy8+PHRleHQgeD0nMzAnIHk9JzE2JyBmb250LXNpemU9JzEyJyB0ZXh0LWFuY2hvcj0nbWlkZGxlJyBmaWxsPScjNGE2Y2Y3JyBmb250LWZhbWlseT0nc2Fucy1zZXJpZic+MTI8L3RleHQ+PC9zdmc+,{"click":"var r=[];try{var d=JSON.parse(java.ajax('https://full.hnxianxin.cn/qd/comments.php?action=paragraph&book_id=102895&chapter_id=123456&paragraph_id=12&type=text&page=1&page_size=20'));r=(d.Data&&d.Data.DataList)||[]}catch(err){r=[]}var h='<html\u003E<head\u003E<meta charset=utf-8\u003E<style\u003Ebody{margin:0;padding:14px;font-family:sans-serif;font-size:14px}h3{margin:6px 0}.u{font-weight:bold;color:#333}.t{color:#555;margin:4px 0}.c{margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #eee}</style\u003E</head\u003E<body\u003E<h3\u003E段评</h3\u003E'+r.map(function(it){var tx=it.Content||it.ImageMeaning||'';return tx?('<div class=c\u003E<div class=u\u003E'+(it.UserName||'书友')+'</div\u003E<div class=t\u003E'+tx+'</div\u003E</div\u003E'):''}).join('')+(r.length?'':'<p\u003E暂无段评</p\u003E')+'</body\u003E</html\u003E';java.showBrowser('',h)"}">
+第13段正文。
+第14段正文。
+第15段正文。
+第16段正文。
+第17段正文。
+第18段正文。
+第19段正文。
+第20段正文。
+
+【章评】
+李四：章评内容
