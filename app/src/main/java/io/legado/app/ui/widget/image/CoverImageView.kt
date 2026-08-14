@@ -458,7 +458,7 @@ class CoverImageView @JvmOverloads constructor(
                     }
                 })
             }
-            if (overrideWidth > 0 && overrideHeight > 0) {
+            if (overrideWidth > 0 && overrideHeight > 0 && !AppConfig.loadCoverHighQuality) {
                 builder.override(overrideWidth, overrideHeight)
             }
             builder.centerCrop()
