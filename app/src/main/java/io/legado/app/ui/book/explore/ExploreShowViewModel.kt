@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import io.legado.app.help.source.exploreKinds
 import io.legado.app.data.entities.rule.ExploreKind
+import java.util.concurrent.ConcurrentHashMap
 
 
 @OptIn(ExperimentalCoroutinesApi::class)
