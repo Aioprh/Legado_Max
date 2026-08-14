@@ -42,7 +42,7 @@
       "chapterList": "$.Data.Chapters[?(@.C > 0)]",
       "chapterName": "$.N",
       "chapterUrl": "https://full.hnxianxin.cn/qd/content.php?book_id={{book.bookUrl.match(/book_id=(\\d+)/)[1]}}&chapter_id={{$.C}}",
-      "isVip": "@js:result.rules.get(\"$.V\")==1",
+      "isVip": "$.V",
       "isPay": "",
       "updateTime": "{{$.W}}字"
     },
