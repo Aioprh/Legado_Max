@@ -92,6 +92,20 @@ class SiteFetcher:
         html, status = self.engine._fetch_url(url, options)
         return html, status, url
 
+    def get_cookie_header(self, url: str) -> str:
+        """把抓取过程中自动收集的、属于该域名的 Cookie 转成 header 字符串"""
+        try:
+            from urllib.parse import urlparse
+            host = urlparse(url).hostname or ''
+            pairs = []
+            for c in self.engine.cookiejar:
+                domain = c.domain.lstrip('.') if c.domain else ''
+                if host and (host == domain or host.endswith('.' + domain)):
+                    pairs.append(f'{c.name}={c.value}')
+            return '; '.join(pairs)
+        except Exception:
+            return ''
+
 
 # --------------------------------------------------------------------------- #
 # 工具
@@ -803,11 +817,14 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
         report['errors'].append('缺少目录或正文规则，无法生成可用书源')
         return report
 
+    # 合并自动学到的会话 Cookie：抓取过程中服务端 Set-Cookie 的，一并写入书源 header
     if not source_name:
         host = urlparse(origin or book_url or '').netloc
         source_name = host if host else '自动生成'
 
-    header = json.dumps({'Cookie': cookie}) if cookie else None
+    learned = fetcher.get_cookie_header(origin or book_url)
+    combined = '; '.join(x for x in (cookie, learned) if x)
+    header = json.dumps({'Cookie': combined}) if combined else None
     source_dict = _build_source(
         origin=origin or _origin(book_url),
         search_url=(search_url if build_from_search and rule_search else None),
