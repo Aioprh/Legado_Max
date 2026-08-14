@@ -282,7 +282,7 @@ object CoverLoader {
         // 添加加载监听
         builder = builder.addListener(createGlideListener(actualPath, onLoadFinish))
 
-        if (overrideWidth > 0 && overrideHeight > 0) {
+        if (overrideWidth > 0 && overrideHeight > 0 && !AppConfig.loadCoverHighQuality) {
             builder.override(overrideWidth, overrideHeight)
         }
 

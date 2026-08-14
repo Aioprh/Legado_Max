@@ -1683,7 +1683,7 @@
 <string name="interface_manage">界面管理</string>
 <string name="layout_mode">布局模式</string>
 <string name="load_cover_high_quality">加载高清封面</string>
-<string name="load_cover_high_quality_summary">开启后使用封面原图，关闭时使用较小尺寸加载</string>
+<string name="load_cover_high_quality_summary">開啟後使用封面原圖，關閉時優先加載略縮圖</string>
 <string name="manual_config">手动配置</string>
 <string name="nav_bar_summary">点击应用按钮应用底栏包，点击编辑按钮编辑底栏包</string>
 <string name="nav_bar_summary_empty">暂无%s底栏包，点击下方添加</string>

@@ -2218,7 +2218,7 @@
 <string name="interface_manage">Interface Management</string>
 <string name="layout_mode">Layout Mode</string>
 <string name="load_cover_high_quality">Load high quality covers</string>
-<string name="load_cover_high_quality_summary">Use original cover images instead of smaller decoded covers</string>
+<string name="load_cover_high_quality_summary">When enabled, use original cover images; when disabled, prefer thumbnail loading</string>
 <string name="manual_config">Manual Config</string>
 <string name="nav_bar_summary">Click Apply button to apply config, click Edit button to edit config</string>
 <string name="nav_bar_summary_empty">No %s navigation bar configs, click below to add</string>
