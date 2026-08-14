@@ -17,13 +17,13 @@ import java.util.UUID
  *
  * 使用 SharedPreferences + JSON 序列化存储屏蔽规则列表，
  * 提供规则的加载、保存、过滤和清洗功能。
-     * 内置内存缓存避免频繁反序列化。
-     *
-     * 性能优化：
-     * - [cachedRules] 缓存反序列化结果，避免频繁读取 SharedPreferences
-     * - [cachedCompiled] 缓存已编译的 [CompiledBlockRule] 列表（含预解析 scope + 预编译正则），
-     *   避免每次过滤都重新编译
-     */
+ * 内置内存缓存避免频繁反序列化。
+ *
+ * 性能优化：
+ * - [cachedRules] 缓存反序列化结果，避免频繁读取 SharedPreferences
+ * - [cachedCompiled] 缓存已编译的 [CompiledBlockRule] 列表（含预解析 scope + 预编译正则），
+ *   避免每次过滤都重新编译
+ */
 object BlockRuleStore {
 
     /** 内存缓存，避免频繁读取 SharedPreferences 和反序列化 */
@@ -36,7 +36,6 @@ object BlockRuleStore {
      */
     @Volatile
     private var cachedCompiled: List<CompiledBlockRule>? = null
-
 
     /**
      * 加载所有屏蔽规则
@@ -79,7 +78,7 @@ object BlockRuleStore {
         return compiled
     }
 
-/**
+    /**
      * 保存规则列表
      * 同时更新缓存和 SharedPreferences，并同步分组信息
      * 自动处理 id 重复的情况，确保每个规则的 id 都是唯一的
@@ -107,8 +106,7 @@ object BlockRuleStore {
      *
      * 优化策略：
      * 1. 使用预编译的 CompiledBlockRule，避免每次 split/trim/filter 和正则编译
-     * 2. 关键词规则通过 Aho-Corasick 自动机批量预筛
-     * 3. 先过滤作用域匹配的规则，避免对每本书都检查作用域
+     * 2. 先过滤作用域匹配的规则，避免对每本书都检查作用域
      */
     fun filterBooks(context: Context, books: List<SearchBook>, sourceUrl: String): List<SearchBook> {
         if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) return books
@@ -118,18 +116,8 @@ object BlockRuleStore {
         val applicableRules = rules.filter { it.matchesScope(sourceUrl) }
         if (applicableRules.isEmpty()) return books
 
-        // 分离关键词规则和正则规则
-        val keywordRules = applicableRules.filter { !it.isRegex }
-        val regexRules = applicableRules.filter { it.isRegex }
-
-        // 构建针对当前书源的关键词匹配器
-        val keywordMatcher = if (keywordRules.isNotEmpty()) {
-            val patterns = keywordRules.map { it.pattern to it.id }
-            AhoCorasick.build(patterns)
-        } else null
-
         return books.filterNot { book ->
-            matchesAnyRule(book, keywordRules, keywordMatcher, regexRules)
+            applicableRules.any { rule -> rule.matches(book) }
         }
     }
 
@@ -151,15 +139,8 @@ object BlockRuleStore {
             if (applicableRules.isEmpty()) {
                 result.addAll(sourceBooks)
             } else {
-                val keywordRules = applicableRules.filter { !it.isRegex }
-                val regexRules = applicableRules.filter { it.isRegex }
-                val keywordMatcher = if (keywordRules.isNotEmpty()) {
-                    val patterns = keywordRules.map { it.pattern to it.id }
-                    AhoCorasick.build(patterns)
-                } else null
-
                 result.addAll(sourceBooks.filterNot { book ->
-                    matchesAnyRule(book, keywordRules, keywordMatcher, regexRules)
+                    applicableRules.any { rule -> rule.matches(book) }
                 })
             }
         }
@@ -180,99 +161,9 @@ object BlockRuleStore {
         val applicableRules = rules.filter { it.matchesRssScope(sourceUrl) }
         if (applicableRules.isEmpty()) return articles
 
-        // 分离关键词规则和正则规则
-        val keywordRules = applicableRules.filter { !it.isRegex }
-        val regexRules = applicableRules.filter { it.isRegex }
-
-        val keywordMatcher = if (keywordRules.isNotEmpty()) {
-            val patterns = keywordRules.map { it.pattern to it.id }
-            AhoCorasick.build(patterns)
-        } else null
-
         return articles.filterNot { article ->
-            matchesAnyRssRule(article, keywordRules, keywordMatcher, regexRules)
+            applicableRules.any { rule -> rule.matchesRssArticle(article) }
         }
-    }
-
-    /**
-     * 判断单本书是否匹配任一规则
-     *
-     * 优化：先用 Aho-Corasick 自动机扫描各字段，快速预筛关键词规则
-     * 再用正则规则逐条精确匹配
-     */
-    private fun matchesAnyRule(
-        book: SearchBook,
-        keywordRules: List<CompiledBlockRule>,
-        keywordMatcher: AhoCorasick?,
-        regexRules: List<CompiledBlockRule>,
-    ): Boolean {
-        // 1. 关键词规则：用 Aho-Corasick 批量预筛
-        if (keywordMatcher != null && keywordRules.isNotEmpty()) {
-            // 收集该规则需要检查的字段
-            val fieldsToCheck = buildList {
-                for (rule in keywordRules) {
-                    if (rule.hasScope(BlockRule.SCOPE_TITLE)) add(book.name)
-                    if (rule.hasScope(BlockRule.SCOPE_AUTHOR)) add(book.author)
-                    if (rule.hasScope(BlockRule.SCOPE_KIND)) add(book.kind.orEmpty())
-                    if (rule.hasScope(BlockRule.SCOPE_INTRO)) add(book.intro.orEmpty())
-                    if (rule.hasScope(BlockRule.SCOPE_WORD_COUNT)) add(book.wordCount.orEmpty())
-                }
-            }
-            // 对每个字段做 AC 自动机扫描
-            val candidateIds = mutableSetOf<String>()
-            for (field in fieldsToCheck) {
-                if (field.isEmpty()) continue
-                candidateIds.addAll(keywordMatcher.search(field))
-            }
-            // 对预筛命中的规则做精确验证（确认命中字段确实在该规则的作用范围内）
-            for (ruleId in candidateIds) {
-                val rule = keywordRules.find { it.id == ruleId } ?: continue
-                if (rule.matches(book)) return true
-            }
-        }
-
-        // 2. 正则规则：逐条精确匹配
-        for (rule in regexRules) {
-            if (rule.matches(book)) return true
-        }
-
-        return false
-    }
-
-    /**
-     * 判断单篇 RSS 文章是否匹配任一规则
-     */
-    private fun matchesAnyRssRule(
-        article: RssArticle,
-        keywordRules: List<CompiledBlockRule>,
-        keywordMatcher: AhoCorasick?,
-        regexRules: List<CompiledBlockRule>,
-    ): Boolean {
-        // 1. 关键词规则：用 Aho-Corasick 批量预筛
-        if (keywordMatcher != null && keywordRules.isNotEmpty()) {
-            val fieldsToCheck = buildList {
-                for (rule in keywordRules) {
-                    if (rule.hasRssScope(BlockRule.SCOPE_RSS_TITLE)) add(article.title)
-                    if (rule.hasRssScope(BlockRule.SCOPE_RSS_TIME)) add(article.pubDate.orEmpty())
-                }
-            }
-            val candidateIds = mutableSetOf<String>()
-            for (field in fieldsToCheck) {
-                if (field.isEmpty()) continue
-                candidateIds.addAll(keywordMatcher.search(field))
-            }
-            for (ruleId in candidateIds) {
-                val rule = keywordRules.find { it.id == ruleId } ?: continue
-                if (rule.matchesRssArticle(article)) return true
-            }
-        }
-
-        // 2. 正则规则：逐条精确匹配
-        for (rule in regexRules) {
-            if (rule.matchesRssArticle(article)) return true
-        }
-
-        return false
     }
 
     /**
@@ -307,12 +198,10 @@ object BlockRuleStore {
         return allRules.filter { it.id in matchedIds }
     }
 
-    // ==================== 方案 D：合并双重遍历 ====================
-
     /**
      * 过滤书籍并同时收集匹配到的规则（单次遍历）
      *
-     * 返回 [FilterAndMatchResult]，包含过滤后的书籍列表和匹配到的规则 ID 列表。
+     * 返回 [FilterAndMatchResult]，包含过滤后的书籍列表和匹配到的规则列表。
      * 用于 [ExploreShowViewModel.applyBlockRules] 等场景，避免对同一批数据遍历两次。
      */
     fun filterAndCollectMatched(
@@ -333,21 +222,15 @@ object BlockRuleStore {
             return FilterAndMatchResult(books, emptyList())
         }
 
-        val keywordRules = applicableRules.filter { !it.isRegex }
-        val regexRules = applicableRules.filter { it.isRegex }
-        val keywordMatcher = if (keywordRules.isNotEmpty()) {
-            AhoCorasick.build(keywordRules.map { it.pattern to it.id })
-        } else null
-
         val matchedRuleIds = mutableSetOf<String>()
         val filteredBooks = books.filterNot { book ->
-            val matched = matchesAnyRule(book, keywordRules, keywordMatcher, regexRules)
-            if (matched) {
-                // 记录匹配到的规则 ID
-                for (rule in applicableRules) {
-                    if (rule.matches(book)) {
-                        matchedRuleIds.add(rule.id)
-                    }
+            // 逐条规则匹配，命中则记录规则 ID 并过滤该书
+            var matched = false
+            for (rule in applicableRules) {
+                if (rule.matches(book)) {
+                    matchedRuleIds.add(rule.id)
+                    matched = true
+                    break // 已命中，无需继续检查其他规则
                 }
             }
             matched
