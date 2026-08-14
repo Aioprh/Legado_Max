@@ -350,7 +350,8 @@ class AnalyzeRule:
                 self.log_callback("JS规则", f"JS代码长度: {len(rule)}")
             
             # 执行JS - 传递书源的真实jsLib
-            js_result = execute_js(rule, context, self.js_lib)
+            # 末尾清空body，防止引擎收尾用 body 覆盖 result（与 _eval_js 一致）
+            js_result = execute_js(rule + "\nbody = null;", context, self.js_lib)
             
             # 调试日志
             if self.log_callback:
@@ -636,6 +637,28 @@ class AnalyzeRule:
         
         rule = rule.strip()
         
+        # 复合 CSS 选择器（后代/子代/兄弟/属性），直接走 select，兼容 Legado 的 JSoup 语法
+        # 例如: "#list dd"、"#list > dd"、"li.book-item"、"a[href]"、"div:nth-of-type(2)"
+        if re.search(r'[\s>+~,]+', rule) or '[' in rule or rule.startswith('li.') or rule.startswith('dd.'):
+            try:
+                elements = element.select(rule) if hasattr(element, 'select') else []
+            except Exception:
+                elements = []
+            return elements if not is_last else self._extract_value(elements, "text")
+        
+        # Legado 标签索引格式: tag.0 / tag.1 / tag.-1（如 a.1 表示第2个<a>）
+        tag_index = re.match(r'^([a-zA-Z]\w*)\.(-?\d+)$', rule)
+        if tag_index:
+            tag = tag_index.group(1)
+            idx = int(tag_index.group(2))
+            elements = element.find_all(tag) if hasattr(element, 'find_all') else []
+            if idx < 0:
+                idx = len(elements) + idx
+            if 0 <= idx < len(elements):
+                elem = elements[idx]
+                return elem if not is_last else self._extract_value([elem], "text")
+            return None
+
         # 处理Legado特殊索引格式: .class.0, .class.-1, tag.div.0
         index_match = re.match(r'^(\w+)\.(\w+)([.\-!\d:]+)$', rule)
         if index_match:
