@@ -16,10 +16,33 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
+ * 轻量书架键数据类
+ *
+ * 仅包含书架匹配所需的三个字段，用于替代全量 [Book] 查询，
+ * 减少 Room 查询的内存开销（从 20+ 字段降为 3 个 String）。
+ */
+data class ShelfKey(
+    val name: String,
+    val author: String,
+    val bookUrl: String
+)
+
+/**
  * 书数据访问接口
  */
 @Dao
 interface BookDao {
+
+    /**
+     * 轻量书架键查询：只返回 name/author/bookUrl 三个字段，排除 notShelf 类型。
+     *
+     * 供 [io.legado.app.help.book.BookshelfMatcher] 使用，避免加载完整 [Book] 实体。
+     */
+    @Query(
+        """SELECT name, author, bookUrl FROM books 
+        WHERE type & ${BookType.notShelf} = 0 ORDER BY durChapterTime DESC"""
+    )
+    fun flowShelfKeys(): Flow<List<ShelfKey>>
 
     fun flowByGroup(groupId: Long): Flow<List<Book>> {
         return when (groupId) {

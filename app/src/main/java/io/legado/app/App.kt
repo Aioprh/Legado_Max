@@ -39,6 +39,7 @@ import io.legado.app.help.LifecycleHelp
 import io.legado.app.help.LauncherIconHelp
 import io.legado.app.help.RuleBigDataHelp
 import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.BookshelfMatcher
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig.applyDayNight
@@ -103,6 +104,8 @@ class App : Application() {
             initRhino()
             //初始化封面
             BookCover.toString()
+            //初始化书架匹配器（轻量查询，全局共享）
+            BookshelfMatcher.start()
             //清除过期数据
             appDb.cacheDao.clearDeadline(System.currentTimeMillis())
             if (getPrefBoolean(PreferKey.autoClearExpired, true)) {
