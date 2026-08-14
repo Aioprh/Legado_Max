@@ -12,7 +12,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
-import io.legado.app.help.book.isNotShelf
+import io.legado.app.help.book.BookshelfMatcher
 import io.legado.app.model.blockrule.BlockRule
 import io.legado.app.model.blockrule.BlockRuleStore
 import io.legado.app.model.webBook.WebBook
@@ -20,11 +20,8 @@ import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.stackTraceStr
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 import io.legado.app.help.source.exploreKinds
 import io.legado.app.data.entities.rule.ExploreKind
 
@@ -37,7 +34,6 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
         private const val MAX_PRELOAD_CACHE_SIZE = 10
     }
 
-    val bookshelf: MutableSet<String> = ConcurrentHashMap.newKeySet()
     val upAdapterLiveData = MutableLiveData<String>()
     val booksData = MutableLiveData<List<SearchBook>>()
     val addBooksData = MutableLiveData<List<SearchBook>>()
@@ -67,27 +63,12 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     /** 当前书源URL，用于屏蔽规则过滤 */
     var currentSourceUrl: String = ""
 
-    //实时监听数据库对比书名作者，判断书是否在书架上
+    //订阅 BookshelfMatcher 刷新信号，转发为 upAdapterLiveData
     init {
-        execute {
-            appDb.bookDao.flowAll().mapLatest { books ->
-                val keys = arrayListOf<String>()
-                books.filterNot { it.isNotShelf }
-                    .forEach {
-                        keys.add("${it.name}-${it.author}")
-                        keys.add(it.name)
-                        keys.add(it.bookUrl)
-                    }
-                keys
-            }.catch {
-                AppLog.put("发现列表界面获取书籍数据失败\n${it.localizedMessage}", it)
-            }.collect {
-                bookshelf.clear()
-                bookshelf.addAll(it)
+        viewModelScope.launch {
+            BookshelfMatcher.refreshSignal.collect {
                 upAdapterLiveData.postValue("isInBookshelf")
             }
-        }.onError {
-            AppLog.put("加载书架数据失败", it)
         }
     }
     
@@ -226,23 +207,11 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
     }
 
     fun isInBookShelf(book: SearchBook): Boolean {
-        val name = book.name
-        val author = book.author
-        val bookUrl = book.bookUrl
-        val key = if (author.isNotBlank()) "$name-$author" else name
-        return bookshelf.contains(key) || bookshelf.contains(bookUrl)
+        return BookshelfMatcher.isInShelf(book.bookUrl, book.name, book.author)
     }
 
     fun getBookShelfState(book: SearchBook): BookShelfState {
-        val name = book.name
-        val author = book.author
-        val bookUrl = book.bookUrl
-        val key = if (author.isNotBlank()) "$name-$author" else name
-        return when {
-            bookshelf.contains(bookUrl) -> BookShelfState.IN_SHELF
-            bookshelf.contains(key) -> BookShelfState.SAME_NAME_AUTHOR
-            else -> BookShelfState.NOT_IN_SHELF
-        }
+        return BookshelfMatcher.getState(book.name, book.author, book.bookUrl)
     }
 
     fun addAllToShelf(groupId: Long) {
@@ -261,12 +230,7 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
             }
             
             appDb.bookDao.insert(*bookEntities.toTypedArray())
-            
-            bookEntities.forEach { book ->
-                val key = if (book.author.isNotBlank()) "${book.name}-${book.author}" else book.name
-                bookshelf.add(key)
-                bookshelf.add(book.bookUrl)
-            }
+            // BookshelfMatcher 会通过 flowShelfKeys() 自动感知 DB 变化并刷新
             
             addAllToShelfResult.postValue(booksToAdd.size)
         }.onError {
@@ -279,10 +243,7 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
         execute {
             val bookEntity = book.toBook()
             appDb.bookDao.insert(bookEntity)
-            val key = if (book.author.isNotBlank()) "${book.name}-${book.author}" else book.name
-            bookshelf.add(key)
-            bookshelf.add(book.bookUrl)
-            upAdapterLiveData.postValue("isInBookshelf")
+            // BookshelfMatcher 会通过 flowShelfKeys() 自动感知 DB 变化并刷新
         }.onError {
             AppLog.put("加入书架失败", it)
             errorLiveData.postValue("加入书架失败: ${it.localizedMessage}")
