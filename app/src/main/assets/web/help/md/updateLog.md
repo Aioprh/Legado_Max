@@ -17,6 +17,9 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/14**
+- 优化性能
+
 **2026/8/13**
 - 修复摘录分享功能在release包无法使用的问题
 - fix(视频播放): 修复部分m3u8视频无法播放的问题
