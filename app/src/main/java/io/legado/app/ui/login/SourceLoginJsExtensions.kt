@@ -78,16 +78,19 @@ class SourceLoginJsExtensions(
     fun showBrowser(url: String, html: String? = null, preloadJs: String? = null, config: String? = null) {
         val activity = activityRef.get() ?: return
         val source = getSource() ?: return
-        activity.showDialogFragment(
-            BottomWebViewDialog(
-                source.getKey(),
-                bookType,
-                url,
-                html,
-                preloadJs,
-                config
+        // JS 脚本通常在 IO 线程执行，对话框必须切回主线程展示
+        activity.runOnUiThread {
+            activity.showDialogFragment(
+                BottomWebViewDialog(
+                    source.getKey(),
+                    bookType,
+                    url,
+                    html,
+                    preloadJs,
+                    config
+                )
             )
-        )
+        }
     }
 
 }

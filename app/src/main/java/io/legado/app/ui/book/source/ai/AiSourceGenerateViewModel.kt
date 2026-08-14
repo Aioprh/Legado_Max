@@ -44,9 +44,10 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 
     /**
      * 抓取目标网站 HTML 并自动检测编码（供本页使用）
+     * @param keyword 搜索关键词（可选），用于自动探测 JSON API 并抓取搜索/目录示例
      */
-    fun fetchHtml(url: String): Result<AiSourceController.HtmlContent> =
-        AiSourceController.fetchHtmlContent(url)
+    fun fetchHtml(url: String, keyword: String? = null): Result<AiSourceController.HtmlContent> =
+        AiSourceController.fetchHtmlContent(url, keyword)
 
     /**
      * 调用 LLM 生成书源 JSON
@@ -119,6 +120,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
   "bookSourceGroup": "分组名（可选）",
   "bookSourceType": 0,
   "bookSourceComment": "说明（可选）",
+  "loginUrl": "登录地址（可选），站点有登录页则填其 URL，无则空字符串",
   "searchUrl": "搜索地址（必填），搜索关键字用 {{key}} 占位，如 /search?q={{key}}；POST 请求写成 /search,{"method":"POST","body":"keyword={{key}}","charset":"gbk"}",
   "ruleSearch": {
     "bookList": "书籍列表选择器（必填）",
@@ -138,12 +140,16 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     "intro": "详情页简介",
     "kind": "分类",
     "lastChapter": "最新章节",
-    "tocUrl": "目录页 URL（与详情页不同时填写）"
+    "tocUrl": "目录页 URL（与详情页不同时填写）",
+    "downloadUrls": "整本下载地址规则（可选），如 https://host/download.php?id={{$.id}}，无则空字符串"
   },
   "ruleToc": {
     "chapterList": "章节列表选择器（必填）",
     "chapterName": "章节名规则（必填）",
     "chapterUrl": "章节 URL 规则（必填）",
+    "isVip": "VIP 标记规则（返回 1 表示 VIP，0 表示免费，如 JSONPath $.vip）",
+    "isPay": "付费标记规则（同上，无则空字符串）",
+    "updateTime": "章节更新时间规则（无则空字符串）",
     "nextTocUrl": "下一页目录 URL"
   },
   "ruleContent": {
@@ -151,15 +157,32 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     "nextContentUrl": "下一章 URL",
     "webJs": "需 JS 渲染时注入的脚本",
     "replaceRegex": "正文净化正则，如 ##<script[\s\S]*?</script>|请收藏.*##"
+  },
+  "exploreUrl": "发现地址（可选），多分类用 分类名::URL 换行分隔，如 热门::https://host/top/###...；分页参数写 page=1（App 会自动翻页）；无发现页则空字符串",
+  "ruleExplore": {
+    "bookList": "发现列表选择器（必填，若 exploreUrl 非空）",
+    "name": "发现书名",
+    "author": "发现作者",
+    "coverUrl": "发现封面",
+    "intro": "发现简介",
+    "kind": "分类",
+    "bookUrl": "详情页 URL 规则",
+    "wordCount": "字数"
   }
 }
+
+【字段命名（重要，必须使用本版 Legado 命名）】
+- 详情规则用 ruleBookInfo（不是 ruleDetail）
+- 目录规则用 ruleToc（不是 ruleCatalog），章节名用 chapterName（不是 name）
+- 搜索简介用 intro（不是 detail）
+- 目录 VIP/付费标记用 isVip/isPay（不是 vipFlag/payFlag）
 
 【规则语法（Default 语法优先）】
 - 提取类型：@text 取文本、@html 取 HTML、@href 取链接、@src 取图片、@textNode、@ownText
 - Default 语法：class.booklist@tag.li 或 .booklist li@tag.a；简单 CSS 选择器不要加 @css 前缀
 - 复杂 CSS：@css:.detail p:nth-child(2)@text
 - XPath：//div[@id='content']、//h3/a/text()、//img/@src
-- JSONPath（返回 JSON 的网站）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL
+- JSONPath（返回 JSON 的网站）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL；正文/目录接口若 URL 模板缺参，按 Legado 约定补 book_id 与 chapter_id（book_id 用 {{book.bookUrl}} 正则提取，chapter_id 用目录章节对象的 ID 字段）
 - 正则：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"
 - 注意转义：正则里的 \d、\s 等需写双反斜杠
 
@@ -169,6 +192,8 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 3. 只输出 JSON 本身，不要添加解释文字或 markdown 代码块标记
 4. 无法推断的字段填空字符串 ""
 5. 若 HTML 是 JSON 数据，使用 JSONPath 语法
+6. 必须输出完整书源：搜索、详情(ruleBookInfo)、目录(ruleToc)、正文(ruleContent) 为必填核心；发现(exploreUrl/ruleExplore)、登录(loginUrl)、下载(ruleBookInfo.downloadUrls) 若网站支持则填写，不支持/无法推断时填空字符串 ""，但字段名必须保留在输出结构中
+7. 若提供了 JSON API 接口与示例响应，一律优先使用 JSONPath 规则并补齐上述全部字段
 """.trimIndent()
     }
 }
