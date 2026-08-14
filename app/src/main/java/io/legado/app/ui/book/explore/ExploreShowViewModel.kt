@@ -195,15 +195,19 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
 
     /**
      * 屏蔽规则变化后重新过滤当前书籍列表
+     *
+     * 使用 [BlockRuleStore.filterAndCollectMatched] 在单次遍历中同时完成
+     * 过滤和匹配规则收集，避免对同一批数据遍历两次
      */
     fun applyBlockRules(sourceUrl: String) {
         currentSourceUrl = sourceUrl
         BlockRuleStore.invalidateCache()
-        val matched = BlockRuleStore.getMatchedRules(getApplication(), allBooks.toList(), sourceUrl)
-        val filtered = BlockRuleStore.filterBooks(getApplication(), allBooks.toList(), sourceUrl)
-        books = linkedSetOf<SearchBook>().apply { addAll(filtered) }
+        val result = BlockRuleStore.filterAndCollectMatched(
+            getApplication(), allBooks.toList(), sourceUrl
+        )
+        books = linkedSetOf<SearchBook>().apply { addAll(result.filteredBooks) }
         blockedCountData.postValue(allBooks.size - books.size)
-        matchedRulesData.postValue(matched)
+        matchedRulesData.postValue(result.matchedRules)
         blockRulesRefreshData.postValue(books.toList())
     }
 
