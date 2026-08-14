@@ -23,7 +23,7 @@ AutoSource - 自动生成「可用」的 Legado 书源
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse, quote
 
 from bs4 import BeautifulSoup, Tag
@@ -669,9 +669,21 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
                   keyword: str = '斗破苍穹', book_url: str = None,
                   source_name: str = '', validate: bool = True,
                   cookie: str = None, book_url_template: str = None,
-                  enable_toc_paging: bool = False) -> Dict:
+                  enable_toc_paging: bool = False,
+                  on_progress: Callable[[str, str, float], None] = None) -> Dict:
+    """自动生成书源。
+    on_progress: 可选回调 (阶段, 描述, 进度0~1)，用于 GUI/弹窗实时展示 AI 当前步骤。"""
+
+    def prog(step: str, msg: str, frac: float):
+        report['progress'] = {'step': step, 'message': msg, 'fraction': frac}
+        if on_progress:
+            try:
+                on_progress(step, msg, frac)
+            except Exception:
+                pass
+
     fetcher = SiteFetcher(cookie=cookie)
-    report = {'ok': False, 'errors': [], 'steps': {}, 'bookSource': None}
+    report = {'ok': False, 'errors': [], 'steps': {}, 'bookSource': None, 'progress': {}}
     origin = None
     json_mode = False
     needs_url_template = False
@@ -679,11 +691,13 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
 
     rule_search = None
     if build_from_search and search_url:
+        prog('search', f'正在请求搜索页：{search_url.replace("{{key}}", keyword)}', 0.05)
         html, status, built_url = fetcher.fetch_search(search_url, keyword)
         origin = _origin(built_url)
         if not html:
             report['errors'].append(f'搜索页抓取失败(HTTP {status})，可能需登录/被拦截/网络不通')
         else:
+            prog('search', '正在识别搜索结果列表与书名/链接规则…', 0.15)
             li = detect_list(html)
             if li is None:
                 report['errors'].append('搜索页未识别出书籍列表，请检查搜索 URL 是否返回列表页')
@@ -748,10 +762,12 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
         return report
 
     if book_url:
+        prog('detail', f'正在抓取书籍详情/目录页：{book_url}', 0.35)
         detail_html, _ = fetcher.fetch(book_url)
         if not detail_html:
             report['errors'].append(f'详情页抓取失败: {book_url}')
         else:
+            prog('detail', '正在识别作者/分类/字数与章节列表…', 0.45)
             local_origin = _origin(book_url)
             # 详情页级元信息（作者/分类/字数/封面）——独立于章节列表区域
             page_meta = _detect_book_info_meta(detail_html)
@@ -795,6 +811,7 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
                 }
                 if toc_det.sample and toc_det.sample[0].get('href'):
                     chapter_url = urljoin(local_origin, toc_det.sample[0]['href'])
+                    prog('content', f'正在抓取章节页验证正文：{chapter_url}', 0.65)
                     ch_html, _ = fetcher.fetch(chapter_url)
                     if ch_html:
                         content_candidates = detect_content_candidates(ch_html)
@@ -839,6 +856,7 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
 
     # ---- 验证 + 正文多候选回退 ----
     if validate:
+        prog('validate', '正在端到端验证：搜索→详情→目录→正文…', 0.8)
         v = run_validation(source_dict, keyword=keyword,
                            only_toc_content=not (build_from_search and rule_search),
                            detail_url=book_url)
@@ -860,4 +878,8 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
         report['ok'] = True
 
     report['bookSource'] = source_dict
+    if report['ok']:
+        prog('done', '书源生成完成，已通过验证 ✓', 1.0)
+    else:
+        prog('fail', f'生成失败：{report["errors"][-1] if report["errors"] else "未知原因"}', 1.0)
     return report
