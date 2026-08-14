@@ -6,13 +6,18 @@ AutoSource - 自动生成「可用」的 Legado 书源
 2. 生成后立即用 DebugEngine 走全链路验证（详情→目录→正文，搜索模式含搜索），
    有一环不通就尝试替代方案，仍不通则明确报错——保证产出的书源「当前可用」。
 
-用法（由 CLI 或其他代码调用）：
-    auto_generate(build_from_search=True, search_url="http://site/search?q={{key}}", keyword="书名")
-    auto_generate(build_from_search=False, book_url="http://site/book/123", source_name="站点名")
+优化能力：
+- JSON 模式 URL 推导：内嵌 JSON 只有 id(如 cool18 的 tid) 时，
+  支持 --book-url-template 提供详情页 URL 模板，或用页面同名链接自动推导。
+- 多候选自动回退：正文/列表识别出多个候选，验证失败自动试下一个。
+- 作者/分类/字数识别：补全 author / kind / wordCount（HTML + JSON）。
+- 登录/Cookie 支持：--cookie 传入会话，所有抓取都带上，并写入导出书源的 header。
+- 目录分页 nextTocUrl：--toc-paging 开启后检测章节分页并写入 nextTocUrl 模板。
 
-兼容两类站点结构：
-- 传统 HTML 列表（通用算法：识别重复条目 + 内部主链接）
-- 内嵌 JSON 数组（如 cool18 的 var _PageData = [...]）
+用法：
+    auto_generate(build_from_search=True, search_url="http://site/search?q={{key}}", keyword="书名",
+                  cookie="k=v", book_url_template="https://site/read?tid={{$.tid}}")
+    auto_generate(build_from_search=False, book_url="http://site/book/123", source_name="站点名")
 """
 
 import json
@@ -48,6 +53,9 @@ TITLE_KEYS = ['title', 'name', 'subject', 'bookname', 'book_name', 'articlename'
               'novelname', 'chaptername', 'nodename', 'bookTitle', 'book_title']
 URL_KEYS = ['url', 'link', 'href', 'bookurl', 'book_url', 'chapterurl', 'chapter_url',
             'id', 'tid', 'nid', 'bookid', 'novelid', 'chapterid', 'articleno']
+AUTHOR_KEYS = ['username', 'author', 'writer', 'uname', 'nickname']
+KIND_KEYS = ['type', 'kind', 'cate', 'category', 'tag', 'class', 'genre']
+WC_KEYS = ['size', 'wordcount', 'word_count', 'wordCount', 'len', 'length', '字数']
 
 
 @dataclass
@@ -60,14 +68,20 @@ class DetectResult:
     title_key: str = ''
     url_key: str = ''
     var_name: str = ''
+    author_rule: str = ''
+    kind_rule: str = ''
+    word_count_rule: str = ''
+    needs_url_template: bool = False
 
 
 class SiteFetcher:
-    """复用 DebugEngine 的抓取、编码自动检测、charset/POST 处理能力"""
+    """复用 DebugEngine 的抓取、编码自动检测、charset/POST 与 Cookie 能力"""
 
-    def __init__(self, base_url: str = 'https://example.com'):
+    def __init__(self, base_url: str = 'https://example.com', cookie: str = None):
         dummy = BookSource(bookSourceUrl=base_url)
         self.engine = DebugEngine(dummy)
+        if cookie:
+            self.engine.session.headers['Cookie'] = cookie
 
     def fetch(self, url: str, options: Optional[Dict] = None) -> Tuple[str, int]:
         return self.engine._fetch_url(url, options)
@@ -181,6 +195,67 @@ def _item_rules(item: Tag) -> Optional[Tuple[str, str]]:
             f'a.{idx}@href' if idx else 'a@href')
 
 
+def _detect_html_meta(item: Tag) -> Tuple[str, str, str]:
+    """在条目内识别作者/分类/字数（按 class 语义，best-effort）"""
+    author = kind = wc = ''
+    for el in item.find_all(['span', 'em', 'p', 'td', 'div', 'a'], limit=60):
+        cls = ' '.join(el.get('class') or [])
+        cl = cls.lower()
+        if not author and ('author' in cl or '作者' in cls):
+            author = f'{_selector_for(el)}@text'
+        if not kind and any(w in cl for w in ('type', 'kind', 'cate', 'categor', 'tag', 'genre')):
+            kind = f'{_selector_for(el)}@text'
+        if not wc and any(w in cl for w in ('size', 'word', 'count', '字数')):
+            wc = f'{_selector_for(el)}@text'
+        if author and kind and wc:
+            break
+    return author, kind, wc
+
+
+def _detect_book_info_meta(html: str) -> Dict[str, str]:
+    """详情页级元信息检测：扫全页找带语义 class/id 的作者/分类/字数/封面节点。
+    区别于列表条目内检测（_detect_html_meta），这里针对 book_url 详情页独立区域。"""
+    soup = BeautifulSoup(html, 'html.parser')
+    if soup.body is None:
+        return {}
+    res: Dict[str, str] = {}
+
+    def match_rule(el, keyword):
+        el_id = el.get('id') or ''
+        el_cls = ' '.join(el.get('class') or [])
+        return keyword in (el_cls + ' ' + el_id).lower()
+
+    def assign(rule_key, keywords):
+        if rule_key in res:
+            return
+        for el in soup.body.find_all(['span', 'em', 'p', 'td', 'div', 'label', 'a'], limit=200):
+            if match_rule(el, keywords):
+                res[rule_key] = f"{_selector_for(el)}@text"
+                return
+
+    assign('author', 'author')
+    assign('kind', 'type')
+    assign('wordCount', 'word')
+    assign('wordCount', 'size')
+    # 封面
+    for img in soup.body.find_all('img', limit=50):
+        el_id = img.get('id') or ''
+        el_cls = ' '.join(img.get('class') or [])
+        if 'cover' in (el_cls + ' ' + el_id).lower() or '封面' in (img.get('alt') or ''):
+            res['coverUrl'] = f"{_selector_for(img)}@src"
+            break
+    return res
+
+
+def _detect_json_meta(keys: set) -> Tuple[str, str, str]:
+    def pick(prefs):
+        for k in prefs:
+            if k in keys:
+                return f'$.{k}'
+        return ''
+    return pick(AUTHOR_KEYS), pick(KIND_KEYS), pick(WC_KEYS)
+
+
 # --------------------------------------------------------------------------- #
 # HTML 列表识别（搜索列表 / 目录列表共用）
 # --------------------------------------------------------------------------- #
@@ -205,13 +280,17 @@ def detect_html_list(html: str, min_items: int = 3) -> Optional[DetectResult]:
 
     selector = _item_selector(items[0], soup)
     rules = None
+    rep_item = None
     for it in items:
         rules = _item_rules(it)
         if rules:
+            rep_item = it
             break
     if rules is None:
         return None
     name_rule, url_rule = rules
+    author_rule, kind_rule, wc_rule = (_detect_html_meta(rep_item)
+                                       if rep_item is not None else ('', '', ''))
 
     sample = []
     for it in items[:5]:
@@ -222,7 +301,9 @@ def detect_html_list(html: str, min_items: int = 3) -> Optional[DetectResult]:
         main = max(cand, key=lambda a: len(a.get_text(' ', strip=True)))
         sample.append({'name': main.get_text(' ', strip=True), 'href': main.get('href', '')})
 
-    return DetectResult(selector=selector, name_rule=name_rule, url_rule=url_rule, sample=sample)
+    return DetectResult(selector=selector, name_rule=name_rule, url_rule=url_rule,
+                        sample=sample, author_rule=author_rule, kind_rule=kind_rule,
+                        word_count_rule=wc_rule)
 
 
 # --------------------------------------------------------------------------- #
@@ -262,6 +343,11 @@ def _extract_js_array(html: str, var: str) -> Optional[List[Any]]:
     return None
 
 
+def _looks_like_url(v: Any) -> bool:
+    s = str(v)
+    return s.startswith('http') or s.startswith('/') or '.' in s or '/' in s
+
+
 def detect_json_list(html: str, min_items: int = 3) -> Optional[DetectResult]:
     var_s = re.findall(r'(?:var|let|const)?\s*([A-Za-z_$][\w$]*)\s*=\s*\[', html)
     best_arr = None
@@ -294,18 +380,22 @@ def detect_json_list(html: str, min_items: int = 3) -> Optional[DetectResult]:
         return None
 
     sample = []
+    url_like = False
     for o in best_arr[:5]:
         t = o.get(title_key, '')
         u = o.get(url_key, '') if url_key else ''
         if t:
             sample.append({'name': str(t), 'href': str(u)})
+            if u and _looks_like_url(u):
+                url_like = True
 
-    # 用变量名精准定位数组，避免正则非贪婪截断；再用括号配对兜底
+    author_rule, kind_rule, wc_rule = _detect_json_meta(keys)
+
     var_esc = re.escape(best_var)
+    url_ref = url_key if url_key else title_key
     book_list_js = (
-        f"@js:(function(){{var m=result.match(/(?:var|let|const|window\\.)?\\s*{var_esc}\\s*=\\s*(\\[[\\s\\S]*?\\])\\s*;/);"
-        f"return m?JSON.parse(m[1])"
-        f".filter(o=>o['{title_key}']&&o['{url_key if url_key else title_key}']):[]}})()"
+        f"@js:var m=result.match(/(?:var|let|const|window\\.)?\\s*{var_esc}\\s*=\\s*(\\[[\\s\\S]*?\\])\\s*;/);"
+        f"result=m?JSON.parse(m[1]).filter(o=>o['{title_key}']&&o['{url_ref}']):[];"
     )
 
     return DetectResult(
@@ -317,6 +407,10 @@ def detect_json_list(html: str, min_items: int = 3) -> Optional[DetectResult]:
         title_key=title_key,
         url_key=url_key,
         var_name=best_var,
+        author_rule=author_rule,
+        kind_rule=kind_rule,
+        word_count_rule=wc_rule,
+        needs_url_template=not (url_key and url_like),
     )
 
 
@@ -327,29 +421,96 @@ def detect_list(html: str, min_items: int = 3) -> Optional[DetectResult]:
     return detect_json_list(html, min_items)
 
 
+def _json_url_template_from_html(html: str, sample_id: str, sample_title: str,
+                                 url_key: str, base: str) -> Optional[str]:
+    """JSON 只有 id 时，用页面里同名链接推导详情页 URL 模板（把 id 换成 {{$.url_key}}）"""
+    if not sample_id or not sample_title:
+        return None
+    soup = BeautifulSoup(html, 'html.parser')
+    for a in soup.find_all('a'):
+        text = a.get_text(' ', strip=True)
+        href = a.get('href') or ''
+        if not href or href.startswith('#') or 'javascript:' in href:
+            continue
+        if str(sample_id) in href and (sample_title in text or text in sample_title):
+            new_href = href.replace(str(sample_id), '{{$.%s}}' % url_key, 1)
+            if not new_href.startswith('http'):
+                new_href = urljoin(base, new_href)
+            return new_href
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # 正文 / 书名识别
 # --------------------------------------------------------------------------- #
-def detect_content(html: str, min_len: int = 30) -> Optional[str]:
+def detect_content_candidates(html: str, min_len: int = 50) -> List[str]:
+    """返回正文候选选择器列表（去重、按优先级+文本密度排序）"""
     soup = BeautifulSoup(html, 'html.parser')
     if soup.body is None:
-        return None
+        return []
+    cands: List[str] = []
+    seen = set()
     for sel in COMMON_CONTENT:
         try:
             for node in soup.select(sel):
-                txt = node.get_text(' ', strip=True)
-                if len(txt) >= min_len:
-                    return f"{_selector_for(node)}@html"
+                if len(node.get_text(strip=True)) >= min_len:
+                    s = f"{_selector_for(node)}@html"
+                    if s not in seen:
+                        seen.add(s)
+                        cands.append(s)
         except Exception:
             continue
-    best, best_len = None, 0
-    for el in soup.body.find_all(['div', 'article', 'td', 'section', 'p']):
+    density = []
+    for el in soup.body.find_all(['div', 'article', 'td', 'section']):
         txt = el.get_text(' ', strip=True)
-        if len(txt) > best_len:
-            best, best_len = el, len(txt)
-    if best is not None and best_len >= min_len:
-        return f"{_selector_for(best)}@html"
-    return None
+        if len(txt) >= min_len:
+            density.append((len(txt), _selector_for(el)))
+    for _, s in sorted(density, key=lambda x: x[0], reverse=True):
+        sc = f"{s}@html"
+        if sc not in seen:
+            seen.add(sc)
+            cands.append(sc)
+    return cands
+
+
+def _pick_content(html: str, candidates: List[str], min_len: int = 50) -> Optional[str]:
+    """按优先级选第一个文本长度达标的候选"""
+    soup = BeautifulSoup(html, 'html.parser')
+    for cand in candidates:
+        sel = cand.split('@')[0]
+        try:
+            nodes = soup.select(sel) if sel else []
+        except Exception:
+            nodes = []
+        for n in nodes:
+            if len(n.get_text(strip=True)) >= min_len:
+                return cand
+    return candidates[0] if candidates else None
+
+
+def detect_content(html: str, min_len: int = 30) -> Optional[str]:
+    cands = detect_content_candidates(html, min_len)
+    return _pick_content(html, cands, min_len)
+
+
+def detect_content_blocker(html: str) -> Optional[str]:
+    """章节页无静态正文时，识别常见『正文拿不到』的原因，返回可读诊断。"""
+    if not html:
+        return '页面为空'
+    signs = []
+    if '加载中' in html or 'loading' in html.lower():
+        signs.append('页面提示“加载中”')
+    if re.search(r'getCookie\s*\(\s*["\']getsite|setCookie\s*\(\s*["\']getsite', html):
+        signs.append('检测到 getsite Cookie 反爬验证（需浏览器自动探测镜像域名）')
+    if 'userverify' in html:
+        signs.append('检测到 userverify 反爬跳转')
+    if re.search(r'<meta[^>]+http-equiv=["\']?refresh', html, re.I):
+        signs.append('检测到 meta refresh 跳转')
+    if '登录' in html and '登录后才能' in html or '请登录' in html:
+        signs.append('可能需要登录')
+    if re.search(r'<script[^>]*>[\s\S]{0,200}?(ajax|fetch\(|XMLHttpRequest|\.getJSON|chapter)",?', html):
+        signs.append('正文疑似通过 JS/AJAX 异步加载，静态 HTML 中不含正文')
+    return '；'.join(signs) if signs else None
 
 
 def detect_book_name(html: str) -> str:
@@ -380,12 +541,37 @@ def find_toc_link(html: str, base: str = '') -> Optional[str]:
     return None
 
 
+def detect_next_toc_url(html: str, base: str) -> Optional[str]:
+    """检测目录分页链接，返回带 {{page}} 的模板（找不到分页返回 None）。
+    支持 ?page=2 查询参数形式 与 /p/2.html 路径形式；避免把页面路径里的字母误当页码。"""
+    soup = BeautifulSoup(html, 'html.parser')
+    for a in soup.find_all('a'):
+        text = a.get_text(' ', strip=True)
+        href = a.get('href') or ''
+        if not href or href.startswith('#') or 'javascript:' in href:
+            continue
+        if not any(w in text for w in ('下一页', '下页', 'next', '尾页', '末页')):
+            continue
+        if not href.startswith('http'):
+            href = urljoin(base, href)
+        # 查询参数形式：?page=2 / &pagenum=3
+        m = re.search(r'[?&](?:page|pageno|pagenum|pageNum|key)=(\d+)', href, re.I)
+        if m:
+            return href[:m.start(1)] + '{{page}}' + href[m.end(1):]
+        # 路径形式：/p/2.html 或 /page/2
+        m = re.search(r'(?:/(?:p|page)/)(\d+)(?:\.html?)?', href, re.I)
+        if m:
+            return href[:m.start(1)] + '{{page}}' + href[m.end(1):]
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # 书源构造
 # --------------------------------------------------------------------------- #
 def _build_source(origin: str, search_url: Optional[str], rule_search: Optional[Dict],
                   toc_url: Optional[str], rule_toc: Dict, rule_content: Dict,
-                  source_name: str) -> Dict:
+                  source_name: str, header: Optional[str] = None,
+                  book_info: Optional[Dict] = None) -> Dict:
     source = {
         'bookSourceName': source_name,
         'bookSourceUrl': origin,
@@ -396,11 +582,15 @@ def _build_source(origin: str, search_url: Optional[str], rule_search: Optional[
         'ruleToc': rule_toc,
         'ruleContent': rule_content,
     }
+    if book_info:
+        source['ruleBookInfo'].update({k: v for k, v in book_info.items() if v})
     if toc_url:
         source['ruleBookInfo']['tocUrl'] = toc_url
     if search_url and rule_search:
         source['searchUrl'] = search_url
-        source['ruleSearch'] = rule_search
+        source['ruleSearch'] = {k: v for k, v in rule_search.items() if v}
+    if header:
+        source['header'] = header
     return BookSource.from_dict(source).to_dict()
 
 
@@ -418,7 +608,6 @@ def run_validation(source_dict: Dict, keyword: str = '斗破苍穹',
     overall = True
 
     if only_toc_content:
-        # 无搜索：验证详情/目录/正文
         toc_url = detail_url or bs.bookSourceUrl
         info = engine.test_book_info(source_dict.get('ruleBookInfo', {}).get('tocUrl') or toc_url)
         steps['book_info'] = {'ok': info.success, 'msg': info.message}
@@ -446,19 +635,35 @@ def run_validation(source_dict: Dict, keyword: str = '斗破苍穹',
     return {'ok': overall, 'steps': steps, 'error': ''}
 
 
+def _verify_content_only(source_dict: Dict, chapter_url: str, cand: str,
+                         min_len: int = 50) -> bool:
+    """仅重测正文候选（不重跑搜索/目录），用于多候选回退"""
+    try:
+        bs = BookSource.from_dict(source_dict)
+        bs.ruleContent = {'content': cand}
+        engine = DebugEngine(bs)
+        r = engine.test_content(chapter_url)
+        return r.success and r.data is not None and len(r.data.text) >= min_len
+    except Exception:
+        return False
+
+
 # --------------------------------------------------------------------------- #
 # 主流程
 # --------------------------------------------------------------------------- #
 def auto_generate(build_from_search: bool = True, search_url: str = None,
                   keyword: str = '斗破苍穹', book_url: str = None,
-                  source_name: str = '', validate: bool = True) -> Dict:
-    fetcher = SiteFetcher()
+                  source_name: str = '', validate: bool = True,
+                  cookie: str = None, book_url_template: str = None,
+                  enable_toc_paging: bool = False) -> Dict:
+    fetcher = SiteFetcher(cookie=cookie)
     report = {'ok': False, 'errors': [], 'steps': {}, 'bookSource': None}
     origin = None
+    json_mode = False
+    needs_url_template = False
+    url_key = None
 
-    # ---- 1. 搜索（可选） → 得到书籍详情 URL 与搜索规则 ----
     rule_search = None
-    search_url_out = search_url
     if build_from_search and search_url:
         html, status, built_url = fetcher.fetch_search(search_url, keyword)
         origin = _origin(built_url)
@@ -469,39 +674,78 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
             if li is None:
                 report['errors'].append('搜索页未识别出书籍列表，请检查搜索 URL 是否返回列表页')
             else:
+                json_mode = li.json_mode
+                needs_url_template = li.needs_url_template
+                url_key = li.url_key
                 report['detect_search'] = {
                     'selector': li.selector[:120], 'name_rule': li.name_rule,
                     'url_rule': li.url_rule, 'json_mode': li.json_mode,
+                    'author_rule': li.author_rule, 'kind_rule': li.kind_rule,
+                    'word_count_rule': li.word_count_rule,
+                    'needs_url_template': li.needs_url_template,
                     'sample_count': len(li.sample), 'sample': li.sample,
                 }
                 rule_search = {
                     'bookList': li.selector,
                     'name': li.name_rule,
                     'bookUrl': li.url_rule,
+                    'author': li.author_rule,
+                    'kind': li.kind_rule,
+                    'wordCount': li.word_count_rule,
                 }
                 # 取第一条真实链接去抓详情页
                 if li.sample and li.sample[0].get('href'):
-                    book_url = urljoin(origin, li.sample[0]['href'])
+                    first_href = li.sample[0]['href']
+                    if li.json_mode and li.needs_url_template:
+                        # id-only：用模板或同名链接推导
+                        if book_url_template:
+                            rule_search['bookUrl'] = book_url_template
+                            book_url = book_url_template.replace('{{$.%s}}' % li.url_key,
+                                                                 first_href) if li.url_key else ''
+                        else:
+                            tpl = _json_url_template_from_html(html, first_href,
+                                                               li.sample[0]['name'],
+                                                               li.url_key, origin)
+                            if tpl:
+                                rule_search['bookUrl'] = tpl
+                                book_url = tpl.replace('{{$.%s}}' % li.url_key, first_href)
+                            else:
+                                report['errors'].append(
+                                    'JSON 列表只有 id 无链接，请用 --book-url-template 提供详情页模板'
+                                    f'（如 https://site/read?tid={{{{$.{li.url_key}}}}})')
+                    else:
+                        book_url = urljoin(origin, first_href)
                 else:
                     report['errors'].append('识别到列表但无可用链接')
+                # 报告里展示最终生效的 bookUrl（JSON+模板场景下已被替换为模板）
+                if rule_search and rule_search.get('bookUrl'):
+                    report['detect_search']['url_rule'] = rule_search['bookUrl']
 
-    # ---- 2. 书籍详情 / 目录 ----
+    # ---- 详情 / 目录 / 正文 ----
     rule_toc = None
     rule_content = None
+    content_candidates: List[str] = []
+    chapter_url = None
     toc_page_url = None
+    rule_book_info = {}
+
     if not book_url and not rule_search:
         report['errors'].append('未提供 search_url 或 book_url 输入')
         return report
 
     if book_url:
-        detail_html, dest = fetcher.fetch(book_url)
+        detail_html, _ = fetcher.fetch(book_url)
         if not detail_html:
             report['errors'].append(f'详情页抓取失败: {book_url}')
         else:
             local_origin = _origin(book_url)
+            # 详情页级元信息（作者/分类/字数/封面）——独立于章节列表区域
+            page_meta = _detect_book_info_meta(detail_html)
+            for k, v in page_meta.items():
+                if v:
+                    rule_book_info[k] = v
             toc_det = detect_list(detail_html, min_items=2)
             if toc_det is None:
-                # 详情页没有章节 → 尝试找目录页
                 toc_link = find_toc_link(detail_html, local_origin)
                 if toc_link:
                     toc_html, _ = fetcher.fetch(toc_link)
@@ -516,26 +760,45 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
                     'chapterName': toc_det.name_rule,
                     'chapterUrl': toc_det.url_rule,
                 }
+                if toc_det.author_rule:
+                    rule_book_info['author'] = f"{rule_book_info.get('author','')}||{toc_det.author_rule}".lstrip('||')
+                if toc_det.kind_rule:
+                    rule_book_info['kind'] = f"{rule_book_info.get('kind','')}||{toc_det.kind_rule}".lstrip('||')
+                if toc_det.word_count_rule:
+                    rule_book_info['wordCount'] = f"{rule_book_info.get('wordCount','')}||{toc_det.word_count_rule}".lstrip('||')
+
+                # 目录分页 nextTocUrl（可选）
+                if enable_toc_paging:
+                    next_tpl = detect_next_toc_url(detail_html, local_origin)
+                    if next_tpl:
+                        rule_toc['nextTocUrl'] = next_tpl
+                        report['detect_toc_next'] = next_tpl
+
                 report['detect_toc'] = {
                     'selector': toc_det.selector[:120], 'name_rule': toc_det.name_rule,
                     'url_rule': toc_det.url_rule, 'json_mode': toc_det.json_mode,
                     'sample_count': len(toc_det.sample), 'sample': toc_det.sample,
                 }
-                # 取第一章抓正文
                 if toc_det.sample and toc_det.sample[0].get('href'):
-                    chapter_url = urljoin(_origin(book_url), toc_det.sample[0]['href'])
+                    chapter_url = urljoin(local_origin, toc_det.sample[0]['href'])
                     ch_html, _ = fetcher.fetch(chapter_url)
                     if ch_html:
-                        content_sel = detect_content(ch_html)
+                        content_candidates = detect_content_candidates(ch_html)
+                        content_sel = _pick_content(ch_html, content_candidates)
                         if content_sel:
                             rule_content = {'content': content_sel}
-                            report['detect_content'] = {'selector': content_sel}
+                            report['detect_content'] = {'selector': content_sel,
+                                                        'candidates': len(content_candidates)}
                         else:
-                            report['errors'].append('正文容器未识别出文本')
+                            blocker = detect_content_blocker(ch_html)
+                            report['errors'].append(
+                                '正文容器未识别出文本' + (f'（{blocker}）' if blocker else '')
+                            )
+                            report['detect_content'] = {'selector': '',
+                                                        'blocker': blocker or '未知（可能正文结构特殊）'}
                     else:
                         report['errors'].append(f'章节页抓取失败: {chapter_url}')
 
-    # ---- 3. 组装 ----
     if (not rule_toc) or (not rule_content):
         report['errors'].append('缺少目录或正文规则，无法生成可用书源')
         return report
@@ -544,6 +807,7 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
         host = urlparse(origin or book_url or '').netloc
         source_name = host if host else '自动生成'
 
+    header = json.dumps({'Cookie': cookie}) if cookie else None
     source_dict = _build_source(
         origin=origin or _origin(book_url),
         search_url=(search_url if build_from_search and rule_search else None),
@@ -552,13 +816,25 @@ def auto_generate(build_from_search: bool = True, search_url: str = None,
         rule_toc=rule_toc,
         rule_content=rule_content,
         source_name=source_name,
+        header=header,
+        book_info=rule_book_info,
     )
 
-    # ---- 4. 验证 ----
+    # ---- 验证 + 正文多候选回退 ----
     if validate:
         v = run_validation(source_dict, keyword=keyword,
                            only_toc_content=not (build_from_search and rule_search),
                            detail_url=book_url)
+        if not v['ok'] and content_candidates and chapter_url:
+            for cand in content_candidates[1:]:
+                if _verify_content_only(source_dict, chapter_url, cand):
+                    source_dict['ruleContent']['content'] = cand
+                    report['detect_content']['selector'] = cand
+                    v = run_validation(source_dict, keyword=keyword,
+                                       only_toc_content=not (build_from_search and rule_search),
+                                       detail_url=book_url)
+                    if v['ok']:
+                        break
         report['ok'] = v['ok']
         report['steps'] = v['steps']
         if v['error']:

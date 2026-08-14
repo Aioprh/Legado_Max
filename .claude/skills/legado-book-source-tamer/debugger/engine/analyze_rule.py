@@ -350,7 +350,8 @@ class AnalyzeRule:
                 self.log_callback("JS规则", f"JS代码长度: {len(rule)}")
             
             # 执行JS - 传递书源的真实jsLib
-            js_result = execute_js(rule, context, self.js_lib)
+            # 末尾清空body，防止引擎收尾用 body 覆盖 result（与 _eval_js 一致）
+            js_result = execute_js(rule + "\nbody = null;", context, self.js_lib)
             
             # 调试日志
             if self.log_callback:

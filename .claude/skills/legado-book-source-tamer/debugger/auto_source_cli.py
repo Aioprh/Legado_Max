@@ -71,7 +71,9 @@ def cmd_gen_search(args):
     if '{{key}}' not in args.search_url:
         print("提示: --search-url 中应含 {{key}} 占位符（将替换为关键词）")
     report = auto_generate(build_from_search=True, search_url=args.search_url,
-                           keyword=args.keyword, source_name=args.name, validate=True)
+                           keyword=args.keyword, source_name=args.name, validate=True,
+                           cookie=args.cookie, book_url_template=args.book_url_template,
+                           enable_toc_paging=args.toc_paging)
     _print_report(report)
     _write_output(report, args.out)
     sys.exit(0 if report.get('ok') else 1)
@@ -79,7 +81,8 @@ def cmd_gen_search(args):
 
 def cmd_gen_book(args):
     report = auto_generate(build_from_search=False, book_url=args.book_url,
-                           source_name=args.name, validate=True)
+                           source_name=args.name, validate=True,
+                           cookie=args.cookie, enable_toc_paging=args.toc_paging)
     _print_report(report)
     _write_output(report, args.out)
     sys.exit(0 if report.get('ok') else 1)
@@ -112,12 +115,17 @@ def main():
     ps.add_argument('--search-url', required=True, help='搜索 URL，需含 {{key}} 占位符')
     ps.add_argument('--keyword', '-k', default='斗破苍穹', help='用于验证的搜索关键词')
     ps.add_argument('--name', help='书源名称（默认取域名）')
+    ps.add_argument('--cookie', help='登录会话 Cookie（所有抓取带上，并写入书源 header）')
+    ps.add_argument('--book-url-template', help='JSON 列表仅 id 时提供详情页 URL 模板，如 https://site/read?tid={{$.tid}}')
+    ps.add_argument('--toc-paging', action='store_true', help='检测目录分页并写入 nextTocUrl')
     ps.add_argument('--out', help='输出 JSON 文件路径')
     ps.set_defaults(func=cmd_gen_search)
 
     pb = sub.add_parser('gen-book', help='从书籍详情页生成书源（无搜索）')
     pb.add_argument('--book-url', required=True, help='书籍详情/目录页 URL')
     pb.add_argument('--name', help='书源名称（默认取域名）')
+    pb.add_argument('--cookie', help='登录会话 Cookie（所有抓取带上，并写入书源 header）')
+    pb.add_argument('--toc-paging', action='store_true', help='检测目录分页并写入 nextTocUrl')
     pb.add_argument('--out', help='输出 JSON 文件路径')
     pb.set_defaults(func=cmd_gen_book)
 
