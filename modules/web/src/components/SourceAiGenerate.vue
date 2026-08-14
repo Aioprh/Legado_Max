@@ -92,6 +92,27 @@
     />
     <div v-if="html" class="hint">
       编码：{{ htmlCharset }}，共 {{ htmlLength }} 字符（已截断）
+      <span v-if="apiEndpoints.length">
+        ；自动发现 {{ apiEndpoints.length }} 个 JSON API 接口，搜索示例 {{ sampleSearch?.ok ? '成功' : '失败' }}
+      </span>
+    </div>
+
+    <div v-if="apiEndpoints.length" class="api-panel">
+      <div class="api-title">自动发现 JSON API 接口（SPA 站点，LLM 将据此编写 JSONPath 规则）</div>
+      <div v-for="e in apiEndpoints" :key="e.type" class="api-line">
+        <span class="api-type">{{ e.type }}</span>
+        <span class="api-url">{{ e.url }}</span>
+      </div>
+      <div v-if="sampleSearch" class="api-sample">
+        <div class="api-sample-title">
+          {{ sampleSearch.ok ? '搜索接口示例响应：' : '搜索接口探测失败：' + sampleSearch.error }}
+        </div>
+        <pre v-if="sampleSearch.ok">{{ sampleSearch.json.slice(0, 600) }}</pre>
+      </div>
+      <div v-if="sampleCatalog && sampleCatalog.ok" class="api-sample">
+        <div class="api-sample-title">目录接口示例响应（已截断）：</div>
+        <pre>{{ sampleCatalog.json.slice(0, 600) }}</pre>
+      </div>
     </div>
 
     <el-input
@@ -116,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import API from '@api'
+import API, { type AiSampleResult } from '@api'
 import { normalizeSource } from '@utils/souce'
 import {
   Link,
@@ -155,6 +176,9 @@ const htmlCharset = ref('')
 const htmlLength = ref(0)
 const resultText = ref('')
 const checks = ref<{ name: string; pass: boolean; msg: string }[]>([])
+const apiEndpoints = ref<{ type: string; url: string }[]>([])
+const sampleSearch = ref<AiSampleResult | null>(null)
+const sampleCatalog = ref<AiSampleResult | null>(null)
 
 const htmlPreview = computed(() => html.value)
 
@@ -165,13 +189,19 @@ const fetchHtml = async () => {
   if (!url.value.trim()) return ElMessage.warning('请先填写网站地址')
   fetching.value = true
   try {
-    const { data } = await API.fetchHtml(url.value.trim())
+    const { data } = await API.fetchHtml(url.value.trim(), keyword.value.trim())
     if (!data.isSuccess) throw new Error(data.errorMsg || '抓取失败')
     html.value = data.data.html
     htmlCharset.value = data.data.charset
     htmlLength.value = data.data.length
+    apiEndpoints.value = data.data.apiEndpoints || []
+    sampleSearch.value = data.data.sampleSearch || null
+    sampleCatalog.value = data.data.sampleCatalog || null
+    const apiCount = apiEndpoints.value.length
+    const sampleOk = sampleSearch.value?.ok ? 1 : 0
     ElMessage.success(
-      `抓取成功（编码 ${htmlCharset.value}，共 ${htmlLength.value} 字符，已截断）`,
+      `抓取成功（编码 ${htmlCharset.value}，共 ${htmlLength.value} 字符，已截断）` +
+        (apiCount ? `，发现 ${apiCount} 个接口，搜索示例 ${sampleOk ? '成功' : '失败'}` : ''),
     )
   } catch (e) {
     ElMessage.error('抓取失败: ' + (e as Error).message)
@@ -190,15 +220,54 @@ const stripCodeFence = (text: string) => {
   return text.trim()
 }
 
-const buildPrompt = () =>
-  `网站地址：${url.value.trim()}
-搜索关键词：${keyword.value.trim() || '（未提供）'}
-书源类型：${sourceTypes[sourceType.value]}（${sourceType.value}）
-已抓取到的网页 HTML（编码 ${htmlCharset.value}，共 ${htmlLength.value} 字符）：
-----------
-${html.value}
-----------
-请分析以上 HTML 结构，按系统要求输出完整书源 JSON 数组。`
+const PROMPT_HTML_LIMIT = 40000
+
+const buildPrompt = () => {
+  const lines: string[] = []
+  lines.push(`网站地址：${url.value.trim()}`)
+  lines.push(`搜索关键词：${keyword.value.trim() || '（未提供）'}`)
+  lines.push(`书源类型：${sourceTypes[sourceType.value]}（${sourceType.value}）`)
+  if (apiEndpoints.value.length) {
+    lines.push('')
+    lines.push('【重要】本站为前端 JS 动态渲染（SPA）站点，静态 HTML 中不含书籍数据。自动发现以下 JSON API 接口，请优先基于这些接口编写 JSONPath 规则：')
+    apiEndpoints.value.forEach(e => lines.push(`- ${e.type}: ${e.url}`))
+  }
+  const ss = sampleSearch.value
+  if (ss) {
+    lines.push('')
+    if (ss.ok) {
+      lines.push('搜索接口示例响应（JSON）：')
+      lines.push('----------')
+      lines.push(ss.json)
+      lines.push('----------')
+    } else {
+      lines.push(`搜索接口探测失败：${ss.error}`)
+    }
+  }
+  const sc = sampleCatalog.value
+  if (sc) {
+    lines.push('')
+    if (sc.ok) {
+      lines.push('目录接口示例响应（JSON，用于编写目录/正文规则）：')
+      lines.push('----------')
+      lines.push(sc.json)
+      lines.push('----------')
+    } else {
+      lines.push(`目录接口探测失败：${sc.error}`)
+    }
+  }
+  lines.push('')
+  lines.push(`已抓取到的网页 HTML（预处理后，编码 ${htmlCharset.value}，共 ${htmlLength.value} 字符，已截断）：`)
+  lines.push('----------')
+  const h =
+    html.value.length > PROMPT_HTML_LIMIT
+      ? html.value.slice(0, PROMPT_HTML_LIMIT) + '\n...(已截断)'
+      : html.value
+  lines.push(h)
+  lines.push('----------')
+  lines.push('请分析以上内容，按系统要求输出完整书源 JSON 数组。若提供了 JSON API 接口与示例响应，请优先使用 JSONPath 规则。')
+  return lines.join('\n')
+}
 
 const generate = async () => {
   if (!baseUrl.value.trim() || !apiKey.value.trim()) {
@@ -323,6 +392,9 @@ const clearAll = () => {
   html.value = ''
   resultText.value = ''
   checks.value = []
+  apiEndpoints.value = []
+  sampleSearch.value = null
+  sampleCatalog.value = null
 }
 
 /**
@@ -338,6 +410,7 @@ const SYSTEM_PROMPT = `你是"Legado书源驯兽师"，精通 Legado（阅读）
   "bookSourceGroup": "分组名（可选）",
   "bookSourceType": 0,
   "bookSourceComment": "说明（可选）",
+  "loginUrl": "登录地址（可选），站点有登录页则填其 URL，无则空字符串",
   "searchUrl": "搜索地址（必填），搜索关键字用 {{key}} 占位，如 /search?q={{key}}；POST 请求写成 /search,{"method":"POST","body":"keyword={{key}}","charset":"gbk"}",
   "ruleSearch": {
     "bookList": "书籍列表选择器（必填）",
@@ -357,12 +430,16 @@ const SYSTEM_PROMPT = `你是"Legado书源驯兽师"，精通 Legado（阅读）
     "intro": "详情页简介",
     "kind": "分类",
     "lastChapter": "最新章节",
-    "tocUrl": "目录页 URL（与详情页不同时填写）"
+    "tocUrl": "目录页 URL（与详情页不同时填写）",
+    "downloadUrls": "整本下载地址规则（可选），如 https://host/download.php?id={{$.id}}，无则空字符串"
   },
   "ruleToc": {
     "chapterList": "章节列表选择器（必填）",
     "chapterName": "章节名规则（必填）",
     "chapterUrl": "章节 URL 规则（必填）",
+    "isVip": "VIP 标记规则（返回 1 表示 VIP，0 表示免费，如 JSONPath $.vip）",
+    "isPay": "付费标记规则（同上，无则空字符串）",
+    "updateTime": "章节更新时间规则（无则空字符串）",
     "nextTocUrl": "下一页目录 URL"
   },
   "ruleContent": {
@@ -370,8 +447,25 @@ const SYSTEM_PROMPT = `你是"Legado书源驯兽师"，精通 Legado（阅读）
     "nextContentUrl": "下一章 URL",
     "webJs": "需 JS 渲染时注入的脚本",
     "replaceRegex": "正文净化正则，如 ##<script[\\s\\S]*?<\\/script>|请收藏.*##"
+  },
+  "exploreUrl": "发现地址（可选），多分类用 分类名::URL 换行分隔，如 热门::https://host/top/###...；分页参数写 page=1（App 会自动翻页）；无发现页则空字符串",
+  "ruleExplore": {
+    "bookList": "发现列表选择器（必填，若 exploreUrl 非空）",
+    "name": "发现书名",
+    "author": "发现作者",
+    "coverUrl": "发现封面",
+    "intro": "发现简介",
+    "kind": "分类",
+    "bookUrl": "详情页 URL 规则",
+    "wordCount": "字数"
   }
 }
+
+【字段命名（重要，必须使用本版 Legado 命名）】
+- 详情规则用 ruleBookInfo（不是 ruleDetail）
+- 目录规则用 ruleToc（不是 ruleCatalog），章节名用 chapterName（不是 name）
+- 搜索简介用 intro（不是 detail）
+- 目录 VIP/付费标记用 isVip/isPay（不是 vipFlag/payFlag）
 
 【规则语法（Default 语法优先）】
 - 提取类型：@text 取文本、@html 取 HTML、@href 取链接、@src 取图片、@textNode、@ownText
@@ -387,7 +481,9 @@ const SYSTEM_PROMPT = `你是"Legado书源驯兽师"，精通 Legado（阅读）
 2. 所有规则必须基于提供的 HTML 真实分析，禁止编造不存在的选择器
 3. 只输出 JSON 本身，不要添加解释文字或 markdown 代码块标记
 4. 无法推断的字段填空字符串 ""
-5. 若 HTML 是 JSON 数据，使用 JSONPath 语法`
+5. 若 HTML 是 JSON 数据，使用 JSONPath 语法
+6. 必须输出完整书源：搜索、详情(ruleBookInfo)、目录(ruleToc)、正文(ruleContent) 为必填核心；发现(exploreUrl/ruleExplore)、登录(loginUrl)、下载(ruleBookInfo.downloadUrls) 若网站支持则填写，不支持/无法推断时填空字符串 ""，但字段名必须保留在输出结构中
+7. 若提供了 JSON API 接口与示例响应，一律优先使用 JSONPath 规则并补齐上述全部字段`
 </script>
 
 <style lang="scss" scoped>
@@ -406,6 +502,55 @@ const SYSTEM_PROMPT = `你是"Legado书源驯兽师"，精通 Legado（阅读）
   font-size: 12px;
   color: var(--el-text-color-secondary);
   margin-bottom: 8px;
+}
+.api-panel {
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: var(--el-fill-color-lighter);
+}
+.api-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--el-color-primary);
+  margin-bottom: 6px;
+}
+.api-line {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  margin-bottom: 4px;
+  word-break: break-all;
+}
+.api-type {
+  flex-shrink: 0;
+  color: var(--el-color-primary);
+  font-weight: 600;
+}
+.api-url {
+  color: var(--el-text-color-regular);
+}
+.api-sample {
+  margin-top: 8px;
+  border-top: 1px dashed var(--el-border-color-lighter);
+  padding-top: 6px;
+}
+.api-sample-title {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  margin-bottom: 4px;
+}
+.api-sample pre {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--el-fill-color);
+  padding: 6px;
+  border-radius: 4px;
 }
 .checks {
   margin-top: 8px;
