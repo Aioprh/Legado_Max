@@ -27,7 +27,6 @@ import com.bumptech.glide.request.RequestOptions
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.constant.AppLog
-import io.legado.app.constant.AppConst
 import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.Theme
@@ -37,6 +36,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.SearchBook
+import io.legado.app.data.repository.ReadRecordRepository
 import io.legado.app.databinding.ActivityBookInfoBinding
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.AppWebDav
@@ -1015,6 +1015,8 @@ class BookInfoActivity :
         }
     }
 
+    private val readRecordRepository by lazy { ReadRecordRepository(appDb.readRecordDao) }
+
     private fun upReadRecord(book: Book) {
         if (!AppConfig.enableReadRecord || !AppConfig.bookInfoShowReadRecord) {
             binding.llReadRecord.gone()
@@ -1025,32 +1027,16 @@ class BookInfoActivity :
         binding.llReadRecordList.gone()
         readRecordJob?.cancel()
         readRecordJob = lifecycleScope.launch {
-            val deviceId = AppConst.androidId
-            val data = runCatching {
-                withContext(IO) {
-                    val record = appDb.readRecordDao.getReadRecord(deviceId, book.name, book.author)
-                    val details = appDb.readRecordDao.getDetailsByBook(deviceId, book.name, book.author)
-                    Triple(record, details, null)
+            readRecordRepository.getBookReadTime(book.name, book.author)
+                .collect { totalReadTime ->
+                    val summary = if (totalReadTime <= 0L) {
+                        getString(R.string.no_read_record)
+                    } else {
+                        val totalStr = io.legado.app.utils.formatReadDuration(totalReadTime)
+                        "阅读时长：$totalStr"
+                    }
+                    binding.tvReadRecord.text = summary
                 }
-            }.getOrElse {
-                AppLog.put("load read record error: name=${book.name}, author=${book.author}", it)
-                Triple(null, emptyList(), null)
-            }
-
-            val record = data.first
-            val details = data.second
-
-            val detailReadTime = details.sumOf { it.readTime }
-            val totalReadTime = maxOf(record?.readTime ?: 0L, detailReadTime)
-
-            val summary = if (totalReadTime <= 0L) {
-                getString(R.string.no_read_record)
-            } else {
-                val totalStr = io.legado.app.utils.formatReadDuration(totalReadTime)
-                "阅读时长：$totalStr"
-            }
-
-            binding.tvReadRecord.text = summary
         }
     }
 
