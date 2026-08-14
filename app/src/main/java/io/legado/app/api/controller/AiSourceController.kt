@@ -9,6 +9,7 @@ import okhttp3.Request
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.Charset
+import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
 /**
@@ -176,7 +177,7 @@ object AiSourceController {
             }
             if (type == "other") continue
 
-            val resolved = runCatching { URL(baseUrl, cleaned).toString() }.getOrDefault("")
+            val resolved = runCatching { URL(URL(baseUrl), cleaned).toString() }.getOrDefault("")
             if (resolved.isBlank() || !resolved.startsWith("http")) continue
 
             // search 接口优先带 keyword 占位符的
@@ -230,8 +231,8 @@ object AiSourceController {
         return runCatching {
             val request = Request.Builder().url(url).build()
             val client = okHttpClient.newBuilder()
-                .callTimeout(API_TIMEOUT_MS)
-                .readTimeout(API_TIMEOUT_MS)
+                .callTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .readTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
