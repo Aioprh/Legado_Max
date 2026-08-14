@@ -230,7 +230,7 @@ object BlockRuleStore {
                 if (rule.matches(book)) {
                     matchedRuleIds.add(rule.id)
                     matched = true
-                    break // 已命中，无需继续检查其他规则
+                    // 不 break：记录所有命中规则，确保 UI 触发规则报告完整
                 }
             }
             matched
