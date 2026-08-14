@@ -695,6 +695,7 @@ class DebugEngine:
         start_time = time.time()
         
         try:
+            toc_url = book_url
             if not book_url:
                 info_result = self.test_book_info(search_keyword=search_keyword)
                 if not info_result.success:
