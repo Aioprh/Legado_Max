@@ -92,6 +92,9 @@ class DebugEngine:
         
         self.debug_log: List[Dict[str, Any]] = []
         self.variables: Dict[str, str] = {}
+        # 自动 Cookie 持久化：服务端 Set-Cookie 存下并在后续请求重放
+        import http.cookiejar
+        self.cookiejar = http.cookiejar.CookieJar()
         
         # 按照Legado源码处理bookSourceUrl中的#注释
         # 参考: AnalyzeUrl.kt 第131-132行
@@ -214,6 +217,7 @@ class DebugEngine:
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
+        https_handler = urllib.request.HTTPSHandler(context=ssl_context)
         
         # 构建请求
         body_data = body.encode(charset or 'utf-8') if body else None
@@ -234,7 +238,13 @@ class DebugEngine:
             req.add_header('Content-Type', 'application/x-www-form-urlencoded')
         
         try:
-            with urllib.request.urlopen(req, timeout=30, context=ssl_context) as response:
+            # 使用带 CookieJar 的 opener：自动保存并重放 Set-Cookie
+            import http.cookiejar
+            opener = urllib.request.build_opener(
+                urllib.request.HTTPCookieProcessor(self.cookiejar),
+                https_handler,
+            )
+            with opener.open(req, timeout=30) as response:
                 content = response.read()
                 status_code = response.status
                 
@@ -695,6 +705,7 @@ class DebugEngine:
         start_time = time.time()
         
         try:
+            toc_url = book_url
             if not book_url:
                 info_result = self.test_book_info(search_keyword=search_keyword)
                 if not info_result.success:
