@@ -99,6 +99,7 @@ if (m) {
       const java2 = {
         ajax: (u) => JSON.stringify({ Data: { DataList: [ { Content: '写得好', UserName: '张三' } ] } }),
         showBrowser: (...a) => { showed = a[1]; },
+        startBrowser: (...a) => { showed = a[2]; },
       };
       try {
         const fn3 = new Function('java', 'book', 'chapter', click);
