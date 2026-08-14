@@ -212,6 +212,7 @@
     <string name="ai_fetch_html">抓取HTML</string>
     <string name="ai_generate">AI生成</string>
     <string name="ai_validate">验证规则</string>
+    <string name="ai_auto_fix">自动修复</string>
     <string name="ai_import_editor">导入编辑器</string>
     <string name="ai_html_preview_hint">抓取到的网页 HTML（截断预览）</string>
     <string name="ai_result_hint">AI 生成的书源 JSON（可修改后验证/导入）</string>

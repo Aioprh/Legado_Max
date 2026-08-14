@@ -4,8 +4,10 @@ import android.app.Application
 import com.google.gson.JsonParser
 import io.legado.app.api.controller.AiSourceController
 import io.legado.app.base.BaseViewModel
+import io.legado.app.data.entities.BookSource
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.http.okHttpClient
+import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.GSON
 import io.legado.app.utils.putString
 import okhttp3.MediaType.Companion.toMediaType
@@ -90,6 +92,94 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             return stripCodeFence(content)
         }
     }
+
+    /** 自动修复一轮：用真实搜索验证 -> 若有误则反馈 LLM 修复 */
+    suspend fun autoFix(
+        baseUrl: String,
+        apiKey: String,
+        model: String,
+        systemPrompt: String,
+        userPrompt: String,
+        sourceJson: String,
+        keyword: String,
+        maxRounds: Int = 3
+    ): AutoFixResult {
+        var round = 0
+        var current = sourceJson
+        val log = StringBuilder()
+        while (round < maxRounds) {
+            round++
+            log.appendLine("[第 $round 轮] 用真实搜索验证书源...")
+            val verify = verifyByRealSearch(current, keyword)
+            log.appendLine(verify.summary)
+            if (verify.succeeded) {
+                return AutoFixResult(ok = true, rounds = round, json = verify.fixedJson ?: current, log = log.toString())
+            }
+            // 组装修复提示词，把真实报错反馈给 LLM
+            val fixPrompt = buildString {
+                appendLine("你之前生成的书源经真实搜索验证不通过，请根据以下错误信息修复规则，只输出修复后的完整书源 JSON 数组（不要任何解释）：")
+                appendLine()
+                appendLine("【真实验证报错】")
+                appendLine(verify.summary)
+                appendLine()
+                appendLine("【上一次生成的书源 JSON】")
+                appendLine(current)
+                appendLine()
+                appendLine("【原始网页/接口上下文】")
+                appendLine(userPrompt)
+            }
+            val fixed = runCatching {
+                generate(baseUrl, apiKey, model, systemPrompt, fixPrompt)
+            }.getOrElse { e ->
+                return AutoFixResult(ok = false, rounds = round, json = current, log = log.appendLine("AI 修复调用失败: ${e.message}").toString())
+            }
+            current = fixed
+        }
+        return AutoFixResult(ok = false, rounds = round, json = current, log = log.toString())
+    }
+
+    /**
+     * 用 App 真实搜索引擎验证书源是否可用。
+     * 成功返回 null 或填充后的 json；失败返回错误信息。
+     */
+    private suspend fun verifyByRealSearch(jsonText: String, keyword: String): VerifyResult {
+        if (keyword.isBlank()) {
+            return VerifyResult(succeeded = false, summary = "未提供搜索关键词，无法用真实搜索验证")
+        }
+        val fixed = AiSourceValidate.parseSource(jsonText) ?: return VerifyResult(false, "生成结果无法解析为书源 JSON")
+        return runCatching {
+            val bookSource = GSON.fromJson(fixed, BookSource::class.java)
+            if (bookSource.searchUrl.isNullOrBlank()) {
+                return@runCatching VerifyResult(false, "书源缺少 searchUrl，无法搜索")
+            }
+            val list = WebBook.searchBookAwait(bookSource, keyword, 1)
+            if (list.isEmpty()) {
+                VerifyResult(false, "搜索返回空列表，ruleSearch.bookList 或 name 规则可能匹配不上")
+            } else {
+                val first = list.first()
+                VerifyResult(
+                    succeeded = true,
+                    summary = "搜索成功，返回 ${list.size} 条，首条书名「${first.name}」",
+                    fixedJson = AiSourceValidate.toSourceJson(bookSource, fixed)
+                )
+            }
+        }.getOrElse { e ->
+            VerifyResult(false, "搜索失败：${e.message ?: e.javaClass.simpleName}")
+        }
+    }
+
+    data class AutoFixResult(
+        val ok: Boolean,
+        val rounds: Int,
+        val json: String,
+        val log: String
+    )
+
+    private data class VerifyResult(
+        val succeeded: Boolean,
+        val summary: String,
+        val fixedJson: String? = null
+    )
 
     companion object {
         private const val KEY_BASE_URL = "ai_base_url"

@@ -40,6 +40,7 @@ class AiSourceGenerateActivity :
         binding.btnFetchHtml.setOnClickListener { fetchHtml() }
         binding.btnGenerate.setOnClickListener { generate() }
         binding.btnValidate.setOnClickListener { validate() }
+        binding.btnAutoFix.setOnClickListener { autoFix() }
         binding.btnImport.setOnClickListener { importToEditor() }
         binding.btnClear.setOnClickListener { clearAll() }
     }
@@ -100,49 +101,7 @@ class AiSourceGenerateActivity :
         val typeName = binding.spType.selectedItem?.toString() ?: "文本"
         val typeIndex = binding.spType.selectedItemPosition
         val content = htmlContent
-        val userPrompt = buildString {
-            appendLine("网站地址：$url")
-            appendLine("搜索关键词：${keyword ?: "（未提供）"}")
-            appendLine("书源类型：$typeName（$typeIndex）")
-            content?.apiEndpoints?.takeIf { it.isNotEmpty() }?.let { endpoints ->
-                appendLine()
-                appendLine("【重要】本站为前端 JS 动态渲染（SPA）站点，静态 HTML 中不含书籍数据。自动发现以下 JSON API 接口，请优先基于这些接口编写 JSONPath 规则：")
-                endpoints.forEach { appendLine("- ${it.type}: ${it.url}") }
-            }
-            content?.sampleSearch?.let { ss ->
-                appendLine()
-                if (ss.ok) {
-                    appendLine("搜索接口示例响应（JSON）：")
-                    appendLine("----------")
-                    appendLine(ss.json)
-                    appendLine("----------")
-                } else {
-                    appendLine("搜索接口探测失败：${ss.error}")
-                }
-            }
-            content?.sampleCatalog?.let { sc ->
-                appendLine()
-                if (sc.ok) {
-                    appendLine("目录接口示例响应（JSON，用于编写目录/正文规则）：")
-                    appendLine("----------")
-                    appendLine(sc.json)
-                    appendLine("----------")
-                } else {
-                    appendLine("目录接口探测失败：${sc.error}")
-                }
-            }
-            appendLine()
-            appendLine("已抓取到的网页 HTML（预处理后，编码 ${content?.charset}，共 ${content?.length} 字符，已截断）：")
-            appendLine("----------")
-            val htmlForPrompt = if (html.length > PROMPT_HTML_LIMIT) {
-                html.substring(0, PROMPT_HTML_LIMIT) + "\n...(已截断)"
-            } else {
-                html
-            }
-            appendLine(htmlForPrompt)
-            appendLine("----------")
-            appendLine("请分析以上内容，按系统要求输出完整书源 JSON 数组。若提供了 JSON API 接口与示例响应，请优先使用 JSONPath 规则。")
-        }
+        val userPrompt = buildUserPrompt(url, keyword, typeName, typeIndex, content, html)
         binding.btnGenerate.isEnabled = false
         viewModel.execute {
             viewModel.generate(
@@ -162,6 +121,57 @@ class AiSourceGenerateActivity :
         }
     }
 
+    private fun buildUserPrompt(
+        url: String,
+        keyword: String?,
+        typeName: String,
+        typeIndex: Int,
+        content: AiSourceController.HtmlContent?,
+        html: String
+    ): String = buildString {
+        appendLine("网站地址：$url")
+        appendLine("搜索关键词：${keyword ?: "（未提供）"}")
+        appendLine("书源类型：$typeName（$typeIndex）")
+        content?.apiEndpoints?.takeIf { it.isNotEmpty() }?.let { endpoints ->
+            appendLine()
+            appendLine("【重要】本站为前端 JS 动态渲染（SPA）站点，静态 HTML 中不含书籍数据。自动发现以下 JSON API 接口，请优先基于这些接口编写 JSONPath 规则：")
+            endpoints.forEach { appendLine("- ${it.type}: ${it.url}") }
+        }
+        content?.sampleSearch?.let { ss ->
+            appendLine()
+            if (ss.ok) {
+                appendLine("搜索接口示例响应（JSON）：")
+                appendLine("----------")
+                appendLine(ss.json)
+                appendLine("----------")
+            } else {
+                appendLine("搜索接口探测失败：${ss.error}")
+            }
+        }
+        content?.sampleCatalog?.let { sc ->
+            appendLine()
+            if (sc.ok) {
+                appendLine("目录接口示例响应（JSON，用于编写目录/正文规则）：")
+                appendLine("----------")
+                appendLine(sc.json)
+                appendLine("----------")
+            } else {
+                appendLine("目录接口探测失败：${sc.error}")
+            }
+        }
+        appendLine()
+        appendLine("已抓取到的网页 HTML（预处理后，编码 ${content?.charset}，共 ${content?.length} 字符，已截断）：")
+        appendLine("----------")
+        val htmlForPrompt = if (html.length > PROMPT_HTML_LIMIT) {
+            html.substring(0, PROMPT_HTML_LIMIT) + "\n...(已截断)"
+        } else {
+            html
+        }
+        appendLine(htmlForPrompt)
+        appendLine("----------")
+        appendLine("请分析以上内容，按系统要求输出完整书源 JSON 数组。若提供了 JSON API 接口与示例响应，请优先使用 JSONPath 规则。")
+    }
+
     private fun validate() {
         val text = binding.etResult.text?.toString()
         if (text.isNullOrBlank()) {
@@ -174,6 +184,57 @@ class AiSourceGenerateActivity :
         }
         val pass = checks.count { it.pass }
         toastOnUi("验证完成：$pass/${checks.size} 项通过")
+    }
+
+    private fun autoFix() {
+        saveConfig()
+        if (viewModel.baseUrl.isBlank() || viewModel.apiKey.isBlank()) {
+            toastOnUi("请先填写 AI 接口地址和 API Key")
+            return
+        }
+        val text = binding.etResult.text?.toString()
+        if (text.isNullOrBlank()) {
+            toastOnUi("请先生成书源 JSON")
+            return
+        }
+        val url = binding.etUrl.text?.toString()?.trim()
+        if (url.isNullOrEmpty()) {
+            toastOnUi("请填写网站地址")
+            return
+        }
+        val keyword = binding.etKeyword.text?.toString()?.trim()
+        val typeName = binding.spType.selectedItem?.toString() ?: "文本"
+        val typeIndex = binding.spType.selectedItemPosition
+        val content = htmlContent
+        val html = content?.html.orEmpty()
+        val userPrompt = buildUserPrompt(url, keyword, typeName, typeIndex, content, html)
+        binding.btnAutoFix.isEnabled = false
+        binding.tvChecks.text = "正在用真实搜索验证并自动修复，最多 3 轮..."
+        viewModel.execute {
+            viewModel.autoFix(
+                baseUrl = viewModel.baseUrl,
+                apiKey = viewModel.apiKey,
+                model = viewModel.model,
+                systemPrompt = AiSourceGenerateViewModel.SYSTEM_PROMPT,
+                userPrompt = userPrompt,
+                sourceJson = text,
+                keyword = keyword ?: "",
+                maxRounds = 3
+            )
+        }.onSuccess { result ->
+            binding.etResult.setText(result.json)
+            binding.tvChecks.text = buildString {
+                appendLine("自动修复日志：")
+                append(result.log)
+                append(if (result.ok) "\n✓ 修复成功，已用真实搜索验证通过" else "\n✗ 达到最大轮次仍未通过，请手动检查")
+            }
+            toastOnUi(if (result.ok) "修复成功（${result.rounds} 轮）" else "修复未通过（${result.rounds} 轮）")
+        }.onError {
+            binding.tvChecks.text = "自动修复失败：${it.message}"
+            toastOnUi("自动修复失败: ${it.message}")
+        }.onFinally {
+            binding.btnAutoFix.isEnabled = true
+        }
     }
 
     private fun importToEditor() {

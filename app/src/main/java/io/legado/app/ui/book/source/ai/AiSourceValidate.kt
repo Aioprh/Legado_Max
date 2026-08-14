@@ -3,6 +3,8 @@ package io.legado.app.ui.book.source.ai
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import io.legado.app.data.entities.BookSource
+import io.legado.app.utils.GSON
 
 /**
  * AI 生成书源结果校验
@@ -107,5 +109,23 @@ object AiSourceValidate {
             else -> null
         }
         return obj?.takeIf { it.has("bookSourceUrl") }
+    }
+
+    /**
+     * 将 BookSource 对象序列化回书源 JSON 数组文本。
+     * @param original 用于保留解析出的 JsonObject 中被 BookSource 忽略的字段（如 header 等）
+     */
+    fun toSourceJson(source: BookSource, original: JsonObject?): String {
+        val json = GSON.toJson(source)
+        val obj = runCatching { JsonParser.parseString(json).asJsonObject }.getOrElse { JsonObject() }
+        // 补回 BookSource 反序列化时可能丢失的自定义字段
+        original?.let { orig ->
+            listOf("header", "loginUrl", "loginCheckJs", "charset").forEach { k ->
+                if (!obj.has(k)) orig.get(k)?.let { obj.add(k, it) }
+            }
+        }
+        val arr = JsonArray()
+        arr.add(obj)
+        return arr.toString()
     }
 }
