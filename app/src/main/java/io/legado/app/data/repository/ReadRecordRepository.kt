@@ -1,5 +1,6 @@
 package io.legado.app.data.repository
 
+import io.legado.app.data.dao.BookDailySessionStat
 import io.legado.app.data.dao.DailyReadStat
 import io.legado.app.data.dao.ReadRecordDao
 import io.legado.app.data.entities.readRecord.ReadRecord
@@ -171,6 +172,22 @@ class ReadRecordRepository(
 
     fun getBookSessions(bookName: String, bookAuthor: String): Flow<List<ReadRecordSession>> {
         return dao.getSessionsByBookFlow(getCurrentDeviceId(), bookName, bookAuthor)
+    }
+
+    /**
+     * 按日期聚合统计单本书的会话：每天的会话数和总时长。
+     * SQL GROUP BY 替代全量加载 Session 列表 + 内存 groupBy。
+     */
+    fun getBookDailySessionStats(bookName: String, bookAuthor: String): Flow<List<BookDailySessionStat>> {
+        return dao.getDailySessionStats(getCurrentDeviceId(), bookName, bookAuthor)
+    }
+
+    /**
+     * 按需加载某一天的会话列表（展开日期时调用）。
+     * 仅加载单日数据，避免全量加载所有会话到内存。
+     */
+    fun getBookSessionsByDate(bookName: String, bookAuthor: String, date: String): Flow<List<ReadRecordSession>> {
+        return dao.getSessionsByBookAndDateFlow(getCurrentDeviceId(), bookName, bookAuthor, date)
     }
 
     fun getBookTimelineDays(bookName: String, bookAuthor: String): Flow<List<ReadRecordTimelineDay>> {

@@ -169,7 +169,7 @@ interface ReadRecordDao {
     @Query("SELECT * FROM readRecordSession WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor")
     suspend fun getSessionsByBook(deviceId: String, bookName: String, bookAuthor: String): List<ReadRecordSession>
 
-    @Query("SELECT * FROM readRecordSession WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor AND date(startTime / 1000, 'unixepoch', 'localtime') = :date")
+    @Query("SELECT * FROM readRecordSession WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor AND date(startTime / 1000, 'unixepoch', 'localtime') = :date ORDER BY startTime DESC")
     suspend fun getSessionsByBookAndDate(deviceId: String, bookName: String, bookAuthor: String, date: String): List<ReadRecordSession>
 
     @Query(
@@ -315,12 +315,47 @@ interface ReadRecordDao {
 
     @Delete
     suspend fun deleteReadRecord(record: ReadRecord)
+
+    /**
+     * 按日期聚合统计单本书的会话：返回每天的会话数和总时长。
+     * SQL GROUP BY 替代全量加载 + 内存 groupBy，减少内存压力。
+     */
+    @Query(
+        "SELECT date(startTime / 1000, 'unixepoch', 'localtime') as date, " +
+            "COUNT(*) as sessionCount, " +
+            "SUM(endTime - startTime) as totalDuration " +
+            "FROM readRecordSession " +
+            "WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor " +
+            "GROUP BY date(startTime / 1000, 'unixepoch', 'localtime') " +
+            "ORDER BY date DESC"
+    )
+    fun getDailySessionStats(deviceId: String, bookName: String, bookAuthor: String): Flow<List<BookDailySessionStat>>
+
+    /**
+     * 按需加载某一天的会话列表（展开日期时调用）。
+     */
+    @Query(
+        "SELECT * FROM readRecordSession " +
+            "WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor " +
+            "AND date(startTime / 1000, 'unixepoch', 'localtime') = :date " +
+            "ORDER BY startTime DESC"
+    )
+    fun getSessionsByBookAndDateFlow(deviceId: String, bookName: String, bookAuthor: String, date: String): Flow<List<ReadRecordSession>>
 }
 
 data class BookReadTime(
     val bookName: String,
     val bookAuthor: String,
     val totalReadTime: Long
+)
+
+/**
+ * 单本书按日期聚合的会话统计（SQL GROUP BY 返回）。
+ */
+data class BookDailySessionStat(
+    val date: String,
+    val sessionCount: Int,
+    val totalDuration: Long
 )
 
 /**
