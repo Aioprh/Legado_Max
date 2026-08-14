@@ -74,9 +74,6 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
     val actionLive = MutableLiveData<String>()
     val tocLoading = MutableLiveData<Boolean>()
 
-    init {
-    }
-
     fun initData(intent: Intent) {
         execute {
             inBookshelf = false
