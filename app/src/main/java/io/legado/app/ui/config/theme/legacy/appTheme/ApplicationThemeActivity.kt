@@ -52,7 +52,6 @@ import java.io.FileOutputStream
 private const val MENU_CREATE = 6101
 private const val MENU_IMPORT = 6102
 private const val MENU_EXPORT = 6103
-private const val MENU_IMPORT_WITH_OPTIONS = 6104
 
 private data class ApplicationThemeListItem(
     val config: ApplicationThemeManager.Config,
@@ -115,16 +114,14 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
 
     /**
      * 创建选项菜单。
-     * 添加创建、导入、带选项导入、导出四个菜单项。
+     * 添加创建、导入、导出三个菜单项。
      */
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, MENU_CREATE, 0, R.string.application_theme_create)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         menu.add(0, MENU_IMPORT, 1, R.string.application_theme_import)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
-        menu.add(0, MENU_IMPORT_WITH_OPTIONS, 2, R.string.application_theme_import_with_options)
-            .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
-        menu.add(0, MENU_EXPORT, 3, R.string.application_theme_export)
+        menu.add(0, MENU_EXPORT, 2, R.string.application_theme_export)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
         return true
     }
@@ -136,8 +133,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             MENU_CREATE -> { showNameDialog(); true }
-            MENU_IMPORT -> { selectImport(); true }
-            MENU_IMPORT_WITH_OPTIONS -> { showImportOptionsDialog(); true }
+            MENU_IMPORT -> { showImportOptionsDialog(); true }
             MENU_EXPORT -> { exportCurrent(); true }
             else -> super.onCompatOptionsItemSelected(item)
         }
@@ -158,6 +154,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
     /**
      * 显示导入选项对话框。
      * 允许用户选择导入时包含哪些组件（主题、顶栏、底栏、封面）以及对应的模式（日间/夜间）。
+     * 确认后保存选项并启动文件选择器。
      */
     private fun showImportOptionsDialog() {
         val saved = ApplicationThemeManager.getImportOptions(this)
@@ -217,7 +214,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
                         importNightCover = cbNightCover.isChecked
                     )
                 )
-                toastOnUi(R.string.success)
+                selectImport()
             }
             cancelButton()
         }
