@@ -174,7 +174,12 @@ internal object AppearanceKitImporter {
                                 val bgPath = config.backgroundImgPath
                                 var restoredConfig = config.copy(isNightTheme = component.isNight)
                                 if (bgPath != null && !bgPath.startsWith("http", true)) {
-                                    val bgFile = subTemp.walkTopDown().firstOrNull { it.isFile && it.name == bgPath.substringAfterLast(File.separator) }
+                                    // 配置文件所在目录作为基准目录
+                                    val themeDir = themeJsonFile.parentFile ?: subTemp
+                                    val bgFile = File(themeDir, bgPath).takeIf { it.isFile }
+                                        ?: File(subTemp, bgPath).takeIf { it.isFile }
+                                        ?: themeDir.walkTopDown().firstOrNull { it.isFile && it.name == bgPath.substringAfterLast(File.separator) }
+                                        ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == bgPath.substringAfterLast(File.separator) }
                                         ?: subTemp.walkTopDown().firstOrNull { it.isFile && !it.name.endsWith(".json") }
                                     if (bgFile != null && bgFile.isFile) {
                                         val dir = appCtx.externalFiles
@@ -206,9 +211,13 @@ internal object AppearanceKitImporter {
                         if (topBarJsonFile != null) {
                             val source = GSON.fromJsonObject<AppearanceTopBarConfig>(topBarJsonFile.readText()).getOrNull()
                             if (source != null) {
+                                // 配置文件所在目录作为基准目录
+                                val topBarDir = topBarJsonFile.parentFile ?: subTemp
                                 val wallpaperPath = source.wallpaperPath?.let { wpPath ->
-                                    val wpFile = subTemp.walkTopDown().firstOrNull { it.isFile && it.name == wpPath.substringAfterLast(File.separator) }
-                                        ?: subTemp.walkTopDown().firstOrNull { it.isFile && !it.name.endsWith(".json") }
+                                    val wpFile = File(topBarDir, wpPath).takeIf { it.isFile }
+                                        ?: File(subTemp, wpPath).takeIf { it.isFile }
+                                        ?: topBarDir.walkTopDown().firstOrNull { it.isFile && it.name == wpPath.substringAfterLast(File.separator) }
+                                        ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == wpPath.substringAfterLast(File.separator) }
                                     wpFile?.absolutePath
                                 }
                                 val config = TopBarConfig.Config(
@@ -251,11 +260,16 @@ internal object AppearanceKitImporter {
                         if (navBarJsonFile != null) {
                             val source = GSON.fromJsonObject<AppearanceNavBarConfig>(navBarJsonFile.readText()).getOrNull()
                             if (source != null) {
+                                // 底栏配置 JSON 所在目录作为图标文件的基准目录
+                                val navBarDir = navBarJsonFile.parentFile ?: subTemp
                                 val iconDir = appCtx.externalFiles
                                     .getFile("navigationBarIcons", UUID.randomUUID().toString()).apply { mkdirs() }
                                 val icons = source.icons.mapNotNull { (key, path) ->
-                                    // path 是相对于包目录的文件名或相对路径
-                                    val iconFile = File(subTemp, path).takeIf { it.isFile }
+                                    // path 可能是文件名（如 "bookshelf_normal.png"）或相对路径（如 "icons/bookshelf_normal.png"）
+                                    // 依次在：配置文件所在目录、subTemp 递归中查找
+                                    val iconFile = File(navBarDir, path).takeIf { it.isFile }
+                                        ?: File(subTemp, path).takeIf { it.isFile }
+                                        ?: navBarDir.walkTopDown().firstOrNull { it.isFile && it.name == path.substringAfterLast(File.separator) }
                                         ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == path.substringAfterLast(File.separator) }
                                         ?: subTemp.walkTopDown().firstOrNull { it.isFile && !it.name.endsWith(".json") && it.name.startsWith(key) }
                                     if (iconFile != null && iconFile.isFile) {
@@ -275,7 +289,9 @@ internal object AppearanceKitImporter {
                                     borderColor = source.borderColor,
                                     borderAlpha = source.borderAlpha,
                                     wallpaperPath = source.wallpaperPath?.let { wpPath ->
-                                        val wpFile: File? = File(subTemp, wpPath).takeIf { it.isFile }
+                                        val wpFile: File? = File(navBarDir, wpPath).takeIf { it.isFile }
+                                            ?: File(subTemp, wpPath).takeIf { it.isFile }
+                                            ?: navBarDir.walkTopDown().firstOrNull { it.isFile && it.name == wpPath.substringAfterLast(File.separator) }
                                             ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == wpPath.substringAfterLast(File.separator) }
                                         wpFile?.let { file ->
                                             val wpDir = appCtx.externalFiles
@@ -286,7 +302,9 @@ internal object AppearanceKitImporter {
                                         }
                                     },
                                     sidebarBackgroundPath = source.sidebarBackgroundPath?.let { sbPath ->
-                                        val sbFile: File? = File(subTemp, sbPath).takeIf { it.isFile }
+                                        val sbFile: File? = File(navBarDir, sbPath).takeIf { it.isFile }
+                                            ?: File(subTemp, sbPath).takeIf { it.isFile }
+                                            ?: navBarDir.walkTopDown().firstOrNull { it.isFile && it.name == sbPath.substringAfterLast(File.separator) }
                                             ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == sbPath.substringAfterLast(File.separator) }
                                         sbFile?.let { file ->
                                             val sbDir = appCtx.externalFiles
@@ -329,9 +347,14 @@ internal object AppearanceKitImporter {
                         if (coverJsonFile != null) {
                             val collection = GSON.fromJsonObject<AppearanceCoverCollection>(coverJsonFile.readText()).getOrNull()
                             coverName = collection?.name?.ifBlank { kitName } ?: kitName
+                            // 配置文件所在目录作为基准目录
+                            val coverDir = coverJsonFile.parentFile ?: subTemp
                             imageFiles = collection?.images?.mapNotNull { imgPath ->
-                                // imgPath 是相对于包目录的相对路径（如 images/cover_1.jpg）
-                                File(subTemp, imgPath).takeIf { it.isFile }
+                                // imgPath 可能是文件名或相对路径（如 "images/cover_1.jpg"）
+                                // 依次在：配置文件所在目录、subTemp 递归中查找
+                                File(coverDir, imgPath).takeIf { it.isFile }
+                                    ?: File(subTemp, imgPath).takeIf { it.isFile }
+                                    ?: coverDir.walkTopDown().firstOrNull { it.isFile && it.name == imgPath.substringAfterLast(File.separator) }
                                     ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == imgPath.substringAfterLast(File.separator) }
                             } ?: emptyList()
                         } else {
