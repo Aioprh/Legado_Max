@@ -189,7 +189,8 @@ internal object Md3ThemeImporter {
             ?: runCatching {
                 val zipName = zip.name.substringAfterLast(File.separator)
                     .substringBeforeLast('.')
-                zipName.takeIf { it.isNotBlank() && it != "manifest" }
+                // 排除纯数字（时间戳）和无效名称
+                zipName.takeIf { it.isNotBlank() && it != "manifest" && !it.all(Char::isDigit) }
             }.getOrNull()
             ?: "MD3主题"
 
