@@ -778,7 +778,7 @@ object Backup {
     fun mergeReadRecordsForLegacyCompat(records: List<ReadRecord>): List<ReadRecord> {
         if (records.size <= 1) return records
         return records
-            .groupBy { it.bookName to it.deviceId }
+            .groupBy { it.bookName }
             .map { (_, group) ->
                 if (group.size == 1) {
                     group.first()
