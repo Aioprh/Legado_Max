@@ -482,7 +482,7 @@ private suspend fun loadReadRecordCoverBitmap(context: android.content.Context, 
             }
         }
         cont.invokeOnCancellation {
-            ImageLoader.loadBitmap(context, coverPath).clear(target)
+            com.bumptech.glide.Glide.with(context).clear(target)
         }
         ImageLoader.loadBitmap(context, coverPath)
             .into(target)
