@@ -271,8 +271,26 @@ internal object AppearanceKitImporter {
                                     opacity = source.opacity,
                                     borderColor = source.borderColor,
                                     borderAlpha = source.borderAlpha,
-                                    wallpaperPath = null,
-                                    sidebarBackgroundPath = source.sidebarBackgroundPath,
+                                    wallpaperPath = source.wallpaperPath?.let { wpPath ->
+                                        subTemp.walkTopDown().firstOrNull { it.isFile && it.name == wpPath.substringAfterLast(File.separator) }
+                                            ?.let { wpFile ->
+                                                val wpDir = appCtx.externalFiles
+                                                    .getFile("navigationBarWallpapers", UUID.randomUUID().toString()).apply { mkdirs() }
+                                                val wpTarget = wpDir.getFile("wp_${UUID.randomUUID()}.${wpFile.extension.ifBlank { "png" }}")
+                                                wpFile.copyTo(wpTarget, overwrite = true)
+                                                wpTarget.absolutePath
+                                            }
+                                    },
+                                    sidebarBackgroundPath = source.sidebarBackgroundPath?.let { sbPath ->
+                                        subTemp.walkTopDown().firstOrNull { it.isFile && it.name == sbPath.substringAfterLast(File.separator) }
+                                            ?.let { sbFile ->
+                                                val sbDir = appCtx.externalFiles
+                                                    .getFile("navigationBarSidebars", UUID.randomUUID().toString()).apply { mkdirs() }
+                                                val sbTarget = sbDir.getFile("sb_${UUID.randomUUID()}.${sbFile.extension.ifBlank { "png" }}")
+                                                sbFile.copyTo(sbTarget, overwrite = true)
+                                                sbTarget.absolutePath
+                                            }
+                                    },
                                     sidebarGravity = source.sidebarGravity,
                                     icons = icons
                                 )

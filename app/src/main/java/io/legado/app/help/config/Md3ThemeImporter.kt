@@ -15,6 +15,20 @@ import java.util.UUID
 import java.util.zip.ZipFile
 import java.util.zip.ZipEntry
 
+/** MD3 导航图标字段名 → 当前分支图标 key 的映射 */
+private val NAV_ICON_MAP = mapOf(
+    "navIconHome" to "homepage_normal",
+    "navIconHomeSelected" to "homepage_selected",
+    "navIconBookshelf" to "bookshelf_normal",
+    "navIconBookshelfSelected" to "bookshelf_selected",
+    "navIconExplore" to "discovery_normal",
+    "navIconExploreSelected" to "discovery_selected",
+    "navIconRss" to "rss_normal",
+    "navIconRssSelected" to "rss_selected",
+    "navIconMy" to "my_normal",
+    "navIconMySelected" to "my_selected"
+)
+
 /**
  * 兼容导入 MD3-main 分支导出的主题包。
  *
@@ -190,7 +204,8 @@ internal object Md3ThemeImporter {
                 accentColor = dayAccent,
                 backgroundColor = dayBg,
                 bottomBackground = dayBottomBg,
-                transparentNavBar = false,
+                // isPureBlack 对应当前分支的透明导航栏（纯黑模式下底栏背景透明）
+                transparentNavBar = data.isPureBlack,
                 backgroundImgPath = dayBgImgPath,
                 backgroundImgBlur = data.bgImageBlurring
             )
@@ -224,7 +239,8 @@ internal object Md3ThemeImporter {
                 accentColor = nightAccent,
                 backgroundColor = nightBg,
                 bottomBackground = nightBottomBg,
-                transparentNavBar = false,
+                // isPureBlack 对应当前分支的透明导航栏（纯黑模式下底栏背景透明）
+                transparentNavBar = data.isPureBlack,
                 backgroundImgPath = nightBgImgPath,
                 backgroundImgBlur = data.bgImageNBlurring
             )
@@ -265,21 +281,141 @@ internal object Md3ThemeImporter {
             dayCoverGroupId = nightCoverGroupId
         }
 
+        // 导入顶栏配置（topBarOpacity 对应 wallpaperAlpha）
+        val importDayTopBar = options?.importDayTopBar ?: true
+        val importNightTopBar = options?.importNightTopBar ?: true
+        var dayTopBarDir = TopBarConfig.DEFAULT_DIR_NAME
+        var nightTopBarDir = TopBarConfig.DEFAULT_DIR_NAME
+
+        if (importDayTopBar) {
+            val topBarConfig = TopBarConfig.Config(
+                name = themeName,
+                isNightMode = false,
+                wallpaperAlpha = data.topBarOpacity,
+                backgroundColor = data.labelContainerColor,
+                updatedAt = System.currentTimeMillis()
+            )
+            val existingEntry = TopBarConfig.loadEntries(appCtx, false)
+                .firstOrNull { it.config.name == themeName.trim() }
+            dayTopBarDir = TopBarConfig.addOrUpdate(topBarConfig, oldEntry = existingEntry).dirName
+        }
+        if (importNightTopBar) {
+            val topBarConfig = TopBarConfig.Config(
+                name = themeName,
+                isNightMode = true,
+                wallpaperAlpha = data.topBarOpacity,
+                backgroundColor = data.labelContainerColorNight,
+                updatedAt = System.currentTimeMillis()
+            )
+            val existingEntry = TopBarConfig.loadEntries(appCtx, true)
+                .firstOrNull { it.config.name == themeName.trim() }
+            nightTopBarDir = TopBarConfig.addOrUpdate(topBarConfig, oldEntry = existingEntry).dirName
+        }
+
+        // 导入底栏配置（bottomBarOpacity 对应 opacity，useFloatingBottomBar 对应 layoutMode）
+        val importDayBottomBar = options?.importDayBottomBar ?: true
+        val importNightBottomBar = options?.importNightBottomBar ?: true
+        var dayBottomBarId: String? = null
+        var nightBottomBarId: String? = null
+
+        // 提取导航图标资源
+        val navIcons = extractNavIcons(data, manifest.assets, zip, temp)
+
+        if (importDayBottomBar) {
+            val navConfig = NavigationBarConfig(
+                id = UUID.randomUUID().toString(),
+                name = themeName,
+                isNight = false,
+                isBuiltin = false,
+                layoutMode = if (data.useFloatingBottomBar) NavigationBarConfig.LAYOUT_FLOATING else NavigationBarConfig.LAYOUT_STANDARD,
+                opacity = data.bottomBarOpacity,
+                icons = navIcons
+            )
+            val existing = NavigationBarConfig.loadConfigs(appCtx)
+            val existingIndex = existing.indexOfFirst { it.isNight == false && it.name == themeName.trim() && !it.isBuiltin }
+            val id = if (existingIndex >= 0) {
+                existing[existingIndex].id
+            } else {
+                navConfig.id
+            }
+            val finalConfig = navConfig.copy(id = id)
+            if (existingIndex >= 0) existing[existingIndex] = finalConfig else existing.add(finalConfig)
+            NavigationBarConfig.saveConfigs(appCtx, existing)
+            dayBottomBarId = id
+        }
+        if (importNightBottomBar) {
+            val navConfig = NavigationBarConfig(
+                id = UUID.randomUUID().toString(),
+                name = themeName,
+                isNight = true,
+                isBuiltin = false,
+                layoutMode = if (data.useFloatingBottomBar) NavigationBarConfig.LAYOUT_FLOATING else NavigationBarConfig.LAYOUT_STANDARD,
+                opacity = data.bottomBarOpacity,
+                icons = navIcons
+            )
+            val existing = NavigationBarConfig.loadConfigs(appCtx)
+            val existingIndex = existing.indexOfFirst { it.isNight == true && it.name == themeName.trim() && !it.isBuiltin }
+            val id = if (existingIndex >= 0) {
+                existing[existingIndex].id
+            } else {
+                navConfig.id
+            }
+            val finalConfig = navConfig.copy(id = id)
+            if (existingIndex >= 0) existing[existingIndex] = finalConfig else existing.add(finalConfig)
+            NavigationBarConfig.saveConfigs(appCtx, existing)
+            nightBottomBarId = id
+        }
+
         val config = ApplicationThemeManager.Config(
             id = UUID.randomUUID().toString(),
             name = themeName,
             dayTheme = dayTheme,
             nightTheme = nightTheme,
-            dayTopBarDir = TopBarConfig.DEFAULT_DIR_NAME,
-            nightTopBarDir = TopBarConfig.DEFAULT_DIR_NAME,
-            dayBottomBarId = null,
-            nightBottomBarId = null,
+            dayTopBarDir = dayTopBarDir,
+            nightTopBarDir = nightTopBarDir,
+            dayBottomBarId = dayBottomBarId,
+            nightBottomBarId = nightBottomBarId,
             dayCoverGroupId = dayCoverGroupId,
             nightCoverGroupId = nightCoverGroupId
         )
         return ApplicationThemeManager.addImported(
             ApplicationThemeManager.stripComponents(config, options)
         )
+    }
+
+    /**
+     * 提取 MD3 格式的导航图标并转换为当前分支的图标映射。
+     *
+     * MD3 格式中导航图标以扁平字段存储（navIconHome, navIconHomeSelected 等），
+     * 当前分支使用统一的 icons Map，key 格式为 "{itemKey}_{state}"。
+     * 此方法将 MD3 字段名映射为当前分支的 key，并从 zip 中提取图标文件。
+     */
+    private fun extractNavIcons(
+        data: Md3ThemeExportData,
+        assets: Map<String, String>,
+        zip: ZipFile,
+        temp: File
+    ): Map<String, String> {
+        val iconDir = appCtx.externalFiles
+            .getFile("navigationBarIcons", UUID.randomUUID().toString()).apply { mkdirs() }
+        val result = mutableMapOf<String, String>()
+        // 通过 GSON 将 data 序列化为 JsonObject，再按字段名逐个提取路径
+        val jsonObj = GSON.toJsonTree(data).asJsonObject
+        for ((md3Field, iconKey) in NAV_ICON_MAP) {
+            val path = jsonObj.get(md3Field)?.asString
+            if (path.isNullOrBlank()) continue
+            // 优先从 assets 映射中查找实际 zip 内路径
+            val assetPath = assets.entries.firstOrNull { it.key == md3Field }?.value
+                ?: assets.entries.firstOrNull { it.key == "navIcon.${iconKey}" }?.value
+                ?: path
+            val extracted = ApplicationThemeManager.extractAsset(zip, temp, assetPath)
+            if (extracted != null && extracted.isFile) {
+                val target = iconDir.getFile("$iconKey.${extracted.extension.ifBlank { "png" }}")
+                extracted.copyTo(target, overwrite = true)
+                result[iconKey] = target.absolutePath
+            }
+        }
+        return result
     }
 
     /** 将 Int 颜色值转换为 #RRGGBB 格式的十六进制字符串 */
