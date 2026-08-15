@@ -17,6 +17,11 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/15**
+- 修复多个内存泄露问题
+- fix(书架): 修复从我的切回书架时分组闪烁的问题
+- 优化书架加载性能
+
 **2026/8/14**
 - 优化性能
 
