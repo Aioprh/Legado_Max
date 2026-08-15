@@ -16,6 +16,7 @@ import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.model.BookCover
+import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.help.storage.BackupSelectorConfig
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
@@ -505,7 +506,7 @@ object Backup {
                 .writeText(GSON.toJson(HighlightRuleStore.backupData(appCtx)))
         }
         if (selectedFiles.contains("readRecord.json")) {
-            writeListToJson(appDb.readRecordDao.all, "readRecord.json", backupPath, onProgress)
+            writeListToJson(mergeReadRecordsForLegacyCompat(appDb.readRecordDao.all), "readRecord.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("readRecordDetail.json")) {
             writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", backupPath, onProgress)
@@ -758,6 +759,36 @@ object Backup {
             } else {
                 LogUtils.d(TAG, "阅读备份 $fileName 列表为空")
             }
+        }
+    }
+
+    companion object {
+
+        /**
+         * 合并阅读记录，确保同一本书只输出一条记录。
+         *
+         * Max 项目的 readRecord 表主键为 [deviceId, bookName, bookAuthor]，
+         * 同一本书可能因 bookAuthor 不同而存在多条记录。
+         * 原始项目的主键是 [deviceId, bookName]，查询用 SUM(readTime)，
+         * 如果备份里有多条同书名记录，恢复后时间会被重复累加。
+         *
+         * 此方法按 bookName 合并：readTime 取 SUM，bookAuthor 取首个非空值，
+         * lastRead/durChapterTitle/durChapterIndex 取最近阅读的记录值。
+         */
+        fun mergeReadRecordsForLegacyCompat(records: List<ReadRecord>): List<ReadRecord> {
+            if (records.size <= 1) return records
+            return records
+                .groupBy { it.bookName to it.deviceId }
+                .map { (_, group) ->
+                    if (group.size == 1) {
+                        group.first()
+                    } else {
+                        group.first { it.lastRead == group.maxOf { r -> r.lastRead } }.copy(
+                            readTime = group.sumOf { it.readTime },
+                            bookAuthor = group.firstOrNull { it.bookAuthor.isNotBlank() }?.bookAuthor ?: ""
+                        )
+                    }
+                }
         }
     }
 
