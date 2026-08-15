@@ -74,6 +74,14 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
 
     override var onlyUpdateRead = false
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
+        // 清理已销毁子页面的引用，避免 fragmentMap 持有导致内存泄漏
+        childFragmentManager.registerFragmentLifecycleCallbacks(
+            object : FragmentManager.FragmentLifecycleCallbacks() {
+                override fun onFragmentDestroyed(fm: FragmentManager, fragment: Fragment) {
+                    fragmentMap.entries.removeIf { it.value === fragment }
+                }
+            }, true
+        )
         setSupportToolbar(binding.titleBar.toolbar)
         initView()
         initBookGroupData()
@@ -198,14 +206,21 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             if (data != bookGroups) {
                 bookGroups.clear()
                 bookGroups.addAll(data)
-                // 在 notifyDataSetChanged 之前保存位置，因为 notifyDataSetChanged
-                // 会触发 ViewPager/TabLayout 自动选中 position 0，
-                // 进而调用 onTabSelected(0) 覆盖 saveTabPosition
                 val lastPosition = AppConfig.saveTabPosition
+                    .coerceIn(0, bookGroups.size - 1)
+                // 先设置 currentPosition，这样 onPageSelected / onTabSelected
+                // 回调能正确使用目标位置，避免回调将位置覆盖为 0
+                currentPosition = lastPosition
+                // 先调用 notifyDataSetChanged 让 ViewPager 知道新的数据量，
+                // 然后立即设置 currentItem 到目标位置（无动画），
+                // 这样 ViewPager 不会先显示 position 0 再切换，避免闪烁
                 adapter.notifyDataSetChanged()
+                // notifyDataSetChanged 之后 ViewPager 已知道新的 item count，
+                // 此时 setCurrentItem 不会崩溃，且能在同一帧内完成位置切换
+                binding.viewPagerBookshelf.setCurrentItem(lastPosition, false)
                 if (AppConfig.dropdownSelectGroup) {
+                    AppConfig.saveTabPosition = lastPosition
                     updateTitleSelect()
-                    selectLastGroup(lastPosition)
                 } else {
                     selectLastTab(lastPosition)
                     // 设置长按分组标签编辑分组
@@ -231,28 +246,17 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         }
     }
 
-    private fun selectLastGroup(lastPosition: Int) {
-        titleSelect?.post {
-            val position = lastPosition.coerceIn(0, bookGroups.size - 1)
-            currentPosition = position
-            AppConfig.saveTabPosition = position
-            tvGroupName?.text = bookGroups.getOrNull(position)?.groupName ?: ""
-            binding.viewPagerBookshelf.setCurrentItem(position, false)
-        }
-    }
-
     // TabLayout 模式：选择上次保存的分组
-    // 注意：removeOnTabSelectedListener 后再 select() 不会触发 onTabSelected，
-    // 因此需要显式设置 currentPosition 和 saveTabPosition
+    // ViewPager 的 currentItem 已在 upGroup 中通过 setCurrentItem 同步设置，
+    // TabLayout 通过 setupWithViewPager 自动跟随 ViewPager 的位置，
+    // 但 TabLayout 的视觉选中可能不同步，需要显式 select。
     private fun selectLastTab(lastPosition: Int) {
-        tabLayout?.post {
-            val position = lastPosition.coerceIn(0, bookGroups.size - 1)
-            tabLayout?.removeOnTabSelectedListener(this)
-            currentPosition = position
-            AppConfig.saveTabPosition = position
-            tabLayout?.getTabAt(position)?.select()
-            tabLayout?.addOnTabSelectedListener(this)
-        }
+        val position = lastPosition.coerceIn(0, bookGroups.size - 1)
+        AppConfig.saveTabPosition = position
+        // 移除监听器避免 select 触发 onTabSelected 覆盖已设置的位置
+        tabLayout?.removeOnTabSelectedListener(this)
+        tabLayout?.getTabAt(position)?.select()
+        tabLayout?.addOnTabSelectedListener(this)
     }
 
     // TabLayout 模式：Tab 选中回调
