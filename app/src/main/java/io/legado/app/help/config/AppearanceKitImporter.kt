@@ -17,6 +17,20 @@ import java.util.zip.ZipFile
 import java.util.zip.ZipEntry
 
 /**
+ * archive_primate_beta 底栏图标 key → 当前分支图标 key 的映射。
+ *
+ * archive_primate_beta 分支的底栏导航项包含 search（搜索），
+ * 而当前分支用 homepage（首页）替代。
+ * 其他导航项 key 相同（bookshelf, discovery, rss, my），无需映射。
+ * 映射同时处理 normal 和 selected 两种状态。
+ */
+private val NAV_ICON_KEY_MAP = mapOf(
+    "search_normal" to "homepage_normal",
+    "search_selected" to "homepage_selected",
+    "search_single" to "homepage_single"
+)
+
+/**
  * 兼容导入 archive_primate_beta 分支导出的应用主题包。
  *
  * 该格式的 zip 包含一个 `appearance_kit.json` 清单和多个子 zip 组件
@@ -265,6 +279,8 @@ internal object AppearanceKitImporter {
                                 val iconDir = appCtx.externalFiles
                                     .getFile("navigationBarIcons", UUID.randomUUID().toString()).apply { mkdirs() }
                                 val icons = source.icons.mapNotNull { (key, path) ->
+                                    // 将 archive_primate_beta 的图标 key 映射到当前分支的 key
+                                    val mappedKey = NAV_ICON_KEY_MAP[key] ?: key
                                     // path 可能是文件名（如 "bookshelf_normal.png"）或相对路径（如 "icons/bookshelf_normal.png"）
                                     // 依次在：配置文件所在目录、subTemp 递归中查找
                                     val iconFile = File(navBarDir, path).takeIf { it.isFile }
@@ -273,9 +289,9 @@ internal object AppearanceKitImporter {
                                         ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == path.substringAfterLast(File.separator) }
                                         ?: subTemp.walkTopDown().firstOrNull { it.isFile && !it.name.endsWith(".json") && it.name.startsWith(key) }
                                     if (iconFile != null && iconFile.isFile) {
-                                        val target = iconDir.getFile("${key}.${iconFile.extension.ifBlank { "png" }}")
+                                        val target = iconDir.getFile("${mappedKey}.${iconFile.extension.ifBlank { "png" }}")
                                         iconFile.copyTo(target, overwrite = true)
-                                        key to target.absolutePath
+                                        mappedKey to target.absolutePath
                                     } else null
                                 }.toMap()
                                 val navConfig = NavigationBarConfig(
