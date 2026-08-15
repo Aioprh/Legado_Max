@@ -94,7 +94,7 @@
             android:id="@+id/dsb_padding_bottom"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:max="100"
+            app:max="200"
             app:title="@string/padding_bottom" />
 
         <io.legado.app.ui.widget.DetailSeekBar
