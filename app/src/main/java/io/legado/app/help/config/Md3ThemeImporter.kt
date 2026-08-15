@@ -9,24 +9,33 @@ import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.utils.GSON
 import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
+import io.legado.app.utils.EncoderUtils
 import splitties.init.appCtx
 import java.io.File
+import java.io.FileOutputStream
 import java.util.UUID
 import java.util.zip.ZipFile
 import java.util.zip.ZipEntry
 
-/** MD3 导航图标字段名 → 当前分支图标 key 的映射 */
-private val NAV_ICON_MAP = mapOf(
-    "navIconHome" to "homepage_normal",
-    "navIconHomeSelected" to "homepage_selected",
-    "navIconBookshelf" to "bookshelf_normal",
-    "navIconBookshelfSelected" to "bookshelf_selected",
-    "navIconExplore" to "discovery_normal",
-    "navIconExploreSelected" to "discovery_selected",
-    "navIconRss" to "rss_normal",
-    "navIconRssSelected" to "rss_selected",
-    "navIconMy" to "my_normal",
-    "navIconMySelected" to "my_selected"
+/**
+ * MD3 导航图标字段名 → 当前分支图标 key 的映射。
+ *
+ * MD3-main 导出时 assets Map 中的 key 格式为 "navigation.{item}.{state?}"，
+ * 例如 "navigation.home"、"navigation.home.selected"。
+ * 同时兼容旧格式中 assets 使用字段名（如 "navIconHome"）作为 key 的情况。
+ * Triple(dataField, assetsKey, localIconKey)
+ */
+private val NAV_ICON_MAP = listOf(
+    Triple("navIconHome", "navigation.home", "homepage_normal"),
+    Triple("navIconHomeSelected", "navigation.home.selected", "homepage_selected"),
+    Triple("navIconBookshelf", "navigation.bookshelf", "bookshelf_normal"),
+    Triple("navIconBookshelfSelected", "navigation.bookshelf.selected", "bookshelf_selected"),
+    Triple("navIconExplore", "navigation.explore", "discovery_normal"),
+    Triple("navIconExploreSelected", "navigation.explore.selected", "discovery_selected"),
+    Triple("navIconRss", "navigation.rss", "rss_normal"),
+    Triple("navIconRssSelected", "navigation.rss.selected", "rss_selected"),
+    Triple("navIconMy", "navigation.my", "my_normal"),
+    Triple("navIconMySelected", "navigation.my.selected", "my_selected")
 )
 
 /**
@@ -253,6 +262,7 @@ internal object Md3ThemeImporter {
         var dayCoverGroupId: Long? = null
         var nightCoverGroupId: Long? = null
 
+        // 1. 从 coverAlbums 中导入（新格式：图片以文件形式存储在 zip 中）
         for (album in manifest.coverAlbums) {
             val isNightAlbum = album.darkImages.isNotEmpty() && album.lightImages.isEmpty()
             val shouldImport = if (isNightAlbum) importNightCover else importDayCover
@@ -271,6 +281,38 @@ internal object Md3ThemeImporter {
             if (files.isNotEmpty()) repository.addImageFiles(appCtx, groupId, files)
 
             if (isNightAlbum) nightCoverGroupId = groupId else dayCoverGroupId = groupId
+        }
+
+        // 2. 如果 coverAlbums 未提供封面图，尝试从 assets 中导入旧格式的封面图（Base64 编码）
+        //    旧格式中 coverDefaultImage/coverDefaultImageDark 字段包含逗号分隔的本地路径，
+        //    对应的 Base64 数据存储在 assets 中，key 为 coverDefaultImage 或 coverDefaultImage_0 等。
+        if (dayCoverGroupId == null && importDayCover) {
+            val dayCoverFiles = extractLegacyCoverImages(manifest.assets, "coverDefaultImage", temp)
+            if (dayCoverFiles.isNotEmpty()) {
+                val albumName = themeName
+                val repository = CoverGalleryRepository()
+                val existingGroup = repository.allGroupsWithImages().firstOrNull { it.group.name == albumName }
+                val groupId = existingGroup?.group?.id ?: repository.addGroup(albumName)
+                require(dayCoverFiles.size <= ApplicationThemeManager.maxCoverImages) {
+                    appCtx.getString(R.string.app_theme_too_many_cover_images)
+                }
+                repository.addImageFiles(appCtx, groupId, dayCoverFiles)
+                dayCoverGroupId = groupId
+            }
+        }
+        if (nightCoverGroupId == null && importNightCover) {
+            val nightCoverFiles = extractLegacyCoverImages(manifest.assets, "coverDefaultImageDark", temp)
+            if (nightCoverFiles.isNotEmpty()) {
+                val albumName = themeName
+                val repository = CoverGalleryRepository()
+                val existingGroup = repository.allGroupsWithImages().firstOrNull { it.group.name == albumName }
+                val groupId = existingGroup?.group?.id ?: repository.addGroup(albumName)
+                require(nightCoverFiles.size <= ApplicationThemeManager.maxCoverImages) {
+                    appCtx.getString(R.string.app_theme_too_many_cover_images)
+                }
+                repository.addImageFiles(appCtx, groupId, nightCoverFiles)
+                nightCoverGroupId = groupId
+            }
         }
 
         // 如果有日间封面专辑但夜间没有，尝试用同一个专辑
@@ -321,6 +363,9 @@ internal object Md3ThemeImporter {
         // 提取导航图标资源
         val navIcons = extractNavIcons(data, manifest.assets, zip, temp)
 
+        // MD3 enableBlur → effectMode: 有模糊效果时使用 glass，否则 solid
+        val md3EffectMode = if (data.enableBlur) NavigationBarConfig.EFFECT_GLASS else NavigationBarConfig.EFFECT_SOLID
+
         if (importDayBottomBar) {
             val navConfig = NavigationBarConfig(
                 id = UUID.randomUUID().toString(),
@@ -328,6 +373,7 @@ internal object Md3ThemeImporter {
                 isNight = false,
                 isBuiltin = false,
                 layoutMode = if (data.useFloatingBottomBar) NavigationBarConfig.LAYOUT_FLOATING else NavigationBarConfig.LAYOUT_STANDARD,
+                effectMode = md3EffectMode,
                 opacity = data.bottomBarOpacity,
                 icons = navIcons
             )
@@ -350,6 +396,7 @@ internal object Md3ThemeImporter {
                 isNight = true,
                 isBuiltin = false,
                 layoutMode = if (data.useFloatingBottomBar) NavigationBarConfig.LAYOUT_FLOATING else NavigationBarConfig.LAYOUT_STANDARD,
+                effectMode = md3EffectMode,
                 opacity = data.bottomBarOpacity,
                 icons = navIcons
             )
@@ -386,9 +433,15 @@ internal object Md3ThemeImporter {
     /**
      * 提取 MD3 格式的导航图标并转换为当前分支的图标映射。
      *
-     * MD3 格式中导航图标以扁平字段存储（navIconHome, navIconHomeSelected 等），
-     * 当前分支使用统一的 icons Map，key 格式为 "{itemKey}_{state}"。
-     * 此方法将 MD3 字段名映射为当前分支的 key，并从 zip 中提取图标文件。
+     * MD3-main 导出时导航图标的存储方式有两种可能：
+     * 1. 新格式（ThemePackageManager 导出）：assets Map 中的 key 为
+     *    "navigation.home" 等，value 为 zip 内的文件路径，可直接从 zip 提取。
+     * 2. 旧格式（ThemeImportExport 导出）：assets Map 中的 key 为
+     *    "navIconHome" 等，value 为 Base64 编码的文件内容。
+     *
+     * 同时，Md3ThemeExportData 中的对应字段（navIconHome 等）在新格式下
+     * 存储的是本地文件路径（已清空为 ""），在旧格式下存储的也是本地路径。
+     * 因此需要优先从 assets 映射中查找资源，再回退到字段值。
      */
     private fun extractNavIcons(
         data: Md3ThemeExportData,
@@ -399,16 +452,39 @@ internal object Md3ThemeImporter {
         val iconDir = appCtx.externalFiles
             .getFile("navigationBarIcons", UUID.randomUUID().toString()).apply { mkdirs() }
         val result = mutableMapOf<String, String>()
-        // 通过 GSON 将 data 序列化为 JsonObject，再按字段名逐个提取路径
         val jsonObj = GSON.toJsonTree(data).asJsonObject
-        for ((md3Field, iconKey) in NAV_ICON_MAP) {
+        for ((md3Field, assetKey, iconKey) in NAV_ICON_MAP) {
+            // 优先从 assets 映射中查找
+            val assetValue = assets[assetKey] ?: assets[md3Field]
+            if (assetValue != null && assetValue.isNotBlank()) {
+                // 判断是 Base64 还是文件路径：
+                // - Base64 字符串通常很长且不含 / 字符
+                // - 文件路径包含 / 字符
+                val extracted: File? = if (assetValue.contains("/") || assetValue.contains("\\")) {
+                    // 文件路径，从 zip 中提取
+                    ApplicationThemeManager.extractAsset(zip, temp, assetValue)
+                } else {
+                    // Base64 编码，解码后写入临时文件
+                    try {
+                        val bytes = EncoderUtils.base64DecodeToByteArray(assetValue)
+                        val target = iconDir.getFile("$iconKey.png")
+                        FileOutputStream(target).use { it.write(bytes) }
+                        target
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                if (extracted != null && extracted.isFile) {
+                    val target = iconDir.getFile("$iconKey.${extracted.extension.ifBlank { "png" }}")
+                    if (extracted != target) extracted.copyTo(target, overwrite = true)
+                    result[iconKey] = target.absolutePath
+                }
+                continue
+            }
+            // 回退到 Md3ThemeExportData 中的字段值（可能是本地文件路径）
             val path = jsonObj.get(md3Field)?.asString
             if (path.isNullOrBlank()) continue
-            // 优先从 assets 映射中查找实际 zip 内路径
-            val assetPath = assets.entries.firstOrNull { it.key == md3Field }?.value
-                ?: assets.entries.firstOrNull { it.key == "navIcon.${iconKey}" }?.value
-                ?: path
-            val extracted = ApplicationThemeManager.extractAsset(zip, temp, assetPath)
+            val extracted = ApplicationThemeManager.extractAsset(zip, temp, path)
             if (extracted != null && extracted.isFile) {
                 val target = iconDir.getFile("$iconKey.${extracted.extension.ifBlank { "png" }}")
                 extracted.copyTo(target, overwrite = true)
@@ -416,6 +492,53 @@ internal object Md3ThemeImporter {
             }
         }
         return result
+    }
+
+    /**
+     * 从旧格式 assets 中提取封面图集图片（Base64 编码）。
+     *
+     * MD3 旧格式中，coverDefaultImage 字段包含逗号分隔的本地文件路径，
+     * 对应的 Base64 数据存储在 assets Map 中，key 为：
+     * - 单个图片：coverDefaultImage / coverDefaultImageDark
+     * - 多个图片：coverDefaultImage_0, coverDefaultImage_1, ... / coverDefaultImageDark_0, ...
+     */
+    private fun extractLegacyCoverImages(
+        assets: Map<String, String>,
+        keyPrefix: String,
+        temp: File
+    ): List<File> {
+        val result = mutableListOf<File>()
+        // 尝试单个 key
+        val single = assets[keyPrefix]
+        if (single != null && single.isNotBlank()) {
+            val file = decodeBase64ToFile(single, temp)
+            if (file != null) result.add(file)
+        }
+        // 尝试多个 key（coverDefaultImage_0, coverDefaultImage_1, ...）
+        if (result.isEmpty()) {
+            var index = 0
+            while (true) {
+                val key = "${keyPrefix}_$index"
+                val base64 = assets[key] ?: break
+                if (base64.isBlank()) break
+                val file = decodeBase64ToFile(base64, temp)
+                if (file != null) result.add(file)
+                index++
+            }
+        }
+        return result
+    }
+
+    /** 将 Base64 字符串解码并写入临时文件 */
+    private fun decodeBase64ToFile(base64: String, temp: File): File? {
+        return try {
+            val bytes = EncoderUtils.base64DecodeToByteArray(base64)
+            val target = temp.resolve("${UUID.randomUUID()}.jpg")
+            FileOutputStream(target).use { it.write(bytes) }
+            target
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /** 将 Int 颜色值转换为 #RRGGBB 格式的十六进制字符串 */
