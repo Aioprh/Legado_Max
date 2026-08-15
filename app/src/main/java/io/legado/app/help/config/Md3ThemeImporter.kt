@@ -16,6 +16,7 @@ import java.io.FileOutputStream
 import java.util.UUID
 import java.util.zip.ZipFile
 import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 
 /**
  * MD3 导航图标字段名 → 当前分支图标 key 的映射。
@@ -181,7 +182,16 @@ internal object Md3ThemeImporter {
             ?: throw IllegalArgumentException(appCtx.getString(R.string.app_theme_invalid_format))
 
         val data = manifest.config
-        val themeName = manifest.name?.ifBlank { null } ?: "MD3主题"
+        // 主题名：优先使用 manifest 中的 name 字段；
+        // MD3 导出时如果未传入 themeName，该字段可能为 null。
+        // 回退到 zip 文件名（去掉扩展名），最后才使用默认值。
+        val themeName = manifest.name?.takeIf { it.isNotBlank() }
+            ?: runCatching {
+                val zipName = zip.name.substringAfterLast(File.separator)
+                    .substringBeforeLast('.')
+                zipName.takeIf { it.isNotBlank() && it != "manifest" }
+            }.getOrNull()
+            ?: "MD3主题"
 
         val importDayTheme = options?.importDayTheme ?: true
         val importNightTheme = options?.importNightTheme ?: true
@@ -194,11 +204,14 @@ internal object Md3ThemeImporter {
             val dayBg = colorToHex(data.themeBackgroundColor)
             val dayBottomBg = colorToHex(data.labelContainerColor)
             var dayBgImgPath: String? = null
-            val dayBgAssetPath = data.bgImageLight
+            // MD3 的 toPortableConfig() 会将 bgImageLight 置为 null，
+            // 因此不能依赖 data.bgImageLight 判断是否有背景图。
+            // 正确做法：直接从 manifest.assets 中查找 "background.light" 条目。
+            val dayBgAssetPath = manifest.assets["background.light"]
+                ?: manifest.assets["bgImageLight"]
+                ?: data.bgImageLight
             if (!dayBgAssetPath.isNullOrBlank()) {
-                val assetEntry = manifest.assets.entries.firstOrNull { it.key == "background.light" }?.value
-                    ?: dayBgAssetPath
-                val extracted = ApplicationThemeManager.extractAsset(zip, temp, assetEntry)
+                val extracted = ApplicationThemeManager.extractAsset(zip, temp, dayBgAssetPath)
                 if (extracted != null) {
                     val dir = appCtx.externalFiles.getFile(PreferKey.bgImage).apply { mkdirs() }
                     val target = dir.getFile("application_theme_${UUID.randomUUID()}.${extracted.extension.ifBlank { "jpg" }}")
@@ -229,11 +242,12 @@ internal object Md3ThemeImporter {
             val nightBg = colorToHex(data.themeBackgroundColorNight)
             val nightBottomBg = colorToHex(data.labelContainerColorNight)
             var nightBgImgPath: String? = null
-            val nightBgAssetPath = data.bgImageDark
+            // 同日间背景图，直接从 manifest.assets 中查找 "background.dark" 条目。
+            val nightBgAssetPath = manifest.assets["background.dark"]
+                ?: manifest.assets["bgImageDark"]
+                ?: data.bgImageDark
             if (!nightBgAssetPath.isNullOrBlank()) {
-                val assetEntry = manifest.assets.entries.firstOrNull { it.key == "background.dark" }?.value
-                    ?: nightBgAssetPath
-                val extracted = ApplicationThemeManager.extractAsset(zip, temp, assetEntry)
+                val extracted = ApplicationThemeManager.extractAsset(zip, temp, nightBgAssetPath)
                 if (extracted != null) {
                     val dir = appCtx.externalFiles.getFile(PreferKey.bgImageN).apply { mkdirs() }
                     val target = dir.getFile("application_theme_${UUID.randomUUID()}.${extracted.extension.ifBlank { "jpg" }}")
@@ -263,24 +277,38 @@ internal object Md3ThemeImporter {
         var nightCoverGroupId: Long? = null
 
         // 1. 从 coverAlbums 中导入（新格式：图片以文件形式存储在 zip 中）
+        //    MD3 的 exportCoverAlbums 方法中，同一个 album 可能同时包含 lightImages 和 darkImages。
+        //    如果 lightImages 非空，先导入为日间封面图集；
+        //    如果 darkImages 非空且 lightImages 为空，导入为夜间封面图集；
+        //    如果两者都非空，分别导入。
         for (album in manifest.coverAlbums) {
-            val isNightAlbum = album.darkImages.isNotEmpty() && album.lightImages.isEmpty()
-            val shouldImport = if (isNightAlbum) importNightCover else importDayCover
-            if (!shouldImport) continue
-
             val albumName = album.name.ifBlank { themeName }
             val repository = CoverGalleryRepository()
-            val existingGroup = repository.allGroupsWithImages().firstOrNull { it.group.name == albumName }
-            val groupId = existingGroup?.group?.id ?: repository.addGroup(albumName)
 
-            val images = if (isNightAlbum) album.darkImages else album.lightImages
-            val files = images.mapNotNull { img -> ApplicationThemeManager.extractAsset(zip, temp, img.path) }
-            require(files.size <= ApplicationThemeManager.maxCoverImages) {
-                appCtx.getString(R.string.app_theme_too_many_cover_images)
+            // 导入日间封面图（lightImages）
+            if (album.lightImages.isNotEmpty() && importDayCover) {
+                val existingGroup = repository.allGroupsWithImages().firstOrNull { it.group.name == albumName }
+                val groupId = existingGroup?.group?.id ?: repository.addGroup(albumName)
+                val files = album.lightImages.mapNotNull { img -> ApplicationThemeManager.extractAsset(zip, temp, img.path) }
+                require(files.size <= ApplicationThemeManager.maxCoverImages) {
+                    appCtx.getString(R.string.app_theme_too_many_cover_images)
+                }
+                if (files.isNotEmpty()) repository.addImageFiles(appCtx, groupId, files)
+                dayCoverGroupId = groupId
             }
-            if (files.isNotEmpty()) repository.addImageFiles(appCtx, groupId, files)
 
-            if (isNightAlbum) nightCoverGroupId = groupId else dayCoverGroupId = groupId
+            // 导入夜间封面图（darkImages）
+            if (album.darkImages.isNotEmpty() && importNightCover) {
+                val nightAlbumName = if (album.lightImages.isEmpty()) albumName else "$albumName (夜间)"
+                val existingGroup = repository.allGroupsWithImages().firstOrNull { it.group.name == nightAlbumName }
+                val groupId = existingGroup?.group?.id ?: repository.addGroup(nightAlbumName)
+                val files = album.darkImages.mapNotNull { img -> ApplicationThemeManager.extractAsset(zip, temp, img.path) }
+                require(files.size <= ApplicationThemeManager.maxCoverImages) {
+                    appCtx.getString(R.string.app_theme_too_many_cover_images)
+                }
+                if (files.isNotEmpty()) repository.addImageFiles(appCtx, groupId, files)
+                nightCoverGroupId = groupId
+            }
         }
 
         // 2. 如果 coverAlbums 未提供封面图，尝试从 assets 中导入旧格式的封面图（Base64 编码）
@@ -361,6 +389,8 @@ internal object Md3ThemeImporter {
         var nightBottomBarId: String? = null
 
         // 提取导航图标资源
+        // MD3 的 toPortableConfig() 会将 navIconHome 等字段清空为 ""，
+        // 因此 extractNavIcons 内部优先从 manifest.assets 中查找。
         val navIcons = extractNavIcons(data, manifest.assets, zip, temp)
 
         // MD3 enableBlur → effectMode: 有模糊效果时使用 glass，否则 solid
@@ -433,15 +463,17 @@ internal object Md3ThemeImporter {
     /**
      * 提取 MD3 格式的导航图标并转换为当前分支的图标映射。
      *
-     * MD3-main 导出时导航图标的存储方式有两种可能：
-     * 1. 新格式（ThemePackageManager 导出）：assets Map 中的 key 为
-     *    "navigation.home" 等，value 为 zip 内的文件路径，可直接从 zip 提取。
-     * 2. 旧格式（ThemeImportExport 导出）：assets Map 中的 key 为
+     * MD3-main 导出时导航图标的存储方式有三种可能：
+     * 1. 新格式（ThemePackageManager 导出 zip）：assets Map 中的 key 为
+     *    "navigation.home" 等，value 为 zip 内的文件路径（如 "assets/navigation/home.png"），
+     *    可直接用 zip.getEntry(path) 提取。
+     * 2. 旧格式（ThemeImportExport 导出 json）：assets Map 中的 key 为
      *    "navIconHome" 等，value 为 Base64 编码的文件内容。
+     * 3. 混合格式：assets Map 为空，但 Md3ThemeExportData 中的字段
+     *    （navIconHome 等）存储了本地文件路径（此时无法从 zip 中提取）。
      *
-     * 同时，Md3ThemeExportData 中的对应字段（navIconHome 等）在新格式下
-     * 存储的是本地文件路径（已清空为 ""），在旧格式下存储的也是本地路径。
-     * 因此需要优先从 assets 映射中查找资源，再回退到字段值。
+     * MD3 的 toPortableConfig() 会将 navIconHome 等字段清空为 ""，
+     * 因此新格式下必须从 manifest.assets 中查找。
      */
     private fun extractNavIcons(
         data: Md3ThemeExportData,
@@ -454,24 +486,27 @@ internal object Md3ThemeImporter {
         val result = mutableMapOf<String, String>()
         val jsonObj = GSON.toJsonTree(data).asJsonObject
         for ((md3Field, assetKey, iconKey) in NAV_ICON_MAP) {
-            // 优先从 assets 映射中查找
+            // 优先从 assets 映射中查找（新格式用 "navigation.home" 等 key，
+            // 旧格式用 "navIconHome" 等 key）
             val assetValue = assets[assetKey] ?: assets[md3Field]
             if (assetValue != null && assetValue.isNotBlank()) {
                 // 判断是 Base64 还是文件路径：
-                // - Base64 字符串通常很长且不含 / 字符
-                // - 文件路径包含 / 字符
+                // - 文件路径包含 / 或 \ 字符
+                // - Base64 字符串不含路径分隔符
                 val extracted: File? = if (assetValue.contains("/") || assetValue.contains("\\")) {
                     // 文件路径，从 zip 中提取
                     ApplicationThemeManager.extractAsset(zip, temp, assetValue)
                 } else {
-                    // Base64 编码，解码后写入临时文件
+                    // 可能是 Base64 编码，也可能是纯文件名（无路径分隔符）
+                    // 先尝试当 Base64 解码，失败则当 zip 内文件名查找
                     try {
                         val bytes = EncoderUtils.base64DecodeToByteArray(assetValue)
                         val target = iconDir.getFile("$iconKey.png")
                         FileOutputStream(target).use { it.write(bytes) }
                         target
                     } catch (e: Exception) {
-                        null
+                        // Base64 解码失败，尝试当 zip 内路径查找
+                        ApplicationThemeManager.extractAsset(zip, temp, assetValue)
                     }
                 }
                 if (extracted != null && extracted.isFile) {
@@ -481,9 +516,10 @@ internal object Md3ThemeImporter {
                 }
                 continue
             }
-            // 回退到 Md3ThemeExportData 中的字段值（可能是本地文件路径）
+            // 回退到 Md3ThemeExportData 中的字段值（新格式下为 ""，旧格式下可能是本地文件路径）
             val path = jsonObj.get(md3Field)?.asString
             if (path.isNullOrBlank()) continue
+            // 尝试从 zip 中提取（仅当 path 是 zip 内路径时有效）
             val extracted = ApplicationThemeManager.extractAsset(zip, temp, path)
             if (extracted != null && extracted.isFile) {
                 val target = iconDir.getFile("$iconKey.${extracted.extension.ifBlank { "png" }}")
