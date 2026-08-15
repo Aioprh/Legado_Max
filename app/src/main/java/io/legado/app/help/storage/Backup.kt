@@ -765,22 +765,37 @@ object Backup {
     
 
     /**
-        * 合并阅读记录，确保同一本书只输出一条记录。
+        * 合并阅读记录以兼容原始项目（Legado）。
         *
-        * Max 项目的 readRecord 表主键为 [deviceId, bookName, bookAuthor]，
-        * 同一本书可能因 bookAuthor 不同而存在多条记录。
-        * 原始项目的主键是 [deviceId, bookName]，查询用 SUM(readTime)，
-        * 如果备份里有多条同书名记录，恢复后时间会被重复累加。
+        * 核心问题：原始项目 readRecord 主键是 (deviceId, bookName)，
+        * 看书时 upReadTime 写入的 deviceId 是空字符串 ""（从未赋值），
+        * 显示时用 SUM(readTime) WHERE bookName = ? 汇总所有行。
         *
-        * 此方法按 bookName 合并：readTime 取 SUM，bookAuthor 取首个非空值，
+        * 如果导出的记录 deviceId 非空且与原始项目不同，
+        * 恢复后会新增一行 (maxDeviceId, bookName)，
+        * 和原始项目自己的 ("", bookName) 共存，
+        * SUM 查询把两行都加起来 → 时长翻倍。
+        *
+        * 解决方案：
+        * 1. 按 bookName 合并同书名的多条记录（不同 deviceId/bookAuthor）
+        * 2. 将合并后的 deviceId 统一设为 ""，
+        *    使恢复时 REPLACE 到 ("", bookName) 主键上，
+        *    与原始项目 upReadTime 写入的是同一行。
+        *
+        * readTime 取 SUM，bookAuthor 取首个非空值，
         * lastRead/durChapterTitle/durChapterIndex 取最近阅读的记录值。
         */
     fun mergeReadRecordsForLegacyCompat(records: List<ReadRecord>): List<ReadRecord> {
-        if (records.size <= 1) return records
+        if (records.isEmpty()) return records
         return records
             .groupBy { it.bookName }
             .map { (_, group) ->
-                if (group.size == 1) {
+                // 合并后 deviceId 统一为空字符串，
+                // 因为原始项目 readRecord 主键是 (deviceId, bookName)，
+                // 看书时 upReadTime 写入的 deviceId 也是空字符串。
+                // 如果导出的 deviceId 非空且与原始项目不同，
+                // 恢复时会新增一行，SUM 查询会把两行都加起来导致时长翻倍。
+                val base = if (group.size == 1) {
                     group.first()
                 } else {
                     group.first { it.lastRead == group.maxOf { r -> r.lastRead } }.copy(
@@ -788,6 +803,7 @@ object Backup {
                         bookAuthor = group.firstOrNull { it.bookAuthor.isNotBlank() }?.bookAuthor ?: ""
                     )
                 }
+                base.copy(deviceId = "")
             }
     }
     
