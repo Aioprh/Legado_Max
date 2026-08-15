@@ -258,7 +258,9 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
         }
         booksFlowJob?.cancel()
         booksFlowJob = viewLifecycleOwner.lifecycleScope.launch {
-            appDb.bookDao.flowByGroup(groupId).map { list ->
+            // 方案A：使用轻量查询 flowShelfByGroup 替代 flowByGroup，
+            // SQL 层面已过滤 notShelf 并按 durChapterTime DESC 排序
+            appDb.bookDao.flowShelfByGroup(groupId).map { list ->
                 //排序
                 when (AppConfig.getBookSortByGroupId(groupId)) {
                     1 -> list.sortedByDescending {
@@ -277,9 +279,7 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                         max(it.latestChapterTime, it.durChapterTime)
                     }
 
-                    else -> list.sortedByDescending {
-                        it.durChapterTime
-                    }
+                    else -> list // SQL 已按 durChapterTime DESC 排序，无需再排
                 }
             }.flowWithLifecycleAndDatabaseChangeFirst(
                 viewLifecycleOwner.lifecycle,
@@ -288,7 +288,8 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             ).catch {
                 AppLog.put("书架更新出错", it)
             }.conflate().flowOn(Dispatchers.Default).collect { list ->
-                books = list
+                // 方案A：将 BookShelfDisplay 转换为最小化 Book，供 style2 的 Any 类型 Adapter 使用
+                books = list.map { it.toMinimalBook() }
                 booksAdapter.updateItems(groupId)
                 itemCount = getItemCount()
                 binding.tvEmptyMsg.isGone = itemCount > 0
