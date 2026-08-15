@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.readRecord
 
 import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,8 +44,10 @@ import io.legado.app.ui.book.readRecord.components.SummaryCard
 import io.legado.app.ui.widget.components.swipe.SwipeActionContainer
 import io.legado.app.ui.widget.components.swipe.rememberSwipeDeleteAction
 import io.legado.app.utils.formatReadDuration
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -419,14 +422,16 @@ private fun BookCoverImage(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val contextProvider = rememberUpdatedState(context)
+    val viewModelProvider = rememberUpdatedState(viewModel)
     var coverBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(bookName, bookAuthor) {
-        coverBitmap = withContext(Dispatchers.IO) {
-            val coverPath = viewModel.getBookCover(bookName, bookAuthor)
-            loadReadRecordCoverBitmap(context, coverPath)
-                ?: loadReadRecordCoverBitmap(context, viewModel.getConfiguredDefaultCover())
-        }
+        val vm = viewModelProvider.value
+        val ctx = contextProvider.value
+        val coverPath = vm.getBookCover(bookName, bookAuthor)
+        coverBitmap = loadReadRecordCoverBitmap(ctx, coverPath)
+            ?: loadReadRecordCoverBitmap(ctx, vm.getConfiguredDefaultCover())
     }
 
     Surface(
@@ -460,13 +465,28 @@ private fun BookCoverImage(
     }
 }
 
-private fun loadReadRecordCoverBitmap(context: android.content.Context, coverPath: String?): Bitmap? {
+private suspend fun loadReadRecordCoverBitmap(context: android.content.Context, coverPath: String?): Bitmap? {
     if (coverPath.isNullOrBlank()) return null
-    return runCatching {
+    return suspendCancellableCoroutine { cont ->
+        val target = object : CustomTarget<Bitmap>() {
+            override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
+                cont.resume(resource)
+            }
+
+            override fun onLoadCleared(placeholder: Drawable?) {
+                // 无需清理，Bitmap 由 UI 持有
+            }
+
+            override fun onLoadFailed(errorDrawable: Drawable?) {
+                cont.resume(null)
+            }
+        }
+        cont.invokeOnCancellation {
+            ImageLoader.loadBitmap(context, coverPath).clear(target)
+        }
         ImageLoader.loadBitmap(context, coverPath)
-            .submit()
-            .get()
-    }.getOrNull()
+            .into(target)
+    }
 }
 
 @Suppress("UNUSED_PARAMETER")
