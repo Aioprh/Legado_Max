@@ -4,6 +4,7 @@ package io.legado.app.utils
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.view.View
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import io.legado.app.BuildConfig
@@ -28,6 +29,21 @@ private var toast: Toast? = null
 
 private var toastLegacy: Toast? = null
 
+/**
+ * 在 Toast 显示结束（view 被移除）时回调，用于释放静态引用，避免 Toast 被静态持有导致泄漏。
+ * [onDismiss] 中需自行判断当前引用是否仍指向被 dismiss 的实例，防止误清新创建的 Toast。
+ */
+private fun Toast?.releaseWhenDismissed(onDismiss: (Toast?) -> Unit) {
+    this?.view?.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+        override fun onViewAttachedToWindow(v: View) = Unit
+        override fun onViewDetachedFromWindow(v: View) {
+            if (this@releaseWhenDismissed?.view === v) {
+                onDismiss(this@releaseWhenDismissed)
+            }
+        }
+    })
+}
+
 fun Context.toastOnUi(message: Int, duration: Int = Toast.LENGTH_SHORT) {
     toastOnUi(getString(message), duration)
 }
@@ -38,7 +54,7 @@ fun Context.toastOnUi(message: CharSequence?, duration: Int = Toast.LENGTH_SHORT
     runOnUI {
         kotlin.runCatching {
             toast?.cancel()
-            toast = Toast(this)
+            toast = Toast(this.applicationContext)
             val isLight = ColorUtils.isColorLight(bottomBackground)
             ViewToastBinding.inflate(layoutInflater).run {
                 toast?.view = root
@@ -47,6 +63,9 @@ fun Context.toastOnUi(message: CharSequence?, duration: Int = Toast.LENGTH_SHORT
                 tvText.text = message
             }
             toast?.duration = duration
+            toast?.releaseWhenDismissed { dismissed ->
+                if (toast === dismissed) toast = null
+            }
             toast?.show()
             
             // 记录Toast到调试日志
@@ -59,10 +78,13 @@ fun Context.toastOnUiLegacy(message: CharSequence) {
     runOnUI {
         kotlin.runCatching {
             if (toastLegacy == null || BuildConfig.DEBUG || AppConfig.recordLog) {
-                toastLegacy = Toast.makeText(this, message, Toast.LENGTH_SHORT)
+                toastLegacy = Toast.makeText(this.applicationContext, message, Toast.LENGTH_SHORT)
             } else {
                 toastLegacy?.setText(message)
                 toastLegacy?.duration = Toast.LENGTH_SHORT
+            }
+            toastLegacy?.releaseWhenDismissed { dismissed ->
+                if (toastLegacy === dismissed) toastLegacy = null
             }
             toastLegacy?.show()
             
@@ -84,10 +106,13 @@ fun Context.longToastOnUiLegacy(message: CharSequence) {
     runOnUI {
         kotlin.runCatching {
             if (toastLegacy == null || BuildConfig.DEBUG || AppConfig.recordLog) {
-                toastLegacy = Toast.makeText(this, message, Toast.LENGTH_LONG)
+                toastLegacy = Toast.makeText(this.applicationContext, message, Toast.LENGTH_LONG)
             } else {
                 toastLegacy?.setText(message)
                 toastLegacy?.duration = Toast.LENGTH_LONG
+            }
+            toastLegacy?.releaseWhenDismissed { dismissed ->
+                if (toastLegacy === dismissed) toastLegacy = null
             }
             toastLegacy?.show()
             
@@ -141,7 +166,7 @@ fun Context.toastOnUi(message: CharSequence?, context: ToastContext, duration: I
     runOnUI {
         kotlin.runCatching {
             toast?.cancel()
-            toast = Toast(this)
+            toast = Toast(this.applicationContext)
             val isLight = ColorUtils.isColorLight(bottomBackground)
             ViewToastBinding.inflate(layoutInflater).run {
                 toast?.view = root
@@ -150,6 +175,9 @@ fun Context.toastOnUi(message: CharSequence?, context: ToastContext, duration: I
                 tvText.text = message
             }
             toast?.duration = duration
+            toast?.releaseWhenDismissed { dismissed ->
+                if (toast === dismissed) toast = null
+            }
             toast?.show()
             
             recordToast(message, duration, context)
