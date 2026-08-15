@@ -155,8 +155,19 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
         // 合并自定义菜单和系统菜单
         val allMenuItems = myMenu.visibleItems + otherMenu.visibleItems
         
+        // 根据用户自定义排序重排菜单项
+        val order = TextMenuConfig.getMenuItemOrder(context)
+        val orderedMenuItems = if (order.isNotEmpty()) {
+            val itemMap = allMenuItems.associateBy { it.itemId }
+            val ordered = order.mapNotNull { id -> itemMap[id] }
+            val remaining = allMenuItems.filter { it.itemId !in order }
+            ordered + remaining
+        } else {
+            allMenuItems
+        }
+        
         // 过滤掉被隐藏的菜单项
-        menuItems = allMenuItems.filter { it.itemId !in hiddenMenuItemIds }
+        menuItems = orderedMenuItems.filter { it.itemId !in hiddenMenuItemIds }
         
         // 清空旧数据
         visibleMenuItems.clear()

@@ -165,6 +165,7 @@ object PreferKey {
     const val textMenuCustomTitles = "textMenuCustomTitles"
     const val processTextCustomTitles = "processTextCustomTitles"
     const val hiddenTextMenuItems = "hiddenTextMenuItems"  // 隐藏的文本菜单项ID列表，用逗号分隔
+    const val textMenuItemOrder = "textMenuItemOrder"  // 文本菜单项排序，JSON数组格式的ID列表
     const val hiddenProcessTextItems = "hiddenProcessTextItems"  // 隐藏的其他应用菜单项列表，格式：包名/类名,用逗号分隔
     const val doublePageHorizontal = "doubleHorizontalPage"
     const val readUrlOpenInBrowser = "readUrlInBrowser"
