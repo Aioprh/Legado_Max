@@ -246,14 +246,17 @@ internal object AppearanceKitImporter {
                     val subTemp = componentTemp.resolve("navbar_${component.isNight}").apply { mkdirs() }
                     try {
                         ZipUtils.unZipToPath(componentFile, subTemp)
-                        val navBarJsonFile = subTemp.walkTopDown().firstOrNull { it.name == "navigation_bar.json" }
+                        // archive_primate_beta 的底栏配置文件名为 navigation.json
+                        val navBarJsonFile = subTemp.walkTopDown().firstOrNull { it.isFile && (it.name == "navigation.json" || it.name == "navigation_bar.json") }
                         if (navBarJsonFile != null) {
                             val source = GSON.fromJsonObject<AppearanceNavBarConfig>(navBarJsonFile.readText()).getOrNull()
                             if (source != null) {
                                 val iconDir = appCtx.externalFiles
                                     .getFile("navigationBarIcons", UUID.randomUUID().toString()).apply { mkdirs() }
                                 val icons = source.icons.mapNotNull { (key, path) ->
-                                    val iconFile = subTemp.walkTopDown().firstOrNull { it.isFile && it.name == path.substringAfterLast(File.separator) }
+                                    // path 是相对于包目录的文件名或相对路径
+                                    val iconFile = File(subTemp, path).takeIf { it.isFile }
+                                        ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == path.substringAfterLast(File.separator) }
                                         ?: subTemp.walkTopDown().firstOrNull { it.isFile && !it.name.endsWith(".json") && it.name.startsWith(key) }
                                     if (iconFile != null && iconFile.isFile) {
                                         val target = iconDir.getFile("${key}.${iconFile.extension.ifBlank { "png" }}")
@@ -272,24 +275,26 @@ internal object AppearanceKitImporter {
                                     borderColor = source.borderColor,
                                     borderAlpha = source.borderAlpha,
                                     wallpaperPath = source.wallpaperPath?.let { wpPath ->
-                                        subTemp.walkTopDown().firstOrNull { it.isFile && it.name == wpPath.substringAfterLast(File.separator) }
-                                            ?.let { wpFile ->
-                                                val wpDir = appCtx.externalFiles
-                                                    .getFile("navigationBarWallpapers", UUID.randomUUID().toString()).apply { mkdirs() }
-                                                val wpTarget = wpDir.getFile("wp_${UUID.randomUUID()}.${wpFile.extension.ifBlank { "png" }}")
-                                                wpFile.copyTo(wpTarget, overwrite = true)
-                                                wpTarget.absolutePath
-                                            }
+                                        val wpFile: File? = File(subTemp, wpPath).takeIf { it.isFile }
+                                            ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == wpPath.substringAfterLast(File.separator) }
+                                        wpFile?.let { file ->
+                                            val wpDir = appCtx.externalFiles
+                                                .getFile("navigationBarWallpapers", UUID.randomUUID().toString()).apply { mkdirs() }
+                                            val wpTarget = wpDir.getFile("wp_${UUID.randomUUID()}.${file.extension.ifBlank { "png" }}")
+                                            file.copyTo(wpTarget, overwrite = true)
+                                            wpTarget.absolutePath
+                                        }
                                     },
                                     sidebarBackgroundPath = source.sidebarBackgroundPath?.let { sbPath ->
-                                        subTemp.walkTopDown().firstOrNull { it.isFile && it.name == sbPath.substringAfterLast(File.separator) }
-                                            ?.let { sbFile ->
-                                                val sbDir = appCtx.externalFiles
-                                                    .getFile("navigationBarSidebars", UUID.randomUUID().toString()).apply { mkdirs() }
-                                                val sbTarget = sbDir.getFile("sb_${UUID.randomUUID()}.${sbFile.extension.ifBlank { "png" }}")
-                                                sbFile.copyTo(sbTarget, overwrite = true)
-                                                sbTarget.absolutePath
-                                            }
+                                        val sbFile: File? = File(subTemp, sbPath).takeIf { it.isFile }
+                                            ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == sbPath.substringAfterLast(File.separator) }
+                                        sbFile?.let { file ->
+                                            val sbDir = appCtx.externalFiles
+                                                .getFile("navigationBarSidebars", UUID.randomUUID().toString()).apply { mkdirs() }
+                                            val sbTarget = sbDir.getFile("sb_${UUID.randomUUID()}.${file.extension.ifBlank { "png" }}")
+                                            file.copyTo(sbTarget, overwrite = true)
+                                            sbTarget.absolutePath
+                                        }
                                     },
                                     sidebarGravity = source.sidebarGravity,
                                     icons = icons
@@ -325,7 +330,9 @@ internal object AppearanceKitImporter {
                             val collection = GSON.fromJsonObject<AppearanceCoverCollection>(coverJsonFile.readText()).getOrNull()
                             coverName = collection?.name?.ifBlank { kitName } ?: kitName
                             imageFiles = collection?.images?.mapNotNull { imgPath ->
-                                subTemp.walkTopDown().firstOrNull { it.isFile && it.name == imgPath.substringAfterLast(File.separator) }
+                                // imgPath 是相对于包目录的相对路径（如 images/cover_1.jpg）
+                                File(subTemp, imgPath).takeIf { it.isFile }
+                                    ?: subTemp.walkTopDown().firstOrNull { it.isFile && it.name == imgPath.substringAfterLast(File.separator) }
                             } ?: emptyList()
                         } else {
                             coverName = kitName
