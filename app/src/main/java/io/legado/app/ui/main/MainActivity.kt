@@ -146,6 +146,14 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
+        // 清理已销毁 Fragment 的引用，避免 fragmentMap 持有导致内存泄漏
+        supportFragmentManager.registerFragmentLifecycleCallbacks(
+            object : FragmentManager.FragmentLifecycleCallbacks() {
+                override fun onFragmentDestroyed(fm: FragmentManager, fragment: Fragment) {
+                    fragmentMap.entries.removeIf { it.value === fragment }
+                }
+            }, true
+        )
         upBottomMenu()
         initView()
         upHomePage()
@@ -253,7 +261,10 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     private fun initView() = binding.run {
         viewPagerMain.setEdgeEffectColor(primaryColor)
-        viewPagerMain.offscreenPageLimit = 3
+        // offscreenPageLimit 设为 4，确保 5 个 Tab 互相切换时 Fragment 都不会被销毁重建。
+        // 之前值为 3 时，从 position 4（我的）切到 position 0（书架）距离为 4 超过预加载范围，
+        // 导致书架 Fragment 被销毁重建，重新走 upGroup 流程产生分组闪烁。
+        viewPagerMain.offscreenPageLimit = 4
         viewPagerMain.adapter = adapter
         viewPagerMain.addOnPageChangeListener(PageChangeCallback())
         bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)
