@@ -22,12 +22,15 @@ import java.util.zip.ZipEntry
  * archive_primate_beta 分支的底栏导航项包含 search（搜索），
  * 而当前分支用 homepage（首页）替代。
  * 其他导航项 key 相同（bookshelf, discovery, rss, my），无需映射。
- * 映射同时处理 normal 和 selected 两种状态。
+ * 映射同时处理 normal、selected 和 single 三种状态，
+ * 其中 single 状态映射到当前分支的 normal 状态（当前分支无 single 状态）。
  */
 private val NAV_ICON_KEY_MAP = mapOf(
     "search_normal" to "homepage_normal",
     "search_selected" to "homepage_selected",
-    "search_single" to "homepage_single"
+    // 当前分支底栏只有 _normal 和 _selected 两种状态，没有 _single。
+    // 将 search_single 映射到 homepage_normal，使搜索图标的 single 状态也能显示在首页图标上。
+    "search_single" to "homepage_normal"
 )
 
 /**
