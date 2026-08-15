@@ -42,7 +42,7 @@ try {
 }
 
 android {
-    compileSdk 36
+    compileSdk = 36
     namespace = 'io.legado.app'
     kotlin {
         jvmToolchain {
@@ -53,10 +53,10 @@ android {
     signingConfigs {
         if (resolvedReleaseStoreFile != null) {
             myConfig {
-                storeFile resolvedReleaseStoreFile
-                storePassword resolvedReleaseStorePassword
-                keyAlias resolvedReleaseKeyAlias
-                keyPassword resolvedReleaseKeyPassword
+                storeFile = resolvedReleaseStoreFile
+                storePassword = resolvedReleaseStorePassword
+                keyAlias = resolvedReleaseKeyAlias
+                keyPassword = resolvedReleaseKeyPassword
                 enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
@@ -65,12 +65,12 @@ android {
         }
     }
     defaultConfig {
-        applicationId "io.legado.app.yuedu"
-        minSdk 21
-        targetSdk 36
-        versionCode releaseCode()
-        versionName version
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        applicationId  = "io.legado.app.yuedu"
+        minSdk = 21
+        targetSdk = 36
+        versionCode = releaseCode()
+        versionName = version
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         project.ext.set("archivesBaseName", name + "_" + version)
 
         // 👇 就是这行，修复渠道占位符报错
@@ -97,40 +97,40 @@ android {
     flavorDimensions "app"
     productFlavors {
         appS {
-            dimension "app"
-            applicationId "io.legado.app.yuedu.a"
+            dimension = "app"
+            applicationId = "io.legado.app.yuedu.a"
             manifestPlaceholders = [app_name: "@string/app_name_a"]
         }
         appLegacy {
-            dimension "app"
-            applicationId "io.legado.app"
+            dimension = "app"
+            applicationId = "io.legado.app"
             manifestPlaceholders = [app_name: "@string/app_name"]
         }
         appMax {
-            dimension "app"
-            applicationId "io.legado.app.yuedu"
+            dimension = "app"
+            applicationId = "io.legado.app.yuedu"
             manifestPlaceholders = [app_name: "@string/app_name"]
         }
     }
     buildTypes {
         release {
             if (resolvedReleaseStoreFile != null) {
-                signingConfig signingConfigs.myConfig
+                signingConfig = signingConfigs.myConfig
             }
-            applicationIdSuffix '.release'
+            applicationIdSuffix = '.release'
 
-            minifyEnabled true
+            minifyEnabled = true
             shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'cronet-proguard-rules.pro'
         }
         debug {
             if (resolvedReleaseStoreFile != null) {
-                signingConfig signingConfigs.myConfig
+                signingConfig = signingConfigs.myConfig
             }
             manifestPlaceholders.put("app_name", "@string/app_name_debug")
 
-            applicationIdSuffix '.debug'
-            versionNameSuffix 'debug'
+            applicationIdSuffix = '.debug'
+            versionNameSuffix = 'debug'
             // minifyEnabled true
             // shrinkResources = true
             // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'cronet-proguard-rules.pro'
@@ -170,8 +170,8 @@ android {
         // Flag to enable support for the new language APIs
         coreLibraryDesugaringEnabled = true
         // Sets Java compatibility
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     packaging {
         resources.excludes.add('META-INF/*')
