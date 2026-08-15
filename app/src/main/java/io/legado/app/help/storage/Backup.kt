@@ -807,9 +807,26 @@ object Backup {
         val treeDoc = DocumentFile.fromTreeUri(context, uri)!!
         treeDoc.findFile(fileName)?.delete()
         val fileDoc = treeDoc.createFile("", fileName)
-            ?: throw NoStackTraceException("创建文件失败")
+        if (fileDoc == null) {
+            LogUtils.e(
+                TAG,
+                "copyBackup SAF 创建文件失败: uri=$uri, fileName=$fileName, " +
+                    "canWrite=${treeDoc.canWrite()}, " +
+                    "isDirectory=${treeDoc.isDirectory}, " +
+                    "exists=${treeDoc.exists()}, " +
+                    "children=${treeDoc.listFiles().size}"
+            )
+            throw NoStackTraceException("创建文件失败")
+        }
         val outputS = fileDoc.openOutputStream()
-            ?: throw NoStackTraceException("打开OutputStream失败")
+        if (outputS == null) {
+            LogUtils.e(
+                TAG,
+                "copyBackup SAF 打开OutputStream失败: uri=$uri, fileName=$fileName, " +
+                    "fileExists=${fileDoc.exists()}, fileCanWrite=${fileDoc.canWrite()}"
+            )
+            throw NoStackTraceException("打开OutputStream失败")
+        }
         outputS.use {
             FileInputStream(zipFilePath).use { inputS ->
                 inputS.copyTo(outputS)
