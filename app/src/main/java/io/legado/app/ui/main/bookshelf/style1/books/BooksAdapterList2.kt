@@ -6,18 +6,19 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import io.legado.app.base.adapter.ItemViewHolder
-import io.legado.app.data.entities.Book
+import io.legado.app.data.dao.BookShelfDisplay
 import io.legado.app.databinding.ItemBookshelfList2Binding
-import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.invisible
 import io.legado.app.utils.toTimeAgo
 import io.legado.app.utils.dpToPx
+import io.legado.app.utils.gone
+import io.legado.app.utils.visible
 import splitties.views.onLongClick
 
 /**
-紧凑列表布局
-*/
+ * 紧凑列表布局
+ */
 class BooksAdapterList2(
     context: Context,
     private val fragment: Fragment,
@@ -29,10 +30,17 @@ class BooksAdapterList2(
         return ItemBookshelfList2Binding.inflate(inflater, parent, false)
     }
 
+    /**
+     * 方案E：取消封面图片加载
+     */
+    override fun cancelCoverLoad(binding: ItemBookshelfList2Binding) {
+        binding.ivCover.cancelLoad()
+    }
+
     override fun convert(
         holder: ItemViewHolder,
         binding: ItemBookshelfList2Binding,
-        item: Book,
+        item: BookShelfDisplay,
         payloads: MutableList<Any>
     ) = binding.run {
         if (payloads.isEmpty()) {
@@ -62,13 +70,7 @@ class BooksAdapterList2(
                         "author" -> tvAuthor.text = item.author
                         "dur" -> tvRead.text = item.durChapterTitle
                         "last" -> tvLast.text = item.latestChapterTitle
-                        "cover" -> ivCover.load(
-                            item,
-                            false,
-                            fragment,
-                            lifecycle
-                        )
-
+                        "cover" -> ivCover.load(item, false, fragment, lifecycle)
                         "refresh" -> upRefresh(binding, item)
                         "lastUpdateTime" -> upLastUpdateTime(binding, item)
                     }
@@ -77,7 +79,7 @@ class BooksAdapterList2(
         }
     }
 
-    private fun upRefresh(binding: ItemBookshelfList2Binding, item: Book) {
+    private fun upRefresh(binding: ItemBookshelfList2Binding, item: BookShelfDisplay) {
         if (!item.isLocal && callBack.isUpdate(item.bookUrl)) {
             binding.bvUnread.invisible()
             binding.rlLoading.visible()
@@ -92,7 +94,7 @@ class BooksAdapterList2(
         }
     }
 
-    private fun upLastUpdateTime(binding: ItemBookshelfList2Binding, item: Book) {
+    private fun upLastUpdateTime(binding: ItemBookshelfList2Binding, item: BookShelfDisplay) {
         if (AppConfig.showLastUpdateTime && !item.isLocal) {
             val time = item.latestChapterTime.toTimeAgo()
             if (binding.tvLastUpdateTime.text != time) {
@@ -107,13 +109,13 @@ class BooksAdapterList2(
         holder.itemView.apply {
             setOnClickListener {
                 getItem(holder.layoutPosition)?.let {
-                    callBack.open(it)
+                    callBack.open(it.toMinimalBook())
                 }
             }
 
             onLongClick {
                 getItem(holder.layoutPosition)?.let {
-                    callBack.openBookInfo(it)
+                    callBack.openBookInfo(it.toMinimalBook())
                 }
             }
         }

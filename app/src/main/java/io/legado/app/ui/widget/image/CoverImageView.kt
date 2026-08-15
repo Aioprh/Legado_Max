@@ -21,6 +21,7 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
@@ -371,6 +372,31 @@ class CoverImageView @JvmOverloads constructor(
        )
     }
 
+    /**
+     * 方案A：支持 [BookShelfDisplay] 轻量数据类的封面加载重载。
+     *
+     * 与 [load]（Book 版本）功能一致，但直接从 [BookShelfDisplay] 获取字段，
+     * 无需转换为完整 [Book] 对象。
+     */
+    fun load(
+        display: io.legado.app.data.dao.BookShelfDisplay,
+        loadOnlyWifi: Boolean = false,
+        fragment: Fragment? = null,
+        lifecycle: Lifecycle? = null,
+        overrideWidth: Int = 0,
+        overrideHeight: Int = 0,
+        onLoadFinish: (() -> Unit)? = null
+    ) {
+        load(
+            display.getDisplayCover(), display.name, display.author,
+            loadOnlyWifi, display.origin, fragment, lifecycle,
+            galleryIdentity = display.bookUrl,
+            overrideWidth = overrideWidth,
+            overrideHeight = overrideHeight,
+            onLoadFinish = onLoadFinish
+        )
+    }
+
     fun load(
         path: String? = null,
         name: String? = null,
@@ -617,6 +643,20 @@ class CoverImageView @JvmOverloads constructor(
         currentJob?.cancel()
         currentJob = null
         super.onDetachedFromWindow()
+    }
+
+    /**
+     * 方案E：取消正在进行的封面图片加载请求。
+     *
+     * 在 RecyclerView onViewRecycled 时调用，避免回收的 ViewHolder
+     * 继续持有 Glide 请求导致不必要的网络/磁盘 IO 和内存占用。
+     */
+    fun cancelLoad() {
+        kotlin.runCatching {
+            Glide.with(context).clear(this)
+        }
+        currentJob?.cancel()
+        currentJob = null
     }
 
 }

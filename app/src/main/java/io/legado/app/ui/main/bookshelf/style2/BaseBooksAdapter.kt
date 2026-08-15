@@ -44,14 +44,19 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
         override fun areContentsTheSame(oldItem: Any, newItem: Any): Boolean {
             return when {
                 oldItem is Book && newItem is Book -> {
+                    // 方案B：移除计算型比较（getDisplayCover/getUnreadChapterNum），
+                    // 改为比较底层字段
                     oldItem.durChapterTime == newItem.durChapterTime &&
                             oldItem.name == newItem.name &&
                             oldItem.author == newItem.author &&
                             oldItem.durChapterTitle == newItem.durChapterTitle &&
                             oldItem.latestChapterTitle == newItem.latestChapterTitle &&
                             oldItem.lastCheckCount == newItem.lastCheckCount &&
-                            oldItem.getDisplayCover() == newItem.getDisplayCover() &&
-                            oldItem.getUnreadChapterNum() == newItem.getUnreadChapterNum()
+                            oldItem.coverUrl == newItem.coverUrl &&
+                            oldItem.customCoverUrl == newItem.customCoverUrl &&
+                            oldItem.totalChapterNum == newItem.totalChapterNum &&
+                            oldItem.durChapterIndex == newItem.durChapterIndex &&
+                            oldItem.readConfig == newItem.readConfig
                 }
 
                 oldItem is BookGroup && newItem is BookGroup -> {
@@ -81,12 +86,14 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
                     if (oldItem.latestChapterTitle != newItem.latestChapterTitle) {
                         bundle.putString("last", newItem.latestChapterTitle)
                     }
-                    if (oldItem.getDisplayCover() != newItem.getDisplayCover()) {
+                    if (oldItem.coverUrl != newItem.coverUrl || oldItem.customCoverUrl != newItem.customCoverUrl) {
                         bundle.putString("cover", newItem.getDisplayCover())
                     }
                     if (oldItem.lastCheckCount != newItem.lastCheckCount
                         || oldItem.durChapterTime != newItem.durChapterTime
-                        || oldItem.getUnreadChapterNum() != newItem.getUnreadChapterNum()
+                        || oldItem.totalChapterNum != newItem.totalChapterNum
+                        || oldItem.durChapterIndex != newItem.durChapterIndex
+                        || oldItem.readConfig != newItem.readConfig
                     ) {
                         bundle.putBoolean("refresh", true)
                     }
@@ -155,6 +162,16 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
     }
 
     final override fun onBindViewHolder(holder: VH, position: Int) {}
+
+    /**
+     * 方案E：回收 ViewHolder 时取消封面图片加载
+     */
+    override fun onViewRecycled(holder: VH) {
+        super.onViewRecycled(holder)
+        // style2 的子类 ViewHolder 使用 CoverImageView，遍历取消加载
+        (holder.itemView.findViewById<io.legado.app.ui.widget.image.CoverImageView?>(io.legado.app.R.id.iv_cover))
+            ?.cancelLoad()
+    }
 
 
     interface CallBack {
