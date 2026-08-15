@@ -16,6 +16,7 @@ import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.model.BookCover
+import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.help.storage.BackupSelectorConfig
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
@@ -505,7 +506,7 @@ object Backup {
                 .writeText(GSON.toJson(HighlightRuleStore.backupData(appCtx)))
         }
         if (selectedFiles.contains("readRecord.json")) {
-            writeListToJson(appDb.readRecordDao.all, "readRecord.json", backupPath, onProgress)
+            writeListToJson(mergeReadRecordsForLegacyCompat(appDb.readRecordDao.all), "readRecord.json", backupPath, onProgress)
         }
         if (selectedFiles.contains("readRecordDetail.json")) {
             writeListToJson(appDb.readRecordDao.getAllDetailsList(), "readRecordDetail.json", backupPath, onProgress)
@@ -761,6 +762,52 @@ object Backup {
         }
     }
 
+    
+
+    /**
+        * 合并阅读记录以兼容原始项目（Legado）。
+        *
+        * 核心问题：原始项目 readRecord 主键是 (deviceId, bookName)，
+        * 看书时 upReadTime 写入的 deviceId 是空字符串 ""（从未赋值），
+        * 显示时用 SUM(readTime) WHERE bookName = ? 汇总所有行。
+        *
+        * 如果导出的记录 deviceId 非空且与原始项目不同，
+        * 恢复后会新增一行 (maxDeviceId, bookName)，
+        * 和原始项目自己的 ("", bookName) 共存，
+        * SUM 查询把两行都加起来 → 时长翻倍。
+        *
+        * 解决方案：
+        * 1. 按 bookName 合并同书名的多条记录（不同 deviceId/bookAuthor）
+        * 2. 将合并后的 deviceId 统一设为 ""，
+        *    使恢复时 REPLACE 到 ("", bookName) 主键上，
+        *    与原始项目 upReadTime 写入的是同一行。
+        *
+        * readTime 取 SUM，bookAuthor 取首个非空值，
+        * lastRead/durChapterTitle/durChapterIndex 取最近阅读的记录值。
+        */
+    fun mergeReadRecordsForLegacyCompat(records: List<ReadRecord>): List<ReadRecord> {
+        if (records.isEmpty()) return records
+        return records
+            .groupBy { it.bookName }
+            .map { (_, group) ->
+                // 合并后 deviceId 统一为空字符串，
+                // 因为原始项目 readRecord 主键是 (deviceId, bookName)，
+                // 看书时 upReadTime 写入的 deviceId 也是空字符串。
+                // 如果导出的 deviceId 非空且与原始项目不同，
+                // 恢复时会新增一行，SUM 查询会把两行都加起来导致时长翻倍。
+                val base = if (group.size == 1) {
+                    group.first()
+                } else {
+                    group.first { it.lastRead == group.maxOf { r -> r.lastRead } }.copy(
+                        readTime = group.sumOf { it.readTime },
+                        bookAuthor = group.firstOrNull { it.bookAuthor.isNotBlank() }?.bookAuthor ?: ""
+                    )
+                }
+                base.copy(deviceId = "")
+            }
+    }
+    
+
     /**
      * 复制备份文件到SAF（Storage Access Framework）目录
      * 用于Android 10+的分区存储
@@ -776,9 +823,26 @@ object Backup {
         val treeDoc = DocumentFile.fromTreeUri(context, uri)!!
         treeDoc.findFile(fileName)?.delete()
         val fileDoc = treeDoc.createFile("", fileName)
-            ?: throw NoStackTraceException("创建文件失败")
+        if (fileDoc == null) {
+            LogUtils.e(
+                TAG,
+                "copyBackup SAF 创建文件失败: uri=$uri, fileName=$fileName, " +
+                    "canWrite=${treeDoc.canWrite()}, " +
+                    "isDirectory=${treeDoc.isDirectory}, " +
+                    "exists=${treeDoc.exists()}, " +
+                    "children=${treeDoc.listFiles().size}"
+            )
+            throw NoStackTraceException("创建文件失败")
+        }
         val outputS = fileDoc.openOutputStream()
-            ?: throw NoStackTraceException("打开OutputStream失败")
+        if (outputS == null) {
+            LogUtils.e(
+                TAG,
+                "copyBackup SAF 打开OutputStream失败: uri=$uri, fileName=$fileName, " +
+                    "fileExists=${fileDoc.exists()}, fileCanWrite=${fileDoc.canWrite()}"
+            )
+            throw NoStackTraceException("打开OutputStream失败")
+        }
         outputS.use {
             FileInputStream(zipFilePath).use { inputS ->
                 inputS.copyTo(outputS)
