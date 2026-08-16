@@ -2365,4 +2365,41 @@
     <string name="app_theme_summary_format">Day: %1$s / %2$s / %3$s / %4$s
 Night: %5$s / %6$s / %7$s / %8$s</string>
     <string name="shibboleth">口令</string>
+
+    <!-- Permission manage -->
+    <string name="permission_manage">Permission Management</string>
+    <string name="permission_manage_summary">Manage permissions for cookies, book objects, APIs and Toast</string>
+    <string name="perm_section_cookie">Cookie Management</string>
+    <string name="perm_section_book">Book Object Management</string>
+    <string name="perm_section_java">Java API</string>
+    <string name="perm_section_android">Android API</string>
+    <string name="perm_section_toast">Toast Management</string>
+    <string name="perm_cookie_read">Cookie Read</string>
+    <string name="perm_cookie_read_desc">Allow book sources to read cookies</string>
+    <string name="perm_cookie_write">Cookie Write</string>
+    <string name="perm_cookie_write_desc">Allow book sources to write cookies</string>
+    <string name="perm_cookie_delete">Cookie Delete</string>
+    <string name="perm_cookie_delete_desc">Allow book sources to delete cookies</string>
+    <string name="perm_book_read">Book Read</string>
+    <string name="perm_book_read_desc">Allow scripts to read book objects</string>
+    <string name="perm_book_modify">Book Modify</string>
+    <string name="perm_book_modify_desc">Allow scripts to modify book objects</string>
+    <string name="perm_book_delete">Book Delete</string>
+    <string name="perm_book_delete_desc">Allow scripts to delete book objects</string>
+    <string name="perm_java_lang">java.lang Access</string>
+    <string name="perm_java_lang_desc">Control access to java.lang classes</string>
+    <string name="perm_java_io">java.io Access</string>
+    <string name="perm_java_io_desc">Control access to java.io classes</string>
+    <string name="perm_java_net">java.net Access</string>
+    <string name="perm_java_net_desc">Control access to java.net classes</string>
+    <string name="perm_android_content">android.content Access</string>
+    <string name="perm_android_content_desc">Control access to android.content APIs</string>
+    <string name="perm_android_net">android.net Access</string>
+    <string name="perm_android_net_desc">Control access to android.net APIs</string>
+    <string name="perm_android_system">System Info Read</string>
+    <string name="perm_android_system_desc">Control reading system information</string>
+    <string name="perm_toast_enabled">Toast Enabled</string>
+    <string name="perm_toast_enabled_desc">Whether scripts can show Toast</string>
+    <string name="perm_toast_duration">Toast Duration</string>
+    <string name="perm_toast_duration_desc">Control Toast display duration</string>
 </resources>

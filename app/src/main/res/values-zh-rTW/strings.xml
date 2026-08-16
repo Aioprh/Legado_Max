@@ -1957,4 +1957,41 @@
     <string name="app_theme_summary_format">日間：%1$s / %2$s / %3$s / %4$s
 夜間：%5$s / %6$s / %7$s / %8$s</string>
     <string name="shibboleth">口令</string>
+
+    <!-- 權限管理 -->
+    <string name="permission_manage">權限管理</string>
+    <string name="permission_manage_summary">管理Cookie、Book物件、API和Toast的存取權限</string>
+    <string name="perm_section_cookie">Cookie管理</string>
+    <string name="perm_section_book">Book物件管理</string>
+    <string name="perm_section_java">Java API</string>
+    <string name="perm_section_android">安卓API</string>
+    <string name="perm_section_toast">Toast管理</string>
+    <string name="perm_cookie_read">Cookie讀取</string>
+    <string name="perm_cookie_read_desc">允許書源讀取Cookie</string>
+    <string name="perm_cookie_write">Cookie寫入</string>
+    <string name="perm_cookie_write_desc">允許書源寫入Cookie</string>
+    <string name="perm_cookie_delete">Cookie刪除</string>
+    <string name="perm_cookie_delete_desc">允許書源刪除Cookie</string>
+    <string name="perm_book_read">Book讀取</string>
+    <string name="perm_book_read_desc">允許腳本讀取Book物件</string>
+    <string name="perm_book_modify">Book修改</string>
+    <string name="perm_book_modify_desc">允許腳本修改Book物件</string>
+    <string name="perm_book_delete">Book刪除</string>
+    <string name="perm_book_delete_desc">允許腳本刪除Book物件</string>
+    <string name="perm_java_lang">java.lang 存取</string>
+    <string name="perm_java_lang_desc">控制 java.lang 類別的存取權限</string>
+    <string name="perm_java_io">java.io 存取</string>
+    <string name="perm_java_io_desc">控制 java.io 類別的存取權限</string>
+    <string name="perm_java_net">java.net 存取</string>
+    <string name="perm_java_net_desc">控制 java.net 類別的存取權限</string>
+    <string name="perm_android_content">android.content 存取</string>
+    <string name="perm_android_content_desc">控制 android.content API 的存取權限</string>
+    <string name="perm_android_net">android.net 存取</string>
+    <string name="perm_android_net_desc">控制 android.net API 的存取權限</string>
+    <string name="perm_android_system">系統資訊讀取</string>
+    <string name="perm_android_system_desc">控制讀取系統資訊的權限</string>
+    <string name="perm_toast_enabled">Toast是否開啟</string>
+    <string name="perm_toast_enabled_desc">控制腳本能否彈出Toast</string>
+    <string name="perm_toast_duration">Toast時長控制</string>
+    <string name="perm_toast_duration_desc">控制Toast顯示時長</string>
 </resources>
