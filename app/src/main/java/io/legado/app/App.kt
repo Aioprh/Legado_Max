@@ -15,6 +15,7 @@ import com.jeremyliao.liveeventbus.logger.DefaultLogger
 import com.script.rhino.ReadOnlyJavaObject
 import com.script.rhino.RhinoScriptEngine
 import com.script.rhino.RhinoWrapFactory
+import io.legado.app.utils.log.TimberLog
 import io.legado.app.base.AppContextWrapper
 import io.legado.app.constant.AppConst.channelIdDownload
 import io.legado.app.constant.AppConst.channelIdReadAloud
@@ -78,6 +79,8 @@ class App : Application() {
         if (isDebuggable) {
             ThreadUtils.setThreadAssertsDisabledForTesting(true)
         }
+        //初始化 Timber 日志框架
+        TimberLog.init(this, isDebuggable)
         oldConfig = Configuration(resources.configuration)
         applyDayNightInit(this)
         LauncherIconHelp.fixLauncherIconPref()
