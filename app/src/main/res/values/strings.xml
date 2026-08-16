@@ -1847,6 +1847,10 @@
     <string name="rr_no_merge_candidates">No merge candidates found</string>
     <string name="rr_select_merge_target">Select records to merge into \"%s\":</string>
     <string name="rr_merge">Merge</string>
+    <string name="rr_merge_all_same_name">Merge All Same Name Books</string>
+    <string name="rr_merge_all_confirm">All records of same-name books will be merged into one: the newer reading progress is kept and read time is accumulated. This cannot be undone.</string>
+    <string name="rr_merge_all_none">No same-name books to merge</string>
+    <string name="rr_merge_all_done">Merged %d same-name books</string>
     <string name="rr_selected_items">Selected %d items</string>
     <string name="rr_cancel_selection">Cancel Selection</string>
     <string name="rr_delete_selected">Delete Selected</string>

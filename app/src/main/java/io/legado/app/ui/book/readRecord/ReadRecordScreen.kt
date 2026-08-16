@@ -81,6 +81,8 @@ fun ReadRecordScreen(
 
     var showMergeDialog by remember { mutableStateOf(false) }
     var selectedRecord by remember { mutableStateOf<ReadRecord?>(null) }
+    var showMergeAllDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     if (showDeleteConfirm && pendingDeleteAction != null) {
         AlertDialog(
@@ -156,6 +158,38 @@ fun ReadRecordScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showMergeDialog = false }) {
+                    Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+        )
+    }
+
+    if (showMergeAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showMergeAllDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text(stringResource(R.string.rr_merge_all_same_name)) },
+            text = { Text(stringResource(R.string.rr_merge_all_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.mergeAllSameNameRecords { mergedCount ->
+                        android.widget.Toast.makeText(
+                            context,
+                            if (mergedCount > 0) {
+                                context.getString(R.string.rr_merge_all_done, mergedCount)
+                            } else {
+                                context.getString(R.string.rr_merge_all_none)
+                            },
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    showMergeAllDialog = false
+                }) {
+                    Text(stringResource(R.string.rr_merge), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMergeAllDialog = false }) {
                     Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
@@ -281,6 +315,21 @@ fun ReadRecordScreen(
                                             } else {
                                                 Icons.Default.Visibility
                                             },
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(stringResource(R.string.rr_merge_all_same_name))
+                                    },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        showMergeAllDialog = true
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.MergeType,
                                             contentDescription = null
                                         )
                                     }

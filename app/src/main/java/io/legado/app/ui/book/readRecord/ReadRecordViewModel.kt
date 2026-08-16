@@ -351,6 +351,12 @@ class ReadRecordViewModel : ViewModel() {
         }
     }
 
+    fun mergeAllSameNameRecords(onResult: (Int) -> Unit) {
+        viewModelScope.launch {
+            onResult(repository.mergeAllSameNameRecords())
+        }
+    }
+
     fun enterSelectionMode(record: ReadRecord) {
         _isSelectionMode.value = true
         _selectedRecords.value = setOf(recordIdentity(record.deviceId, record.bookName, record.bookAuthor))
