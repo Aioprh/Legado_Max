@@ -2,8 +2,8 @@
 
 
 ### cronet版本: 128.0.6613.40
-###  minSdk 21 | targetSdk 36
-### Kotlin版本: 2.3.10 | Rhino版本: 1.8.1 | Compose版本: 2025.04.01 | Compose UI 版本:  1.7.x | Material3 版本: 1.3.x | okhttp版本: 5.3.2
+###  minSdk 23 | compileSdk 37 | targetSdk 37 
+### Kotlin版本: 2.3.10 | Rhino版本: 1.8.1 | Compose BOM版本: 2026.08.00 | Compose UI 版本:  1.12.x | Material3 版本: 1.4.x | okhttp版本: 5.3.2
 
 ### 项目继承历史
 ##### 原版
@@ -18,10 +18,14 @@
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
 **2026/8/15**
+- minSdk从21升级至23，不再支持安卓5和5.1
+- targetSdk从36升级至37，compileSdk从36升级至37，支持安卓17
+
+**2026/8/15**
 - 修复多个内存泄露问题
 - fix(书架): 修复从我的切回书架时分组闪烁的问题
 - 优化书架加载性能
-- feat: 兼容导入 archive_primate_beta 和 MD3-main 分支导出的应用主题包
+- feat: 兼容导入 archive 和 MD3 分支导出的应用主题包
 - fix(storage): 修复 Max 老用户数据导出到原始项目时阅读时长重复累加的问题
 - feat(阅读): 文本操作菜单项配置支持长按拖动排序
 - feat(阅读): 添加正文长按选区放大镜功能( Android 9.0 (API 28) 及以上版本生效)

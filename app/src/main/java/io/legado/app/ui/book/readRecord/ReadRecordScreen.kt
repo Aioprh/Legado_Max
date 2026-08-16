@@ -467,6 +467,10 @@ private fun BookCoverImage(
 
 private suspend fun loadReadRecordCoverBitmap(context: android.content.Context, coverPath: String?): Bitmap? {
     if (coverPath.isNullOrBlank()) return null
+    // 在协程仍存活时（页面未销毁）先取得 RequestManager，取消时复用；
+    // 若在 invokeOnCancellation 里调用 Glide.with(context)，页面可能已 destroy，
+    // Glide 会抛 "You cannot start a load for a destroyed activity" 导致整个应用崩溃
+    val requestManager = com.bumptech.glide.Glide.with(context)
     return suspendCancellableCoroutine { cont ->
         val target = object : CustomTarget<Bitmap>() {
             override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
@@ -482,7 +486,9 @@ private suspend fun loadReadRecordCoverBitmap(context: android.content.Context, 
             }
         }
         cont.invokeOnCancellation {
-            com.bumptech.glide.Glide.with(context).clear(target)
+            // 取消回调可能发生在 Activity 销毁流程中，必须吞掉一切异常，
+            // 否则会以 CompletionHandlerException 的形式击杀进程
+            runCatching { requestManager.clear(target) }
         }
         ImageLoader.loadBitmap(context, coverPath)
             .into(target)

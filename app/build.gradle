@@ -42,7 +42,7 @@ try {
 }
 
 android {
-    compileSdk = 36
+    compileSdk = 37
     namespace = 'io.legado.app'
     kotlin {
         jvmToolchain {
@@ -66,8 +66,8 @@ android {
     }
     defaultConfig {
         applicationId  = "io.legado.app.yuedu"
-        minSdk = 21
-        targetSdk = 36
+        minSdk = 23
+        targetSdk = 37
         versionCode = releaseCode()
         versionName = version
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -196,6 +196,8 @@ android {
 }
 
 dependencies {
+    //Timber 日志库: https://github.com/JakeWharton/timber
+    implementation(libs.timber)
     //compileOnly "com.android.tools.build:gradle:$agp_version"
     //noinspection GradleDependency,GradlePackageUpdate
     //coreLibraryDesugaring('com.android.tools:desugar_jdk_libs_nio:2.0.4')
@@ -238,8 +240,10 @@ dependencies {
     //androidX
     implementation(libs.core.ktx)
     implementation(libs.appcompat.appcompat)
+    //这两个的最新版不支持安卓5和5.1
     implementation(libs.activity.ktx)
     implementation(libs.fragment.ktx)
+
     implementation(libs.preference.ktx)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.swiperefreshlayout)
@@ -299,6 +303,9 @@ dependencies {
     
     //网络
     implementation(libs.okhttp)
+    //Chucker 调试通知栏内查看网络请求 debug依赖 release为空实现
+    debugImplementation(libs.chucker)
+    releaseImplementation(libs.chucker.no.op)
     implementation(fileTree(dir: 'cronetlib', include: ['*.jar', '*.aar']))
     implementation(libs.protobuf.javalite)
     
