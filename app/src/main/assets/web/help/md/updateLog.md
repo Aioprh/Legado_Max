@@ -2,8 +2,8 @@
 
 
 ### cronet版本: 128.0.6613.40
-###  minSdk 21 | targetSdk 36
-### Kotlin版本: 2.3.10 | Rhino版本: 1.8.1 | Compose版本: 2025.04.01 | Compose UI 版本:  1.7.x | Material3 版本: 1.3.x | okhttp版本: 5.3.2
+###  minSdk 23 | compileSdk 37 | targetSdk 37 
+### Kotlin版本: 2.3.10 | Rhino版本: 1.8.1 | Compose BOM版本: 2026.08.00 | Compose UI 版本:  1.12.x | Material3 版本: 1.4.x | okhttp版本: 5.3.2
 
 ### 项目继承历史
 ##### 原版
@@ -16,6 +16,10 @@
 * [Github主干youfengknight](https://github.com/youfengknight/Legado_Max)
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
+
+**2026/8/15**
+- minSdk从21升级至23，不再支持安卓5和5.1
+- targetSdk从36升级至37，compileSdk从36升级至37，支持安卓17
 
 **2026/8/15**
 - 修复多个内存泄露问题
