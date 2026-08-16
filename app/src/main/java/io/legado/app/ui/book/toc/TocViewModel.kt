@@ -10,6 +10,7 @@ import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.exception.NoStackTraceException
+import io.legado.app.help.book.BookHelp
 import io.legado.app.model.ReadBook
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.utils.FileDoc
@@ -65,6 +66,8 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
                 newToc.forEachIndexed { index, bookChapter ->
                     bookChapter.index = index
                 }
+                //倒序后章节序号变化会导致缓存文件名变化, 先迁移缓存文件
+                BookHelp.createChapterCacheMigrator(this, toc).migrate(newToc)
                 appDb.bookChapterDao.insert(*newToc.toTypedArray())
             }
         }.onSuccess {
