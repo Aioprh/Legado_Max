@@ -1457,6 +1457,10 @@
     <string name="rr_no_merge_candidates">沒有找到可以合併的記錄</string>
     <string name="rr_select_merge_target">選擇要合併到「%s」的記錄：</string>
     <string name="rr_merge">合併</string>
+    <string name="rr_merge_all_same_name">合併全部同名書籍</string>
+    <string name="rr_merge_all_confirm">將把閱讀記錄中所有同名書籍合併為一本：進度取較新者，閱讀時長累加。此操作不可撤銷。</string>
+    <string name="rr_merge_all_none">沒有可合併的同名書籍</string>
+    <string name="rr_merge_all_done">已合併 %d 本同名書籍</string>
     <string name="rr_selected_items">已選擇 %d 項</string>
     <string name="rr_cancel_selection">取消選擇</string>
     <string name="rr_delete_selected">刪除選中</string>
