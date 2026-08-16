@@ -9,6 +9,7 @@ import io.legado.app.data.repository.CoverGalleryRepository
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
+import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.postEvent
@@ -42,9 +43,9 @@ object ApplicationThemeManager {
     private const val fileName = "applicationThemes.json"
     private const val currentIdKey = "currentApplicationThemeId"
     private const val maxConfigBytes = 5L * 1024 * 1024
-    private const val maxManifestBytes = 2L * 1024 * 1024
+    internal const val maxManifestBytes = 2L * 1024 * 1024
     private const val maxAssetBytes = 64L * 1024 * 1024
-    private const val maxCoverImages = 500
+    internal const val maxCoverImages = 500
     private val filePath = FileUtils.getPath(appCtx.filesDir, fileName)
 
     /**
@@ -225,47 +226,69 @@ object ApplicationThemeManager {
         val temp = appCtx.cacheDir.resolve("applicationThemeImport/${System.currentTimeMillis()}").apply { mkdirs() }
         try {
             ZipFile(file).use { zip ->
-                val manifest = zip.getEntry("application_theme.json")
-                    ?: throw IllegalArgumentException(appCtx.getString(R.string.app_theme_missing_manifest))
-                require(manifest.size in 0..maxManifestBytes) { appCtx.getString(R.string.app_theme_manifest_too_large) }
-                val data = zip.getInputStream(manifest).bufferedReader().use {
-                    GSON.fromJson(it, PackageData::class.java)
-                } ?: throw IllegalArgumentException(appCtx.getString(R.string.app_theme_invalid_format))
-                require(data.version == 1) { appCtx.getString(R.string.app_theme_unsupported_version) }
-                validatePackage(zip, data, options)
-                val source = sanitize(data.config)
-                val importDayTheme = options?.importDayTheme ?: true
-                val importNightTheme = options?.importNightTheme ?: true
-                val importDayTopBar = options?.importDayTopBar ?: true
-                val importNightTopBar = options?.importNightTopBar ?: true
-                val importDayBottomBar = options?.importDayBottomBar ?: true
-                val importNightBottomBar = options?.importNightBottomBar ?: true
-                val importDayCover = options?.importDayCover ?: true
-                val importNightCover = options?.importNightCover ?: true
-                val dayTheme = restoreThemeAsset(zip, temp, source.dayTheme, false, registerTheme = importDayTheme)
-                val nightTheme = restoreThemeAsset(zip, temp, source.nightTheme, true, registerTheme = importNightTheme)
-                val dayTop = if (importDayTopBar) restoreTopBar(zip, temp, false, source.dayTopBarDir, data.dayTopBar) else TopBarConfig.DEFAULT_DIR_NAME
-                val nightTop = if (importNightTopBar) restoreTopBar(zip, temp, true, source.nightTopBarDir, data.nightTopBar) else TopBarConfig.DEFAULT_DIR_NAME
-                val dayBottom = if (importDayBottomBar) restoreBottomBar(zip, temp, false, data.dayBottomBar) else null
-                val nightBottom = if (importNightBottomBar) restoreBottomBar(zip, temp, true, data.nightBottomBar) else null
-                val dayCover = if (importDayCover) restoreCover(zip, temp, data.dayCover) else null
-                val nightCover = if (importNightCover) restoreCover(zip, temp, data.nightCover) else null
-                return addImported(
-                    source.copy(
-                        dayTheme = dayTheme,
-                        nightTheme = nightTheme,
-                        dayTopBarDir = dayTop,
-                        nightTopBarDir = nightTop,
-                        dayBottomBarId = dayBottom,
-                        nightBottomBarId = nightBottom,
-                        dayCoverGroupId = dayCover,
-                        nightCoverGroupId = nightCover
-                    )
-                )
+                // 检测 zip 包内的清单文件类型，兼容三种格式
+                val manifestEntry = zip.getEntry("application_theme.json")
+                val appearanceKitEntry = zip.entries().asSequence()
+                    .firstOrNull { !it.isDirectory && (it.name == "appearance_kit.json" || it.name.endsWith("/appearance_kit.json")) }
+                val md3ManifestEntry = zip.getEntry("manifest.json")
+
+                when {
+                    // 当前分支格式
+                    manifestEntry != null -> return importNativeFormat(zip, temp, manifestEntry, options)
+                    // archive_primate_beta 分支格式
+                    appearanceKitEntry != null -> return AppearanceKitImporter.import(zip, temp, appearanceKitEntry, options)
+                    // MD3-main 分支格式
+                    md3ManifestEntry != null -> return Md3ThemeImporter.import(zip, temp, md3ManifestEntry, options)
+                    else -> throw IllegalArgumentException(appCtx.getString(R.string.app_theme_missing_manifest))
+                }
             }
         } finally {
             temp.deleteRecursively()
         }
+    }
+
+    /** 导入当前分支的原生格式（application_theme.json） */
+    private suspend fun importNativeFormat(
+        zip: ZipFile,
+        temp: File,
+        manifestEntry: ZipEntry,
+        options: ImportOptions?
+    ): Config {
+        require(manifestEntry.size in 0..maxManifestBytes) { appCtx.getString(R.string.app_theme_manifest_too_large) }
+        val data = zip.getInputStream(manifestEntry).bufferedReader().use {
+            GSON.fromJson(it, PackageData::class.java)
+        } ?: throw IllegalArgumentException(appCtx.getString(R.string.app_theme_invalid_format))
+        require(data.version == 1) { appCtx.getString(R.string.app_theme_unsupported_version) }
+        validatePackage(zip, data, options)
+        val source = sanitize(data.config)
+        val importDayTheme = options?.importDayTheme ?: true
+        val importNightTheme = options?.importNightTheme ?: true
+        val importDayTopBar = options?.importDayTopBar ?: true
+        val importNightTopBar = options?.importNightTopBar ?: true
+        val importDayBottomBar = options?.importDayBottomBar ?: true
+        val importNightBottomBar = options?.importNightBottomBar ?: true
+        val importDayCover = options?.importDayCover ?: true
+        val importNightCover = options?.importNightCover ?: true
+        val dayTheme = restoreThemeAsset(zip, temp, source.dayTheme, false, registerTheme = importDayTheme)
+        val nightTheme = restoreThemeAsset(zip, temp, source.nightTheme, true, registerTheme = importNightTheme)
+        val dayTop = if (importDayTopBar) restoreTopBar(zip, temp, false, source.dayTopBarDir, data.dayTopBar) else TopBarConfig.DEFAULT_DIR_NAME
+        val nightTop = if (importNightTopBar) restoreTopBar(zip, temp, true, source.nightTopBarDir, data.nightTopBar) else TopBarConfig.DEFAULT_DIR_NAME
+        val dayBottom = if (importDayBottomBar) restoreBottomBar(zip, temp, false, data.dayBottomBar) else null
+        val nightBottom = if (importNightBottomBar) restoreBottomBar(zip, temp, true, data.nightBottomBar) else null
+        val dayCover = if (importDayCover) restoreCover(zip, temp, data.dayCover) else null
+        val nightCover = if (importNightCover) restoreCover(zip, temp, data.nightCover) else null
+        return addImported(
+            source.copy(
+                dayTheme = dayTheme,
+                nightTheme = nightTheme,
+                dayTopBarDir = dayTop,
+                nightTopBarDir = nightTop,
+                dayBottomBarId = dayBottom,
+                nightBottomBarId = nightBottom,
+                dayCoverGroupId = dayCover,
+                nightCoverGroupId = nightCover
+            )
+        )
     }
 
     /**
@@ -276,7 +299,7 @@ object ApplicationThemeManager {
      * 都保留完整的主题数据，以便预览和应用时能正确显示背景图。
      * 「主题」勾选仅控制是否在主题管理列表中注册新条目（见 restoreThemeAsset）。
      */
-    private fun stripComponents(config: Config, options: ImportOptions?): Config {
+    internal fun stripComponents(config: Config, options: ImportOptions?): Config {
         if (options == null) return config
         return config.copy(
             dayTopBarDir = if (options.importDayTopBar) config.dayTopBarDir else TopBarConfig.DEFAULT_DIR_NAME,
@@ -288,7 +311,7 @@ object ApplicationThemeManager {
         )
     }
 
-    private fun addImported(imported: Config): Config {
+    internal fun addImported(imported: Config): Config {
         val items = load()
         val baseName = imported.name.trim().ifBlank { appCtx.getString(io.legado.app.R.string.application_theme_manage) }
         // 同名配置直接覆盖（复用原有 ID），避免反复追加“名称 2”
@@ -626,7 +649,7 @@ object ApplicationThemeManager {
         return groupId
     }
 
-    private fun extractAsset(zip: ZipFile, temp: File, path: String): File? {
+    internal fun extractAsset(zip: ZipFile, temp: File, path: String): File? {
         val entry = zip.getEntry(path) ?: return null
         require(!entry.isDirectory) { appCtx.getString(R.string.app_theme_invalid_asset) }
         require(entry.size in 0..maxAssetBytes) { appCtx.getString(R.string.app_theme_asset_too_large) }

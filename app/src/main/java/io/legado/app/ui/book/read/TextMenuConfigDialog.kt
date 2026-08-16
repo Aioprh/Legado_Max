@@ -4,13 +4,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ResolveInfo
 import android.os.Build
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Remove
@@ -19,17 +22,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import io.legado.app.R
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
 import io.legado.app.ui.widget.components.dialog.BaseComposeDialogFragment
 import io.legado.app.utils.toastOnUi
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
  * 文本菜单项配置对话框 - Compose实现
@@ -56,7 +64,7 @@ fun TextMenuConfigDialogContent(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val menuItems = remember { TextMenuConfig.getAllMenuItems() }
+    var menuItems by remember { mutableStateOf(TextMenuConfig.getAllMenuItems(context)) }
     var hiddenIds by remember { 
         mutableStateOf(TextMenuConfig.getHiddenMenuItemIds(context))
     }
@@ -70,6 +78,29 @@ fun TextMenuConfigDialogContent(
     var showProcessTextConfig by remember { mutableStateOf(false) }
     val topBarColor = pageTopBarContainerColor()
     val cardColor = pageCardContainerColor()
+
+    val listState = rememberLazyListState()
+    val hapticFeedback = LocalHapticFeedback.current
+
+    // 拖拽排序状态
+    val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
+        menuItems = menuItems.toMutableList().apply {
+            if (isEmpty()) return@apply
+            val fromIndex = from.index.coerceIn(0, lastIndex)
+            val toIndex = to.index.coerceIn(0, lastIndex)
+            if (fromIndex in indices && toIndex in indices) {
+                add(toIndex, removeAt(fromIndex))
+            }
+        }
+    }
+
+    // 拖拽结束后持久化排序
+    LaunchedEffect(reorderableState.isAnyItemDragging) {
+        if (!reorderableState.isAnyItemDragging) {
+            val orderedIds = menuItems.map { it.id }
+            TextMenuConfig.setMenuItemOrder(context, orderedIds)
+        }
+    }
 
     if (showProcessTextConfig) {
         ProcessTextConfigContent(
@@ -154,28 +185,41 @@ fun TextMenuConfigDialogContent(
                     )
 
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f, fill = false)
                     ) {
-                        items(menuItems) { item ->
-                            MenuItemRow(
-                                item = item,
-                                title = customTitles[item.id]
-                                    ?: TextMenuConfig.getDefaultMenuTitle(context, item),
-                                isChecked = item.id !in hiddenIds,
-                                onEditClick = { editingItem = item },
-                                onCheckedChange = { checked ->
-                                    val newHiddenIds = hiddenIds.toMutableSet()
-                                    if (checked) {
-                                        newHiddenIds.remove(item.id)
-                                    } else {
-                                        newHiddenIds.add(item.id)
-                                    }
-                                    TextMenuConfig.setHiddenMenuItemIds(context, newHiddenIds)
-                                    hiddenIds = newHiddenIds
-                                }
-                            )
+                        items(menuItems, key = { it.id }) { item ->
+                            ReorderableItem(reorderableState, key = item.id) { isDragging ->
+                                MenuItemRow(
+                                    item = item,
+                                    title = customTitles[item.id]
+                                        ?: TextMenuConfig.getDefaultMenuTitle(context, item),
+                                    isChecked = item.id !in hiddenIds,
+                                    onEditClick = { editingItem = item },
+                                    onCheckedChange = { checked ->
+                                        val newHiddenIds = hiddenIds.toMutableSet()
+                                        if (checked) {
+                                            newHiddenIds.remove(item.id)
+                                        } else {
+                                            newHiddenIds.add(item.id)
+                                        }
+                                        TextMenuConfig.setHiddenMenuItemIds(context, newHiddenIds)
+                                        hiddenIds = newHiddenIds
+                                    },
+                                    dragModifier = Modifier
+                                        .zIndex(if (isDragging) 1f else 0f)
+                                        .longPressDraggableHandle(
+                                            onDragStarted = {
+                                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                            },
+                                            onDragStopped = {
+                                                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                                            }
+                                        )
+                                )
+                            }
                         }
                     }
 
@@ -191,6 +235,7 @@ fun TextMenuConfigDialogContent(
                                 hiddenIds = emptySet()
                                 customTitles = emptyMap()
                                 visibleCount = TextMenuConfig.DEFAULT_VISIBLE_COUNT
+                                menuItems = TextMenuConfig.getAllMenuItems(context)
                                 context.toastOnUi("已重置为默认配置")
                             }
                         ) {
@@ -519,21 +564,32 @@ private fun getProcessTextApps(context: Context): List<ProcessTextAppInfo> {
 /**
  * 菜单项行
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MenuItemRow(
     item: TextMenuConfig.MenuItemInfo,
     title: String,
     isChecked: Boolean,
     onEditClick: () -> Unit,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    dragModifier: Modifier = Modifier
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(dragModifier)
             .clickable { onCheckedChange(!isChecked) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // 拖拽手柄图标
+        Icon(
+            imageVector = Icons.Filled.DragHandle,
+            contentDescription = stringResource(R.string.text_menu_drag_sort),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
         Column(
             modifier = Modifier
                 .weight(1f)

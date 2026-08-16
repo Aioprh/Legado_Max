@@ -1378,6 +1378,7 @@
     <string name="storage_manage">儲存管理</string>
     <string name="storage_manage_summary">管理書籍快取和儲存空間</string>
     <string name="text_menu_config">文字選單配置</string>
+    <string name="text_menu_drag_sort">拖動排序</string>
     <string name="touch_page_anim_speed_title">觸控翻頁動畫速度</string>
     <string name="unsafe_ssl_summary">允許不安全 SSL 憑證連線</string>
     <string name="unsafe_ssl_title">不安全 SSL</string>
