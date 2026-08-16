@@ -1,4 +1,4 @@
-package io.legado.app.utils
+package io.legado.app.utils.log
 
 import android.app.Application
 import android.util.Log
