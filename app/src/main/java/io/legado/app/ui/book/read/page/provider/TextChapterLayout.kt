@@ -217,7 +217,7 @@ class TextChapterLayout(
         val processedContents = preprocessBubbleJs(newContents)
         val imageStyle = book.getImageStyle()
         val isTextImageStyle = imageStyle.equals(Book.imgStyleText, true)
-        val bodyHighlightRanges = buildBodyHighlightRanges(processedContents)
+        val bodyHighlightStyles = buildBodyHighlightStyles(processedContents)
         
         // 续排逻辑：如果最后一页没排满，摘回来继续排
         if (textPages.isNotEmpty()) {
@@ -296,8 +296,8 @@ class TextChapterLayout(
                     imageStyle,
                     srcList = srcList,
                     clickList = clickList,
-                    bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
-                    bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
+                    bodyHighlightStyles = bodyHighlightStyles.takeIf { !content.contains("<img") },
+                    bodyHighlightStart = bodyHighlightStyles.startAt(contentIndex)
                 )
             } else {
                 if (isSetTypedImage) {
@@ -423,8 +423,8 @@ class TextChapterLayout(
                         isFirstLine = isFirstLine,
                         srcList = srcList,
                         clickList = clickList,
-                        bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
-                        bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
+                        bodyHighlightStyles = bodyHighlightStyles.takeIf { !content.contains("<img") },
+                        bodyHighlightStart = bodyHighlightStyles.startAt(contentIndex)
                     )
                 }
             }
@@ -637,7 +637,7 @@ class TextChapterLayout(
         }
 
         val isTextImageStyle = imageStyle.equals(Book.imgStyleText, true)
-        val bodyHighlightRanges = buildBodyHighlightRanges(contents)
+        val bodyHighlightStyles = buildBodyHighlightStyles(contents)
 
         val sb = StringBuffer()
         var isSetTypedImage = false
@@ -684,8 +684,8 @@ class TextChapterLayout(
                     imageStyle,
                     srcList = srcList,
                     clickList = clickList,
-                    bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
-                    bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
+                    bodyHighlightStyles = bodyHighlightStyles.takeIf { !content.contains("<img") },
+                    bodyHighlightStart = bodyHighlightStyles.startAt(contentIndex)
                 )
             } else {
                 if (isSingleImageStyle && isSetTypedImage) {
@@ -811,8 +811,8 @@ class TextChapterLayout(
                         isFirstLine = isFirstLine,
                         srcList = srcList,
                         clickList = clickList,
-                        bodyHighlightRanges = bodyHighlightRanges.takeIf { !content.contains("<img") },
-                        bodyHighlightStart = bodyHighlightRanges.startAt(contentIndex)
+                        bodyHighlightStyles = bodyHighlightStyles.takeIf { !content.contains("<img") },
+                        bodyHighlightStart = bodyHighlightStyles.startAt(contentIndex)
                     )
                 }
             }
@@ -1342,7 +1342,14 @@ class TextChapterLayout(
     }
 
 
-    private fun buildBodyHighlightRanges(contents: List<String>): BodyHighlightRanges {
+    /**
+     * 对整章正文做一次高亮匹配，构建每字符样式数组。
+     *
+     * 与逐段建 SpannableStringBuilder 再 setSpan 的旧方案等价，
+     * 但每条规则只产生一个共享样式对象，命中只做数组写入，
+     * 排版期逐字符消费改为数组下标访问。
+     */
+    private fun buildBodyHighlightStyles(contents: List<String>): BodyHighlightStyles {
         val starts = ArrayList<Int>(contents.size)
         val fullText = StringBuilder()
         contents.forEachIndexed { index, content ->
@@ -1353,41 +1360,38 @@ class TextChapterLayout(
             }
         }
         if (fullText.isEmpty()) {
-            return BodyHighlightRanges(starts, emptyList())
+            return BodyHighlightStyles(null, starts)
         }
-        val ranges = ArrayList<HighlightMatchRange>()
+        return BodyHighlightStyles(
+            createHighlightStyles(fullText.toString(), isTitle = false),
+            starts
+        )
+    }
+
+    /**
+     * 对指定文本按启用的高亮规则生成每字符样式数组，无命中时返回 null。
+     * 重叠规则按字段级合并，与旧 Span 方案的合并语义一致。
+     */
+    private fun createHighlightStyles(text: String, isTitle: Boolean): Array<CharStyle?>? {
+        if (text.isEmpty()) return null
+        var styles: Array<CharStyle?>? = null
         compiledHighlightRules.forEach { compiled ->
-            if (!compiled.rule.appliesTo(false, book.name, book.origin)) return@forEach
-            compiled.regex.findAll(fullText).forEach { match ->
+            if (!compiled.rule.appliesTo(isTitle, book.name, book.origin)) return@forEach
+            compiled.regex.findAll(text).forEach { match ->
                 val start = match.range.first
                 val end = match.range.last + 1
-                if (start < end) {
-                    ranges.add(HighlightMatchRange(start, end, compiled.rule))
+                if (start >= end) return@forEach
+                val style = compiled.charStyle
+                val active = styles ?: arrayOfNulls<CharStyle>(text.length).also { styles = it }
+                for (i in start until end) {
+                    active[i] = when (val existing = active[i]) {
+                        null -> style
+                        else -> existing.mergedWith(style)
+                    }
                 }
             }
         }
-        return BodyHighlightRanges(starts, ranges)
-    }
-
-    private fun BodyHighlightRanges.applyTo(
-        text: String,
-        globalStart: Int,
-    ): SpannableStringBuilder {
-        val spannable = SpannableStringBuilder(text)
-        val globalEnd = globalStart + text.length
-        ranges.forEach { range ->
-            val start = maxOf(range.start, globalStart)
-            val end = minOf(range.end, globalEnd)
-            if (start < end) {
-                applyRuleSpan(
-                    spannable,
-                    range.rule,
-                    start - globalStart,
-                    end - globalStart
-                )
-            }
-        }
-        return spannable
+        return styles
     }
 
     private fun applyHighlightRules(
@@ -1454,13 +1458,14 @@ class TextChapterLayout(
         isVolumeTitle: Boolean = false,
         srcList: LinkedList<String>? = null,
         clickList: LinkedList<String?>?,
-        bodyHighlightRanges: BodyHighlightRanges? = null,
+        bodyHighlightStyles: BodyHighlightStyles? = null,
         bodyHighlightStart: Int? = null,
     ) {
-        val styledText = if (!isTitle && bodyHighlightRanges != null && bodyHighlightStart != null) {
-            bodyHighlightRanges.applyTo(text, bodyHighlightStart)
+        // 整章样式数组按段落切片；无整章上下文时（标题、被图片分割的残段）就地扫描
+        val charStyles = if (!isTitle && bodyHighlightStyles != null && bodyHighlightStart != null) {
+            bodyHighlightStyles.stylesAt(bodyHighlightStart, text.length)
         } else {
-            applyHighlightRules(SpannableStringBuilder(text), isTitle)
+            createHighlightStyles(text, isTitle)
         }
         val widthsArray = allocateFloatArray(text.length)
         textPaint.getTextWidthsCompat(text, widthsArray, reviewCharWidth)
@@ -1480,9 +1485,9 @@ class TextChapterLayout(
         val layout = if (useZhLayout) {
             val (words, widths) = measureTextSplit(text, widthsArray)
             val indentSize = if (isFirstLine) paragraphIndent.length else 0
-            ZhLayout(styledText, textPaint, visibleWidth, words, widths, indentSize)
+            ZhLayout(text, textPaint, visibleWidth, words, widths, indentSize)
         } else {
-            StaticLayout(styledText, textPaint, visibleWidth, Layout.Alignment.ALIGN_NORMAL, 0f, 0f, true)
+            StaticLayout(text, textPaint, visibleWidth, Layout.Alignment.ALIGN_NORMAL, 0f, 0f, true)
         }
         durY = when {
             //标题y轴居中
@@ -1533,7 +1538,7 @@ class TextChapterLayout(
                     //多行的第一行 非标题
                     addCharsToLineFirst(
                         book, absStartX, textLine, words, textPaint,
-                        desiredWidth, widths, srcList, clickList, styledText, lineStart
+                        desiredWidth, widths, srcList, clickList, charStyles, lineStart
                     )
                 }
                 layout.lineCount - 1 -> {
@@ -1553,7 +1558,7 @@ class TextChapterLayout(
                     }
                     addCharsToLineNatural(
                         book, absStartX, textLine, words,
-                        startX, !isTitle && lineIndex == 0, widths, srcList, clickList, styledText, lineStart
+                        startX, !isTitle && lineIndex == 0, widths, srcList, clickList, charStyles, lineStart
                     )
                 }
                 else -> {
@@ -1569,13 +1574,13 @@ class TextChapterLayout(
                         }
                         addCharsToLineNatural(
                             book, absStartX, textLine, words,
-                            startX, false, widths, srcList, clickList, styledText, lineStart
+                            startX, false, widths, srcList, clickList, charStyles, lineStart
                         )
                     } else {
                         //中间行
                         addCharsToLineMiddle(
                             book, absStartX, textLine, words, textPaint,
-                            desiredWidth, 0f, widths, srcList, clickList, styledText, lineStart
+                            desiredWidth, 0f, widths, srcList, clickList, charStyles, lineStart
                         )
                     }
                 }
@@ -1630,14 +1635,14 @@ class TextChapterLayout(
         textWidths: List<Float>,
         srcList: LinkedList<String>?,
         clickList: LinkedList<String?>?,
-        styledText: CharSequence,
+        charStyles: Array<CharStyle?>?,
         lineStart: Int,
     ) {
         var x = 0f
         if (!textFullJustify) {
             addCharsToLineNatural(
                 book, absStartX, textLine, words,
-                x, true, textWidths, srcList, clickList, styledText, lineStart
+                x, true, textWidths, srcList, clickList, charStyles, lineStart
             )
             return
         }
@@ -1660,7 +1665,7 @@ class TextChapterLayout(
             val textWidths1 = textWidths.subList(bodyIndent.length, textWidths.size)
             addCharsToLineMiddle(
                 book, absStartX, textLine, text1, textPaint,
-                desiredWidth, x, textWidths1, srcList, clickList, styledText, lineStart + bodyIndent.length
+                desiredWidth, x, textWidths1, srcList, clickList, charStyles, lineStart + bodyIndent.length
             )
         }
     }
@@ -1681,14 +1686,14 @@ class TextChapterLayout(
         textWidths: List<Float>,
         srcList: LinkedList<String>?,
         clickList: LinkedList<String?>?,
-        styledText: CharSequence,
+        charStyles: Array<CharStyle?>?,
         lineStart: Int,
     ) {
         if (!textFullJustify) {
             addCharsToLineNatural(
                 book, absStartX, textLine, words,
                 startX, false, textWidths, srcList,
-                clickList, styledText, lineStart
+                clickList, charStyles, lineStart
             )
             return
         }
@@ -1710,7 +1715,7 @@ class TextChapterLayout(
                 addCharToLine(
                     book, absStartX, textLine, char,
                     x, x1, index + 1 == words.size, srcList,
-                    clickList, styledText, lineStart + index
+                    clickList, charStyles, lineStart + index
                 )
                 x = x1
             }
@@ -1727,7 +1732,7 @@ class TextChapterLayout(
                 addCharToLine(
                     book, absStartX, textLine, char,
                     x, x1, index + 1 == words.size, srcList,
-                    clickList, styledText, lineStart + index
+                    clickList, charStyles, lineStart + index
                 )
                 x = x1
             }
@@ -1748,7 +1753,7 @@ class TextChapterLayout(
         textWidths: List<Float>,
         srcList: LinkedList<String>?,
         clickList: LinkedList<String?>?,
-        styledText: CharSequence,
+        charStyles: Array<CharStyle?>?,
         lineStart: Int,
     ) {
         val indentLength = paragraphIndent.length
@@ -1768,7 +1773,7 @@ class TextChapterLayout(
                 index + 1 == words.size,
                 srcList,
                 clickList,
-                styledText,
+                charStyles,
                 lineStart + index
             )
             x = x1
@@ -1792,20 +1797,20 @@ class TextChapterLayout(
         isLineEnd: Boolean,
         srcList: LinkedList<String>?,
         clickList: LinkedList<String?>?,
-        styledText: CharSequence,
+        charStyles: Array<CharStyle?>?,
         textIndex: Int,
     ) {
-        val textColor = extractTextColor(styledText as Spanned, textIndex)
-        val highlightStyle = extractHighlightStyle(styledText, textIndex)
-        val underlineMode = highlightStyle?.underlineMode ?: 0
-        val underlineColor = highlightStyle?.underlineColor
-        val underlineWidth = highlightStyle?.underlineWidth ?: 1f
-        val underlineOffset = highlightStyle?.underlineOffset ?: 2f
-        val underlineSvgPath = highlightStyle?.underlineSvgPath ?: ""
-        val bgColor = highlightStyle?.bgColor
-        val bgImage = highlightStyle?.bgImage ?: ""
-        val bgImageFit = highlightStyle?.bgImageFit ?: 0
-        val bgImageScale = highlightStyle?.bgImageScale ?: 1f
+        val style = charStyles?.getOrNull(textIndex)
+        val textColor = style?.textColor
+        val underlineMode = style?.underlineMode ?: 0
+        val underlineColor = style?.underlineColor
+        val underlineWidth = style?.underlineWidth ?: 1f
+        val underlineOffset = style?.underlineOffset ?: 2f
+        val underlineSvgPath = style?.underlineSvgPath ?: ""
+        val bgColor = style?.bgColor
+        val bgImage = style?.bgImage ?: ""
+        val bgImageFit = style?.bgImageFit ?: 0
+        val bgImageScale = style?.bgImageScale ?: 1f
         val column = when {
             !srcList.isNullOrEmpty() && (char == srcReplaceStr || char == reviewStr) -> {
                 val src = srcList.removeFirst()
@@ -1952,30 +1957,60 @@ class TextChapterLayout(
     private data class CompiledHighlightRule(
         val rule: HighlightRule,
         val regex: Regex,
-    )
-
-    /**
-     * 单条高亮匹配区间，记录在全文中的起止位置和对应规则。
-     */
-    private data class HighlightMatchRange(
-        val start: Int,
-        val end: Int,
-        val rule: HighlightRule,
-    )
+    ) {
+        /** 该规则的渲染样式快照，整章共享一个对象，命中只写数组引用 */
+        val charStyle: CharStyle by lazy {
+            val style = HighlightRuleStyle.from(rule)
+            CharStyle(
+                textColor = style.textColor,
+                underlineMode = style.underlineMode,
+                underlineColor = style.resolvedAccentColor,
+                underlineWidth = style.underlineWidth,
+                underlineOffset = style.underlineOffset,
+                underlineSvgPath = style.underlineSvgPath,
+                bgColor = style.bgColor,
+                bgImage = style.bgImage,
+                bgImageFit = style.bgImageFit,
+                bgImageScale = style.bgImageScale,
+            )
+        }
+    }
 
     /**
      * 正文高亮匹配结果。
      *
      * [starts] 保存每段 content 拼接后在全文中的起始偏移；
-     * [ranges] 保存所有规则在全文中的匹配区间。
-     * [startAt] 返回指定 content 的全局起始偏移，供 setTypeText 定位。
+     * [styles] 为整章每字符样式数组，无任何命中时为 null；
+     * [startAt] 返回指定 content 的全局起始偏移，供 setTypeText 定位切片。
      */
-    private class BodyHighlightRanges(
+    private class BodyHighlightStyles(
+        val styles: Array<CharStyle?>?,
         val starts: List<Int>,
-        val ranges: List<HighlightMatchRange>,
     ) {
         fun startAt(contentIndex: Int): Int =
             starts.getOrElse(contentIndex) { 0 }
+
+        /**
+         * 取指定偏移起、指定长度的样式切片，该范围内无任何样式时返回 null。
+         */
+        fun stylesAt(offset: Int, length: Int): Array<CharStyle?>? {
+            val source = styles ?: return null
+            if (length <= 0 || offset >= source.size) return null
+            val copyLength = minOf(length, source.size - offset)
+            var hasStyle = false
+            for (i in 0 until copyLength) {
+                if (source[offset + i] != null) {
+                    hasStyle = true
+                    break
+                }
+            }
+            if (!hasStyle) return null
+            val result = arrayOfNulls<CharStyle>(length)
+            for (i in 0 until copyLength) {
+                source[offset + i]?.let { result[i] = it }
+            }
+            return result
+        }
     }
 
     /** 判断规则是否对当前文本生效，同时检查书籍作用域和标题/正文作用域 */
