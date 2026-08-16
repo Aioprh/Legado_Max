@@ -16,6 +16,7 @@ import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.putPrefInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -327,7 +328,10 @@ class ReadRecordViewModel : ViewModel() {
     suspend fun getBookCover(bookName: String, bookAuthor: String): String? {
         val key = cacheKey(bookName, bookAuthor)
         coverPathCache[key]?.let { return it }
-        val result = bookRepository.getBookCoverByNameAndAuthor(bookName, bookAuthor)
+        // 查询内部可能触发同步联网搜封面(java.ajax)，必须离开主线程执行
+        val result = withContext(Dispatchers.IO) {
+            bookRepository.getBookCoverByNameAndAuthor(bookName, bookAuthor)
+        }
         result?.let { coverPathCache[key] = it }
         return result
     }

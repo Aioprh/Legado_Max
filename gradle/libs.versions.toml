@@ -8,12 +8,12 @@ colorpicker = "1.1.0"
 constraintlayout = "2.2.1"
 core = "1.17.0"
 flexbox = "3.0.0"
-fragment = "1.8.9"
+fragment = "1.9.0"
 documentfile = "1.1.0"
 liquidglass = "1.0.3"
 hilt = "2.59"
 
-composeBom = "2025.04.01"
+composeBom = "2026.08.00"
 
 libarchive = "1.1.6"
 lyricViewx = "1.3.2"
@@ -73,12 +73,9 @@ gsyvideoplayer = "11.3.0"
 
 #noinspection GradleDependency
 webkit = "1.14.0"
-#noinspection GradleDependency
-activity = "1.11.0"
-#noinspection GradleDependency
-lifecycle = "2.9.4"
-#noinspection GradleDependency
-room = "2.7.2"
+activity = "1.13.0"
+lifecycle = "2.10.0"
+room = "2.8.4"
 #noinspection GradleDependency
 recyclerview = "1.4.0"
 #noinspection GradleDependency
