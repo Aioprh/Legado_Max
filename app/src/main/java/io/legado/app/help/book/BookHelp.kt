@@ -93,6 +93,19 @@ object BookHelp {
     }
 
     /**
+     * 创建目录刷新时的章节缓存迁移器
+     */
+    fun createChapterCacheMigrator(
+        book: Book,
+        oldChapters: List<BookChapter>
+    ): ChapterCacheMigrator {
+        return ChapterCacheMigrator(
+            FileUtils.getPath(downloadDir, cacheFolderName, book.getFolderName()),
+            oldChapters
+        )
+    }
+
+    /**
      * 清除已删除书的缓存 解压缓存
      */
     suspend fun clearInvalidCache() {
