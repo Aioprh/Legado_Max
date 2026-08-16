@@ -9,6 +9,7 @@ import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.dao.BookShelfDisplay
 import io.legado.app.databinding.ItemBookshelfList2Binding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.lib.theme.bookBorderBackground
 import io.legado.app.utils.invisible
 import io.legado.app.utils.toTimeAgo
 import io.legado.app.utils.dpToPx
@@ -46,7 +47,7 @@ class BooksAdapterList2(
         if (payloads.isEmpty()) {
             // 根据配置控制书籍外边框显示和间距
             if (AppConfig.showBookBorder) {
-                root.background = context.resources.getDrawable(io.legado.app.R.drawable.card_border_background, null)
+                root.background = context.bookBorderBackground
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
                     4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()
                 )

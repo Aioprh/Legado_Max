@@ -208,7 +208,7 @@ class BooksAdapterGrid(context: Context, callBack: CallBack) :
                 tvName.visible()
                 tvName.text = item.groupName
             }
-            ivCover.load(item.cover)
+            ivCover.load(item)
         }
 
         fun onBind(item: BookGroup, position: Int, payloads: MutableList<Any>) = binding.run {
@@ -220,7 +220,7 @@ class BooksAdapterGrid(context: Context, callBack: CallBack) :
                     bundle.keySet().forEach {
                         when (it) {
                             "groupName" -> tvName.text = item.groupName
-                            "cover" -> ivCover.load(item.cover)
+                            "cover" -> ivCover.load(item)
                         }
                     }
                 }
@@ -250,7 +250,7 @@ class BooksAdapterGrid(context: Context, callBack: CallBack) :
                     tvName.text = it
                 }
             }
-            ivCover.load(item.cover)
+            ivCover.load(item)
         }
 
         fun onBind(item: BookGroup, position: Int, payloads: MutableList<Any>) = binding.run {
@@ -269,7 +269,7 @@ class BooksAdapterGrid(context: Context, callBack: CallBack) :
                                     tvName.text = it
                                 }
                             }
-                            "cover" -> ivCover.load(item.cover)
+                            "cover" -> ivCover.load(item)
                         }
                     }
                 }
@@ -296,7 +296,7 @@ class BooksAdapterGrid(context: Context, callBack: CallBack) :
 
         fun onBind(item: BookGroup, position: Int) = binding.run {
             tvName.text = item.groupName
-            ivCover.load(item.cover)
+            ivCover.load(item)
             // 隐藏书籍专属视图
             flHasNew.gone()
             ivAuthor.gone()
@@ -316,7 +316,7 @@ class BooksAdapterGrid(context: Context, callBack: CallBack) :
                     bundle.keySet().forEach {
                         when (it) {
                             "groupName" -> tvName.text = item.groupName
-                            "cover" -> ivCover.load(item.cover)
+                            "cover" -> ivCover.load(item)
                         }
                     }
                 }
