@@ -7,9 +7,11 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.GSON
+import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.putPrefString
+import io.legado.app.utils.removePref
 
 /**
  * 文本菜单项配置管理
@@ -63,8 +65,34 @@ object TextMenuConfig {
     
     /**
      * 获取所有菜单项列表
+     * 如果用户自定义了排序，返回排序后的列表；否则返回默认顺序
      */
-    fun getAllMenuItems(): List<MenuItemInfo> = ALL_MENU_ITEMS
+    fun getAllMenuItems(context: Context): List<MenuItemInfo> {
+        val order = getMenuItemOrder(context)
+        if (order.isEmpty()) return ALL_MENU_ITEMS
+        val itemMap = ALL_MENU_ITEMS.associateBy { it.id }
+        // 按存储的顺序排列已知项，未知的新项追加到末尾
+        val ordered = order.mapNotNull { id -> itemMap[id] }
+        val remaining = ALL_MENU_ITEMS.filter { it.id !in order }
+        return ordered + remaining
+    }
+
+    /**
+     * 获取菜单项排序（ID列表）
+     */
+    fun getMenuItemOrder(context: Context): List<Int> {
+        val json = context.getPrefString(PreferKey.textMenuItemOrder)
+        if (json.isNullOrEmpty()) return emptyList()
+        return GSON.fromJsonArray<Int>(json).getOrNull() ?: emptyList()
+    }
+
+    /**
+     * 设置菜单项排序
+     * @param order 菜单项ID列表，按显示顺序排列
+     */
+    fun setMenuItemOrder(context: Context, order: List<Int>) {
+        context.putPrefString(PreferKey.textMenuItemOrder, GSON.toJson(order))
+    }
 
     fun getDefaultMenuTitle(context: Context, item: MenuItemInfo): String {
         return context.getString(item.nameResId)
@@ -175,6 +203,7 @@ object TextMenuConfig {
         Log.d(TAG, "resetToDefault")
         context.putPrefString(PreferKey.hiddenTextMenuItems, "")
         context.putPrefString(PreferKey.textMenuCustomTitles, "")
+        context.removePref(PreferKey.textMenuItemOrder)
         setTextMenuVisibleCount(context, DEFAULT_VISIBLE_COUNT)
     }
 
