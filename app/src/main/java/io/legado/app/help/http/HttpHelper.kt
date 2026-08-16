@@ -1,5 +1,7 @@
 package io.legado.app.help.http
 
+import com.chuckerteam.chucker.api.ChuckerInterceptor
+import io.legado.app.BuildConfig
 import io.legado.app.constant.AppConst
 import io.legado.app.help.CacheManager
 import io.legado.app.help.config.AppConfig
@@ -15,6 +17,7 @@ import okhttp3.Credentials
 import okhttp3.Dns
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
+import splitties.init.appCtx
 import java.net.InetSocketAddress
 import java.net.Proxy
 import java.util.concurrent.ConcurrentHashMap
@@ -116,6 +119,10 @@ val okHttpClient: OkHttpClient by lazy {
     }
     builder.addInterceptor(DecompressInterceptor)
     builder.addInterceptor(UrlRecordInterceptor)
+    //Chucker只存在debug版本
+    if (BuildConfig.DEBUG) {
+        builder.addInterceptor(ChuckerInterceptor.Builder(appCtx).build())
+    }
     builder.build().apply {
         val okHttpName =
             OkHttpClient::class.java.name.removePrefix("okhttp3.").removeSuffix("Client")
