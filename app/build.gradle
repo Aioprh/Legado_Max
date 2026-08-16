@@ -66,7 +66,7 @@ android {
     }
     defaultConfig {
         applicationId  = "io.legado.app.yuedu"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 36
         versionCode = releaseCode()
         versionName = version
@@ -238,8 +238,10 @@ dependencies {
     //androidX
     implementation(libs.core.ktx)
     implementation(libs.appcompat.appcompat)
+    //这两个的最新版不支持安卓5和5.1
     implementation(libs.activity.ktx)
     implementation(libs.fragment.ktx)
+
     implementation(libs.preference.ktx)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.swiperefreshlayout)
@@ -299,6 +301,9 @@ dependencies {
     
     //网络
     implementation(libs.okhttp)
+    //Chucker 调试通知栏内查看网络请求 debug依赖 release为空实现
+    debugImplementation(libs.chucker)
+    releaseImplementation(libs.chucker.no.op)
     implementation(fileTree(dir: 'cronetlib', include: ['*.jar', '*.aar']))
     implementation(libs.protobuf.javalite)
     
