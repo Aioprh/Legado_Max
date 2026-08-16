@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.WindowInsets
 import android.widget.FrameLayout
+import android.widget.Magnifier
 import io.legado.app.R
 import io.legado.app.constant.PageAnim
 import io.legado.app.constant.ReadConstants
@@ -126,6 +127,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
     /** 节流更新的进度回调 */
     private val upProgressThrottle = throttle(200) { post { upProgress() } }
     
+    private var selectionMagnifier: Magnifier? = null
     val autoPager = AutoPager(this)  // 自动翻页器
     val isAutoPage get() = autoPager.isRunning  // 是否正在自动翻页
 
@@ -256,6 +258,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
                     if (isTextSelected) {
                         // 如果已选择文本，更新选择范围
                         selectText(event.x, event.y)
+                        showSelectionMagnifier(event.x, event.y)
                     } else {
                         // 否则执行翻页动画
                         pageDelegate?.onTouch(event)
@@ -264,6 +267,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
             }
 
             MotionEvent.ACTION_UP -> {
+                dismissSelectionMagnifier()
                 callBack.screenOffTimerStart()
                 removeCallbacks(longPressRunnable)
                 if (!pressDown) return true
@@ -287,6 +291,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
             }
 
             MotionEvent.ACTION_CANCEL -> {
+                dismissSelectionMagnifier()
                 removeCallbacks(longPressRunnable)
                 if (!pressDown) return true
                 pressDown = false
@@ -305,6 +310,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
 
     fun cancelSelect(clearSearchResult: Boolean = false) {
         if (isTextSelected) {
+            dismissSelectionMagnifier()
             curPage.cancelSelect(clearSearchResult)
             isTextSelected = false
         }
@@ -441,8 +447,29 @@ class ReadView(context: Context, attrs: AttributeSet) :
                 // 设置选择起始和结束位置
                 curPage.selectStartMoveIndex(startPos)
                 curPage.selectEndMoveIndex(endPos)
+                showSelectionMagnifier(startX, startY)
             }
         }
+    }
+
+    /**
+     * 显示选区放大镜
+     * 在文本选择过程中跟随手指位置显示放大镜，方便用户查看选区位置
+     * 仅在 Android 9.0 (API 28) 及以上版本可用
+     */
+    private fun showSelectionMagnifier(x: Float, y: Float) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || !isAttachedToWindow) return
+        val safeX = x.coerceIn(0f, width.toFloat())
+        val safeY = y.coerceIn(0f, height.toFloat())
+        (selectionMagnifier ?: Magnifier(this).also { selectionMagnifier = it }).show(safeX, safeY)
+    }
+
+    /**
+     * 隐藏选区放大镜
+     */
+    private fun dismissSelectionMagnifier() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
+        selectionMagnifier?.dismiss()
     }
 
     /**
@@ -565,6 +592,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
      * 销毁事件
      */
     fun onDestroy() {
+        dismissSelectionMagnifier()
         pageDelegate?.onDestroy()
         curPage.cancelSelect()
         invalidateTextPage()
