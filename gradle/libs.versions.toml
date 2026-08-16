@@ -21,6 +21,8 @@ soraEditor = "0.24.4"
 glide = "5.0.5"
 reorderable = "3.1.0"
 gson = "2.13.2"
+# Timber 日志库: https://github.com/JakeWharton/timber
+timber = "5.0.1"
 jsonPath = "2.10.0"
 jsoupxpath = "2.5.3"
 coroutines = "1.10.2"
@@ -206,6 +208,7 @@ desugar = { group = "com.android.tools", name = "desugar_jdk_libs_nio", version.
 
 flexbox = { module = "com.google.android.flexbox:flexbox", version.ref = "flexbox" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 json-path = { module = "com.jayway.jsonpath:json-path", version.ref = "jsonPath" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 jsoupxpath = { module = "cn.wanghaomiao:JsoupXpath", version.ref = "jsoupxpath" }

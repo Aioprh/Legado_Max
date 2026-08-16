@@ -196,6 +196,8 @@ android {
 }
 
 dependencies {
+    //Timber 日志库: https://github.com/JakeWharton/timber
+    implementation(libs.timber)
     //compileOnly "com.android.tools.build:gradle:$agp_version"
     //noinspection GradleDependency,GradlePackageUpdate
     //coreLibraryDesugaring('com.android.tools:desugar_jdk_libs_nio:2.0.4')
