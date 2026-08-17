@@ -141,13 +141,13 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
 
     /**
      * 启动文件选择器以选择要导入的主题文件。
-     * 支持 zip 和 json 格式。
+     * 支持 zip、json 和 red 格式。
      */
     private fun selectImport() {
         importTheme.launch {
             mode = HandleFileContract.FILE
             title = getString(R.string.application_theme_import)
-            allowExtensions = arrayOf("zip", "json")
+            allowExtensions = arrayOf("zip", "json", "red")
         }
     }
 
