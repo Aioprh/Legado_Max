@@ -601,7 +601,7 @@
                 <data android:pathAdvancedPattern=".*\\.[zZ][iI][pP]" />
                 <data android:pathPattern=".*\\.zip" />
                 <data android:pathPattern=".*\\.ZIP" />
-                <!-- red (archive_primate_beta 主题包格式) -->
+                <!-- red (Reeden 阅读 App 主题包格式) -->
                 <data android:pathAdvancedPattern=".*\\.[rR][eE][dD]" />
                 <data android:pathPattern=".*\\.red" />
                 <data android:pathPattern=".*\\.RED" />

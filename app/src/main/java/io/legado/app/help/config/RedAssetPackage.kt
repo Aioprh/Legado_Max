@@ -10,7 +10,7 @@ import java.util.zip.ZipFile
 /**
  * .red 主题包格式解析工具。
  *
- * .red 文件来自另一个阅读软件（iOS「阅读」App），其文件格式为：
+ * .red 文件来自 Reeden 阅读 App，其文件格式为：
  * - 前 3 字节：`R`, `E`, `D`（ASCII）
  * - 第 4 字节：版本号或子格式标识（如 `0x04` 表示 RED04_ZIP）
  * - 后续字节：ZIP 数据 或 GZIP 数据（视子格式而定）

@@ -155,7 +155,7 @@ class FileAssociationActivity :
      *
      * 将 URI 对应的文件复制到临时目录，然后调用
      * [ApplicationThemeManager.importFile] 解析导入。
-     * 兼容 .red（RED\0 头 + ZIP）和标准 .zip 两种格式。
+     * 兼容 .red（Reeden 阅读 App 主题包，RED 头 + ZIP）和标准 .zip 两种格式。
      */
     private fun importRedTheme(uri: Uri) {
         lifecycleScope.launch {
