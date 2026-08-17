@@ -46,4 +46,11 @@
         android:title="@string/file_manage"
         app:iconSpaceReserved="false" />
 
+    <io.legado.app.lib.prefs.Preference
+        android:icon="@drawable/ic_lock_outline"
+        android:key="permissionManage"
+        android:summary="@string/permission_manage_summary"
+        android:title="@string/permission_manage"
+        app:iconSpaceReserved="false" />
+
 </androidx.preference.PreferenceScreen>

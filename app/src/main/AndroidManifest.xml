@@ -398,6 +398,11 @@
             android:name=".ui.debug.DebugToolsActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
+        <!-- 权限管理 -->
+        <activity
+            android:name=".ui.permission.PermissionManageActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
         <!-- URL访问记录 -->
         <activity
             android:name=".ui.urlRecord.UrlRecordActivity"
