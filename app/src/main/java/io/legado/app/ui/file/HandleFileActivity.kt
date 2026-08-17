@@ -423,8 +423,12 @@ class HandleFileActivity :
                     else -> {
                         val mime = MimeTypeMap.getSingleton()
                             .getMimeTypeFromExtension(it)
-                            ?: "application/octet-stream"
-                        types.add(mime)
+                        if (mime != null) {
+                            types.add(mime)
+                        } else {
+                            // 未知 MIME 类型的扩展名（如 red），使用通配符确保文件可见
+                            types.add("*/*")
+                        }
                     }
                 }
             }
