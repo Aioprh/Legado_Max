@@ -2157,7 +2157,7 @@
 <string name="application_theme_name_exists">An app theme with this name already exists</string>
 <string name="application_theme_not_set">Not set</string>
 <string name="application_theme_rename">Rename</string>
-<string name="application_theme_summary">Manage themes, top bars, bottom bars, and cover galleries together</string>
+<string name="application_theme_summary">Manage themes, top bars, bottom bars, and cover galleries together. Supports importing archive, md3, and .red theme packages</string>
 <string name="application_theme_update_current">Update from current combination</string>
 <string name="applied">Applied</string>
 <string name="applied_nav_bar_config">Applied navigation bar config: %s</string>

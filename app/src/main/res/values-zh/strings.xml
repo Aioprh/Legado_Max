@@ -2141,7 +2141,7 @@
 <string name="application_theme_name_exists">应用主题名称已存在</string>
 <string name="application_theme_not_set">未设置</string>
 <string name="application_theme_rename">重命名</string>
-<string name="application_theme_summary">统一管理主题、顶栏、底栏和封面图集</string>
+<string name="application_theme_summary">统一管理主题、顶栏、底栏和封面图集，支持导入 archive 版、md3 版以及 .red 格式的主题包</string>
 <string name="application_theme_update_current">更新为当前组合</string>
 <string name="applied">已应用</string>
 <string name="applied_nav_bar_config">已应用底栏包: %s</string>
