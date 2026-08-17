@@ -41,6 +41,14 @@ object BookshelfMatcher {
     private val nameAuthorKeys: MutableSet<Pair<String, String>> =
         java.util.concurrent.ConcurrentHashMap.newKeySet()
 
+    /** 仅书名集合：用于 author 为空时的回退匹配（兼容旧逻辑） */
+    private val nameOnlyKeys: MutableSet<String> =
+        java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+    /** bookUrl 集合：用于精确 URL 匹配 */
+    private val bookUrlKeys: MutableSet<String> =
+        java.util.concurrent.ConcurrentHashMap.newKeySet()
+
     /** 刷新信号（供 View 体系的 upAdapterLiveData 转发使用） */
     private val _refreshSignal = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val refreshSignal = _refreshSignal.asSharedFlow()
@@ -64,9 +72,13 @@ object BookshelfMatcher {
             appDb.bookDao.flowShelfKeys().collect { keys ->
                 exactKeys.clear()
                 nameAuthorKeys.clear()
+                nameOnlyKeys.clear()
+                bookUrlKeys.clear()
                 keys.forEach { key: ShelfKey ->
                     exactKeys.add(Triple(key.name, key.author, key.bookUrl))
                     nameAuthorKeys.add(key.name to key.author)
+                    nameOnlyKeys.add(key.name)
+                    bookUrlKeys.add(key.bookUrl)
                 }
                 _version.update { it + 1 }
                 _refreshSignal.tryEmit(Unit)
@@ -81,7 +93,8 @@ object BookshelfMatcher {
      * @param author 作者
      * @param bookUrl 书籍 URL（Primary Key）
      * @return 书架状态：[BookShelfState.IN_SHELF]（bookUrl 精确匹配）、
-     *         [BookShelfState.SAME_NAME_AUTHOR]（同名同作者但 URL 不同）、
+     *         [BookShelfState.SAME_NAME_AUTHOR]（同名同作者但 URL 不同；
+     *         当 author 为空时，仅按书名匹配以兼容旧逻辑）、
      *         [BookShelfState.NOT_IN_SHELF]（不在书架）
      */
     fun getState(name: String, author: String, bookUrl: String?): BookShelfState {
@@ -89,6 +102,8 @@ object BookshelfMatcher {
         return when {
             triple in exactKeys -> BookShelfState.IN_SHELF
             (name to author) in nameAuthorKeys -> BookShelfState.SAME_NAME_AUTHOR
+            // 兼容旧逻辑：当搜索结果 author 为空时，仅按书名匹配
+            author.isBlank() && name in nameOnlyKeys -> BookShelfState.SAME_NAME_AUTHOR
             else -> BookShelfState.NOT_IN_SHELF
         }
     }
@@ -99,9 +114,18 @@ object BookshelfMatcher {
      * 供 [SearchViewModel.isInBookShelf] / [ExploreShowViewModel.isInBookShelf] 使用
      */
     fun isInShelf(bookUrl: String?, name: String, author: String): Boolean {
-        if (bookUrl != null && Triple(name, author, bookUrl) in exactKeys) {
+        // 1. bookUrl 精确匹配
+        if (bookUrl != null && bookUrl in bookUrlKeys) {
             return true
         }
-        return (name to author) in nameAuthorKeys
+        // 2. 同名同作者匹配
+        if ((name to author) in nameAuthorKeys) {
+            return true
+        }
+        // 3. 兼容旧逻辑：当 author 为空时，仅按书名匹配
+        if (author.isBlank() && name in nameOnlyKeys) {
+            return true
+        }
+        return false
     }
 }
