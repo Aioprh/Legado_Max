@@ -210,10 +210,15 @@ object ApplicationThemeManager {
      * @param options 导入选项，控制是否创建各子配置；null 表示全部创建
      */
     suspend fun importFile(file: File, options: ImportOptions? = null): Config {
-        val isZip = file.inputStream().use { input ->
-            input.read() == 'P'.code && input.read() == 'K'.code
+        // 检测 .red 格式（RED\0 头 + ZIP 数据），剥离头部后作为 ZIP 处理
+        val zipFile = RedAssetPackage.zipPayload(file, RedAssetPackage.tempDir())
+        if (zipFile != null) {
+            val result = importZip(zipFile, options)
+            // 如果创建了临时文件（非原文件），导入完成后删除
+            if (zipFile != file) zipFile.delete()
+            return result
         }
-        if (isZip) return importZip(file, options)
+        // 不是 ZIP 也不是 .red，尝试作为纯 JSON 导入
         require(file.length() <= maxManifestBytes) { appCtx.getString(R.string.app_theme_file_too_large) }
         val imported = sanitize(
             GSON.fromJson(file.readText(), Config::class.java)
