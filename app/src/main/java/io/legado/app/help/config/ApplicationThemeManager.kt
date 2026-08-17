@@ -231,11 +231,13 @@ object ApplicationThemeManager {
         val temp = appCtx.cacheDir.resolve("applicationThemeImport/${System.currentTimeMillis()}").apply { mkdirs() }
         try {
             ZipFile(file).use { zip ->
-                // 检测 zip 包内的清单文件类型，兼容三种格式
+                // 检测 zip 包内的清单文件类型，兼容四种格式
                 val manifestEntry = zip.getEntry("application_theme.json")
                 val appearanceKitEntry = zip.entries().asSequence()
                     .firstOrNull { !it.isDirectory && (it.name == "appearance_kit.json" || it.name.endsWith("/appearance_kit.json")) }
                 val md3ManifestEntry = zip.getEntry("manifest.json")
+                // .red 格式的清单文件（来自 iOS「阅读」App 的主题包）
+                val redThemeEntry = zip.getEntry("theme.json")
 
                 when {
                     // 当前分支格式
@@ -244,6 +246,8 @@ object ApplicationThemeManager {
                     appearanceKitEntry != null -> return AppearanceKitImporter.import(zip, temp, appearanceKitEntry, options)
                     // MD3-main 分支格式
                     md3ManifestEntry != null -> return Md3ThemeImporter.import(zip, temp, md3ManifestEntry, options)
+                    // .red 格式（iOS「阅读」App 主题包）
+                    redThemeEntry != null -> return RedThemeImporter.import(zip, temp, redThemeEntry, options)
                     else -> throw IllegalArgumentException(appCtx.getString(R.string.app_theme_missing_manifest))
                 }
             }
