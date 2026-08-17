@@ -19,7 +19,7 @@ import java.util.zip.ZipEntry
 /**
  * .red 主题包中的导航图标文件名 → 当前分支图标 key 的映射。
  *
- * .red 格式（来自 iOS「阅读」App）的底栏图标文件名格式为 `{item}_selected.png`，
+ * .red 格式（来自 Reeden 阅读 App）的底栏图标文件名格式为 `{item}_selected.png`，
  * 当前分支的图标 key 格式为 `{key}_selected` / `{key}_normal`。
  *
  * .red 格式只有 selected 状态的图标，没有 normal 状态。
@@ -44,7 +44,7 @@ private val RED_NAV_ICON_MAP = mapOf(
 /**
  * 兼容导入 .red 格式主题包。
  *
- * .red 文件来自另一个阅读软件（iOS「阅读」App），其 ZIP 内容结构为：
+ * .red 文件来自 Reeden 阅读 App，其 ZIP 内容结构为：
  * ```
  * theme.json                          — 主题清单（颜色配置 + 资源引用 ID）
  * light/                              — 日间模式资源

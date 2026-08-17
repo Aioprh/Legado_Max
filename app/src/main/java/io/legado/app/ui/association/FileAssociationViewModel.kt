@@ -24,7 +24,7 @@ class FileAssociationViewModel(application: Application) : BaseAssociationViewMo
             if (uri.isContentScheme() || uri.isFileScheme()) {
                 val fileDoc = FileDoc.fromUri(uri, false)
                 val fileName = fileDoc.name
-                // .red 文件：archive_primate_beta 分支的主题包格式（RED\0 头 + ZIP 数据）
+                // .red 文件：Reeden 阅读 App 的主题包格式（RED 头 + ZIP 数据）
                 if (fileName.endsWith(".red", ignoreCase = true)) {
                     importRedThemeLiveData.postValue(fileDoc.uri)
                     return@execute
@@ -78,10 +78,11 @@ class FileAssociationViewModel(application: Application) : BaseAssociationViewMo
     /**
      * 检测 zip 文件是否包含主题包清单文件。
      *
-     * 兼容三种主题包格式：
+     * 兼容四种主题包格式：
      * - 当前分支：application_theme.json
      * - archive_primate_beta 分支：appearance_kit.json
      * - MD3-main 分支：manifest.json
+     * - Reeden 阅读 App：theme.json
      */
     private fun isThemeZip(fileDoc: FileDoc): Boolean {
         return kotlin.runCatching {
