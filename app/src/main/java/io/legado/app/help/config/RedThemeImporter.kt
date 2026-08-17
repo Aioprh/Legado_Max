@@ -19,11 +19,11 @@ import java.util.zip.ZipEntry
 /**
  * .red 主题包中的导航图标文件名 → 当前分支图标 key 的映射。
  *
- * .red 格式（来自 Reeden 阅读 App）的底栏图标文件名格式为 `{item}_selected.png`，
- * 当前分支的图标 key 格式为 `{key}_selected` / `{key}_normal`。
+ * .red 格式（来自 Reeden 阅读 App）的底栏图标文件名格式为 `{item}_{state}.png`，
+ * state 可能是 `normal`（未选中态）或 `selected`（选中态）。
+ * 部分主题包只提供 `selected` 状态，此时导入时用 selected 图标兜底作为 normal。
  *
- * .red 格式只有 selected 状态的图标，没有 normal 状态。
- * 导入时 selected 图标同时用作 normal 图标（当前分支要求至少有 normal 状态）。
+ * 当前分支的图标 key 格式为 `{key}_selected` / `{key}_normal`。
  *
  * .red 导航项名 → 当前分支导航项 key：
  * - home → homepage
@@ -57,6 +57,7 @@ private val RED_NAV_ICON_MAP = mapOf(
  *   *.jpg                             — 封面图片
  * navbar_pack/{uuid}/                 — 底栏图标包
  *   meta.json                         — 图标包元信息
+ *   {item}_normal.png                 — 各导航项的未选中状态图标（部分主题包可能缺失）
  *   {item}_selected.png               — 各导航项的选中状态图标
  * reader_schema/{uuid}/               — 阅读页配色方案（当前分支暂不使用）
  *   schema.json                       — 阅读页配置
@@ -288,10 +289,12 @@ internal object RedThemeImporter {
      * 导入 .red 格式的底栏图标包。
      *
      * .red 的底栏图标存储在 `navbar_pack/{uuid}/` 目录中，
-     * 文件名格式为 `{item}_selected.png`（如 `home_selected.png`）。
-     * 只有 selected 状态的图标，没有 normal 状态。
+     * 文件名格式为 `{item}_{state}.png`（如 `home_selected.png`、`home_normal.png`）。
      *
-     * 导入时将 selected 图标同时映射为 normal 和 selected 两种状态。
+     * 支持两种情况：
+     * - 主题包含 normal 和 selected 两种状态的图标：分别导入，保留原始状态。
+     * - 主题只含 selected 状态：用 selected 图标兜底作为 normal 图标
+     *   （当前分支要求至少有 normal 状态才能正常显示）。
      */
     private fun importNavBarPack(
         root: File,
@@ -316,29 +319,38 @@ internal object RedThemeImporter {
             .apply { mkdirs() }
 
         val icons = mutableMapOf<String, String>()
-        // 遍历目录中的所有图片文件
+        // 第一遍：遍历目录中的所有图片文件，按原状态导入
         sourceDir.listFiles()?.forEach { file ->
             if (!file.isFile) return@forEach
             val fileName = file.nameWithoutExtension.lowercase()
             val extension = file.extension.ifBlank { "png" }
-            // 解析图标名：{item}_selected 或 {item}_normal
+            // 解析图标名：{item}_{state}
             val parts = fileName.split("_")
             if (parts.size < 2) return@forEach
             val redItemKey = parts[0]
             val state = parts.getOrElse(1) { "" }
             // 映射到当前分支的导航项 key
             val localItemKey = RED_NAV_ICON_MAP[redItemKey] ?: return@forEach
+            // 只处理 normal 和 selected 两种状态
+            if (state != "normal" && state != "selected") return@forEach
 
-            // selected 图标同时作为 normal 和 selected
             val targetFile = iconDir.getFile("${localItemKey}_$state.$extension")
             file.copyTo(targetFile, overwrite = true)
             icons["${localItemKey}_$state"] = targetFile.absolutePath
+        }
 
-            // 如果是 selected 状态，也复制一份作为 normal
-            if (state == "selected") {
-                val normalTarget = iconDir.getFile("${localItemKey}_normal.$extension")
-                file.copyTo(normalTarget, overwrite = true)
-                icons["${localItemKey}_normal"] = normalTarget.absolutePath
+        // 第二遍：对缺少 normal 状态的导航项，用 selected 图标兜底
+        RED_NAV_ICON_MAP.values.forEach { localItemKey ->
+            val normalKey = "${localItemKey}_normal"
+            if (normalKey !in icons) {
+                val selectedKey = "${localItemKey}_selected"
+                val selectedPath = icons[selectedKey]
+                if (selectedPath != null) {
+                    val selectedFile = File(selectedPath)
+                    val normalTarget = iconDir.getFile("$normalKey.${selectedFile.extension.ifBlank { "png" }}")
+                    selectedFile.copyTo(normalTarget, overwrite = true)
+                    icons[normalKey] = normalTarget.absolutePath
+                }
             }
         }
 
