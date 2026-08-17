@@ -412,6 +412,10 @@ class ReadRecordRepositoryTest {
             }.map { it.copy() }
         }
 
+        override suspend fun getAllReadRecordsList(): List<ReadRecord> {
+            return records.map { it.copy() }
+        }
+
         override fun getTotalReadTime(): Flow<Long?> {
             return flowOf(records.sumOf { it.readTime })
         }
