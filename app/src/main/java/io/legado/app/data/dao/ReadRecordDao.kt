@@ -60,6 +60,9 @@ interface ReadRecordDao {
     @Query("SELECT * FROM readRecord WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor")
     suspend fun getReadRecord(deviceId: String, bookName: String, bookAuthor: String): ReadRecord?
 
+    @Query("SELECT * FROM readRecord")
+    suspend fun getAllReadRecordsList(): List<ReadRecord>
+
     @Query("SELECT * FROM readRecord WHERE bookName = :bookName")
     suspend fun getReadRecordsByName(bookName: String): List<ReadRecord>
 

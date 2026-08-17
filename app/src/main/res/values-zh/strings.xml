@@ -1757,6 +1757,10 @@
     <string name="rr_no_merge_candidates">没有找到可以合并的记录</string>
     <string name="rr_select_merge_target">选择要合并到「%s」的记录：</string>
     <string name="rr_merge">合并</string>
+    <string name="rr_merge_all_same_name">合并全部同名书籍</string>
+    <string name="rr_merge_all_confirm">将把阅读记录中所有同名书籍合并为一本：进度取较新者，阅读时长累加。此操作不可撤销。</string>
+    <string name="rr_merge_all_none">没有可合并的同名书籍</string>
+    <string name="rr_merge_all_done">已合并 %d 本同名书籍</string>
     <string name="rr_selected_items">已选择 %d 项</string>
     <string name="rr_cancel_selection">取消选择</string>
     <string name="rr_delete_selected">删除选中</string>
@@ -2345,4 +2349,41 @@
     <string name="app_theme_summary_format">日间：%1$s / %2$s / %3$s / %4$s
 夜间：%5$s / %6$s / %7$s / %8$s</string>
     <string name="shibboleth">口令</string>
+
+    <!-- 权限管理 -->
+    <string name="permission_manage">权限管理</string>
+    <string name="permission_manage_summary">管理Cookie、Book对象、API和Toast的访问权限</string>
+    <string name="perm_section_cookie">Cookie管理</string>
+    <string name="perm_section_book">Book对象管理</string>
+    <string name="perm_section_java">Java API</string>
+    <string name="perm_section_android">安卓API</string>
+    <string name="perm_section_toast">Toast管理</string>
+    <string name="perm_cookie_read">Cookie读取</string>
+    <string name="perm_cookie_read_desc">允许书源读取Cookie</string>
+    <string name="perm_cookie_write">Cookie写入</string>
+    <string name="perm_cookie_write_desc">允许书源写入Cookie</string>
+    <string name="perm_cookie_delete">Cookie删除</string>
+    <string name="perm_cookie_delete_desc">允许书源删除Cookie</string>
+    <string name="perm_book_read">Book读取</string>
+    <string name="perm_book_read_desc">允许脚本读取Book对象</string>
+    <string name="perm_book_modify">Book修改</string>
+    <string name="perm_book_modify_desc">允许脚本修改Book对象</string>
+    <string name="perm_book_delete">Book删除</string>
+    <string name="perm_book_delete_desc">允许脚本删除Book对象</string>
+    <string name="perm_java_lang">java.lang 访问</string>
+    <string name="perm_java_lang_desc">控制 java.lang 类的访问权限</string>
+    <string name="perm_java_io">java.io 访问</string>
+    <string name="perm_java_io_desc">控制 java.io 类的访问权限</string>
+    <string name="perm_java_net">java.net 访问</string>
+    <string name="perm_java_net_desc">控制 java.net 类的访问权限</string>
+    <string name="perm_android_content">android.content 访问</string>
+    <string name="perm_android_content_desc">控制 android.content API 的访问权限</string>
+    <string name="perm_android_net">android.net 访问</string>
+    <string name="perm_android_net_desc">控制 android.net API 的访问权限</string>
+    <string name="perm_android_system">系统信息读取</string>
+    <string name="perm_android_system_desc">控制读取系统信息的权限</string>
+    <string name="perm_toast_enabled">Toast是否开启</string>
+    <string name="perm_toast_enabled_desc">控制脚本能否弹出Toast</string>
+    <string name="perm_toast_duration">Toast时长控制</string>
+    <string name="perm_toast_duration_desc">控制Toast显示时长</string>
 </resources>

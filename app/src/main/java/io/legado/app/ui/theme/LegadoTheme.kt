@@ -57,6 +57,15 @@ fun LegadoTheme(
     val outline = lerp(background, onBackground, if (isLight) 0.12f else 0.24f)
     val onSurfaceVariant = onBackgroundVariant
 
+    // surfaceContainer 系列（DropdownMenu、AlertDialog 等组件的容器色），
+    // 由主题背景色推导，保证这些弹层随主题背景颜色自适应，而不是 M3 默认的固定白/黑色
+    val elevationTarget = if (isLight) Color.White else Color.Black
+    val surfaceContainerLowest = background
+    val surfaceContainerLow = lerp(background, elevationTarget, if (isLight) 0.025f else 0.06f)
+    val surfaceContainer = lerp(background, elevationTarget, if (isLight) 0.05f else 0.12f)
+    val surfaceContainerHigh = lerp(background, elevationTarget, if (isLight) 0.075f else 0.18f)
+    val surfaceContainerHighest = lerp(background, elevationTarget, if (isLight) 0.10f else 0.24f)
+
     val colorScheme = if (isLight) {
         lightColorScheme(
             primary = primary,
@@ -75,7 +84,12 @@ fun LegadoTheme(
             onSurface = onBackground,
             onSurfaceVariant = onSurfaceVariant,
             error = Color(0xFFE53935),
-            onError = Color.White
+            onError = Color.White,
+            surfaceContainerLowest = surfaceContainerLowest,
+            surfaceContainerLow = surfaceContainerLow,
+            surfaceContainer = surfaceContainer,
+            surfaceContainerHigh = surfaceContainerHigh,
+            surfaceContainerHighest = surfaceContainerHighest
         )
     } else {
         darkColorScheme(
@@ -95,7 +109,12 @@ fun LegadoTheme(
             onSurface = onBackground,
             onSurfaceVariant = onSurfaceVariant,
             error = Color(0xFFFF5252),
-            onError = Color.Black
+            onError = Color.Black,
+            surfaceContainerLowest = surfaceContainerLowest,
+            surfaceContainerLow = surfaceContainerLow,
+            surfaceContainer = surfaceContainer,
+            surfaceContainerHigh = surfaceContainerHigh,
+            surfaceContainerHighest = surfaceContainerHighest
         )
     }
 

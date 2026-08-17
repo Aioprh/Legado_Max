@@ -30,6 +30,7 @@ import com.bumptech.glide.request.target.Target
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.AdaptiveCoverTransformation
@@ -394,6 +395,19 @@ class CoverImageView @JvmOverloads constructor(
             overrideWidth = overrideWidth,
             overrideHeight = overrideHeight,
             onLoadFinish = onLoadFinish
+        )
+    }
+
+    /**
+     * 书架分组（文件夹）封面加载重载。
+     *
+     * 以分组 id 作为封面图集的取图身份，使文件夹封面与书籍封面一致，
+     * 按封面模式（随机/顺序/混合）从图集中取图；未启用图集时回退到分组自定义封面。
+     */
+    fun load(group: BookGroup) {
+        load(
+            path = group.cover,
+            galleryIdentity = "bookGroup:${group.groupId}"
         )
     }
 

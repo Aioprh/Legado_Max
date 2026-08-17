@@ -4,6 +4,7 @@ package io.legado.app.lib.theme
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import androidx.annotation.ColorInt
 import androidx.core.content.ContextCompat
@@ -148,4 +149,20 @@ val Context.filletBackground: GradientDrawable
         background.cornerRadius = 3f.dpToPx()
         background.setColor(backgroundColor)
         return background
+    }
+
+/**
+ * 书架"显示外边框"卡片背景：填充色取主题背景色（保留半透明以透出背景图），
+ * 描边色由背景色与其明暗反色混合推导，使边框随主题背景颜色自适应。
+ */
+val Context.bookBorderBackground: GradientDrawable
+    get() {
+        val bgColor = backgroundColor
+        val contrastColor = if (ColorUtils.isColorLight(bgColor)) Color.BLACK else Color.WHITE
+        val strokeColor = ColorUtils.blendColors(bgColor, contrastColor, 0.22f)
+        return GradientDrawable().apply {
+            cornerRadius = 12f.dpToPx()
+            setColor(ColorUtils.adjustAlpha(bgColor, 0.41f))
+            setStroke(0.8f.dpToPx().toInt().coerceAtLeast(1), strokeColor)
+        }
     }
