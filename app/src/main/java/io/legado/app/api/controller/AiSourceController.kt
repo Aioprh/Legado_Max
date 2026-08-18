@@ -21,10 +21,14 @@ import java.util.regex.Pattern
  *
  * 针对「前端 JS 动态渲染（SPA）」站点做了增强（这类站点静态 HTML 里没有书数据，
  * 直接把整页 HTML 喂给 LLM 会既超上下文又得不到有用结构）：
- * - 预处理 HTML：剔除 <style>、注释等对分析无价值的噪声，显著缩小 prompt
- * - 从页面脚本中自动发现 JSON API 接口（fetch/axios 请求），并转成 Legado 占位符形式
+ * - 预处理 HTML：剔除 <style>、<script>、注释等噪声，显著缩小 prompt
+ * - 从页面脚本中自动发现 JSON API 接口（fetch/axios/$.ajax/XMLHttpRequest 等），
+ *   并转成 Legado 占位符形式
+ * - 提取页面内嵌 JSON 数据（window.__INITIAL_STATE__ / __NUXT__ / __NEXT_DATA__
+ *   及 type="application/json" 脚本等），一并交给 LLM 编写 JSONPath 规则
  * - 用搜索关键词调用搜索接口取回示例 JSON，再从示例中提取 book_id 调用目录接口，
- *   把真实 JSON 一并交给 LLM 编写 JSONPath 规则
+ *   把真实 JSON 一并交给 LLM
+ * - 支持自定义请求头/Cookie，应对站点反爬（并默认携带浏览器 UA）
  */
 object AiSourceController {
 
@@ -37,12 +41,33 @@ object AiSourceController {
     /** 接口示例响应的最大字符数，超出截断 */
     private const val MAX_API_CHARS = 12_000
 
+    /** 内嵌 JSON 单块最大字符数 */
+    private const val MAX_EMBEDDED_CHARS = 30_000
+
+    /** 内嵌 JSON 总字符数上限 */
+    private const val MAX_EMBEDDED_TOTAL = 60_000
+
+    /** 内嵌 JSON 最多返回的块数 */
+    private const val MAX_EMBEDDED_COUNT = 5
+
     /** 接口探测超时（毫秒） */
     private const val API_TIMEOUT_MS = 15_000L
 
-    /** 匹配 fetch/axios 请求里的 URL 模板（相对路径或带 `${}` 占位符） */
+    /** 抓取时的默认浏览器 UA，避免被常见反爬拦截 */
+    private const val DEFAULT_USER_AGENT =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+    /**
+     * 匹配常见前端请求里的 URL 模板（相对路径或带 `${}` 占位符）
+     * 覆盖 fetch / axios / $.ajax / $.get / $.post / uni.request / XMLHttpRequest
+     */
     private val fetchUrlPattern: Pattern = Pattern.compile(
-        """fetch\s*\(\s*[`'"]([^`'"]+)[`'"]|axios\s*\.\s*(?:get|post|put|delete)\s*\(\s*[`'"]([^`'"]+)[`'"]""",
+        """fetch\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
+            """axios\s*\.\s*(?:get|post|put|delete|request)\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
+            """axios\s*\(\s*\{\s*url\s*:\s*[`'"]([^`'"]+)[`'"]|""" +
+            """\$\s*\.\s*(?:get|post|ajax)\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
+            """(?:uni\.request|request)\s*\(\s*\{\s*url\s*:\s*[`'"]([^`'"]+)[`'"]|""" +
+            """XMLHttpRequest[^;]*?\.\s*open\s*\(\s*['"](?:GET|POST)['"]\s*,\s*[`'"]([^`'"]+)[`'"]""",
         Pattern.CASE_INSENSITIVE
     )
 
@@ -58,6 +83,12 @@ object AiSourceController {
         Regex("""\$\{\s*chapterId\s*\}""") to "{{chapterId}}"
     )
 
+    /** 常见内嵌 JSON 的全局变量名 */
+    private val embeddedJsonKeys = listOf(
+        "__INITIAL_STATE__", "__NUXT__", "__NEXT_DATA__", "__PRELOADED_STATE__",
+        "__INITIAL_DATA__", "__STATE__", "__DATA__", "__data__", "__NEXT_DATA_JSON__"
+    )
+
     /** 抓取结果 */
     data class HtmlContent(
         val url: String,
@@ -66,7 +97,8 @@ object AiSourceController {
         val html: String,
         val apiEndpoints: List<ApiEndpoint>,
         val sampleSearch: SampleResult,
-        val sampleCatalog: SampleResult
+        val sampleCatalog: SampleResult,
+        val embeddedJson: List<String>
     )
 
     data class ApiEndpoint(val type: String, val url: String)
@@ -80,8 +112,15 @@ object AiSourceController {
 
     /**
      * 抓取目标网站 HTML 并自动检测编码（供 HTTP 接口与原生 AI 生成页共用）
+     * @param header 自定义请求头，多行形式 "Key: Value"，可为空
+     * @param cookie 自定义 Cookie，可为空
      */
-    fun fetchHtmlContent(url: String, keyword: String? = null): Result<HtmlContent> {
+    fun fetchHtmlContent(
+        url: String,
+        keyword: String? = null,
+        header: String? = null,
+        cookie: String? = null
+    ): Result<HtmlContent> {
         if (url.isBlank()) {
             return Result.failure(IllegalArgumentException("参数url不能为空，请填写需要分析的网站地址"))
         }
@@ -89,7 +128,7 @@ object AiSourceController {
             return Result.failure(IllegalArgumentException("url必须以http://或https://开头"))
         }
         return runCatching {
-            val request = Request.Builder().url(url).build()
+            val request = buildRequest(url, header, cookie)
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     throw RuntimeException("请求失败: HTTP ${response.code}")
@@ -121,36 +160,75 @@ object AiSourceController {
                     String(limitedBytes, Charsets.UTF_8)
                 }
 
-                // 预处理：剔除 CSS、注释等噪声，显著缩小传给 LLM 的文本
+                // 先基于原始 HTML 做接口发现与内嵌 JSON 提取（<script> 会被后续剥离）
+                val endpoints = discoverApiEndpoints(html, effectiveUrl)
+                val embeddedJson = extractEmbeddedJson(html)
+
+                // 预处理：剔除 CSS、注释、脚本等噪声，显著缩小传给 LLM 的文本
                 val clean = preprocessHtml(html)
                 val truncated = if (clean.length > MAX_CHARS) clean.substring(0, MAX_CHARS) else clean
 
-                // 从脚本中发现 JSON API 接口并取搜索/目录示例响应
-                val endpoints = discoverApiEndpoints(truncated, effectiveUrl)
                 val sampleSearch = if (keyword.isNullOrBlank()) {
                     SampleResult(ok = false, error = "未提供搜索关键词，跳过接口探测")
                 } else {
-                    fetchSearchSample(endpoints, keyword)
+                    fetchSearchSample(endpoints, keyword, header, cookie)
                 }
                 val sampleCatalog = if (sampleSearch.ok) {
-                    fetchCatalogSample(endpoints, sampleSearch.json)
+                    fetchCatalogSample(endpoints, sampleSearch.json, header, cookie)
                 } else {
                     SampleResult(ok = false, error = "搜索接口探测失败，跳过目录探测")
                 }
 
-                HtmlContent(url, charset, truncated.length, truncated, endpoints, sampleSearch, sampleCatalog)
+                HtmlContent(
+                    url, charset, truncated.length, truncated,
+                    endpoints, sampleSearch, sampleCatalog, embeddedJson
+                )
             }
         }
     }
 
     /**
-     * 预处理 HTML：剔除 <style>、注释，折叠连续空行
+     * 预处理 HTML：剔除 <style>、<script>、注释，折叠连续空行。
+     * 注意：调用前需先完成接口发现与内嵌 JSON 提取，脚本内容对 LLM 无价值。
      */
     private fun preprocessHtml(html: String): String {
         var s = html.replace(Regex("<style[^>]*>[\\s\\S]*?</style>", RegexOption.IGNORE_CASE), "")
+        s = s.replace(Regex("<script[^>]*>[\\s\\S]*?</script>", RegexOption.IGNORE_CASE), "")
         s = s.replace(Regex("<!--[\\s\\S]*?-->"), "")
         s = s.replace(Regex("\\n{3,}"), "\n\n")
         return s
+    }
+
+    /**
+     * 构建抓取请求：默认携带浏览器 UA，可追加自定义请求头与 Cookie
+     */
+    private fun buildRequest(url: String, header: String?, cookie: String?): Request {
+        val builder = Request.Builder()
+            .url(url)
+            .header("User-Agent", DEFAULT_USER_AGENT)
+        parseHeaderString(header).forEach { (k, v) ->
+            if (k.isNotBlank()) builder.header(k.trim(), v)
+        }
+        if (!cookie.isNullOrBlank()) {
+            builder.header("Cookie", cookie)
+        }
+        return builder.build()
+    }
+
+    /**
+     * 解析多行请求头字符串，每行 "Key: Value" 或 "Key=Value"
+     */
+    private fun parseHeaderString(header: String?): List<Pair<String, String>> {
+        if (header.isNullOrBlank()) return emptyList()
+        return header.lines().mapNotNull { line ->
+            val t = line.trim()
+            if (t.isBlank() || t.startsWith("#") || t.startsWith("//")) return@mapNotNull null
+            val idx = t.indexOf(':').takeIf { it > 0 }
+                ?: t.indexOf('=').takeIf { it > 0 } ?: return@mapNotNull null
+            val k = t.substring(0, idx).trim()
+            val v = t.substring(idx + 1).trim()
+            if (k.isBlank()) null else k to v
+        }
     }
 
     /**
@@ -160,8 +238,10 @@ object AiSourceController {
         val found = LinkedHashMap<String, String>()
         val matcher = fetchUrlPattern.matcher(html)
         while (matcher.find()) {
-            val template = matcher.group(1) ?: matcher.group(2) ?: continue
-            if (template.isBlank() || template.startsWith("$")) continue
+            val template = (1..6)
+                .firstNotNullOfOrNull { matcher.group(it)?.takeIf { g -> g.isNotBlank() } }
+                ?: continue
+            if (template.startsWith("$")) continue
 
             var cleaned = template
             for ((re, rep) in templateReplacements) cleaned = cleaned.replace(re, rep)
@@ -170,9 +250,11 @@ object AiSourceController {
 
             val type = when {
                 cleaned.contains("keyword") || cleaned.contains("search") -> "search"
-                cleaned.contains("catalog") -> "catalog"
-                cleaned.contains("content") -> "content"
-                cleaned.contains("detail") || cleaned.contains("book_id") -> "detail"
+                cleaned.contains("catalog") || cleaned.contains("chapterlist") -> "catalog"
+                cleaned.contains("content") || cleaned.contains("chapter_id") ||
+                    cleaned.contains("chapterid") -> "content"
+                cleaned.contains("detail") || cleaned.contains("book_id") ||
+                    cleaned.contains("bookid") -> "detail"
                 else -> "other"
             }
             if (type == "other") continue
@@ -180,40 +262,63 @@ object AiSourceController {
             val resolved = runCatching { URL(URL(baseUrl), cleaned).toString() }.getOrDefault("")
             if (resolved.isBlank() || !resolved.startsWith("http")) continue
 
-            // search 接口优先带 keyword 占位符的
+            // search 接口优先带 keyword 占位符的；detail 接口优先带 bookId 的
             val existing = found[type]
-            if (existing == null || (type == "search" && cleaned.contains("keyword") && !existing.contains("{{key}}"))) {
-                found[type] = resolved
+            val better = when {
+                existing == null -> true
+                type == "search" && cleaned.contains("keyword") && !existing.contains("{{key}}") -> true
+                type == "detail" && cleaned.contains("bookid") && !existing.contains("{{bookId}}") -> true
+                else -> false
             }
+            if (better) found[type] = resolved
         }
         val order = listOf("search", "detail", "catalog", "content")
         return order.mapNotNull { t -> found[t]?.let { ApiEndpoint(t, it) } }
     }
 
     /**
-     * 调用搜索接口取回示例 JSON
+     * 调用搜索接口取回示例 JSON。
+     * 优先识别接口模板中真实的关键字/分页参数名，避免盲目追加错误参数。
      */
-    private fun fetchSearchSample(endpoints: List<ApiEndpoint>, keyword: String): SampleResult {
+    private fun fetchSearchSample(
+        endpoints: List<ApiEndpoint>,
+        keyword: String,
+        header: String?,
+        cookie: String?
+    ): SampleResult {
         val search = endpoints.firstOrNull { it.type == "search" }
             ?: return SampleResult(ok = false, error = "未在页面脚本中发现搜索接口")
         val kw = URLEncoder.encode(keyword, "UTF-8")
+
+        // 从模板中识别真实参数名（如 ?q=、?keyword=、?page=、?pn=）
+        val keyParam = Regex("""([A-Za-z_][A-Za-z0-9_]*)=\{\{key\}\}""")
+            .find(search.url)?.groupValues?.get(1)
+        val pageParam = Regex("""([A-Za-z_][A-Za-z0-9_]*)=\{\{page\}\}""")
+            .find(search.url)?.groupValues?.get(1)
+
         var url = search.url
             .replace("{{key}}", kw)
             .replace("{{page}}", "1")
             .replace(Regex("""\{\{[^}]*\}\}"""), "")
-        if (!url.contains("keyword=")) {
+
+        if (keyParam == null && !url.contains(Regex("""[?&](?:keyword|searchKey|search_keyword|q|key)="""))) {
             url = if (url.contains("?")) "$url&keyword=$kw" else "$url?keyword=$kw"
         }
-        if (!url.contains("page=")) {
-            url = if (url.contains("?")) "$url&page=1&page_size=20" else "$url?page=1&page_size=20"
+        if (pageParam == null && !url.contains(Regex("""[?&]page\d*="""))) {
+            url = if (url.contains("?")) "$url&page=1" else "$url?page=1"
         }
-        return fetchJsonSample(url)
+        return fetchJsonSample(url, header, cookie)
     }
 
     /**
      * 从搜索示例 JSON 中提取 book_id，调用目录接口取回章节示例 JSON
      */
-    private fun fetchCatalogSample(endpoints: List<ApiEndpoint>, searchJson: String): SampleResult {
+    private fun fetchCatalogSample(
+        endpoints: List<ApiEndpoint>,
+        searchJson: String,
+        header: String?,
+        cookie: String?
+    ): SampleResult {
         val catalog = endpoints.firstOrNull { it.type == "catalog" }
             ?: return SampleResult(ok = false, error = "未在页面脚本中发现目录接口")
         val bookId = extractBookId(searchJson)
@@ -221,15 +326,15 @@ object AiSourceController {
         val url = catalog.url
             .replace("{{bookId}}", bookId)
             .replace(Regex("""\{\{[^}]*\}\}"""), "")
-        return fetchJsonSample(url)
+        return fetchJsonSample(url, header, cookie)
     }
 
     /**
      * 抓取接口示例 JSON（限时、截断、非 JSON 判失败）
      */
-    private fun fetchJsonSample(url: String): SampleResult {
+    private fun fetchJsonSample(url: String, header: String?, cookie: String?): SampleResult {
         return runCatching {
-            val request = Request.Builder().url(url).build()
+            val request = buildRequest(url, header, cookie)
             val client = okHttpClient.newBuilder()
                 .callTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .readTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
@@ -254,6 +359,96 @@ object AiSourceController {
         }.getOrElse {
             SampleResult(ok = false, url = url, error = it.message ?: it.javaClass.simpleName)
         }
+    }
+
+    /**
+     * 提取页面内嵌 JSON 数据（SSR 站点常见）：
+     * - <script type="application/json"> 内容即为 JSON
+     * - window.__INITIAL_STATE__ / __NUXT__ / __NEXT_DATA__ 等全局变量
+     * 取其中最大且可解析的若干块，按大小降序返回。
+     */
+    private fun extractEmbeddedJson(html: String): List<String> {
+        val candidates = LinkedHashSet<String>()
+        val scriptBlocks = Regex("<script[^>]*>([\\s\\S]*?)</script>", RegexOption.IGNORE_CASE)
+            .findAll(html)
+
+        for (match in scriptBlocks) {
+            val tag = match.value
+            val content = match.groupValues[1]
+            // type="application/json" / "application/ld+json" 的脚本块
+            if (Regex("""type\s*=\s*["']application/(?:json|ld\+json)["']""", RegexOption.IGNORE_CASE)
+                    .containsMatchIn(tag)
+            ) {
+                val t = content.trim()
+                if (t.isValidJson()) candidates.add(t)
+                continue
+            }
+            // 形如 window.__XXX__ = {...} 或 var __XXX__ = {...} 的全局变量
+            for (key in embeddedJsonKeys) {
+                val m = Regex("""(?:window\s*\.\s*)?(?:var|let|const)?\s*$key\s*=\s*""", RegexOption.IGNORE_CASE)
+                    .find(content) ?: continue
+                val start = content.indexOfAny(charArrayOf('{', '['), m.range.last + 1)
+                if (start < 0) continue
+                val value = extractBalanced(content, start) ?: continue
+                if (value.isValidJson()) candidates.add(value)
+            }
+        }
+
+        val result = mutableListOf<String>()
+        var used = 0
+        for (json in candidates
+            .sortedByDescending { it.length }
+            .take(MAX_EMBEDDED_COUNT)
+            .map {
+                if (it.length > MAX_EMBEDDED_CHARS) {
+                    it.substring(0, MAX_EMBEDDED_CHARS) + "\n...(已截断)"
+                } else {
+                    it
+                }
+            }
+        ) {
+            if (used + json.length > MAX_EMBEDDED_TOTAL) break
+            result.add(json)
+            used += json.length
+        }
+        return result
+    }
+
+    private fun String.isValidJson(): Boolean {
+        return runCatching { JsonParser.parseString(this) }.isSuccess
+    }
+
+    /**
+     * 从 start 位置提取配平的 {} / [] 片段（跳过字符串与转义）
+     */
+    private fun extractBalanced(s: String, start: Int): String? {
+        val open = s[start]
+        val close = if (open == '{') '}' else ']'
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for (i in start until s.length) {
+            val c = s[i]
+            if (inString) {
+                if (escaped) {
+                    escaped = false
+                } else if (c == '\\') {
+                    escaped = true
+                } else if (c == '"') {
+                    inString = false
+                }
+            } else {
+                when (c) {
+                    '"' -> inString = true
+                    open -> depth++
+                    close -> {
+                        depth--
+                        if (depth == 0) return s.substring(start, i + 1)
+                    }
+                }
+            }
+        }
+        return null
     }
 
     /**
@@ -293,7 +488,9 @@ object AiSourceController {
             return returnData.setErrorMsg("参数url不能为空，请填写需要分析的网站地址")
         }
         val keyword = parameters["keyword"]?.firstOrNull()?.trim()
-        return fetchHtmlContent(url, keyword).fold(
+        val header = parameters["header"]?.firstOrNull()
+        val cookie = parameters["cookie"]?.firstOrNull()
+        return fetchHtmlContent(url, keyword, header, cookie).fold(
             onSuccess = {
                 returnData.setData(
                     mapOf(
@@ -303,7 +500,8 @@ object AiSourceController {
                         "html" to it.html,
                         "apiEndpoints" to it.apiEndpoints,
                         "sampleSearch" to it.sampleSearch,
-                        "sampleCatalog" to it.sampleCatalog
+                        "sampleCatalog" to it.sampleCatalog,
+                        "embeddedJson" to it.embeddedJson
                     )
                 )
             },

@@ -208,6 +208,7 @@
     <string name="ai_input_title">① 填写网站信息</string>
     <string name="ai_url_hint">网站地址（用于 AI 分析网页结构）</string>
     <string name="ai_keyword_hint">搜索关键词（可选，如：斗破苍穹）</string>
+    <string name="ai_header_hint">请求头（可选，每行一个"Key: Value"，用于反爬站点）</string>
     <string name="ai_generate_title">② 生成书源</string>
     <string name="ai_fetch_html">抓取HTML</string>
     <string name="ai_generate">AI生成</string>
