@@ -253,26 +253,20 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
 
     /**
      * 导出当前应用的主题配置。
-     * 将当前配置打包后通过系统分享/保存对话框导出。
+     * 先弹出格式选择对话框，选择导出格式后打包导出。
      */
     private fun exportCurrent() {
-        lifecycleScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) { ApplicationThemeManager.exportCurrent(this@ApplicationThemeActivity) }
-            }.onSuccess { file ->
-                exportTheme.launch {
-                    mode = HandleFileContract.EXPORT
-                    title = getString(R.string.application_theme_export)
-                    fileData = HandleFileContract.FileData(file.name, file, "application/zip")
-                    onlyOtherActions = true
-                    otherActions = arrayListOf(
-                        SelectItem(getString(R.string.sys_folder_picker), HandleFileContract.DIR),
-                        SelectItem(getString(R.string.app_folder_picker), 10),
-                        SelectItem(getString(R.string.manual_input), 112)
-                    )
+        showExportFormatDialog { format ->
+            lifecycleScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        ApplicationThemeManager.exportCurrent(this@ApplicationThemeActivity, format)
+                    }
+                }.onSuccess { file ->
+                    launchExportFile(file)
+                }.onFailure {
+                    toastOnUi(it.localizedMessage ?: getString(R.string.error))
                 }
-            }.onFailure {
-                toastOnUi(it.localizedMessage ?: getString(R.string.error))
             }
         }
     }
@@ -389,29 +383,72 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
 
     /**
      * 导出指定的主题配置。
-     * 将配置打包后通过系统分享/保存对话框导出。
+     * 先弹出格式选择对话框，选择导出格式后打包导出。
      *
      * @param config 要导出的主题配置
      */
     private fun exportConfig(config: ApplicationThemeManager.Config) {
-        lifecycleScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) { ApplicationThemeManager.exportConfig(this@ApplicationThemeActivity, config) }
-            }.onSuccess { file ->
-                exportTheme.launch {
-                    mode = HandleFileContract.EXPORT
-                    title = getString(R.string.application_theme_export)
-                    fileData = HandleFileContract.FileData(file.name, file, "application/zip")
-                    onlyOtherActions = true
-                    otherActions = arrayListOf(
-                        SelectItem(getString(R.string.sys_folder_picker), HandleFileContract.DIR),
-                        SelectItem(getString(R.string.app_folder_picker), 10),
-                        SelectItem(getString(R.string.manual_input), 112)
-                    )
+        showExportFormatDialog { format ->
+            lifecycleScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        ApplicationThemeManager.exportConfig(this@ApplicationThemeActivity, config, format)
+                    }
+                }.onSuccess { file ->
+                    launchExportFile(file)
+                }.onFailure {
+                    toastOnUi(it.localizedMessage ?: getString(R.string.error))
                 }
-            }.onFailure {
-                toastOnUi(it.localizedMessage ?: getString(R.string.error))
             }
+        }
+    }
+
+    /**
+     * 显示导出格式选择对话框。
+     * 默认勾选当前分支格式（NATIVE）。
+     *
+     * @param callback 选择格式后的回调
+     */
+    private fun showExportFormatDialog(callback: (ApplicationThemeManager.ExportFormat) -> Unit) {
+        val formats = ApplicationThemeManager.ExportFormat.entries
+        val labels = formats.map { format ->
+            when (format) {
+                ApplicationThemeManager.ExportFormat.NATIVE -> getString(R.string.export_format_native)
+                ApplicationThemeManager.ExportFormat.ARCHIVE -> getString(R.string.export_format_archive)
+                ApplicationThemeManager.ExportFormat.MD3 -> getString(R.string.export_format_md3)
+                ApplicationThemeManager.ExportFormat.RED -> getString(R.string.export_format_red)
+            }
+        }
+        alert(R.string.application_theme_export_format_select) {
+            singleChoiceItems(labels.toTypedArray(), 0) { dialog, which ->
+                dialog.dismiss()
+                callback(formats[which])
+            }
+            cancelButton()
+        }
+    }
+
+    /**
+     * 启动文件导出对话框。
+     *
+     * @param file 已打包好的导出文件
+     */
+    private fun launchExportFile(file: File) {
+        val mimeType = if (file.name.endsWith(".red", ignoreCase = true)) {
+            "application/octet-stream"
+        } else {
+            "application/zip"
+        }
+        exportTheme.launch {
+            mode = HandleFileContract.EXPORT
+            title = getString(R.string.application_theme_export)
+            fileData = HandleFileContract.FileData(file.name, file, mimeType)
+            onlyOtherActions = true
+            otherActions = arrayListOf(
+                SelectItem(getString(R.string.sys_folder_picker), HandleFileContract.DIR),
+                SelectItem(getString(R.string.app_folder_picker), 10),
+                SelectItem(getString(R.string.manual_input), 112)
+            )
         }
     }
 
