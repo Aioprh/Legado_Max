@@ -162,11 +162,12 @@ export interface AiFetchHtmlResult {
   sampleSearch: AiSampleResult
   sampleCatalog: AiSampleResult
 }
-const fetchHtml = (url: string, keyword = '') =>
+const fetchHtml = (url: string, keyword = '', searchUrl = '') =>
   ajax.get<LeagdoApiResponse<AiFetchHtmlResult>>(
     'fetchHtml?url=' +
       encodeURIComponent(url) +
-      (keyword ? '&keyword=' + encodeURIComponent(keyword) : ''),
+      (keyword ? '&keyword=' + encodeURIComponent(keyword) : '') +
+      (searchUrl ? '&searchUrl=' + encodeURIComponent(searchUrl) : ''),
   )
 
 // webSocket

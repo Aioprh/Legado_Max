@@ -73,10 +73,11 @@ class AiSourceGenerateActivity :
         }
         val keyword = binding.etKeyword.text?.toString()?.trim()
         val header = binding.etHeader.text?.toString()
+        val searchUrl = binding.etSearchUrl.text?.toString()?.trim()
         binding.btnFetchHtml.isEnabled = false
         binding.tvStatus.text = "正在抓取 HTML（${htmlContent?.charset ?: "未知编码"}）..."
         viewModel.execute {
-            viewModel.fetchHtml(url, keyword, header).getOrElse { throw it }
+            viewModel.fetchHtml(url, keyword, header, searchUrl = searchUrl).getOrElse { throw it }
         }.onSuccess { content ->
             htmlContent = content
             binding.etHtmlPreview.setText(content.html)
@@ -85,6 +86,7 @@ class AiSourceGenerateActivity :
                 append("编码：${content.charset}，共 ${content.length} 字符（已截断）")
                 if (content.embeddedJson.isNotEmpty()) append("；内嵌JSON：${content.embeddedJson.size} 块")
                 if (apiInfo.isNotBlank()) append("；发现接口：$apiInfo")
+                if (content.searchUrl.isNotBlank()) append("；使用搜索页：${content.searchUrl}")
                 if (!content.sampleSearch.ok && content.sampleSearch.error.isNotBlank()) {
                     append("；接口探测：${content.sampleSearch.error}")
                 }
@@ -164,13 +166,20 @@ class AiSourceGenerateActivity :
         }
         content?.sampleSearch?.let { ss ->
             appendLine()
-            if (ss.ok) {
+            if (content.searchUrl.isNotBlank() && ss.ok) {
+                // 用户手动指定了搜索页地址：优先直接使用它作为 searchUrl
+                appendLine("【重要】已使用你指定的搜索页地址「${content.searchUrl}」抓取真实搜索结果，请直接将其作为 searchUrl（保留 {{key}} 占位）并据此编写 ruleSearch 规则：")
+            } else if (content.searchUrl.isNotBlank()) {
+                appendLine("你指定的搜索页地址「${content.searchUrl}」抓取失败：${ss.error}")
+            } else if (ss.ok) {
                 appendLine("搜索接口示例响应（JSON）：")
+            } else {
+                appendLine("搜索接口探测失败：${ss.error}")
+            }
+            if (ss.ok) {
                 appendLine("----------")
                 appendLine(ss.json)
                 appendLine("----------")
-            } else {
-                appendLine("搜索接口探测失败：${ss.error}")
             }
         }
         content?.sampleCatalog?.let { sc ->

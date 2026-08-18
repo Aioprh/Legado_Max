@@ -214,6 +214,7 @@
     <string name="ai_input_title">1. Website info</string>
     <string name="ai_url_hint">Website URL (for AI to analyze the page)</string>
     <string name="ai_keyword_hint">Search keyword (optional, e.g. novel name)</string>
+    <string name="ai_search_url_hint">Search page URL (optional, fill in when auto-detection fails)</string>
     <string name="ai_header_hint">Request headers (optional, one "Key: Value" per line, for anti-crawler sites)</string>
     <string name="ai_generate_title">2. Generate source</string>
     <string name="ai_fetch_html">Fetch HTML</string>

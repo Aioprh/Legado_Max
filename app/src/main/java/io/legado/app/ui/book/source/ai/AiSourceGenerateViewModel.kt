@@ -93,14 +93,17 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
      * @param keyword 搜索关键词（可选），用于自动探测 JSON API 并抓取搜索/目录示例
      * @param header  自定义请求头（可选），多行 "Key: Value"，用于站点反爬
      * @param cookie  自定义 Cookie（可选）
+     * @param searchUrl 用户手动指定的搜索页/搜索接口地址（可选）。自动探测不到搜索接口时，
+     *   可在此直接填写（如 https://www.example.com/search 或 /api/search?q=），将作为搜索接口优先使用
      */
     fun fetchHtml(
         url: String,
         keyword: String? = null,
         header: String? = null,
-        cookie: String? = null
+        cookie: String? = null,
+        searchUrl: String? = null
     ): Result<AiSourceController.HtmlContent> =
-        AiSourceController.fetchHtmlContent(url, keyword, header, cookie)
+        AiSourceController.fetchHtmlContent(url, keyword, header, cookie, searchUrl)
 
     /**
      * 调用 LLM 生成书源 JSON

@@ -44,6 +44,9 @@ object AiSourceController {
     /** 接口示例响应的最大字符数，超出截断 */
     private const val MAX_API_CHARS = 12_000
 
+    /** 用户指定搜索页内容的最大字符数（搜索页可能是 HTML 页面，允许稍大） */
+    private const val MAX_SEARCH_PAGE_CHARS = 60_000
+
     /** 内嵌 JSON 单块最大字符数 */
     private const val MAX_EMBEDDED_CHARS = 30_000
 
@@ -165,7 +168,9 @@ object AiSourceController {
         val apiEndpoints: List<ApiEndpoint>,
         val sampleSearch: SampleResult,
         val sampleCatalog: SampleResult,
-        val embeddedJson: List<String>
+        val embeddedJson: List<String>,
+        /** 用户手动指定的搜索页地址（自动探测不到时兜底用），为空表示未指定 */
+        val searchUrl: String = ""
     )
 
     data class ApiEndpoint(
@@ -186,12 +191,17 @@ object AiSourceController {
      * 抓取目标网站 HTML 并自动检测编码（供 HTTP 接口与原生 AI 生成页共用）
      * @param header 自定义请求头，多行形式 "Key: Value"，可为空
      * @param cookie 自定义 Cookie，可为空
+     * @param searchUrl 用户手动指定的搜索页/搜索接口地址（可选）。自动探测不到搜索接口时，
+     *   可在此直接填写，如 https://www.example.com/search 或 https://www.example.com/api/search?q=；
+     *   支持 Legado 风格的 POST 后缀（URL,{"method":"POST","body":"keyword={{key}}"}）。
+     *   提供后该地址将作为搜索接口优先使用，并用关键词取回真实示例交给 LLM。
      */
     fun fetchHtmlContent(
         url: String,
         keyword: String? = null,
         header: String? = null,
-        cookie: String? = null
+        cookie: String? = null,
+        searchUrl: String? = null
     ): Result<HtmlContent> {
         if (url.isBlank()) {
             return Result.failure(IllegalArgumentException("参数url不能为空，请填写需要分析的网站地址"))
@@ -233,27 +243,47 @@ object AiSourceController {
                 }
 
                 // 先基于原始 HTML 做接口发现与内嵌 JSON 提取（<script> 会被后续剥离）
-                val endpoints = discoverApiEndpoints(html, effectiveUrl)
+                val discovered = discoverApiEndpoints(html, effectiveUrl)
+
+                // 用户手动指定搜索页地址时，优先使用它作为搜索接口（兜底自动探测失败）
+                val userSearch = searchUrl?.takeIf { it.isNotBlank() }?.let {
+                    fetchUserSearchPage(it, effectiveUrl, keyword ?: "", header, cookie)
+                }
+                val endpoints = discovered.toMutableList()
+                userSearch?.let { us ->
+                    val idx = endpoints.indexOfFirst { e -> e.type == "search" }
+                    if (idx >= 0) {
+                        endpoints[idx] = us.endpoint
+                    } else {
+                        endpoints.add(0, us.endpoint)
+                    }
+                }
+
                 val embeddedJson = extractEmbeddedJson(html)
 
                 // 预处理：剔除 CSS、注释、脚本等噪声，显著缩小传给 LLM 的文本
                 val clean = preprocessHtml(html)
                 val truncated = if (clean.length > MAX_CHARS) clean.substring(0, MAX_CHARS) else clean
 
-                val sampleSearch = if (keyword.isNullOrBlank()) {
-                    SampleResult(ok = false, error = "未提供搜索关键词，跳过接口探测")
-                } else {
-                    fetchSearchSample(endpoints, keyword, header, cookie)
+                val sampleSearch = when {
+                    userSearch != null && !keyword.isNullOrBlank() -> userSearch.sample
+                    userSearch != null ->
+                        SampleResult(ok = false, error = "已使用你提供的搜索页地址，但未提供搜索关键词，跳过抓取示例")
+                    keyword.isNullOrBlank() ->
+                        SampleResult(ok = false, error = "未提供搜索关键词，跳过接口探测")
+                    else -> fetchSearchSample(endpoints, keyword, header, cookie)
                 }
-                val sampleCatalog = if (sampleSearch.ok) {
+                // 只有示例是 JSON 时才继续尝试目录接口（HTML 搜索页无法提取 book_id）
+                val sampleCatalog = if (sampleSearch.ok && sampleSearch.json.isJsonText()) {
                     fetchCatalogSample(endpoints, sampleSearch.json, header, cookie)
                 } else {
-                    SampleResult(ok = false, error = "搜索接口探测失败，跳过目录探测")
+                    SampleResult(ok = false, error = "搜索示例非 JSON 或探测失败，跳过目录探测")
                 }
 
                 HtmlContent(
                     url, charset, truncated.length, truncated,
-                    endpoints, sampleSearch, sampleCatalog, embeddedJson
+                    endpoints, sampleSearch, sampleCatalog, embeddedJson,
+                    userSearch?.endpoint?.url ?: ""
                 )
             }
         }
@@ -529,6 +559,155 @@ object AiSourceController {
         }
         m.appendTail(sb)
         return if (changed) sb.toString() else url
+    }
+
+    /** 用户指定的搜索页接口与其真实抓取结果 */
+    private data class UserSearch(val endpoint: ApiEndpoint, val sample: SampleResult)
+
+    /**
+     * 处理用户手动指定的搜索页/搜索接口地址：
+     * 1. 解析绝对地址，兼容 Legado 风格的 POST 后缀（URL,{"method":"POST","body":"..."}）
+     * 2. 构造带 {{key}} 占位的搜索接口（GET 自动补参数，POST 自动补请求体）
+     * 3. 用搜索关键词取回真实响应（HTML 或 JSON 均可），交给 LLM 分析
+     */
+    private fun fetchUserSearchPage(
+        rawUrl: String,
+        baseUrl: String,
+        keyword: String,
+        header: String?,
+        cookie: String?
+    ): UserSearch {
+        var urlPart = rawUrl.trim()
+        var method = "GET"
+        var bodyTemplate = ""
+        // 兼容 Legado 后缀：URL,{"method":"POST","body":"keyword={{key}}","charset":"gbk"}
+        val commaIdx = urlPart.indexOf(',')
+        if (commaIdx > 0 && urlPart.substring(commaIdx + 1).trim().startsWith("{")) {
+            val ep = runCatching {
+                JsonParser.parseString(urlPart.substring(commaIdx + 1).trim()).asJsonObject
+            }.getOrNull()
+            if (ep != null && ep.get("method")?.asString?.equals("POST", true) == true) {
+                method = "POST"
+                bodyTemplate = ep.get("body")?.asString ?: ""
+                urlPart = urlPart.substring(0, commaIdx).trim()
+            }
+        }
+        val abs = runCatching { URL(URL(baseUrl), urlPart).toString() }.getOrDefault(urlPart)
+        val blankParamRegex = Regex(
+            """([?&])(keyword|searchkey|searchword|wd|q|kw|so|query|word|find|bookname|name|skey|key)=(?=&|#|$)""",
+            RegexOption.IGNORE_CASE
+        )
+        var searchUrl = abs
+        if (method != "POST") {
+            // GET：URL 无 {{key}} 时回填——已有空值搜索参数直接填 {{key}}，否则追加 keyword={{key}}
+            if (!searchUrl.contains("{{key}}")) {
+                if (blankParamRegex.containsMatchIn(searchUrl)) {
+                    searchUrl = blankParamRegex.replace(searchUrl) { m ->
+                        m.groupValues[1] + m.groupValues[2] + "={{key}}"
+                    }
+                } else {
+                    searchUrl += if (searchUrl.contains("?")) "&keyword={{key}}" else "?keyword={{key}}"
+                }
+            }
+        } else if (bodyTemplate.isNotBlank() && !bodyTemplate.contains("{{key}}") &&
+            !blankParamRegex.containsMatchIn(bodyTemplate)
+        ) {
+            // POST：关键词在请求体里，自动补 keyword={{key}}
+            bodyTemplate += if (bodyTemplate.isBlank()) "keyword={{key}}" else "&keyword={{key}}"
+        }
+        val endpoint = ApiEndpoint("search", searchUrl, method).apply {
+            if (method == "POST") this.postBody = bodyTemplate
+        }
+        val sample = if (keyword.isBlank()) {
+            SampleResult(ok = false, url = searchUrl, error = "未提供搜索关键词，跳过抓取搜索页示例")
+        } else {
+            val kw = URLEncoder.encode(keyword, "UTF-8")
+            if (method == "POST") {
+                val body = bodyTemplate.replace("{{key}}", kw)
+                    .replace(Regex("""\{\{[^}]*\}\}"""), "")
+                fetchAnySamplePost(abs, body, header, cookie)
+            } else {
+                val realUrl = searchUrl.replace("{{key}}", kw)
+                    .replace(Regex("""\{\{[^}]*\}\}"""), "")
+                fetchAnySample(realUrl, header, cookie)
+            }
+        }
+        return UserSearch(endpoint, sample)
+    }
+
+    /** 粗判文本是否以 JSON 对象/数组开头（用于决定是否尝试目录接口探测） */
+    private fun String.isJsonText(): Boolean {
+        val t = trim()
+        return t.startsWith("{") || t.startsWith("[")
+    }
+
+    /**
+     * 抓取任意响应（HTML 或 JSON）作为示例，非 JSON 也不判失败（用于用户指定的搜索页）
+     */
+    private fun fetchAnySample(url: String, header: String?, cookie: String?): SampleResult {
+        return runCatching {
+            val request = buildRequest(url, header, cookie)
+            val client = okHttpClient.newBuilder()
+                .callTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .readTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    SampleResult(ok = false, url = url, error = "HTTP ${response.code}")
+                } else {
+                    val text = response.body?.string()?.trim().orEmpty()
+                    if (text.isEmpty()) {
+                        SampleResult(ok = false, url = url, error = "响应为空")
+                    } else {
+                        val truncated = if (text.length > MAX_SEARCH_PAGE_CHARS) {
+                            text.substring(0, MAX_SEARCH_PAGE_CHARS) + "\n...(已截断)"
+                        } else {
+                            text
+                        }
+                        SampleResult(ok = true, url = url, json = truncated)
+                    }
+                }
+            }
+        }.getOrElse {
+            SampleResult(ok = false, url = url, error = it.message ?: it.javaClass.simpleName)
+        }
+    }
+
+    /** POST 版 [fetchAnySample]，同样不要求响应为 JSON */
+    private fun fetchAnySamplePost(
+        url: String,
+        body: String,
+        header: String?,
+        cookie: String?
+    ): SampleResult {
+        return runCatching {
+            val form = body.toRequestBody("application/x-www-form-urlencoded".toMediaType())
+            val builder = Request.Builder().url(url).post(form)
+            applyHeaders(builder, header, cookie)
+            val client = okHttpClient.newBuilder()
+                .callTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .readTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .build()
+            client.newCall(builder.build()).execute().use { response ->
+                if (!response.isSuccessful) {
+                    SampleResult(ok = false, url = url, error = "POST HTTP ${response.code}")
+                } else {
+                    val text = response.body?.string()?.trim().orEmpty()
+                    if (text.isEmpty()) {
+                        SampleResult(ok = false, url = url, error = "POST 响应为空")
+                    } else {
+                        val truncated = if (text.length > MAX_SEARCH_PAGE_CHARS) {
+                            text.substring(0, MAX_SEARCH_PAGE_CHARS) + "\n...(已截断)"
+                        } else {
+                            text
+                        }
+                        SampleResult(ok = true, url = url, json = truncated)
+                    }
+                }
+            }
+        }.getOrElse {
+            SampleResult(ok = false, url = url, error = "POST 失败: ${it.message ?: it.javaClass.simpleName}")
+        }
     }
 
     /**
@@ -864,7 +1043,8 @@ object AiSourceController {
         val keyword = parameters["keyword"]?.firstOrNull()?.trim()
         val header = parameters["header"]?.firstOrNull()
         val cookie = parameters["cookie"]?.firstOrNull()
-        return fetchHtmlContent(url, keyword, header, cookie).fold(
+        val searchUrl = parameters["searchUrl"]?.firstOrNull()?.trim()
+        return fetchHtmlContent(url, keyword, header, cookie, searchUrl).fold(
             onSuccess = {
                 returnData.setData(
                     mapOf(
@@ -875,7 +1055,8 @@ object AiSourceController {
                         "apiEndpoints" to it.apiEndpoints,
                         "sampleSearch" to it.sampleSearch,
                         "sampleCatalog" to it.sampleCatalog,
-                        "embeddedJson" to it.embeddedJson
+                        "embeddedJson" to it.embeddedJson,
+                        "searchUrl" to it.searchUrl
                     )
                 )
             },

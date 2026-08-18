@@ -45,6 +45,14 @@
       <template #prepend>关键词</template>
     </el-input>
 
+    <el-input
+      v-model="searchUrl"
+      placeholder="搜索页地址（可选，自动探测不到时手动填写，如 https://www.example.com/search?q=）"
+      style="margin-bottom: 8px"
+    >
+      <template #prepend>搜索页</template>
+    </el-input>
+
     <el-select v-model="sourceType" style="width: 100%; margin-bottom: 8px">
       <el-option
         v-for="(name, index) in sourceTypes"
@@ -166,6 +174,7 @@ watch([baseUrl, apiKey, model], () => {
 
 const url = ref('')
 const keyword = ref('')
+const searchUrl = ref('')
 const sourceTypes = ['文本', '音频', '图片', '文件', '视频']
 const sourceType = ref(0)
 
@@ -189,7 +198,11 @@ const fetchHtml = async () => {
   if (!url.value.trim()) return ElMessage.warning('请先填写网站地址')
   fetching.value = true
   try {
-    const { data } = await API.fetchHtml(url.value.trim(), keyword.value.trim())
+    const { data } = await API.fetchHtml(
+      url.value.trim(),
+      keyword.value.trim(),
+      searchUrl.value.trim(),
+    )
     if (!data.isSuccess) throw new Error(data.errorMsg || '抓取失败')
     html.value = data.data.html
     htmlCharset.value = data.data.charset
@@ -235,13 +248,22 @@ const buildPrompt = () => {
   const ss = sampleSearch.value
   if (ss) {
     lines.push('')
-    if (ss.ok) {
+    if (searchUrl.value.trim() && ss.ok) {
+      // 用户手动指定了搜索页地址：优先直接使用它作为 searchUrl
+      lines.push(
+        `【重要】已使用你指定的搜索页地址「${searchUrl.value.trim()}」抓取真实搜索结果，请直接将其作为 searchUrl（保留 {{key}} 占位）并据此编写 ruleSearch 规则：`,
+      )
+    } else if (searchUrl.value.trim()) {
+      lines.push(`你指定的搜索页地址「${searchUrl.value.trim()}」抓取失败：${ss.error}`)
+    } else if (ss.ok) {
       lines.push('搜索接口示例响应（JSON）：')
+    } else {
+      lines.push(`搜索接口探测失败：${ss.error}`)
+    }
+    if (ss.ok) {
       lines.push('----------')
       lines.push(ss.json)
       lines.push('----------')
-    } else {
-      lines.push(`搜索接口探测失败：${ss.error}`)
     }
   }
   const sc = sampleCatalog.value
