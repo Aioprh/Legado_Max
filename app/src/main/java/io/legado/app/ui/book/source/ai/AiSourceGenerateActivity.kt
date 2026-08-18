@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.viewModels
 import io.legado.app.api.controller.AiSourceController
+import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.databinding.ActivityAiSourceGenerateBinding
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
