@@ -12,6 +12,7 @@ import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
+import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 /**
@@ -61,26 +62,79 @@ object AiSourceController {
 
     /**
      * 匹配常见前端请求里的 URL 模板（相对路径或带 `${}` 占位符）
-     * 覆盖 fetch / axios / $.ajax / $.get / $.post / uni.request / XMLHttpRequest
-     * 同时检测 POST 方法与请求体
+     * 覆盖 fetch / axios / $.ajax / $.get / $.post / $.getJSON / uni.request /
+     * XMLHttpRequest / new Request，同时兼容 $.ajax({url:...}) 等对象形式
+     * 并检测 POST 方法与请求体
      */
     private val fetchUrlPattern: Pattern = Pattern.compile(
         """fetch\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
             """axios\s*\.\s*(?:get|post|put|delete|request)\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
-            """axios\s*\(\s*\{\s*url\s*:\s*[`'"]([^`'"]+)[`'"]|""" +
-            """\$\s*\.\s*(?:get|post|ajax)\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
+            """axios\s*\(\s*\{\s*(?:[^{}]*?)\burl\s*:\s*[`'"]([^`'"]+)[`'"]|""" +
+            """\$\s*\.\s*(?:get|post|getJSON|ajax)\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
+            """\$\s*\.\s*(?:get|post|ajax)\s*\(\s*\{\s*(?:[^{}]*?)\burl\s*:\s*[`'"]([^`'"]+)[`'"]|""" +
             """(?:uni\.request|request)\s*\(\s*\{\s*url\s*:\s*[`'"]([^`'"]+)[`'"]|""" +
-            """XMLHttpRequest[^;]*?\.\s*open\s*\(\s*['"](?:GET|POST)['"]\s*,\s*[`'"]([^`'"]+)[`'"]""",
+            """XMLHttpRequest[^;]*?\.\s*open\s*\(\s*['"](?:GET|POST)['"]\s*,\s*[`'"]([^`'"]+)[`'"]|""" +
+            """new\s+Request\s*\(\s*[`'"]([^`'"]+)[`'"]""",
         Pattern.CASE_INSENSITIVE
     )
 
-    /** 探测 POST 请求的方法与请求体模板 */
+    /** 探测 POST 请求的方法与请求体模板（字符串形式 body/data） */
     private val postMethodPattern: Pattern = Pattern.compile(
         """(?:method|type)\s*[:=]\s*['"]POST['"]""",
         Pattern.CASE_INSENSITIVE
     )
     private val postBodyPattern: Pattern = Pattern.compile(
         """(?:body|data)\s*[:=]\s*[`'"]([^`'"]+)[`'"]""",
+        Pattern.CASE_INSENSITIVE
+    )
+
+    /** body/data 为 JS 对象字面量（如 data: { keyword: kw, page: 1 }），兼容 JSON.stringify({...}) 包装 */
+    private val postBodyObjectPattern: Pattern = Pattern.compile(
+        """(?:body|data)\s*[:=]\s*(?:JSON\s*\.\s*stringify\s*\(\s*)?\{\s*([^}]*)\}""",
+        Pattern.CASE_INSENSITIVE
+    )
+
+    /** axios.post('/url', {...}) 等隐式 POST 调用（无显式 method 字段） */
+    private val implicitPostPattern: Pattern = Pattern.compile(
+        """(?:axios|http|https?)\s*\.\s*post\s*\(|(?:\$|jQuery)\s*\.\s*post\s*\(""",
+        Pattern.CASE_INSENSITIVE
+    )
+
+    /** 裸对象请求体参数（如 axios.post('/url', { keyword: kw }) 的第二个参数） */
+    private val rawObjectBodyPattern: Pattern = Pattern.compile(
+        """(?:\)|['"])\s*,\s*\{\s*([^{}]*)\}""",
+        Pattern.CASE_INSENSITIVE
+    )
+
+    /** 常见搜索查询参数名，用于从 URL 中识别搜索接口（即使路径不含 search） */
+    private val searchParamNames = setOf(
+        "wd", "q", "kw", "so", "query", "key", "word", "find",
+        "keyword", "searchkey", "searchword", "search_key", "skey", "keywrod",
+        "bookname", "name", "searchtext", "searchvalue", "searchname", "novelname",
+        "searchs", "sousuo", "sosuo", "txtname", "articlename"
+    )
+
+    /** 拼接式写法里可能承载关键词的 JS 变量名（如 '/so/' + kw） */
+    private val keywordVars = setOf(
+        "keyword", "kw", "q", "wd", "name", "key", "searchkey", "searchword",
+        "bookname", "word", "novelname", "searchname", "searchtext", "searchvalue",
+        "keys", "sou", "so", "find", "query"
+    )
+
+    /** 探测 URL 字符串后用 `+ 变量` 拼接关键词的写法（'search?name=' + name 等） */
+    private val keywordConcatPattern: Pattern = Pattern.compile(
+        """\s*\+\s*(?:encodeURIComponent\s*\(\s*)?[`'"]?\s*(keyword|kw|q|wd|name|key|searchkey|searchword|bookname|word|novelname|searchname|searchtext|searchvalue|keys|so|sou|find|query)\s*[`'"]?\s*(?:\)\s*)?(?=[+\-;,&?)}])""",
+        Pattern.CASE_INSENSITIVE
+    )
+
+    /** 常见详情/书籍 ID 参数名 */
+    private val idParamNames = setOf(
+        "id", "book_id", "bookid", "novel_id", "novelid", "book", "detail", "bookinfo"
+    )
+
+    /** 识别 URL/body 中值为空的搜索参数（来自变量拼接，如 ?keyword= + kw） */
+    private val blankSearchParamPattern: Pattern = Pattern.compile(
+        """([?&])(?:keyword|searchKey|search_keyword|search_key|searchkey|searchword|searchtext|searchvalue|keywrod|novelname|wd|q|kw|so|query|word|find|bookname|name|skey|key)=([^&]*)""",
         Pattern.CASE_INSENSITIVE
     )
 
@@ -259,9 +313,11 @@ object AiSourceController {
      */
     private fun discoverApiEndpoints(html: String, baseUrl: String): List<ApiEndpoint> {
         val found = LinkedHashMap<String, ApiEndpoint>()
+        // 无法确定类型的接口也保留，供 AI 参考（很多搜索接口路径不含 search 字样）
+        val candidates = LinkedHashMap<String, ApiEndpoint>()
         val matcher = fetchUrlPattern.matcher(html)
         while (matcher.find()) {
-            val template = (1..6)
+            val template = (1..matcher.groupCount())
                 .firstNotNullOfOrNull { matcher.group(it)?.takeIf { g -> g.isNotBlank() } }
                 ?: continue
             if (template.startsWith("$")) continue
@@ -271,30 +327,54 @@ object AiSourceController {
             cleaned = cleaned.replace(Regex("""\$\{[^}]*\}"""), "")
             if (cleaned.isBlank()) continue
 
-            val type = when {
-                cleaned.contains("keyword") || cleaned.contains("search") -> "search"
-                cleaned.contains("catalog") || cleaned.contains("chapterlist") -> "catalog"
-                cleaned.contains("content") || cleaned.contains("chapter_id") ||
-                    cleaned.contains("chapterid") -> "content"
-                cleaned.contains("detail") || cleaned.contains("book_id") ||
-                    cleaned.contains("bookid") -> "detail"
-                else -> "other"
+            // 处理 `'路径' + kw` 字符串拼接关键词写法（关键词未进入模板，需回填）
+            val tail = html.substring(matcher.end(), minOf(html.length, matcher.end() + 200))
+            val cm = keywordConcatPattern.matcher(tail)
+            if (cm.lookingAt() && cm.group(1).lowercase() in keywordVars) {
+                if (cleaned.endsWith("=") || cleaned.endsWith("/") ||
+                    !cleaned.substringAfterLast('/').contains('.')
+                ) {
+                    cleaned += "{{key}}"
+                }
             }
-            if (type == "other") continue
 
             val resolved = runCatching { URL(URL(baseUrl), cleaned).toString() }.getOrDefault("")
             if (resolved.isBlank() || !resolved.startsWith("http")) continue
 
-            // 判断是否为 POST：取匹配处前后片段，检测 method/type:"POST" 与 body/data
+            // 判断是否为 POST：显式 method/type 字段，或 axios.post/$.post 隐式写法
             val contextStart = (matcher.start() - 120).coerceAtLeast(0)
             val context = html.substring(contextStart, minOf(html.length, matcher.end() + 200))
-            val isPost = postMethodPattern.matcher(context).find()
+            val matched = matcher.group()
+            val isPost = implicitPostPattern.matcher(matched).find() ||
+                postMethodPattern.matcher(context).find()
             val postBody = if (isPost) {
                 postBodyPattern.matcher(context).run {
                     if (find()) group(1) ?: "" else ""
+                }.ifEmpty {
+                    // body/data 为 JS 对象字面量（如 data: { keyword: kw }）时，提取键名构造表单模板
+                    postBodyObjectPattern.matcher(context).run {
+                        if (find()) objectBodyToForm(group(1) ?: "") else ""
+                    }
+                }.ifEmpty {
+                    // axios.post('/url', { keyword: kw }) 的裸对象参数
+                    rawObjectBodyPattern.matcher(context).run {
+                        if (find()) objectBodyToForm(group(1) ?: "") else ""
+                    }
                 }
             } else {
                 ""
+            }
+
+            // POST 接口参数在 body 里，类型判断需结合 postBody（URL 可能无搜索字样）
+            val type = guessType(resolved, postBody)
+
+            if (type == null) {
+                val existing = candidates[resolved]
+                if (existing == null) {
+                    candidates[resolved] = ApiEndpoint("other", resolved, if (isPost) "POST" else "GET")
+                        .apply { if (isPost && postBody.isNotBlank()) this.postBody = postBody }
+                }
+                continue
             }
 
             // search 接口优先带 keyword 占位符的；detail 接口优先带 bookId 的
@@ -310,8 +390,145 @@ object AiSourceController {
                     .apply { if (isPost && postBody.isNotBlank()) this.postBody = postBody }
             }
         }
+
+        // 额外探测 <form> 表单搜索入口（老式站点）
+        for (fe in discoverFormEndpoints(html, baseUrl)) {
+            if (fe.type != "other" && found[fe.type] == null) {
+                found[fe.type] = fe
+            }
+        }
+
         val order = listOf("search", "detail", "catalog", "content")
-        return order.mapNotNull { found[it] }
+        return order.mapNotNull { found[it] } + candidates.values.take(8)
+    }
+
+    /**
+     * 根据 URL 判断接口类型：
+     * 路径含 search/keyword/find 等关键词优先；其次看查询参数名（wd/q/kw 等）；
+     * 再判断 ID 类参数（book_id 等）；URL 无参数时结合 POST 请求体参数名判断。
+     * 无法判断返回 null（保留为候选）。
+     */
+    private fun guessType(url: String, postBody: String? = null): String? {
+        val u = url.lowercase()
+        // URL 模板中含搜索关键词占位符 {{key}}，必然是搜索接口（模板字面量/拼接式路径均会走到这里）
+        if (u.contains("{{key}}")) return "search"
+        // 含书籍 ID 占位符 {{bookId}} 的视为详情接口
+        if (u.contains("{{bookid}}")) return "detail"
+        if (u.contains("search") || u.contains("keyword") || u.contains("searchword") ||
+            u.contains("searchkey") || u.contains("find") || u.contains("sousuo") ||
+            u.contains("sosuo")
+        ) return "search"
+        if (u.contains("catalog") || u.contains("chapterlist") || u.contains("toc")) return "catalog"
+        if (u.contains("chaptercontent") || (u.contains("content") && u.contains("chapter"))) return "content"
+        if (u.contains("detail") || u.contains("bookinfo")) return "detail"
+        val query = u.substringAfter('?', "").substringBefore('#')
+        val params = query.split('&')
+            .mapNotNull { it.substringBefore('=').trim().lowercase() }
+            .filter { it.isNotEmpty() }
+            .toSet()
+        if (params.any { it in searchParamNames }) return "search"
+        if (params.any { it in idParamNames }) return "detail"
+        // URL 无查询参数时，看 POST 请求体里的参数名（如 axios.post('/api/query', { wd: kw })）
+        if (!postBody.isNullOrBlank()) {
+            val bodyParams = postBody.split('&')
+                .mapNotNull { it.substringBefore('=').trim().lowercase() }
+                .filter { it.isNotEmpty() }
+            if (bodyParams.any { it in searchParamNames }) return "search"
+            if (bodyParams.any { it in idParamNames }) return "detail"
+        }
+        return null
+    }
+
+    /**
+     * 将 JS 对象字面量形式的请求体（如 "keyword: this.keyword, page: this.page"）
+     * 转换为 x-www-form-urlencoded 模板：含关键词的键填 {{key}}，其余键留空。
+     */
+    private fun objectBodyToForm(bodyObject: String): String {
+        val keys = Regex("""([A-Za-z_][A-Za-z0-9_]*)\s*:""")
+            .findAll(bodyObject)
+            .map { it.groupValues[1] }
+            .toList()
+        if (keys.isEmpty()) return ""
+        val searchKey = keys.firstOrNull { it.lowercase() in searchParamNames }
+            ?: keys.firstOrNull { k ->
+                listOf("kw", "q", "wd", "key", "word").any { k.lowercase().contains(it) }
+            }
+            ?: return ""
+        return keys.joinToString("&") { k -> if (k == searchKey) "$k={{key}}" else "$k=" }
+    }
+
+    /**
+     * 探测 <form> 表单搜索入口，返回候选接口。
+     * 兼容 GET/POST 表单、无 action 表单（提交到当前页）。
+     * 优先按输入框 name 是否为常见搜索参数名识别搜索表单（覆盖首页搜索框场景）。
+     */
+    private fun discoverFormEndpoints(html: String, baseUrl: String): List<ApiEndpoint> {
+        val found = LinkedHashMap<String, ApiEndpoint>()
+        val inputNameRegex = Regex(
+            """<input\b[^>]*\bname\s*=\s*["']?([A-Za-z_][A-Za-z0-9_]*)["']?""",
+            RegexOption.IGNORE_CASE
+        )
+        val formTagRegex = Regex("""<form\b[^>]*>""", RegexOption.IGNORE_CASE)
+        for (m in formTagRegex.findAll(html)) {
+            val tag = m.value
+            val action = Regex("""\baction\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+                .find(tag)?.groupValues?.get(1)?.trim()
+                ?.takeIf { it.isNotBlank() && !it.startsWith("#") && !it.startsWith("javascript:") }
+                ?: baseUrl
+            val resolved = runCatching { URL(URL(baseUrl), action).toString() }.getOrDefault("")
+            if (resolved.isBlank() || !resolved.startsWith("http")) continue
+
+            val formBody = html.substring(m.range.last + 1, minOf(html.length, m.range.last + 1 + 800))
+            val isPost = Regex("""\bmethod\s*=\s*["']post["']""", RegexOption.IGNORE_CASE)
+                .containsMatchIn(tag)
+            // 优先找 name 为常见搜索参数名的输入框（跳过 hidden 等干扰项），再退化为首个输入框
+            val inputName = inputNameRegex.findAll(formBody)
+                .map { it.groupValues[1] }
+                .firstOrNull { it.lowercase() in searchParamNames }
+                ?: inputNameRegex.find(formBody)?.groupValues?.get(1)
+
+            // 首页搜索框的 action 常为首页地址或为空，按输入框 name 直接判定为搜索表单
+            val isSearchForm = inputName != null && inputName.lowercase() in searchParamNames
+            if (isSearchForm) {
+                if (isPost) {
+                    if (found["search"] == null) {
+                        found["search"] = ApiEndpoint("search", resolved, "POST")
+                            .apply { postBody = "$inputName={{key}}" }
+                    }
+                } else {
+                    val sep = if (resolved.contains("?")) "&" else "?"
+                    if (found["search"] == null) {
+                        found["search"] = ApiEndpoint("search", "$resolved$sep$inputName={{key}}", "GET")
+                    }
+                }
+                continue
+            }
+
+            val type = guessType(resolved) ?: continue
+            if (found[type] == null) {
+                found[type] = ApiEndpoint(type, resolved, if (isPost) "POST" else "GET")
+                    .apply { if (isPost && inputName != null) postBody = "$inputName={{key}}" }
+            }
+        }
+        return found.values.toList()
+    }
+
+    /**
+     * 将 URL / 请求体里值为空的搜索参数回填关键词。
+     * 处理前端常见 `'/search?keyword=' + kw` 变量拼接写法（抓到的参数值为空）。
+     */
+    private fun fillBlankSearchParams(url: String, kw: String): String {
+        val m = blankSearchParamPattern.matcher(url)
+        val sb = StringBuilder()
+        var changed = false
+        while (m.find()) {
+            if (m.group(3).isBlank()) {
+                m.appendReplacement(sb, Matcher.quoteReplacement(m.group(1) + m.group(2) + "=" + kw))
+                changed = true
+            }
+        }
+        m.appendTail(sb)
+        return if (changed) sb.toString() else url
     }
 
     /**
@@ -326,7 +543,7 @@ object AiSourceController {
         cookie: String?
     ): SampleResult {
         val search = endpoints.firstOrNull { it.type == "search" }
-            ?: return SampleResult(ok = false, error = "未在页面脚本中发现搜索接口")
+            ?: return probeSearchCandidates(endpoints, keyword, header, cookie)
         val kw = URLEncoder.encode(keyword, "UTF-8")
 
         // 从模板中识别真实参数名（如 ?q=、?keyword=、?page=、?pn=）
@@ -339,6 +556,8 @@ object AiSourceController {
             .replace("{{key}}", kw)
             .replace("{{page}}", "1")
             .replace(Regex("""\{\{[^}]*\}\}"""), "")
+            // 变量拼接导致参数值为空（如 ?keyword= + kw）时回填关键词
+            .let { fillBlankSearchParams(it, kw) }
 
         if (search.method == "POST") {
             // POST 探测：优先使用页面脚本里发现的请求体模板，否则用 keyword=<key>
@@ -350,16 +569,80 @@ object AiSourceController {
                 .replace("{{key}}", kw)
                 .replace("{{page}}", "1")
                 .replace(Regex("""\{\{[^}]*\}\}"""), "")
+                .let { fillBlankSearchParams(it, kw) }
             return fetchPostSample(url, body, header, cookie)
         }
 
-        if (keyParam == null && !url.contains(Regex("""[?&](?:keyword|searchKey|search_keyword|q|key)="""))) {
+        if (keyParam == null && !url.contains(Regex(
+                """[?&](?:keyword|searchKey|search_keyword|searchkey|searchword|wd|q|kw|so|query|word|find|bookname|name|skey|key)="""
+            ))) {
             url = if (url.contains("?")) "$url&keyword=$kw" else "$url?keyword=$kw"
         }
         if (pageParam == null && !url.contains(Regex("""[?&]page\d*="""))) {
             url = if (url.contains("?")) "$url&page=1" else "$url?page=1"
         }
         return fetchJsonSample(url, header, cookie)
+    }
+
+    /**
+     * 未发现明确搜索接口时的兜底探测：
+     * 对疑似搜索的候选接口用关键词请求，取首个返回合法 JSON 且疑似书数据的响应。
+     * 只挑「带 {{key}} 占位、有 POST 请求体、或路径含 so/sou/query 等」的候选，避免大量无效请求。
+     */
+    private fun probeSearchCandidates(
+        endpoints: List<ApiEndpoint>,
+        keyword: String,
+        header: String?,
+        cookie: String?
+    ): SampleResult {
+        val kw = URLEncoder.encode(keyword, "UTF-8")
+        val searchish = Regex(
+            """(?:^|/)(?:so|sou|sousuo|sosuo|query|find|search|booksearch)(?:/|\?|$)""",
+            RegexOption.IGNORE_CASE
+        )
+        val plausible = endpoints
+            .filter { it.type == "other" }
+            .filter { ep ->
+                ep.url.contains("{{key}}") || ep.postBody.isNotBlank() ||
+                    searchish.containsMatchIn(ep.url)
+            }
+            .take(3)
+        if (plausible.isEmpty()) {
+            return SampleResult(
+                ok = false,
+                error = "未在页面脚本中发现搜索接口（未找到疑似搜索的 JSON API / 表单）"
+            )
+        }
+        for (ep in plausible) {
+            val url = ep.url.replace("{{key}}", kw)
+                .replace(Regex("""\{\{[^}]*\}\}"""), "")
+            val result = if (ep.method == "POST") {
+                val body = (ep.postBody.ifBlank { "keyword={{key}}" })
+                    .replace("{{key}}", kw)
+                    .replace(Regex("""\{\{[^}]*\}\}"""), "")
+                fetchPostSample(url, body, header, cookie)
+            } else {
+                val u = if (url.contains("?")) "$url&keyword=$kw" else "$url?keyword=$kw"
+                fetchJsonSample(u, header, cookie)
+            }
+            if (result.ok && isLikelyBookJson(result.json)) {
+                return result
+            }
+        }
+        return SampleResult(
+            ok = false,
+            error = "未在页面脚本中发现明确的搜索接口（疑似候选接口探测均失败）"
+        )
+    }
+
+    /** 粗判 JSON 是否像书籍搜索结果（含书名/作者等关键字段），用于兜底探测去伪 */
+    private fun isLikelyBookJson(text: String): Boolean {
+        val t = text.take(6000).lowercase()
+        return listOf(
+            "\"name\"", "\"bookname\"", "\"book_name\"", "\"title\"", "\"book_title\"",
+            "\"author\"", "\"book\"", "\"novelname\"", "\"novel_name\"", "\"novel\"",
+            "\"books\"", "\"articlename\"", "\"bookname\"", "\"realname\""
+        ).any { t.contains(it) }
     }
 
     /**
