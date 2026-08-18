@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.RectF
 import android.graphics.drawable.PictureDrawable
 import android.util.Size
+import java.io.ByteArrayInputStream
 import java.io.FileInputStream
 import java.io.InputStream
 import com.caverock.androidsvg.SVG
@@ -12,6 +13,12 @@ import kotlin.math.max
 
 @Suppress("WeakerAccess", "MemberVisibilityCanBePrivate")
 object SvgUtils {
+
+    private val xmlDeclarationRegex = Regex("^\\s*<\\?xml[^>]*\\?>", RegexOption.IGNORE_CASE)
+    private val svgDoctypeRegex = Regex(
+        "<!DOCTYPE\\s+svg\\b[^>]*>",
+        setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL)
+    )
 
     /**
      * 从Svg中解码bitmap
@@ -29,6 +36,29 @@ object SvgUtils {
             val svg = SVG.getFromInputStream(inputStream)
             createBitmap(svg, width, height)
         }.getOrNull()
+    }
+
+    /**
+     * 从文件路径创建 Bitmap，支持带 XML 声明/DOCTYPE 的 SVG。
+     *
+     * 先尝试直接解析；失败后移除 XML 声明和 DOCTYPE 再重试。
+     * 某些 SVG 文件（如 Reeden 主题包中的底栏图标）带有 DOCTYPE 声明，
+     * androidsvg 库解析时会尝试加载外部 DTD 导致失败。
+     */
+    fun createBitmapFromFile(filePath: String, width: Int, height: Int? = null): Bitmap? {
+        val bytes = java.io.File(filePath).readBytes()
+        // 先尝试直接解析
+        createBitmap(ByteArrayInputStream(bytes), width, height)?.let { return it }
+        // 失败后移除 XML 声明和 DOCTYPE 再重试
+        val text = bytes.toString(Charsets.UTF_8)
+        val sanitized = svgDoctypeRegex
+            .replace(xmlDeclarationRegex.replace(text.trimStart('\uFEFF'), "")
+                , "")
+            .trimStart()
+        if (sanitized.isNotBlank() && sanitized != text) {
+            return createBitmap(ByteArrayInputStream(sanitized.toByteArray(Charsets.UTF_8)), width, height)
+        }
+        return null
     }
 
     fun createDrawable(inputStream: InputStream): Pair<PictureDrawable, Size>? {

@@ -2,6 +2,7 @@ package io.legado.app.help.config
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.StateListDrawable
 import android.view.Menu
@@ -19,6 +20,7 @@ import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.GSON
+import io.legado.app.utils.SvgUtils
 import io.legado.app.utils.defaultSharedPreferences
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.getPrefString
@@ -327,6 +329,13 @@ data class NavigationBarConfig(
 
         private fun loadIconDrawable(context: Context, path: String?): Drawable? {
             if (path.isNullOrBlank()) return null
+            // SVG 文件需要用 SvgUtils 解析，Drawable.createFromPath 不支持 SVG
+            val file = java.io.File(path)
+            if (file.extension.equals("svg", ignoreCase = true)) {
+                val targetSize = (context.resources.displayMetrics.density * 48).toInt()
+                val bitmap = SvgUtils.createBitmapFromFile(path, targetSize, targetSize) ?: return null
+                return BitmapDrawable(context.resources, bitmap)
+            }
             return Drawable.createFromPath(path)
         }
 
