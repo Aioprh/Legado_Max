@@ -552,7 +552,7 @@ object AiSourceController {
         val sb = StringBuilder()
         var changed = false
         while (m.find()) {
-            if (m.group(3).isBlank()) {
+            if (m.group(2).isBlank()) {
                 m.appendReplacement(sb, Matcher.quoteReplacement(m.group(1) + m.group(2) + "=" + kw))
                 changed = true
             }
