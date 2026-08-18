@@ -2149,6 +2149,11 @@
 <string name="application_theme_edit">Edit app theme</string>
 <string name="application_theme_empty">No app themes. Configure the interface, then create one from the current combination.</string>
 <string name="application_theme_export">Export current app theme</string>
+    <string name="application_theme_export_format_select">Select export format</string>
+    <string name="export_format_native">Current branch (MAX)</string>
+    <string name="export_format_archive">archive version</string>
+    <string name="export_format_md3">MD3 version</string>
+    <string name="export_format_red">Reeden (.red) format</string>
 <string name="application_theme_import">Import app theme</string>
 <string name="application_theme_import_with_options">Import app theme with options</string>
 <string name="application_theme_import_options_hint">Select components to create during import. Unchecked components will be skipped (not created).</string>
@@ -2157,7 +2162,7 @@
 <string name="application_theme_name_exists">An app theme with this name already exists</string>
 <string name="application_theme_not_set">Not set</string>
 <string name="application_theme_rename">Rename</string>
-<string name="application_theme_summary">Manage themes, top bars, bottom bars, and cover galleries together. Supports importing archive, md3, and .red theme packages</string>
+<string name="application_theme_summary">Manage themes, top bars, bottom bars, and cover galleries together. Supports importing and exporting current branch (MAX), archive, md3, and .red theme packages</string>
 <string name="application_theme_update_current">Update from current combination</string>
 <string name="applied">Applied</string>
 <string name="applied_nav_bar_config">Applied navigation bar config: %s</string>

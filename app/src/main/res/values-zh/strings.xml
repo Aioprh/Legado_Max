@@ -2133,6 +2133,11 @@
 <string name="application_theme_edit">编辑应用主题</string>
 <string name="application_theme_empty">暂无应用主题，请先调整界面配置，再保存当前组合。</string>
 <string name="application_theme_export">导出当前应用主题</string>
+<string name="application_theme_export_format_select">选择导出格式</string>
+<string name="export_format_native">当前分支 (MAX)</string>
+<string name="export_format_archive">archive 版</string>
+<string name="export_format_md3">MD3 版</string>
+<string name="export_format_red">Reeden (.red) 格式</string>
 <string name="application_theme_import">导入应用主题</string>
 <string name="application_theme_import_with_options">导入应用主题设置</string>
 <string name="application_theme_import_options_hint">勾选需要在导入时创建的组件，未勾选的组件将被跳过（不创建）</string>
@@ -2141,7 +2146,7 @@
 <string name="application_theme_name_exists">应用主题名称已存在</string>
 <string name="application_theme_not_set">未设置</string>
 <string name="application_theme_rename">重命名</string>
-<string name="application_theme_summary">统一管理主题、顶栏、底栏和封面图集，支持导入 archive 版、md3 版以及 .red 格式的主题包</string>
+<string name="application_theme_summary">统一管理主题、顶栏、底栏和封面图集，支持导入和导出当前分支(MAX)、archive 版、md3 版以及 .red 格式的主题包</string>
 <string name="application_theme_update_current">更新为当前组合</string>
 <string name="applied">已应用</string>
 <string name="applied_nav_bar_config">已应用底栏包: %s</string>

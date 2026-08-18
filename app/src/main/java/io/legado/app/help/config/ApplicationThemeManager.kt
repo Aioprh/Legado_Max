@@ -100,6 +100,22 @@ object ApplicationThemeManager {
         val images: List<String>
     )
 
+    /**
+     * 主题导出格式枚举。
+     *
+     * 支持将当前分支的应用主题导出为以下格式：
+     * - [NATIVE]：当前分支原生格式（application_theme.json）
+     * - [ARCHIVE]：archive_primate_beta 分支格式（appearance_kit.json）
+     * - [MD3]：MD3-main 分支格式（manifest.json）
+     * - [RED]：Reeden 阅读 App 格式（theme.json + RED 头）
+     */
+    enum class ExportFormat {
+        NATIVE,
+        ARCHIVE,
+        MD3,
+        RED
+    }
+
     /** 导入应用主题时的可选创建范围，日夜间可独立控制 */
     @Keep
     data class ImportOptions(
@@ -157,7 +173,7 @@ object ApplicationThemeManager {
     fun find(id: String): Config? = load().firstOrNull { it.id == id }
 
     /** 导出当前应用主题为 zip 文件（含所有关联资源） */
-    fun exportCurrent(context: Context): File {
+    fun exportCurrent(context: Context, format: ExportFormat = ExportFormat.NATIVE): File {
         val current = (load().firstOrNull { isCurrent(context, it) }
             ?: captureCurrent(context, appCtx.getString(io.legado.app.R.string.application_theme_manage)))
             .let { config ->
@@ -173,12 +189,22 @@ object ApplicationThemeManager {
                     )
                 )
             }
-        validateForApply(context, current)
-        return exportConfig(context, current)
+        if (format == ExportFormat.NATIVE) validateForApply(context, current)
+        return exportConfig(context, current, format)
     }
 
     /** 导出指定应用主题为 zip 文件（含所有关联资源） */
-    fun exportConfig(context: Context, config: Config): File {
+    fun exportConfig(context: Context, config: Config, format: ExportFormat = ExportFormat.NATIVE): File {
+        return when (format) {
+            ExportFormat.NATIVE -> exportNative(context, config)
+            ExportFormat.ARCHIVE -> ThemeExporter.exportArchive(context, config)
+            ExportFormat.MD3 -> ThemeExporter.exportMd3(context, config)
+            ExportFormat.RED -> ThemeExporter.exportRed(context, config)
+        }
+    }
+
+    /** 导出当前分支原生格式（application_theme.json 清单 + 所有资源） */
+    private fun exportNative(context: Context, config: Config): File {
         val dir = appCtx.cacheDir.resolve("applicationThemeExports").apply { mkdirs() }
         val exportName = config.name.normalizeFileName().ifBlank { "application_theme" }
         return dir.resolve("$exportName.zip").apply {
