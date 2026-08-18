@@ -176,12 +176,27 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             }
             val content = runCatching {
                 val root = JsonParser.parseString(text).asJsonObject
-                val message = root.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject
-                    ?.getAsJsonObject("message")
-                // 兼容 DeepSeek-R1 等推理模型：正文可能在 reasoning_content
-                message?.get("content")?.asString ?: message?.get("reasoning_content")?.asString ?: ""
+                val choices = root.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject
+                val message = choices?.getAsJsonObject("message")
+                // 兼容 DeepSeek-R1 等推理模型：content 可能为 null，正文在 reasoning_content
+                // 注意：字段可能为 JSON null，需先判空再取 asString，否则 JsonNull.asString 会抛异常
+                val msgContent = message?.get("content")
+                    ?.takeIf { !it.isJsonNull }?.asString
+                val msgReasoning = message?.get("reasoning_content")
+                    ?.takeIf { !it.isJsonNull }?.asString
+                // 个别兼容接口把内容放在 choices[0].text（非标准 chat/completions）
+                val choiceText = choices?.get("text")
+                    ?.takeIf { !it.isJsonNull }?.asString
+                msgContent?.takeIf { it.isNotBlank() }
+                    ?: msgReasoning?.takeIf { it.isNotBlank() }
+                    ?: choiceText?.takeIf { it.isNotBlank() }
+                    ?: ""
             }.getOrDefault("")
-            if (content.isBlank()) throw RuntimeException("模型未返回内容")
+            if (content.isBlank()) {
+                throw RuntimeException(
+                    "模型未返回内容：请检查模型名是否可用（deepseek-reasoner 等推理模型可能只返回推理过程，建议改用 deepseek-chat）"
+                )
+            }
             return stripCodeFence(content)
         }
     }

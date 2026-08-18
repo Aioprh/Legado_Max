@@ -322,9 +322,24 @@ const generate = async () => {
       )
     }
     const data = await resp.json()
-    const content: string = data?.choices?.[0]?.message?.content ?? ''
-    if (!content.trim()) throw new Error('模型未返回内容')
-    resultText.value = stripCodeFence(content)
+    const choice = data?.choices?.[0]
+    const msg = choice?.message
+    // 兼容 deepseek-reasoner 等推理模型（content 可能为 null，正文在 reasoning_content）
+    // 及个别接口把内容放在 choices[0].text
+    const rawContent: string =
+      (typeof msg?.content === 'string' && msg.content.trim() ? msg.content : '') ||
+      (typeof msg?.reasoning_content === 'string' &&
+      msg.reasoning_content.trim()
+        ? msg.reasoning_content
+        : '') ||
+      (typeof choice?.text === 'string' && choice.text.trim() ? choice.text : '') ||
+      ''
+    if (!rawContent.trim()) {
+      throw new Error(
+        '模型未返回内容：请检查模型名是否可用（deepseek-reasoner 等推理模型可能只返回推理过程，建议改用 deepseek-chat）',
+      )
+    }
+    resultText.value = stripCodeFence(rawContent)
     ElMessage.success('生成完成，可查看/修改 JSON，再验证规则或导入编辑器')
   } catch (e) {
     ElMessage.error('AI 生成失败: ' + (e as Error).message)
