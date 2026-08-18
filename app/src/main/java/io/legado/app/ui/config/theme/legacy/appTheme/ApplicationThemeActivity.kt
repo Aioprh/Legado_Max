@@ -419,11 +419,12 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
                 ApplicationThemeManager.ExportFormat.RED -> getString(R.string.export_format_red)
             }
         }
+        var selectedIndex = 0
         alert(R.string.application_theme_export_format_select) {
-            singleChoiceItems(labels.toTypedArray(), 0) { dialog, which ->
-                dialog.dismiss()
-                callback(formats[which])
+            singleChoiceItems(labels.toTypedArray(), 0) { _, which ->
+                selectedIndex = which
             }
+            okButton { callback(formats[selectedIndex]) }
             cancelButton()
         }
     }

@@ -797,26 +797,10 @@ internal object ThemeExporter {
 
             // 主题颜色
             val lightColors = config.dayTheme?.let { theme ->
-                RedThemeColors(
-                    primaryColor = theme.primaryColor,
-                    backgroundColor = theme.backgroundColor,
-                    cardColor = theme.bottomBackground,
-                    accentColor = theme.accentColor,
-                    navbarPackId = dayNavbarPackId,
-                    coverGalleryId = dayCoverGalleryId,
-                    backgroundImage = dayBgPath ?: ""
-                )
+                buildRedColors(theme, isNight = false, dayNavbarPackId, dayCoverGalleryId, dayBgPath)
             }
             val darkColors = config.nightTheme?.let { theme ->
-                RedThemeColors(
-                    primaryColor = theme.primaryColor,
-                    backgroundColor = theme.backgroundColor,
-                    cardColor = theme.bottomBackground,
-                    accentColor = theme.accentColor,
-                    navbarPackId = nightNavbarPackId,
-                    coverGalleryId = nightCoverGalleryId,
-                    backgroundImage = nightBgPath ?: ""
-                )
+                buildRedColors(theme, isNight = true, nightNavbarPackId, nightCoverGalleryId, nightBgPath)
             }
 
             val redTheme = RedThemeV4(
@@ -839,6 +823,60 @@ internal object ThemeExporter {
         tempZip.delete()
 
         return redFile
+    }
+
+    /**
+     * 从当前分支的 [ThemeConfig.Config] 构建 .red 格式所需的完整颜色配置。
+     *
+     * 当前分支只有 5 个颜色字段，但 Reeden 应用依赖完整的颜色体系。
+     * 此方法根据已有颜色推导出 foregroundColor、borderColor 等字段，
+     * 避免导出空字符串导致 Reeden 将文字/图标渲染为透明。
+     */
+    private fun buildRedColors(
+        theme: ThemeConfig.Config,
+        isNight: Boolean,
+        navbarPackId: String,
+        coverGalleryId: String,
+        backgroundImage: String?
+    ): RedThemeColors {
+        val primary = theme.primaryColor.ifBlank { if (isNight) "#FFFFFFFF" else "#FF4A775C" }
+        val bg = theme.backgroundColor.ifBlank { if (isNight) "#FF000000" else "#FFF5F9F2" }
+        val card = theme.bottomBackground.ifBlank { if (isNight) "#FF1A1A1A" else "#FFFCFDFA" }
+        val accent = theme.accentColor.ifBlank { primary }
+
+        // 前景文字颜色：日间深色，夜间白色
+        val foreground = if (isNight) "#FFFFFFFF" else "#FF1A1A1A"
+        // 次要文字颜色
+        val mutedForeground = if (isNight) "#FFAAAAAA" else "#FF999999"
+        // 边框/分割线颜色
+        val border = if (isNight) "#33FFFFFF" else "#33000000"
+        // 弹出层/对话框背景
+        val popover = card
+        // 输入框背景
+        val inputBg = if (isNight) "#FF2A2A2A" else "#FFF0F0F0"
+
+        return RedThemeColors(
+            primaryColor = primary,
+            backgroundColor = bg,
+            foregroundColor = foreground,
+            mutedForegroundColor = mutedForeground,
+            cardColor = card,
+            cardForegroundColor = foreground,
+            cardBackgroundImage = "",
+            popoverColor = popover,
+            dialogBackgroundColor = popover,
+            mutedColor = card,
+            borderColor = border,
+            dividerColor = border,
+            inputBackgroundColor = inputBg,
+            inputBorderColor = border,
+            accentColor = accent,
+            backgroundImage = backgroundImage ?: "",
+            backgroundImageFit = "cover",
+            backgroundImageOpacity = 1.0f,
+            coverGalleryId = coverGalleryId,
+            navbarPackId = navbarPackId
+        )
     }
 
     /** 将底栏图标包写入 .red zip */
