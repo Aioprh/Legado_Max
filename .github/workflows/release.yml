@@ -77,6 +77,8 @@ jobs:
   release:
     needs: [prepare, build]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 允许创建 GitHub Release（默认 GITHUB_TOKEN 只读会 403）
     steps:
       - name: 下载所有 APK
         uses: actions/download-artifact@v7
