@@ -333,4 +333,14 @@ object PreferKey {
     const val appThemeImportNightBottomBar = "appThemeImportNightBottomBar"
     const val appThemeImportDayCover = "appThemeImportDayCover"
     const val appThemeImportNightCover = "appThemeImportNightCover"
+
+    /** 删除应用主题时各组件的删除开关（日夜间独立） */
+    const val appThemeDeleteDayTheme = "appThemeDeleteDayTheme"
+    const val appThemeDeleteNightTheme = "appThemeDeleteNightTheme"
+    const val appThemeDeleteDayTopBar = "appThemeDeleteDayTopBar"
+    const val appThemeDeleteNightTopBar = "appThemeDeleteNightTopBar"
+    const val appThemeDeleteDayBottomBar = "appThemeDeleteDayBottomBar"
+    const val appThemeDeleteNightBottomBar = "appThemeDeleteNightBottomBar"
+    const val appThemeDeleteDayCover = "appThemeDeleteDayCover"
+    const val appThemeDeleteNightCover = "appThemeDeleteNightCover"
 }

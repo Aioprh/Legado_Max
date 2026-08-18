@@ -488,6 +488,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
      * @param config 要删除的主题配置
      */
     private fun confirmDelete(config: ApplicationThemeManager.Config) {
+        val saved = ApplicationThemeManager.getDeleteOptions(this)
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 32, 48, 16)
@@ -498,7 +499,7 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
         }
         container.addView(tvHint)
 
-        fun addRow(labelRes: Int): Pair<CheckBox, CheckBox> {
+        fun addRow(labelRes: Int, dayChecked: Boolean, nightChecked: Boolean): Pair<CheckBox, CheckBox> {
             val tvLabel = TextView(this).apply {
                 text = getString(labelRes)
                 setPadding(0, 12, 0, 4)
@@ -507,11 +508,11 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             container.addView(tvLabel)
             val cbDay = CheckBox(this).apply {
                 text = getString(R.string.day)
-                isChecked = false
+                isChecked = dayChecked
             }
             val cbNight = CheckBox(this).apply {
                 text = getString(R.string.night)
-                isChecked = false
+                isChecked = nightChecked
             }
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -523,29 +524,31 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
             return cbDay to cbNight
         }
 
-        val (cbDayTheme, cbNightTheme) = addRow(R.string.application_theme_component_theme)
-        val (cbDayTopBar, cbNightTopBar) = addRow(R.string.application_theme_component_top_bar)
-        val (cbDayBottomBar, cbNightBottomBar) = addRow(R.string.application_theme_component_bottom_bar)
-        val (cbDayCover, cbNightCover) = addRow(R.string.application_theme_component_cover)
+        val (cbDayTheme, cbNightTheme) = addRow(R.string.application_theme_component_theme, saved.deleteDayTheme, saved.deleteNightTheme)
+        val (cbDayTopBar, cbNightTopBar) = addRow(R.string.application_theme_component_top_bar, saved.deleteDayTopBar, saved.deleteNightTopBar)
+        val (cbDayBottomBar, cbNightBottomBar) = addRow(R.string.application_theme_component_bottom_bar, saved.deleteDayBottomBar, saved.deleteNightBottomBar)
+        val (cbDayCover, cbNightCover) = addRow(R.string.application_theme_component_cover, saved.deleteDayCover, saved.deleteNightCover)
 
         alert(R.string.delete, R.string.sure_del) {
             customView { container }
             okButton {
+                val options = ApplicationThemeManager.DeleteOptions(
+                    deleteDayTheme = cbDayTheme.isChecked,
+                    deleteNightTheme = cbNightTheme.isChecked,
+                    deleteDayTopBar = cbDayTopBar.isChecked,
+                    deleteNightTopBar = cbNightTopBar.isChecked,
+                    deleteDayBottomBar = cbDayBottomBar.isChecked,
+                    deleteNightBottomBar = cbNightBottomBar.isChecked,
+                    deleteDayCover = cbDayCover.isChecked,
+                    deleteNightCover = cbNightCover.isChecked
+                )
+                ApplicationThemeManager.saveDeleteOptions(this@ApplicationThemeActivity, options)
                 lifecycleScope.launch {
                     withContext(Dispatchers.IO) {
                         ApplicationThemeManager.deleteWithComponents(
                             this@ApplicationThemeActivity,
                             config.id,
-                            ApplicationThemeManager.DeleteOptions(
-                                deleteDayTheme = cbDayTheme.isChecked,
-                                deleteNightTheme = cbNightTheme.isChecked,
-                                deleteDayTopBar = cbDayTopBar.isChecked,
-                                deleteNightTopBar = cbNightTopBar.isChecked,
-                                deleteDayBottomBar = cbDayBottomBar.isChecked,
-                                deleteNightBottomBar = cbNightBottomBar.isChecked,
-                                deleteDayCover = cbDayCover.isChecked,
-                                deleteNightCover = cbNightCover.isChecked
-                            )
+                            options
                         )
                     }
                     refresh()

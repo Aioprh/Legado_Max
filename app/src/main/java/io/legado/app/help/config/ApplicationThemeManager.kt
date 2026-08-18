@@ -168,6 +168,32 @@ object ApplicationThemeManager {
         )
     }
 
+    /** 将删除选项持久化到 SharedPreferences */
+    fun saveDeleteOptions(context: Context, options: DeleteOptions) {
+        context.putPrefBoolean(PreferKey.appThemeDeleteDayTheme, options.deleteDayTheme)
+        context.putPrefBoolean(PreferKey.appThemeDeleteNightTheme, options.deleteNightTheme)
+        context.putPrefBoolean(PreferKey.appThemeDeleteDayTopBar, options.deleteDayTopBar)
+        context.putPrefBoolean(PreferKey.appThemeDeleteNightTopBar, options.deleteNightTopBar)
+        context.putPrefBoolean(PreferKey.appThemeDeleteDayBottomBar, options.deleteDayBottomBar)
+        context.putPrefBoolean(PreferKey.appThemeDeleteNightBottomBar, options.deleteNightBottomBar)
+        context.putPrefBoolean(PreferKey.appThemeDeleteDayCover, options.deleteDayCover)
+        context.putPrefBoolean(PreferKey.appThemeDeleteNightCover, options.deleteNightCover)
+    }
+
+    /** 从 SharedPreferences 读取持久化的删除选项，默认全部为 false */
+    fun getDeleteOptions(context: Context): DeleteOptions {
+        return DeleteOptions(
+            deleteDayTheme = context.getPrefBoolean(PreferKey.appThemeDeleteDayTheme, false),
+            deleteNightTheme = context.getPrefBoolean(PreferKey.appThemeDeleteNightTheme, false),
+            deleteDayTopBar = context.getPrefBoolean(PreferKey.appThemeDeleteDayTopBar, false),
+            deleteNightTopBar = context.getPrefBoolean(PreferKey.appThemeDeleteNightTopBar, false),
+            deleteDayBottomBar = context.getPrefBoolean(PreferKey.appThemeDeleteDayBottomBar, false),
+            deleteNightBottomBar = context.getPrefBoolean(PreferKey.appThemeDeleteNightBottomBar, false),
+            deleteDayCover = context.getPrefBoolean(PreferKey.appThemeDeleteDayCover, false),
+            deleteNightCover = context.getPrefBoolean(PreferKey.appThemeDeleteNightCover, false)
+        )
+    }
+
     /** 从文件加载所有应用主题配置，自动校验大小和格式 */
     fun load(): MutableList<Config> {
         val file = File(filePath)
