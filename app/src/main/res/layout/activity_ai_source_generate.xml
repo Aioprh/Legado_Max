@@ -71,6 +71,27 @@
                     android:layout_height="wrap_content" />
             </io.legado.app.ui.widget.text.TextInputLayout>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ai_model_preset_hint"
+                    tools:ignore="RtlHardcoded" />
+
+                <androidx.appcompat.widget.AppCompatSpinner
+                    android:id="@+id/sp_model_preset"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:entries="@array/ai_model_presets"
+                    android:theme="@style/Spinner"
+                    tools:ignore="TouchTargetSizeCheck" />
+            </LinearLayout>
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -171,6 +192,13 @@
                     android:text="@string/ai_generate"
                     tools:ignore="TouchTargetSizeCheck" />
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="6dp"
+                android:textSize="12sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"

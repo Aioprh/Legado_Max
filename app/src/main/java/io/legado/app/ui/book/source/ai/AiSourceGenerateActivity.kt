@@ -32,6 +32,24 @@ class AiSourceGenerateActivity :
         binding.etBaseUrl.setText(viewModel.baseUrl)
         binding.etApiKey.setText(viewModel.apiKey)
         binding.etModel.setText(viewModel.model)
+        // 模型预设：选择预设时自动填充模型名
+        binding.spModelPreset.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: android.widget.AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                if (position <= 0) return // 0 = 自定义
+                binding.etModel.setText(parent?.getItemAtPosition(position)?.toString())
+            }
+
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+        })
+        // 若已保存的模型名属于预设列表，则回显对应项
+        val presets = resources.getStringArray(R.array.ai_model_presets)
+        val idx = presets.indexOfFirst { it == viewModel.model }
+        if (idx > 0) binding.spModelPreset.setSelection(idx)
         binding.btnFetchHtml.setOnClickListener { fetchHtml() }
         binding.btnGenerate.setOnClickListener { generate() }
         binding.btnValidate.setOnClickListener { validate() }
@@ -55,12 +73,13 @@ class AiSourceGenerateActivity :
         val keyword = binding.etKeyword.text?.toString()?.trim()
         val header = binding.etHeader.text?.toString()
         binding.btnFetchHtml.isEnabled = false
+        binding.tvStatus.text = "正在抓取 HTML（${htmlContent?.charset ?: "未知编码"}）..."
         viewModel.execute {
             viewModel.fetchHtml(url, keyword, header).getOrElse { throw it }
         }.onSuccess { content ->
             htmlContent = content
             binding.etHtmlPreview.setText(content.html)
-            val apiInfo = content.apiEndpoints.joinToString("；") { "${it.type}: ${it.url}" }
+            val apiInfo = content.apiEndpoints.joinToString("；") { "${it.method} ${it.type}: ${it.url}" }
             binding.tvHtmlHint.text = buildString {
                 append("编码：${content.charset}，共 ${content.length} 字符（已截断）")
                 if (content.embeddedJson.isNotEmpty()) append("；内嵌JSON：${content.embeddedJson.size} 块")
@@ -70,8 +89,10 @@ class AiSourceGenerateActivity :
                 }
             }
             binding.tvHtmlHint.visibility = View.VISIBLE
+            binding.tvStatus.text = "抓取成功（编码 ${content.charset}，共 ${content.length} 字符）"
             toastOnUi("抓取成功（编码 ${content.charset}，共 ${content.length} 字符）")
         }.onError {
+            binding.tvStatus.text = "抓取失败: ${it.message}"
             toastOnUi("抓取失败: ${it.message}")
         }.onFinally {
             binding.btnFetchHtml.isEnabled = true
@@ -100,6 +121,7 @@ class AiSourceGenerateActivity :
         val content = htmlContent
         val userPrompt = buildUserPrompt(url, keyword, typeName, typeIndex, content, html)
         binding.btnGenerate.isEnabled = false
+        binding.tvStatus.text = "正在调用 AI 生成书源（模型：${viewModel.model}）..."
         viewModel.execute {
             viewModel.generate(
                 baseUrl = viewModel.baseUrl,
@@ -110,8 +132,10 @@ class AiSourceGenerateActivity :
             )
         }.onSuccess { result ->
             binding.etResult.setText(result)
+            binding.tvStatus.text = "生成完成，可查看/修改 JSON，再验证规则或导入编辑器"
             toastOnUi("生成完成，可查看/修改 JSON，再验证规则或导入编辑器")
         }.onError {
+            binding.tvStatus.text = "AI 生成失败: ${it.message}"
             toastOnUi("AI 生成失败: ${it.message}")
         }.onFinally {
             binding.btnGenerate.isEnabled = true
@@ -132,7 +156,10 @@ class AiSourceGenerateActivity :
         content?.apiEndpoints?.takeIf { it.isNotEmpty() }?.let { endpoints ->
             appendLine()
             appendLine("【重要】本站为前端 JS 动态渲染（SPA）站点，静态 HTML 中不含书籍数据。自动发现以下 JSON API 接口，请优先基于这些接口编写 JSONPath 规则：")
-            endpoints.forEach { appendLine("- ${it.type}: ${it.url}") }
+            endpoints.forEach { appendLine("- ${it.method} ${it.type}: ${it.url}") }
+            endpoints.firstOrNull { it.method == "POST" }?.let {
+                appendLine("（注意：${it.type} 接口为 POST 请求，searchUrl 需写成 \"/api/xxx,{method:POST,body:...}\" 形式）")
+            }
         }
         content?.sampleSearch?.let { ss ->
             appendLine()
@@ -216,7 +243,8 @@ class AiSourceGenerateActivity :
         val html = content?.html.orEmpty()
         val userPrompt = buildUserPrompt(url, keyword, typeName, typeIndex, content, html)
         binding.btnAutoFix.isEnabled = false
-        binding.tvChecks.text = "正在用真实搜索验证并自动修复，最多 ${viewModel.maxFixRounds} 轮..."
+        binding.tvStatus.text = "正在用真实搜索验证并自动修复，最多 ${viewModel.maxFixRounds} 轮..."
+        binding.tvChecks.text = binding.tvStatus.text
         viewModel.execute {
             viewModel.autoFix(
                 baseUrl = viewModel.baseUrl,
@@ -235,9 +263,11 @@ class AiSourceGenerateActivity :
                 append(result.log)
                 append(if (result.ok) "\n✓ 修复成功，已用真实搜索验证通过" else "\n✗ 达到最大轮次仍未通过，请手动检查")
             }
+            binding.tvStatus.text = if (result.ok) "修复成功（${result.rounds} 轮）" else "修复未通过（${result.rounds} 轮）"
             toastOnUi(if (result.ok) "修复成功（${result.rounds} 轮）" else "修复未通过（${result.rounds} 轮）")
         }.onError {
             binding.tvChecks.text = "自动修复失败：${it.message}"
+            binding.tvStatus.text = "自动修复失败: ${it.message}"
             toastOnUi("自动修复失败: ${it.message}")
         }.onFinally {
             binding.btnAutoFix.isEnabled = true

@@ -13,6 +13,16 @@
 		<item>Video</item>
 	</string-array>
 
+	<string-array name="ai_model_presets">
+		<item>自定义</item>
+		<item>deepseek-chat</item>
+		<item>deepseek-reasoner</item>
+		<item>gpt-4o-mini</item>
+		<item>qwen-plus</item>
+		<item>qwen-turbo</item>
+		<item>glm-4-flash</item>
+	</string-array>
+
 	<string-array name="layout_type">
 		<item>列表</item>
 		<item>单列</item>

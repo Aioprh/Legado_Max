@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.source.ai
 
 import android.app.Application
+import cn.hutool.crypto.symmetric.AES
 import com.google.gson.JsonParser
 import io.legado.app.api.controller.AiSourceController
 import io.legado.app.base.BaseViewModel
@@ -9,14 +10,22 @@ import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.GSON
+import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.putFloat
 import io.legado.app.utils.putInt
 import io.legado.app.utils.putString
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * AI 生成书源 ViewModel
@@ -34,11 +43,21 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             LocalConfig.putString(KEY_BASE_URL, value)
         }
 
-    /** API Key */
+    /** API Key（AES 加密后存储，防止明文落盘；兼容旧版本明文数据） */
     var apiKey: String
-        get() = LocalConfig.getString(KEY_API_KEY, "") ?: ""
+        get() {
+            val stored = LocalConfig.getString(KEY_API_KEY, "") ?: ""
+            if (stored.isEmpty()) return ""
+            if (!stored.startsWith(ENC_PREFIX)) return stored // 旧版本明文，直接返回
+            return runCatching {
+                AES(cryptoKey).decryptStr(stored.removePrefix(ENC_PREFIX))
+            }.getOrElse { "" }
+        }
         set(value) {
-            LocalConfig.putString(KEY_API_KEY, value)
+            val encrypted = runCatching {
+                ENC_PREFIX + AES(cryptoKey).encryptBase64(value)
+            }.getOrElse { value }
+            LocalConfig.putString(KEY_API_KEY, encrypted)
         }
 
     /** 模型名 */
@@ -96,13 +115,29 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         systemPrompt: String,
         userPrompt: String
     ): String {
+        val messages = listOf(
+            mapOf("role" to "system", "content" to systemPrompt),
+            mapOf("role" to "user", "content" to userPrompt)
+        )
+        return generateWithMessages(baseUrl, apiKey, model, messages)
+    }
+
+    /**
+     * 带完整对话历史的 LLM 调用（供多轮修复复用，避免重复发送大段 HTML 上下文）
+     */
+    suspend fun generateWithMessages(
+        baseUrl: String,
+        apiKey: String,
+        model: String,
+        messages: List<Map<String, String>>
+    ): String {
         return try {
-            requestCompletion(baseUrl, apiKey, model, systemPrompt, userPrompt, withParams = true)
+            requestCompletion(baseUrl, apiKey, model, messages, withParams = true)
         } catch (e: Exception) {
             val code = (e.message ?: "").substringAfter("HTTP ", "").substringBefore(":").toIntOrNull()
             if (code == 400 || code == 422) {
                 // 可能是参数不受支持，去掉 temperature/max_tokens 后重试
-                requestCompletion(baseUrl, apiKey, model, systemPrompt, userPrompt, withParams = false)
+                requestCompletion(baseUrl, apiKey, model, messages, withParams = false)
             } else {
                 throw e
             }
@@ -113,15 +148,10 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         baseUrl: String,
         apiKey: String,
         model: String,
-        systemPrompt: String,
-        userPrompt: String,
+        messages: List<Map<String, String>>,
         withParams: Boolean
     ): String {
         val endpoint = baseUrl.trim().trimEnd('/') + "/chat/completions"
-        val messages = listOf(
-            mapOf("role" to "system", "content" to systemPrompt),
-            mapOf("role" to "user", "content" to userPrompt)
-        )
         val bodyMap = mutableMapOf<String, Any>(
             "model" to model.ifBlank { "gpt-4o-mini" },
             "messages" to messages
@@ -136,7 +166,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             .header("Authorization", "Bearer ${apiKey.trim()}")
             .post(body.toRequestBody("application/json; charset=UTF-8".toMediaType()))
             .build()
-        aiHttpClient.newCall(request).execute().use { response ->
+        aiHttpClient.newCall(request).await().use { response ->
             val text = response.body?.string() ?: ""
             if (!response.isSuccessful) {
                 throw RuntimeException("HTTP ${response.code}: ${text.take(200)}")
@@ -153,6 +183,27 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         }
     }
 
+    /**
+     * 以挂起方式执行 HTTP 请求，协程取消时同步取消底层 OkHttp 调用
+     */
+    private suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
+        enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if (cont.isCancelled) return
+                cont.resumeWithException(e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (cont.isCancelled) {
+                    response.close()
+                    return
+                }
+                cont.resume(response)
+            }
+        })
+        cont.invokeOnCancellation { runCatching { cancel() } }
+    }
+
     /** 自动修复一轮：用真实搜索验证 -> 若有误则反馈 LLM 修复 */
     suspend fun autoFix(
         baseUrl: String,
@@ -167,6 +218,11 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         var round = 0
         var current = sourceJson
         val log = StringBuilder()
+        // 使用对话历史代替重复发送完整 HTML 上下文
+        val messages = mutableListOf(
+            mapOf("role" to "system", "content" to systemPrompt),
+            mapOf("role" to "user", "content" to userPrompt)
+        )
         while (round < maxRounds) {
             round++
             log.appendLine("[第 $round 轮] 用真实搜索验证书源...")
@@ -175,8 +231,8 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             if (verify.succeeded) {
                 return AutoFixResult(ok = true, rounds = round, json = verify.fixedJson ?: current, log = log.toString())
             }
-            // 组装修复提示词，把真实报错反馈给 LLM
-            val fixPrompt = buildString {
+            // 组装修复提示词，只反馈错误信息，不重复发送 HTML
+            val fixUserPrompt = buildString {
                 appendLine("你之前生成的书源经真实搜索验证不通过，请根据以下错误信息修复规则，只输出修复后的完整书源 JSON 数组（不要任何解释）：")
                 appendLine()
                 appendLine("【真实验证报错】")
@@ -184,12 +240,11 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                 appendLine()
                 appendLine("【上一次生成的书源 JSON】")
                 appendLine(current)
-                appendLine()
-                appendLine("【原始网页/接口上下文】")
-                appendLine(userPrompt)
             }
+            messages.add(mapOf("role" to "assistant", "content" to current))
+            messages.add(mapOf("role" to "user", "content" to fixUserPrompt))
             val fixed = runCatching {
-                generate(baseUrl, apiKey, model, systemPrompt, fixPrompt)
+                generateWithMessages(baseUrl, apiKey, model, messages)
             }.getOrElse { e ->
                 return AutoFixResult(ok = false, rounds = round, json = current, log = log.appendLine("AI 修复调用失败: ${e.message}").toString())
             }
@@ -312,6 +367,14 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         private const val KEY_PROMPT_HTML_LIMIT = "ai_prompt_html_limit"
         private const val KEY_MAX_ROUNDS = "ai_max_fix_rounds"
 
+        /** API Key 加密后存储的前缀标记 */
+        private const val ENC_PREFIX = "aes:"
+
+        /** API Key 加密密钥（MD5 前 16 字节），与备份 AES 策略一致 */
+        private val cryptoKey: ByteArray by lazy {
+            MD5Utils.md5Encode("legado.ai-source.api-key").encodeToByteArray(0, 16)
+        }
+
         private const val DEFAULT_TEMPERATURE = 0.3f
         private const val DEFAULT_HTML_LIMIT = 40_000
         private const val DEFAULT_MAX_ROUNDS = 3
@@ -426,17 +489,19 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 - 目录 VIP/付费标记用 isVip/isPay（不是 vipFlag/payFlag）
 - 目录前置/格式化用 preUpdateJs/formatJs（不是 beforeUpdateJs/formatChapterName）
 
-【规则语法（Default 语法优先）】
-- 提取类型：@text 取文本、@html 取 HTML、@href 取链接、@src 取图片、@textNode、@ownText
-- Default 语法：class.booklist@tag.li 或 .booklist li@tag.a；简单 CSS 选择器不要加 @css 前缀
-- 复杂 CSS：@css:.detail p:nth-child(2)@text
-- XPath：//div[@id='content']、//h3/a/text()、//img/@src
-- JSONPath（返回 JSON 的网站）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL；正文/目录接口若 URL 模板缺参，按 Legado 约定补 book_id 与 chapter_id（book_id 用 {{book.bookUrl}} 正则提取，chapter_id 用目录章节对象的 ID 字段）
-- 元素直接取属性：@@text、@@href（取当前选中元素自身的文本/链接，用于列表项）
-- 内联 JS：{{表达式}} 可嵌入 JS 片段；@get:{变量名} 读取全局变量；@put:{变量名} 存入全局变量
-- 正则：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"；注意 \d、\s 等需写双反斜杠
+【规则语法（严格按本版 Legado 实际解析语义）】
+- 规则默认走 JSoup 解析器（Default 模式）。列表/字段规则统一写法：class.xxx@tag.li@text
+  - 选择步骤：class.X 按 class 取、tag.X 按标签取、id.X 按 id 取、text.X 按包含文本取、children 取子元素
+  - 索引筛选：tag.li.0 取第 1 个、tag.li.-1 取最后一个、tag.li.1:3 取第 2~4 个、tag.li[-1:0] 反序、tag.li!0 排除第 1 个
+  - 多个选择步骤用 @ 串联，例如 class.booklist@tag.li@tag.a@href；最后一个 @ 后面必须是提取类型
+- 提取类型（放在最后一个 @ 之后）：text 取文本、textNodes 取文本节点、ownText 取自身文本（不含子元素）、html 取 HTML、all 取整个 outerHTML；其余任意属性名如 href/src/id 表示取该属性值
+- 纯 CSS 选择器加 @CSS: 前缀：@CSS:.detail p:nth-child(2)@text
+- 多个候选规则合并：&& 顺序执行并合并所有结果；|| 取第一个非空结果即止；%% 交错合并
+- XPath：以 / 开头自动识别，如 //div[@id='content']、//h3/a/text()、//img/@src
+- JSONPath（返回 JSON 的接口/内嵌 JSON 数据）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL；目录/正文接口若 URL 模板缺参，按 Legado 约定补 book_id 与 chapter_id（book_id 用 {{book.bookUrl}} 正则提取，chapter_id 用目录章节对象的 ID 字段）
+- 内联 JS：{{表达式}} 嵌入 JS 片段；@get:{变量名} 读全局变量；@put:{变量名} 存全局变量
+- 正则替换：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"；正则里 \d、\s 等须写双反斜杠 \\d、\\s
 - 整页 JS 渲染：若页面数据完全由 JS 动态生成、HTML 里没有书籍数据，则在对应 webJs 字段写提取脚本，或用 preUpdateJs/formatJs 处理后端数据
-- 注意转义：正则里的 \d、\s 等需写双反斜杠
 
 【输出要求】
 1. 严格输出 JSON，最外层必须是数组 [...]，即使只有一个书源

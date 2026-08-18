@@ -205,6 +205,7 @@
     <string name="ai_base_url_hint">接口地址，如 https://api.deepseek.com/v1</string>
     <string name="ai_api_key_hint">API Key</string>
     <string name="ai_model_hint">模型名，如 deepseek-chat</string>
+    <string name="ai_model_preset_hint">模型预设：</string>
     <string name="ai_input_title">① 填写网站信息</string>
     <string name="ai_url_hint">网站地址（用于 AI 分析网页结构）</string>
     <string name="ai_keyword_hint">搜索关键词（可选，如：斗破苍穹）</string>

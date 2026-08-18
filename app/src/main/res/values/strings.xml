@@ -210,6 +210,7 @@
     <string name="ai_base_url_hint">API base URL, e.g. https://api.deepseek.com/v1</string>
     <string name="ai_api_key_hint">API Key</string>
     <string name="ai_model_hint">Model name, e.g. deepseek-chat</string>
+    <string name="ai_model_preset_hint">Model preset:</string>
     <string name="ai_input_title">1. Website info</string>
     <string name="ai_url_hint">Website URL (for AI to analyze the page)</string>
     <string name="ai_keyword_hint">Search keyword (optional, e.g. novel name)</string>
