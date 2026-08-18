@@ -218,6 +218,11 @@ object ApplicationThemeManager {
             if (zipFile != file) zipFile.delete()
             return result
         }
+        // 检测 GZIP 类 .red 格式（RED 头 + GZIP 或纯 GZIP），解压后作为 JSON 处理
+        val gzipJson = RedAssetPackage.gzipJsonPayload(file)
+        if (gzipJson != null) {
+            return RedThemeImporter.importGzipJson(gzipJson, options)
+        }
         // 不是 ZIP 也不是 .red，尝试作为纯 JSON 导入
         require(file.length() <= maxManifestBytes) { appCtx.getString(R.string.app_theme_file_too_large) }
         val imported = sanitize(
