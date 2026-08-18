@@ -5,7 +5,9 @@ import com.google.gson.JsonParser
 import io.legado.app.api.ReturnData
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.utils.EncodingDetect
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.Charset
@@ -60,6 +62,7 @@ object AiSourceController {
     /**
      * 匹配常见前端请求里的 URL 模板（相对路径或带 `${}` 占位符）
      * 覆盖 fetch / axios / $.ajax / $.get / $.post / uni.request / XMLHttpRequest
+     * 同时检测 POST 方法与请求体
      */
     private val fetchUrlPattern: Pattern = Pattern.compile(
         """fetch\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
@@ -68,6 +71,16 @@ object AiSourceController {
             """\$\s*\.\s*(?:get|post|ajax)\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
             """(?:uni\.request|request)\s*\(\s*\{\s*url\s*:\s*[`'"]([^`'"]+)[`'"]|""" +
             """XMLHttpRequest[^;]*?\.\s*open\s*\(\s*['"](?:GET|POST)['"]\s*,\s*[`'"]([^`'"]+)[`'"]""",
+        Pattern.CASE_INSENSITIVE
+    )
+
+    /** 探测 POST 请求的方法与请求体模板 */
+    private val postMethodPattern: Pattern = Pattern.compile(
+        """(?:method|type)\s*[:=]\s*['"]POST['"]""",
+        Pattern.CASE_INSENSITIVE
+    )
+    private val postBodyPattern: Pattern = Pattern.compile(
+        """(?:body|data)\s*[:=]\s*[`'"]([^`'"]+)[`'"]""",
         Pattern.CASE_INSENSITIVE
     )
 
@@ -101,7 +114,12 @@ object AiSourceController {
         val embeddedJson: List<String>
     )
 
-    data class ApiEndpoint(val type: String, val url: String)
+    data class ApiEndpoint(
+        val type: String,
+        val url: String,
+        val method: String = "GET",
+        var postBody: String = ""
+    )
 
     data class SampleResult(
         val ok: Boolean,
@@ -203,16 +221,20 @@ object AiSourceController {
      * 构建抓取请求：默认携带浏览器 UA，可追加自定义请求头与 Cookie
      */
     private fun buildRequest(url: String, header: String?, cookie: String?): Request {
-        val builder = Request.Builder()
-            .url(url)
-            .header("User-Agent", DEFAULT_USER_AGENT)
+        val builder = Request.Builder().url(url)
+        applyHeaders(builder, header, cookie)
+        return builder.build()
+    }
+
+    /** 为请求统一注入浏览器 UA、自定义请求头与 Cookie */
+    private fun applyHeaders(builder: Request.Builder, header: String?, cookie: String?) {
+        builder.header("User-Agent", DEFAULT_USER_AGENT)
         parseHeaderString(header).forEach { (k, v) ->
             if (k.isNotBlank()) builder.header(k.trim(), v)
         }
         if (!cookie.isNullOrBlank()) {
             builder.header("Cookie", cookie)
         }
-        return builder.build()
     }
 
     /**
@@ -232,10 +254,11 @@ object AiSourceController {
     }
 
     /**
-     * 从页面脚本中提取 JSON API 接口，并解析为绝对地址（相对路径基于最终页面地址）
+     * 从页面脚本中提取 JSON API 接口，并解析为绝对地址（相对路径基于最终页面地址）。
+     * 同时判断请求方法（GET/POST）与 POST 请求体模板。
      */
     private fun discoverApiEndpoints(html: String, baseUrl: String): List<ApiEndpoint> {
-        val found = LinkedHashMap<String, String>()
+        val found = LinkedHashMap<String, ApiEndpoint>()
         val matcher = fetchUrlPattern.matcher(html)
         while (matcher.find()) {
             val template = (1..6)
@@ -262,23 +285,39 @@ object AiSourceController {
             val resolved = runCatching { URL(URL(baseUrl), cleaned).toString() }.getOrDefault("")
             if (resolved.isBlank() || !resolved.startsWith("http")) continue
 
+            // 判断是否为 POST：取匹配处前后片段，检测 method/type:"POST" 与 body/data
+            val contextStart = (matcher.start() - 120).coerceAtLeast(0)
+            val context = html.substring(contextStart, minOf(html.length, matcher.end() + 200))
+            val isPost = postMethodPattern.matcher(context).find()
+            val postBody = if (isPost) {
+                postBodyPattern.matcher(context).run {
+                    if (find()) group(1) ?: "" else ""
+                }
+            } else {
+                ""
+            }
+
             // search 接口优先带 keyword 占位符的；detail 接口优先带 bookId 的
             val existing = found[type]
             val better = when {
                 existing == null -> true
-                type == "search" && cleaned.contains("keyword") && !existing.contains("{{key}}") -> true
-                type == "detail" && cleaned.contains("bookid") && !existing.contains("{{bookId}}") -> true
+                type == "search" && cleaned.contains("keyword") && !existing.url.contains("{{key}}") -> true
+                type == "detail" && cleaned.contains("bookid") && !existing.url.contains("{{bookId}}") -> true
                 else -> false
             }
-            if (better) found[type] = resolved
+            if (better) {
+                found[type] = ApiEndpoint(type, resolved, if (isPost) "POST" else "GET")
+                    .apply { if (isPost && postBody.isNotBlank()) this.postBody = postBody }
+            }
         }
         val order = listOf("search", "detail", "catalog", "content")
-        return order.mapNotNull { t -> found[t]?.let { ApiEndpoint(t, it) } }
+        return order.mapNotNull { found[it] }
     }
 
     /**
      * 调用搜索接口取回示例 JSON。
      * 优先识别接口模板中真实的关键字/分页参数名，避免盲目追加错误参数。
+     * 接口为 POST 时使用 POST 请求（尽量沿用页面脚本里发现的请求体模板）。
      */
     private fun fetchSearchSample(
         endpoints: List<ApiEndpoint>,
@@ -300,6 +339,19 @@ object AiSourceController {
             .replace("{{key}}", kw)
             .replace("{{page}}", "1")
             .replace(Regex("""\{\{[^}]*\}\}"""), "")
+
+        if (search.method == "POST") {
+            // POST 探测：优先使用页面脚本里发现的请求体模板，否则用 keyword=<key>
+            val bodyTemplate = search.postBody.ifBlank {
+                val kp = keyParam ?: "keyword"
+                "$kp={{key}}"
+            }
+            val body = bodyTemplate
+                .replace("{{key}}", kw)
+                .replace("{{page}}", "1")
+                .replace(Regex("""\{\{[^}]*\}\}"""), "")
+            return fetchPostSample(url, body, header, cookie)
+        }
 
         if (keyParam == null && !url.contains(Regex("""[?&](?:keyword|searchKey|search_keyword|q|key)="""))) {
             url = if (url.contains("?")) "$url&keyword=$kw" else "$url?keyword=$kw"
@@ -358,6 +410,45 @@ object AiSourceController {
             }
         }.getOrElse {
             SampleResult(ok = false, url = url, error = it.message ?: it.javaClass.simpleName)
+        }
+    }
+
+    /**
+     * 以 POST 表单方式抓取接口示例 JSON（用于 POST 搜索接口探测）
+     */
+    private fun fetchPostSample(
+        url: String,
+        body: String,
+        header: String?,
+        cookie: String?
+    ): SampleResult {
+        return runCatching {
+            val form = body.toRequestBody("application/x-www-form-urlencoded".toMediaType())
+            val builder = Request.Builder().url(url).post(form)
+            applyHeaders(builder, header, cookie)
+            val client = okHttpClient.newBuilder()
+                .callTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .readTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .build()
+            client.newCall(builder.build()).execute().use { response ->
+                if (!response.isSuccessful) {
+                    SampleResult(ok = false, url = url, error = "POST HTTP ${response.code}")
+                } else {
+                    val text = response.body?.string()?.trim().orEmpty()
+                    if (text.isEmpty() || (!text.startsWith("{") && !text.startsWith("["))) {
+                        SampleResult(ok = false, url = url, error = "POST 响应非 JSON 或为空")
+                    } else {
+                        val truncated = if (text.length > MAX_API_CHARS) {
+                            text.substring(0, MAX_API_CHARS) + "\n...(已截断)"
+                        } else {
+                            text
+                        }
+                        SampleResult(ok = true, url = url, json = truncated)
+                    }
+                }
+            }
+        }.getOrElse {
+            SampleResult(ok = false, url = url, error = "POST 失败: ${it.message ?: it.javaClass.simpleName}")
         }
     }
 
