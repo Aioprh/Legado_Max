@@ -119,11 +119,118 @@ internal object RedThemeImporter {
         @SerializedName("dark") val dark: RedThemeColors? = null
     )
 
+    /** GZIP 类 .red 文件的顶层结构 */
+    @Keep
+    private data class RedThemePackage(
+        @SerializedName("version") val version: Int = 1,
+        @SerializedName("type") val type: String = "",
+        @SerializedName("data") val data: List<RedThemeItem> = emptyList()
+    )
+
+    /** GZIP 类 .red 文件中的单个主题项 */
+    @Keep
+    private data class RedThemeItem(
+        @SerializedName("name") val name: String = "",
+        @SerializedName("light") val light: RedThemeColors? = null,
+        @SerializedName("dark") val dark: RedThemeColors? = null,
+        @SerializedName("lightBackgroundImage") val lightBackgroundImage: String = "",
+        @SerializedName("darkBackgroundImage") val darkBackgroundImage: String = ""
+    )
+
     /** 封面图集 / 底栏图标包的 meta.json 通用结构 */
     @Keep
     private data class RedNameMeta(
         @SerializedName("name") val name: String = ""
     )
+
+    /**
+     * 导入 GZIP 类 .red 格式的主题包。
+     *
+     * GZIP 类 .red 文件解压后得到 JSON，结构为 [RedThemePackage]：
+     * `{ version, type: "theme", data: [{ name, light, dark, lightBackgroundImage, darkBackgroundImage }] }`。
+     *
+     * 与 ZIP 类格式不同，GZIP 类格式只有颜色配置和内联背景图（base64 编码），
+     * 没有底栏图标、封面图集等资源文件。
+     *
+     * @param json 解压后的 JSON 文本
+     * @param options 导入选项
+     * @return 导入后的 Config
+     */
+    suspend fun importGzipJson(json: String, options: ApplicationThemeManager.ImportOptions?): ApplicationThemeManager.Config {
+        val redPackage = GSON.fromJsonObject<RedThemePackage>(json).getOrThrow()
+        if (redPackage.type != "theme" || redPackage.data.isEmpty()) {
+            throw IllegalArgumentException(appCtx.getString(R.string.app_theme_invalid_format))
+        }
+
+        // 取第一个主题项（GZIP 格式通常只有一个）
+        val item = redPackage.data.first()
+        val themeName = item.name.ifBlank { "RED 主题" }
+
+        val importDayTheme = options?.importDayTheme ?: true
+        val importNightTheme = options?.importNightTheme ?: true
+
+        var dayTheme: ThemeConfig.Config? = null
+        var nightTheme: ThemeConfig.Config? = null
+
+        if (importDayTheme && item.light != null) {
+            dayTheme = convertGzipTheme(item.light, themeName, isNight = false, inlineBg = item.lightBackgroundImage)
+            ThemeConfig.addConfig(dayTheme)
+        }
+        if (importNightTheme && item.dark != null) {
+            nightTheme = convertGzipTheme(item.dark, themeName, isNight = true, inlineBg = item.darkBackgroundImage)
+            ThemeConfig.addConfig(nightTheme)
+        }
+
+        val config = ApplicationThemeManager.Config(
+            id = UUID.randomUUID().toString(),
+            name = themeName,
+            dayTheme = dayTheme,
+            nightTheme = nightTheme,
+            dayTopBarDir = TopBarConfig.DEFAULT_DIR_NAME,
+            nightTopBarDir = TopBarConfig.DEFAULT_DIR_NAME
+        )
+        return ApplicationThemeManager.addImported(
+            ApplicationThemeManager.stripComponents(config, options)
+        )
+    }
+
+    /**
+     * 将 GZIP 类 .red 的颜色配置转换为 [ThemeConfig.Config]。
+     *
+     * 背景图可能是 base64 编码的内联图片，需要解码后保存到文件。
+     */
+    private fun convertGzipTheme(
+        colors: RedThemeColors,
+        name: String,
+        isNight: Boolean,
+        inlineBg: String
+    ): ThemeConfig.Config {
+        val backgroundImgPath = inlineBg.takeIf { it.isNotBlank() }?.let { encoded ->
+            try {
+                val bytes = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT)
+                val dir = appCtx.externalFiles
+                    .getFile(if (isNight) PreferKey.bgImageN else PreferKey.bgImage)
+                    .apply { mkdirs() }
+                val target = dir.getFile("red_theme_${UUID.randomUUID()}.jpg")
+                target.writeBytes(bytes)
+                target.absolutePath
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        return ThemeConfig.Config(
+            themeName = name.trim().ifBlank { "RED 主题" },
+            isNightTheme = isNight,
+            primaryColor = colors.primaryColor.ifBlank { if (isNight) "#FFFFFFFF" else "#FF4A775C" },
+            accentColor = colors.accentColor.ifBlank { colors.primaryColor.ifBlank { "#FF4A775C" } },
+            backgroundColor = colors.backgroundColor.ifBlank { if (isNight) "#FF000000" else "#FFF5F9F2" },
+            bottomBackground = colors.cardColor.ifBlank { colors.mutedColor.ifBlank { if (isNight) "#FF000000" else "#FFFCFDFA" } },
+            transparentNavBar = false,
+            backgroundImgPath = backgroundImgPath,
+            backgroundImgBlur = 0
+        )
+    }
 
     /**
      * 导入 .red 格式的主题包。

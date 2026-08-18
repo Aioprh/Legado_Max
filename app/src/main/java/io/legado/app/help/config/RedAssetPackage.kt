@@ -5,6 +5,7 @@ import io.legado.app.utils.getFile
 import splitties.init.appCtx
 import java.io.File
 import java.io.FileOutputStream
+import java.util.zip.GZIPInputStream
 import java.util.zip.ZipFile
 
 /**
@@ -167,6 +168,33 @@ internal object RedAssetPackage {
             RedFormat.RED_GZIP_JSON,
             RedFormat.RAW_GZIP_JSON,
             RedFormat.RED10_PRIVATE -> null
+        }
+    }
+
+    /**
+     * 从 GZIP 类 .red 文件中提取 JSON 文本。
+     *
+     * 支持 RED_GZIP_JSON 和 RAW_GZIP_JSON 两种子格式。
+     * RED_GZIP_JSON 需要先跳过 4 字节 RED 头，RAW_GZIP_JSON 直接解压。
+     *
+     * @param file 输入文件
+     * @return 解压后的 JSON 文本，或 null（格式不匹配时）
+     */
+    fun gzipJsonPayload(file: File): String? {
+        val format = detectFormat(file) ?: return null
+        return when (format) {
+            RedFormat.RED_GZIP_JSON -> {
+                file.inputStream().use { input ->
+                    input.skip(4) // 跳过 4 字节 RED 头
+                    GZIPInputStream(input).bufferedReader(Charsets.UTF_8).use { it.readText() }
+                }
+            }
+            RedFormat.RAW_GZIP_JSON -> {
+                file.inputStream().use { input ->
+                    GZIPInputStream(input).bufferedReader(Charsets.UTF_8).use { it.readText() }
+                }
+            }
+            else -> null
         }
     }
 
