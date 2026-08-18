@@ -23,11 +23,6 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 class AiSourceGenerateActivity :
     VMBaseActivity<ActivityAiSourceGenerateBinding, AiSourceGenerateViewModel>() {
 
-    /** 喂给 LLM 的 HTML 最大字符数，避免超上下文 */
-    private companion object {
-        const val PROMPT_HTML_LIMIT = 40_000
-    }
-
     override val binding by viewBinding(ActivityAiSourceGenerateBinding::inflate)
     override val viewModel by viewModels<AiSourceGenerateViewModel>()
 
@@ -58,15 +53,17 @@ class AiSourceGenerateActivity :
             return
         }
         val keyword = binding.etKeyword.text?.toString()?.trim()
+        val header = binding.etHeader.text?.toString()
         binding.btnFetchHtml.isEnabled = false
         viewModel.execute {
-            viewModel.fetchHtml(url, keyword).getOrElse { throw it }
+            viewModel.fetchHtml(url, keyword, header).getOrElse { throw it }
         }.onSuccess { content ->
             htmlContent = content
             binding.etHtmlPreview.setText(content.html)
             val apiInfo = content.apiEndpoints.joinToString("；") { "${it.type}: ${it.url}" }
             binding.tvHtmlHint.text = buildString {
                 append("编码：${content.charset}，共 ${content.length} 字符（已截断）")
+                if (content.embeddedJson.isNotEmpty()) append("；内嵌JSON：${content.embeddedJson.size} 块")
                 if (apiInfo.isNotBlank()) append("；发现接口：$apiInfo")
                 if (!content.sampleSearch.ok && content.sampleSearch.error.isNotBlank()) {
                     append("；接口探测：${content.sampleSearch.error}")
@@ -159,17 +156,27 @@ class AiSourceGenerateActivity :
                 appendLine("目录接口探测失败：${sc.error}")
             }
         }
+        content?.embeddedJson?.takeIf { it.isNotEmpty() }?.let { jsonList ->
+            appendLine()
+            appendLine("【重要】页面内嵌 JSON 数据（SSR 站点常见，已从 <script> 中提取，含书籍真实数据，请优先基于这些 JSON 编写 JSONPath 规则）：")
+            jsonList.forEachIndexed { i, json ->
+                appendLine("---------- 内嵌JSON #${i + 1} ----------")
+                appendLine(json)
+                appendLine("----------")
+            }
+        }
         appendLine()
         appendLine("已抓取到的网页 HTML（预处理后，编码 ${content?.charset}，共 ${content?.length} 字符，已截断）：")
         appendLine("----------")
-        val htmlForPrompt = if (html.length > PROMPT_HTML_LIMIT) {
-            html.substring(0, PROMPT_HTML_LIMIT) + "\n...(已截断)"
+        val limit = viewModel.promptHtmlLimit
+        val htmlForPrompt = if (html.length > limit) {
+            html.substring(0, limit) + "\n...(已截断)"
         } else {
             html
         }
         appendLine(htmlForPrompt)
         appendLine("----------")
-        appendLine("请分析以上内容，按系统要求输出完整书源 JSON 数组。若提供了 JSON API 接口与示例响应，请优先使用 JSONPath 规则。")
+        appendLine("请分析以上内容，按系统要求输出完整书源 JSON 数组。若提供了 JSON API 接口、内嵌 JSON 或示例响应，请优先使用 JSONPath 规则。")
     }
 
     private fun validate() {
@@ -209,7 +216,7 @@ class AiSourceGenerateActivity :
         val html = content?.html.orEmpty()
         val userPrompt = buildUserPrompt(url, keyword, typeName, typeIndex, content, html)
         binding.btnAutoFix.isEnabled = false
-        binding.tvChecks.text = "正在用真实搜索验证并自动修复，最多 3 轮..."
+        binding.tvChecks.text = "正在用真实搜索验证并自动修复，最多 ${viewModel.maxFixRounds} 轮..."
         viewModel.execute {
             viewModel.autoFix(
                 baseUrl = viewModel.baseUrl,
@@ -219,7 +226,7 @@ class AiSourceGenerateActivity :
                 userPrompt = userPrompt,
                 sourceJson = text,
                 keyword = keyword ?: "",
-                maxRounds = 3
+                maxRounds = viewModel.maxFixRounds
             )
         }.onSuccess { result ->
             binding.etResult.setText(result.json)

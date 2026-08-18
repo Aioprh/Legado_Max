@@ -47,16 +47,31 @@ object AiSourceValidate {
         fun check(name: String, pass: Boolean, msg: String = "") =
             list.add(Check(name, pass, msg))
 
-        check("源名称", strOf(src, "bookSourceName") != null, "bookSourceName 不能为空")
-        check("源地址", strOf(src, "bookSourceUrl") != null, "bookSourceUrl 不能为空")
+        // 基本信息
+        val name = strOf(src, "bookSourceName")
+        check("源名称", name != null, "bookSourceName 不能为空")
+        val sourceUrl = strOf(src, "bookSourceUrl")
+        check("源地址", sourceUrl != null, "bookSourceUrl 不能为空")
+        if (sourceUrl != null && !sourceUrl.startsWith("http://") &&
+            !sourceUrl.startsWith("https://") && !sourceUrl.startsWith("data:")
+        ) {
+            check("源地址格式", false, "bookSourceUrl 应以 http:// 或 https:// 开头")
+        }
         val typeEl = src.get("bookSourceType")
+        val typeVal = typeEl?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }
+            ?.asJsonPrimitive?.asInt
         check(
             "源类型",
-            typeEl != null && typeEl.isJsonPrimitive && typeEl.asJsonPrimitive.isNumber,
-            "bookSourceType 应为数字(0/1/2/3/4)"
+            typeVal != null && typeVal in 0..4,
+            "bookSourceType 应为 0~4 的整数"
         )
-        check("搜索地址", strOf(src, "searchUrl") != null, "searchUrl 不能为空")
+        val searchUrl = strOf(src, "searchUrl")
+        check("搜索地址", searchUrl != null, "searchUrl 不能为空")
+        if (searchUrl != null && !searchUrl.contains("{{key}}")) {
+            check("搜索关键字占位符", true, "searchUrl 未包含 {{key}}，可能无法执行关键字搜索")
+        }
 
+        // 搜索规则
         val rs = src.getAsJsonObject("ruleSearch")
         if (rs != null) {
             check("搜索列表规则", strOf(rs, "bookList") != null, "ruleSearch.bookList 不能为空")
@@ -64,6 +79,7 @@ object AiSourceValidate {
             check("搜索详情地址规则", strOf(rs, "bookUrl") != null, "ruleSearch.bookUrl 不能为空")
         }
 
+        // 目录规则
         val rt = src.getAsJsonObject("ruleToc")
         if (rt != null) {
             check("目录列表规则", strOf(rt, "chapterList") != null, "ruleToc.chapterList 不能为空")
@@ -71,20 +87,33 @@ object AiSourceValidate {
             check("章节地址规则", strOf(rt, "chapterUrl") != null, "ruleToc.chapterUrl 不能为空")
         }
 
+        // 正文规则
         val rc = src.getAsJsonObject("ruleContent")
         check("正文规则", strOf(rc, "content") != null, "ruleContent.content 不能为空")
 
-        // 正则成对检查（规则字符串中包含 ## 的必须成对）
-        val rules = mutableListOf<String>()
+        // 发现规则联动：exploreUrl 非空时要求 ruleExplore 必备字段非空
+        val exploreUrl = strOf(src, "exploreUrl")
+        val re = src.getAsJsonObject("ruleExplore")
+        if (exploreUrl != null && re != null) {
+            check("发现列表规则", strOf(re, "bookList") != null, "exploreUrl 非空时 ruleExplore.bookList 不能为空")
+            check("发现书名规则", strOf(re, "name") != null, "exploreUrl 非空时 ruleExplore.name 不能为空")
+            check("发现详情地址规则", strOf(re, "bookUrl") != null, "exploreUrl 非空时 ruleExplore.bookUrl 不能为空")
+        }
+
+        // 收集所有字符串规则，做语法级检查
+        val allRules = mutableListOf<String>()
         listOf(rs, src.getAsJsonObject("ruleBookInfo"), rt, rc).forEach { obj ->
             obj?.entrySet()?.forEach { (_, v) ->
                 if (v.isJsonPrimitive && v.asJsonPrimitive.isString) {
                     val s = v.asString
-                    if (s.contains("##")) rules.add(s)
+                    if (s.isNotBlank()) allRules.add(s)
                 }
             }
         }
-        val oddRules = rules.filter { r ->
+
+        // 正则成对检查（规则字符串中包含 ## 的必须成对）
+        val regexRules = allRules.filter { it.contains("##") }
+        val oddRules = regexRules.filter { r ->
             Regex("##").findAll(r).count() % 2 != 0
         }
         check(
@@ -94,6 +123,35 @@ object AiSourceValidate {
                 "以下规则 ## 未成对：${oddRules.take(3).joinToString("、") { it.take(30) }}"
             } else {
                 "所有 ## 正则均已成对"
+            }
+        )
+
+        // 正则可编译性检查
+        val invalidRegex = regexRules.mapNotNull { r ->
+            val regex = r.split("##").getOrNull(1)
+            if (regex.isNullOrBlank() || runCatching { Regex(regex) }.isSuccess) null else r
+        }
+        check(
+            "正则语法",
+            invalidRegex.isEmpty(),
+            if (invalidRegex.isNotEmpty()) {
+                "以下规则正则无法编译：${invalidRegex.take(3).joinToString("、") { it.take(30) }}"
+            } else {
+                "所有 ## 正则均可编译"
+            }
+        )
+
+        // 花括号配对检查（{{js}} / @get:{...} / @put:{...}）
+        val unbalancedBraces = allRules.filter { r ->
+            r.count { it == '{' } != r.count { it == '}' }
+        }
+        check(
+            "花括号配对",
+            unbalancedBraces.isEmpty(),
+            if (unbalancedBraces.isNotEmpty()) {
+                "以下规则 { } 未配对：${unbalancedBraces.take(3).joinToString("、") { it.take(30) }}"
+            } else {
+                "所有 { } 均配对"
             }
         )
 
