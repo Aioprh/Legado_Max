@@ -2157,6 +2157,7 @@
 <string name="application_theme_import">Import app theme</string>
 <string name="application_theme_import_with_options">Import app theme with options</string>
 <string name="application_theme_import_options_hint">Select components to create during import. Unchecked components will be skipped (not created).</string>
+<string name="application_theme_delete_options_hint">Check associated components to delete with "%1$s". Unchecked components will be kept.</string>
 <string name="application_theme_manage">App themes</string>
 <string name="application_theme_name">App theme name</string>
 <string name="application_theme_name_exists">An app theme with this name already exists</string>

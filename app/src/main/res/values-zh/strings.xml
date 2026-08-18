@@ -2141,6 +2141,7 @@
 <string name="application_theme_import">导入应用主题</string>
 <string name="application_theme_import_with_options">导入应用主题设置</string>
 <string name="application_theme_import_options_hint">勾选需要在导入时创建的组件，未勾选的组件将被跳过（不创建）</string>
+<string name="application_theme_delete_options_hint">删除「%1$s」时，勾选要一并删除的关联组件，未勾选的组件将被保留</string>
 <string name="application_theme_manage">应用主题</string>
 <string name="application_theme_name">应用主题名称</string>
 <string name="application_theme_name_exists">应用主题名称已存在</string>

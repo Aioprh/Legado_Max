@@ -129,6 +129,19 @@ object ApplicationThemeManager {
         val importNightCover: Boolean = true
     )
 
+    /** 删除应用主题时的可选范围，控制是否一并删除关联组件，默认全部不勾选 */
+    @Keep
+    data class DeleteOptions(
+        val deleteDayTheme: Boolean = false,
+        val deleteNightTheme: Boolean = false,
+        val deleteDayTopBar: Boolean = false,
+        val deleteNightTopBar: Boolean = false,
+        val deleteDayBottomBar: Boolean = false,
+        val deleteNightBottomBar: Boolean = false,
+        val deleteDayCover: Boolean = false,
+        val deleteNightCover: Boolean = false
+    )
+
     /** 将导入选项持久化到 SharedPreferences */
     fun saveImportOptions(context: Context, options: ImportOptions) {
         context.putPrefBoolean(PreferKey.appThemeImportDayTheme, options.importDayTheme)
@@ -443,6 +456,87 @@ object ApplicationThemeManager {
 
     /** 删除配置，若删除的是当前配置则清除激活标记 */
     fun delete(context: Context, id: String) {
+        save(load().filterNot { it.id == id })
+        if (currentId(context) == id) context.putPrefString(currentIdKey, "")
+    }
+
+    /**
+     * 删除配置并可选删除关联组件。
+     *
+     * @param context 上下文
+     * @param id 要删除的主题配置 ID
+     * @param options 删除选项，控制是否一并删除关联的主题、顶栏、底栏、封面图集
+     */
+    suspend fun deleteWithComponents(context: Context, id: String, options: DeleteOptions) {
+        val config = load().firstOrNull { it.id == id }
+
+        // 删除关联的日间主题配置
+        if (options.deleteDayTheme && config?.dayTheme != null) {
+            val theme = config.dayTheme!!
+            val index = ThemeConfig.configList.indexOfFirst {
+                it.themeName == theme.themeName && !it.isNightTheme
+            }
+            if (index >= 0) ThemeConfig.delConfig(index)
+        }
+
+        // 删除关联的夜间主题配置
+        if (options.deleteNightTheme && config?.nightTheme != null) {
+            val theme = config.nightTheme!!
+            val index = ThemeConfig.configList.indexOfFirst {
+                it.themeName == theme.themeName && it.isNightTheme
+            }
+            if (index >= 0) ThemeConfig.delConfig(index)
+        }
+
+        // 删除关联的日间顶栏配置
+        if (options.deleteDayTopBar && config != null
+            && config.dayTopBarDir.isNotBlank()
+            && config.dayTopBarDir != TopBarConfig.DEFAULT_DIR_NAME
+        ) {
+            val entry = TopBarConfig.loadEntries(context, false)
+                .firstOrNull { it.dirName == config.dayTopBarDir }
+            entry?.let { TopBarConfig.deleteLocal(it) }
+        }
+
+        // 删除关联的夜间顶栏配置
+        if (options.deleteNightTopBar && config != null
+            && config.nightTopBarDir.isNotBlank()
+            && config.nightTopBarDir != TopBarConfig.DEFAULT_DIR_NAME
+        ) {
+            val entry = TopBarConfig.loadEntries(context, true)
+                .firstOrNull { it.dirName == config.nightTopBarDir }
+            entry?.let { TopBarConfig.deleteLocal(it) }
+        }
+
+        // 删除关联的日间底栏配置
+        if (options.deleteDayBottomBar && config?.dayBottomBarId != null) {
+            val navConfigs = NavigationBarConfig.loadConfigs(context)
+            val filtered = navConfigs.filterNot {
+                it.isNight == false && it.id == config.dayBottomBarId && !it.isBuiltin
+            }
+            NavigationBarConfig.saveConfigs(context, filtered)
+        }
+
+        // 删除关联的夜间底栏配置
+        if (options.deleteNightBottomBar && config?.nightBottomBarId != null) {
+            val navConfigs = NavigationBarConfig.loadConfigs(context)
+            val filtered = navConfigs.filterNot {
+                it.isNight == true && it.id == config.nightBottomBarId && !it.isBuiltin
+            }
+            NavigationBarConfig.saveConfigs(context, filtered)
+        }
+
+        // 删除关联的日间封面图集
+        if (options.deleteDayCover && config?.dayCoverGroupId != null) {
+            CoverGalleryRepository().deleteGroup(config.dayCoverGroupId!!)
+        }
+
+        // 删除关联的夜间封面图集
+        if (options.deleteNightCover && config?.nightCoverGroupId != null) {
+            CoverGalleryRepository().deleteGroup(config.nightCoverGroupId!!)
+        }
+
+        // 最后删除主题配置本身
         save(load().filterNot { it.id == id })
         if (currentId(context) == id) context.putPrefString(currentIdKey, "")
     }

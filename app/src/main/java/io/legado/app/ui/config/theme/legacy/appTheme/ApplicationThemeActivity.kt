@@ -488,10 +488,68 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
      * @param config 要删除的主题配置
      */
     private fun confirmDelete(config: ApplicationThemeManager.Config) {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 32, 48, 16)
+        }
+        val tvHint = TextView(this).apply {
+            text = getString(R.string.application_theme_delete_options_hint, config.name)
+            setPadding(0, 0, 0, 24)
+        }
+        container.addView(tvHint)
+
+        fun addRow(labelRes: Int): Pair<CheckBox, CheckBox> {
+            val tvLabel = TextView(this).apply {
+                text = getString(labelRes)
+                setPadding(0, 12, 0, 4)
+                paintFlags = paintFlags or android.graphics.Paint.FAKE_BOLD_TEXT_FLAG
+            }
+            container.addView(tvLabel)
+            val cbDay = CheckBox(this).apply {
+                text = getString(R.string.day)
+                isChecked = false
+            }
+            val cbNight = CheckBox(this).apply {
+                text = getString(R.string.night)
+                isChecked = false
+            }
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(48, 0, 0, 0)
+                addView(cbDay)
+                addView(cbNight)
+            }
+            container.addView(row)
+            return cbDay to cbNight
+        }
+
+        val (cbDayTheme, cbNightTheme) = addRow(R.string.application_theme_component_theme)
+        val (cbDayTopBar, cbNightTopBar) = addRow(R.string.application_theme_component_top_bar)
+        val (cbDayBottomBar, cbNightBottomBar) = addRow(R.string.application_theme_component_bottom_bar)
+        val (cbDayCover, cbNightCover) = addRow(R.string.application_theme_component_cover)
+
         alert(R.string.delete, R.string.sure_del) {
+            customView { container }
             okButton {
-                ApplicationThemeManager.delete(this@ApplicationThemeActivity, config.id)
-                refresh()
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        ApplicationThemeManager.deleteWithComponents(
+                            this@ApplicationThemeActivity,
+                            config.id,
+                            ApplicationThemeManager.DeleteOptions(
+                                deleteDayTheme = cbDayTheme.isChecked,
+                                deleteNightTheme = cbNightTheme.isChecked,
+                                deleteDayTopBar = cbDayTopBar.isChecked,
+                                deleteNightTopBar = cbNightTopBar.isChecked,
+                                deleteDayBottomBar = cbDayBottomBar.isChecked,
+                                deleteNightBottomBar = cbNightBottomBar.isChecked,
+                                deleteDayCover = cbDayCover.isChecked,
+                                deleteNightCover = cbNightCover.isChecked
+                            )
+                        )
+                    }
+                    refresh()
+                }
             }
             cancelButton()
         }
