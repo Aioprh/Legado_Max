@@ -104,6 +104,17 @@ The project has three library modules in `modules/`:
 
 Jetpack Compose (Material3, BOM 2025.04.01) is used for newer UI surfaces (e.g. debug log panel). Traditional View system (ViewBinding + XML layouts) is used for most existing screens. Both coexist — ComposeViews can be overlaid on View-based Activities.
 
+
+### UI 架构规范（必须遵守）
+
+`io.legado.app.ui` 包下所有 Compose 相关代码，必须遵循 `docs/project-rules/UI-ARCHITECTURE.md`。写任何 UI 代码前先读该文档，核心要点：
+
+- 目录结构：新 Compose 通用组件进 `ui/widget/components/`，禁止在 `ui/widget/` 根目录（XML 存量混存区）继续堆放；Feature 私有组件归集到 Feature 内 `components/`，禁止跨 Feature 引用
+- 命名：`*Screen.kt` / `*ViewModel.kt` / `*Repository.kt` / `*UiState.kt`；禁止 `*View.kt` 用于 Compose 代码，禁止 `*Components.kt` 大杂烩文件
+- Composable API：`modifier` 永远是第一个参数；回调用 `onXxx` DSL 命名
+- 禁止在 Screen 文件内定义 `private fun` 形式的可复用组件
+- 老代码迁移期允许 `@Suppress("LegadoUiViolation")` + TODO 过渡，违规项见该文档 §14 Code Review Checklist（机器硬卡项 CI 会直接失败）
+
 ## Coding Conventions
 
 - Kotlin 代码风格遵循 Google Android Style Guide
