@@ -17,6 +17,11 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/19**
+- fix(toc): 修复反转目录后已缓存章节读不到的问题
+- refactor(书源): 书源URL变更时去除确认弹窗改为默认迁移并toast提醒
+- fix: 目录加载失败后保留旧目录让用户能阅读已缓存章节
+
 **2026/8/18**
 - feat(主题): 支持 SVG 底栏图标选择
 - feat(主题): 支持多格式主题导出(MAX、archive、MD3、reeden)(注:对reeden的适配不是很好，很多阅读没有的字段)
