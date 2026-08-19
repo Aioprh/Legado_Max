@@ -1,7 +1,7 @@
 # Legado Max — Compose UI 架构规范
 
 > **生效范围**：`io.legado.app.ui` 包及以下所有代码  
-> **执行方式**：软约束 — Code Review 时人工对照本文档 Checklist，不达标 PR 打回  
+> **执行方式**：机器硬卡 + 人工软约束 — §14 中标 [机器] 的项由 lint/Detekt/CI 规则强制，违规直接构建失败；[人工] 项 Code Review 时人工对照，不达标 PR 打回  
 > **老代码策略**：分阶段迁移，允许 `@Suppress("LegadoUiViolation")` + TODO 临时过渡  
 > **最后更新**：2026-08-19
 
@@ -122,9 +122,9 @@ fun AppListItem(
 
 - **必须**暴露 `StateFlow<UiState>`，Screen 通过 `collectAsStateWithLifecycle()` 消费（见 4.2）。
 - **必须**一次性事件（Toast、跳转、分享）通过 `Channel<Event>` + `receiveAsFlow()` 向上抛给 Activity，禁止 ViewModel 直接持有 `Application` 调用 `toast`、`startActivity`。
-- 缓冲区**必须**显式指定，禁止用默认 `RENDEZVOUS`（零容量，`trySend` 在接收方未等待时立即失败即静默丢事件）：
-  - 默认用 `Channel<Event>(Channel.BUFFERED)`；
-  - 天然允许"只留最新"的事件（Toast、导航跳转）可用 `Channel.BUFFERED(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)` 或 `CONFLATED`，并在 Channel 定义处注释说明丢事件语义。
+- 缓冲区**必须**显式指定，禁止用默认 `RENDEZVOUS`（零容量，`trySend` 在接收方未等待时立即失败即静默丢事件）。容量按事件重要性分档：
+  - **关键事件（导航、弹窗、确认）→ `Channel<Event>(Channel.UNLIMITED)`**。若受内存约束必须用有界缓冲，`trySend` 的返回值**必须**检查，失败时打日志——`trySend` 底层是 `offerInternal(element)`，缓冲满时立即返回 `ChannelResult.failure`，不挂起、不抛异常，静默丢事件且无任何痕迹。
+  - **天然允许"只留最新"的事件（Toast、非阻塞提示）→ 统一 `Channel<Event>(Channel.CONFLATED)`**（等价于容量 1 + DROP_OLDEST，禁止再写 `BUFFERED(1, BufferOverflow.DROP_OLDEST)` 的等价形式，避免两种语义并存），并在 Channel 定义处注释说明丢事件语义。
 - **禁止** 在 ViewModel 里直接操作 `clipboardManager`、`startActivity`、`showDialog` 等平台 API。这些下沉到 Activity 或 UseCase。
 
 ### 4.1.1 Repository 数据流
@@ -148,7 +148,7 @@ val uiState: StateFlow<ThemeManageUiState> = themeRepository.observeThemes()
 
 ### 4.2 Screen 层
 
-- Screen 只做三件事：收集状态、传回调给子组件、条件渲染 Dialog/BottomSheet。
+- Screen 只做三件事：收集状态、传回调给子组件、条件渲染 Dialog/BottomSheet（策略见 §4.5）。
 - **必须**使用 `collectAsStateWithLifecycle()`（`lifecycle-runtime-compose`），禁止裸 `collectAsState()`——后台/切走页面后 StateFlow 持续 emit，日活千万级别的电量与 CPU 都白烧。
 - **禁止** Screen 里调 `viewModel.xxx()` 后马上改本地 mutableStateOf（状态提升不够，逻辑乱飞）。
 - **禁止** 在 `@Composable` 函数体里写超过 3 个 `var xxx by remember { mutableStateOf() }`。这种场景必须抽 State Holder。
@@ -159,6 +159,75 @@ val uiState: StateFlow<ThemeManageUiState> = themeRepository.observeThemes()
 - **必须** IO 操作通过 `withContext(Dispatchers.IO)`。
 - **禁止** 在 Repository 或 ViewModel 里抛阻塞主线程的同步调用。
 - **禁止** 使用 `GlobalScope` 启动协程。ViewModel 里用 `viewModelScope`，Screen 里用 `LaunchedEffect(key) { ... }`。
+
+### 4.4 事件消费侧生命周期绑定
+
+ViewModel 抛出的 `Channel<Event>`，消费侧**必须**绑定到 `Lifecycle.State.STARTED`，禁止裸 `scope.launch { events.collect { } }`——页面不可见时还在消费/堆积事件，回来后又消费一批过期事件，用户看到的就是"点了没反应，回头又弹两次"：
+
+```kotlin
+// Screen 内收集并转发给 Activity（平台操作仍在 Activity 执行，Screen 保持无平台依赖）
+val lifecycleOwner = LocalLifecycleOwner.current
+LaunchedEffect(lifecycleOwner) {
+    lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewModel.events.collect { event ->
+            onEvent(event) // 回调给 Activity 执行 toast / clipboard / navigate
+        }
+    }
+}
+```
+
+- `repeatOnLifecycle(STARTED)`：STOPPED 时收集协程取消、STARTED 时重建。配合 §4.1 的缓冲语义，行为是确定的——CONFLATED 通道里后台期间的新 Toast 自然丢弃（用户没看见，丢了无所谓）；UNLIMITED 通道里的关键事件排队，页面可见时补发（导航跳转不能丢）。
+- **禁止** 消费侧在 `Application` 生命周期 scope 里常驻 collect——事件会和当前页面脱钩。
+
+### 4.5 Dialog / BottomSheet 策略（UI State 条件渲染）
+
+- Dialog / BottomSheet **统一由 `UiState` 条件渲染**：Dialog 状态作为 `UiState` 的字段（`sealed interface`），Screen 里 `when` 分支渲染。
+- **禁止** 把 Dialog 注册成 Navigation 路由。导航栈方案会让返回键行为不一致（有时关弹窗、有时关页面），栈深度不可控，且 Dialog 的进出动画、多弹窗互斥全要自己补——条件渲染 + 返回键回调天然覆盖这些场景。
+- **返回键行为**：有 Dialog 展示时，返回键关闭 Dialog（清状态字段）；无 Dialog 时，返回键才走导航。必须显式注册 `OnBackPressedCallback`：
+
+```kotlin
+// UiState 内的 Dialog 状态
+sealed interface DialogState {
+    data object AddItem : DialogState
+    data class DeleteConfirm(val item: ThemeItem) : DialogState
+}
+// ThemeManageUiState: val dialog: DialogState? = null
+```
+
+```kotlin
+@Composable
+fun ThemeManageScreen(
+    state: ThemeManageUiState,
+    onDismissDialog: () -> Unit,
+    onConfirmDelete: (ThemeItem) -> Unit,
+    // ...
+) {
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    // 有 Dialog 时拦截返回键：关闭 Dialog 而非退出页面
+    DisposableEffect(state.dialog != null, backDispatcher) {
+        val callback = object : OnBackPressedCallback(state.dialog != null) {
+            override fun handleOnBackPressed() = onDismissDialog()
+        }
+        backDispatcher?.addCallback(callback)
+        onDispose { callback.remove() }
+    }
+
+    when (val dialog = state.dialog) {
+        is DialogState.AddItem -> AddItemDialog(
+            onDismiss = onDismissDialog,
+            onSubmit = { ... }
+        )
+        is DialogState.DeleteConfirm -> ConfirmDialog(
+            message = stringResource(R.string.theme_delete_confirm, dialog.item.name),
+            onConfirm = { onConfirmDelete(dialog.item) },
+            onDismiss = onDismissDialog
+        )
+        null -> Unit
+    }
+}
+```
+
+- **禁止** 在 Composable 体内用 `mutableStateOf` 本地持有 Dialog 显隐开关——重建即丢，返回键也拦不到，状态必须收进 `UiState`。
 
 ---
 
@@ -316,7 +385,7 @@ LazyColumn {
 ```
 
 - **禁止**在 `@Composable` 函数体内做重计算（排序、过滤、格式化大列表）。这些操作**必须**在 ViewModel 或 `remember` + `derivedStateOf` 中完成。
-- **必须**对列表类 `UiState` 数据类加 `@Immutable` 注解，避免 Compose 编译器跳过 stability 推断走保守策略导致多余 Recomposition：
+- **必须**对**item 模型类**（列表元素，如 `ThemeItem`）加 `@Immutable` 注解。字段类型含泛型或三方库类型时，编译器 stability 推断可能降级为保守策略，导致多余 Recomposition。`UiState` 本身**不需要**标注——它的稳定性由组件属性类型决定：
 
 ```kotlin
 @Immutable
@@ -326,6 +395,8 @@ data class ThemeItem(
     val config: ThemeConfig
 )
 ```
+
+- **禁止**对含可变集合字段（`MutableList` / `MutableMap` 等）的类标注 `@Immutable`。`@Immutable` 是对编译器的保证，标注后编译器跳过运行时检查，可变内容变化不触发重组，直接是线上 bug。
 
 - **推荐**当 Composable 参数包含 `List<T>` 且 T 本身可变时，用 `@Stable` 标注或包装为 `ImmutableList`。
 
@@ -484,31 +555,43 @@ private fun ThemeAddBottomBar(...) { ... }
 
 ---
 
-## 14. Code Review Checklist（人工对照）
+## 14. Code Review Checklist
 
-Reviewer 逐条打勾，任一 ❌ 打回：
+分两层：**机器项先行（CI 硬卡），人工项次之（Review）**。机器规则已把违规拦在构建阶段的，Reviewer 不重复检查。
+
+### 14.1 [机器] CI 硬卡（违规 = 构建红，不依赖 Reviewer 心情）
+
+| 规则 | 实现方式 |
+|------|--------|
+| 裸 `colorResource(R.color.xxx)`、硬编码 `Color(0xFF...)` | 自定义 lint 规则（白名单：`Color.Transparent` / 纯黑 / 纯白，见 §7.1） |
+| Composable 体内裸魔法数字 `16.dp`、`12.dp`、`0.8f` | 自定义 lint 规则（标准动画参数豁免，见 §7.2） |
+| Composable 的 `Modifier` 非第一参数 | Compose 官方 Lint Checks（`androidx.compose:compose-lint-checks` 依赖） |
+| `GlobalScope`、构造器/Factory 之外 `new Repository()` | Detekt `ForbiddenMethodCall` + 自定义规则（`new Repository` 需 AST 级检测） |
+| `collectAsState()` 替代 `collectAsStateWithLifecycle()` | 自定义 lint 规则 |
+| `Channel<Event>` 用 RENDEZVOUS / BUFFERED | 自定义 lint 规则（仅允许 UNLIMITED / CONFLATED，见 §4.1） |
+| `Log.e` / `Log.w` 缺异常对象第三参数 | 自定义 lint 规则 |
+| Composable 内硬编码中文字符串 | lint 硬编码字符串检测（白名单：Log、TODO、Preview） |
+| Screen 函数参数超过 5 个 | Detekt `LongParameterList`（按文件类型设阈值） |
+| 阶段三起新增 `@Suppress("LegadoUiViolation")` | CI grep，直接挂 |
+
+> 机器规则统一维护在 `tools/lint-rules/` 独立模块并纳入 CI。**修改本表的 PR 必须同步更新规则代码**，只改文档不改规则的一律视为"未落地"，打回。
+
+### 14.2 [人工] Reviewer 对照（任一 ❌ 打回）
 
 - [ ] 新 Screen 是否套了 `ConfigManageScaffold` / `AppScaffold` 等通用脚手架？还是裸 `Scaffold`？
-- [ ] 有无裸写 `colorResource(R.color.xxx)`？（允许场景：完全不在主题系统内的透明色、纯黑纯白）
-- [ ] 有无裸写 `16.dp`、`12.dp`、`0.8f` 等魔法数字？
-- [ ] 新增 Composable 函数是否 `Modifier` 为第一个参数？
 - [ ] 回调命名是否 `onXxx` 风格？
 - [ ] 有无新增 `private fun` 形式的可复用组件？（Screen 内私有且仅在当前文件使用两次以上 = 违规）
 - [ ] ViewModel 是否直接调用 `clipboardManager` / `startActivity` / `toast`？
-- [ ] 事件是否走 `Channel<Event>` 而非直接平台调用？
+- [ ] 事件是否走 `Channel<Event>` 而非直接平台调用？消费侧是否用 `repeatOnLifecycle(STARTED)` 绑定，而非裸 launch？（§4.4）
+- [ ] Dialog / BottomSheet 是否由 `UiState` 条件渲染？有无 Dialog 被注册成导航路由、显隐开关散落 `mutableStateOf`？返回键拦截是否覆盖？（§4.5）
 - [ ] 新文件是否按目录结构规范落到了正确的包？
 - [ ] 注释是否只解释了 "Why" 没有解释 "What"？
-- [ ] Screen 函数参数是否超过 5 个？超过则必须抽 Args 数据类。
 - [ ] `ui/widget/components/` 下新增组件是否附带 `@Preview`？
 - [ ] `LazyColumn` / `LazyRow` / `LazyVerticalGrid` 的 `items()` 是否传入了 `key`？
-- [ ] 列表类 `UiState` 数据类是否加了 `@Immutable` 或 `@Stable` 注解？
-- [ ] 有无在 Composable 内硬编码中文字符串？（必须走 `stringResource`）
-- [ ] Screen 状态收集是否用 `collectAsStateWithLifecycle()` 而非裸 `collectAsState()`？
-- [ ] `Channel<Event>` 是否显式指定缓冲区（BUFFERED / CONFLATED）？用了默认 RENDEZVOUS = 违规。
+- [ ] item 模型类是否加了 `@Immutable`，且标注的类无 `MutableList` / `MutableMap` 等可变集合字段？
 - [ ] 需要跨进程重建存活的用户输入状态是否用了 `rememberSaveable`？
 - [ ] 图片加载是否走统一的 Glide 封装组件（`AppImage` 等）+ 显式 `override` 尺寸？有无手写 decode 或第二套图片框架混入？
 - [ ] `LazyColumn` / `LazyRow` item 里有无 bitmap 像素级处理（缩放/圆角）？
-- [ ] 每个 `catch` 分支是否带异常对象 + 上下文的日志？
 - [ ] 路由字符串是否集中定义？调用点有无散落的路由字面量 / `savedStateHandle` 裸读？
 
 ---
