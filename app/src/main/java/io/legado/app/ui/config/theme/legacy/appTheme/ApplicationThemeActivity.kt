@@ -141,13 +141,13 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
 
     /**
      * 启动文件选择器以选择要导入的主题文件。
-     * 支持 zip 和 json 格式。
+     * 支持 zip、json 和 red 格式。
      */
     private fun selectImport() {
         importTheme.launch {
             mode = HandleFileContract.FILE
             title = getString(R.string.application_theme_import)
-            allowExtensions = arrayOf("zip", "json")
+            allowExtensions = arrayOf("zip", "json", "red")
         }
     }
 
@@ -253,26 +253,20 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
 
     /**
      * 导出当前应用的主题配置。
-     * 将当前配置打包后通过系统分享/保存对话框导出。
+     * 先弹出格式选择对话框，选择导出格式后打包导出。
      */
     private fun exportCurrent() {
-        lifecycleScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) { ApplicationThemeManager.exportCurrent(this@ApplicationThemeActivity) }
-            }.onSuccess { file ->
-                exportTheme.launch {
-                    mode = HandleFileContract.EXPORT
-                    title = getString(R.string.application_theme_export)
-                    fileData = HandleFileContract.FileData(file.name, file, "application/zip")
-                    onlyOtherActions = true
-                    otherActions = arrayListOf(
-                        SelectItem(getString(R.string.sys_folder_picker), HandleFileContract.DIR),
-                        SelectItem(getString(R.string.app_folder_picker), 10),
-                        SelectItem(getString(R.string.manual_input), 112)
-                    )
+        showExportFormatDialog { format ->
+            lifecycleScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        ApplicationThemeManager.exportCurrent(this@ApplicationThemeActivity, format)
+                    }
+                }.onSuccess { file ->
+                    launchExportFile(file)
+                }.onFailure {
+                    toastOnUi(it.localizedMessage ?: getString(R.string.error))
                 }
-            }.onFailure {
-                toastOnUi(it.localizedMessage ?: getString(R.string.error))
             }
         }
     }
@@ -389,29 +383,73 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
 
     /**
      * 导出指定的主题配置。
-     * 将配置打包后通过系统分享/保存对话框导出。
+     * 先弹出格式选择对话框，选择导出格式后打包导出。
      *
      * @param config 要导出的主题配置
      */
     private fun exportConfig(config: ApplicationThemeManager.Config) {
-        lifecycleScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) { ApplicationThemeManager.exportConfig(this@ApplicationThemeActivity, config) }
-            }.onSuccess { file ->
-                exportTheme.launch {
-                    mode = HandleFileContract.EXPORT
-                    title = getString(R.string.application_theme_export)
-                    fileData = HandleFileContract.FileData(file.name, file, "application/zip")
-                    onlyOtherActions = true
-                    otherActions = arrayListOf(
-                        SelectItem(getString(R.string.sys_folder_picker), HandleFileContract.DIR),
-                        SelectItem(getString(R.string.app_folder_picker), 10),
-                        SelectItem(getString(R.string.manual_input), 112)
-                    )
+        showExportFormatDialog { format ->
+            lifecycleScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        ApplicationThemeManager.exportConfig(this@ApplicationThemeActivity, config, format)
+                    }
+                }.onSuccess { file ->
+                    launchExportFile(file)
+                }.onFailure {
+                    toastOnUi(it.localizedMessage ?: getString(R.string.error))
                 }
-            }.onFailure {
-                toastOnUi(it.localizedMessage ?: getString(R.string.error))
             }
+        }
+    }
+
+    /**
+     * 显示导出格式选择对话框。
+     * 默认勾选当前分支格式（NATIVE）。
+     *
+     * @param callback 选择格式后的回调
+     */
+    private fun showExportFormatDialog(callback: (ApplicationThemeManager.ExportFormat) -> Unit) {
+        val formats = ApplicationThemeManager.ExportFormat.entries
+        val labels = formats.map { format ->
+            when (format) {
+                ApplicationThemeManager.ExportFormat.NATIVE -> getString(R.string.export_format_native)
+                ApplicationThemeManager.ExportFormat.ARCHIVE -> getString(R.string.export_format_archive)
+                ApplicationThemeManager.ExportFormat.MD3 -> getString(R.string.export_format_md3)
+                ApplicationThemeManager.ExportFormat.RED -> getString(R.string.export_format_red)
+            }
+        }
+        var selectedIndex = 0
+        alert(R.string.application_theme_export_format_select) {
+            singleChoiceItems(labels.toTypedArray(), 0) { _, which ->
+                selectedIndex = which
+            }
+            okButton { callback(formats[selectedIndex]) }
+            cancelButton()
+        }
+    }
+
+    /**
+     * 启动文件导出对话框。
+     *
+     * @param file 已打包好的导出文件
+     */
+    private fun launchExportFile(file: File) {
+        val mimeType = if (file.name.endsWith(".red", ignoreCase = true)) {
+            "application/octet-stream"
+        } else {
+            "application/zip"
+        }
+        exportTheme.launch {
+            mode = HandleFileContract.EXPORT
+            title = getString(R.string.application_theme_export)
+            fileData = HandleFileContract.FileData(file.name, file, mimeType)
+            onlyOtherActions = true
+            otherActions = arrayListOf(
+                SelectItem(getString(R.string.sys_folder_picker), HandleFileContract.DIR),
+                SelectItem(getString(R.string.app_folder_picker), 10),
+                SelectItem(getString(R.string.manual_input), 112)
+            )
         }
     }
 
@@ -450,10 +488,71 @@ class ApplicationThemeActivity : BaseActivity<ActivityThemeManageBinding>() {
      * @param config 要删除的主题配置
      */
     private fun confirmDelete(config: ApplicationThemeManager.Config) {
+        val saved = ApplicationThemeManager.getDeleteOptions(this)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 32, 48, 16)
+        }
+        val tvHint = TextView(this).apply {
+            text = getString(R.string.application_theme_delete_options_hint, config.name)
+            setPadding(0, 0, 0, 24)
+        }
+        container.addView(tvHint)
+
+        fun addRow(labelRes: Int, dayChecked: Boolean, nightChecked: Boolean): Pair<CheckBox, CheckBox> {
+            val tvLabel = TextView(this).apply {
+                text = getString(labelRes)
+                setPadding(0, 12, 0, 4)
+                paintFlags = paintFlags or android.graphics.Paint.FAKE_BOLD_TEXT_FLAG
+            }
+            container.addView(tvLabel)
+            val cbDay = CheckBox(this).apply {
+                text = getString(R.string.day)
+                isChecked = dayChecked
+            }
+            val cbNight = CheckBox(this).apply {
+                text = getString(R.string.night)
+                isChecked = nightChecked
+            }
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(48, 0, 0, 0)
+                addView(cbDay)
+                addView(cbNight)
+            }
+            container.addView(row)
+            return cbDay to cbNight
+        }
+
+        val (cbDayTheme, cbNightTheme) = addRow(R.string.application_theme_component_theme, saved.deleteDayTheme, saved.deleteNightTheme)
+        val (cbDayTopBar, cbNightTopBar) = addRow(R.string.application_theme_component_top_bar, saved.deleteDayTopBar, saved.deleteNightTopBar)
+        val (cbDayBottomBar, cbNightBottomBar) = addRow(R.string.application_theme_component_bottom_bar, saved.deleteDayBottomBar, saved.deleteNightBottomBar)
+        val (cbDayCover, cbNightCover) = addRow(R.string.application_theme_component_cover, saved.deleteDayCover, saved.deleteNightCover)
+
         alert(R.string.delete, R.string.sure_del) {
+            customView { container }
             okButton {
-                ApplicationThemeManager.delete(this@ApplicationThemeActivity, config.id)
-                refresh()
+                val options = ApplicationThemeManager.DeleteOptions(
+                    deleteDayTheme = cbDayTheme.isChecked,
+                    deleteNightTheme = cbNightTheme.isChecked,
+                    deleteDayTopBar = cbDayTopBar.isChecked,
+                    deleteNightTopBar = cbNightTopBar.isChecked,
+                    deleteDayBottomBar = cbDayBottomBar.isChecked,
+                    deleteNightBottomBar = cbNightBottomBar.isChecked,
+                    deleteDayCover = cbDayCover.isChecked,
+                    deleteNightCover = cbNightCover.isChecked
+                )
+                ApplicationThemeManager.saveDeleteOptions(this@ApplicationThemeActivity, options)
+                lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        ApplicationThemeManager.deleteWithComponents(
+                            this@ApplicationThemeActivity,
+                            config.id,
+                            options
+                        )
+                    }
+                    refresh()
+                }
             }
             cancelButton()
         }

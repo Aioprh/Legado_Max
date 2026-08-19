@@ -17,7 +17,17 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
-**2026/8/15**
+**2026/8/18**
+- feat(主题): 支持 SVG 底栏图标选择
+- feat(主题): 支持多格式主题导出(MAX、archive、MD3、reeden)(注:对reeden的适配不是很好，很多阅读没有的字段)
+- feat(主题): 删除应用主题时支持选择是否一并删除关联组件
+
+**2026/8/17**
+- fix(书架): 修复 BookshelfMatcher 在 author 为空时匹配失败导致图标不显示
+- fix(底栏): 修复玻璃/磨砂效果在主界面不明显的问题
+- feat(主题): 兼容导入 .red 格式主题包
+
+**2026/8/16**
 - minSdk从21升级至23，不再支持安卓5和5.1
 - targetSdk从36升级至37，compileSdk从36升级至37，支持安卓17
 - fix(书架/主题)：修复文件夹封面、书籍外边框、三点菜单不适配主题的三处问题

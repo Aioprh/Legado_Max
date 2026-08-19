@@ -601,6 +601,10 @@
                 <data android:pathAdvancedPattern=".*\\.[zZ][iI][pP]" />
                 <data android:pathPattern=".*\\.zip" />
                 <data android:pathPattern=".*\\.ZIP" />
+                <!-- red (Reeden 阅读 App 主题包格式) -->
+                <data android:pathAdvancedPattern=".*\\.[rR][eE][dD]" />
+                <data android:pathPattern=".*\\.red" />
+                <data android:pathPattern=".*\\.RED" />
                 <!-- rar -->
                 <data android:pathAdvancedPattern=".*\\.[rR][aA][rR]" />
                 <data android:pathPattern=".*\\.rar" />
