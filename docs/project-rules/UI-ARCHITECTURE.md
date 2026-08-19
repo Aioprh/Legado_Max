@@ -310,7 +310,8 @@ sealed interface UiError {
 - 所有 dimens 必须集中定义在 `ui/theme/Dimensions.kt`（**目标态文件，当前尚未建立**，首次落地时创建并同步 §1 目录树；落地前新代码先把 dimens 就近定义在 `ui/theme/` 下，禁止散落各 Feature）。
 - 所有 shapes 必须集中定义在 `ui/theme/Shapes.kt`（同上）。
 - **禁止**在 Composable 体内裸写 `16.dp`、`12.dp`、`0.8f`。
-- 动画参数（时长、easing）允许调用点就近写 `tween(200, FastOutSlowInEasing)` 这类标准写法，不强制集中；**禁止**自定义 `CubicBezier` / `keyframes` 曲线散落多处，新增自定义曲线必须集中定义在 `ui/theme/` 下的统一文件（如 `AnimationSpecs.kt`，**目标态文件，首次有自定义曲线时创建**）并注释用途。
+- 动画参数（时长档位、easing、spring、无限动画）**必须**遵循 §7.6，禁止调用点随手写 `tween(200, ...)`、`tween(600, ...)` 这类无档位时长。
+- **禁止**自定义 `CubicBezier` / `keyframes` 曲线散落多处，新增自定义曲线必须集中定义在 `ui/theme/AnimationSpecs.kt`（**目标态文件，首次落地时创建**）并注释用途。
 
 
 ```kotlin
@@ -355,7 +356,7 @@ Glide.with(context)
 
 ### 7.5 字符串资源规范
 
-- **必须**所有用户可见文案通过 `stringResource(R.string.xxx)` 获取，禁止在 Composable 内硬编码中文字符串。
+- **必须**所有用户可见文案通过 `stringResource(R.string.xxx)` 获取，禁止在 Composable 内硬编码中文字符串。"用户可见"包括 `contentDescription`——图标无障碍描述同样禁止硬编码中文，机器检测覆盖该参数（见 §14.1）。
 - **禁止**在 ViewModel 里拼接展示文案（如 `"已复制" + item.name`）。ViewModel 只发数据，文案拼接在 UI 层完成。
 - **推荐** string resource 命名保持简洁可读，允许使用缩写或分层前缀（用斜杠表示层级分组），示例：`theme_title`、`theme_card_delete_confirm`、`config/theme/list_empty`。
 - **例外**：纯调试用的 `Log` 消息、`TODO` 注释中的文案不需要走 string resource。
@@ -367,6 +368,40 @@ Text("已复制 ${theme.name}")
 // ✅ 正确
 Text(stringResource(R.string.theme_copied, theme.name))
 ```
+
+### 7.6 动画规范
+
+> 存量动画用法总体合规（`AnimatedVisibility`、`animateColorAsState`、`graphicsLayer` 旋转、`rememberInfiniteTransition` shimmer），本节是**固化现状 + 收口时长档位 + 约束未来代码**，不是补课。
+
+#### 7.6.1 时长与曲线档位（强制）
+
+时长**只允许三档**，禁止 `tween(200, ...)`、`tween(600, ...)` 这类档位外取值：
+
+| 档位 | 时长 | 用途 | 曲线 |
+|------|------|------|------|
+| 微交互 | 150ms | 按压缩放、颜色态切换、`animateColorAsState` | `FastOutSlowInEasing` |
+| 标准 | 300ms | 展开/收起、`AnimatedVisibility` 进出场 | `FastOutSlowInEasing` |
+| 进场过渡 | 450ms | 页面级 `Crossfade`、大图位替换 | `FastOutSlowInEasing` |
+
+- **弹性动画**统一 `SpringSpec(stiffness = Spring.StiffnessMediumLow)`（存量 `CheckSourceScreen` 已在用，固化）；禁止调用点散落 `spring(...)` 随手传 stiffness/dampingRatio。
+- **禁止**手写帧循环（`withFrameNanos` / `while` 循环）实现动画——无限动画一律 `rememberInfiniteTransition`，一次性动画一律 `animate*AsState` 或 `Animatable`。
+- `Animatable` 手动驱动的场景（手势联动等）必须在 `DisposableEffect` 的 `onDispose` 里 `cancel()`。
+
+#### 7.6.2 动画属性选择（性能相关）
+
+- 位移、缩放、旋转、透明度**必须**走 `graphicsLayer` / `Modifier.alpha` / `Modifier.scale`，禁止对参与 layout 的属性（`padding`、`size`、`offset` modifier 链上的 dp 值）做逐帧动画——layout 脏化 vs 只脏 GPU 图层，同屏 20 个 item 同时动时帧率差一倍以上。
+- 高度展开/收起类（必须动 layout 的场景）优先 `AnimatedVisibility` + `expandVertically/fadeIn` 组合，其次 `animateContentSize`；禁止 `animateDpAsState` 逐帧改 `height = x.dp` 的裸写法。
+
+#### 7.6.3 无限动画生命周期（强制）
+
+- `rememberInfiniteTransition` **必须**传 `label` 参数（无障碍：TalkBack 可感知，且 composition 离开时自动取消）。
+- 无限动画组件**必须**保证离开 composition 即停（`AnimatedVisibility` 包裹的退出分支要覆盖到）。禁止在 `LaunchedEffect` 里用 `while(true) { delay(16); ... }` 自转——白烧 CPU + 电池，Systrace 上一眼假。
+
+#### 7.6.4 系统"减少动态效果"（强制）
+
+- 读取 `Settings.Global.ANIMATION_SCALE`，`CompositionLocal`（建议 `LocalAnimationScale`，Application 初始化读一次 + `ContentObserver` 监听变化）下发。
+- `scale < 0.5f` 时：装饰性动画（shimmer、转圈、背景流动）**时长归零直接 snap 到终态或静态样式**；功能性动画（页面进出场）保留。
+- **禁止** Composable 内直接读 `Settings.Global`（读 ContentResolver 有 IPC 成本，不能进 composition 热路径）。
 
 ---
 
@@ -431,7 +466,7 @@ val showEmpty by remember {
 ## 9. 导航规范
 
 - 路由路径**必须**集中定义（如 `object NavRoute`），**禁止**在调用点散落路由字符串字面量。
-- 路由参数**必须**通过 `navArgument` + `NavType` 定义，Screen 统一解包成 `NavArgs` 数据类（见 §15 违规 D）后使用，**禁止**在 Screen 里直接 `savedStateHandle["xxx"]` 再手动转类型。
+- 路由参数**必须**通过 `navArgument` + `NavType` 定义，Screen 统一解包成 `NavArgs` 数据类（见 §16 违规 D）后使用，**禁止**在 Screen 里直接 `savedStateHandle["xxx"]` 再手动转类型。
 - 回栈操作（跳指定页、关指定页）**必须**走统一的 `NavController` 扩展或路由管理器，**禁止**调用点散落 `popBackStack("xxx", false)` 字面量。
 - 路由定义与 `NavArgs` **禁止**依赖 ViewModel / 数据层类，导航层保持可独立拆分。
 
@@ -570,7 +605,10 @@ private fun ThemeAddBottomBar(...) { ... }
 | `collectAsState()` 替代 `collectAsStateWithLifecycle()` | 自定义 lint 规则 |
 | `Channel<Event>` 用 RENDEZVOUS / BUFFERED | 自定义 lint 规则（仅允许 UNLIMITED / CONFLATED，见 §4.1） |
 | `Log.e` / `Log.w` 缺异常对象第三参数 | 自定义 lint 规则 |
-| Composable 内硬编码中文字符串 | lint 硬编码字符串检测（白名单：Log、TODO、Preview） |
+| Composable 内硬编码中文字符串（含 `contentDescription` 参数，见 §7.5 / §15.1） | lint 硬编码字符串检测（白名单：Log、TODO、Preview） |
+| `tween` / `delay` 魔法数字时长不在三档（150/300/450）且未引用 `AnimationSpecs` 常量（§7.6.1） | 自定义 lint 规则（常量引用豁免） |
+| `rememberInfiniteTransition` 缺 `label` 参数（§7.6.3） | 自定义 lint 规则 |
+| `spring(...)` 调用点散落自定义 stiffness / dampingRatio（§7.6.1） | 自定义 lint 规则（仅允许引用统一 SpringSpec 常量） |
 | Screen 函数参数超过 5 个 | Detekt `LongParameterList`（按文件类型设阈值） |
 | 阶段三起新增 `@Suppress("LegadoUiViolation")` | CI grep，直接挂 |
 
@@ -593,10 +631,63 @@ private fun ThemeAddBottomBar(...) { ... }
 - [ ] 图片加载是否走统一的 Glide 封装组件（`AppImage` 等）+ 显式 `override` 尺寸？有无手写 decode 或第二套图片框架混入？
 - [ ] `LazyColumn` / `LazyRow` item 里有无 bitmap 像素级处理（缩放/圆角）？
 - [ ] 路由字符串是否集中定义？调用点有无散落的路由字面量 / `savedStateHandle` 裸读？
+- [ ] 动画属性是否走 `graphicsLayer` / `Modifier.alpha` / `Modifier.scale`？有无逐帧动 layout 属性（`animateDpAsState` 改 height 之类）？（§7.6.2）
+- [ ] 无限动画离开 composition 是否即停？有无 `LaunchedEffect` 里手写帧循环？（§7.6.3）
+- [ ] 可交互 `Icon` 的 `contentDescription` 是否非空且走 `stringResource`？装饰图标是否用 `Image` 而非 `Icon`？（§15.1）
+- [ ] 卡片 / 列表项组件根容器是否 `semantics(mergeDescendants = true)`？（§15.2）
+- [ ] 可点击区域是否 ≥ 48×48 dp（小图标是否用 padding / `minimumInteractiveComponentSize` 撑命中区）？（§15.3）
+- [ ] 有无硬编码 `.sp`？有无固定高度容器硬裁文字？（§15.4）
 
 ---
 
-## 15. 附录：典型违规示例
+## 15. 无障碍规范
+
+> 现状：`contentDescription` 覆盖面尚可，但**硬编码中文描述散落**（`"返回"`、`"刷新"`、`"更多"` 等，违反 §7.5 口径）、**可点击图标 `contentDescription = null` 未区分装饰/遗漏**、**`semantics` 全库零使用**（卡片对 TalkBack 是碎裂的多节点）。本节收口，新增代码零容忍，存量按 §13 三阶段策略随迭代清理。
+
+### 15.1 图标描述（强制）
+
+- 可交互 `Icon`（挂 `clickable` / `toggleable` 等）：`contentDescription` **必须**非空且走 `stringResource`，禁止硬编码中文（并入 §7.5，机器检测覆盖，见 §14.1）。
+- 状态切换图标**必须**在描述里带状态：`if (expanded) stringResource(R.string.collapse) else stringResource(R.string.expand)`（存量 `BlockRuleConfigDialog` 已合规，固化）。
+- 纯装饰图标（无语义、无操作）：用 `Image` 替代 `Icon`，`contentDescription` 保持 `null`。`Icon` 本身是控件语义，装饰场景用它是错的。
+
+### 15.2 语义合并 `semantics`（强制）
+
+- 卡片 / 列表项组件（`ThemeCard`、`BookCacheItemCard`、`CacheItemCard` 等）**必须** `Modifier.semantics(mergeDescendants = true)`，把封面 + 标题 + 副标题 + 操作合并为单一焦点节点——用户焦点落在卡片上一次性读完整信息，不用在四五个节点间逐个滑。
+
+```kotlin
+Row(
+    // 合并为单一 TalkBack 节点：焦点落在卡片上，一次性读出书名+状态，
+    // 避免用户焦点在封面、书名、按钮之间逐个滑动
+    modifier = Modifier.semantics(mergeDescendants = true)
+) { ... }
+```
+
+- 合并层级定在**组件根容器**，子 `Text` / `Icon` 不单独加 `clearAndSetSemantics`——内层清语义会让外层 merge 拿不到内容。
+- 需要整行读但**不合并**的场景（如带独立操作按钮的行）用 `isTraversalGroup = true`，保持子节点独立焦点但限制滑动越界。
+
+### 15.3 触控目标（强制）
+
+- 可点击区域**最小 48×48 dp**（Material 标准）。
+- 小图标按钮（`size(18.dp)` 的编辑/删除等，存量 `BlockRuleConfigDialog` 就有）：图标保持视觉尺寸，外层 `Modifier.padding` 撑出命中区，或 Compose 1.7+ 用 `Modifier.minimumInteractiveComponentSize()`（1.6 及以下用 padding 写法，按项目当前依赖版本定）。
+- **禁止**靠缩小 `clip` 区域来"精确命中"——缩小触控区是反向优化，误触率直接上去。
+
+### 15.4 字体缩放（强制）
+
+- 禁止 Composable 内硬编码 `.sp`，全部走 `MaterialTheme.typography`（§7.4 口径，本节重申：系统"显示大小"拉到 200% 时裸 `.sp` 不跟随缩放，布局直接碎）。
+- 允许 `maxLines` + `overflow` 截断，但**禁止**配合固定高度容器（`Modifier.height(20.dp)` 之类）硬裁文字——放大场景下文字溢出容器且用户看不到截断提示。
+
+### 15.5 自绘 View 无障碍（强制）
+
+- 所有 `AndroidView` 包装的自绘控件**必须**显式设置 `contentDescription`，或自绘 View 内实现 `onInitializeAccessibilityNodeInfo` 提供角色 + 文本。默认空 = TalkBack 完全静音 = 不可用。
+- 存量参照：`PageView.kt` 的 `contentTextView.contentDescription = content` 已做对，新自绘控件不允许倒退。
+
+### 15.6 系统"减少动态效果"
+
+- 见 §7.6.4：`ANIMATION_SCALE < 0.5` 时装饰性动画归零。此处不重复，`LocalAnimationScale` 的 `ContentObserver` 清理也一并要求：`DisposableEffect` 反注册，禁止进程级裸注册不反注册。
+
+---
+
+## 16. 附录：典型违规示例
 
 ### 违规 A：Screen 内私有组件直接写死 dimens 和 R.color
 
