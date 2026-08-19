@@ -12,6 +12,7 @@ import io.legado.app.constant.AppLog
 import io.legado.app.databinding.ActivityTranslucenceBinding
 import io.legado.app.exception.InvalidBooksDirException
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.ApplicationThemeManager
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.permission.Permissions
 import io.legado.app.lib.permission.PermissionsCompat
@@ -20,6 +21,7 @@ import io.legado.app.utils.FileUtils
 import io.legado.app.utils.buildMainHandler
 import io.legado.app.utils.canRead
 import io.legado.app.utils.checkWrite
+import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.readUri
@@ -63,6 +65,9 @@ class FileAssociationActivity :
         binding.rotateLoading.visible()
         viewModel.importBookLiveData.observe(this) { uri ->
             importBook(uri)
+        }
+        viewModel.importRedThemeLiveData.observe(this) { uri ->
+            importRedTheme(uri)
         }
         viewModel.onLineImportLive.observe(this) {
             startActivity<OnLineImportActivity> {
@@ -142,6 +147,49 @@ class FileAssociationActivity :
             }
         } else {
             importBook(null, uri)
+        }
+    }
+
+    /**
+     * 导入 .red 主题包或主题 zip 文件。
+     *
+     * 将 URI 对应的文件复制到临时目录，然后调用
+     * [ApplicationThemeManager.importFile] 解析导入。
+     * 兼容 .red（Reeden 阅读 App 主题包，RED 头 + ZIP）和标准 .zip 两种格式。
+     */
+    private fun importRedTheme(uri: Uri) {
+        lifecycleScope.launch {
+            runCatching {
+                withContext(IO) {
+                    val file = externalFiles.getFile(
+                        "themePackageImports",
+                        "import_${System.currentTimeMillis()}.red"
+                    )
+                    file.parentFile?.mkdirs()
+                    contentResolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(file).use { output -> input.copyTo(output) }
+                    } ?: error(getString(R.string.file_not_exist))
+                    try {
+                        ApplicationThemeManager.importFile(file)
+                    } finally {
+                        file.delete()
+                    }
+                }
+            }.onSuccess {
+                binding.rotateLoading.gone()
+                toastOnUi(R.string.import_success)
+                handler.postDelayed(1000) {
+                    finish()
+                }
+            }.onFailure {
+                binding.rotateLoading.gone()
+                val msg = "导入主题失败\n${it.localizedMessage}"
+                AppLog.put(msg, it, dialogName = "文件关联")
+                toastOnUi(msg)
+                handler.postDelayed(2000) {
+                    finish()
+                }
+            }
         }
     }
 

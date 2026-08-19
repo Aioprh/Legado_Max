@@ -100,6 +100,22 @@ object ApplicationThemeManager {
         val images: List<String>
     )
 
+    /**
+     * 主题导出格式枚举。
+     *
+     * 支持将当前分支的应用主题导出为以下格式：
+     * - [NATIVE]：当前分支原生格式（application_theme.json）
+     * - [ARCHIVE]：archive_primate_beta 分支格式（appearance_kit.json）
+     * - [MD3]：MD3-main 分支格式（manifest.json）
+     * - [RED]：Reeden 阅读 App 格式（theme.json + RED 头）
+     */
+    enum class ExportFormat {
+        NATIVE,
+        ARCHIVE,
+        MD3,
+        RED
+    }
+
     /** 导入应用主题时的可选创建范围，日夜间可独立控制 */
     @Keep
     data class ImportOptions(
@@ -111,6 +127,19 @@ object ApplicationThemeManager {
         val importNightBottomBar: Boolean = true,
         val importDayCover: Boolean = true,
         val importNightCover: Boolean = true
+    )
+
+    /** 删除应用主题时的可选范围，控制是否一并删除关联组件，默认全部不勾选 */
+    @Keep
+    data class DeleteOptions(
+        val deleteDayTheme: Boolean = false,
+        val deleteNightTheme: Boolean = false,
+        val deleteDayTopBar: Boolean = false,
+        val deleteNightTopBar: Boolean = false,
+        val deleteDayBottomBar: Boolean = false,
+        val deleteNightBottomBar: Boolean = false,
+        val deleteDayCover: Boolean = false,
+        val deleteNightCover: Boolean = false
     )
 
     /** 将导入选项持久化到 SharedPreferences */
@@ -139,6 +168,32 @@ object ApplicationThemeManager {
         )
     }
 
+    /** 将删除选项持久化到 SharedPreferences */
+    fun saveDeleteOptions(context: Context, options: DeleteOptions) {
+        context.putPrefBoolean(PreferKey.appThemeDeleteDayTheme, options.deleteDayTheme)
+        context.putPrefBoolean(PreferKey.appThemeDeleteNightTheme, options.deleteNightTheme)
+        context.putPrefBoolean(PreferKey.appThemeDeleteDayTopBar, options.deleteDayTopBar)
+        context.putPrefBoolean(PreferKey.appThemeDeleteNightTopBar, options.deleteNightTopBar)
+        context.putPrefBoolean(PreferKey.appThemeDeleteDayBottomBar, options.deleteDayBottomBar)
+        context.putPrefBoolean(PreferKey.appThemeDeleteNightBottomBar, options.deleteNightBottomBar)
+        context.putPrefBoolean(PreferKey.appThemeDeleteDayCover, options.deleteDayCover)
+        context.putPrefBoolean(PreferKey.appThemeDeleteNightCover, options.deleteNightCover)
+    }
+
+    /** 从 SharedPreferences 读取持久化的删除选项，默认全部为 false */
+    fun getDeleteOptions(context: Context): DeleteOptions {
+        return DeleteOptions(
+            deleteDayTheme = context.getPrefBoolean(PreferKey.appThemeDeleteDayTheme, false),
+            deleteNightTheme = context.getPrefBoolean(PreferKey.appThemeDeleteNightTheme, false),
+            deleteDayTopBar = context.getPrefBoolean(PreferKey.appThemeDeleteDayTopBar, false),
+            deleteNightTopBar = context.getPrefBoolean(PreferKey.appThemeDeleteNightTopBar, false),
+            deleteDayBottomBar = context.getPrefBoolean(PreferKey.appThemeDeleteDayBottomBar, false),
+            deleteNightBottomBar = context.getPrefBoolean(PreferKey.appThemeDeleteNightBottomBar, false),
+            deleteDayCover = context.getPrefBoolean(PreferKey.appThemeDeleteDayCover, false),
+            deleteNightCover = context.getPrefBoolean(PreferKey.appThemeDeleteNightCover, false)
+        )
+    }
+
     /** 从文件加载所有应用主题配置，自动校验大小和格式 */
     fun load(): MutableList<Config> {
         val file = File(filePath)
@@ -157,7 +212,7 @@ object ApplicationThemeManager {
     fun find(id: String): Config? = load().firstOrNull { it.id == id }
 
     /** 导出当前应用主题为 zip 文件（含所有关联资源） */
-    fun exportCurrent(context: Context): File {
+    fun exportCurrent(context: Context, format: ExportFormat = ExportFormat.NATIVE): File {
         val current = (load().firstOrNull { isCurrent(context, it) }
             ?: captureCurrent(context, appCtx.getString(io.legado.app.R.string.application_theme_manage)))
             .let { config ->
@@ -173,12 +228,22 @@ object ApplicationThemeManager {
                     )
                 )
             }
-        validateForApply(context, current)
-        return exportConfig(context, current)
+        if (format == ExportFormat.NATIVE) validateForApply(context, current)
+        return exportConfig(context, current, format)
     }
 
     /** 导出指定应用主题为 zip 文件（含所有关联资源） */
-    fun exportConfig(context: Context, config: Config): File {
+    fun exportConfig(context: Context, config: Config, format: ExportFormat = ExportFormat.NATIVE): File {
+        return when (format) {
+            ExportFormat.NATIVE -> exportNative(context, config)
+            ExportFormat.ARCHIVE -> ThemeExporter.exportArchive(context, config)
+            ExportFormat.MD3 -> ThemeExporter.exportMd3(context, config)
+            ExportFormat.RED -> ThemeExporter.exportRed(context, config)
+        }
+    }
+
+    /** 导出当前分支原生格式（application_theme.json 清单 + 所有资源） */
+    private fun exportNative(context: Context, config: Config): File {
         val dir = appCtx.cacheDir.resolve("applicationThemeExports").apply { mkdirs() }
         val exportName = config.name.normalizeFileName().ifBlank { "application_theme" }
         return dir.resolve("$exportName.zip").apply {
@@ -210,10 +275,20 @@ object ApplicationThemeManager {
      * @param options 导入选项，控制是否创建各子配置；null 表示全部创建
      */
     suspend fun importFile(file: File, options: ImportOptions? = null): Config {
-        val isZip = file.inputStream().use { input ->
-            input.read() == 'P'.code && input.read() == 'K'.code
+        // 检测 .red 格式（Reeden 阅读 App 主题包，RED 头 + ZIP 数据），剥离头部后作为 ZIP 处理
+        val zipFile = RedAssetPackage.zipPayload(file, RedAssetPackage.tempDir())
+        if (zipFile != null) {
+            val result = importZip(zipFile, options)
+            // 如果创建了临时文件（非原文件），导入完成后删除
+            if (zipFile != file) zipFile.delete()
+            return result
         }
-        if (isZip) return importZip(file, options)
+        // 检测 GZIP 类 .red 格式（RED 头 + GZIP 或纯 GZIP），解压后作为 JSON 处理
+        val gzipJson = RedAssetPackage.gzipJsonPayload(file)
+        if (gzipJson != null) {
+            return RedThemeImporter.importGzipJson(gzipJson, options)
+        }
+        // 不是 ZIP 也不是 .red，尝试作为纯 JSON 导入
         require(file.length() <= maxManifestBytes) { appCtx.getString(R.string.app_theme_file_too_large) }
         val imported = sanitize(
             GSON.fromJson(file.readText(), Config::class.java)
@@ -226,19 +301,23 @@ object ApplicationThemeManager {
         val temp = appCtx.cacheDir.resolve("applicationThemeImport/${System.currentTimeMillis()}").apply { mkdirs() }
         try {
             ZipFile(file).use { zip ->
-                // 检测 zip 包内的清单文件类型，兼容三种格式
+                // 检测 zip 包内的清单文件类型，兼容四种格式
                 val manifestEntry = zip.getEntry("application_theme.json")
                 val appearanceKitEntry = zip.entries().asSequence()
                     .firstOrNull { !it.isDirectory && (it.name == "appearance_kit.json" || it.name.endsWith("/appearance_kit.json")) }
                 val md3ManifestEntry = zip.getEntry("manifest.json")
+                // .red 格式的清单文件（Reeden 阅读 App 的主题包）
+                val redThemeEntry = zip.getEntry("theme.json")
 
                 when {
                     // 当前分支格式
                     manifestEntry != null -> return importNativeFormat(zip, temp, manifestEntry, options)
-                    // archive_primate_beta 分支格式
+                    // archive_primate_beta 分支格式（AppearanceKit）
                     appearanceKitEntry != null -> return AppearanceKitImporter.import(zip, temp, appearanceKitEntry, options)
                     // MD3-main 分支格式
                     md3ManifestEntry != null -> return Md3ThemeImporter.import(zip, temp, md3ManifestEntry, options)
+                    // .red 格式（Reeden 阅读 App 主题包）
+                    redThemeEntry != null -> return RedThemeImporter.import(zip, temp, redThemeEntry, options)
                     else -> throw IllegalArgumentException(appCtx.getString(R.string.app_theme_missing_manifest))
                 }
             }
@@ -403,6 +482,87 @@ object ApplicationThemeManager {
 
     /** 删除配置，若删除的是当前配置则清除激活标记 */
     fun delete(context: Context, id: String) {
+        save(load().filterNot { it.id == id })
+        if (currentId(context) == id) context.putPrefString(currentIdKey, "")
+    }
+
+    /**
+     * 删除配置并可选删除关联组件。
+     *
+     * @param context 上下文
+     * @param id 要删除的主题配置 ID
+     * @param options 删除选项，控制是否一并删除关联的主题、顶栏、底栏、封面图集
+     */
+    suspend fun deleteWithComponents(context: Context, id: String, options: DeleteOptions) {
+        val config = load().firstOrNull { it.id == id }
+
+        // 删除关联的日间主题配置
+        if (options.deleteDayTheme && config?.dayTheme != null) {
+            val theme = config.dayTheme!!
+            val index = ThemeConfig.configList.indexOfFirst {
+                it.themeName == theme.themeName && !it.isNightTheme
+            }
+            if (index >= 0) ThemeConfig.delConfig(index)
+        }
+
+        // 删除关联的夜间主题配置
+        if (options.deleteNightTheme && config?.nightTheme != null) {
+            val theme = config.nightTheme!!
+            val index = ThemeConfig.configList.indexOfFirst {
+                it.themeName == theme.themeName && it.isNightTheme
+            }
+            if (index >= 0) ThemeConfig.delConfig(index)
+        }
+
+        // 删除关联的日间顶栏配置
+        if (options.deleteDayTopBar && config != null
+            && config.dayTopBarDir.isNotBlank()
+            && config.dayTopBarDir != TopBarConfig.DEFAULT_DIR_NAME
+        ) {
+            val entry = TopBarConfig.loadEntries(context, false)
+                .firstOrNull { it.dirName == config.dayTopBarDir }
+            entry?.let { TopBarConfig.deleteLocal(it) }
+        }
+
+        // 删除关联的夜间顶栏配置
+        if (options.deleteNightTopBar && config != null
+            && config.nightTopBarDir.isNotBlank()
+            && config.nightTopBarDir != TopBarConfig.DEFAULT_DIR_NAME
+        ) {
+            val entry = TopBarConfig.loadEntries(context, true)
+                .firstOrNull { it.dirName == config.nightTopBarDir }
+            entry?.let { TopBarConfig.deleteLocal(it) }
+        }
+
+        // 删除关联的日间底栏配置
+        if (options.deleteDayBottomBar && config?.dayBottomBarId != null) {
+            val navConfigs = NavigationBarConfig.loadConfigs(context)
+            val filtered = navConfigs.filterNot {
+                it.isNight == false && it.id == config.dayBottomBarId && !it.isBuiltin
+            }
+            NavigationBarConfig.saveConfigs(context, filtered)
+        }
+
+        // 删除关联的夜间底栏配置
+        if (options.deleteNightBottomBar && config?.nightBottomBarId != null) {
+            val navConfigs = NavigationBarConfig.loadConfigs(context)
+            val filtered = navConfigs.filterNot {
+                it.isNight == true && it.id == config.nightBottomBarId && !it.isBuiltin
+            }
+            NavigationBarConfig.saveConfigs(context, filtered)
+        }
+
+        // 删除关联的日间封面图集
+        if (options.deleteDayCover && config?.dayCoverGroupId != null) {
+            CoverGalleryRepository().deleteGroup(config.dayCoverGroupId!!)
+        }
+
+        // 删除关联的夜间封面图集
+        if (options.deleteNightCover && config?.nightCoverGroupId != null) {
+            CoverGalleryRepository().deleteGroup(config.nightCoverGroupId!!)
+        }
+
+        // 最后删除主题配置本身
         save(load().filterNot { it.id == id })
         if (currentId(context) == id) context.putPrefString(currentIdKey, "")
     }

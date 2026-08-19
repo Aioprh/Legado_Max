@@ -145,6 +145,42 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         else -> R.id.menu_bookshelf
     }
 
+    /**
+     * 重写背景更新方法，在父类设置 decorView 背景后，将相同背景同步到 content_container。
+     *
+     * 原因：底栏的玻璃/磨砂效果（[StableLiquidGlassView]）通过 [LiquidGlass] 采样
+     * content_container 的像素来实现实时模糊。而 [LiquidGlass] 的采样机制是调用
+     * `content_container.draw(canvas)`，只绘制该 View 及其子 View 的内容，
+     * 不包含父级 decorView 的背景。因此如果背景仅设置在 decorView 上，
+     * 采样区域在无 Fragment 内容覆盖处（如列表底部空白区域）得到的是透明像素，
+     * 导致玻璃/磨砂效果不明显——无论不透明度设为多少，底栏下的文字都清晰可见。
+     *
+     * 将背景同步到 content_container 后，采样时能采到背景图的像素，
+     * 玻璃/磨砂的折射和模糊效果即可正常显现，同时不影响沉浸式导航栏行为
+     * （decorView 背景仍然覆盖全屏包括导航栏区域，content_container 背景仅在其自身范围内）。
+     *
+     * 约束（维护者注意）：本方法会**无条件**覆盖 content_container 的背景，
+     * 因此 content_container 不得被其他逻辑单独设置背景（如分屏底色、特殊页面底色等），
+     * 否则会被此处静默覆盖。当前代码中 content_container 仅作为 LiquidGlass 的采样源，
+     * 不存在其他背景设置，故安全。若未来需要为 content_container 设独立背景，
+     * 应改为在此处合并而非覆盖，或改用其他容器作为采样源。
+     *
+     * 其他注意点：
+     * - imageBg 关闭时 decorView 背景为 null，此处会将 content_container 背景同步为 null，
+     *   即清除其背景，不会遗留旧的背景图。
+     * - mutate() 仅克隆 Drawable 状态对象，底层像素（bitmap/constantState）仍与 decorView
+     *   共享，不会因双份背景导致像素内存翻倍，仅额外占用一份轻量状态对象。
+     */
+    override fun upBackgroundImage() {
+        super.upBackgroundImage()
+        // 将 decorView 的当前背景同步到 content_container
+        // 使用 constantState?.newDrawable()?.mutate() 创建独立副本，
+        // 避免两个 View 共享同一 Drawable 状态导致绘制冲突
+        val decorBg = window.decorView.background
+        // 注意：此处会无条件覆盖 content_container 背景，详见上方约束说明
+        binding.contentContainer.background = decorBg?.constantState?.newDrawable()?.mutate()
+    }
+
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         // 清理已销毁 Fragment 的引用，避免 fragmentMap 持有导致内存泄漏
         supportFragmentManager.registerFragmentLifecycleCallbacks(

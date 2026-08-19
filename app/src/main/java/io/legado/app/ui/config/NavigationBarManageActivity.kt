@@ -443,7 +443,7 @@ class NavigationBarManageActivity : BaseActivity<ActivityNavigationBarManageBind
                             mode = HandleFileContract.FILE
                             requestCode = code
                             title = contentDescription.toString()
-                            allowExtensions = arrayOf("png", "jpg", "jpeg")
+                            allowExtensions = arrayOf("png", "jpg", "jpeg", "svg")
                         }
                     } else {
                         config.icons = config.icons.toMutableMap().apply {

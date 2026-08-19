@@ -1,0 +1,29 @@
+{
+  "skill_name": "git-local-discipline",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我修复 BookshelfMatcher.kt 中的匹配逻辑，分组为空时应该返回空列表而不是 null。修完就行，不用太复杂。",
+      "expected_output": "修改文件后自动执行 git add + git commit，commit message 包含标题行和 body 简述，如：fix(书架): 修复分组为空时返回 null 的问题\\n\\n- 新增空分组判断逻辑\\n- 匹配失败时返回空列表替代 null",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我要给阅读页的翻页动画加个性能优化，把多余的 invalidate 调用去掉。改完跟我说一声。",
+      "expected_output": "修改代码后立即 git add + git commit，commit message 包含标题+body，如：perf(阅读页): 移除翻页动画中多余的 invalidate 调用\\n\\n- 移除 onDraw 中冗余的 invalidate 调用\\n- 优化帧调度逻辑。不执行 git push",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "帮我新建一个 ReadProgressHelper.kt 文件，用来封装阅读进度计算逻辑。然后把现有的 ReadBook 里相关的进度计算代码迁移过去。",
+      "expected_output": "创建新文件并迁移代码后，将新文件和修改的 ReadBook 一起作为一个 commit 提交，commit message 包含标题+body，如：refactor(阅读): 提取阅读进度计算逻辑到 ReadProgressHelper\\n\\n- 新建 ReadProgressHelper.kt 封装进度计算\\n- 从 ReadBook 迁移相关方法\\n- 更新所有调用点引用",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "帮我做三件事：1. 修复 BookshelfMatcher 里分组匹配的空指针 bug；2. 给 ReadBook 的翻页动画去掉多余的 invalidate 调用；3. 在 CLAUDE.md 里补充 appS flavor 的说明。",
+      "expected_output": "分三次提交，每完成一个任务就立即 git add + git commit：第一个 commit 是 fix(书架): ...，第二个 commit 是 perf(阅读页): ...，第三个 commit 是 docs: ...。绝不能把三个任务的改动攒在一起用一个 commit 提交。每个 commit message 都有标题+body 简述。",
+      "files": []
+    }
+  ]
+}
