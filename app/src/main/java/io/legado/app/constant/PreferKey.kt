@@ -205,6 +205,7 @@ object PreferKey {
     const val unsafeSsl = "unsafeSsl"
     const val audioPlayWakeLock = "audioPlayWakeLock"
     const val readAloudWakeLock = "readAloudWakeLock"
+    const val cacheBookWakeLock = "cacheBookWakeLock"
     const val showLastUpdateTime = "showLastUpdateTime"
     const val showWaitUpCount = "showWaitUpCount"
     const val clearWebViewData = "clearWebViewData"
