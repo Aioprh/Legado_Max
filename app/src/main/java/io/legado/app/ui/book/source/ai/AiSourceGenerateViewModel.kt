@@ -374,7 +374,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             sb.appendLine("① 搜索")
             val list = WebBook.searchBookAwait(bookSource, keyword, 1)
             if (list.isEmpty()) {
-                val searchUrl = bookSource.searchUrl
+                val searchUrl = (bookSource.searchUrl ?: "")
                     .replace("{{key}}", keyword)
                     .replace(Regex("""\{\{[^}]*\}\}"""), "")
                 val searchSample = fetchStepSample(searchUrl)
