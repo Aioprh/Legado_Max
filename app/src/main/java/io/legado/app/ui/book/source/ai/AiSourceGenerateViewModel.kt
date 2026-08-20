@@ -656,7 +656,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     "chapterUrl": "章节 URL 规则（必填）",
     "isVip": "VIP 标记规则（返回 1 表示 VIP，0 表示免费，如 JSONPath $.vip）",
     "isPay": "付费标记规则（同上，无则空字符串）",
-    "updateTime": "章节更新时间规则（无则空字符串）",
+    "updateTime": "章节更新时间规则（目录中每章常带有时间戳/日期，务必解析为该字段，不要漏掉）：返回 JSON 时用 JSONPath 指向日期字段（如 $.UpdateStatus），返回 HTML 时用 CSS/JSoup 指向日期节点；若为时间戳需用 @js: 转成日期，如 @js:Date({{$.updateTime}}*1000).toLocaleString()；若该章确实无时间字段才填空字符串",
     "nextTocUrl": "下一页目录 URL",
     "preUpdateJs": "目录前置 JS（可选）：目录页为 JS 渲染或需要先取 token/登录态时用，无则空字符串",
     "formatJs": "章节名格式化 JS（可选）：如 章节标题需要去掉多余前缀，无则空字符串",
@@ -723,6 +723,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 5. 若 HTML 是 JSON 数据，使用 JSONPath 语法
 6. 必须输出完整书源：搜索、详情(ruleBookInfo)、目录(ruleToc)、正文(ruleContent) 为必填核心；发现(exploreUrl/ruleExplore) 必须分析目标站点是否有分类/榜单/推荐导航（用户提示词中会列出探测到的分类链接与分类页 HTML），若有则必须生成 exploreUrl（分类名::URL 每行一个）与 ruleExplore（bookList/name/bookUrl 必填），若确无分类导航才填空字符串；登录(loginUrl)、下载(ruleBookInfo.downloadUrls) 若网站支持则填写，不支持/无法推断时填空字符串 ""，但字段名必须保留在输出结构中
 7. 若提供了 JSON API 接口与示例响应，一律优先使用 JSONPath 规则并补齐上述全部字段
+8. 目录里的数字优先匹配章节更新时间 updateTime（若该章带时间戳/日期），不要把时间数字误当章节名或字数字段；周围同时有"字数/章节号"字段时才用 wordCount
 """.trimIndent()
     }
 }

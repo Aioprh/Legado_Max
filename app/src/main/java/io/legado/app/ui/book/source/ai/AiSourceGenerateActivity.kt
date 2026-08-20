@@ -56,6 +56,7 @@ class AiSourceGenerateActivity :
         binding.btnValidate.setOnClickListener { validate() }
         binding.btnAutoFix.setOnClickListener { autoFix() }
         binding.btnImport.setOnClickListener { importToEditor() }
+        binding.btnLog.setOnClickListener { startActivity<AiSourceLogActivity>() }
         binding.btnClear.setOnClickListener { clearAll() }
     }
 
@@ -75,11 +76,22 @@ class AiSourceGenerateActivity :
         val header = binding.etHeader.text?.toString()
         binding.btnFetchHtml.isEnabled = false
         binding.tvStatus.text = "正在抓取 HTML（${htmlContent?.charset ?: "未知编码"}）..."
+        AiSourceLog.log("INFO", "抓取HTML", "开始 $url${keyword?.let { "，关键词 $it" }.orEmpty()}")
         viewModel.execute {
             viewModel.fetchHtml(url, keyword, header).getOrElse { throw it }
         }.onSuccess { content ->
             htmlContent = content
             binding.etHtmlPreview.setText(content.html)
+            AiSourceLog.log("INFO", "抓取HTML", "成功：编码 ${content.charset}，${content.length} 字符；发现 ${content.apiEndpoints.size} 个接口、分类导航 ${content.exploreLinks.size} 个")
+            content.sampleSearch.error?.takeIf { it.isNotBlank() }?.let {
+                AiSourceLog.log("WARN", "接口探测", it)
+            }
+            content.sampleCatalog.error?.takeIf { it.isNotBlank() }?.let {
+                AiSourceLog.log("WARN", "目录探测", it)
+            }
+            content.sampleExplore.error?.takeIf { it.isNotBlank() }?.let {
+                AiSourceLog.log("WARN", "发现探测", it)
+            }
             val apiInfo = content.apiEndpoints.joinToString("；") { "${it.method} ${it.type}: ${it.url}" }
             binding.tvHtmlHint.text = buildString {
                 append("编码：${content.charset}，共 ${content.length} 字符（已截断）")
@@ -93,6 +105,7 @@ class AiSourceGenerateActivity :
             binding.tvStatus.text = "抓取成功（编码 ${content.charset}，共 ${content.length} 字符）"
             toastOnUi("抓取成功（编码 ${content.charset}，共 ${content.length} 字符）")
         }.onError {
+            AiSourceLog.log("ERROR", "抓取HTML", "${it.message}")
             binding.tvStatus.text = "抓取失败: ${it.message}"
             toastOnUi("抓取失败: ${it.message}")
         }.onFinally {
@@ -103,16 +116,19 @@ class AiSourceGenerateActivity :
     private fun generate() {
         saveConfig()
         if (viewModel.baseUrl.isBlank() || viewModel.apiKey.isBlank()) {
+            AiSourceLog.log("WARN", "生成书源", "未填写 AI 接口地址或 API Key，已取消")
             toastOnUi("请先填写 AI 接口地址和 API Key")
             return
         }
         val url = binding.etUrl.text?.toString()?.trim()
         if (url.isNullOrEmpty()) {
+            AiSourceLog.log("WARN", "生成书源", "未填写网站地址，已取消")
             toastOnUi("请先填写网站地址")
             return
         }
         val html = htmlContent?.html
         if (html.isNullOrEmpty()) {
+            AiSourceLog.log("WARN", "生成书源", "未抓取 HTML，已取消")
             toastOnUi("请先点击「抓取HTML」获取网页内容")
             return
         }
@@ -123,6 +139,7 @@ class AiSourceGenerateActivity :
         val userPrompt = buildUserPrompt(url, keyword, typeName, typeIndex, content, html)
         binding.btnGenerate.isEnabled = false
         binding.tvStatus.text = "正在调用 AI 生成书源（模型：${viewModel.model}）..."
+        AiSourceLog.log("INFO", "生成书源", "调用 AI 模型 ${viewModel.model}（URL $url 关键词 ${keyword ?: "无"}）")
         viewModel.execute {
             viewModel.generate(
                 baseUrl = viewModel.baseUrl,
@@ -133,9 +150,12 @@ class AiSourceGenerateActivity :
             )
         }.onSuccess { result ->
             binding.etResult.setText(result)
+            AiSourceLog.log("SUCCESS", "生成书源", "生成完成，长度 ${result.length}")
+            AiSourceLog.raw("-------- 生成书源 JSON --------\n$result")
             binding.tvStatus.text = "生成完成，可查看/修改 JSON，再验证规则或导入编辑器"
             toastOnUi("生成完成，可查看/修改 JSON，再验证规则或导入编辑器")
         }.onError {
+            AiSourceLog.log("ERROR", "生成书源", "${it.message}")
             binding.tvStatus.text = "AI 生成失败: ${it.message}"
             toastOnUi("AI 生成失败: ${it.message}")
         }.onFinally {
@@ -227,6 +247,7 @@ class AiSourceGenerateActivity :
     private fun validate() {
         val text = binding.etResult.text?.toString()
         if (text.isNullOrBlank()) {
+            AiSourceLog.log("WARN", "规则校验", "未生成书源 JSON，已取消")
             toastOnUi("请先生成书源 JSON")
             return
         }
@@ -235,22 +256,29 @@ class AiSourceGenerateActivity :
             "${if (c.pass) "✓" else "✗"} ${c.name}${if (c.pass) "" else "：${c.msg}"}"
         }
         val pass = checks.count { it.pass }
+        checks.filterNot { it.pass }.forEach {
+            AiSourceLog.log("ERROR", "规则校验", "${it.name}：${it.msg}")
+        }
+        AiSourceLog.log("INFO", "规则校验", "通过 ${pass}/${checks.size} 项")
         toastOnUi("验证完成：$pass/${checks.size} 项通过")
     }
 
     private fun autoFix() {
         saveConfig()
         if (viewModel.baseUrl.isBlank() || viewModel.apiKey.isBlank()) {
+            AiSourceLog.log("WARN", "自动修复", "未填写 AI 接口地址或 API Key，已取消")
             toastOnUi("请先填写 AI 接口地址和 API Key")
             return
         }
         val text = binding.etResult.text?.toString()
         if (text.isNullOrBlank()) {
+            AiSourceLog.log("WARN", "自动修复", "未生成书源 JSON，已取消")
             toastOnUi("请先生成书源 JSON")
             return
         }
         val url = binding.etUrl.text?.toString()?.trim()
         if (url.isNullOrEmpty()) {
+            AiSourceLog.log("WARN", "自动修复", "未填写网站地址，已取消")
             toastOnUi("请填写网站地址")
             return
         }
@@ -263,6 +291,7 @@ class AiSourceGenerateActivity :
         binding.btnAutoFix.isEnabled = false
         binding.tvStatus.text = "正在用真实搜索验证并自动修复，最多 ${viewModel.maxFixRounds} 轮..."
         binding.tvChecks.text = binding.tvStatus.text
+        AiSourceLog.log("INFO", "自动修复", "开始，最多 ${viewModel.maxFixRounds} 轮")
         viewModel.execute {
             viewModel.autoFix(
                 baseUrl = viewModel.baseUrl,
@@ -277,6 +306,9 @@ class AiSourceGenerateActivity :
             )
         }.onSuccess { result ->
             binding.etResult.setText(result.json)
+            AiSourceLog.log(if (result.ok) "SUCCESS" else "ERROR", "自动修复",
+                "${result.rounds} 轮${if (result.ok) "通过" else "未通过"}")
+            AiSourceLog.raw("-------- 自动修复日志 --------\n${result.log}")
             binding.tvChecks.text = buildString {
                 appendLine("自动修复日志：")
                 append(result.log)
@@ -285,6 +317,7 @@ class AiSourceGenerateActivity :
             binding.tvStatus.text = if (result.ok) "修复成功（${result.rounds} 轮）" else "修复未通过（${result.rounds} 轮）"
             toastOnUi(if (result.ok) "修复成功（${result.rounds} 轮）" else "修复未通过（${result.rounds} 轮）")
         }.onError {
+            AiSourceLog.log("ERROR", "自动修复", "${it.message}")
             binding.tvChecks.text = "自动修复失败：${it.message}"
             binding.tvStatus.text = "自动修复失败: ${it.message}"
             toastOnUi("自动修复失败: ${it.message}")
@@ -296,20 +329,24 @@ class AiSourceGenerateActivity :
     private fun importToEditor() {
         val text = binding.etResult.text?.toString()
         if (text.isNullOrBlank()) {
+            AiSourceLog.log("WARN", "导入编辑", "未生成书源 JSON，已取消")
             toastOnUi("请先生成书源 JSON")
             return
         }
         val obj = AiSourceValidate.parseSource(text)
         if (obj == null) {
+            AiSourceLog.log("ERROR", "导入编辑", "书源格式不正确")
             toastOnUi("导入失败: 书源格式不正确")
             return
         }
+        AiSourceLog.log("INFO", "导入编辑", "已导入书源「${obj.get("bookSourceName")?.asString}」")
         startActivity<BookSourceEditActivity> {
             putExtra("sourceJson", obj.toString())
         }
     }
 
     private fun clearAll() {
+        AiSourceLog.log("INFO", "清空", "清空表单")
         htmlContent = null
         binding.etHtmlPreview.setText("")
         binding.tvHtmlHint.visibility = View.GONE

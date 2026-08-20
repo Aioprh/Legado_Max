@@ -234,6 +234,15 @@
                     tools:ignore="TouchTargetSizeCheck" />
 
                 <Button
+                    android:id="@+id/btn_log"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginRight="8dp"
+                    android:text="@string/ai_log_title"
+                    tools:ignore="TouchTargetSizeCheck" />
+
+                <Button
                     android:id="@+id/btn_clear"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"

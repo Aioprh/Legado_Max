@@ -221,6 +221,9 @@
     <string name="ai_import_editor">Import to editor</string>
     <string name="ai_html_preview_hint">Fetched HTML (truncated preview)</string>
     <string name="ai_result_hint">AI generated source JSON (editable)</string>
+    <string name="ai_log_title">AI generate source log</string>
+    <string name="ai_log_copy">Copy log</string>
+    <string name="ai_log_empty">No logs yet</string>
     <string name="add_rss_source">Add RSS source</string>
     <string name="book_file_selector">Add books</string>
     <string name="scan_book_source">Scan</string>

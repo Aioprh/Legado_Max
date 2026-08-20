@@ -223,6 +223,10 @@
             android:configChanges="locale|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize|stateHidden" />
+        <activity
+            android:name=".ui.book.source.ai.AiSourceLogActivity"
+            android:configChanges="locale|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
+            android:windowSoftInputMode="adjustResize|stateHidden" />
         <!-- 订阅源编辑 -->
         <activity
             android:name=".ui.rss.source.edit.RssSourceEditActivity"
