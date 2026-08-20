@@ -158,10 +158,7 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
             val bookEntity = book.toBook()
             // 2. 加入书架（如已存在则替换，不会报错）
             appDb.bookDao.insert(bookEntity)
-            // 3. 更新内存中的书架状态
-            val key = if (book.author.isNotBlank()) "${book.name}-${book.author}" else book.name
-            bookshelf.add(key)
-            bookshelf.add(book.bookUrl)
+            // 3. BookshelfMatcher 通过 flowShelfKeys() 自动感知 DB 变化并刷新书架状态
             upAdapterLiveData.postValue("isInBookshelf")
             // 4. 启动全书缓存（0 到 -1 表示全部章节）
             CacheBook.start(getApplication(), bookEntity, 0, -1)
