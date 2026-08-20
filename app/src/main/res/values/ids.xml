@@ -10,6 +10,7 @@
     <item name="menu_group_2" type="id" />
 
     <item name="menu_1" type="id" />
+    <item name="menu_log" type="id" />
 
     <item name="fast_scroller" type="id" />
 

@@ -1,6 +1,8 @@
 package io.legado.app.ui.book.source.ai
 
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import androidx.activity.viewModels
 import io.legado.app.api.controller.AiSourceController
@@ -56,8 +58,22 @@ class AiSourceGenerateActivity :
         binding.btnValidate.setOnClickListener { validate() }
         binding.btnAutoFix.setOnClickListener { autoFix() }
         binding.btnImport.setOnClickListener { importToEditor() }
-        binding.btnLog.setOnClickListener { startActivity<AiSourceLogActivity>() }
         binding.btnClear.setOnClickListener { clearAll() }
+    }
+
+    override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
+        menu.add(Menu.NONE, R.id.menu_log, 0, R.string.ai_log_title).setShowAsAction(
+            MenuItem.SHOW_AS_ACTION_ALWAYS
+        )
+        return super.onCompatCreateOptionsMenu(menu)
+    }
+
+    override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.menu_log -> startActivity<AiSourceLogActivity>()
+            else -> return super.onCompatOptionsItemSelected(item)
+        }
+        return true
     }
 
     private fun saveConfig() {
