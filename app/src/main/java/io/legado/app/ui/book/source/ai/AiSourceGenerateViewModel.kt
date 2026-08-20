@@ -315,7 +315,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             }
             return VerifyResult(
                 false,
-                "规则中引用了本版 Legado 不存在的 bookId 变量（会报 ReferenceError: bookId 未定义）：$detail。请用 ruleSearch.bookUrl 返回含 ID 的完整详情 URL，再用 JSONPath/正则拼出详情/目录/正文 URL，禁止使用 bookId。"
+                "规则中引用了本版 Legado 不存在的 bookId/chapterId 变量（会报 ReferenceError: bookId 未定义）：$detail。请用 ruleSearch.bookUrl 返回含 ID 的完整详情 URL，再用 JSONPath/正则拼出详情/目录/正文 URL，禁止使用 bookId/chapterId。"
             )
         }
         return runCatching {
