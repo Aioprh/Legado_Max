@@ -38,6 +38,7 @@ val uiState: StateFlow<ThemeManageUiState> = themeRepository.observeThemes()
 
 - 流内异常在 Repository 或 ViewModel 的 `catch` 中转为 `UiError` 状态，**禁止** `throw` 穿透到 `viewModelScope` 导致进程崩溃。
 - 一次性变更操作（增删改）仍用 `suspend fun`，ViewModel 内 `viewModelScope.launch` 调用，异常在 `try-catch` 中处理并更新 `UiState` + 抛 `Event`。
+  **为什么 Compose 侧用裸 `viewModelScope.launch` 而不违反 `coroutine-rules.md` 规则 1**：Compose ViewModel 不继承 `BaseViewModel`，`execute` 不可用；且 `execute` 的回调链（`onSuccess`/`onError`）对快速完成的任务存在不触发的时序坑（`Coroutine.kt` 源码注释），变更操作必须同步保证"更新 UiState + 抛 Event"，用 try-catch 内联处理才是确定性写法。`coroutine-rules.md` 规则 1 的适用范围是 View 系屏幕（ViewBinding + `BaseViewModel` 宿主），两者边界已在该文档中写明。
 
 ### 4.2 Screen 层
 

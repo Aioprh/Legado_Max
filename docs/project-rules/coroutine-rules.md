@@ -49,8 +49,9 @@ execute {
 
 ## 2. 强制规则
 
-1. **UI 层（Activity/Fragment/ViewModel）里启动一次性任务，用 `execute`，不要裸 `viewModelScope.launch { }`。**
+1. **View 系屏幕（Activity/Fragment，以及继承 `BaseViewModel` 的 ViewModel）里启动一次性任务，用 `execute`，不要裸 `viewModelScope.launch { }`。**
    理由：项目里 99% 的现有代码是 `execute` 链式风格，错误处理、线程切换、取消语义已统一。混用裸 `launch` 会让错误处理散落各处。
+   **例外——Compose 屏幕**：Compose 侧的 ViewModel 不继承 `BaseViewModel`，没有 `execute` 可用；一次性增删改用 `viewModelScope.launch` + `try-catch`（更新 `UiState` + 抛 `Event`），见 `compose/state-events.md` §4.1.1。两者不冲突：`execute` 的 scope 默认就是 `viewModelScope`，取消语义相同，区别只在错误出口（回调链 vs try-catch）。
 2. **`execute` 内禁止在 UI 线程做耗时操作。** 默认 `context = Dispatchers.IO`，网络/DB/文件 IO 直接写；CPU 密集（EPUB 解析、大量文本处理）显式传 `context = Dispatchers.Default`。
 3. **禁止 `GlobalScope`、禁止 `CoroutineScope(Dispatchers.Main + SupervisorJob())` 手动全局 scope。**
    需要 Application 级后台任务（如缓存清理、定时同步）用 **WorkManager**，不要用长生命周期协程硬扛。
