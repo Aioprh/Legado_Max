@@ -656,7 +656,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     "chapterUrl": "章节 URL 规则（必填）",
     "isVip": "VIP 标记规则（返回 1 表示 VIP，0 表示免费，如 JSONPath $.vip）",
     "isPay": "付费标记规则（同上，无则空字符串）",
-    "updateTime": "章节更新时间规则（目录中每章常带有时间戳/日期，务必解析为该字段，不要漏掉）：返回 JSON 时用 JSONPath 指向日期字段（如 $.UpdateStatus），返回 HTML 时用 CSS/JSoup 指向日期节点；若为时间戳需用 @js: 转成日期，如 @js:Date({{$.updateTime}}*1000).toLocaleString()；若该章确实无时间字段才填空字符串",
+    "updateTime": "章节更新时间规则（目录中每章常带有时间戳/日期，务必解析为该字段，不要漏掉）：返回 JSON 时用 JSONPath 指向日期字段（如 $.UpdateStatus），返回 HTML 时用 CSS/JSoup 指向日期节点；若为时间戳需用 @js: 转成日期并格式化为 yyyy-MM-dd HH:mm，如 @js:new Date({{$.updateTime}}*1000).toLocaleString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\\//g,'-')；若该章确实无时间字段才填空字符串",
     "nextTocUrl": "下一页目录 URL",
     "preUpdateJs": "目录前置 JS（可选）：目录页为 JS 渲染或需要先取 token/登录态时用，无则空字符串",
     "formatJs": "章节名格式化 JS（可选）：如 章节标题需要去掉多余前缀，无则空字符串",
