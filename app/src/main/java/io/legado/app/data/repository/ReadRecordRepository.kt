@@ -1,5 +1,6 @@
 package io.legado.app.data.repository
 
+import io.legado.app.data.dao.BookDailySessionStat
 import io.legado.app.data.dao.DailyReadStat
 import io.legado.app.data.dao.ReadRecordDao
 import io.legado.app.data.entities.readRecord.ReadRecord
@@ -7,7 +8,9 @@ import io.legado.app.data.entities.readRecord.ReadRecordDetail
 import io.legado.app.data.entities.readRecord.ReadRecordSession
 import io.legado.app.data.entities.readRecord.ReadRecordTimelineDay
 import io.legado.app.constant.AppConst
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.map
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -171,6 +174,22 @@ class ReadRecordRepository(
 
     fun getBookSessions(bookName: String, bookAuthor: String): Flow<List<ReadRecordSession>> {
         return dao.getSessionsByBookFlow(getCurrentDeviceId(), bookName, bookAuthor)
+    }
+
+    /**
+     * 按日期聚合统计单本书的会话：每天的会话数和总时长。
+     * SQL GROUP BY 替代全量加载 Session 列表 + 内存 groupBy。
+     */
+    fun getBookDailySessionStats(bookName: String, bookAuthor: String): Flow<List<BookDailySessionStat>> {
+        return dao.getDailySessionStats(getCurrentDeviceId(), bookName, bookAuthor)
+    }
+
+    /**
+     * 按需加载某一天的会话列表（展开日期时调用）。
+     * 仅加载单日数据，避免全量加载所有会话到内存。
+     */
+    fun getBookSessionsByDate(bookName: String, bookAuthor: String, date: String): Flow<List<ReadRecordSession>> {
+        return dao.getSessionsByBookAndDateFlow(getCurrentDeviceId(), bookName, bookAuthor, date)
     }
 
     fun getBookTimelineDays(bookName: String, bookAuthor: String): Flow<List<ReadRecordTimelineDay>> {
@@ -455,6 +474,28 @@ class ReadRecordRepository(
         }
         dao.deleteSessionsByBookAndDate(record.deviceId, record.bookName, record.bookAuthor, date)
         updateReadRecordTotal(record.deviceId, record.bookName, record.bookAuthor)
+    }
+
+    /**
+     * 合并全部同名书籍的阅读记录：每个书名组以 lastRead 最新（其次 readTime 最大）的记录为目标，
+     * 其余记录合并进去。整体运行在 IO 线程，返回合并的书籍组数。
+     */
+    suspend fun mergeAllSameNameRecords(): Int = withContext(Dispatchers.IO) {
+        val groups = dao.getAllReadRecordsList()
+            .groupBy { it.bookName }
+            .filterValues { it.size > 1 }
+        var mergedCount = 0
+        groups.values.forEach { records ->
+            val target = records.maxWith(
+                compareBy({ it.lastRead }, { it.readTime })
+            )
+            val sources = records.filter { it != target }
+            if (sources.isNotEmpty()) {
+                mergeReadRecordInto(target, sources)
+                mergedCount++
+            }
+        }
+        mergedCount
     }
 
     suspend fun mergeReadRecordInto(targetRecord: ReadRecord, sourceRecords: List<ReadRecord>) {

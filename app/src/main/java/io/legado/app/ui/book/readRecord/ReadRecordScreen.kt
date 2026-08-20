@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.readRecord
 
 import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,8 +44,10 @@ import io.legado.app.ui.book.readRecord.components.SummaryCard
 import io.legado.app.ui.widget.components.swipe.SwipeActionContainer
 import io.legado.app.ui.widget.components.swipe.rememberSwipeDeleteAction
 import io.legado.app.utils.formatReadDuration
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -78,6 +81,8 @@ fun ReadRecordScreen(
 
     var showMergeDialog by remember { mutableStateOf(false) }
     var selectedRecord by remember { mutableStateOf<ReadRecord?>(null) }
+    var showMergeAllDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     if (showDeleteConfirm && pendingDeleteAction != null) {
         AlertDialog(
@@ -153,6 +158,38 @@ fun ReadRecordScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showMergeDialog = false }) {
+                    Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+        )
+    }
+
+    if (showMergeAllDialog) {
+        AlertDialog(
+            onDismissRequest = { showMergeAllDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text(stringResource(R.string.rr_merge_all_same_name)) },
+            text = { Text(stringResource(R.string.rr_merge_all_confirm)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.mergeAllSameNameRecords { mergedCount ->
+                        android.widget.Toast.makeText(
+                            context,
+                            if (mergedCount > 0) {
+                                context.getString(R.string.rr_merge_all_done, mergedCount)
+                            } else {
+                                context.getString(R.string.rr_merge_all_none)
+                            },
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    showMergeAllDialog = false
+                }) {
+                    Text(stringResource(R.string.rr_merge), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMergeAllDialog = false }) {
                     Text(stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
@@ -278,6 +315,21 @@ fun ReadRecordScreen(
                                             } else {
                                                 Icons.Default.Visibility
                                             },
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(stringResource(R.string.rr_merge_all_same_name))
+                                    },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        showMergeAllDialog = true
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.MergeType,
                                             contentDescription = null
                                         )
                                     }
@@ -419,14 +471,16 @@ private fun BookCoverImage(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val contextProvider = rememberUpdatedState(context)
+    val viewModelProvider = rememberUpdatedState(viewModel)
     var coverBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     LaunchedEffect(bookName, bookAuthor) {
-        coverBitmap = withContext(Dispatchers.IO) {
-            val coverPath = viewModel.getBookCover(bookName, bookAuthor)
-            loadReadRecordCoverBitmap(context, coverPath)
-                ?: loadReadRecordCoverBitmap(context, viewModel.getConfiguredDefaultCover())
-        }
+        val vm = viewModelProvider.value
+        val ctx = contextProvider.value
+        val coverPath = vm.getBookCover(bookName, bookAuthor)
+        coverBitmap = loadReadRecordCoverBitmap(ctx, coverPath)
+            ?: loadReadRecordCoverBitmap(ctx, vm.getConfiguredDefaultCover())
     }
 
     Surface(
@@ -460,13 +514,34 @@ private fun BookCoverImage(
     }
 }
 
-private fun loadReadRecordCoverBitmap(context: android.content.Context, coverPath: String?): Bitmap? {
+private suspend fun loadReadRecordCoverBitmap(context: android.content.Context, coverPath: String?): Bitmap? {
     if (coverPath.isNullOrBlank()) return null
-    return runCatching {
+    // 在协程仍存活时（页面未销毁）先取得 RequestManager，取消时复用；
+    // 若在 invokeOnCancellation 里调用 Glide.with(context)，页面可能已 destroy，
+    // Glide 会抛 "You cannot start a load for a destroyed activity" 导致整个应用崩溃
+    val requestManager = com.bumptech.glide.Glide.with(context)
+    return suspendCancellableCoroutine { cont ->
+        val target = object : CustomTarget<Bitmap>() {
+            override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
+                cont.resume(resource)
+            }
+
+            override fun onLoadCleared(placeholder: Drawable?) {
+                // 无需清理，Bitmap 由 UI 持有
+            }
+
+            override fun onLoadFailed(errorDrawable: Drawable?) {
+                cont.resume(null)
+            }
+        }
+        cont.invokeOnCancellation {
+            // 取消回调可能发生在 Activity 销毁流程中，必须吞掉一切异常，
+            // 否则会以 CompletionHandlerException 的形式击杀进程
+            runCatching { requestManager.clear(target) }
+        }
         ImageLoader.loadBitmap(context, coverPath)
-            .submit()
-            .get()
-    }.getOrNull()
+            .into(target)
+    }
 }
 
 @Suppress("UNUSED_PARAMETER")

@@ -119,10 +119,18 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application) {
         urlLiveData.postValue(analyzeUrl)
     }
 
-    private fun loadContent(rssArticle: RssArticle, ruleContent: String) {
+    /**
+     * 刷新序号：每次刷新自增，用于丢弃过期请求的结果，
+     * 防止快速多次点击刷新时旧请求的响应后到并覆盖新响应
+     */
+    private var refreshToken = 0
+
+    private fun loadContent(rssArticle: RssArticle, ruleContent: String, token: Int = 0) {
         val source = rssSource ?: return
         Rss.getContent(viewModelScope, rssArticle, ruleContent, source)
             .onSuccess(IO) { body ->
+                // 丢弃过期请求的结果，避免旧响应覆盖新响应
+                if (token != 0 && token != refreshToken) return@onSuccess
                 rssArticle.description = body
                 appDb.rssArticleDao.insert(rssArticle)
                 rssStar?.let {
@@ -132,6 +140,7 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application) {
                 this@ReadRssViewModel.rssArticle = rssArticle
                 contentLiveData.postValue(body)
             }.onError {
+                if (token != 0 && token != refreshToken) return@onError
                 contentLiveData.postValue("加载正文失败\n${it.stackTraceToString()}")
             }
     }
@@ -155,16 +164,18 @@ class ReadRssViewModel(application: Application) : BaseViewModel(application) {
             return
         }
         val rssArticle = rssArticle ?: return finish.invoke()
-        if (!rssArticle.description.isNullOrBlank()) {
-            contentLiveData.postValue(rssArticle.description!!)
+        // 修复：刷新必须强制重新拉取最新内容，不能直接回显本地缓存的旧 description。
+        // 收藏的条目在收藏时已缓存正文，若此处短路直接 postValue 旧内容，网络请求永远不
+        // 会重新发起，刷新后始终显示旧内容（URL 带时间参数的视频链接内容更新频繁，最易暴露）。
+        refreshToken++
+        val token = refreshToken
+        val ruleContent = rssSource.ruleContent
+        if (!ruleContent.isNullOrBlank()) {
+            loadContent(rssArticle, ruleContent, token)
         } else {
-            val ruleContent = rssSource.ruleContent
-            if (!ruleContent.isNullOrBlank()) {
-                loadContent(rssArticle, ruleContent)
-            } else {
-                viewModelScope.launch(IO) {
-                    loadUrl(rssArticle.link, rssArticle.origin)
-                }
+            // 无正文规则时重新加载原始链接网页
+            viewModelScope.launch(IO) {
+                loadUrl(rssArticle.link, rssArticle.origin)
             }
         }
         finish()

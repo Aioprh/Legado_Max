@@ -771,6 +771,8 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     val loadCoverOnlyWifi get() = appCtx.getPrefBoolean(PreferKey.loadCoverOnlyWifi, false)
 
+    val loadCoverHighQuality get() = appCtx.getPrefBoolean(PreferKey.loadCoverHighQuality, false)
+
     val bookCoverShadow get() = appCtx.getPrefBoolean(PreferKey.bookCoverShadow, true)
 
     val showAddToShelfAlert get() = appCtx.getPrefBoolean(PreferKey.showAddToShelfAlert, true)
@@ -782,6 +784,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         set(value) = appCtx.putPrefBoolean(PreferKey.pauseReadAloudWhilePhoneCalls, value)
         
     val onlyLatestBackup get() = appCtx.getPrefBoolean(PreferKey.onlyLatestBackup, false)
+
+    var autoBackup: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.autoBackup, true)
+        set(value) = appCtx.putPrefBoolean(PreferKey.autoBackup, value)
 
     val autoCheckNewBackup get() = appCtx.getPrefBoolean(PreferKey.autoCheckNewBackup, true)
 

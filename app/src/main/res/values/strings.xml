@@ -86,6 +86,7 @@
     <string name="donate">Donations</string>
     <string name="exit">Exit</string>
     <string name="exit_no_save">It has not been saved. Do you want to continue editing?</string>
+    <string name="save_ing">Saving, please wait…</string>
     <string name="read_style">Book styles</string>
     <string name="version">Version</string>
     <string name="local">Local</string>
@@ -111,10 +112,7 @@
     <string name="offline_cache_t">Offline cache</string>
     <string name="offline_cache_s">cache the selected chapter(s) to Storage</string>
     <string name="change_origin">Change Origin</string>
-    <string name="migrate_book_origin_title">Migrate Associated Books</string>
-    <string name="migrate_book_origin_msg">The book source URL has changed. Migrate the books on your shelf from this source to the new URL?</string>
-    <string name="migrate_book_origin_yes">Migrate</string>
-    <string name="migrate_book_origin_no">Don\'t migrate</string>
+    <string name="migrate_book_origin_done">Book source URL changed. Associated books have been migrated to the new URL.</string>
     <string name="about_description">
         \u3000\u3000 This is an open source reading software newly developed by Kotlin, welcome to join us.
     </string>
@@ -311,6 +309,7 @@
     <string name="dark_status_icon">Darken the status bar\'s icon color</string>
     <string name="content">Content</string>
     <string name="copy_text">Copy</string>
+    <string name="copy">Copy</string>
     <string name="download_all">Download all</string>
     <string name="content_sl">This is a test text, \n\u3000\u3000 just to show you the effect</string>
     <string name="text_bg_style">Color and background (long tap to customize)</string>
@@ -524,6 +523,7 @@
     <string name="error_get_web_content">Failed to access website:%s</string>
     <string name="error_read_file">Failed to read file</string>
     <string name="error_load_toc">Failed to load chapters list</string>
+    <string name="toc_load_failed_using_cache">TOC load failed, showing cached chapters</string>
     <string name="error_get_data">Failed to get data</string>
     <string name="error_load_msg">Failed to load\n%s</string>
     <string name="net_error_10001">No network</string>
@@ -653,6 +653,7 @@
     <string name="text_color">Text color</string>
     <string name="text_accent_color">Accent Color</string>
     <string name="select_image">Select a picture</string>
+    <string name="select_image_failed">Failed to select image</string>
     <string name="group_manage">Group management</string>
     <string name="group_select">Group selection</string>
     <string name="group_edit">Group editing</string>
@@ -840,6 +841,7 @@
     <string name="text_menu_edit_title">Edit menu name</string>
     <string name="text_menu_edit_name">Menu name</string>
     <string name="text_menu_edit_name_desc">Leave blank to restore the default name</string>
+    <string name="text_menu_drag_sort">Drag to sort</string>
     <string name="process_text_menu_config">Other Apps Menu Config</string>
     <string name="process_text_menu_config_desc">Select the other apps menu items you want to display</string>
     <string name="no_process_text_apps">No apps found that support text processing</string>
@@ -1653,6 +1655,9 @@
     <string name="adding_books">Adding %d books…</string>
     <string name="add_books_success">Successfully added %d books</string>
     <string name="all_books_in_shelf">All books in list are already on shelf</string>
+    <string name="auto_backup_title">Auto Backup</string>
+    <string name="auto_backup_summary">Auto WebDAV and local backup when exiting (24h cooldown)</string>
+
     <string name="auto_check_new_backup_t">Auto Check New Backup</string>
     <string name="auto_check_new_backup_s">Check for new backup when opening app, prompt to update if found</string>
     <string name="r_preloadJs">Preload JS (preloadJs)</string>
@@ -1861,6 +1866,10 @@
     <string name="rr_no_merge_candidates">No merge candidates found</string>
     <string name="rr_select_merge_target">Select records to merge into \"%s\":</string>
     <string name="rr_merge">Merge</string>
+    <string name="rr_merge_all_same_name">Merge All Same Name Books</string>
+    <string name="rr_merge_all_confirm">All records of same-name books will be merged into one: the newer reading progress is kept and read time is accumulated. This cannot be undone.</string>
+    <string name="rr_merge_all_none">No same-name books to merge</string>
+    <string name="rr_merge_all_done">Merged %d same-name books</string>
     <string name="rr_selected_items">Selected %d items</string>
     <string name="rr_cancel_selection">Cancel Selection</string>
     <string name="rr_delete_selected">Delete Selected</string>
@@ -2159,15 +2168,21 @@
 <string name="application_theme_edit">Edit app theme</string>
 <string name="application_theme_empty">No app themes. Configure the interface, then create one from the current combination.</string>
 <string name="application_theme_export">Export current app theme</string>
+    <string name="application_theme_export_format_select">Select export format</string>
+    <string name="export_format_native">Current branch (MAX)</string>
+    <string name="export_format_archive">archive version</string>
+    <string name="export_format_md3">MD3 version</string>
+    <string name="export_format_red">Reeden (.red) format</string>
 <string name="application_theme_import">Import app theme</string>
 <string name="application_theme_import_with_options">Import app theme with options</string>
 <string name="application_theme_import_options_hint">Select components to create during import. Unchecked components will be skipped (not created).</string>
+<string name="application_theme_delete_options_hint">Check associated components to delete with "%1$s". Unchecked components will be kept.</string>
 <string name="application_theme_manage">App themes</string>
 <string name="application_theme_name">App theme name</string>
 <string name="application_theme_name_exists">An app theme with this name already exists</string>
 <string name="application_theme_not_set">Not set</string>
 <string name="application_theme_rename">Rename</string>
-<string name="application_theme_summary">Manage themes, top bars, bottom bars, and cover galleries together</string>
+<string name="application_theme_summary">Manage themes, top bars, bottom bars, and cover galleries together. Supports importing and exporting current branch (MAX), archive, md3, and .red theme packages</string>
 <string name="application_theme_update_current">Update from current combination</string>
 <string name="applied">Applied</string>
 <string name="applied_nav_bar_config">Applied navigation bar config: %s</string>
@@ -2175,6 +2190,7 @@
 <string name="applied_top_bar_config">Applied top bar config: %s</string>
 <string name="apply">Apply</string>
 <string name="apply_theme">Apply</string>
+<string name="cannot_delete_current_theme">Cannot delete the theme in use</string>
 <string name="bottom_background_color">Bottom background color</string>
 <string name="bottom_bar_border_alpha">Bottom bar border opacity</string>
 <string name="bottom_bar_border_color">Bottom bar border color</string>
@@ -2232,7 +2248,7 @@
 <string name="interface_manage">Interface Management</string>
 <string name="layout_mode">Layout Mode</string>
 <string name="load_cover_high_quality">Load high quality covers</string>
-<string name="load_cover_high_quality_summary">Use original cover images instead of smaller decoded covers</string>
+<string name="load_cover_high_quality_summary">When enabled, use original cover images; when disabled, prefer thumbnail loading</string>
 <string name="manual_config">Manual Config</string>
 <string name="nav_bar_summary">Click Apply button to apply config, click Edit button to edit config</string>
 <string name="nav_bar_summary_empty">No %s navigation bar configs, click below to add</string>
@@ -2245,6 +2261,47 @@
 <string name="navigation_icon_selected">Selected icon</string>
 <string name="opacity">Opacity</string>
 <string name="other_settings">Other Settings</string>
+<string name="share_note_menu">Share excerpt</string>
+<string name="share_note_template_manage">Share excerpt template</string>
+<string name="share_note_template_manage_summary">Manage HTML templates used for sharing images from long-press text</string>
+    <string name="share_note_preview_label">Preview</string>
+<string name="share_note_template">Template</string>
+    <string name="share_note_style">Share style</string>
+    <string name="share_note_style_summary">Quickly switch colors and fonts for excerpt share images; preview and shared images update together.</string>
+    <string name="share_note_palette">Colors</string>
+    <string name="share_note_font">Fonts</string>
+    <string name="share_note_applied">Applied</string>
+    <string name="share_note_source_builtin">Built-in</string>
+    <string name="share_note_source_local">Local</string>
+    <string name="share_note_add_template">Add template</string>
+    <string name="share_note_add_copy_builtin">Copy built-in template</string>
+    <string name="share_note_import_html">Import HTML</string>
+    <string name="share_note_import_zip">Import ZIP</string>
+    <string name="share_note_action_preview">Preview header</string>
+    <string name="share_note_action_copy">Copy as new</string>
+    <string name="share_note_export_html">Export HTML</string>
+    <string name="share_note_export_zip">Export ZIP</string>
+    <string name="share_note_export_failed">Export failed</string>
+    <string name="share_note_change_template">Change template</string>
+    <string name="share_note_manage">Manage</string>
+    <string name="share_note_done">Done</string>
+    <string name="share_note_select_template">Select share template</string>
+    <string name="share_note_reader">Reader</string>
+    <string name="share_note_read_prefix">Read %1$s</string>
+
+<string name="share_note_manage_templates">Manage templates</string>
+<string name="share_note_loading_preview">Loading preview...</string>
+<string name="share_note_exporting">Generating image...</string>
+<string name="share_note_saved">Saved to gallery</string>
+<string name="share_note_no_template">No templates available</string>
+<string name="share_note_render_failed">Failed to generate share image: %1$s</string>
+<string name="share_note_save_failed">Failed to save image: %1$s</string>
+<string name="theme_package_load_failed">Load failed: %1$s</string>
+<string name="duration_day">%d d</string>
+<string name="duration_hour">%d h</string>
+<string name="duration_minute">%d min</string>
+<string name="duration_second">%d s</string>
+<string name="duration_zero">0 s</string>
 <string name="regular_top_bar">Regular top bar</string>
 <string name="share_nav_bar_config">Share navigation bar config</string>
 <string name="share_top_bar_config">Share top bar config</string>
@@ -2333,4 +2390,41 @@
     <string name="app_theme_summary_format">Day: %1$s / %2$s / %3$s / %4$s
 Night: %5$s / %6$s / %7$s / %8$s</string>
     <string name="shibboleth">口令</string>
+
+    <!-- Permission manage -->
+    <string name="permission_manage">Permission Management</string>
+    <string name="permission_manage_summary">Manage permissions for cookies, book objects, APIs and Toast</string>
+    <string name="perm_section_cookie">Cookie Management</string>
+    <string name="perm_section_book">Book Object Management</string>
+    <string name="perm_section_java">Java API</string>
+    <string name="perm_section_android">Android API</string>
+    <string name="perm_section_toast">Toast Management</string>
+    <string name="perm_cookie_read">Cookie Read</string>
+    <string name="perm_cookie_read_desc">Allow book sources to read cookies</string>
+    <string name="perm_cookie_write">Cookie Write</string>
+    <string name="perm_cookie_write_desc">Allow book sources to write cookies</string>
+    <string name="perm_cookie_delete">Cookie Delete</string>
+    <string name="perm_cookie_delete_desc">Allow book sources to delete cookies</string>
+    <string name="perm_book_read">Book Read</string>
+    <string name="perm_book_read_desc">Allow scripts to read book objects</string>
+    <string name="perm_book_modify">Book Modify</string>
+    <string name="perm_book_modify_desc">Allow scripts to modify book objects</string>
+    <string name="perm_book_delete">Book Delete</string>
+    <string name="perm_book_delete_desc">Allow scripts to delete book objects</string>
+    <string name="perm_java_lang">java.lang Access</string>
+    <string name="perm_java_lang_desc">Control access to java.lang classes</string>
+    <string name="perm_java_io">java.io Access</string>
+    <string name="perm_java_io_desc">Control access to java.io classes</string>
+    <string name="perm_java_net">java.net Access</string>
+    <string name="perm_java_net_desc">Control access to java.net classes</string>
+    <string name="perm_android_content">android.content Access</string>
+    <string name="perm_android_content_desc">Control access to android.content APIs</string>
+    <string name="perm_android_net">android.net Access</string>
+    <string name="perm_android_net_desc">Control access to android.net APIs</string>
+    <string name="perm_android_system">System Info Read</string>
+    <string name="perm_android_system_desc">Control reading system information</string>
+    <string name="perm_toast_enabled">Toast Enabled</string>
+    <string name="perm_toast_enabled_desc">Whether scripts can show Toast</string>
+    <string name="perm_toast_duration">Toast Duration</string>
+    <string name="perm_toast_duration_desc">Control Toast display duration</string>
 </resources>

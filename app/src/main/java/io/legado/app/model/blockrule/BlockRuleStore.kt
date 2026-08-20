@@ -18,12 +18,24 @@ import java.util.UUID
  * 使用 SharedPreferences + JSON 序列化存储屏蔽规则列表，
  * 提供规则的加载、保存、过滤和清洗功能。
  * 内置内存缓存避免频繁反序列化。
+ *
+ * 性能优化：
+ * - [cachedRules] 缓存反序列化结果，避免频繁读取 SharedPreferences
+ * - [cachedCompiled] 缓存已编译的 [CompiledBlockRule] 列表（含预解析 scope + 预编译正则），
+ *   避免每次过滤都重新编译
  */
 object BlockRuleStore {
 
     /** 内存缓存，避免频繁读取 SharedPreferences 和反序列化 */
     @Volatile
     private var cachedRules: List<BlockRule>? = null
+
+    /**
+     * 已编译的屏蔽规则缓存（仅包含 enabled && pattern 非空的规则）
+     * 预编译了 scope 字符串解析和正则表达式，避免每次匹配时重复计算
+     */
+    @Volatile
+    private var cachedCompiled: List<CompiledBlockRule>? = null
 
     /**
      * 加载所有屏蔽规则
@@ -45,9 +57,25 @@ object BlockRuleStore {
         return mutableListOf()
     }
 
-    /** 加载已启用且有匹配模式的规则 */
+    /**
+     * 加载已启用且有匹配模式的规则（原始 BlockRule）
+     */
     fun loadEnabled(context: Context): List<BlockRule> {
         return load(context).filter { it.enabled && it.pattern.isNotBlank() }
+    }
+
+    /**
+     * 加载已编译的屏蔽规则列表（缓存）
+     *
+     * 每条规则已预解析 scope 字符串并预编译正则表达式，
+     * 后续匹配不再需要 split/trim/filter 或重复编译正则。
+     */
+    private fun loadCompiled(context: Context): List<CompiledBlockRule> {
+        cachedCompiled?.let { return it }
+        val enabled = loadEnabled(context)
+        val compiled = enabled.map { it.compile() }
+        cachedCompiled = compiled
+        return compiled
     }
 
     /**
@@ -68,21 +96,23 @@ object BlockRuleStore {
             sanitized
         }
         cachedRules = normalized
+        cachedCompiled = null
         context.putPrefString(PreferKey.blockRuleItems, GSON.toJson(normalized))
         BlockRuleGroupStore.ensureFromRules(context, normalized)
     }
 
     /**
      * 核心过滤方法：返回被屏蔽规则过滤后的书籍列表
-     * 遍历所有已启用的规则，移除匹配的书籍
-     * 优化：先过滤作用域匹配的规则，减少不必要的匹配计算
+     *
+     * 优化策略：
+     * 1. 使用预编译的 CompiledBlockRule，避免每次 split/trim/filter 和正则编译
+     * 2. 先过滤作用域匹配的规则，避免对每本书都检查作用域
      */
     fun filterBooks(context: Context, books: List<SearchBook>, sourceUrl: String): List<SearchBook> {
         if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) return books
-        val rules = loadEnabled(context)
+        val rules = loadCompiled(context)
         if (rules.isEmpty()) return books
 
-        // 先过滤出对当前书源生效的规则，避免对每本书都检查作用域
         val applicableRules = rules.filter { it.matchesScope(sourceUrl) }
         if (applicableRules.isEmpty()) return books
 
@@ -97,7 +127,7 @@ object BlockRuleStore {
      */
     fun filterSearchBooks(context: Context, books: List<SearchBook>): List<SearchBook> {
         if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) return books
-        val rules = loadEnabled(context)
+        val rules = loadCompiled(context)
         if (rules.isEmpty()) return books
 
         // 按书源URL分组，避免对每本书都检查作用域
@@ -125,10 +155,9 @@ object BlockRuleStore {
      */
     fun filterRssArticles(context: Context, articles: List<RssArticle>, sourceUrl: String): List<RssArticle> {
         if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) return articles
-        val rules = loadEnabled(context)
+        val rules = loadCompiled(context)
         if (rules.isEmpty()) return articles
 
-        // 先过滤出对当前订阅源生效的规则，避免对每篇文章都检查作用域
         val applicableRules = rules.filter { it.matchesRssScope(sourceUrl) }
         if (applicableRules.isEmpty()) return articles
 
@@ -140,30 +169,90 @@ object BlockRuleStore {
     /**
      * 获取实际匹配到书籍的规则列表
      * 返回在指定书籍列表和书源下，至少匹配了一本书的规则
+     * 使用编译后的规则进行匹配，提升性能
      */
     fun getMatchedRules(context: Context, books: List<SearchBook>, sourceUrl: String): List<BlockRule> {
-        val rules = loadEnabled(context)
-        if (rules.isEmpty() || books.isEmpty()) return emptyList()
-        return rules.filter { rule ->
-            rule.matchesScope(sourceUrl) && books.any { book -> rule.matches(book) }
-        }
+        val compiled = loadCompiled(context)
+        if (compiled.isEmpty() || books.isEmpty()) return emptyList()
+        val allRules = loadEnabled(context)
+        val matchedIds = compiled
+            .filter { it.matchesScope(sourceUrl) && books.any { book -> it.matches(book) } }
+            .map { it.id }
+            .toSet()
+        return allRules.filter { it.id in matchedIds }
     }
 
     /**
      * 获取实际匹配到RSS文章的规则列表
      * 返回在指定文章列表和订阅源下，至少匹配了一篇文章的规则
+     * 使用编译后的规则进行匹配，提升性能
      */
     fun getMatchedRssRules(context: Context, articles: List<RssArticle>, sourceUrl: String): List<BlockRule> {
-        val rules = loadEnabled(context)
-        if (rules.isEmpty() || articles.isEmpty()) return emptyList()
-        return rules.filter { rule ->
-            rule.matchesRssScope(sourceUrl) && articles.any { article -> rule.matchesRssArticle(article) }
-        }
+        val compiled = loadCompiled(context)
+        if (compiled.isEmpty() || articles.isEmpty()) return emptyList()
+        val allRules = loadEnabled(context)
+        val matchedIds = compiled
+            .filter { it.matchesRssScope(sourceUrl) && articles.any { article -> it.matchesRssArticle(article) } }
+            .map { it.id }
+            .toSet()
+        return allRules.filter { it.id in matchedIds }
     }
+
+    /**
+     * 过滤书籍并同时收集匹配到的规则（单次遍历）
+     *
+     * 返回 [FilterAndMatchResult]，包含过滤后的书籍列表和匹配到的规则列表。
+     * 用于 [ExploreShowViewModel.applyBlockRules] 等场景，避免对同一批数据遍历两次。
+     */
+    fun filterAndCollectMatched(
+        context: Context,
+        books: List<SearchBook>,
+        sourceUrl: String,
+    ): FilterAndMatchResult {
+        if (!context.getPrefBoolean(PreferKey.blockRuleEnabled, true)) {
+            return FilterAndMatchResult(books, emptyList())
+        }
+        val compiledRules = loadCompiled(context)
+        if (compiledRules.isEmpty() || books.isEmpty()) {
+            return FilterAndMatchResult(books, emptyList())
+        }
+
+        val applicableRules = compiledRules.filter { it.matchesScope(sourceUrl) }
+        if (applicableRules.isEmpty()) {
+            return FilterAndMatchResult(books, emptyList())
+        }
+
+        val matchedRuleIds = mutableSetOf<String>()
+        val filteredBooks = books.filterNot { book ->
+            // 逐条规则匹配，命中则记录规则 ID 并过滤该书
+            var matched = false
+            for (rule in applicableRules) {
+                if (rule.matches(book)) {
+                    matchedRuleIds.add(rule.id)
+                    matched = true
+                    // 不 break：记录所有命中规则，确保 UI 触发规则报告完整
+                }
+            }
+            matched
+        }
+
+        // 从原始规则列表中按 ID 找回对应的 BlockRule
+        val allRules = loadEnabled(context)
+        val matchedRules = allRules.filter { it.id in matchedRuleIds }
+
+        return FilterAndMatchResult(filteredBooks, matchedRules)
+    }
+
+    /** 过滤 + 匹配结果 */
+    data class FilterAndMatchResult(
+        val filteredBooks: List<SearchBook>,
+        val matchedRules: List<BlockRule>,
+    )
 
     /** 清除缓存，下次加载时重新从 SharedPreferences 读取 */
     fun invalidateCache() {
         cachedRules = null
+        cachedCompiled = null
         RegexCache.clear() // 同时清除正则表达式缓存，避免旧规则残留
     }
 

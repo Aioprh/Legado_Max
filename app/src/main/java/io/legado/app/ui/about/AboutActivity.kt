@@ -1,7 +1,6 @@
 package io.legado.app.ui.about
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -41,32 +40,30 @@ import android.view.View
 import androidx.fragment.app.FragmentContainerView
 import androidx.fragment.app.FragmentManager
 import io.legado.app.R
-import io.legado.app.ui.theme.initLegadoComposeTheme
+import io.legado.app.base.BaseComposeActivity
 import io.legado.app.ui.theme.pageTopBarContainerColor
-import io.legado.app.ui.theme.setLegadoContent
 import io.legado.app.utils.openUrl
 import io.legado.app.utils.share
 
-class AboutActivity : AppCompatActivity() {
+class AboutActivity : BaseComposeActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        initLegadoComposeTheme()
-        super.onCreate(savedInstanceState)
-        setLegadoContent(overlayAlpha = 0.06f) {
-            AboutScreen(
-                fragmentManager = supportFragmentManager,
-                onBackClick = { finish() },
-                onShareClick = {
-                    share(
-                        getString(R.string.app_share_description_sigma),
-                        getString(R.string.app_name)
-                    )
-                },
-                onScoringClick = {
-                    openUrl("market://details?id=$packageName")
-                }
-            )
-        }
+    override fun composeOverlayAlpha(): Float = 0.06f
+
+    @Composable
+    override fun ComposeContent() {
+        AboutScreen(
+            fragmentManager = supportFragmentManager,
+            onBackClick = { finish() },
+            onShareClick = {
+                share(
+                    getString(R.string.app_share_description_sigma),
+                    getString(R.string.app_name)
+                )
+            },
+            onScoringClick = {
+                openUrl("market://details?id=$packageName")
+            }
+        )
     }
 }
 

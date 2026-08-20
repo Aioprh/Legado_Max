@@ -15,6 +15,7 @@ import com.jeremyliao.liveeventbus.logger.DefaultLogger
 import com.script.rhino.ReadOnlyJavaObject
 import com.script.rhino.RhinoScriptEngine
 import com.script.rhino.RhinoWrapFactory
+import io.legado.app.utils.log.TimberLog
 import io.legado.app.base.AppContextWrapper
 import io.legado.app.constant.AppConst.channelIdDownload
 import io.legado.app.constant.AppConst.channelIdReadAloud
@@ -39,6 +40,7 @@ import io.legado.app.help.LifecycleHelp
 import io.legado.app.help.LauncherIconHelp
 import io.legado.app.help.RuleBigDataHelp
 import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.BookshelfMatcher
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig.applyDayNight
@@ -62,9 +64,11 @@ import org.chromium.base.ThreadUtils
 import splitties.init.appCtx
 import splitties.systemservices.notificationManager
 import java.net.URL
+import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import java.util.logging.Level
 
+@HiltAndroidApp
 class App : Application() {
 
     private lateinit var oldConfig: Configuration
@@ -75,6 +79,8 @@ class App : Application() {
         if (isDebuggable) {
             ThreadUtils.setThreadAssertsDisabledForTesting(true)
         }
+        //初始化 Timber 日志框架
+        TimberLog.init(this, isDebuggable)
         oldConfig = Configuration(resources.configuration)
         applyDayNightInit(this)
         LauncherIconHelp.fixLauncherIconPref()
@@ -101,6 +107,8 @@ class App : Application() {
             initRhino()
             //初始化封面
             BookCover.toString()
+            //初始化书架匹配器（轻量查询，全局共享）
+            BookshelfMatcher.start()
             //清除过期数据
             appDb.cacheDao.clearDeadline(System.currentTimeMillis())
             if (getPrefBoolean(PreferKey.autoClearExpired, true)) {

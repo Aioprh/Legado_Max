@@ -1,9 +1,12 @@
 package io.legado.app.help.config
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.StateListDrawable
+import android.util.LruCache
 import android.view.Menu
 import androidx.annotation.DrawableRes
 import androidx.annotation.IdRes
@@ -19,6 +22,7 @@ import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.GSON
+import io.legado.app.utils.SvgUtils
 import io.legado.app.utils.defaultSharedPreferences
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.getPrefString
@@ -114,6 +118,20 @@ data class NavigationBarConfig(
         private const val PREF_KEY_ACTIVE_DAY = "activeDayNavBarId"
         private const val PREF_KEY_ACTIVE_NIGHT = "activeNightNavBarId"
         private const val PREF_KEY_CUSTOM_CONFIGS = "customNavBarConfigs"
+
+        /** 图标 Bitmap 缓存，避免每次重新解析 SVG/PNG 文件 */
+        private val iconBitmapCache = LruCache<String, Bitmap>(64)
+
+        /** 清空图标缓存（配置变更时调用） */
+        fun clearIconCache() {
+            iconBitmapCache.evictAll()
+        }
+
+        /** 生成图标缓存 key：基于文件路径、最后修改时间和大小 */
+        private fun iconCacheKey(path: String): String {
+            val file = java.io.File(path)
+            return "${file.absolutePath}|${file.lastModified()}|${file.length()}"
+        }
 
         /** 底栏导航项列表：首页、书架、发现、RSS、我的 */
         val items = listOf(
@@ -327,6 +345,19 @@ data class NavigationBarConfig(
 
         private fun loadIconDrawable(context: Context, path: String?): Drawable? {
             if (path.isNullOrBlank()) return null
+            val file = java.io.File(path)
+            // SVG 文件需要用 SvgUtils 解析，Drawable.createFromPath 不支持 SVG
+            if (file.extension.equals("svg", ignoreCase = true)) {
+                val targetSize = (context.resources.displayMetrics.density * 48).toInt()
+                val cacheKey = iconCacheKey(path)
+                val bitmap = synchronized(iconBitmapCache) {
+                    iconBitmapCache[cacheKey]?.takeIf { !it.isRecycled }
+                        ?: SvgUtils.createBitmapFromFile(path, targetSize, targetSize)?.also {
+                            iconBitmapCache.put(cacheKey, it)
+                        }
+                }
+                return bitmap?.let { BitmapDrawable(context.resources, it) }
+            }
             return Drawable.createFromPath(path)
         }
 

@@ -21,6 +21,7 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
@@ -29,6 +30,7 @@ import com.bumptech.glide.request.target.Target
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.AdaptiveCoverTransformation
@@ -371,6 +373,44 @@ class CoverImageView @JvmOverloads constructor(
        )
     }
 
+    /**
+     * 方案A：支持 [BookShelfDisplay] 轻量数据类的封面加载重载。
+     *
+     * 与 [load]（Book 版本）功能一致，但直接从 [BookShelfDisplay] 获取字段，
+     * 无需转换为完整 [Book] 对象。
+     */
+    fun load(
+        display: io.legado.app.data.dao.BookShelfDisplay,
+        loadOnlyWifi: Boolean = false,
+        fragment: Fragment? = null,
+        lifecycle: Lifecycle? = null,
+        overrideWidth: Int = 0,
+        overrideHeight: Int = 0,
+        onLoadFinish: (() -> Unit)? = null
+    ) {
+        load(
+            display.getDisplayCover(), display.name, display.author,
+            loadOnlyWifi, display.origin, fragment, lifecycle,
+            galleryIdentity = display.bookUrl,
+            overrideWidth = overrideWidth,
+            overrideHeight = overrideHeight,
+            onLoadFinish = onLoadFinish
+        )
+    }
+
+    /**
+     * 书架分组（文件夹）封面加载重载。
+     *
+     * 以分组 id 作为封面图集的取图身份，使文件夹封面与书籍封面一致，
+     * 按封面模式（随机/顺序/混合）从图集中取图；未启用图集时回退到分组自定义封面。
+     */
+    fun load(group: BookGroup) {
+        load(
+            path = group.cover,
+            galleryIdentity = "bookGroup:${group.groupId}"
+        )
+    }
+
     fun load(
         path: String? = null,
         name: String? = null,
@@ -458,7 +498,7 @@ class CoverImageView @JvmOverloads constructor(
                     }
                 })
             }
-            if (overrideWidth > 0 && overrideHeight > 0) {
+            if (overrideWidth > 0 && overrideHeight > 0 && !AppConfig.loadCoverHighQuality) {
                 builder.override(overrideWidth, overrideHeight)
             }
             builder.centerCrop()
@@ -617,6 +657,20 @@ class CoverImageView @JvmOverloads constructor(
         currentJob?.cancel()
         currentJob = null
         super.onDetachedFromWindow()
+    }
+
+    /**
+     * 方案E：取消正在进行的封面图片加载请求。
+     *
+     * 在 RecyclerView onViewRecycled 时调用，避免回收的 ViewHolder
+     * 继续持有 Glide 请求导致不必要的网络/磁盘 IO 和内存占用。
+     */
+    fun cancelLoad() {
+        kotlin.runCatching {
+            Glide.with(context).clear(this)
+        }
+        currentJob?.cancel()
+        currentJob = null
     }
 
 }

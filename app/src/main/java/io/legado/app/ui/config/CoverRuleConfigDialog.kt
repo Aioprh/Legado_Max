@@ -24,14 +24,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import splitties.views.onClick
 
+/**
+ * 封面规则配置对话框
+ *
+ * 用于配置自动获取封面的规则，包括搜索URL和封面提取规则
+ * 支持全屏编辑功能
+ */
 class CoverRuleConfigDialog : BaseDialogFragment(R.layout.dialog_cover_rule_config) {
 
     val binding by viewBinding(DialogCoverRuleConfigBinding::bind)
 
-    // 保存全屏编辑前的焦点EditText引用
+    /** 保存全屏编辑前的焦点EditText引用 */
     private var lastFocusedEditText: EditText? = null
 
-    // 全屏编辑结果回调
+    /** 全屏编辑结果回调 */
     private val fullScreenEditResult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) {
             val data = result.data
@@ -116,6 +122,9 @@ class CoverRuleConfigDialog : BaseDialogFragment(R.layout.dialog_cover_rule_conf
         }
     }
 
+    /**
+     * 初始化数据，加载已保存的规则配置
+     */
     private fun initData() {
         lifecycleScope.launch {
             val rule = withContext(IO) {

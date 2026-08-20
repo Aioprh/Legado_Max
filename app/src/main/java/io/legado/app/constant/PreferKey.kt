@@ -165,6 +165,7 @@ object PreferKey {
     const val textMenuCustomTitles = "textMenuCustomTitles"
     const val processTextCustomTitles = "processTextCustomTitles"
     const val hiddenTextMenuItems = "hiddenTextMenuItems"  // 隐藏的文本菜单项ID列表，用逗号分隔
+    const val textMenuItemOrder = "textMenuItemOrder"  // 文本菜单项排序，JSON数组格式的ID列表
     const val hiddenProcessTextItems = "hiddenProcessTextItems"  // 隐藏的其他应用菜单项列表，格式：包名/类名,用逗号分隔
     const val doublePageHorizontal = "doubleHorizontalPage"
     const val readUrlOpenInBrowser = "readUrlInBrowser"
@@ -209,6 +210,7 @@ object PreferKey {
     const val showWaitUpCount = "showWaitUpCount"
     const val clearWebViewData = "clearWebViewData"
     const val onlyLatestBackup = "onlyLatestBackup"
+    const val autoBackup = "autoBackup"
     const val brightnessVwPos = "brightnessVwPos"
     const val shrinkDatabase = "shrinkDatabase"
     const val batchChangeSourceDelay = "batchChangeSourceDelay"
@@ -331,4 +333,14 @@ object PreferKey {
     const val appThemeImportNightBottomBar = "appThemeImportNightBottomBar"
     const val appThemeImportDayCover = "appThemeImportDayCover"
     const val appThemeImportNightCover = "appThemeImportNightCover"
+
+    /** 删除应用主题时各组件的删除开关（日夜间独立） */
+    const val appThemeDeleteDayTheme = "appThemeDeleteDayTheme"
+    const val appThemeDeleteNightTheme = "appThemeDeleteNightTheme"
+    const val appThemeDeleteDayTopBar = "appThemeDeleteDayTopBar"
+    const val appThemeDeleteNightTopBar = "appThemeDeleteNightTopBar"
+    const val appThemeDeleteDayBottomBar = "appThemeDeleteDayBottomBar"
+    const val appThemeDeleteNightBottomBar = "appThemeDeleteNightBottomBar"
+    const val appThemeDeleteDayCover = "appThemeDeleteDayCover"
+    const val appThemeDeleteNightCover = "appThemeDeleteNightCover"
 }

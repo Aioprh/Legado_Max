@@ -12,6 +12,8 @@ import io.legado.app.data.entities.rule.TocRule
 import io.legado.app.data.repository.debug.FlowLogRecorder
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.exception.TocEmptyException
+import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.ChapterCacheMigrator
 import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.config.AppConfig
@@ -194,6 +196,8 @@ object BookChapterList {
                     RhinoScriptEngine.runCatching {
                         eval(formatJs, bindings)?.toString()?.let {
                             bookChapter.title = it
+                            //标题已变化, 重置标题MD5缓存, 避免getFileName使用旧标题
+                            bookChapter.titleMD5 = null
                         }
                     }.onFailure {
                         Debug.log(book.origin, "格式化标题出错, ${it.localizedMessage}")
@@ -224,6 +228,11 @@ object BookChapterList {
                 )
         currentCoroutineContext().ensureActive()
         upChapterInfo(list, book)
+        //此时尚未用新目录替换数据库中的旧章节, 按章节url迁移因标题/序号变化而改名的缓存文件
+        BookHelp.createChapterCacheMigrator(
+            book,
+            appDb.bookChapterDao.getChapterList(book.bookUrl)
+        ).migrate(list)
         
         val dataFlowFields = mutableListOf<FieldFillRecord>()
         dataFlowFields.recordField("totalChapterNum", result = list.size.toString())
@@ -295,13 +304,18 @@ object BookChapterList {
             isFromBookInfo = isFromBookInfo
         )
         chapterList.addAll(chapterData.first)
+        //渐进加载中旧章节会被中间结果逐批替换, 先取旧章节创建迁移器, 每次发射时接力迁移缓存文件
+        val cacheMigrator = BookHelp.createChapterCacheMigrator(
+            book,
+            appDb.bookChapterDao.getChapterList(book.bookUrl)
+        )
         // 第一页解析完成后先排序编号；只有多页目录才发射中间结果
-        val sortedFirstPage = sortAndIndex(chapterList, reverse, book)
+        val sortedFirstPage = sortAndIndex(chapterList, reverse, book, cacheMigrator)
 
         when (chapterData.second.size) {
             0 -> {
                 // 单页目录，直接发射最终结果
-                val finalList = finalizeChapterList(sortedFirstPage, tocRule, book, bookSource)
+                val finalList = finalizeChapterList(sortedFirstPage, tocRule, book, bookSource, cacheMigrator)
                 emit(PartialChapterList(finalList, isComplete = true))
             }
             1 -> {
@@ -327,11 +341,11 @@ object BookChapterList {
                         )
                         nextUrl = chapterData.second.firstOrNull() ?: ""
                         chapterList.addAll(chapterData.first)
-                        val sorted = sortAndIndex(chapterList, reverse, book)
+                        val sorted = sortAndIndex(chapterList, reverse, book, cacheMigrator)
                         val isLast = nextUrl.isEmpty() || nextUrlList.contains(nextUrl)
                         if (isLast) {
                             // 最后一页，执行格式化JS等最终处理并发射完成结果
-                            val finalList = finalizeChapterList(sorted, tocRule, book, bookSource)
+                            val finalList = finalizeChapterList(sorted, tocRule, book, bookSource, cacheMigrator)
                             emit(PartialChapterList(finalList, isComplete = true))
                             emittedComplete = true
                         } else {
@@ -346,8 +360,8 @@ object BookChapterList {
                 }
                 Debug.log(bookSource.bookSourceUrl, "◇目录总页数:${nextUrlList.size}")
                 if (!emittedComplete) {
-                    val sorted = sortAndIndex(chapterList, reverse, book)
-                    val finalList = finalizeChapterList(sorted, tocRule, book, bookSource)
+                    val sorted = sortAndIndex(chapterList, reverse, book, cacheMigrator)
+                    val finalList = finalizeChapterList(sorted, tocRule, book, bookSource, cacheMigrator)
                     emit(PartialChapterList(finalList, isComplete = true))
                 }
             }
@@ -378,11 +392,11 @@ object BookChapterList {
                     ).first
                 }.collect {
                     chapterList.addAll(it)
-                    val sorted = sortAndIndex(chapterList, reverse, book)
+                    val sorted = sortAndIndex(chapterList, reverse, book, cacheMigrator)
                     emit(PartialChapterList(sorted, isComplete = false))
                 }
-                val sorted = sortAndIndex(chapterList, reverse, book)
-                val finalList = finalizeChapterList(sorted, tocRule, book, bookSource)
+                val sorted = sortAndIndex(chapterList, reverse, book, cacheMigrator)
+                val finalList = finalizeChapterList(sorted, tocRule, book, bookSource, cacheMigrator)
                 emit(PartialChapterList(finalList, isComplete = true))
             }
         }
@@ -425,7 +439,8 @@ object BookChapterList {
     private fun sortAndIndex(
         chapterList: ArrayList<BookChapter>,
         reverse: Boolean,
-        book: Book
+        book: Book,
+        cacheMigrator: ChapterCacheMigrator
     ): ArrayList<BookChapter> {
         if (chapterList.isEmpty()) return chapterList
         val list = ArrayList(chapterList)
@@ -440,6 +455,8 @@ object BookChapterList {
         result.forEachIndexed { index, bookChapter ->
             bookChapter.index = index
         }
+        //中间结果的序号已确定, 先迁移一次, 保证渐进加载期间读取的章节能命中缓存
+        cacheMigrator.migrate(result)
         return result
     }
 
@@ -462,7 +479,8 @@ object BookChapterList {
         list: ArrayList<BookChapter>,
         tocRule: TocRule,
         book: Book,
-        bookSource: BookSource? = null
+        bookSource: BookSource? = null,
+        cacheMigrator: ChapterCacheMigrator
     ): ArrayList<BookChapter> {
         if (list.isEmpty()) return list
         val formatJs = tocRule.formatJs
@@ -477,6 +495,8 @@ object BookChapterList {
                     RhinoScriptEngine.runCatching {
                         eval(formatJs, bindings)?.toString()?.let {
                             bookChapter.title = it
+                            //标题已变化, 重置标题MD5缓存, 避免getFileName使用旧标题
+                            bookChapter.titleMD5 = null
                         }
                     }.onFailure {
                         Debug.log(book.origin, "格式化标题出错, ${it.localizedMessage}")
@@ -506,7 +526,9 @@ object BookChapterList {
                     replaceBook = replaceBook
                 )
         upChapterInfo(list, book)
-        
+        //目录最终确定, 将缓存文件迁移到最终文件名
+        cacheMigrator.migrate(list)
+
         val dataFlowFields = mutableListOf<FieldFillRecord>()
         dataFlowFields.recordField("totalChapterNum", result = list.size.toString())
         dataFlowFields.recordField("latestChapterTitle", result = book.latestChapterTitle)

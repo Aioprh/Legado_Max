@@ -1,10 +1,6 @@
 package io.legado.app.ui.book.readRecord
 
-import android.graphics.drawable.Drawable
 import android.os.Bundle
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -60,172 +56,61 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.legado.app.base.BaseComposeActivity
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.readRecord.ReadRecordSession
-import io.legado.app.data.entities.readRecord.ReadRecordTimelineDay
 import io.legado.app.data.repository.ReadRecordRepository
-import io.legado.app.help.config.AppConfig
-import io.legado.app.help.config.ThemeConfig
-import io.legado.app.lib.theme.ThemeStore
-import io.legado.app.lib.theme.backgroundColor
-import io.legado.app.lib.theme.primaryColor
-import io.legado.app.ui.theme.LegadoTheme
-import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.formatReadDuration
-import io.legado.app.utils.fullScreen
-import io.legado.app.utils.setNavigationBarColorAuto
-import io.legado.app.utils.setStatusBarColorAuto
+import kotlinx.coroutines.flow.emptyFlow
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class BookReadRecordActivity : AppCompatActivity() {
+class BookReadRecordActivity : BaseComposeActivity() {
 
     companion object {
         const val EXTRA_BOOK_NAME = "bookName"
         const val EXTRA_BOOK_AUTHOR = "bookAuthor"
     }
 
-    private var bgDrawable: Drawable? = null
+    private var bookName: String = ""
+    private var bookAuthor: String = ""
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        initTheme()
-        super.onCreate(savedInstanceState)
-        setupSystemBar()
-        loadBackgroundImage()
-        enableEdgeToEdge()
-
-        val bookName = intent.getStringExtra(EXTRA_BOOK_NAME).orEmpty()
-        val bookAuthor = intent.getStringExtra(EXTRA_BOOK_AUTHOR).orEmpty()
-
-        setContent {
-            LegadoTheme {
-                BookReadRecordScreen(
-                    bgDrawable = bgDrawable,
-                    bookName = bookName,
-                    bookAuthor = bookAuthor,
-                    onBackClick = { finish() }
-                )
-            }
-        }
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        bookName = intent.getStringExtra(EXTRA_BOOK_NAME).orEmpty()
+        bookAuthor = intent.getStringExtra(EXTRA_BOOK_AUTHOR).orEmpty()
     }
 
-    @Suppress("DEPRECATION")
-    private fun loadBackgroundImage() {
-        try {
-            val metrics = android.util.DisplayMetrics()
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                val windowMetrics = windowManager.currentWindowMetrics
-                val bounds = windowMetrics.bounds
-                metrics.widthPixels = bounds.width()
-                metrics.heightPixels = bounds.height()
-            } else {
-                windowManager.defaultDisplay.getMetrics(metrics)
-            }
-            bgDrawable = ThemeConfig.getBgImage(this, metrics)
-        } catch (_: Exception) {
-            bgDrawable = null
-        }
-    }
-
-    private fun initTheme() {
-        val theme = ThemeConfig.getTheme()
-        when (theme) {
-            io.legado.app.constant.Theme.Dark -> {
-                setTheme(io.legado.app.R.style.AppTheme_Dark)
-            }
-
-            io.legado.app.constant.Theme.Light -> {
-                setTheme(io.legado.app.R.style.AppTheme_Light)
-            }
-
-            else -> {
-                if (ColorUtils.isColorLight(primaryColor)) {
-                    setTheme(io.legado.app.R.style.AppTheme_Light)
-                } else {
-                    setTheme(io.legado.app.R.style.AppTheme_Dark)
-                }
-            }
-        }
-    }
-
-    private fun setupSystemBar() {
-        fullScreen()
-        val isTransparentStatusBar = AppConfig.isTransparentStatusBar
-        val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
-        setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, true)
-        if (AppConfig.immNavigationBar) {
-            setNavigationBarColorAuto(ThemeStore.navigationBarColor(this), transparent = true)
-        } else {
-            val nbColor = ColorUtils.darkenColor(ThemeStore.navigationBarColor(this))
-            setNavigationBarColorAuto(nbColor)
-        }
+    @Composable
+    override fun ComposeContent() {
+        BookReadRecordScreen(
+            bookName = bookName,
+            bookAuthor = bookAuthor,
+            onBackClick = { finish() }
+        )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookReadRecordScreen(
-    bgDrawable: Drawable?,
     bookName: String,
     bookAuthor: String,
     onBackClick: () -> Unit
 ) {
     val repository = remember { ReadRecordRepository(appDb.readRecordDao) }
 
-    val rawSessions = repository.getBookSessions(bookName, bookAuthor)
+    // SQL 聚合：每天的会话数和总时长（不全量加载 Session）
+    val dailyStats = repository.getBookDailySessionStats(bookName, bookAuthor)
         .collectAsStateWithLifecycle(emptyList())
         .value
 
-    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
-    val dayTotalDurationMap = remember(rawSessions) {
-        rawSessions
-            .groupBy { dateFormat.format(Date(it.startTime)) }
-            .mapValues { (_, sessions) -> sessions.sumOf { (it.endTime - it.startTime).coerceAtLeast(0L) } }
-    }
-    data class MergedSession(val session: ReadRecordSession, val actualDuration: Long)
-
-    val (timelineDays, sessionDurationMap) = remember(rawSessions) {
-        val merged = rawSessions
-            .sortedBy { it.startTime }
-            .fold(mutableListOf<MergedSession>()) { list, session ->
-                val sessionDuration = (session.endTime - session.startTime).coerceAtLeast(0L)
-                if (list.isEmpty()) {
-                    list.add(MergedSession(session, sessionDuration))
-                } else {
-                    val lastMs = list.last()
-                    val last = lastMs.session
-                    if (session.startTime - last.endTime <= 60_000L) {
-                        list[list.lastIndex] = MergedSession(
-                            session = last.copy(
-                                endTime = maxOf(last.endTime, session.endTime),
-                                words = last.words + session.words,
-                                durChapterTitle = session.durChapterTitle.ifBlank { last.durChapterTitle }
-                            ),
-                            actualDuration = lastMs.actualDuration + sessionDuration
-                        )
-                    } else {
-                        list.add(MergedSession(session, sessionDuration))
-                    }
-                }
-                list
-            }
-        val durationMap = merged.associate { ms -> ms.session.startTime to ms.actualDuration }
-        val days = merged
-            .groupBy { dateFormat.format(Date(it.session.startTime)) }
-            .toSortedMap(compareByDescending { it })
-            .map { (date, daySessions) ->
-                ReadRecordTimelineDay(
-                    date = date,
-                    sessions = daySessions.map { it.session }.sortedByDescending { it.startTime }
-                )
-            }
-        Pair(days, durationMap)
-    }
-
+    // SQL 聚合：总阅读时间
     val totalReadTime = repository.getBookReadTime(bookName, bookAuthor)
         .collectAsStateWithLifecycle(0L)
         .value
+
+    val totalSessionCount = dailyStats.sumOf { it.sessionCount }
 
     Scaffold(
         topBar = {
@@ -257,7 +142,7 @@ fun BookReadRecordScreen(
                 .padding(padding),
             color = MaterialTheme.colorScheme.background
         ) {
-            if (timelineDays.isEmpty()) {
+            if (dailyStats.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -309,16 +194,23 @@ fun BookReadRecordScreen(
                     item(key = "summary") {
                         SummaryHeader(
                             totalReadTime = totalReadTime,
-                            dayCount = timelineDays.size,
-                            sessionCount = timelineDays.sumOf { it.sessions.size }
+                            dayCount = dailyStats.size,
+                            sessionCount = totalSessionCount
                         )
                     }
 
                     items(
-                        items = timelineDays,
+                        items = dailyStats,
                         key = { it.date }
-                    ) { day ->
-                        DaySection(day.date, day.sessions, dayTotalDurationMap[day.date] ?: 0L, sessionDurationMap)
+                    ) { stat ->
+                        DaySection(
+                            date = stat.date,
+                            sessionCount = stat.sessionCount,
+                            totalDuration = stat.totalDuration,
+                            bookName = bookName,
+                            bookAuthor = bookAuthor,
+                            repository = repository
+                        )
                     }
                 }
             }
@@ -388,12 +280,21 @@ private fun StatChip(
 @Composable
 private fun DaySection(
     date: String,
-    sessions: List<ReadRecordSession>,
+    sessionCount: Int,
     totalDuration: Long,
-    sessionDurationMap: Map<Long, Long>
+    bookName: String,
+    bookAuthor: String,
+    repository: ReadRecordRepository
 ) {
     var expanded by remember { mutableStateOf(false) }
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+
+    // 按需加载：仅在展开时加载该天的会话列表
+    val sessionsFlow = remember(expanded, date) {
+        if (expanded) repository.getBookSessionsByDate(bookName, bookAuthor, date)
+        else emptyFlow()
+    }
+    val sessions = sessionsFlow.collectAsStateWithLifecycle(emptyList()).value
 
     Column(
         modifier = Modifier
@@ -416,7 +317,7 @@ private fun DaySection(
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "${sessions.size}次",
+                    text = "${sessionCount}次",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -446,8 +347,9 @@ private fun DaySection(
                 modifier = Modifier.padding(top = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                sessions.sortedByDescending { it.startTime }.forEach { session ->
-                    SessionRow(session, timeFormat, sessionDurationMap[session.startTime] ?: (session.endTime - session.startTime).coerceAtLeast(0L))
+                sessions.forEach { session ->
+                    val duration = (session.endTime - session.startTime).coerceAtLeast(0L)
+                    SessionRow(session, timeFormat, duration)
                 }
             }
         }
