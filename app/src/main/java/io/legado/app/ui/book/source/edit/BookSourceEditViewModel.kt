@@ -58,7 +58,11 @@ class BookSourceEditViewModel(application: Application) : BaseViewModel(applicat
         }
     }
 
-    fun save(source: BookSource, success: ((BookSource) -> Unit)? = null) {
+    fun save(
+        source: BookSource,
+        finally: (() -> Unit)? = null,
+        success: ((BookSource) -> Unit)? = null
+    ) {
         execute {
             if (source.bookSourceUrl.isBlank() || source.bookSourceName.isBlank()) {
                 throw NoStackTraceException(context.getString(R.string.non_null_name_url))
@@ -90,6 +94,8 @@ class BookSourceEditViewModel(application: Application) : BaseViewModel(applicat
         }.onError {
             context.toastOnUi(it.localizedMessage)
             it.printOnDebug()
+        }.onFinally {
+            finally?.invoke()
         }
     }
 

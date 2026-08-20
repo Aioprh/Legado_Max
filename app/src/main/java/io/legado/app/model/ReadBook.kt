@@ -113,6 +113,11 @@ object ReadBook : CoroutineScope by MainScope() {
         readRecord.bookName = book.name
         readRecord.bookAuthor = book.author
         readRecord.deviceId = AppConst.androidId
+        readRecord.readTime = kotlinx.coroutines.runBlocking {
+            appDb.readRecordDao.getReadTime(
+                AppConst.androidId, book.name, book.author
+            )
+        } ?: 0L
         readRecord.lastRead = System.currentTimeMillis()
         sessionStartTime = System.currentTimeMillis()
         readStartTime = System.currentTimeMillis()
@@ -335,12 +340,11 @@ object ReadBook : CoroutineScope by MainScope() {
         }
         executor.execute {
             val now = System.currentTimeMillis()
-            readRecord.readTime = readRecord.readTime + now - readStartTime
+            val delta = now - readStartTime
             readStartTime = now
             readRecord.lastRead = now
-            
             readRecord.durChapterTitle = book?.durChapterTitle.orEmpty()
-            
+
             val session = ReadRecordSession(
                 deviceId = readRecord.deviceId,
                 bookName = readRecord.bookName,
@@ -350,18 +354,12 @@ object ReadBook : CoroutineScope by MainScope() {
                 words = 0,
                 durChapterTitle = readRecord.durChapterTitle
             )
-            
+
             val repository = ReadRecordRepository(appDb.readRecordDao)
-            try {
-                kotlinx.coroutines.runBlocking {
-                    repository.saveReadSession(session)
-                }
-            } catch (e: Exception) {
-                kotlinx.coroutines.runBlocking {
-                    appDb.readRecordDao.insert(readRecord)
-                }
+            kotlinx.coroutines.runBlocking {
+                repository.saveReadSession(session)
             }
-            
+
             sessionStartTime = now
         }
     }

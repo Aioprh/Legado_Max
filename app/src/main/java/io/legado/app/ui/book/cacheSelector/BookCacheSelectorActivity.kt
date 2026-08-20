@@ -3,18 +3,15 @@ package io.legado.app.ui.book.cacheSelector
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModelProvider
+import io.legado.app.base.BaseComposeActivity
 import io.legado.app.help.HelpDocManager
 import io.legado.app.ui.file.HandleFileContract
-import io.legado.app.ui.theme.LegadoThemeWithBackground
-import io.legado.app.ui.theme.initLegadoComposeTheme
-import io.legado.app.ui.theme.setLegadoContent
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.utils.showDialogFragment
 
-class BookCacheSelectorActivity : AppCompatActivity() {
+class BookCacheSelectorActivity : BaseComposeActivity() {
 
     companion object {
         fun start(context: Context) {
@@ -30,23 +27,21 @@ class BookCacheSelectorActivity : AppCompatActivity() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        initLegadoComposeTheme()
-        super.onCreate(savedInstanceState)
-
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
         viewModel = ViewModelProvider(this)[BookCacheSelectorViewModel::class.java]
+    }
 
-        setLegadoContent {
-            BookCacheSelectorScreen(
-                onBackClick = { finish() },
-                onSaveClick = {
-                    viewModel.saveSelection()
-                    finish()
-                },
-                onExportClick = { selectExportDir.launch { mode = HandleFileContract.DIR } },
-                onHelpClick = { showHelp() }
-            )
-        }
+    @Composable
+    override fun ComposeContent() {
+        BookCacheSelectorScreen(
+            onBackClick = { finish() },
+            onSaveClick = {
+                viewModel.saveSelection()
+                finish()
+            },
+            onExportClick = { selectExportDir.launch { mode = HandleFileContract.DIR } },
+            onHelpClick = { showHelp() }
+        )
     }
 
     private fun showHelp() {
@@ -69,12 +64,10 @@ fun BookCacheSelectorContent(
     onExportClick: () -> Unit,
     onHelpClick: () -> Unit
 ) {
-    LegadoThemeWithBackground(backgroundDrawable = null) {
-        BookCacheSelectorScreen(
-            onBackClick = onBackClick,
-            onSaveClick = onSaveClick,
-            onExportClick = onExportClick,
-            onHelpClick = onHelpClick
-        )
-    }
+    BookCacheSelectorScreen(
+        onBackClick = onBackClick,
+        onSaveClick = onSaveClick,
+        onExportClick = onExportClick,
+        onHelpClick = onHelpClick
+    )
 }

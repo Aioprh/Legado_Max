@@ -81,6 +81,7 @@
     <string name="donate">捐赠</string>
     <string name="exit">退出</string>
     <string name="exit_no_save">尚未保存，是否继续编辑</string>
+    <string name="save_ing">正在保存，请稍候…</string>
     <string name="read_style">阅读样式设置</string>
     <string name="version">版本</string>
     <string name="local">本地</string>
@@ -106,10 +107,7 @@
     <string name="offline_cache_t">离线缓存</string>
     <string name="offline_cache_s">缓存选择的章节到本地</string>
     <string name="change_origin">换源</string>
-    <string name="migrate_book_origin_title">迁移关联书籍</string>
-    <string name="migrate_book_origin_msg">检测到书源地址变更，是否将书架上该书源的书籍关联到新地址？</string>
-    <string name="migrate_book_origin_yes">迁移</string>
-    <string name="migrate_book_origin_no">不迁移</string>
+    <string name="migrate_book_origin_done">书源地址变更，已自动迁移书架上该书源的关联书籍</string>
     <string name="about_description">
         \u3000\u3000这是一款使用 Kotlin 全新开发的开源的阅读软件，欢迎您的加入。
     </string>
@@ -305,6 +303,7 @@
     <string name="dark_status_icon">深色状态栏图标</string>
     <string name="content">内容</string>
     <string name="copy_text">拷贝内容</string>
+    <string name="copy">复制</string>
     <string name="download_all">一键缓存</string>
     <string name="content_sl">这是一段测试文字\n\u3000\u3000只是让你看看效果的</string>
     <string name="text_bg_style">文字颜色和背景（长按自定义）</string>
@@ -520,6 +519,7 @@
     <string name="error_get_web_content">访问网站失败：%s</string>
     <string name="error_read_file">文件读取失败</string>
     <string name="error_load_toc">加载目录失败</string>
+    <string name="toc_load_failed_using_cache">目录加载失败，已使用本地缓存目录</string>
     <string name="error_get_data">获取数据失败！</string>
     <string name="error_load_msg">加载失败\n%s</string>
     <string name="net_error_10001">没有网络</string>
@@ -649,6 +649,7 @@
     <string name="text_color">文字颜色</string>
     <string name="text_accent_color">强调颜色</string>
     <string name="select_image">选择图片</string>
+    <string name="select_image_failed">选择图片失败</string>
     <string name="group_manage">分组管理</string>
     <string name="group_select">分组选择</string>
     <string name="group_edit">编辑分组</string>
@@ -834,6 +835,7 @@
     <string name="text_menu_edit_title">修改菜单名称</string>
     <string name="text_menu_edit_name">菜单名称</string>
     <string name="text_menu_edit_name_desc">留空可恢复默认名称</string>
+    <string name="text_menu_drag_sort">拖动排序</string>
     <string name="process_text_menu_config">其他应用菜单配置</string>
     <string name="process_text_menu_config_desc">选择您想要显示的其他应用菜单项，Android 6.0以上系统支持此功能</string>
     <string name="no_process_text_apps">没有找到支持文本处理的应用</string>
@@ -1586,6 +1588,9 @@
     <string name="adding_books">正在添加 %d 本书…</string>
     <string name="add_books_success">成功添加 %d 本书</string>
     <string name="all_books_in_shelf">列表书籍已全部在书架</string>
+    <string name="auto_backup_title">自动备份</string>
+    <string name="auto_backup_summary">退出 APP 时自动 Webdav备份和本地备份（距上次备份超过24小时）</string>
+
     <string name="auto_check_new_backup_t">自动检查新备份</string>
     <string name="auto_check_new_backup_s">打开软件时检查是否有新备份，有新备份时提示是否更新</string>
     <string name="r_preloadJs">预加载Js（preloadJs）</string>
@@ -1768,6 +1773,10 @@
     <string name="rr_no_merge_candidates">没有找到可以合并的记录</string>
     <string name="rr_select_merge_target">选择要合并到「%s」的记录：</string>
     <string name="rr_merge">合并</string>
+    <string name="rr_merge_all_same_name">合并全部同名书籍</string>
+    <string name="rr_merge_all_confirm">将把阅读记录中所有同名书籍合并为一本：进度取较新者，阅读时长累加。此操作不可撤销。</string>
+    <string name="rr_merge_all_none">没有可合并的同名书籍</string>
+    <string name="rr_merge_all_done">已合并 %d 本同名书籍</string>
     <string name="rr_selected_items">已选择 %d 项</string>
     <string name="rr_cancel_selection">取消选择</string>
     <string name="rr_delete_selected">删除选中</string>
@@ -2140,15 +2149,21 @@
 <string name="application_theme_edit">编辑应用主题</string>
 <string name="application_theme_empty">暂无应用主题，请先调整界面配置，再保存当前组合。</string>
 <string name="application_theme_export">导出当前应用主题</string>
+<string name="application_theme_export_format_select">选择导出格式</string>
+<string name="export_format_native">当前分支 (MAX)</string>
+<string name="export_format_archive">archive 版</string>
+<string name="export_format_md3">MD3 版</string>
+<string name="export_format_red">Reeden (.red) 格式</string>
 <string name="application_theme_import">导入应用主题</string>
 <string name="application_theme_import_with_options">导入应用主题设置</string>
 <string name="application_theme_import_options_hint">勾选需要在导入时创建的组件，未勾选的组件将被跳过（不创建）</string>
+<string name="application_theme_delete_options_hint">删除「%1$s」时，勾选要一并删除的关联组件，未勾选的组件将被保留</string>
 <string name="application_theme_manage">应用主题</string>
 <string name="application_theme_name">应用主题名称</string>
 <string name="application_theme_name_exists">应用主题名称已存在</string>
 <string name="application_theme_not_set">未设置</string>
 <string name="application_theme_rename">重命名</string>
-<string name="application_theme_summary">统一管理主题、顶栏、底栏和封面图集</string>
+<string name="application_theme_summary">统一管理主题、顶栏、底栏和封面图集，支持导入和导出当前分支(MAX)、archive 版、md3 版以及 .red 格式的主题包</string>
 <string name="application_theme_update_current">更新为当前组合</string>
 <string name="applied">已应用</string>
 <string name="applied_nav_bar_config">已应用底栏包: %s</string>
@@ -2156,6 +2171,7 @@
 <string name="applied_top_bar_config">已应用顶栏包: %s</string>
 <string name="apply">应用</string>
 <string name="apply_theme">应用</string>
+<string name="cannot_delete_current_theme">不能删除正在使用的主题</string>
 <string name="bottom_background_color">底栏背景色</string>
 <string name="bottom_bar_border_alpha">底栏边框不透明度</string>
 <string name="bottom_bar_border_color">底栏边框颜色</string>
@@ -2213,7 +2229,7 @@
 <string name="interface_manage">界面管理</string>
 <string name="layout_mode">布局模式</string>
 <string name="load_cover_high_quality">加载高清封面</string>
-<string name="load_cover_high_quality_summary">开启后使用封面原图，关闭时使用较小尺寸加载</string>
+<string name="load_cover_high_quality_summary">开启后使用封面原图，关闭时优先加载略缩图</string>
 <string name="manual_config">手动配置</string>
 <string name="nav_bar_summary">点击应用按钮应用底栏包，点击编辑按钮编辑底栏包</string>
 <string name="nav_bar_summary_empty">暂无%s底栏包，点击下方添加</string>
@@ -2226,6 +2242,47 @@
 <string name="navigation_icon_selected">选中图标</string>
 <string name="opacity">不透明度</string>
 <string name="other_settings">其他设置</string>
+    <string name="share_note_menu">摘录分享</string>
+    <string name="share_note_template_manage">摘录分享模板</string>
+    <string name="share_note_template_manage_summary">管理正文长按分享图片使用的 HTML 模板</string>
+        <string name="share_note_preview_label">预览</string>
+<string name="share_note_template">模板</string>
+    <string name="share_note_style">分享样式</string>
+    <string name="share_note_style_summary">快速切换摘录分享图片的配色和字体，预览与分享图片会同步更新。</string>
+    <string name="share_note_palette">配色</string>
+    <string name="share_note_font">字体</string>
+    <string name="share_note_applied">已应用</string>
+    <string name="share_note_source_builtin">内置</string>
+    <string name="share_note_source_local">本地</string>
+    <string name="share_note_add_template">添加模板</string>
+    <string name="share_note_add_copy_builtin">复制内置模板新建</string>
+    <string name="share_note_import_html">导入 HTML</string>
+    <string name="share_note_import_zip">导入 ZIP</string>
+    <string name="share_note_action_preview">预览头部</string>
+    <string name="share_note_action_copy">复制新建</string>
+    <string name="share_note_export_html">导出 HTML</string>
+    <string name="share_note_export_zip">导出 ZIP</string>
+    <string name="share_note_export_failed">导出失败</string>
+    <string name="share_note_change_template">更换模板</string>
+    <string name="share_note_manage">管理</string>
+    <string name="share_note_done">完成</string>
+    <string name="share_note_select_template">选择分享模板</string>
+    <string name="share_note_reader">读者</string>
+    <string name="share_note_read_prefix">阅读 %1$s</string>
+
+    <string name="share_note_manage_templates">管理模板</string>
+    <string name="share_note_loading_preview">正在加载预览...</string>
+    <string name="share_note_exporting">正在生成图片...</string>
+    <string name="share_note_saved">已保存到相册</string>
+    <string name="share_note_no_template">暂无可用模板</string>
+    <string name="share_note_render_failed">生成分享图片失败：%1$s</string>
+    <string name="share_note_save_failed">保存图片失败：%1$s</string>
+    <string name="theme_package_load_failed">加载失败：%1$s</string>
+    <string name="duration_day">%d天</string>
+    <string name="duration_hour">%d小时</string>
+    <string name="duration_minute">%d分钟</string>
+    <string name="duration_second">%d秒</string>
+    <string name="duration_zero">0秒</string>
 <string name="regular_top_bar">常规顶栏</string>
 <string name="share_nav_bar_config">分享底栏包配置</string>
 <string name="share_top_bar_config">分享顶栏包配置</string>
@@ -2314,4 +2371,41 @@
     <string name="app_theme_summary_format">日间：%1$s / %2$s / %3$s / %4$s
 夜间：%5$s / %6$s / %7$s / %8$s</string>
     <string name="shibboleth">口令</string>
+
+    <!-- 权限管理 -->
+    <string name="permission_manage">权限管理</string>
+    <string name="permission_manage_summary">管理Cookie、Book对象、API和Toast的访问权限</string>
+    <string name="perm_section_cookie">Cookie管理</string>
+    <string name="perm_section_book">Book对象管理</string>
+    <string name="perm_section_java">Java API</string>
+    <string name="perm_section_android">安卓API</string>
+    <string name="perm_section_toast">Toast管理</string>
+    <string name="perm_cookie_read">Cookie读取</string>
+    <string name="perm_cookie_read_desc">允许书源读取Cookie</string>
+    <string name="perm_cookie_write">Cookie写入</string>
+    <string name="perm_cookie_write_desc">允许书源写入Cookie</string>
+    <string name="perm_cookie_delete">Cookie删除</string>
+    <string name="perm_cookie_delete_desc">允许书源删除Cookie</string>
+    <string name="perm_book_read">Book读取</string>
+    <string name="perm_book_read_desc">允许脚本读取Book对象</string>
+    <string name="perm_book_modify">Book修改</string>
+    <string name="perm_book_modify_desc">允许脚本修改Book对象</string>
+    <string name="perm_book_delete">Book删除</string>
+    <string name="perm_book_delete_desc">允许脚本删除Book对象</string>
+    <string name="perm_java_lang">java.lang 访问</string>
+    <string name="perm_java_lang_desc">控制 java.lang 类的访问权限</string>
+    <string name="perm_java_io">java.io 访问</string>
+    <string name="perm_java_io_desc">控制 java.io 类的访问权限</string>
+    <string name="perm_java_net">java.net 访问</string>
+    <string name="perm_java_net_desc">控制 java.net 类的访问权限</string>
+    <string name="perm_android_content">android.content 访问</string>
+    <string name="perm_android_content_desc">控制 android.content API 的访问权限</string>
+    <string name="perm_android_net">android.net 访问</string>
+    <string name="perm_android_net_desc">控制 android.net API 的访问权限</string>
+    <string name="perm_android_system">系统信息读取</string>
+    <string name="perm_android_system_desc">控制读取系统信息的权限</string>
+    <string name="perm_toast_enabled">Toast是否开启</string>
+    <string name="perm_toast_enabled_desc">控制脚本能否弹出Toast</string>
+    <string name="perm_toast_duration">Toast时长控制</string>
+    <string name="perm_toast_duration_desc">控制Toast显示时长</string>
 </resources>

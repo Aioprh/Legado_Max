@@ -2,7 +2,6 @@ plugins {
 //    id "com.android.application"
 //    id 'org.jetbrains.kotlin.android'
 //    id 'kotlin-parcelize'
-//    //id 'kotlin-kapt'
 //    id 'com.google.devtools.ksp'
 //    id "com.google.gms.google-services"
 
@@ -13,6 +12,7 @@ plugins {
     alias libs.plugins.room
     alias libs.plugins.ksp
     alias libs.plugins.google.services
+    id 'com.google.dagger.hilt.android'
 
 }
 apply from: 'download.gradle'
@@ -42,7 +42,7 @@ try {
 }
 
 android {
-    compileSdk 36
+    compileSdk = 37
     namespace = 'io.legado.app'
     kotlin {
         jvmToolchain {
@@ -53,10 +53,10 @@ android {
     signingConfigs {
         if (resolvedReleaseStoreFile != null) {
             myConfig {
-                storeFile resolvedReleaseStoreFile
-                storePassword resolvedReleaseStorePassword
-                keyAlias resolvedReleaseKeyAlias
-                keyPassword resolvedReleaseKeyPassword
+                storeFile = resolvedReleaseStoreFile
+                storePassword = resolvedReleaseStorePassword
+                keyAlias = resolvedReleaseKeyAlias
+                keyPassword = resolvedReleaseKeyPassword
                 enableV1Signing = true
                 enableV2Signing = true
                 enableV3Signing = true
@@ -65,12 +65,12 @@ android {
         }
     }
     defaultConfig {
-        applicationId "io.legado.app.yuedu"
-        minSdk 21
-        targetSdk 36
-        versionCode releaseCode()
-        versionName version
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        applicationId  = "io.legado.app.yuedu"
+        minSdk = 23
+        targetSdk = 37
+        versionCode = releaseCode()
+        versionName = version
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         project.ext.set("archivesBaseName", name + "_" + version)
 
         // 👇 就是这行，修复渠道占位符报错
@@ -97,40 +97,40 @@ android {
     flavorDimensions "app"
     productFlavors {
         appS {
-            dimension "app"
-            applicationId "io.legado.app.yuedu.a"
+            dimension = "app"
+            applicationId = "io.legado.app.yuedu.a"
             manifestPlaceholders = [app_name: "@string/app_name_a"]
         }
         appLegacy {
-            dimension "app"
-            applicationId "io.legado.app"
+            dimension = "app"
+            applicationId = "io.legado.app"
             manifestPlaceholders = [app_name: "@string/app_name"]
         }
         appMax {
-            dimension "app"
-            applicationId "io.legado.app.yuedu"
+            dimension = "app"
+            applicationId = "io.legado.app.yuedu"
             manifestPlaceholders = [app_name: "@string/app_name"]
         }
     }
     buildTypes {
         release {
             if (resolvedReleaseStoreFile != null) {
-                signingConfig signingConfigs.myConfig
+                signingConfig = signingConfigs.myConfig
             }
-            applicationIdSuffix '.release'
+            applicationIdSuffix = '.release'
 
-            minifyEnabled true
+            minifyEnabled = true
             shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'cronet-proguard-rules.pro'
         }
         debug {
             if (resolvedReleaseStoreFile != null) {
-                signingConfig signingConfigs.myConfig
+                signingConfig = signingConfigs.myConfig
             }
             manifestPlaceholders.put("app_name", "@string/app_name_debug")
 
-            applicationIdSuffix '.debug'
-            versionNameSuffix 'debug'
+            applicationIdSuffix = '.debug'
+            versionNameSuffix = 'debug'
             // minifyEnabled true
             // shrinkResources = true
             // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'cronet-proguard-rules.pro'
@@ -170,8 +170,8 @@ android {
         // Flag to enable support for the new language APIs
         coreLibraryDesugaringEnabled = true
         // Sets Java compatibility
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     packaging {
         resources.excludes.add('META-INF/*')
@@ -196,6 +196,8 @@ android {
 }
 
 dependencies {
+    //Timber 日志库: https://github.com/JakeWharton/timber
+    implementation(libs.timber)
     //compileOnly "com.android.tools.build:gradle:$agp_version"
     //noinspection GradleDependency,GradlePackageUpdate
     //coreLibraryDesugaring('com.android.tools:desugar_jdk_libs_nio:2.0.4')
@@ -238,8 +240,10 @@ dependencies {
     //androidX
     implementation(libs.core.ktx)
     implementation(libs.appcompat.appcompat)
+    //这两个的最新版不支持安卓5和5.1
     implementation(libs.activity.ktx)
     implementation(libs.fragment.ktx)
+
     implementation(libs.preference.ktx)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.swiperefreshlayout)
@@ -282,7 +286,6 @@ dependencies {
     //room sql语句不高亮解决方法https://issuetracker.google.com/issues/234612964#comment6
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
-    //kapt("androidx.room:room-compiler:$room_version")
     ksp(libs.room.compiler)
     androidTestImplementation(libs.room.testing)
     
@@ -300,6 +303,9 @@ dependencies {
     
     //网络
     implementation(libs.okhttp)
+    //Chucker 调试通知栏内查看网络请求 debug依赖 release为空实现
+    debugImplementation(libs.chucker)
+    releaseImplementation(libs.chucker.no.op)
     implementation(fileTree(dir: 'cronetlib', include: ['*.jar', '*.aar']))
     implementation(libs.protobuf.javalite)
     
@@ -358,15 +364,19 @@ dependencies {
     implementation libs.glide.recyclerview
     
     //LeakCanary, 内存泄露检测
-    //debugImplementation('com.squareup.leakcanary:leakcanary-android:2.7')
+    debugImplementation('com.squareup.leakcanary:leakcanary-android:2.14')
     
     //com.github.AmrDeveloper:CodeView代码编辑已集成到应用内
     //epubLib集成到应用内
     // 椒盐歌词
     implementation(libs.lyricViewx)
-    // sora-editor代码编辑器,更丰富的编辑功能
+    //sora-editor代码编辑器,更丰富的编辑功能
     implementation(platform(libs.soraEditor.bom))
     implementation(libs.soraEditor.core)
     implementation(libs.soraEditor.language.textmate)
+
+    //Hilt
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
 }

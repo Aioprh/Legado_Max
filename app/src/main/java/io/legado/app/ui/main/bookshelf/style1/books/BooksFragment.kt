@@ -114,7 +114,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         binding.refreshLayout.setColorSchemeColors(accentColor)
         binding.refreshLayout.setOnRefreshListener {
             binding.refreshLayout.isRefreshing = false
-            activityViewModel.upToc(booksAdapter.getItems(), onlyUpdateRead)
+            activityViewModel.upToc(booksAdapter.getItems().map { it.toMinimalBook() }, onlyUpdateRead)
         }
         if (bookLayout >= 2) {
             binding.rvBookshelf.layoutManager = GridLayoutManager(context, bookLayout)
@@ -229,11 +229,14 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
 
     /**
      * 更新书籍列表信息
+     * 方案A：使用 flowShelfByGroup 轻量查询替代 flowByGroup，
+     * SQL 层面已过滤 notShelf 并按 durChapterTime DESC 排序，
+     * 仅在内存中做用户选择的排序方式切换。
      */
     private fun upRecyclerData() {
         booksFlowJob?.cancel()
         booksFlowJob = viewLifecycleOwner.lifecycleScope.launch {
-            appDb.bookDao.flowByGroup(groupId).map { list ->
+            appDb.bookDao.flowShelfByGroup(groupId).map { list ->
                 //排序
                 when (bookSort) {
                     1 -> list.sortedByDescending { it.latestChapterTime }
@@ -252,7 +255,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
                         o1.author.cnCompare(o2.author)
                     }
 
-                    else -> list.sortedByDescending { it.durChapterTime }
+                    else -> list // SQL 已按 durChapterTime DESC 排序，无需再排
                 }
             }.flowWithLifecycleAndDatabaseChangeFirst(
                 viewLifecycleOwner.lifecycle,
@@ -285,7 +288,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     }
 
     fun getBooks(): List<Book> {
-        return booksAdapter.getItems()
+        return booksAdapter.getItems().map { it.toMinimalBook() }
     }
 
     fun gotoTop() {

@@ -12,6 +12,7 @@ import androidx.core.content.edit
 import com.shuyu.gsyvideoplayer.listener.GSYMediaPlayerListener
 import com.shuyu.gsyvideoplayer.utils.CommonUtil
 import com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer
+import com.shuyu.gsyvideoplayer.video.base.GSYBaseVideoPlayer
 import io.legado.app.R
 import io.legado.app.constant.AppConst
 import io.legado.app.constant.AppLog
@@ -36,10 +37,10 @@ import io.legado.app.help.book.update
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.globalExecutor
-import io.legado.app.help.gsyVideo.ExoVideoManager
-import io.legado.app.help.gsyVideo.ExoVideoManager.Companion.FULLSCREEN_ID
-import io.legado.app.help.gsyVideo.FloatingPlayer
-import io.legado.app.help.gsyVideo.VideoPlayer
+import io.legado.app.ui.video.player.ExoVideoManager
+import io.legado.app.ui.video.player.ExoVideoManager.Companion.FULLSCREEN_ID
+import io.legado.app.ui.video.player.FloatingPlayer
+import io.legado.app.ui.video.player.VideoPlayer
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.rss.Rss
 import io.legado.app.model.webBook.WebBook
@@ -75,7 +76,7 @@ object VideoPlay : CoroutineScope by MainScope(){
         set(value) {
             videoPrefs.edit { putBoolean("autoPlay", value) }
         }
-    /**  直接全屏，需先启用自动播放  **/
+    /**  直接全屏，需先启用自动播放 **/
     var startFull
         get() = videoPrefs.getBoolean("startFull", false)
         set(value) {
@@ -167,6 +168,35 @@ object VideoPlay : CoroutineScope by MainScope(){
     var isPortraitVideo = false
 
     val videoManager by lazy { ExoVideoManager() }
+
+    /**
+     * 根据 URL 设置播放器的 overrideExtension，确保 ExoPlayer 能正确识别流媒体类型。
+     *
+     * 当 URL 的 path 部分没有明确的文件扩展名（如 API 接口 URL），
+     * 但实际返回的是 HLS(m3u8)/DASH(mpd) 流时，ExoSourceManager 会通过
+     * Util.inferContentType(Uri) 从 path 扩展名推断类型，导致识别失败。
+     *
+     * 此方法检查 URL 中是否包含 m3u8/mpd 关键字（包括 query 参数值中），
+     * 若检测到则设置对应的 overrideExtension，使 ExoSourceManager 能创建
+     * 正确的 MediaSource（HlsMediaSource / DashMediaSource）。
+     */
+    private fun applyOverrideExtension(player: GSYBaseVideoPlayer, url: String?) {
+        if (url.isNullOrBlank()) return
+        val lowerUrl = url.lowercase()
+        when {
+            // HLS: 检测 URL 中是否包含 .m3u8（可能在 path 或 query 参数值中）
+            lowerUrl.contains(".m3u8") -> {
+                player.setOverrideExtension("m3u8")
+            }
+            // DASH: 检测 URL 中是否包含 .mpd（可能在 path 或 query 参数值中）
+            lowerUrl.contains(".mpd") -> {
+                player.setOverrideExtension("mpd")
+            }
+            else -> {
+                player.setOverrideExtension(null)
+            }
+        }
+    }
     private var isLoading = false
     private val loadScope = CoroutineScope(SupervisorJob() + IO)
     var videoUrl: String? = null //播放链接
@@ -180,7 +210,7 @@ object VideoPlay : CoroutineScope by MainScope(){
     var episodes: List<BookChapter>? =  null
     /**  在当前episodes中的位置  **/
     var chapterInVolumeIndex = 0
-    /**  卷章节 -> 线路或者季数  **/
+    /**  卷章节-> 线路或者季  **/
     var durVolumeIndex = 0
     /**  当前卷  **/
     var durVolume: BookChapter? = null
@@ -273,6 +303,7 @@ object VideoPlay : CoroutineScope by MainScope(){
                 withContext(Main) {
                     player.mapHeadData = analyzeUrl.headerMap
                     val url = analyzeUrl.url
+                    applyOverrideExtension(player, url)
                     player.setUp(url, false, File(appCtx.externalCache, "exoplayer"), videoTitle)
                     if (autoPlay) {
                         player.startPlayLogic()
@@ -288,7 +319,7 @@ object VideoPlay : CoroutineScope by MainScope(){
         (source as? RssSource)?.let { s ->
             val rssArticle = rssStar?.toRssArticle() ?: rssRecord?.toRssArticle()
             if (rssArticle == null) {
-                appCtx.toastOnUi("未找到订阅")
+                appCtx.toastOnUi("未找到订阅文章")
                 return
             }
             val ruleContent = s.ruleContent
@@ -303,6 +334,7 @@ object VideoPlay : CoroutineScope by MainScope(){
                     )
                     withContext(Main) {
                         player.mapHeadData = analyzeUrl.headerMap
+                        applyOverrideExtension(player, analyzeUrl.url)
                         player.setUp(
                             analyzeUrl.url,
                             false,
@@ -339,6 +371,7 @@ object VideoPlay : CoroutineScope by MainScope(){
                         val playUrl = analyzeUrl.url
                         withContext(Main) {
                             player.mapHeadData = analyzeUrl.headerMap
+                            applyOverrideExtension(player, playUrl)
                             player.setUp(playUrl, false, File(appCtx.externalCache, "exoplayer"), rssArticle.title)
                             if (autoPlay) {
                                 player.startPlayLogic()
@@ -403,6 +436,7 @@ object VideoPlay : CoroutineScope by MainScope(){
                 val playUrl = analyzeUrl.url
                 withContext(Main) {
                     player.mapHeadData = analyzeUrl.headerMap
+                    applyOverrideExtension(player, playUrl)
                     player.setUp(playUrl, false, File(appCtx.externalCache, "exoplayer"), chapter.title)
                     if (autoPlay) {
                         player.startPlayLogic()
@@ -415,7 +449,7 @@ object VideoPlay : CoroutineScope by MainScope(){
     }
 
     /**
-     * 退出全屏，主要用于返回键
+     * 退出全屏，主要用于返回
      *
      * @return 返回是否全屏
      */
@@ -434,8 +468,8 @@ object VideoPlay : CoroutineScope by MainScope(){
         return backFrom
     }
     /**
-     * 停止当前播放（释放媒体播放器），但不重置状态。
-     * 用于新会话启动时清理旧媒体，防止 onResume 恢复旧视频。
+     * 停止当前播放（释放媒体播放器），但不重置状态
+     * 用于新会话启动时清理旧媒体，防止 onResume 恢复旧视频
      */
     fun stopPlayback() {
         if (videoManager.listener() != null) {
@@ -513,7 +547,7 @@ object VideoPlay : CoroutineScope by MainScope(){
         }
     }
 
-    //播放器移植 - 辅助函数
+    //播放器移除 - 辅助函数
     @SuppressLint("StaticFieldLeak")
     private var sSwitchVideo: StandardGSYVideoPlayer? = null
     private var sMediaPlayerListener: GSYMediaPlayerListener? = null
@@ -589,7 +623,7 @@ object VideoPlay : CoroutineScope by MainScope(){
             appCtx.toastOnUi("未找到源")
             return false
         }
-        record?.let{ //订阅源
+        record?.let{ //订阅记录
             val sourceKey = sourceKey ?: return@let
             rssStar =appDb.rssStarDao.get(sourceKey, it)?.also{ r ->
                 durChapterPos = r.durPos

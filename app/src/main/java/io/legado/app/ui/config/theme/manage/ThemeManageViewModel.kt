@@ -1,0 +1,253 @@
+package io.legado.app.ui.config.theme.manage
+
+import android.app.Application
+import android.content.ClipData
+import io.legado.app.R
+import io.legado.app.base.BaseViewModel
+import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.ThemeConfig
+import io.legado.app.utils.GSON
+import io.legado.app.utils.getClipText
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.withContext
+import splitties.systemservices.clipboardManager
+
+/**
+ * 主题管理的 ViewModel 层
+ * 
+ * 架构决策（为什么这么写）：
+ * 1. 严格遵循 UDF (单向数据流)：UI 的所有核心状态（列表 items、草稿 editDraft）必须在这里收拢，
+ *    仅对外暴露只读的 StateFlow。绝对禁止 UI 层相互注册脏回调来“反向掏取”数据。
+ * 2. 剥离直接的磁盘 IO：所有数据获取和保存操作依赖 [ThemeRepository]，彻底与静态单例解耦。
+ * 3. 一次性事件防丢失与防重放：采用 Channel(BUFFERED) 收拢弹 Toast 等动作，利用 receiveAsFlow 消费，
+ *    避免横竖屏切换时状态重建引发的重复弹窗。
+ */
+class ThemeManageViewModel(
+    private val repository: ThemeRepository,
+    application: Application
+) : BaseViewModel(application) {
+
+    private val _items = MutableStateFlow<List<ThemeItem>>(emptyList())
+    val items: StateFlow<List<ThemeItem>> = _items.asStateFlow()
+
+    private val _events = Channel<ThemeEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
+    private val _editDraft = MutableStateFlow<ThemeConfig.Config?>(null)
+    val editDraft: StateFlow<ThemeConfig.Config?> = _editDraft.asStateFlow()
+
+    private var currentConfig: ThemeConfig.Config? = null
+    private var pendingDeleteKeys: Set<String> = emptySet()
+    private var nextItemKey = 0L
+
+    init {
+        execute { refreshThemes() }
+    }
+
+    private suspend fun refreshThemes() {
+        currentConfig = repository.getDurConfig()
+        _items.value = repository.getThemes().map { config ->
+            ThemeItem(key = GSON.toJson(config), config = config)
+        }
+    }
+
+    fun applyConfig(item: ThemeItem) {
+        execute {
+            withContext(Dispatchers.Main) {
+                repository.applyTheme(item.config)
+            }
+            _events.send(ThemeEvent.Applied(item.config.themeName))
+        }
+    }
+
+    fun deleteItem(item: ThemeItem) {
+        execute {
+            val currentConfig = repository.getDurConfig()
+            if (item.config.themeName == currentConfig.themeName &&
+                item.config.isNightTheme == currentConfig.isNightTheme
+            ) {
+                _events.send(ThemeEvent.Toast(R.string.cannot_delete_current_theme))
+                return@execute
+            }
+            repository.deleteConfig(item.config)
+            refreshThemes()
+        }
+    }
+
+    fun shareItem(item: ThemeItem) {
+        _events.trySend(ThemeEvent.ShareJson(GSON.toJson(item.config)))
+    }
+
+    fun copyItem(item: ThemeItem) {
+        val json = GSON.toJson(item.config)
+        val clipData = ClipData.newPlainText(null, json)
+        clipboardManager.setPrimaryClip(clipData)
+        _events.trySend(ThemeEvent.ToastMsg("${item.config.themeName}主题已拷贝"))
+    }
+
+    fun requestDeleteSelected(selectedKeys: Set<String>) {
+        if (selectedKeys.isEmpty()) {
+            _events.trySend(ThemeEvent.Toast(R.string.select_theme))
+            return
+        }
+        pendingDeleteKeys = selectedKeys
+        _events.trySend(ThemeEvent.DeleteConfirm)
+    }
+
+    fun executeDeleteSelected() {
+        val keys = pendingDeleteKeys
+        pendingDeleteKeys = emptySet()
+        execute {
+            val currentConfig = repository.getDurConfig()
+            _items.value
+                .filter { it.key in keys }
+                .map { it.config }
+                .filterNot { config ->
+                    config.themeName == currentConfig.themeName &&
+                        config.isNightTheme == currentConfig.isNightTheme
+                }
+                .forEach { repository.deleteConfig(it) }
+            refreshThemes()
+        }
+    }
+
+    fun toTopSelected(selectedKeys: Set<String>) {
+        val configs = _items.value.filter { it.key in selectedKeys }.map { it.config }
+        if (configs.isEmpty()) {
+            _events.trySend(ThemeEvent.Toast(R.string.select_theme))
+            return
+        }
+        execute {
+            repository.toTopConfigs(configs)
+            refreshThemes()
+        }
+    }
+
+    fun exportSelected(selectedKeys: Set<String>) {
+        val configs = _items.value.filter { it.key in selectedKeys }.map { it.config }
+        if (configs.isEmpty()) return
+        _events.trySend(ThemeEvent.ShareJson(GSON.toJson(configs)))
+    }
+
+    fun importFromClipboard() {
+        execute {
+            val clipText = getApplication<Application>().getClipText()
+            if (clipText.isNullOrBlank()) {
+                _events.send(ThemeEvent.ImportEmpty)
+                return@execute
+            }
+            val count = repository.addConfig(clipText)
+            if (count > 0) {
+                refreshThemes()
+                _events.send(ThemeEvent.ImportSuccess)
+            } else {
+                _events.send(ThemeEvent.ImportFailed)
+            }
+        }
+    }
+
+    fun startNew(isNightTheme: Boolean): ThemeEditDraft {
+        val config = currentConfig?.copy()?.apply {
+            themeName = getNextThemeName(isNightTheme)
+            this.isNightTheme = isNightTheme
+            // 背景图是主题专属资源，绝不能从当前主题继承，否则会产生多主题共享同一资源、
+            // 删除主题时误删背景图的风险。颜色可作起点，背景图必须从空白开始。
+            backgroundImgPath = null
+            backgroundImgBlur = 0
+        } ?: error("Theme config is not loaded")
+        _editDraft.value = config
+        return ThemeEditDraft(
+            config = config,
+            isNew = true,
+            editingKey = "",
+            originalConfig = null
+        )
+    }
+
+    fun startEdit(item: ThemeItem?): ThemeEditDraft {
+        if (item == null) return startNew(AppConfig.isNightTheme)
+        val config = item.config.copy()
+        _editDraft.value = config
+        return ThemeEditDraft(
+            config = config,
+            isNew = false,
+            editingKey = item.key,
+            originalConfig = item.config
+        )
+    }
+
+    fun clearEditDraft() {
+        _editDraft.value = null
+    }
+
+    fun saveEditedTheme(editingKey: String) {
+        val draft = _editDraft.value ?: return
+        val original = _items.value.firstOrNull { it.key == editingKey }?.config
+        execute {
+            repository.saveTheme(draft, original)
+            val current = repository.getDurConfig()
+            if (current.themeName == draft.themeName && current.isNightTheme == draft.isNightTheme) {
+                withContext(Dispatchers.Main) {
+                    repository.applyTheme(draft)
+                }
+            }
+            refreshThemes()
+            _events.send(ThemeEvent.Toast(R.string.success))
+            clearEditDraft()
+        }
+    }
+
+    fun updateDraftColor(colorKey: String, color: Int) {
+        val currentDraft = _editDraft.value ?: return
+        val hex = "#" + Integer.toHexString(color).padStart(8, '0').uppercase()
+        _editDraft.value = when (colorKey) {
+            "primaryColor" -> currentDraft.copy(primaryColor = hex)
+            "accentColor" -> currentDraft.copy(accentColor = hex)
+            "backgroundColor" -> currentDraft.copy(backgroundColor = hex)
+            "bottomBackground" -> currentDraft.copy(bottomBackground = hex)
+            else -> currentDraft
+        }
+    }
+
+    fun updateDraftBlur(blur: Int) {
+        val currentDraft = _editDraft.value ?: return
+        _editDraft.value = currentDraft.copy(backgroundImgBlur = blur)
+    }
+
+    fun updateDraftBackgroundImage(path: String) {
+        val currentDraft = _editDraft.value ?: return
+        _editDraft.value = currentDraft.copy(backgroundImgPath = path)
+    }
+    
+    fun updateDraftConfig(transform: (ThemeConfig.Config) -> ThemeConfig.Config) {
+        val currentDraft = _editDraft.value ?: return
+        _editDraft.value = transform(currentDraft)
+    }
+
+    private fun getNextThemeName(isNightTheme: Boolean): String {
+        val base = getApplication<Application>().getString(R.string.add_theme)
+        val usedNames = _items.value
+            .filter { it.config.isNightTheme == isNightTheme }
+            .map { it.config.themeName }
+            .toSet()
+        if (base !in usedNames) return base
+        for (i in 2..999) {
+            val name = "$base $i"
+            if (name !in usedNames) return name
+        }
+        return "$base ${System.currentTimeMillis()}"
+    }
+}
+
+/** 主题管理界面中的编辑草稿，保存原配置快照以支持稳定定位更新目标。 */
+data class ThemeEditDraft(
+    val config: ThemeConfig.Config,
+    val isNew: Boolean,
+    val editingKey: String,
+    val originalConfig: ThemeConfig.Config?
+)

@@ -249,13 +249,13 @@
             android:name=".ui.config.NavigationBarManageActivity"
             android:launchMode="standard" />
         <activity
-            android:name=".ui.config.ThemeManageActivity"
+            android:name=".ui.config.theme.manage.ThemeManageActivity"
             android:launchMode="standard" />
         <activity
-            android:name=".ui.config.ApplicationThemeActivity"
+            android:name=".ui.config.theme.legacy.appTheme.ApplicationThemeActivity"
             android:launchMode="standard" />
         <activity
-            android:name=".ui.config.ApplicationThemeEditActivity"
+            android:name=".ui.config.theme.legacy.appTheme.ApplicationThemeEditActivity"
             android:launchMode="standard" />
         <activity
             android:name=".ui.config.TopBarManageActivity"
@@ -263,6 +263,9 @@
         <!-- 搜索界面 -->
         <activity
             android:name=".ui.config.BubbleManageActivity"
+            android:launchMode="standard" />
+        <activity
+            android:name=".ui.config.ShareNoteTemplateManageActivity"
             android:launchMode="standard" />
         <activity
             android:name=".ui.book.search.SearchActivity"
@@ -401,6 +404,11 @@
             android:name=".ui.debug.DebugToolsActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
+        <!-- 权限管理 -->
+        <activity
+            android:name=".ui.permission.PermissionManageActivity"
+            android:configChanges="orientation|screenSize"
+            android:hardwareAccelerated="true" />
         <!-- URL访问记录 -->
         <activity
             android:name=".ui.urlRecord.UrlRecordActivity"
@@ -417,7 +425,7 @@
             android:hardwareAccelerated="true" />
         <!-- HTML封面模板配置 -->
         <activity
-            android:name=".ui.config.CoverHtmlActivity"
+            android:name=".ui.config.coverhtml.CoverHtmlActivity"
             android:configChanges="orientation|screenSize"
             android:hardwareAccelerated="true" />
         <!-- 直链上传配置 -->
@@ -474,7 +482,7 @@
             android:theme="@style/AppTheme.Transparent" />
         <!-- 文字处理 -->
         <activity
-            android:name=".receiver.SharedReceiverActivity"
+            android:name=".ui.shared.SharedReceiverActivity"
             android:exported="true"
             android:label="@string/receiving_shared_label"
             android:theme="@style/AppTheme.Transparent">
@@ -599,6 +607,10 @@
                 <data android:pathAdvancedPattern=".*\\.[zZ][iI][pP]" />
                 <data android:pathPattern=".*\\.zip" />
                 <data android:pathPattern=".*\\.ZIP" />
+                <!-- red (Reeden 阅读 App 主题包格式) -->
+                <data android:pathAdvancedPattern=".*\\.[rR][eE][dD]" />
+                <data android:pathPattern=".*\\.red" />
+                <data android:pathPattern=".*\\.RED" />
                 <!-- rar -->
                 <data android:pathAdvancedPattern=".*\\.[rR][aA][rR]" />
                 <data android:pathPattern=".*\\.rar" />

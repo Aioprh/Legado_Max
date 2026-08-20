@@ -123,10 +123,6 @@ object DebugFloatingBallManager {
                     rootView.addView(composeView, layoutParams)
                     isShowing = true
                     isAttaching = false
-                    if (!hasLoggedShow) {
-                        AppLog.putReaderDebug("DebugFloatingBall: show() success")
-                        hasLoggedShow = true
-                    }
                 } catch (e: Exception) {
                     if (!hasLoggedShow) {
                         AppLog.putReaderDebug("DebugFloatingBall: show() failed to add view - ${e.message}")
@@ -160,10 +156,6 @@ object DebugFloatingBallManager {
                 try {
                     val parent = view.parent as? ViewGroup
                     parent?.removeView(view)
-                    if (!hasLoggedHide) {
-                        AppLog.putReaderDebug("DebugFloatingBall: hide() success")
-                        hasLoggedHide = true
-                    }
                 } catch (e: Exception) {
                     if (!hasLoggedHide) {
                         AppLog.putReaderDebug("DebugFloatingBall: hide() exception - ${e.message}")

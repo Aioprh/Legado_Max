@@ -5,10 +5,9 @@ import android.os.Bundle
 import android.view.ViewGroup
 import androidx.viewbinding.ViewBinding
 import io.legado.app.base.adapter.ItemViewHolder
-import io.legado.app.data.entities.Book
+import io.legado.app.data.dao.BookShelfDisplay
 import io.legado.app.databinding.ItemBookshelfGrid2Binding
 import io.legado.app.databinding.ItemBookshelfGridBinding
-import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
@@ -25,10 +24,20 @@ class BooksAdapterGrid(context: Context, private val callBack: CallBack) :
         }
     }
 
+    /**
+     * 方案E：取消封面图片加载
+     */
+    override fun cancelCoverLoad(binding: ViewBinding) {
+        when (binding) {
+            is ItemBookshelfGridBinding -> binding.ivCover.cancelLoad()
+            is ItemBookshelfGrid2Binding -> binding.ivCover.cancelLoad()
+        }
+    }
+
     override fun convert(
         holder: ItemViewHolder,
         binding: ViewBinding,
-        item: Book,
+        item: BookShelfDisplay,
         payloads: MutableList<Any>
     ) {
         when (binding) {
@@ -48,11 +57,7 @@ class BooksAdapterGrid(context: Context, private val callBack: CallBack) :
                         bundle.keySet().forEach {
                             when (it) {
                                 "name" -> tvName.text = item.name
-                                "cover" -> ivCover.load(
-                                    item,
-                                    false
-                                )
-
+                                "cover" -> ivCover.load(item, false)
                                 "refresh" -> upRefresh(binding, item)
                             }
                         }
@@ -70,11 +75,7 @@ class BooksAdapterGrid(context: Context, private val callBack: CallBack) :
                         bundle.keySet().forEach {
                             when (it) {
                                 "name" -> tvName.text = item.name
-                                "cover" -> ivCover.load(
-                                    item,
-                                    false
-                                )
-
+                                "cover" -> ivCover.load(item, false)
                                 "refresh" -> upRefresh(binding, item)
                             }
                         }
@@ -85,7 +86,7 @@ class BooksAdapterGrid(context: Context, private val callBack: CallBack) :
 
     }
 
-    private fun upRefresh(binding: ViewBinding, item: Book) {
+    private fun upRefresh(binding: ViewBinding, item: BookShelfDisplay) {
         when (binding) {
             is ItemBookshelfGridBinding -> binding.run {
                 if (!item.isLocal && callBack.isUpdate(item.bookUrl)) {
@@ -122,13 +123,13 @@ class BooksAdapterGrid(context: Context, private val callBack: CallBack) :
         holder.itemView.apply {
             setOnClickListener {
                 getItem(holder.layoutPosition)?.let {
-                    callBack.open(it)
+                    callBack.open(it.toMinimalBook())
                 }
             }
 
             onLongClick {
                 getItem(holder.layoutPosition)?.let {
-                    callBack.openBookInfo(it)
+                    callBack.openBookInfo(it.toMinimalBook())
                 }
             }
         }

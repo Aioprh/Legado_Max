@@ -950,7 +950,7 @@ object Restore {
         }
     }
 
-    private fun fixThemeConfigBackgroundPaths() {
+    private suspend fun fixThemeConfigBackgroundPaths() {
         var updated = false
         ThemeConfig.configList.forEachIndexed { index, config ->
             val bgPath = config.backgroundImgPath ?: return@forEachIndexed

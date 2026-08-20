@@ -28,6 +28,7 @@ import io.legado.app.help.book.addType
 import io.legado.app.help.book.getExportFileName
 import io.legado.app.help.book.getRemoteUrl
 import io.legado.app.help.book.isLocal
+import io.legado.app.help.book.BookshelfMatcher
 import io.legado.app.help.book.isNotShelf
 import io.legado.app.help.book.isSameNameAuthor
 import io.legado.app.help.book.isWebFile
@@ -54,11 +55,8 @@ import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.mapLatest
 import io.legado.app.domain.model.BookShelfState
-import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BookInfoViewModel(application: Application) : BaseViewModel(application) {
@@ -72,32 +70,9 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
     private var changeSourceCoroutine: Coroutine<*>? = null
     private var authorOtherWorksBookKey: String? = null
     private var fromAuthorOtherWorks = false
-    private val bookshelf: MutableSet<String> = ConcurrentHashMap.newKeySet()
     val waitDialogData = MutableLiveData<Boolean>()
     val actionLive = MutableLiveData<String>()
     val tocLoading = MutableLiveData<Boolean>()
-
-    init {
-        execute {
-            appDb.bookDao.flowAll().mapLatest { books ->
-                val keys = arrayListOf<String>()
-                books.filterNot { it.isNotShelf }
-                    .forEach {
-                        keys.add("${it.name}-${it.author}")
-                        keys.add(it.name)
-                        keys.add(it.bookUrl)
-                    }
-                keys
-            }.catch {
-                AppLog.put("书籍详情页获取书籍列表失败\n${it.localizedMessage}", it)
-            }.collect {
-                bookshelf.clear()
-                bookshelf.addAll(it)
-            }
-        }.onError {
-            AppLog.put("加载书架数据失败", it)
-        }
-    }
 
     fun initData(intent: Intent) {
         execute {
@@ -864,15 +839,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun getBookShelfState(book: SearchBook): BookShelfState {
-        val name = book.name
-        val author = book.author
-        val bookUrl = book.bookUrl
-        val key = if (author.isNotBlank()) "$name-$author" else name
-        return when {
-            bookshelf.contains(bookUrl) -> BookShelfState.IN_SHELF
-            bookshelf.contains(key) -> BookShelfState.SAME_NAME_AUTHOR
-            else -> BookShelfState.NOT_IN_SHELF
-        }
+        return BookshelfMatcher.getState(book.name, book.author, book.bookUrl)
     }
 
     /**
@@ -882,10 +849,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         execute {
             val bookEntity = book.toBook()
             appDb.bookDao.insert(bookEntity)
-            bookshelf.add(book.bookUrl)
-            val key = if (book.author.isNotBlank()) "${book.name}-${book.author}" else book.name
-            bookshelf.add(key)
-            bookshelf.add(book.name)
+            // BookshelfMatcher 会通过 flowShelfKeys() 自动感知 DB 变化并刷新
         }.onError {
             AppLog.put("加入书架失败", it)
         }

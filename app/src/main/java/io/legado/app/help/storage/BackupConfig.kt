@@ -157,6 +157,7 @@ object BackupConfig {
     private val coverPrefKeys = arrayOf(
         PreferKey.useDefaultCover,
         PreferKey.loadCoverOnlyWifi,
+        PreferKey.loadCoverHighQuality,
         PreferKey.bookCoverShadow,
         PreferKey.coverShowName,
         PreferKey.coverShowAuthor,

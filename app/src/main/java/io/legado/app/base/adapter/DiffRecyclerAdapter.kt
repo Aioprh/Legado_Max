@@ -37,6 +37,9 @@ abstract class DiffRecyclerAdapter<ITEM, VB : ViewBinding>(protected val context
 
     private var layoutManager: RecyclerView.LayoutManager? = null
     private var layoutState: Parcelable? = null
+    /** 当前绑定的 RecyclerView，供子类访问以获取可见 item 范围等 */
+    protected var recyclerView: RecyclerView? = null
+        private set
 
     var itemAnimation: ItemAnimation? = null
 
@@ -173,6 +176,7 @@ abstract class DiffRecyclerAdapter<ITEM, VB : ViewBinding>(protected val context
 
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
         super.onAttachedToRecyclerView(recyclerView)
+        this.recyclerView = recyclerView
         val manager = recyclerView.layoutManager
         layoutManager = manager
         if (manager is GridLayoutManager) {
