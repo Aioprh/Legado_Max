@@ -184,28 +184,40 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             root?.get("error")?.takeIf { it.isJsonObject }?.let { err ->
                 throw RuntimeException("HTTP 200: ${err.asJsonObject.get("message")?.asString ?: text.take(200)}")
             }
-            // 兼容 content 为字符串 / 内容块数组（[{type,text}]）/ null（回退 reasoning_content）等情况
-            val content = root?.get("choices")?.takeIf { it.isJsonArray }?.asJsonArray
+            // 兼容 content 为字符串 / 内容块数组（[{type,text}]）等情况
+            val message = root?.get("choices")?.takeIf { it.isJsonArray }?.asJsonArray
                 ?.firstOrNull()?.takeIf { it.isJsonObject }?.asJsonObject
                 ?.get("message")?.takeIf { it.isJsonObject }?.asJsonObject
-                ?.let { extractMessageContent(it) } ?: ""
-            if (content.isBlank()) throw RuntimeException("模型未返回内容: ${text.take(200)}")
+            val content = message?.let { extractMessageContent(it) } ?: ""
+            if (content.isBlank()) {
+                // 推理模型（deepseek-reasoner / deepseek-v4-flash 等）：content 可能为 "" 且思考在 reasoning_content，
+                // 即 max_tokens 输出预算被思考过程耗尽、最终正文未生成。
+                // 首次带参数调用时抛含 max_tokens 的错误触发去参重试；去参后仍为空则给出明确提示。
+                val reasoning = message?.get("reasoning_content")
+                    ?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+                if (reasoning.isNotBlank()) {
+                    if (withParams) {
+                        throw RuntimeException("模型未返回内容: 推理模型思考内容过长(未生成最终正文)，已自动去掉 max_tokens 参数重试")
+                    }
+                    throw RuntimeException("模型未返回内容: 推理模型思考过长，去掉 max_tokens 后仍未生成最终正文，请更换输出上限更大的模型或调大 max_tokens")
+                }
+                throw RuntimeException("模型未返回内容: ${text.take(200)}")
+            }
             return stripCodeFence(content)
         }
     }
 
     /**
-     * 从 choices[0].message 稳健提取正文：
+     * 从 choices[0].message 提取正文：
      * content 为字符串直接取；content 为内容块数组（[{type,text}]）时拼接 text；
-     * content 为 null/缺失时回退 reasoning_content（兼容 DeepSeek-R1 等推理模型）。
+     * content 为 null/缺失/空串时返回空（由调用方判断：若同时存在 reasoning_content，
+     * 说明是推理模型思考耗尽、最终正文未生成，应去掉 max_tokens 重试而非使用思维链）。
      */
     private fun extractMessageContent(message: JsonObject): String {
         val content = message.get("content")
         return when {
-            content == null || content.isJsonNull ->
-                message.get("reasoning_content")?.asString ?: ""
-            content.isJsonPrimitive ->
-                content.asString
+            content == null || content.isJsonNull -> ""
+            content.isJsonPrimitive -> content.asString
             content.isJsonArray ->
                 content.asJsonArray.joinToString("") { el ->
                     if (el.isJsonObject) el.asJsonObject.get("text")?.asString ?: "" else ""
