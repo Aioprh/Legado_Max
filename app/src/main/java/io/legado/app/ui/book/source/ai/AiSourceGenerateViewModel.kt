@@ -275,6 +275,14 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                 appendLine("【真实验证报错】")
                 appendLine(verify.summary)
                 appendLine()
+                appendLine("【本版 Legado 规则注意事项（必须遵守，否则会再次失败）】")
+                appendLine("1. 本 App 的 JS 规则中【没有】bookId 变量（Book 无 bookId 字段），在规则 JS 中直接写 bookId（包括 {{bookId}}）都会报 ReferenceError: bookId 未定义，请勿使用。")
+                appendLine("   正确做法：ruleSearch.bookUrl 必须返回含 ID 的完整详情 URL（如 https://host/detail/123.html），详情(ruleBookInfo)/目录(ruleToc) 直接基于该 URL 解析；若 ID 只存在于搜索结果 JSON/字段中，用 JSONPath/正则直接在 bookUrl 规则里拼出完整 URL。")
+                appendLine("2. searchUrl 必须包含 {{key}} 占位符，否则无法搜索。")
+                appendLine("3. 若站点是 JSON API / SPA（返回 JSON 而非 HTML），所有规则一律用 JSONPath：bookList=$.xxx、字段=$.xxx，不要用 HTML 选择器。")
+                appendLine("4. 核心规则字段（ruleSearch.bookList/name/bookUrl、ruleBookInfo.name/tocUrl、ruleToc.chapterList/chapterName/chapterUrl、ruleContent.content）必须有值且非空。")
+                appendLine("5. 若解析出的 URL（详情/目录/正文）中出现形如 book_id= 的空参数，说明参数取值为空，必须改用 {{book.bookUrl}} 提取 ID 或用 JSONPath/正则补全，禁止输出带空参数的 URL。")
+                appendLine()
                 appendLine("【上一次生成的书源 JSON】")
                 appendLine(current)
             }
@@ -299,6 +307,17 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             return VerifyResult(succeeded = false, summary = "未提供搜索关键词，无法用真实搜索验证")
         }
         val fixed = AiSourceValidate.parseSource(jsonText) ?: return VerifyResult(false, "生成结果无法解析为书源 JSON")
+        // 静态预检：本版 Legado 没有 bookId 变量，直接引用会报 ReferenceError，尽早拦截以节省修复轮次
+        val unsupportedBookId = AiSourceValidate.findUnsupportedBookId(fixed)
+        if (unsupportedBookId.isNotEmpty()) {
+            val detail = unsupportedBookId.joinToString("；") { (where, rule) ->
+                "$where = ${rule.take(60)}"
+            }
+            return VerifyResult(
+                false,
+                "规则中引用了本版 Legado 不存在的 bookId 变量（会报 ReferenceError: bookId 未定义）：$detail。请用 ruleSearch.bookUrl 返回含 ID 的完整详情 URL，再用 JSONPath/正则拼出详情/目录/正文 URL，禁止使用 bookId。"
+            )
+        }
         return runCatching {
             val bookSource = GSON.fromJson(fixed, BookSource::class.java)
             if (bookSource.searchUrl.isNullOrBlank()) {
@@ -532,8 +551,9 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 - 纯 CSS 选择器加 @CSS: 前缀：@CSS:.detail p:nth-child(2)@text
 - 多个候选规则合并：&& 顺序执行并合并所有结果；|| 取第一个非空结果即止；%% 交错合并
 - XPath：以 / 开头自动识别，如 //div[@id='content']、//h3/a/text()、//img/@src
-- JSONPath（返回 JSON 的接口/内嵌 JSON 数据）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL；目录/正文接口若 URL 模板缺参，按 Legado 约定补 book_id 与 chapter_id（book_id 用 {{book.bookUrl}} 正则提取，chapter_id 用目录章节对象的 ID 字段）
+- JSONPath（返回 JSON 的接口/内嵌 JSON 数据）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL；目录/正文接口若 URL 模板缺参，用 {{book.bookUrl}} / {{book.tocUrl}} 等已有 book 对象属性拼接，或在 bookUrl 规则中用 JSONPath/正则拼出完整 URL
 - 内联 JS：{{表达式}} 嵌入 JS 片段；@get:{变量名} 读全局变量；@put:{变量名} 存全局变量
+- 【重要】本 App 的 JS 规则中没有 bookId 变量（Book 无 bookId 字段），禁止使用 {{bookId}} 或 JS 中的 bookId，否则报 ReferenceError。ID 只能从搜索结果 JSON/字段里取（JSONPath {{$.xxx}} 拼进 URL），或直接用 {{book.bookUrl}} 提取；可用正则 ##...## 从 bookUrl 中抠出 ID。
 - 正则替换：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"；正则里 \d、\s 等须写双反斜杠 \\d、\\s
 - 整页 JS 渲染：若页面数据完全由 JS 动态生成、HTML 里没有书籍数据，则在对应 webJs 字段写提取脚本，或用 preUpdateJs/formatJs 处理后端数据
 
