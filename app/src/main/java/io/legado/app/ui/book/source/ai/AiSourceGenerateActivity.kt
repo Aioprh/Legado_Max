@@ -194,6 +194,22 @@ class AiSourceGenerateActivity :
                 appendLine("----------")
             }
         }
+        content?.exploreLinks?.takeIf { it.isNotEmpty() }?.let { links ->
+            appendLine()
+            appendLine("【发现页（分类/榜单/推荐）】已从首页导航中探测到以下链接，请据其编写发现规则（exploreUrl 格式：分类名::URL 每行一个，ruleExplore 的 bookList/name/bookUrl 必填）：")
+            links.forEach { (name, url) -> appendLine("- $name :: $url") }
+        }
+        content?.sampleExplore?.let { se ->
+            appendLine()
+            if (se.ok) {
+                appendLine("首个分类/榜单页真实 HTML（用于编写 ruleExplore 选择器）：")
+                appendLine("----------")
+                appendLine(se.json)
+                appendLine("----------")
+            } else {
+                appendLine("分类/榜单页探测失败：${se.error}（不影响搜索/详情/目录/正文生成）")
+            }
+        }
         appendLine()
         appendLine("已抓取到的网页 HTML（预处理后，编码 ${content?.charset}，共 ${content?.length} 字符，已截断）：")
         appendLine("----------")
@@ -256,6 +272,7 @@ class AiSourceGenerateActivity :
                 userPrompt = userPrompt,
                 sourceJson = text,
                 keyword = keyword ?: "",
+                exploreLinks = content?.exploreLinks.orEmpty(),
                 maxRounds = viewModel.maxFixRounds
             )
         }.onSuccess { result ->

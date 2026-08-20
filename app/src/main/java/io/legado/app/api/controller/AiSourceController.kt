@@ -8,6 +8,7 @@ import io.legado.app.utils.EncodingDetect
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.jsoup.Jsoup
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.Charset
@@ -114,6 +115,8 @@ object AiSourceController {
         val apiEndpoints: List<ApiEndpoint>,
         val sampleSearch: SampleResult,
         val sampleCatalog: SampleResult,
+        val sampleExplore: SampleResult,
+        val exploreLinks: List<Pair<String, String>>,
         val embeddedJson: List<String>
     )
 
@@ -199,10 +202,13 @@ object AiSourceController {
                 } else {
                     SampleResult(ok = false, error = "搜索接口探测失败，跳过目录探测")
                 }
+                // 从首页提取分类/榜单/推荐导航链接，并抓取首个分类页真实 HTML 供 LLM 编写发现规则
+                val exploreLinks = discoverExploreLinks(html, effectiveUrl)
+                val sampleExplore = fetchExploreSample(exploreLinks, header, cookie)
 
                 HtmlContent(
                     url, charset, truncated.length, truncated,
-                    endpoints, sampleSearch, sampleCatalog, embeddedJson
+                    endpoints, sampleSearch, sampleCatalog, sampleExplore, exploreLinks, embeddedJson
                 )
             }
         }
@@ -575,6 +581,86 @@ object AiSourceController {
         }.getOrNull()
     }
 
+    /** 首页导航中常见分类/榜单/推荐的链接文本关键词 */
+    private val exploreTextKeywords = listOf(
+        "分类", "书库", "排行", "榜单", "推荐", "精选", "完本", "最新", "热门", "免费",
+        "玄幻", "都市", "武侠", "科幻", "言情", "历史", "竞技", "悬疑"
+    )
+
+    /** 首页导航中常见分类/榜单/推荐链接的 URL 关键词 */
+    private val exploreHrefKeywords = listOf(
+        "category", "class", "fenlei", "rank", "top", "ranklist", "booklist",
+        "store", "complete", "wanben", "recommend", "sort", "genre", "list"
+    )
+
+    /**
+     * 从首页 HTML 中提取分类/榜单/推荐导航链接（书名/分类名, 绝对 URL）。
+     * 供 LLM 编写 exploreUrl/ruleExplore 发现规则使用。
+     */
+    private fun discoverExploreLinks(html: String, baseUrl: String): List<Pair<String, String>> {
+        val doc = runCatching { Jsoup.parse(html) }.getOrNull() ?: return emptyList()
+        val home = baseUrl.lowercase().trimEnd('/')
+        val homePage = home + "/"
+        val found = LinkedHashMap<String, String>()
+        for (a in doc.select("a[href]")) {
+            val text = a.text().trim()
+            val href = a.absUrl("href").ifBlank { a.attr("href") }
+            // 分类名一般较短；过滤首页/登录/注册等无关链接
+            if (text.isBlank() || text.length > 14) continue
+            if (text == "首页" || text.contains("登录") || text.contains("注册") || text.contains("加入")) continue
+            if (href.isBlank() || href.startsWith("javascript:") || href == "#" || href.startsWith("mailto:")) continue
+            val hrefLower = href.lowercase()
+            if (hrefLower == home || hrefLower == homePage) continue
+            // 已经抓过的原页（首页 HTML 可能同时作为分类 URL）不再重复
+            if (found.containsKey(text)) continue
+            val isExplore = exploreTextKeywords.any { text.contains(it) } ||
+                exploreHrefKeywords.any { hrefLower.contains(it) }
+            if (!isExplore) continue
+            found[text] = href
+            if (found.size >= 8) break
+        }
+        return found.toList()
+    }
+
+    /**
+     * 抓取首个分类/榜单页的真实 HTML（预处理后截断），供 LLM 分析发现页结构。
+     */
+    private fun fetchExploreSample(
+        exploreLinks: List<Pair<String, String>>,
+        header: String?,
+        cookie: String?
+    ): SampleResult {
+        val first = exploreLinks.firstOrNull { it.second.isNotBlank() }
+            ?: return SampleResult(ok = false, error = "未在首页中发现分类/榜单导航链接")
+        return runCatching {
+            val request = buildRequest(first.second, header, cookie)
+            val client = okHttpClient.newBuilder()
+                .callTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .readTimeout(API_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    SampleResult(ok = false, url = first.second, error = "HTTP ${response.code}")
+                } else {
+                    val text = response.body?.string()?.trim().orEmpty()
+                    if (text.isEmpty()) {
+                        SampleResult(ok = false, url = first.second, error = "响应为空")
+                    } else {
+                        val clean = preprocessHtml(text)
+                        val truncated = if (clean.length > MAX_API_CHARS) {
+                            clean.substring(0, MAX_API_CHARS) + "\n...(已截断)"
+                        } else {
+                            clean
+                        }
+                        SampleResult(ok = true, url = first.second, json = truncated)
+                    }
+                }
+            }
+        }.getOrElse {
+            SampleResult(ok = false, url = first.second, error = it.message ?: it.javaClass.simpleName)
+        }
+    }
+
     fun fetchHtml(parameters: Map<String, List<String>>): ReturnData {
         val returnData = ReturnData()
         val url = parameters["url"]?.firstOrNull()?.trim()
@@ -595,6 +681,8 @@ object AiSourceController {
                         "apiEndpoints" to it.apiEndpoints,
                         "sampleSearch" to it.sampleSearch,
                         "sampleCatalog" to it.sampleCatalog,
+                        "sampleExplore" to it.sampleExplore,
+                        "exploreLinks" to it.exploreLinks,
                         "embeddedJson" to it.embeddedJson
                     )
                 )

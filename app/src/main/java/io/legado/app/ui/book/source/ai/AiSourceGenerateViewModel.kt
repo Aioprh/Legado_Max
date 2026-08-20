@@ -290,6 +290,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         userPrompt: String,
         sourceJson: String,
         keyword: String,
+        exploreLinks: List<Pair<String, String>> = emptyList(),
         maxRounds: Int = maxFixRounds
     ): AutoFixResult {
         var round = 0
@@ -303,7 +304,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         while (round < maxRounds) {
             round++
             log.appendLine("[第 $round 轮] 用真实搜索验证书源...")
-            val verify = verifyByRealSearch(current, keyword)
+            val verify = verifyByRealSearch(current, keyword, exploreLinks)
             log.appendLine(verify.summary)
             if (verify.succeeded) {
                 return AutoFixResult(ok = true, rounds = round, json = verify.fixedJson ?: current, log = log.toString())
@@ -344,10 +345,15 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     }
 
     /**
-     * 用 App 真实搜索引擎对书源做全链路验证：搜索 -> 详情 -> 目录 -> 正文。
+     * 用 App 真实搜索引擎对书源做全链路验证：搜索 -> 详情 -> 目录 -> 正文 -> 发现页。
      * 任何一环失败都返回失败与具体报错，供 LLM 修复。
+     * @param exploreLinks 首页探测到的分类/榜单/推荐导航链接（名称, URL），用于判断站点是否有发现页
      */
-    private suspend fun verifyByRealSearch(jsonText: String, keyword: String): VerifyResult {
+    private suspend fun verifyByRealSearch(
+        jsonText: String,
+        keyword: String,
+        exploreLinks: List<Pair<String, String>> = emptyList()
+    ): VerifyResult {
         if (keyword.isBlank()) {
             return VerifyResult(succeeded = false, summary = "未提供搜索关键词，无法用真实搜索验证")
         }
@@ -470,9 +476,76 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                 )
             }
             sb.appendLine("✓ 正文解析成功，${content.length} 字（首章「${chapter.title}」）")
+
+            // ⑤ 发现页
+            sb.appendLine("⑤ 发现页")
+            val exploreKinds = parseExploreKinds(bookSource.exploreUrl)
+            if (exploreKinds.isEmpty()) {
+                if (exploreLinks.isNotEmpty()) {
+                    return@runCatching VerifyResult(
+                        false,
+                        sb.append("书源缺少发现页规则（exploreUrl/ruleExplore 为空），但首页已探测到分类/榜单/推荐导航：")
+                            .append(exploreLinks.joinToString("；") { "${it.first}::${it.second}" })
+                            .append("\n请补全 exploreUrl（分类名::URL 每行一个，如 热门::https://host/top/）与 ruleExplore（bookList/name/bookUrl 必填），并按分类页真实结构编写 JSONPath/CSS 选择器。")
+                            .toString()
+                    )
+                }
+                sb.appendLine("✓ 站点未探测到分类/榜单导航，跳过发现页")
+            } else {
+                val firstKind = exploreKinds.first()
+                val firstUrl = firstKind.second
+                if (firstUrl.isNullOrBlank() || firstUrl == firstKind.first) {
+                    return@runCatching VerifyResult(
+                        false,
+                        sb.append("exploreUrl 存在但无法解析出分类 URL（如「分类名::」缺少地址），请补全完整分类 URL").toString()
+                    )
+                }
+                val exploreBooks = runCatching {
+                    WebBook.exploreBookAwait(bookSource, firstUrl, 1)
+                }.getOrElse {
+                    val exploreSample = fetchStepSample(firstUrl)
+                    return@runCatching VerifyResult(
+                        false,
+                        sb.append("发现页解析失败：${it.message ?: it.javaClass.simpleName}")
+                            .append(if (exploreSample != null) "\n$exploreSample" else "\n（发现接口「$firstUrl」响应抓取失败，请检查 exploreUrl 是否正确）")
+                            .append("\n请根据发现页真实返回结构重写 ruleExplore：JSON 用 JSONPath（注意完整层级），HTML 用 CSS 选择器。")
+                            .toString()
+                    )
+                }
+                if (exploreBooks.isEmpty()) {
+                    val exploreSample = fetchStepSample(firstUrl)
+                    return@runCatching VerifyResult(
+                        false,
+                        sb.append("发现页解析为空，ruleExplore.bookList/name/bookUrl 匹配不上")
+                            .append(if (exploreSample != null) "\n$exploreSample" else "\n（发现接口「$firstUrl」响应抓取失败，请检查 exploreUrl 是否正确）")
+                            .append("\n请根据发现页真实返回结构重写 ruleExplore：JSON 用 JSONPath（注意完整层级），HTML 用 CSS 选择器。")
+                            .toString()
+                    )
+                }
+                sb.appendLine("✓ 发现页解析成功，分类「${firstKind.first}」返回 ${exploreBooks.size} 条，首条书名「${exploreBooks.first().name}」")
+            }
+
             VerifyResult(true, sb.toString(), AiSourceValidate.toSourceJson(bookSource, fixed))
         }.getOrElse { e ->
             VerifyResult(false, "验证失败：${e.message ?: e.javaClass.simpleName}")
+        }
+    }
+
+    /**
+     * 解析 exploreUrl 为分类列表（分类名, URL）。
+     * 与 BookSource.exploreKinds() 的分割规则一致（(&&|\n) 分隔，每项 名称::地址）。
+     * @js:/<js> 动态分类无法离线拆分，整体视为一条交给 WebBook 处理。
+     */
+    private fun parseExploreKinds(exploreUrl: String?): List<Pair<String, String>> {
+        if (exploreUrl.isNullOrBlank()) return emptyList()
+        if (exploreUrl.startsWith("@js:", true) || exploreUrl.startsWith("<js>", true)) {
+            return listOf(exploreUrl to exploreUrl)
+        }
+        return exploreUrl.split(Regex("(&&|\n)+")).mapNotNull { kindStr ->
+            val kindCfg = kindStr.split("::")
+            val name = kindCfg.getOrNull(0)?.trim() ?: return@mapNotNull null
+            val url = kindCfg.getOrNull(1)?.trim()
+            if (name.isBlank() && url.isNullOrBlank()) null else name to (url ?: "")
         }
     }
 
@@ -601,15 +674,15 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     "payAction": "付费章节处理规则（可选），无则空字符串",
     "callBackJs": "正文回调 JS（可选），无则空字符串"
   },
-  "exploreUrl": "发现地址（可选），多分类用 分类名::URL 换行分隔，如 热门::https://host/top/###...；分页参数写 page=1（App 会自动翻页）；无发现页则空字符串",
+  "exploreUrl": "发现地址（可选，但站点有分类/榜单/推荐导航时必须填写），多分类用 分类名::URL 换行分隔，如 热门::https://host/top/\n玄幻::https://host/sort/1/###...；分页参数写 page=1（App 会自动翻页）；无发现页则空字符串",
   "ruleExplore": {
     "bookList": "发现列表选择器（必填，若 exploreUrl 非空）",
-    "name": "发现书名",
+    "name": "发现书名（必填，若 exploreUrl 非空）",
     "author": "发现作者",
     "coverUrl": "发现封面",
     "intro": "发现简介",
     "kind": "分类",
-    "bookUrl": "详情页 URL 规则",
+    "bookUrl": "详情页 URL 规则（必填，若 exploreUrl 非空）",
     "wordCount": "字数"
   },
   "exploreScreen": "发现筛选规则（可选，无则空字符串）",
@@ -648,7 +721,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 3. 只输出 JSON 本身，不要添加解释文字或 markdown 代码块标记
 4. 无法推断的字段填空字符串 ""
 5. 若 HTML 是 JSON 数据，使用 JSONPath 语法
-6. 必须输出完整书源：搜索、详情(ruleBookInfo)、目录(ruleToc)、正文(ruleContent) 为必填核心；发现(exploreUrl/ruleExplore)、登录(loginUrl)、下载(ruleBookInfo.downloadUrls) 若网站支持则填写，不支持/无法推断时填空字符串 ""，但字段名必须保留在输出结构中
+6. 必须输出完整书源：搜索、详情(ruleBookInfo)、目录(ruleToc)、正文(ruleContent) 为必填核心；发现(exploreUrl/ruleExplore) 必须分析目标站点是否有分类/榜单/推荐导航（用户提示词中会列出探测到的分类链接与分类页 HTML），若有则必须生成 exploreUrl（分类名::URL 每行一个）与 ruleExplore（bookList/name/bookUrl 必填），若确无分类导航才填空字符串；登录(loginUrl)、下载(ruleBookInfo.downloadUrls) 若网站支持则填写，不支持/无法推断时填空字符串 ""，但字段名必须保留在输出结构中
 7. 若提供了 JSON API 接口与示例响应，一律优先使用 JSONPath 规则并补齐上述全部字段
 """.trimIndent()
     }
