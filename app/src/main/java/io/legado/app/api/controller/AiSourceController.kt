@@ -84,16 +84,19 @@ object AiSourceController {
         Pattern.CASE_INSENSITIVE
     )
 
-    /** `${...}` 模板占位符 -> Legado 书源占位符 */
+    /** `${...}` 模板占位符 -> 供 LLM 识别的中性占位符
+     *  注意：{{key}}/{{page}} 是 Legado 真实变量可保留；而本版 Legado 没有 bookId/chapterId 变量，
+     *  若转成 {{bookId}} 会被 LLM 照抄进规则导致 ReferenceError，故转成 {book_id}/{chapter_id}
+     *  中性占位符，配合提示词指导 LLM 用 JSONPath/正则补全真实 ID。 */
     private val templateReplacements = listOf(
         Regex("""\$\{encodeURIComponent\s*\(\s*keyword\s*\)\}""") to "{{key}}",
         Regex("""\$\{\s*keyword\s*\}""") to "{{key}}",
         Regex("""\$\{encodeURIComponent\s*\(\s*page\s*\)\}""") to "{{page}}",
         Regex("""\$\{\s*page\s*\}""") to "{{page}}",
-        Regex("""\$\{encodeURIComponent\s*\(\s*bookId\s*\)\}""") to "{{bookId}}",
-        Regex("""\$\{\s*bookId\s*\}""") to "{{bookId}}",
-        Regex("""\$\{encodeURIComponent\s*\(\s*chapterId\s*\)\}""") to "{{chapterId}}",
-        Regex("""\$\{\s*chapterId\s*\}""") to "{{chapterId}}"
+        Regex("""\$\{encodeURIComponent\s*\(\s*bookId\s*\)\}""") to "{book_id}",
+        Regex("""\$\{\s*bookId\s*\}""") to "{book_id}",
+        Regex("""\$\{encodeURIComponent\s*\(\s*chapterId\s*\)\}""") to "{chapter_id}",
+        Regex("""\$\{\s*chapterId\s*\}""") to "{chapter_id}"
     )
 
     /** 常见内嵌 JSON 的全局变量名 */
@@ -297,12 +300,12 @@ object AiSourceController {
                 ""
             }
 
-            // search 接口优先带 keyword 占位符的；detail 接口优先带 bookId 的
+            // search 接口优先带 keyword 占位符的；detail 接口优先带 {book_id} 占位符的
             val existing = found[type]
             val better = when {
                 existing == null -> true
                 type == "search" && cleaned.contains("keyword") && !existing.url.contains("{{key}}") -> true
-                type == "detail" && cleaned.contains("bookid") && !existing.url.contains("{{bookId}}") -> true
+                type == "detail" && cleaned.contains("book_id") && !existing.url.contains("{book_id}") -> true
                 else -> false
             }
             if (better) {
@@ -376,7 +379,7 @@ object AiSourceController {
         val bookId = extractBookId(searchJson)
             ?: return SampleResult(ok = false, error = "未能从搜索示例中提取 book_id")
         val url = catalog.url
-            .replace("{{bookId}}", bookId)
+            .replace("{book_id}", bookId)
             .replace(Regex("""\{\{[^}]*\}\}"""), "")
         return fetchJsonSample(url, header, cookie)
     }

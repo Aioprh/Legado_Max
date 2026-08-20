@@ -276,7 +276,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                 appendLine(verify.summary)
                 appendLine()
                 appendLine("【本版 Legado 规则注意事项（必须遵守，否则会再次失败）】")
-                appendLine("1. 本 App 的 JS 规则中【没有】bookId 变量（Book 无 bookId 字段），在规则 JS 中直接写 bookId（包括 {{bookId}}）都会报 ReferenceError: bookId 未定义，请勿使用。")
+                appendLine("1. 本 App 的 JS 规则中【没有】bookId 变量（Book 无 bookId 字段），在规则 JS 中直接写 bookId（包括 {{bookId}}）都会报 ReferenceError: bookId 未定义，请勿使用。同样也没有 chapterId 变量，禁止使用 {{chapterId}}。")
                 appendLine("   正确做法：ruleSearch.bookUrl 必须返回含 ID 的完整详情 URL（如 https://host/detail/123.html），详情(ruleBookInfo)/目录(ruleToc) 直接基于该 URL 解析；若 ID 只存在于搜索结果 JSON/字段中，用 JSONPath/正则直接在 bookUrl 规则里拼出完整 URL。")
                 appendLine("2. searchUrl 必须包含 {{key}} 占位符，否则无法搜索。")
                 appendLine("3. 若站点是 JSON API / SPA（返回 JSON 而非 HTML），所有规则一律用 JSONPath：bookList=$.xxx、字段=$.xxx，不要用 HTML 选择器。")
@@ -352,6 +352,19 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 
             // ③ 目录
             sb.appendLine("③ 目录")
+            if (infoBook.tocUrl.isNullOrBlank()) {
+                return@runCatching VerifyResult(
+                    false,
+                    sb.append("目录地址为空，ruleBookInfo.tocUrl 可能未配置或解析为空，请补全目录 URL").toString()
+                )
+            }
+            // 目录地址带空参数（如 book_id= 结尾）说明 ID 未拼入，提前拦截给出明确指引
+            if (Regex("""[?&][^=]+=(?:&|$)""").containsMatchIn(infoBook.tocUrl)) {
+                return@runCatching VerifyResult(
+                    false,
+                    sb.append("目录地址存在空参数「${infoBook.tocUrl}」，说明书籍 ID 未正确拼入 URL。请用 ruleSearch.bookUrl 返回含 ID 的完整详情 URL，再从该 URL 中提取 ID 拼出目录/正文 URL，禁止输出带空参数的 URL。").toString()
+                )
+            }
             val chapters = runCatching {
                 WebBook.getChapterListAwait(bookSource, infoBook, runPerJs = true).getOrThrow()
             }.getOrElse {
@@ -553,7 +566,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 - XPath：以 / 开头自动识别，如 //div[@id='content']、//h3/a/text()、//img/@src
 - JSONPath（返回 JSON 的接口/内嵌 JSON 数据）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL；目录/正文接口若 URL 模板缺参，用 {{book.bookUrl}} / {{book.tocUrl}} 等已有 book 对象属性拼接，或在 bookUrl 规则中用 JSONPath/正则拼出完整 URL
 - 内联 JS：{{表达式}} 嵌入 JS 片段；@get:{变量名} 读全局变量；@put:{变量名} 存全局变量
-- 【重要】本 App 的 JS 规则中没有 bookId 变量（Book 无 bookId 字段），禁止使用 {{bookId}} 或 JS 中的 bookId，否则报 ReferenceError。ID 只能从搜索结果 JSON/字段里取（JSONPath {{$.xxx}} 拼进 URL），或直接用 {{book.bookUrl}} 提取；可用正则 ##...## 从 bookUrl 中抠出 ID。
+- 【重要】本 App 的 JS 规则中没有 bookId/chapterId 变量（Book 无 bookId 字段），禁止使用 {{bookId}}、{{chapterId}} 或 JS 中的 bookId，否则报 ReferenceError。ID 只能从搜索结果 JSON/字段里取（JSONPath {{$.xxx}} 拼进 URL），或直接用 {{book.bookUrl}} 提取；可用正则 ##...## 从 bookUrl 中抠出 ID。
 - 正则替换：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"；正则里 \d、\s 等须写双反斜杠 \\d、\\s
 - 整页 JS 渲染：若页面数据完全由 JS 动态生成、HTML 里没有书籍数据，则在对应 webJs 字段写提取脚本，或用 preUpdateJs/formatJs 处理后端数据
 

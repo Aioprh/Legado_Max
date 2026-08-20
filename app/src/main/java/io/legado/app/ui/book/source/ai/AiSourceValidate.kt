@@ -170,14 +170,14 @@ object AiSourceValidate {
     }
 
     /**
-     * 静态预检：扫描书源对象所有规则字符串，找出引用了本版 Legado 中不存在的 bookId 变量
+     * 静态预检：扫描书源对象所有规则字符串，找出引用了本版 Legado 中不存在的 bookId/chapterId 变量
      * （Book 无 bookId 字段，直接引用会报 ReferenceError: bookId 未定义）。
      * 排除 $.bookId 等 JSONPath 属性访问（前导为 $ 或 . 时不命中）。
      * @return 违规的 (规则位置, 规则内容) 列表
      */
     fun findUnsupportedBookId(src: JsonObject): List<Pair<String, String>> {
         val hits = mutableListOf<Pair<String, String>>()
-        val refPattern = Regex("""(?<![$.])\bbookId\b""")
+        val refPattern = Regex("""(?<![$.])\b(?:bookId|chapterId)\b""")
         fun scan(sec: String, obj: JsonObject) {
             obj.entrySet().forEach { (k, v) ->
                 if (v.isJsonPrimitive && v.asJsonPrimitive.isString) {

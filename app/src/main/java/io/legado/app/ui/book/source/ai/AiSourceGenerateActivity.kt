@@ -161,6 +161,7 @@ class AiSourceGenerateActivity :
             endpoints.firstOrNull { it.method == "POST" }?.let {
                 appendLine("（注意：${it.type} 接口为 POST 请求，searchUrl 需写成 \"/api/xxx,{method:POST,body:...}\" 形式）")
             }
+            appendLine("（占位符说明：URL 中的 {book_id} / {chapter_id} 表示需要从搜索/详情 JSON 中提取的真实 ID。本版 Legado【没有】bookId/chapterId 变量，禁止写成 {{bookId}}；正确做法：ruleSearch.bookUrl 用 JSONPath（如 {{$.book_id}}）或正则拼出含 ID 的完整详情 URL，再基于该 URL 解析详情/目录/正文）")
         }
         content?.sampleSearch?.let { ss ->
             appendLine()
