@@ -13,6 +13,8 @@
 |---|---|---|
 | [coroutine-rules.md](./coroutine-rules.md) | 自研链式协程包装 `Coroutine<T>` / `execute` 的用法与红线、Flow 使用位置、Compose 场景红线、反面示例、测试 | **写任何异步代码前**。核心内容：`execute` 回调时序坑、禁止 GlobalScope/runBlocking、View 系 vs Compose 系的 scope 边界 |
 | [repository-rules.md](./repository-rules.md) | Room 数据层三层架构（Entity → DAO → Repository）、Entity 禁止 Active Record、新代码标准写法、迁移策略 | 碰 DB / 新建 Repository 前 |
+| [api-compat-rules.md](./api-compat-rules.md) | minSdk 23 / targetSdk 37 红线、`Build.VERSION.SDK_INT` 分支写法、Desugaring 覆盖边界、依赖 minSdk 红线（禁 overrideLibrary）、16KB 对齐 / Edge-to-Edge / FGS type 等 targetSdk 37 行为收紧 | 调用高版本 API、引入新依赖、发版前必查 |
+| [live-event-bus-rules.md](./live-event-bus-rules.md) | LiveEventBus 全局配置语义（`autoClear(false)` 粘性默认开）、tag 必须走 `EventBus` 常量 + reified 封装、高频事件节流红线、与 Compose `Channel<Event>` 的选型边界 | 跨组件通信 / 新增事件 / View↔Compose 事件选型时 |
 
 ### Compose UI 层（`compose/` 子目录）
 
@@ -42,10 +44,10 @@
 | 文件存储 / IO（书目录、缓存目录） | ❌ 缺：原子写、IO 线程、文件句柄释放 |
 | 内嵌服务（NanoHTTPD / WebDAV） | ❌ 缺：端口、鉴权、安全边界 |
 | View / Compose 混用 | ⚠️ 部分覆盖（migration-review.md 只讲迁移方向，不讲长期混用边界） |
-| 事件双轨（LiveEventBus vs `Channel<Event>`） | ⚠️ 部分覆盖（coroutine-rules.md §3 提及 LiveEventBus 是既有约定，但选型边界未定） |
+| 事件双轨（LiveEventBus vs `Channel<Event>`） | ✅ live-event-bus-rules.md（§3 双轨选型裁决规则） |
 | 后台任务 / 服务（WorkManager / ForegroundService） | ⚠️ 仅一句话（coroutine-rules.md 规则 3），无独立规范 |
 | 日志与 PII 脱敏 | ❌ 缺 |
-| API 兼容 / minSdk 23 红线 | ❌ 缺 |
+| API 兼容 / minSdk 23 红线 | ✅ api-compat-rules.md |
 
 ## 三、跨文件规则速查（高频冲突点，已对齐）
 
@@ -57,6 +59,8 @@
 | 一次性事件放 StateFlow 吗？ | 不放。View 侧走 `LiveEventBus`，Compose 侧走 `Channel<Event>`（UNLIMITED / CONFLATED 分档） | coroutine-rules.md §3 + state-events.md §4.1 |
 | 事件消费侧绑定到哪？ | `repeatOnLifecycle(STARTED)`，禁止 Application scope 常驻 collect | state-events.md §4.4 |
 | Dialog 注册成导航路由吗？ | 不注册。UiState 条件渲染 + 显式 `OnBackPressedCallback` | state-events.md §4.5 |
+| 页面内事件外溢成全局事件吗？ | 不外溢。单页面产生+消费 → `Channel<Event>`；跨组件（Service/JS/Receiver 发）→ LiveEventBus。Compose ViewModel 禁止 `postEvent`，Compose Screen 禁止订阅 LiveEventBus | live-event-bus-rules.md §3 |
+| 高版本 API 怎么调？ | `Build.VERSION.SDK_INT` 分支（低版本必须有兜底/降级/报错三选一）；禁止 `@SuppressLint("NewApi")` 绕 lint、禁止新增 `tools:overrideLibrary` | api-compat-rules.md §2/§4 |
 
 ## 四、维护约定
 
@@ -65,5 +69,5 @@
 3. 规则之间出现矛盾时，以本文件 §三速查表为最终裁决；速查表没覆盖的，提交 PR 讨论后先写进速查表再改规则。
 4. 补全优先级（缺项按此顺序补）：
    - **P0**（线上事故高发区，优先）：JS 引擎、网络层、全局单例、文件存储
-   - **P1**：内嵌服务安全、View/Compose 长期混用边界、事件双轨选型
-   - **P2**：后台任务服务、日志与 PII、API 兼容
+    - **P1**：内嵌服务安全、View/Compose 长期混用边界
+    - **P2**：后台任务服务、日志与 PII

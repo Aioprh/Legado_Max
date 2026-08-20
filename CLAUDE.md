@@ -115,11 +115,14 @@ Compose 规范拆分为 8 个文件，位于 `docs/project-rules/compose/`：
 - [`compose/testing.md`](docs/project-rules/compose/testing.md) — 测试分层、runTest + Turbine 模板、CI 接入
 - [`compose/migration-review.md`](docs/project-rules/compose/migration-review.md) — 老代码迁移三阶段、Review Checklist（CI 硬卡 + 人工项）、典型违规示例
 
-## 协程规范（必读）
+## 项目级规范（必读）
 
-本项目使用自研链式协程包装（`BaseViewModel.execute` → `help/coroutine/Coroutine`）。
-使用协程前必读 [`docs/project-rules/coroutine-rules.md`](docs/project-rules/coroutine-rules.md)，其中包含 `execute` 链的时序坑、Scope 规则、Flow 位置与反面示例。
-数据层（Repository）规范见 [`docs/project-rules/repository-rules.md`](docs/project-rules/repository-rules.md)，新增数据访问逻辑必须遵循。
+项目级强制规范库位于 `docs/project-rules/`，索引与领域覆盖矩阵见 [`docs/project-rules/README.md`](docs/project-rules/README.md)。写代码前先按"什么时候必须读"对照索引，规范与实现冲突时以源码为准并回头修规范。
+
+- **协程**：本项目使用自研链式协程包装（`BaseViewModel.execute` → `help/coroutine/Coroutine`）。使用协程前必读 [`docs/project-rules/coroutine-rules.md`](docs/project-rules/coroutine-rules.md)，其中包含 `execute` 链的时序坑、Scope 规则、Flow 位置与反面示例。
+- **数据层（Repository）**：[`docs/project-rules/repository-rules.md`](docs/project-rules/repository-rules.md)，新增数据访问逻辑必须遵循。
+- **API 兼容**：[`docs/project-rules/api-compat-rules.md`](docs/project-rules/api-compat-rules.md)。调用高于 minSdk 23 的 API、引入新依赖、发版前必读（SDK 分支写法、desugaring 边界、16KB 对齐等 targetSdk 37 红线）。
+- **事件总线**：[`docs/project-rules/live-event-bus-rules.md`](docs/project-rules/live-event-bus-rules.md)。新增跨组件事件、在 LiveEventBus 与 Compose `Channel<Event>` 之间选型时必读。
 
 ## Coding Conventions
 
