@@ -15,7 +15,9 @@ import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.putFloat
 import io.legado.app.utils.putInt
 import io.legado.app.utils.putString
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.MediaType.Companion.toMediaType
@@ -221,6 +223,44 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     }
 
     /**
+     * 抓取指定 URL 的真实响应体（截断），供自动修复反馈使用。
+     * 验证失败的步骤只回传「解析为空/失败」时，模型看不到接口实际结构只能盲猜；
+     * 附带真实返回（JSON/HTML）后，模型才能写出正确的选择器 / JSONPath。
+     * @return 形如 "真实返回（JSON，前 N 字符）：\n---\n{snippet}\n---" 的片段，抓取失败返回 null
+     */
+    private suspend fun fetchStepSample(url: String, maxChars: Int = 8000): String? {
+        if (url.isBlank() || !url.startsWith("http://") && !url.startsWith("https://")) return null
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val request = Request.Builder()
+                    .url(url)
+                    .header(
+                        "User-Agent",
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    )
+                    .build()
+                okHttpClient.newCall(request).execute().use { resp ->
+                    if (!resp.isSuccessful) return@use null
+                    val text = resp.body?.string().orEmpty()
+                    if (text.isBlank()) return@use null
+                    val truncated = if (text.length > maxChars) {
+                        text.substring(0, maxChars) + "\n...(已截断)"
+                    } else {
+                        text
+                    }
+                    val trim = text.trimStart()
+                    val type = when {
+                        trim.startsWith("{") || trim.startsWith("[") -> "JSON"
+                        trim.startsWith("<") -> "HTML"
+                        else -> "文本"
+                    }
+                    "真实返回（$type，前 ${truncated.length} 字符）：\n----------\n$truncated\n----------"
+                }
+            }.getOrNull()
+        }
+    }
+
+    /**
      * 以挂起方式执行 HTTP 请求，协程取消时同步取消底层 OkHttp 调用
      */
     private suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
@@ -282,6 +322,11 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                 appendLine("3. 若站点是 JSON API / SPA（返回 JSON 而非 HTML），所有规则一律用 JSONPath：bookList=$.xxx、字段=$.xxx，不要用 HTML 选择器。")
                 appendLine("4. 核心规则字段（ruleSearch.bookList/name/bookUrl、ruleBookInfo.name/tocUrl、ruleToc.chapterList/chapterName/chapterUrl、ruleContent.content）必须有值且非空。")
                 appendLine("5. 若解析出的 URL（详情/目录/正文）中出现形如 book_id= 的空参数，说明参数取值为空，必须改用 {{book.bookUrl}} 提取 ID 或用 JSONPath/正则补全，禁止输出带空参数的 URL。")
+                appendLine("6. 若报错中附带了某接口的「真实返回」片段，必须依据该真实结构重写规则：返回 JSON 用 JSONPath（注意完整层级，勿漏中间层），返回 HTML 用 CSS 选择器。")
+                appendLine("7. 若目录返回 JSON 且章节对象无完整 URL、只有内容 ID 字段（如 C/Cid/ChapterId/ContentId 等），chapterUrl 必须用 @js: 规则拼出完整正文 URL。示例：目录返回 {\"Data\":{\"Chapters\":[{\"N\":\"第一章\",\"C\":123}]}} 时：")
+                appendLine("   chapterList = $.Data.Chapters")
+                appendLine("   chapterName = $.Data.Chapters.*.N")
+                appendLine("   chapterUrl  = @js:'https://host/content.php?book_id='+book.bookUrl.match(/book_id=(\\d+)/)[1]+'&chapter_id={{$.C}}'")
                 appendLine()
                 appendLine("【上一次生成的书源 JSON】")
                 appendLine(current)
@@ -329,9 +374,15 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             sb.appendLine("① 搜索")
             val list = WebBook.searchBookAwait(bookSource, keyword, 1)
             if (list.isEmpty()) {
+                val searchUrl = bookSource.searchUrl
+                    .replace("{{key}}", keyword)
+                    .replace(Regex("""\{\{[^}]*\}\}"""), "")
+                val searchSample = fetchStepSample(searchUrl)
                 return@runCatching VerifyResult(
                     false,
-                    sb.append("搜索返回空列表，ruleSearch.bookList 或 name 规则可能匹配不上").toString()
+                    sb.append("搜索返回空列表，ruleSearch.bookList 或 name 规则可能匹配不上")
+                        .append(if (searchSample != null) "\n$searchSample" else "\n（搜索接口「$searchUrl」响应抓取失败，请检查 searchUrl 是否正确）")
+                        .toString()
                 )
             }
             val first = list.first()
@@ -343,9 +394,13 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             val infoBook = runCatching {
                 WebBook.getBookInfoAwait(bookSource, book, canReName = false)
             }.getOrElse {
+                val detailSample = fetchStepSample(book.bookUrl)
                 return@runCatching VerifyResult(
                     false,
-                    sb.append("详情解析失败：${it.message ?: it.javaClass.simpleName}").toString()
+                    sb.append("详情解析失败：${it.message ?: it.javaClass.simpleName}")
+                        .append(if (detailSample != null) "\n$detailSample" else "\n（详情接口「${book.bookUrl}」响应抓取失败，请检查 ruleSearch.bookUrl 是否正确）")
+                        .append("\n请根据详情接口的真实返回结构重写 ruleBookInfo 相关规则：JSON 用 JSONPath（注意完整层级），HTML 用 CSS 选择器。")
+                        .toString()
                 )
             }
             sb.appendLine("✓ 详情解析成功，书名「${infoBook.name}」，目录地址「${infoBook.tocUrl}」")
@@ -368,15 +423,23 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             val chapters = runCatching {
                 WebBook.getChapterListAwait(bookSource, infoBook, runPerJs = true).getOrThrow()
             }.getOrElse {
+                val tocSample = fetchStepSample(infoBook.tocUrl)
                 return@runCatching VerifyResult(
                     false,
-                    sb.append("目录解析失败：${it.message ?: it.javaClass.simpleName}").toString()
+                    sb.append("目录解析失败：${it.message ?: it.javaClass.simpleName}")
+                        .append(if (tocSample != null) "\n$tocSample" else "\n（目录接口「${infoBook.tocUrl}」响应抓取失败，请检查目录 URL 是否正确）")
+                        .toString()
                 )
             }
             if (chapters.isEmpty()) {
+                val tocSample = fetchStepSample(infoBook.tocUrl)
                 return@runCatching VerifyResult(
                     false,
-                    sb.append("目录解析为空，ruleToc.chapterList/chapterName/chapterUrl 可能匹配不上").toString()
+                    sb.append("目录解析为空，ruleToc.chapterList/chapterName/chapterUrl 匹配不上")
+                        .append(if (tocSample != null) "\n$tocSample" else "\n（目录接口「${infoBook.tocUrl}」响应抓取失败，请检查目录 URL 是否正确）")
+                        .append("\n请根据目录接口的真实返回结构重写 ruleToc：返回 JSON 用 JSONPath（注意完整层级，如 $.Data.Chapters，勿漏中间层），返回 HTML 用 CSS 选择器。")
+                        .append("\n若章节对象无完整 URL、只有内容 ID 字段（如 C/Cid/ChapterId/ContentId 等），chapterUrl 必须用 @js: 规则基于 book.bookUrl 中的 book_id 与章节内容 ID（如 {{$.C}}）拼出完整正文 URL。")
+                        .toString()
                 )
             }
             val chapter = chapters.firstOrNull { !it.isVolume } ?: chapters.first()
@@ -387,15 +450,23 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             val content = runCatching {
                 WebBook.getContentAwait(bookSource, infoBook, chapter, needSave = false)
             }.getOrElse {
+                val contentSample = fetchStepSample(chapter.url)
                 return@runCatching VerifyResult(
                     false,
-                    sb.append("正文解析失败：${it.message ?: it.javaClass.simpleName}").toString()
+                    sb.append("正文解析失败：${it.message ?: it.javaClass.simpleName}")
+                        .append(if (contentSample != null) "\n$contentSample" else "\n（正文接口「${chapter.url}」响应抓取失败，请检查 ruleToc.chapterUrl 是否正确）")
+                        .append("\n请根据正文接口的真实返回结构重写 ruleContent.content：JSON 用 JSONPath（如 $.Content），HTML 用 CSS 选择器。")
+                        .toString()
                 )
             }
             if (content.isBlank()) {
+                val contentSample = fetchStepSample(chapter.url)
                 return@runCatching VerifyResult(
                     false,
-                    sb.append("正文解析为空，ruleContent.content 可能匹配不上").toString()
+                    sb.append("正文解析为空，ruleContent.content 可能匹配不上")
+                        .append(if (contentSample != null) "\n$contentSample" else "\n（正文接口「${chapter.url}」响应抓取失败，请检查 ruleToc.chapterUrl 是否正确）")
+                        .append("\n请根据正文接口的真实返回结构重写 ruleContent.content：JSON 用 JSONPath（如 $.Content），HTML 用 CSS 选择器。")
+                        .toString()
                 )
             }
             sb.appendLine("✓ 正文解析成功，${content.length} 字（首章「${chapter.title}」）")
@@ -446,7 +517,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 
         private const val DEFAULT_TEMPERATURE = 0.3f
         private const val DEFAULT_HTML_LIMIT = 40_000
-        private const val DEFAULT_MAX_ROUNDS = 3
+        private const val DEFAULT_MAX_ROUNDS = 5
 
         /** 剥离 markdown 代码块，提取 JSON 片段 */
         fun stripCodeFence(text: String): String {
@@ -567,6 +638,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 - JSONPath（返回 JSON 的接口/内嵌 JSON 数据）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL；目录/正文接口若 URL 模板缺参，用 {{book.bookUrl}} / {{book.tocUrl}} 等已有 book 对象属性拼接，或在 bookUrl 规则中用 JSONPath/正则拼出完整 URL
 - 内联 JS：{{表达式}} 嵌入 JS 片段；@get:{变量名} 读全局变量；@put:{变量名} 存全局变量
 - 【重要】本 App 的 JS 规则中没有 bookId/chapterId 变量（Book 无 bookId 字段），禁止使用 {{bookId}}、{{chapterId}} 或 JS 中的 bookId，否则报 ReferenceError。ID 只能从搜索结果 JSON/字段里取（JSONPath {{$.xxx}} 拼进 URL），或直接用 {{book.bookUrl}} 提取；可用正则 ##...## 从 bookUrl 中抠出 ID。
+- 若目录返回 JSON 且章节对象无完整 URL、只有内容 ID 字段（如 C/Cid/ChapterId/ContentId 等），chapterUrl 必须用 @js: 拼出完整正文 URL，例如 @js:'https://host/content.php?book_id='+book.bookUrl.match(/book_id=(\d+)/)[1]+'&chapter_id={{$.C}}'（{{$.C}} 表示取当前章节元素的 C 字段值）。
 - 正则替换：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"；正则里 \d、\s 等须写双反斜杠 \\d、\\s
 - 整页 JS 渲染：若页面数据完全由 JS 动态生成、HTML 里没有书籍数据，则在对应 webJs 字段写提取脚本，或用 preUpdateJs/formatJs 处理后端数据
 
