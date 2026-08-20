@@ -102,18 +102,7 @@ The project has three library modules in `modules/`:
 
 ### Compose Usage
 
-Jetpack Compose (Material3, BOM 2025.04.01) is used for newer UI surfaces (e.g. debug log panel). Traditional View system (ViewBinding + XML layouts) is used for most existing screens. Both coexist — ComposeViews can be overlaid on View-based Activities.
-
-
-### UI 架构规范（必须遵守）
-
-`io.legado.app.ui` 包下所有 Compose 相关代码，必须遵循 `docs/project-rules/UI-ARCHITECTURE.md`。写任何 UI 代码前先读该文档，核心要点：
-
-- 目录结构：新 Compose 通用组件进 `ui/widget/components/`，禁止在 `ui/widget/` 根目录（XML 存量混存区）继续堆放；Feature 私有组件归集到 Feature 内 `components/`，禁止跨 Feature 引用
-- 命名：`*Screen.kt` / `*ViewModel.kt` / `*Repository.kt` / `*UiState.kt`；禁止 `*View.kt` 用于 Compose 代码，禁止 `*Components.kt` 大杂烩文件
-- Composable API：`modifier` 永远是第一个参数；回调用 `onXxx` DSL 命名
-- 禁止在 Screen 文件内定义 `private fun` 形式的可复用组件
-- 老代码迁移期允许 `@Suppress("LegadoUiViolation")` + TODO 过渡，违规项见该文档 §14 Code Review Checklist（机器硬卡项 CI 会直接失败）
+Jetpack Compose (Material3, BOM 2026.08.00) is used for newer UI surfaces (e.g. debug log panel). Traditional View system (ViewBinding + XML layouts) is used for most existing screens. Both coexist — ComposeViews can be overlaid on View-based Activities.
 
 ## Coding Conventions
 
@@ -137,11 +126,12 @@ Jetpack Compose (Material3, BOM 2025.04.01) is used for newer UI surfaces (e.g. 
 - 测试覆盖率要求：核心模块 ≥ 80%
 - Mock 框架：Mockk
 - 协程测试：kotlinx-coroutines-test
+- LeakCanary: `debugImplementation` only — memory leak detection in debug builds.
 
 
 ## Version Catalog
 
-All dependency versions are in `gradle/libs.versions.toml`. In `build.gradle.kts` or `build.gradle`, reference them as `libs.xxx`. Major versions: OkHttp 5.3.2, Room 2.7.1, Coroutines 1.10.2, Compose BOM 2025.04.01.
+All dependency versions are in `gradle/libs.versions.toml`. In `build.gradle.kts` or `build.gradle`, reference them as `libs.xxx`. Major versions: Kotlin 2.3.10, Hilt 2.59, OkHttp 5.3.2, Room 2.8.4, Coroutines 1.10.2, Compose BOM 2026.08.00.
 
 ## Build Variants
 
@@ -149,6 +139,9 @@ Three product flavors in dimension "app":
 - `appLegacy` — same package name as original Legado (`io.legado.app`)
 - `appMax` — coexistence package (`io.legado.app.yuedu`), the primary development target
 - `appS` — another coexistence package (`io.legado.app.yuedu.a`)
+
+SDK levels: minSdk 23, targetSdk 37, compileSdk 37, JVM 17 toolchain. coreLibraryDesugaring is enabled — JVM 17 syntax (records, text blocks, List.of) works down to API 23.
+Both build types set an applicationIdSuffix (`.debug` / `.release`), so the installed package is e.g. `io.legado.app.yuedu.debug`, not the bare flavor id.
 
 Release builds: minifyEnabled + shrinkResources + ProGuard (`app/proguard-rules.pro`, `app/cronet-proguard-rules.pro`). Debug builds: no minification.
 
@@ -191,3 +184,9 @@ GitHub Actions in `.github/workflows/`:
 当任务匹配某个 skill 时，使用 `Skill` 工具加载对应 skill 并严格遵循其流程。绝不要用 Read 工具读取 SKILL.md 文件。
 
 当任务明确匹配某个 skill 的应用场景时，应调用该 skill 检查。
+
+## AI 探索项目的方式
+1. 先看本文件了解模块结构
+2. 定位目标模块，读项目模块的 build.gradle 确认依赖
+3. 找该模块的对外接口（api/ 目录或 interface），而不是直接钻进实现
+4. 找一个同类型的现有实现作为参考模板，新代码保持风格一致
