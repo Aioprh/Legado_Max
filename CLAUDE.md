@@ -104,6 +104,17 @@ The project has three library modules in `modules/`:
 
 Jetpack Compose (Material3, BOM 2026.08.00) is used for newer UI surfaces (e.g. debug log panel). Traditional View system (ViewBinding + XML layouts) is used for most existing screens. Both coexist — ComposeViews can be overlaid on View-based Activities.
 
+Compose 规范拆分为 8 个文件，位于 `docs/project-rules/compose/`：
+
+- [`compose/structure.md`](docs/project-rules/compose/structure.md) — 目录结构、命名、API 契约、通用脚手架
+- [`compose/state-events.md`](docs/project-rules/compose/state-events.md) — UiState / Event 流、Dialog/BottomSheet 渲染
+- [`compose/theme-styles.md`](docs/project-rules/compose/theme-styles.md) — 颜色、尺寸、图片加载、字体、字符串、动画
+- [`compose/performance.md`](docs/project-rules/compose/performance.md) — Recomposition 防范、副作用、图片内存
+- [`compose/navigation-preview.md`](docs/project-rules/compose/navigation-preview.md) — 导航规范、Preview 规范
+- [`compose/accessibility.md`](docs/project-rules/compose/accessibility.md) — 无障碍（contentDescription / semantics / 触控目标）
+- [`compose/testing.md`](docs/project-rules/compose/testing.md) — 测试分层、runTest + Turbine 模板、CI 接入
+- [`compose/migration-review.md`](docs/project-rules/compose/migration-review.md) — 老代码迁移三阶段、Review Checklist（CI 硬卡 + 人工项）、典型违规示例
+
 ## 协程规范（必读）
 
 本项目使用自研链式协程包装（`BaseViewModel.execute` → `help/coroutine/Coroutine`）。
