@@ -106,8 +106,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     /**
      * 调用 LLM 生成书源 JSON
      * 成功返回剥离 markdown 代码块后的 JSON 文本
-     * 部分 OpenAI 兼容服务/推理模型会拒绝 temperature/max_tokens 参数，
-     * 首次失败时自动去掉这些参数重试一次。
+     * 部分 OpenAI 兼容服务/推理模型会拒绝 temperature 参数，首次失败时自动去掉该参数重试一次。
      */
     suspend fun generate(
         baseUrl: String,
@@ -140,11 +139,10 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             // 参数被拒可能是 HTTP 4xx，也可能是 200+{"error":...}（见 requestCompletion），统一识别后去参重试
             val paramRejected = code == 400 || code == 422 ||
                 msg.contains("temperature", ignoreCase = true) ||
-                msg.contains("max_tokens", ignoreCase = true) ||
                 msg.contains("not support", ignoreCase = true) ||
                 msg.contains("unsupported", ignoreCase = true)
             if (paramRejected) {
-                // 可能是参数不受支持，去掉 temperature/max_tokens 后重试一次
+                // 可能是 temperature 等参数不受支持，去掉后重试一次
                 requestCompletion(baseUrl, apiKey, model, messages, withParams = false)
             } else {
                 throw e
@@ -166,7 +164,6 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         )
         if (withParams) {
             bodyMap["temperature"] = temperature
-            bodyMap["max_tokens"] = MAX_TOKENS
         }
         val body = GSON.toJson(bodyMap)
         val request = Request.Builder()
@@ -190,16 +187,13 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                 ?.get("message")?.takeIf { it.isJsonObject }?.asJsonObject
             val content = message?.let { extractMessageContent(it) } ?: ""
             if (content.isBlank()) {
-                // 推理模型（deepseek-reasoner / deepseek-v4-flash 等）：content 可能为 "" 且思考在 reasoning_content，
-                // 即 max_tokens 输出预算被思考过程耗尽、最终正文未生成。
-                // 首次带参数调用时抛含 max_tokens 的错误触发去参重试；去参后仍为空则给出明确提示。
+                // 推理模型（deepseek-reasoner / deepseek-v4-flash 等）未生成最终正文：
+                // 正常响应中 content 应为书源 JSON，若为空且思考在 reasoning_content，
+                // 说明模型思考后未产出结果，给出明确提示而非把思维链当结果。
                 val reasoning = message?.get("reasoning_content")
                     ?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
                 if (reasoning.isNotBlank()) {
-                    if (withParams) {
-                        throw RuntimeException("模型未返回内容: 推理模型思考内容过长(未生成最终正文)，已自动去掉 max_tokens 参数重试")
-                    }
-                    throw RuntimeException("模型未返回内容: 推理模型思考过长，去掉 max_tokens 后仍未生成最终正文，请更换输出上限更大的模型或调大 max_tokens")
+                    throw RuntimeException("模型未返回内容: 推理模型未生成最终正文（思考后 content 为空），请重试或更换模型")
                 }
                 throw RuntimeException("模型未返回内容: ${text.take(200)}")
             }
@@ -211,7 +205,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
      * 从 choices[0].message 提取正文：
      * content 为字符串直接取；content 为内容块数组（[{type,text}]）时拼接 text；
      * content 为 null/缺失/空串时返回空（由调用方判断：若同时存在 reasoning_content，
-     * 说明是推理模型思考耗尽、最终正文未生成，应去掉 max_tokens 重试而非使用思维链）。
+     * 说明是推理模型未生成最终正文，应给出提示而非使用思维链）。
      */
     private fun extractMessageContent(message: JsonObject): String {
         val content = message.get("content")
@@ -421,9 +415,6 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         private const val DEFAULT_TEMPERATURE = 0.3f
         private const val DEFAULT_HTML_LIMIT = 40_000
         private const val DEFAULT_MAX_ROUNDS = 3
-
-        /** 生成书源 JSON 的最大 token 数，避免长书源被截断 */
-        private const val MAX_TOKENS = 8192
 
         /** 剥离 markdown 代码块，提取 JSON 片段 */
         fun stripCodeFence(text: String): String {
