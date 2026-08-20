@@ -2,6 +2,7 @@ package io.legado.app.ui.book.source.ai
 
 import android.app.Application
 import cn.hutool.crypto.symmetric.AES
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import io.legado.app.api.controller.AiSourceController
 import io.legado.app.base.BaseViewModel
@@ -134,9 +135,16 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         return try {
             requestCompletion(baseUrl, apiKey, model, messages, withParams = true)
         } catch (e: Exception) {
-            val code = (e.message ?: "").substringAfter("HTTP ", "").substringBefore(":").toIntOrNull()
-            if (code == 400 || code == 422) {
-                // 可能是参数不受支持，去掉 temperature/max_tokens 后重试
+            val msg = e.message ?: ""
+            val code = msg.substringAfter("HTTP ", "").substringBefore(":").toIntOrNull()
+            // 参数被拒可能是 HTTP 4xx，也可能是 200+{"error":...}（见 requestCompletion），统一识别后去参重试
+            val paramRejected = code == 400 || code == 422 ||
+                msg.contains("temperature", ignoreCase = true) ||
+                msg.contains("max_tokens", ignoreCase = true) ||
+                msg.contains("not support", ignoreCase = true) ||
+                msg.contains("unsupported", ignoreCase = true)
+            if (paramRejected) {
+                // 可能是参数不受支持，去掉 temperature/max_tokens 后重试一次
                 requestCompletion(baseUrl, apiKey, model, messages, withParams = false)
             } else {
                 throw e
@@ -171,15 +179,38 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             if (!response.isSuccessful) {
                 throw RuntimeException("HTTP ${response.code}: ${text.take(200)}")
             }
-            val content = runCatching {
-                val root = JsonParser.parseString(text).asJsonObject
-                val message = root.getAsJsonArray("choices")?.firstOrNull()?.asJsonObject
-                    ?.getAsJsonObject("message")
-                // 兼容 DeepSeek-R1 等推理模型：正文可能在 reasoning_content
-                message?.get("content")?.asString ?: message?.get("reasoning_content")?.asString ?: ""
-            }.getOrDefault("")
-            if (content.isBlank()) throw RuntimeException("模型未返回内容")
+            // 即使 HTTP 200，部分网关/模型不支持某参数时也会返回 {"error": ...}，需转成异常以触发去参重试
+            val root = runCatching { JsonParser.parseString(text).asJsonObject }.getOrNull()
+            root?.get("error")?.takeIf { it.isJsonObject }?.let { err ->
+                throw RuntimeException("HTTP 200: ${err.asJsonObject.get("message")?.asString ?: text.take(200)}")
+            }
+            // 兼容 content 为字符串 / 内容块数组（[{type,text}]）/ null（回退 reasoning_content）等情况
+            val content = root?.get("choices")?.takeIf { it.isJsonArray }?.asJsonArray
+                ?.firstOrNull()?.takeIf { it.isJsonObject }?.asJsonObject
+                ?.get("message")?.takeIf { it.isJsonObject }?.asJsonObject
+                ?.let { extractMessageContent(it) } ?: ""
+            if (content.isBlank()) throw RuntimeException("模型未返回内容: ${text.take(200)}")
             return stripCodeFence(content)
+        }
+    }
+
+    /**
+     * 从 choices[0].message 稳健提取正文：
+     * content 为字符串直接取；content 为内容块数组（[{type,text}]）时拼接 text；
+     * content 为 null/缺失时回退 reasoning_content（兼容 DeepSeek-R1 等推理模型）。
+     */
+    private fun extractMessageContent(message: JsonObject): String {
+        val content = message.get("content")
+        return when {
+            content == null || content.isJsonNull ->
+                message.get("reasoning_content")?.asString ?: ""
+            content.isJsonPrimitive ->
+                content.asString
+            content.isJsonArray ->
+                content.asJsonArray.joinToString("") { el ->
+                    if (el.isJsonObject) el.asJsonObject.get("text")?.asString ?: "" else ""
+                }
+            else -> ""
         }
     }
 
