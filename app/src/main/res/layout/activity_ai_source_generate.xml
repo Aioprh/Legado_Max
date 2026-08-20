@@ -17,7 +17,8 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:overScrollMode="never">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -25,15 +26,17 @@
             android:orientation="vertical"
             android:paddingLeft="16dp"
             android:paddingRight="16dp"
+            android:paddingTop="4dp"
             android:paddingBottom="24dp">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingTop="12dp"
-                android:paddingBottom="4dp"
+                android:paddingTop="16dp"
+                android:paddingBottom="8dp"
                 android:text="@string/ai_config_title"
-                android:textSize="14sp"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <io.legado.app.ui.widget.text.TextInputLayout
@@ -60,28 +63,29 @@
                     android:inputType="textPassword" />
             </io.legado.app.ui.widget.text.TextInputLayout>
 
-            <io.legado.app.ui.widget.text.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/ai_model_hint">
-
-                <io.legado.app.lib.theme.view.ThemeEditText
-                    android:id="@+id/et_model"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content" />
-            </io.legado.app.ui.widget.text.TextInputLayout>
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
+                <io.legado.app.ui.widget.text.TextInputLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:hint="@string/ai_model_hint">
+
+                    <io.legado.app.lib.theme.view.ThemeEditText
+                        android:id="@+id/et_model"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </io.legado.app.ui.widget.text.TextInputLayout>
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/ai_model_preset_hint"
-                    tools:ignore="RtlHardcoded" />
+                    android:text="@string/ai_model_preset_hint" />
 
                 <androidx.appcompat.widget.AppCompatSpinner
                     android:id="@+id/sp_model_preset"
@@ -92,13 +96,20 @@
                     tools:ignore="TouchTargetSizeCheck" />
             </LinearLayout>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:background="?android:attr/listDivider" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingTop="12dp"
-                android:paddingBottom="4dp"
+                android:layout_marginTop="8dp"
+                android:paddingBottom="8dp"
                 android:text="@string/ai_input_title"
-                android:textSize="14sp"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <io.legado.app.ui.widget.text.TextInputLayout
@@ -142,14 +153,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingTop="8dp">
+                android:orientation="horizontal">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/book_type"
-                    tools:ignore="RtlHardcoded" />
+                    android:text="@string/book_type" />
 
                 <androidx.appcompat.widget.AppCompatSpinner
                     android:id="@+id/sp_type"
@@ -160,96 +169,48 @@
                     tools:ignore="TouchTargetSizeCheck" />
             </LinearLayout>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:background="?android:attr/listDivider" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingTop="12dp"
-                android:paddingBottom="4dp"
+                android:layout_marginTop="8dp"
+                android:paddingBottom="8dp"
                 android:text="@string/ai_generate_title"
-                android:textSize="14sp"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingTop="4dp">
+                android:orientation="horizontal">
 
                 <Button
                     android:id="@+id/btn_fetch_html"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginRight="8dp"
-                    android:text="@string/ai_fetch_html"
-                    tools:ignore="TouchTargetSizeCheck" />
+                    android:layout_marginEnd="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="46dp"
+                    android:text="@string/ai_fetch_html" />
 
                 <Button
                     android:id="@+id/btn_generate"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/ai_generate"
-                    tools:ignore="TouchTargetSizeCheck" />
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="46dp"
+                    android:text="@string/ai_generate" />
             </LinearLayout>
-
-            <TextView
-                android:id="@+id/tv_status"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingTop="6dp"
-                android:textSize="12sp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingTop="8dp">
-
-                <Button
-                    android:id="@+id/btn_validate"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginRight="8dp"
-                    android:text="@string/ai_validate"
-                    tools:ignore="TouchTargetSizeCheck" />
-
-                <Button
-                    android:id="@+id/btn_auto_fix"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginRight="8dp"
-                    android:text="@string/ai_auto_fix"
-                    tools:ignore="TouchTargetSizeCheck" />
-
-                <Button
-                    android:id="@+id/btn_import"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginRight="8dp"
-                    android:text="@string/ai_import_editor"
-                    tools:ignore="TouchTargetSizeCheck" />
-
-                <Button
-                    android:id="@+id/btn_clear"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/clear"
-                    tools:ignore="TouchTargetSizeCheck" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/tv_html_hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingTop="12dp"
-                android:paddingBottom="4dp"
-                android:visibility="gone"
-                android:textSize="12sp" />
 
             <io.legado.app.ui.widget.text.TextInputLayout
                 android:layout_width="match_parent"
@@ -270,7 +231,6 @@
             <io.legado.app.ui.widget.text.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingTop="8dp"
                 android:hint="@string/ai_result_hint">
 
                 <io.legado.app.lib.theme.view.ThemeEditText
@@ -283,6 +243,77 @@
                     android:saveEnabled="false"
                     android:scrollbars="vertical" />
             </io.legado.app.ui.widget.text.TextInputLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_validate"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="46dp"
+                    android:text="@string/ai_validate" />
+
+                <Button
+                    android:id="@+id/btn_auto_fix"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="46dp"
+                    android:text="@string/ai_auto_fix" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_import"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="2"
+                    android:layout_marginEnd="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="46dp"
+                    android:text="@string/ai_import_editor" />
+
+                <Button
+                    android:id="@+id/btn_clear"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minHeight="46dp"
+                    android:text="@string/ai_clear" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="8dp"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tv_html_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="12dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone"
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/tv_checks"
