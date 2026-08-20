@@ -151,13 +151,14 @@ GitHub Actions in `.github/workflows/`:
 - `test.yml` — builds all 3 release flavors on push to main; auto-creates GitHub/Gitee releases with changelog from `updateLog.md`
 - `web.yml` — builds the Vue frontend on changes to `modules/web/` and commits the output to `app/src/main/assets/web/vue/`
 - `cronet.yml` — updates Cronet native libraries
+- `lint.yaml` — runs lint in CI; treat `./gradlew lint` passing as part of "done"
 
 ## Conventions
 
 - Annotation processing uses KSP, not kapt.
 - `NonTransitiveRClass` is enabled — reference only directly used resources.
 - Room schema exports to `$projectDir/schemas` for migration verification.
-- Disabled build features: aidl, buildconfig, renderscript, resvalues, shaders.
+- Disabled build features: aidl, renderscript, resvalues, shaders. buildConfig is explicitly enabled (Cronet version fields); do not assume BuildConfig is absent.
 - Architecture documentation in `Structure/` directory (Chinese) covers app startup flow, database schema, reading flow, event bus, and module dependencies.
 
 
