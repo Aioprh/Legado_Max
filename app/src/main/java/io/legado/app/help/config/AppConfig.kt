@@ -945,12 +945,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.audioPlayWakeLock, value)
         }
 
-    var cacheBookUseWakeLock: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.cacheBookWakeLock, true)
-        set(value) {
-            appCtx.putPrefBoolean(PreferKey.cacheBookWakeLock, value)
-        }
-
     var brightnessVwPos: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.brightnessVwPos)
         set(value) {
