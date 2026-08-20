@@ -104,6 +104,12 @@ The project has three library modules in `modules/`:
 
 Jetpack Compose (Material3, BOM 2026.08.00) is used for newer UI surfaces (e.g. debug log panel). Traditional View system (ViewBinding + XML layouts) is used for most existing screens. Both coexist — ComposeViews can be overlaid on View-based Activities.
 
+## 协程规范（必读）
+
+本项目使用自研链式协程包装（`BaseViewModel.execute` → `help/coroutine/Coroutine`）。
+使用协程前必读 [`docs/project-rules/coroutine-rules.md`](docs/project-rules/coroutine-rules.md)，其中包含 `execute` 链的时序坑、Scope 规则、Flow 位置与反面示例。
+数据层（Repository）规范见 [`docs/project-rules/repository-rules.md`](docs/project-rules/repository-rules.md)，新增数据访问逻辑必须遵循。
+
 ## Coding Conventions
 
 - Kotlin 代码风格遵循 Google Android Style Guide
@@ -120,6 +126,7 @@ Jetpack Compose (Material3, BOM 2026.08.00) is used for newer UI surfaces (e.g. 
 - 新增依赖需同步更新版本目录文档
 
 ## Testing Strategy
+
 这个视情况讨论，因为有时开发环境不允许。
 - 单元测试：`app/src/test/`
 - 集成测试：`app/src/androidTest/`
@@ -127,7 +134,6 @@ Jetpack Compose (Material3, BOM 2026.08.00) is used for newer UI surfaces (e.g. 
 - Mock 框架：Mockk
 - 协程测试：kotlinx-coroutines-test
 - LeakCanary: `debugImplementation` only — memory leak detection in debug builds.
-
 
 ## Version Catalog
 
@@ -161,7 +167,6 @@ GitHub Actions in `.github/workflows/`:
 - Disabled build features: aidl, renderscript, resvalues, shaders. buildConfig is explicitly enabled (Cronet version fields); do not assume BuildConfig is absent.
 - Architecture documentation in `Structure/` directory (Chinese) covers app startup flow, database schema, reading flow, event bus, and module dependencies.
 
-
 ## 核心规则
 
 1. **收到任务时，先检查是否有匹配的 skill** — 哪怕只有 1% 的可能性也要检查
@@ -180,7 +185,7 @@ GitHub Actions in `.github/workflows/`:
 
 > **注意**：详细的技能列表和触发逻辑请查阅 `.claude/skills/` 目录，或者直接使用 Skill 工具调用。
 
-## 如何使用
+## Skill 的使用
 
 当任务匹配某个 skill 时，使用 `Skill` 工具加载对应 skill 并严格遵循其流程。绝不要用 Read 工具读取 SKILL.md 文件。
 
