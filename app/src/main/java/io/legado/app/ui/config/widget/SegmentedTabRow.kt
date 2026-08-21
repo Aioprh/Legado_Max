@@ -19,7 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDpStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -66,7 +66,7 @@ fun <T> SegmentedTabRow(
     val onActiveColor = MaterialTheme.colorScheme.primary
     val onInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    var trackWidth by remember { mutableDpStateOf(0.dp) }
+    var trackWidth by remember { mutableStateOf(0.dp) }
     val density = LocalDensity.current
     val clamped = progress.coerceIn(0f, 1f)
     // 滑块中心：progress 0→1 映射到首段中心(1/4)→末段中心(3/4)（n=2 时）
