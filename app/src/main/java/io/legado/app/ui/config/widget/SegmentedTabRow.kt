@@ -12,15 +12,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthPx
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CompositionLocalProvider
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableDpStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -66,7 +66,8 @@ fun <T> SegmentedTabRow(
     val onActiveColor = MaterialTheme.colorScheme.primary
     val onInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    var trackWidthPx by remember { mutableFloatStateOf(0f) }
+    var trackWidth by remember { mutableDpStateOf(0.dp) }
+    val density = LocalDensity.current
     val clamped = progress.coerceIn(0f, 1f)
     // 滑块中心：progress 0→1 映射到首段中心(1/4)→末段中心(3/4)（n=2 时）
     val indicatorCenterFrac = (clamped * (tabs.size - 1) + 0.5f) / tabs.size
@@ -82,16 +83,15 @@ fun <T> SegmentedTabRow(
             .height(48.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(containerColor.copy(alpha = containerAlpha))
-            .onSizeChanged { trackWidthPx = it.width.toFloat() }
+            .onSizeChanged { trackWidth = with(density) { it.width.toDp() } }
     ) {
-        if (trackWidthPx > 0f) {
-            val pillWidthPx = trackWidthPx / tabs.size
-            val offsetPx = trackWidthPx * indicatorCenterFrac - pillWidthPx / 2f
+        if (trackWidth > 0.dp) {
+            val pillWidth = trackWidth / tabs.size
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .widthPx(pillWidthPx)
-                    .offset(x = offsetPx)
+                    .width(pillWidth)
+                    .offset(x = trackWidth * indicatorCenterFrac - pillWidth / 2f)
                     .clip(RoundedCornerShape(24.dp))
                     .background(activeColor.copy(alpha = containerAlpha))
             )
