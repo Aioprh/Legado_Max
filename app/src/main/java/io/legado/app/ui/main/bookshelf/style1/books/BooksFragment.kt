@@ -89,6 +89,22 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         }
     }
 
+    /**
+     * 判断当前 adapter 类型是否与 AppConfig.bookLayout 不匹配。
+     * 当 Fragment view 被销毁后重建（如 ViewPager 切换分组页面）时，
+     * Fragment 实例复用，booksAdapter 保留旧值。如果用户在 view 不可见期间
+     * 切换了布局（如从列表变为紧凑列表），重建时需要检测并重新创建 adapter。
+     */
+    private fun isAdapterLayoutStale(): Boolean {
+        val currentLayout = AppConfig.bookLayout
+        return when (booksAdapter) {
+            is BooksAdapterList -> currentLayout != 0
+            is BooksAdapterList2 -> currentLayout != 1
+            is BooksAdapterGrid -> currentLayout < 2
+            else -> true
+        }
+    }
+
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         arguments?.let {
             position = it.getInt("position", 0)
@@ -98,13 +114,21 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
             onlyUpdateRead = it.getBoolean("onlyUpdateRead", false)
             binding.refreshLayout.isEnabled = enableRefresh
         }
+        // 同步最新的布局配置：Fragment view 被销毁后重建时，
+        // 构造时赋值的 bookLayout 已过期，需在此更新以确保
+        // initRecyclerView 使用最新的布局参数。
+        bookLayout = AppConfig.bookLayout
         initRecyclerView()
         upRecyclerData()
     }
 
     private fun initRecyclerView() {
-        // 初始化适配器
-        if (!this::booksAdapter.isInitialized) {
+        // 初始化适配器；若已初始化但布局类型已变更，则重新创建以匹配最新配置。
+        // 这是 view 被销毁后重建时仍复用旧 Fragment 实例的场景：
+        // booksAdapter 是 lateinit，Fragment 未销毁时其值保留，
+        // 如果用户在 view 不可见期间切换了 bookLayout，
+        // 重建 view 时必须用新 adapter，否则布局不会生效。
+        if (!this::booksAdapter.isInitialized || isAdapterLayoutStale()) {
             booksAdapter = createBooksAdapter()
         }
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
