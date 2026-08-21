@@ -42,6 +42,12 @@ import kotlin.math.roundToInt
  * 配色沿用旧版 [androidx.compose.material3.SingleChoiceSegmentedButtonRow] 实现：
  * 选中 = `lerp(surfaceVariant, primary, 0.25f)` + 自适应透明度，严格跟随应用自定义主色调。
  *
+ * 设计约定（后续修改务必遵守）：
+ * 1. 选中填充必须是「整段填充」，由外层容器 clip 切出外缘圆角、内侧保持直角，
+ *    严禁让滑块自带全圆角而变成悬浮在半段中的小胶囊（椭圆感）。
+ * 2. 分段之间用一条居中竖向分隔线明确边界；每段内容（图标+文字）在各自半段内整体居中，
+ *    不要左起对齐，避免两 Tab 文字视觉不对称。
+ *
  * @param tabs Tab 枚举列表（当前使用场景均为双 Tab，n 段时滑块居中于各分段）
  * @param progress 0f=完全左侧 Tab，1f=完全右侧 Tab，中间值=滑动过程
  * @param onTabClick Tab 点击回调
@@ -92,8 +98,14 @@ fun <T> SegmentedTabRow(
                     .fillMaxHeight()
                     .width(pillWidth)
                     .offset(x = trackWidth * indicatorCenterFrac - pillWidth / 2f)
-                    .clip(RoundedCornerShape(24.dp))
                     .background(activeColor.copy(alpha = containerAlpha))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(1.dp)
+                    .offset(x = trackWidth / 2f - 0.5.dp)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f))
             )
         }
 
@@ -113,7 +125,8 @@ fun <T> SegmentedTabRow(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
                         ) {
                             if (iconContent != null) {
                                 iconContent(tab)
