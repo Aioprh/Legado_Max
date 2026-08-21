@@ -447,6 +447,23 @@ fun ReadRecordScreen(
                     )
                 }
             }
+
+            // Timeline 模式：滚动接近底部时自动加载更多
+            val shouldLoadMore = remember {
+                derivedStateOf {
+                    displayMode == DisplayMode.TIMELINE &&
+                        state.timelineHasMore &&
+                        !state.timelineLoadingMore &&
+                        listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index != null &&
+                        listState.layoutInfo.visibleItemsInfo.lastOrNull()!!.index >=
+                            listState.layoutInfo.totalItemsCount - 5
+                }
+            }
+            LaunchedEffect(shouldLoadMore.value) {
+                if (shouldLoadMore.value) {
+                    viewModel.loadMoreTimelineSessions()
+                }
+            }
         }
     }
 
@@ -613,6 +630,23 @@ private fun LazyListScope.RecordListContent(
                                 }
                             },
                             onDelete = { onConfirmDelete { viewModel.deleteSession(session) } }
+                        )
+                    }
+                }
+            }
+            // 分页加载指示器
+            if (state.timelineLoadingMore) {
+                item(key = "timeline_loading_more") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }

@@ -166,6 +166,25 @@ interface ReadRecordDao {
     @Query("SELECT COUNT(*) FROM readRecordSession")
     fun getSessionsCount(): Int
 
+    /**
+     * 按时间范围 + 搜索/日期过滤分页查询 sessions。
+     * 返回 startTime < :beforeTimestamp 的记录（降序），LIMIT :limit。
+     * 用于时间线视图的分页懒加载。
+     */
+    @Query(
+        "SELECT * FROM readRecordSession " +
+            "WHERE (:query = '' OR bookName LIKE '%' || :query || '%' OR bookAuthor LIKE '%' || :query || '%') " +
+            "AND (:dateFilter IS NULL OR date(startTime / 1000, 'unixepoch', 'localtime') = :dateFilter) " +
+            "AND (:beforeTimestamp IS NULL OR startTime < :beforeTimestamp) " +
+            "ORDER BY startTime DESC LIMIT :limit"
+    )
+    suspend fun getFilteredSessionsBefore(
+        query: String,
+        dateFilter: String?,
+        beforeTimestamp: Long?,
+        limit: Int
+    ): List<ReadRecordSession>
+
     @Query("SELECT * FROM readRecordSession WHERE deviceId = :deviceId AND bookName = :bookName AND bookAuthor = :bookAuthor ORDER BY startTime DESC")
     fun getSessionsByBookFlow(deviceId: String, bookName: String, bookAuthor: String): Flow<List<ReadRecordSession>>
 
