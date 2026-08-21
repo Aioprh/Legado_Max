@@ -399,7 +399,7 @@ class AiSourceGenerateActivity :
             .setTitle("高级设置")
             .setView(dialogBinding.root)
             .setPositiveButton("确定") { _, _ ->
-                viewModel.temperature = dialogBinding.seekTemp.progress / 20f
+                viewModel.temperature = (dialogBinding.seekTemp.progress / 20f).toDouble()
                 dialogBinding.etHtmlLimit.text?.toString()?.toIntOrNull()?.let {
                     viewModel.promptHtmlLimit = it
                 }
