@@ -17,6 +17,9 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/21
+- feat(其他设置): 源编辑框最大行数改用可输入数值对话框
+
 **2026/8/19**
 - fix(toc): 修复反转目录后已缓存章节读不到的问题
 - refactor(书源): 书源URL变更时去除确认弹窗改为默认迁移并toast提醒
