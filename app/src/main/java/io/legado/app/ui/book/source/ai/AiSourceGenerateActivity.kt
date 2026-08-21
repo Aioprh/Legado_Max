@@ -1,14 +1,19 @@
 package io.legado.app.ui.book.source.ai
 
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.SeekBar
+import android.widget.TextView
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import io.legado.app.api.controller.AiSourceController
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
 import io.legado.app.databinding.ActivityAiSourceGenerateBinding
+import io.legado.app.databinding.DialogAiSourceSettingsBinding
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
@@ -65,12 +70,16 @@ class AiSourceGenerateActivity :
         menu.add(Menu.NONE, R.id.menu_log, 0, R.string.ai_log_title).setShowAsAction(
             MenuItem.SHOW_AS_ACTION_ALWAYS
         )
+        menu.add(Menu.NONE, R.id.menu_settings, 1, R.string.ai_settings).setShowAsAction(
+            MenuItem.SHOW_AS_ACTION_ALWAYS
+        )
         return super.onCompatCreateOptionsMenu(menu)
     }
 
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_log -> startActivity<AiSourceLogActivity>()
+            R.id.menu_settings -> showSettingsDialog()
             else -> return super.onCompatOptionsItemSelected(item)
         }
         return true
@@ -368,5 +377,40 @@ class AiSourceGenerateActivity :
         binding.tvHtmlHint.visibility = View.GONE
         binding.etResult.setText("")
         binding.tvChecks.text = ""
+    }
+
+    private fun showSettingsDialog() {
+        val dialogBinding = DialogAiSourceSettingsBinding.inflate(LayoutInflater.from(this))
+        dialogBinding.seekTemp.progress = (viewModel.temperature * 20).toInt()
+        dialogBinding.tvTempValue.text = String.format("%.1f", viewModel.temperature)
+        dialogBinding.etHtmlLimit.setText(viewModel.promptHtmlLimit.toString())
+        dialogBinding.etFixRounds.setText(viewModel.maxFixRounds.toString())
+
+        dialogBinding.seekTemp.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val v = progress / 20f
+                dialogBinding.tvTempValue.text = String.format("%.1f", v)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+        })
+
+        AlertDialog.Builder(this)
+            .setTitle("高级设置")
+            .setView(dialogBinding.root)
+            .setPositiveButton("确定") { _, _ ->
+                viewModel.temperature = dialogBinding.seekTemp.progress / 20f
+                dialogBinding.etHtmlLimit.text?.toString()?.toIntOrNull()?.let {
+                    viewModel.promptHtmlLimit = it
+                }
+                dialogBinding.etFixRounds.text?.toString()?.toIntOrNull()?.let {
+                    viewModel.maxFixRounds = it
+                }
+                AiSourceLog.log("INFO", "高级设置",
+                    "温度=${viewModel.temperature}，HTML截断=${viewModel.promptHtmlLimit}，修复轮次=${viewModel.maxFixRounds}")
+                toastOnUi("设置已保存")
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 }
