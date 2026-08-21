@@ -230,6 +230,8 @@
     <string name="ai_settings_temp">AI 采样温度（Temperature）</string>
     <string name="ai_settings_html_limit">HTML 截断字符数</string>
     <string name="ai_settings_fix_rounds">自动修复最大轮次</string>
+    <string name="ai_settings_custom_prompt">自定义 System Prompt（留空则用默认）</string>
+    <string name="ai_settings_reset_prompt">恢复默认提示词</string>
     <string name="add_rss_source">Add RSS source</string>
     <string name="book_file_selector">Add books</string>
     <string name="scan_book_source">Scan</string>

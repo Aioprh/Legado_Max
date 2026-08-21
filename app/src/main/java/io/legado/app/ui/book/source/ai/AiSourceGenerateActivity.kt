@@ -171,7 +171,7 @@ class AiSourceGenerateActivity :
                 baseUrl = viewModel.baseUrl,
                 apiKey = viewModel.apiKey,
                 model = viewModel.model,
-                systemPrompt = AiSourceGenerateViewModel.SYSTEM_PROMPT,
+                systemPrompt = viewModel.getEffectiveSystemPrompt(),
                 userPrompt = userPrompt
             )
         }.onSuccess { result ->
@@ -325,7 +325,7 @@ class AiSourceGenerateActivity :
                 baseUrl = viewModel.baseUrl,
                 apiKey = viewModel.apiKey,
                 model = viewModel.model,
-                systemPrompt = AiSourceGenerateViewModel.SYSTEM_PROMPT,
+                systemPrompt = viewModel.getEffectiveSystemPrompt(),
                 userPrompt = userPrompt,
                 sourceJson = text,
                 keyword = keyword ?: "",
@@ -389,6 +389,7 @@ class AiSourceGenerateActivity :
         dialogBinding.tvTempValue.text = String.format("%.1f", viewModel.temperature)
         dialogBinding.etHtmlLimit.setText(viewModel.promptHtmlLimit.toString())
         dialogBinding.etFixRounds.setText(viewModel.maxFixRounds.toString())
+        dialogBinding.etCustomPrompt.setText(viewModel.customSystemPrompt)
 
         dialogBinding.seekTemp.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -398,6 +399,10 @@ class AiSourceGenerateActivity :
             override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
             override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
         })
+
+        dialogBinding.tvResetPrompt.setOnClickListener {
+            dialogBinding.etCustomPrompt.setText(AiSourceGenerateViewModel.SYSTEM_PROMPT)
+        }
 
         AlertDialog.Builder(this)
             .setTitle("高级设置")
@@ -410,8 +415,10 @@ class AiSourceGenerateActivity :
                 dialogBinding.etFixRounds.text?.toString()?.toIntOrNull()?.let {
                     viewModel.maxFixRounds = it
                 }
+                viewModel.customSystemPrompt =
+                    dialogBinding.etCustomPrompt.text?.toString()?.trim() ?: ""
                 AiSourceLog.log("INFO", "高级设置",
-                    "温度=${viewModel.temperature}，HTML截断=${viewModel.promptHtmlLimit}，修复轮次=${viewModel.maxFixRounds}")
+                    "温度=${viewModel.temperature}，HTML截断=${viewModel.promptHtmlLimit}，修复轮次=${viewModel.maxFixRounds}，自定义提示词=${if (viewModel.customSystemPrompt.isBlank()) "否" else "是（${viewModel.customSystemPrompt.length} 字符）"}")
                 toastOnUi("设置已保存")
             }
             .setNegativeButton("取消", null)

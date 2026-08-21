@@ -91,6 +91,17 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             LocalConfig.putInt(KEY_MAX_ROUNDS, value)
         }
 
+    /** 自定义 System Prompt（用户可覆盖默认提示词） */
+    var customSystemPrompt: String
+        get() = LocalConfig.getString(KEY_CUSTOM_PROMPT, "") ?: ""
+        set(value) {
+            LocalConfig.putString(KEY_CUSTOM_PROMPT, value)
+        }
+
+    /** 获取实际生效的 System Prompt：自定义非空则用自定义，否则用默认 */
+    fun getEffectiveSystemPrompt(): String =
+        customSystemPrompt.ifBlank { SYSTEM_PROMPT }
+
     /**
      * 抓取目标网站 HTML 并自动检测编码（供本页使用）
      * @param keyword 搜索关键词（可选），用于自动探测 JSON API 并抓取搜索/目录示例
@@ -579,6 +590,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         private const val KEY_TEMPERATURE = "ai_temperature"
         private const val KEY_PROMPT_HTML_LIMIT = "ai_prompt_html_limit"
         private const val KEY_MAX_ROUNDS = "ai_max_fix_rounds"
+        private const val KEY_CUSTOM_PROMPT = "ai_custom_prompt"
 
         /** API Key 加密后存储的前缀标记 */
         private const val ENC_PREFIX = "aes:"
