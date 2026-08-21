@@ -102,18 +102,27 @@ The project has three library modules in `modules/`:
 
 ### Compose Usage
 
-Jetpack Compose (Material3, BOM 2025.04.01) is used for newer UI surfaces (e.g. debug log panel). Traditional View system (ViewBinding + XML layouts) is used for most existing screens. Both coexist — ComposeViews can be overlaid on View-based Activities.
+Jetpack Compose (Material3, BOM 2026.08.00) is used for newer UI surfaces (e.g. debug log panel). Traditional View system (ViewBinding + XML layouts) is used for most existing screens. Both coexist — ComposeViews can be overlaid on View-based Activities.
 
+Compose 规范拆分为 8 个文件，位于 `docs/project-rules/compose/`：
 
-### UI 架构规范（必须遵守）
+- [`compose/structure.md`](docs/project-rules/compose/structure.md) — 目录结构、命名、API 契约、通用脚手架
+- [`compose/state-events.md`](docs/project-rules/compose/state-events.md) — UiState / Event 流、Dialog/BottomSheet 渲染
+- [`compose/theme-styles.md`](docs/project-rules/compose/theme-styles.md) — 颜色、尺寸、图片加载、字体、字符串、动画
+- [`compose/performance.md`](docs/project-rules/compose/performance.md) — Recomposition 防范、副作用、图片内存
+- [`compose/navigation-preview.md`](docs/project-rules/compose/navigation-preview.md) — 导航规范、Preview 规范
+- [`compose/accessibility.md`](docs/project-rules/compose/accessibility.md) — 无障碍（contentDescription / semantics / 触控目标）
+- [`compose/testing.md`](docs/project-rules/compose/testing.md) — 测试分层、runTest + Turbine 模板、CI 接入
+- [`compose/migration-review.md`](docs/project-rules/compose/migration-review.md) — 老代码迁移三阶段、Review Checklist（CI 硬卡 + 人工项）、典型违规示例
 
-`io.legado.app.ui` 包下所有 Compose 相关代码，必须遵循 `docs/project-rules/UI-ARCHITECTURE.md`。写任何 UI 代码前先读该文档，核心要点：
+## 项目级规范（必读）
 
-- 目录结构：新 Compose 通用组件进 `ui/widget/components/`，禁止在 `ui/widget/` 根目录（XML 存量混存区）继续堆放；Feature 私有组件归集到 Feature 内 `components/`，禁止跨 Feature 引用
-- 命名：`*Screen.kt` / `*ViewModel.kt` / `*Repository.kt` / `*UiState.kt`；禁止 `*View.kt` 用于 Compose 代码，禁止 `*Components.kt` 大杂烩文件
-- Composable API：`modifier` 永远是第一个参数；回调用 `onXxx` DSL 命名
-- 禁止在 Screen 文件内定义 `private fun` 形式的可复用组件
-- 老代码迁移期允许 `@Suppress("LegadoUiViolation")` + TODO 过渡，违规项见该文档 §14 Code Review Checklist（机器硬卡项 CI 会直接失败）
+项目级强制规范库位于 `docs/project-rules/`，索引与领域覆盖矩阵见 [`docs/project-rules/README.md`](docs/project-rules/README.md)。写代码前先按"什么时候必须读"对照索引，规范与实现冲突时以源码为准并回头修规范。
+
+- **协程**：本项目使用自研链式协程包装（`BaseViewModel.execute` → `help/coroutine/Coroutine`）。使用协程前必读 [`docs/project-rules/coroutine-rules.md`](docs/project-rules/coroutine-rules.md)，其中包含 `execute` 链的时序坑、Scope 规则、Flow 位置与反面示例。
+- **数据层（Repository）**：[`docs/project-rules/repository-rules.md`](docs/project-rules/repository-rules.md)，新增数据访问逻辑必须遵循。
+- **API 兼容**：[`docs/project-rules/api-compat-rules.md`](docs/project-rules/api-compat-rules.md)。调用高于 minSdk 23 的 API、引入新依赖、发版前必读（SDK 分支写法、desugaring 边界、16KB 对齐等 targetSdk 37 红线）。
+- **事件总线**：[`docs/project-rules/live-event-bus-rules.md`](docs/project-rules/live-event-bus-rules.md)。新增跨组件事件、在 LiveEventBus 与 Compose `Channel<Event>` 之间选型时必读。
 
 ## Coding Conventions
 
@@ -131,17 +140,18 @@ Jetpack Compose (Material3, BOM 2025.04.01) is used for newer UI surfaces (e.g. 
 - 新增依赖需同步更新版本目录文档
 
 ## Testing Strategy
+
 这个视情况讨论，因为有时开发环境不允许。
 - 单元测试：`app/src/test/`
 - 集成测试：`app/src/androidTest/`
 - 测试覆盖率要求：核心模块 ≥ 80%
 - Mock 框架：Mockk
 - 协程测试：kotlinx-coroutines-test
-
+- LeakCanary: `debugImplementation` only — memory leak detection in debug builds.
 
 ## Version Catalog
 
-All dependency versions are in `gradle/libs.versions.toml`. In `build.gradle.kts` or `build.gradle`, reference them as `libs.xxx`. Major versions: OkHttp 5.3.2, Room 2.7.1, Coroutines 1.10.2, Compose BOM 2025.04.01.
+All dependency versions are in `gradle/libs.versions.toml`. In `build.gradle.kts` or `build.gradle`, reference them as `libs.xxx`. Major versions: Kotlin 2.3.10, Hilt 2.59, OkHttp 5.3.2, Room 2.8.4, Coroutines 1.10.2, Compose BOM 2026.08.00.
 
 ## Build Variants
 
@@ -149,6 +159,9 @@ Three product flavors in dimension "app":
 - `appLegacy` — same package name as original Legado (`io.legado.app`)
 - `appMax` — coexistence package (`io.legado.app.yuedu`), the primary development target
 - `appS` — another coexistence package (`io.legado.app.yuedu.a`)
+
+SDK levels: minSdk 23, targetSdk 37, compileSdk 37, JVM 17 toolchain. coreLibraryDesugaring is enabled — JVM 17 syntax (records, text blocks, List.of) works down to API 23.
+Both build types set an applicationIdSuffix (`.debug` / `.release`), so the installed package is e.g. `io.legado.app.yuedu.debug`, not the bare flavor id.
 
 Release builds: minifyEnabled + shrinkResources + ProGuard (`app/proguard-rules.pro`, `app/cronet-proguard-rules.pro`). Debug builds: no minification.
 
@@ -158,15 +171,15 @@ GitHub Actions in `.github/workflows/`:
 - `test.yml` — builds all 3 release flavors on push to main; auto-creates GitHub/Gitee releases with changelog from `updateLog.md`
 - `web.yml` — builds the Vue frontend on changes to `modules/web/` and commits the output to `app/src/main/assets/web/vue/`
 - `cronet.yml` — updates Cronet native libraries
+- `lint.yaml` — runs lint in CI; treat `./gradlew lint` passing as part of "done"
 
 ## Conventions
 
 - Annotation processing uses KSP, not kapt.
 - `NonTransitiveRClass` is enabled — reference only directly used resources.
 - Room schema exports to `$projectDir/schemas` for migration verification.
-- Disabled build features: aidl, buildconfig, renderscript, resvalues, shaders.
+- Disabled build features: aidl, renderscript, resvalues, shaders. buildConfig is explicitly enabled (Cronet version fields); do not assume BuildConfig is absent.
 - Architecture documentation in `Structure/` directory (Chinese) covers app startup flow, database schema, reading flow, event bus, and module dependencies.
-
 
 ## 核心规则
 
@@ -186,8 +199,14 @@ GitHub Actions in `.github/workflows/`:
 
 > **注意**：详细的技能列表和触发逻辑请查阅 `.claude/skills/` 目录，或者直接使用 Skill 工具调用。
 
-## 如何使用
+## Skill 的使用
 
 当任务匹配某个 skill 时，使用 `Skill` 工具加载对应 skill 并严格遵循其流程。绝不要用 Read 工具读取 SKILL.md 文件。
 
 当任务明确匹配某个 skill 的应用场景时，应调用该 skill 检查。
+
+## AI 探索项目的方式
+1. 先看本文件了解模块结构
+2. 定位目标模块，读项目模块的 build.gradle 确认依赖
+3. 找该模块的对外接口（api/ 目录或 interface），而不是直接钻进实现
+4. 找一个同类型的现有实现作为参考模板，新代码保持风格一致
