@@ -584,13 +584,20 @@ object AiSourceController {
     /** 首页导航中常见分类/榜单/推荐的链接文本关键词 */
     private val exploreTextKeywords = listOf(
         "分类", "书库", "排行", "榜单", "推荐", "精选", "完本", "最新", "热门", "免费",
-        "玄幻", "都市", "武侠", "科幻", "言情", "历史", "竞技", "悬疑"
+        "玄幻", "都市", "武侠", "科幻", "言情", "历史", "竞技", "悬疑",
+        "全本", "连载", "新书", "上架", "月票", "点击", "收藏", "订阅", "人气",
+        "总榜", "周榜", "月榜", "日榜", "排行榜", "热度", "精品", "高分",
+        "男生", "女生", "男频", "女频", "出版", "漫画", "轻小说",
+        "全部", "原创", "站点", "限免", "VIP", "专题"
     )
 
     /** 首页导航中常见分类/榜单/推荐链接的 URL 关键词 */
     private val exploreHrefKeywords = listOf(
         "category", "class", "fenlei", "rank", "top", "ranklist", "booklist",
-        "store", "complete", "wanben", "recommend", "sort", "genre", "list"
+        "store", "complete", "wanben", "recommend", "sort", "genre", "list",
+        "hot", "new", "popular", "best", "all", "books", "type", "tags",
+        "update", "serial", "full", "over", "end", "latest", "finish",
+        "male", "female", "boy", "girl", "channel", "section", "index"
     )
 
     /**
@@ -606,7 +613,7 @@ object AiSourceController {
             val text = a.text().trim()
             val href = a.absUrl("href").ifBlank { a.attr("href") }
             // 分类名一般较短；过滤首页/登录/注册等无关链接
-            if (text.isBlank() || text.length > 14) continue
+            if (text.isBlank() || text.length > 20) continue
             if (text == "首页" || text.contains("登录") || text.contains("注册") || text.contains("加入")) continue
             if (href.isBlank() || href.startsWith("javascript:") || href == "#" || href.startsWith("mailto:")) continue
             val hrefLower = href.lowercase()

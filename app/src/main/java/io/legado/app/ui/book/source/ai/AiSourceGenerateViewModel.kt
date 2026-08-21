@@ -721,7 +721,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 3. 只输出 JSON 本身，不要添加解释文字或 markdown 代码块标记
 4. 无法推断的字段填空字符串 ""
 5. 若 HTML 是 JSON 数据，使用 JSONPath 语法
-6. 必须输出完整书源：搜索、详情(ruleBookInfo)、目录(ruleToc)、正文(ruleContent) 为必填核心；发现(exploreUrl/ruleExplore) 必须分析目标站点是否有分类/榜单/推荐导航（用户提示词中会列出探测到的分类链接与分类页 HTML），若有则必须生成 exploreUrl（分类名::URL 每行一个）与 ruleExplore（bookList/name/bookUrl 必填），若确无分类导航才填空字符串；登录(loginUrl)、下载(ruleBookInfo.downloadUrls) 若网站支持则填写，不支持/无法推断时填空字符串 ""，但字段名必须保留在输出结构中
+6. 必须输出完整书源：搜索、详情(ruleBookInfo)、目录(ruleToc)、正文(ruleContent) 为必填核心；发现(exploreUrl/ruleExplore) 必须分析目标站点是否有分类/榜单/推荐导航——用户提示词中会列出从首页导航中**自动探测**到的分类链接（如「玄幻::https://...」「热门::https://...」）以及首个分类页的真实 HTML，你必须基于这些链接编写 exploreUrl（"分类名::URL" 每行一个，如 "玄幻::https://host/sort/1/\n都市::https://host/sort/2/"）与 ruleExplore（bookList/name/bookUrl 必填），如果探测到的链接确实都是分类/榜单，则必须生成 exploreUrl/ruleExplore，不要留空；若用户提示词明确说「未探测到分类导航」才填空字符串；登录(loginUrl)、下载(ruleBookInfo.downloadUrls) 若网站支持则填写，不支持/无法推断时填空字符串 ""，但字段名必须保留在输出结构中
 7. 若提供了 JSON API 接口与示例响应，一律优先使用 JSONPath 规则并补齐上述全部字段
 8. 目录里的数字优先匹配章节更新时间 updateTime（若该章带时间戳/日期），不要把时间数字误当章节名或字数字段；周围同时有"字数/章节号"字段时才用 wordCount
 """.trimIndent()

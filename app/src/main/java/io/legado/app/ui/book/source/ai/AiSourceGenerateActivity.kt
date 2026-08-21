@@ -99,11 +99,12 @@ class AiSourceGenerateActivity :
         }
         val keyword = binding.etKeyword.text?.toString()?.trim()
         val header = binding.etHeader.text?.toString()
+        val cookie = binding.etCookie.text?.toString()?.trim()
         binding.btnFetchHtml.isEnabled = false
         binding.tvStatus.text = "正在抓取 HTML（${htmlContent?.charset ?: "未知编码"}）..."
-        AiSourceLog.log("INFO", "抓取HTML", "开始 $url${keyword?.let { "，关键词 $it" }.orEmpty()}")
+        AiSourceLog.log("INFO", "抓取HTML", "开始 $url${keyword?.let { "，关键词 $it" }.orEmpty()}${if (cookie.isNullOrEmpty()) "" else "，含 Cookie"}")
         viewModel.execute {
-            viewModel.fetchHtml(url, keyword, header).getOrElse { throw it }
+            viewModel.fetchHtml(url, keyword, header, cookie).getOrElse { throw it }
         }.onSuccess { content ->
             htmlContent = content
             binding.etHtmlPreview.setText(content.html)
@@ -243,6 +244,8 @@ class AiSourceGenerateActivity :
             appendLine()
             appendLine("【发现页（分类/榜单/推荐）】已从首页导航中探测到以下链接，请据其编写发现规则（exploreUrl 格式：分类名::URL 每行一个，ruleExplore 的 bookList/name/bookUrl 必填）：")
             links.forEach { (name, url) -> appendLine("- $name :: $url") }
+        } ?: appendLine().also {
+            appendLine("【发现页探测】未在首页导航中发现明显的分类/榜单链接，exploreUrl 可填空字符串")
         }
         content?.sampleExplore?.let { se ->
             appendLine()
@@ -376,6 +379,7 @@ class AiSourceGenerateActivity :
         binding.etHtmlPreview.setText("")
         binding.tvHtmlHint.visibility = View.GONE
         binding.etResult.setText("")
+        binding.etCookie.setText("")
         binding.tvChecks.text = ""
     }
 
