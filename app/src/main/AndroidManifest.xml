@@ -227,6 +227,11 @@
             android:name=".ui.book.source.ai.AiSourceLogActivity"
             android:configChanges="locale|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
             android:windowSoftInputMode="adjustResize|stateHidden" />
+        <!-- AI 阅读助手 -->
+        <activity
+            android:name=".ui.book.read.AiReaderActivity"
+            android:configChanges="locale|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
+            android:windowSoftInputMode="adjustResize|stateHidden" />
         <!-- 订阅源编辑 -->
         <activity
             android:name=".ui.rss.source.edit.RssSourceEditActivity"

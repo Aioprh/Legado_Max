@@ -605,6 +605,7 @@ class ReadBookActivity : BaseReadBookActivity(),
 
             R.id.menu_download -> showDownloadDialog()
             R.id.menu_add_bookmark -> addBookmark()
+            R.id.menu_ai_summary -> openAiReader(mode = AiReaderActivity.MODE_SUMMARY, task = "")
             R.id.menu_simulated_reading -> showSimulatedReading()
             R.id.menu_edit_content -> showDialogFragment(ContentEditDialog())
             R.id.menu_update_toc -> ReadBook.book?.let {
@@ -937,6 +938,25 @@ class ReadBookActivity : BaseReadBookActivity(),
     override val selectedText: String get() = binding.readView.getSelectText()
 
     /**
+     * 打开 AI 阅读助手
+     * @param mode AiReaderActivity.MODE_EXPLAIN（解析选中文字）或 MODE_SUMMARY（章节总结）
+     * @param task 需要解析的文字（解释模式必传，总结模式可空）
+     */
+    private fun openAiReader(mode: String, task: String) {
+        val bookName = ReadBook.book?.name.orEmpty()
+        val chapterTitle = ReadBook.curTextChapter?.chapter?.title.orEmpty()
+        // 取当前章节正文作为上下文（截断，避免 prompt 过大）
+        val chapterContent = ReadBook.curTextChapter?.getContent().orEmpty()
+            .take(AI_CONTEXT_LIMIT)
+        startActivity<AiReaderActivity> {
+            putExtra(AiReaderActivity.EXTRA_MODE, mode)
+            putExtra(AiReaderActivity.EXTRA_TITLE, "$bookName · $chapterTitle")
+            putExtra(AiReaderActivity.EXTRA_CONTEXT, chapterContent)
+            putExtra(AiReaderActivity.EXTRA_TASK, task)
+        }
+    }
+
+    /**
      * 文本选择菜单操作
      */
     override fun onMenuItemSelected(itemId: Int): Boolean {
@@ -986,6 +1006,11 @@ class ReadBookActivity : BaseReadBookActivity(),
 
             R.id.menu_web_search -> {
                 binding.webSearchPanel.open(selectedText)
+                return true
+            }
+
+            R.id.menu_ai_reader -> {
+                openAiReader(mode = AiReaderActivity.MODE_EXPLAIN, task = selectedText)
                 return true
             }
 
@@ -2240,6 +2265,9 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     companion object {
         const val RESULT_DELETED = 100
+
+        /** AI 阅读助手：单章上下文最大字符数 */
+        private const val AI_CONTEXT_LIMIT = 12000
         private val shareNoteProgressPercentRegex = Regex("""(\d+(?:[,.]\d+)?)\s*%""")
     }
 
