@@ -2,7 +2,6 @@ package io.legado.app.ui.config.widget
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.contentColor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +12,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthPx
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,7 +29,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -58,7 +59,6 @@ fun <T> SegmentedTabRow(
 ) {
     require(tabs.isNotEmpty()) { "tabs must not be empty" }
 
-    val density = LocalDensity.current
     val containerColor = MaterialTheme.colorScheme.surfaceVariant
     val isLightBg = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val containerAlpha = if (isLightBg) 0.15f else 0.12f
@@ -66,7 +66,7 @@ fun <T> SegmentedTabRow(
     val onActiveColor = MaterialTheme.colorScheme.primary
     val onInactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-    var trackWidth by remember { mutableFloatStateOf(0f) }
+    var trackWidthPx by remember { mutableFloatStateOf(0f) }
     val clamped = progress.coerceIn(0f, 1f)
     // 滑块中心：progress 0→1 映射到首段中心(1/4)→末段中心(3/4)（n=2 时）
     val indicatorCenterFrac = (clamped * (tabs.size - 1) + 0.5f) / tabs.size
@@ -82,15 +82,16 @@ fun <T> SegmentedTabRow(
             .height(48.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(containerColor.copy(alpha = containerAlpha))
-            .onSizeChanged { trackWidth = it.width.toFloat() }
+            .onSizeChanged { trackWidthPx = it.width.toFloat() }
     ) {
-        if (trackWidth > 0f) {
-            val pillWidth = trackWidth / tabs.size
+        if (trackWidthPx > 0f) {
+            val pillWidthPx = trackWidthPx / tabs.size
+            val offsetPx = trackWidthPx * indicatorCenterFrac - pillWidthPx / 2f
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(pillWidth)
-                    .offset(x = with(density) { (trackWidth * indicatorCenterFrac - pillWidth / 2f).toDp() })
+                    .widthPx(pillWidthPx)
+                    .offset(x = offsetPx)
                     .clip(RoundedCornerShape(24.dp))
                     .background(activeColor.copy(alpha = containerAlpha))
             )
@@ -106,24 +107,25 @@ fun <T> SegmentedTabRow(
                         .fillMaxHeight()
                         .clickable(onClick = { onTabClick(tab) })
                 ) {
-                    // Icon 默认 tint = LocalContentColor，用 contentColor modifier 控制选中态颜色
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 12.dp)
-                            .contentColor(if (isActive) onActiveColor else onInactiveColor),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (iconContent != null) {
-                            iconContent(tab)
-                            Spacer(Modifier.width(6.dp))
+                    // Icon 默认 tint = LocalContentColor，用 CompositionLocalProvider 控制选中态颜色
+                    CompositionLocalProvider(LocalContentColor provides (if (isActive) onActiveColor else onInactiveColor)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (iconContent != null) {
+                                iconContent(tab)
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            Text(
+                                text = labelText(tab),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isActive) onActiveColor else onInactiveColor
+                            )
                         }
-                        Text(
-                            text = labelText(tab),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isActive) onActiveColor else onInactiveColor
-                        )
                     }
                 }
             }
