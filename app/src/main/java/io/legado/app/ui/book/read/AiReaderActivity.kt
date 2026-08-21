@@ -47,8 +47,8 @@ class AiReaderActivity : AppCompatActivity() {
         mode = intent.getStringExtra(EXTRA_MODE) ?: MODE_SUMMARY
 
         binding.titleBar.setTitle(
-            if (mode == MODE_EXPLAIN) getString(R.string.ai_reader_explain_title)
-            else getString(R.string.ai_reader_title)
+            if (mode == MODE_EXPLAIN) R.string.ai_reader_explain_title
+            else R.string.ai_reader_title
         )
 
         binding.btnCopy.setOnClickListener {

@@ -197,7 +197,7 @@ class AiReaderViewModel(application: Application) : BaseViewModel(application) {
         }
 
         /** 文字解析/问答系统提示词 */
-        private const val EXPLAIN_SYSTEM_PROMPT = """
+        private val EXPLAIN_SYSTEM_PROMPT = """
 你是阅读 AI 助手，精通文学与小说内容分析。用户会提供选自某本书的章节正文和一句需要解析的话。
 请针对用户给出的文字，结合章节上下文，给出清晰、准确、有深度的解释：
 - 若是生僻词/古语/专业术语，解释其含义并在小说语境下的含义
@@ -207,7 +207,7 @@ class AiReaderViewModel(application: Application) : BaseViewModel(application) {
 """.trimIndent()
 
         /** 章节总结系统提示词 */
-        private const val SUMMARY_SYSTEM_PROMPT = """
+        private val SUMMARY_SYSTEM_PROMPT = """
 你是阅读 AI 助手，精通小说内容总结。用户会提供某本书的一个章节正文。
 请总结本章内容，输出：
 1. 本章情节概要（2-4 句话）
