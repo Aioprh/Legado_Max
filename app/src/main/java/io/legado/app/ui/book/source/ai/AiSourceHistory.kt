@@ -5,6 +5,8 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import io.legado.app.help.config.LocalConfig
+import io.legado.app.utils.putString
+import io.legado.app.utils.remove
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
