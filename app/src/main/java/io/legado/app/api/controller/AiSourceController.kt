@@ -113,6 +113,7 @@ object AiSourceController {
         val length: Int,
         val html: String,
         val loginUrl: String,
+        val loginCheckUrl: String,
         val apiEndpoints: List<ApiEndpoint>,
         val sampleSearch: SampleResult,
         val sampleCatalog: SampleResult,
@@ -222,6 +223,7 @@ object AiSourceController {
                 HtmlContent(
                     url, charset, truncated.length, truncated,
                     discoverLoginUrl(html, effectiveUrl),
+                    discoverLoginCheckUrl(html, effectiveUrl),
                     endpoints, sampleSearch, sampleCatalog, sampleExplore, exploreLinks, embeddedJson
                 )
             }
@@ -854,6 +856,43 @@ object AiSourceController {
         return ""
     }
 
+    /**
+     * 探测站点的「登录状态检测」接口，供生成书源的 loginCheckJs 使用。
+     * 常见形态：auth.php?action=me、/api/user/info、profile、session、action=check 等，
+     * 返回体里 user/登录用户信息为 null ↔ 未登录、非空 ↔ 已登录。
+     * 探测顺序：
+     * 1. auth/login/user.php 接口且脚本里出现 me / info / session / profile / check 动作
+     * 2. 脚本中出现的绝对 http 地址含 me/session/profile/userinfo/account
+     * 探测不到返回空串（此时 loginCheckJs 留空即可）。
+     */
+    private fun discoverLoginCheckUrl(html: String, baseUrl: String): String {
+        // 1) auth/login/user.php 类接口 + 登录态动作
+        val hasAuthPhp = Regex("""(?:auth|login|user)\.php""", RegexOption.IGNORE_CASE).containsMatchIn(html)
+        val hasCheckAction = Regex(
+            """['"\s]action\s*=\s*['"]?(?:me|info|session|profile|check)""",
+            RegexOption.IGNORE_CASE
+        ).containsMatchIn(html) ||
+            Regex("""(?:request|authRequest)\s*\(\s*['"]me['"]""", RegexOption.IGNORE_CASE).containsMatchIn(html)
+        if (hasAuthPhp && hasCheckAction) {
+            Regex("""(\S*(?:auth|login|user)\S*\.php[^'"`\s]*)""", RegexOption.IGNORE_CASE)
+                .find(html)?.let { m ->
+                    val abs = runCatching { java.net.URL(java.net.URL(baseUrl), m.groupValues[1]).toString() }
+                        .getOrDefault("")
+                    if (abs.isNotEmpty() && abs.startsWith("http")) {
+                        return if (abs.contains("action=")) {
+                            abs.replace(Regex("""action=[^&\s""]*"""), "action=me")
+                        } else {
+                            abs.trimEnd('?', '&') + "?action=me"
+                        }
+                    }
+                }
+        }
+        // 2) 绝对登录态接口
+        Regex("""['"`](https?://[^'"`\s]*(?:me|session|profile|userinfo|account)[^'"`\s]*)['"`]""", RegexOption.IGNORE_CASE)
+            .find(html)?.let { m -> if (m.groupValues[1].isNotBlank()) return m.groupValues[1] }
+        return ""
+    }
+
     fun fetchHtml(parameters: Map<String, List<String>>): ReturnData {
         val returnData = ReturnData()
         val url = parameters["url"]?.firstOrNull()?.trim()
@@ -872,6 +911,7 @@ object AiSourceController {
                         "length" to it.length,
                         "html" to it.html,
                         "loginUrl" to it.loginUrl,
+                        "loginCheckUrl" to it.loginCheckUrl,
                         "apiEndpoints" to it.apiEndpoints,
                         "sampleSearch" to it.sampleSearch,
                         "sampleCatalog" to it.sampleCatalog,
