@@ -276,7 +276,7 @@ class AiSourceGenerateActivity :
         content?.loginUrl?.takeIf { it.isNotBlank() }?.let { lurl ->
             appendLine()
             appendLine("【登录】探测到该站点为可登录站点，登录入口：$lurl")
-            appendLine("请在书源 JSON 中填写 loginUrl（登录页或登录接口地址）。若探测到的地址是登录接口（如 auth.php / action=login）而非网页登录页，无法用 loginUi 表达站点特有的图片验证码/表单逻辑时，loginUi 留空，让 App 用内置 WebView 打开 loginUrl 手动登录；有登录状态检测接口时再写 loginCheckJs。")
+            appendLine("请在书源 JSON 的 loginUrl 字段填入该登录入口（它是可当网页登录页使用的地址；若带 ?auth=login 参数，打开即自动弹出登录框）。该站点若使用图片验证码/复杂表单（无法用 loginUi 表达），loginUi 留空字符串，让 App 用内置 WebView 打开 loginUrl 手动登录；书源说明中提醒用户：验证码一次性、站点对高频操作有限流，答错需点验证码图片换新题、避免反复提交触发“验证码请求无效”。有登录状态检测接口时再写 loginCheckJs。")
             if (content?.loginCheckUrl?.isNotBlank() == true) {
                 appendLine("（已探测到登录状态检测接口：${content.loginCheckUrl}，可据此写 loginCheckJs：用 http.get 请求该接口，返回体含 user 对象/登录字段即视为已登录，例如 @js:(()=>{try{return /\"user\"\\s*:\\s*\\{/.test(http.get('${content.loginCheckUrl}'));}catch(e){return false;}})()）")
             }
