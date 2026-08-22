@@ -140,7 +140,7 @@ class AiReaderViewModel(application: Application) : BaseViewModel(application) {
             if (content.isBlank()) {
                 throw RuntimeException("模型未返回内容，请重试或更换模型")
             }
-            content.trim()
+            return content.trim()
         }
     }
 
