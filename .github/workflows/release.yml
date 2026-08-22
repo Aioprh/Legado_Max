@@ -77,6 +77,8 @@ jobs:
   release:
     needs: [prepare, build]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: 下载所有 APK
         uses: actions/download-artifact@v7
