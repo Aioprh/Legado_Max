@@ -717,9 +717,9 @@ object AiSourceController {
         val site = Regex("""homeSite\s*:\s*(\d+)""").find(html)?.groupValues?.get(1)
             ?: Regex("""data-home-site\s*=\s*"(\d+)""").find(html)?.groupValues?.get(1)
             ?: return url
-        // 用 lambda 替换，避免 "$1" 后面紧跟站点数字被判成 "组 11/118" 而抛异常
-        return url.replace(Regex("""([?&](?:site_id|site)=)\s*&?""")) { m ->
-            m.groupValues[1] + site + "&"
+        // 仅替换空参名本身，不吞掉其后的 "&"，避免拼出 "site_id=18&&order=…" 双分隔符
+        return url.replace(Regex("""([?&](?:site_id|site)=)""")) { m ->
+            m.groupValues[1] + site
         }
     }
 
