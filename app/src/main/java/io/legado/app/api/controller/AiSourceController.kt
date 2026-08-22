@@ -70,8 +70,9 @@ object AiSourceController {
             """axios\s*\.\s*(?:get|post|put|delete|request)\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
             """axios\s*\(\s*\{\s*url\s*:\s*[`'"]([^`'"]+)[`'"]|""" +
             """\$\s*\.\s*(?:get|post|ajax)\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
-            """(?:uni\.request|request)\s*\(\s*\{\s*url\s*:\s*[`'"]([^`'"]+)[`'"]|""" +
-            """XMLHttpRequest[^;]*?\.\s*open\s*\(\s*['"](?:GET|POST)['"]\s*,\s*[`'"]([^`'"]+)[`'"]""",
+            """(?:uni|wx|my|Taro)\.request\s*\(\s*\{\s*url\s*:\s*[`'"]([^`'"]+)[`'"]|""" +
+            """\$\s*\.\s*(?:getJSON|postJSON)\s*\(\s*[`'"]([^`'"]+)[`'"]|""" +
+            """XMLHttpRequest[^;]*?\.\s*open\s*\(\s*['"](?:GET|POST|PUT|DELETE)['"]\s*,\s*[`'"]([^`'"]+)[`'"]""",
         Pattern.CASE_INSENSITIVE
     )
 
@@ -97,13 +98,22 @@ object AiSourceController {
         Regex("""\$\{encodeURIComponent\s*\(\s*bookId\s*\)\}""") to "{book_id}",
         Regex("""\$\{\s*bookId\s*\}""") to "{book_id}",
         Regex("""\$\{encodeURIComponent\s*\(\s*chapterId\s*\)\}""") to "{chapter_id}",
-        Regex("""\$\{\s*chapterId\s*\}""") to "{chapter_id}"
+        Regex("""\$\{\s*chapterId\s*\}""") to "{chapter_id}",
+        Regex("""\$\{encodeURIComponent\s*\(\s*categoryId\s*\)\}""") to "{category_id}",
+        Regex("""\$\{\s*categoryId\s*\}""") to "{category_id}",
+        Regex("""\$\{encodeURIComponent\s*\(\s*itemId\s*\)\}""") to "{item_id}",
+        Regex("""\$\{\s*itemId\s*\}""") to "{item_id}",
+        Regex("""\$\{encodeURIComponent\s*\(\s*tagId\s*\)\}""") to "{tag_id}",
+        Regex("""\$\{\s*tagId\s*\}""") to "{tag_id}"
     )
 
     /** 常见内嵌 JSON 的全局变量名 */
     private val embeddedJsonKeys = listOf(
         "__INITIAL_STATE__", "__NUXT__", "__NEXT_DATA__", "__PRELOADED_STATE__",
-        "__INITIAL_DATA__", "__STATE__", "__DATA__", "__data__", "__NEXT_DATA_JSON__"
+        "__INITIAL_DATA__", "__STATE__", "__DATA__", "__data__", "__NEXT_DATA_JSON__",
+        "__NUXT_STATE__", "__ASYNC_DATA__", "__ROOT_DATA__", "__SSR_DATA__", "__SSR__",
+        "INITIAL_STATE", "INITIAL_DATA", "__BOOTSTRAP__", "__RUNTIME_CONFIG__",
+        "serverData", "_SSR_DATA", "SERVER_DATA", "__PROLOGUE_STATE__", "appConfig"
     )
 
     /** 抓取结果 */
@@ -610,7 +620,10 @@ object AiSourceController {
         "全本", "连载", "新书", "上架", "月票", "点击", "收藏", "订阅", "人气",
         "总榜", "周榜", "月榜", "日榜", "排行榜", "热度", "精品", "高分",
         "男生", "女生", "男频", "女频", "出版", "漫画", "轻小说",
-        "全部", "原创", "站点", "限免", "VIP", "专题"
+        "全部", "原创", "站点", "限免", "VIP", "专题",
+        "现代", "古言", "穿越", "重生", "奇幻", "灵异", "军事", "游戏", "体育",
+        "同人", "仙侠", "科幻", "悬疑", "探案", "甜宠", "爽文", "种田", "书单",
+        "标签", "Tag", "短篇", "包月", "追书", "飙升", "新书榜", "收藏榜", "战力"
     )
 
     /** 首页导航中常见分类/榜单/推荐链接的 URL 关键词 */
@@ -619,7 +632,8 @@ object AiSourceController {
         "store", "complete", "wanben", "recommend", "sort", "genre", "list",
         "hot", "new", "popular", "best", "all", "books", "type", "tags",
         "update", "serial", "full", "over", "end", "latest", "finish",
-        "male", "female", "boy", "girl", "channel", "section", "index"
+        "male", "female", "boy", "girl", "channel", "section", "index",
+        "shuku", "bookstore", "plate", "tpl", "nav", "menu", "cate", "sub"
     )
 
     /**
