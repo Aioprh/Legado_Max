@@ -205,12 +205,16 @@ object AiSourceController {
                 // 从首页提取分类/榜单/推荐导航链接，并抓取首个分类页真实 HTML 供 LLM 编写发现规则
                 var exploreLinks = discoverExploreLinks(html, effectiveUrl)
                 var sampleExplore = fetchExploreSample(exploreLinks, header, cookie)
-                // SPA / JSON-API 站点：首页客户端渲染，几乎没有 <a href> 分类链接（如起点代理站）时，
-                // 回退到从脚本中发现 JSON 分类/榜单接口，解析分类并抓取真实列表 JSON 供 LLM 编写发现规则
-                if ((exploreLinks.isEmpty() || !sampleExplore.ok) && endpoints.any { it.type == "explore" || it.type == "category" }) {
+                // SPA / JSON-API 站点：首页的“分类/榜单”多为按钮+下拉（JS 动态渲染），静态 <a> 链接
+                // 很少或不全（如起点代理站首页仅能抓到 1 个）。只要发现 JSON 分类/榜单接口，就尝试从
+                // 接口解析出完整分类（玄幻/仙侠/都市…），用更全的 JSON 结果覆盖 HTML 探测结果，
+                // 供 LLM 编写多分类 exploreUrl；普通站无此类接口则维持 HTML 探测结果不变。
+                if (endpoints.any { it.type == "explore" || it.type == "category" }) {
                     discoverJsonExplore(html, endpoints, header, cookie)?.let { (links, sample) ->
-                        exploreLinks = links
-                        sampleExplore = sample
+                        if (links.isNotEmpty()) {
+                            exploreLinks = links
+                            sampleExplore = sample
+                        }
                     }
                 }
 
