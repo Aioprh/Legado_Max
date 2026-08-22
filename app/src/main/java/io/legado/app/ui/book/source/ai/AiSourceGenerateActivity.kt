@@ -40,6 +40,15 @@ class AiSourceGenerateActivity :
         binding.etBaseUrl.setText(viewModel.baseUrl)
         binding.etApiKey.setText(viewModel.apiKey)
         binding.etModel.setText(viewModel.model)
+        // 恢复最近一次历史（防退出丢失）：有历史则自动填充 URL/关键词/结果/HTML
+        AiSourceHistory.latest()?.let { rec ->
+            if (rec.url.isNotBlank()) {
+                binding.etUrl.setText(rec.url)
+                binding.etKeyword.setText(rec.keyword)
+                if (rec.result.isNotBlank()) binding.etResult.setText(rec.result)
+                if (rec.html.isNotBlank()) binding.etHtmlPreview.setText(rec.html)
+            }
+        }
         // 模型预设：选择预设时自动填充模型名
         binding.spModelPreset.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
@@ -73,6 +82,9 @@ class AiSourceGenerateActivity :
         menu.add(Menu.NONE, R.id.menu_settings, 1, R.string.ai_settings).setShowAsAction(
             MenuItem.SHOW_AS_ACTION_ALWAYS
         )
+        menu.add(Menu.NONE, R.id.menu_history, 2, R.string.ai_history).setShowAsAction(
+            MenuItem.SHOW_AS_ACTION_IF_ROOM
+        )
         return super.onCompatCreateOptionsMenu(menu)
     }
 
@@ -80,6 +92,7 @@ class AiSourceGenerateActivity :
         when (item.itemId) {
             R.id.menu_log -> startActivity<AiSourceLogActivity>()
             R.id.menu_settings -> showSettingsDialog()
+            R.id.menu_history -> showHistoryDialog()
             else -> return super.onCompatOptionsItemSelected(item)
         }
         return true
@@ -130,6 +143,7 @@ class AiSourceGenerateActivity :
             binding.tvHtmlHint.visibility = View.VISIBLE
             binding.tvStatus.text = "抓取成功（编码 ${content.charset}，共 ${content.length} 字符）"
             toastOnUi("抓取成功（编码 ${content.charset}，共 ${content.length} 字符）")
+            saveHistory(content.html, binding.etResult.text?.toString())
         }.onError {
             AiSourceLog.log("ERROR", "抓取HTML", "${it.message}")
             binding.tvStatus.text = "抓取失败: ${it.message}"
@@ -180,6 +194,7 @@ class AiSourceGenerateActivity :
             AiSourceLog.raw("-------- 生成书源 JSON --------\n$result")
             binding.tvStatus.text = "生成完成，可查看/修改 JSON，再验证规则或导入编辑器"
             toastOnUi("生成完成，可查看/修改 JSON，再验证规则或导入编辑器")
+            saveHistory(html, result)
         }.onError {
             AiSourceLog.log("ERROR", "生成书源", "${it.message}")
             binding.tvStatus.text = "AI 生成失败: ${it.message}"
@@ -352,6 +367,7 @@ class AiSourceGenerateActivity :
             }
             binding.tvStatus.text = if (result.ok) "修复成功（${result.rounds} 轮）" else "修复未通过（${result.rounds} 轮）"
             toastOnUi(if (result.ok) "修复成功（${result.rounds} 轮）" else "修复未通过（${result.rounds} 轮）")
+            saveHistory(html, result.json)
         }.onError {
             AiSourceLog.log("ERROR", "自动修复", "${it.message}")
             binding.tvChecks.text = "自动修复失败：${it.message}"
@@ -389,6 +405,56 @@ class AiSourceGenerateActivity :
         binding.etResult.setText("")
         binding.etCookie.setText("")
         binding.tvChecks.text = ""
+    }
+
+    /** 保存一条操作快照（防意外退出丢失内容） */
+    private fun saveHistory(html: String?, result: String?) {
+        val url = binding.etUrl.text?.toString()?.trim().orEmpty()
+        if (url.isBlank()) return
+        val keyword = binding.etKeyword.text?.toString()?.trim().orEmpty()
+        AiSourceHistory.add(
+            AiSourceHistory.Record(
+                url = url,
+                keyword = keyword,
+                html = html.orEmpty(),
+                result = result.orEmpty()
+            )
+        )
+    }
+
+    /** 展示历史记录列表，选择一条恢复 */
+    private fun showHistoryDialog() {
+        val list = AiSourceHistory.all()
+        if (list.isEmpty()) {
+            AiSourceLog.log("INFO", "历史记录", "暂无历史记录")
+            toastOnUi("暂无历史记录")
+            return
+        }
+        val items = list.map { rec ->
+            val kw = if (rec.keyword.isBlank()) "" else "｜" + rec.keyword
+            "${rec.timeText()}｜${rec.url}$kw｜结果 ${rec.result.length} 字｜HTML ${rec.html.length} 字"
+        }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.ai_history)
+            .setItems(items) { _, which ->
+                val rec = list[which]
+                binding.etUrl.setText(rec.url)
+                binding.etKeyword.setText(rec.keyword)
+                if (rec.html.isNotBlank()) {
+                    binding.etHtmlPreview.setText(rec.html)
+                    binding.tvHtmlHint.visibility = View.VISIBLE
+                }
+                if (rec.result.isNotBlank()) binding.etResult.setText(rec.result)
+                AiSourceLog.log("INFO", "历史记录", "已恢复 ${rec.timeText()}｜${rec.url}")
+                toastOnUi("已恢复历史记录")
+            }
+            .setNeutralButton(R.string.ai_history_clear) { _, _ ->
+                AiSourceHistory.clear()
+                AiSourceLog.log("INFO", "历史记录", "已清空全部历史")
+                toastOnUi("已清空历史")
+            }
+            .setPositiveButton("取消", null)
+            .show()
     }
 
     private fun showSettingsDialog() {

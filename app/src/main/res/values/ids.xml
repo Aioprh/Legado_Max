@@ -12,6 +12,7 @@
     <item name="menu_1" type="id" />
     <item name="menu_log" type="id" />
     <item name="menu_settings" type="id" />
+    <item name="menu_history" type="id" />
 
     <item name="fast_scroller" type="id" />
 
