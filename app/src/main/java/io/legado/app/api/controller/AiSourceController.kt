@@ -112,6 +112,7 @@ object AiSourceController {
         val charset: String,
         val length: Int,
         val html: String,
+        val loginUrl: String,
         val apiEndpoints: List<ApiEndpoint>,
         val sampleSearch: SampleResult,
         val sampleCatalog: SampleResult,
@@ -220,6 +221,7 @@ object AiSourceController {
 
                 HtmlContent(
                     url, charset, truncated.length, truncated,
+                    discoverLoginUrl(html, effectiveUrl),
                     endpoints, sampleSearch, sampleCatalog, sampleExplore, exploreLinks, embeddedJson
                 )
             }
@@ -813,6 +815,45 @@ object AiSourceController {
         return url + sep + "order=0&page={{page}}&page_size=20&category_id=$categoryId"
     }
 
+    /**
+     * 探测站点是否为「可登录」站点，并尽量提取登录入口地址。
+     * 探测顺序：
+     * 1. 首页导航里的网页登录链接（<a> 文本含“登录”或 href 含 login/signin）
+     * 2. 脚本中出现的绝对登录地址（https://… 含 login/signin/logout）
+     * 3. 相对登录接口（*.php 含 auth/login/signin，或含 action=login / 登录表单特征）
+     * 探测不到则返回空串。
+     * 说明：登录接口地址（如 auth.php）不一定能直接当 WebView 登录页使用，
+     * 但可据此提示 LLM 给书源补上 loginUrl，并可配合 loginUi/loginCheckJs。
+     */
+    private fun discoverLoginUrl(html: String, baseUrl: String): String {
+        val doc = runCatching { Jsoup.parse(html) }.getOrNull() ?: return ""
+        // 1) 导航里的网页登录链接
+        for (a in doc.select("a[href]")) {
+            val text = a.text().trim()
+            val href = a.absUrl("href").ifBlank { a.attr("href").trim() }
+            if (href.isBlank() || href.startsWith("javascript:") || href == "#") continue
+            val low = href.lowercase()
+            if (text.contains("登录") || low.contains("login") || low.contains("signin")) return href
+        }
+        // 2) 脚本里的绝对登录地址
+        Regex("""['"`](https?://[^'"`\s]*?(?:login|signin|logout)[^'"`\s]*)['"`]""", RegexOption.IGNORE_CASE)
+            .find(html)?.let { m -> if (m.groupValues[1].isNotBlank()) return m.groupValues[1].substringBeforeLast("'") }
+        // 3) 相对登录接口 / 登录表单特征
+        val hasLoginForm = Regex(
+            """(?:login|signin|auth)\.php|action\s*[:=]\s*['"]?login|loginForm|loginPassword|loginCaptcha|loginEmail""",
+            RegexOption.IGNORE_CASE
+        ).containsMatchIn(html)
+        if (hasLoginForm) {
+            Regex("""(\S*(?:auth|login|signin)\S*\.php(?:\?[^'"`\s]*)?)""", RegexOption.IGNORE_CASE)
+                .find(html)?.let { m ->
+                    val abs = runCatching { java.net.URL(java.net.URL(baseUrl), m.groupValues[1]).toString() }
+                        .getOrDefault("")
+                    if (abs.isNotEmpty() && abs.startsWith("http")) return abs
+                }
+        }
+        return ""
+    }
+
     fun fetchHtml(parameters: Map<String, List<String>>): ReturnData {
         val returnData = ReturnData()
         val url = parameters["url"]?.firstOrNull()?.trim()
@@ -830,6 +871,7 @@ object AiSourceController {
                         "charset" to it.charset,
                         "length" to it.length,
                         "html" to it.html,
+                        "loginUrl" to it.loginUrl,
                         "apiEndpoints" to it.apiEndpoints,
                         "sampleSearch" to it.sampleSearch,
                         "sampleCatalog" to it.sampleCatalog,

@@ -742,6 +742,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 - 【重要】本 App 的 JS 规则中没有 bookId/chapterId 变量（Book 无 bookId 字段），禁止使用 {{bookId}}、{{chapterId}} 或 JS 中的 bookId，否则报 ReferenceError。ID 只能从搜索结果 JSON/字段里取（JSONPath {{$.xxx}} 拼进 URL），或直接用 {{book.bookUrl}} 提取；可用正则 ##...## 从 bookUrl 中抠出 ID。
 - 若目录返回 JSON 且章节对象无完整 URL、只有内容 ID 字段（如 C/Cid/ChapterId/ContentId 等），chapterUrl 必须用 @js: 拼出完整正文 URL，例如 @js:'https://host/content.php?book_id='+book.bookUrl.match(/book_id=(\d+)/)[1]+'&chapter_id={{$.C}}'（{{$.C}} 表示取当前章节元素的 C 字段值）。
 - 正则替换：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"；正则里 \d、\s 等须写双反斜杠 \\d、\\s
+- 【登录】若用户提示词标明站点可登录并给出登录入口（loginUrl/登录接口），则书源 JSON 里 loginUrl 必须填写；若探测到的是登录接口（如 auth.php / action=login）而非网页登录页，用 loginUi 自定义登录表单（按站点接口字段提交账号/密码/验证码，如 email: xxx、password: xxx、captcha 需按接口处理）；有登录态检测接口时才写 loginCheckJs（返回 true 表示已登录）；无法从提示词/HTML 确认的一律留空字符串，禁止编造。
 - 整页 JS 渲染：若页面数据完全由 JS 动态生成、HTML 里没有书籍数据，则在对应 webJs 字段写提取脚本，或用 preUpdateJs/formatJs 处理后端数据
 
 【输出要求】

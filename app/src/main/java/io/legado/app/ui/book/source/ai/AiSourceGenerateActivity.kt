@@ -258,6 +258,11 @@ class AiSourceGenerateActivity :
                 appendLine("分类/榜单页探测失败：${se.error}（不影响搜索/详情/目录/正文生成）")
             }
         }
+        content?.loginUrl?.takeIf { it.isNotBlank() }?.let { lurl ->
+            appendLine()
+            appendLine("【登录】探测到该站点为可登录站点，登录入口：$lurl")
+            appendLine("请在书源 JSON 中填写 loginUrl（登录页或登录接口地址）。若探测到的地址是登录接口（如 auth.php / action=login）而非网页登录页，则用 loginUi 自定义登录表单（按站点接口提交账号/密码/验证码），有登录态检测接口再填 loginCheckJs（返回 true 表示已登录）；无法确认的不编造，至少把 loginUrl 填上。")
+        }
         appendLine()
         appendLine("已抓取到的网页 HTML（预处理后，编码 ${content?.charset}，共 ${content?.length} 字符，已截断）：")
         appendLine("----------")
