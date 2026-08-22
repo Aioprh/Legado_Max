@@ -38,6 +38,7 @@ import io.legado.app.ui.upload.DirectLinkUploadActivity
 import io.legado.app.ui.video.config.SettingsDialog
 import io.legado.app.ui.widget.code.addJsonPattern
 import io.legado.app.ui.widget.number.NumberPickerDialog
+import io.legado.app.ui.widget.number.InputNumberDialog
 import io.legado.app.ui.blockrule.BlockRuleConfigDialog
 import io.legado.app.ui.debuglog.DebugFloatingBallManager
 import io.legado.app.utils.LogUtils
@@ -156,9 +157,13 @@ class OtherConfigFragment : PreferenceFragment(),
                 getString(R.string.image_retain_number), 999, 0, AppConfig.imageRetainNum
             ) { AppConfig.imageRetainNum = it }
 
-            PreferKey.sourceEditMaxLine -> showNumberPicker(
-                getString(R.string.source_edit_text_max_line), Int.MAX_VALUE, 10, AppConfig.sourceEditMaxLine
-            ) { AppConfig.sourceEditMaxLine = it }
+            PreferKey.sourceEditMaxLine -> InputNumberDialog(
+                requireContext(),
+                maxValue = Int.MAX_VALUE,
+                minValue = 10
+            ).setTitle(getString(R.string.source_edit_text_max_line))
+                .setValue(AppConfig.sourceEditMaxLine)
+                .show { AppConfig.sourceEditMaxLine = it }
 
             PreferKey.clearWebViewData -> clearWebViewData()
             PreferKey.navItemOrder -> showNavItemSortDialog()
