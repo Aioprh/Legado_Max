@@ -389,7 +389,23 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 
             // ① 搜索
             sb.appendLine("① 搜索")
-            val list = WebBook.searchBookAwait(bookSource, keyword, 1)
+            val list = try {
+                WebBook.searchBookAwait(bookSource, keyword, 1)
+            } catch (e: Exception) {
+                // 列表规则本身抛异常（最常见：bookList 顶层用 @js:JSON.parse(this) 报 Unexpected token）：
+                // 附上真实返回与明确指引，避免 LLM 反复生成同类错误写法
+                val searchUrl = (bookSource.searchUrl ?: "")
+                    .replace("{{key}}", keyword)
+                    .replace("{{page}}", "1")
+                val sample = fetchStepSample(searchUrl)
+                return@runCatching VerifyResult(
+                    false,
+                    sb.append("搜索规则执行异常：${e.message ?: e.javaClass.simpleName}")
+                        .append("\n【重要】若响应为 JSON 却在 ruleSearch.bookList 顶层用了 @js:JSON.parse(this)，会报 Unexpected token 错误：本版 Legado 在列表规则的 @js: 中 this 是 JS 作用域对象而非响应文本，JSON.parse(this) 必然失败。返回 JSON 时请直接用 JSONPath 写 bookList（如 $.data.list、$.Data.CardList[*].Body[*].ItemData），字段用 $.field；返回 HTML 才用 CSS 选择器。")
+                        .append(if (sample != null) "\n$sample" else "\n（搜索接口「$searchUrl」响应抓取失败，请检查 searchUrl 是否正确）")
+                        .toString()
+                )
+            }
             if (list.isEmpty()) {
                 val searchUrl = (bookSource.searchUrl ?: "")
                     .replace("{{key}}", keyword)
@@ -397,7 +413,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                 val searchSample = fetchStepSample(searchUrl)
                 return@runCatching VerifyResult(
                     false,
-                    sb.append("搜索返回空列表，ruleSearch.bookList 或 name 规则可能匹配不上")
+                    sb.append("搜索返回空列表，ruleSearch.bookList 或 name 规则匹配不上（响应为 JSON 时 bookList 请用 JSONPath 如 $.data.list；返回 HTML 用 CSS 选择器；禁止在 bookList 顶层写 @js:JSON.parse(this)）")
                         .append(if (searchSample != null) "\n$searchSample" else "\n（搜索接口「$searchUrl」响应抓取失败，请检查 searchUrl 是否正确）")
                         .toString()
                 )
@@ -722,6 +738,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 - XPath：以 / 开头自动识别，如 //div[@id='content']、//h3/a/text()、//img/@src
 - JSONPath（返回 JSON 的接口/内嵌 JSON 数据）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL；目录/正文接口若 URL 模板缺参，用 {{book.bookUrl}} / {{book.tocUrl}} 等已有 book 对象属性拼接，或在 bookUrl 规则中用 JSONPath/正则拼出完整 URL
 - 内联 JS：{{表达式}} 嵌入 JS 片段；@get:{变量名} 读全局变量；@put:{变量名} 存全局变量
+- 【重要·JSON 列表规则】响应为 JSON 时，bookList/chapterList 等列表规则与字段规则一律用 JSONPath（如 $.data.list、$.Data.CardList[*].Body[*].ItemData、$.name），禁止写 @js:JSON.parse(this)：本版 Legado 在列表规则的 @js: 里 this 是 JS 作用域对象（"[object global]"）而非响应文本，JSON.parse(this) 必报 Unexpected token。需要基于 JSON 跑复杂逻辑时，请先确保该字段值来自 JSON 元素而非对整段响应用 JSON.parse(this)。
 - 【重要】本 App 的 JS 规则中没有 bookId/chapterId 变量（Book 无 bookId 字段），禁止使用 {{bookId}}、{{chapterId}} 或 JS 中的 bookId，否则报 ReferenceError。ID 只能从搜索结果 JSON/字段里取（JSONPath {{$.xxx}} 拼进 URL），或直接用 {{book.bookUrl}} 提取；可用正则 ##...## 从 bookUrl 中抠出 ID。
 - 若目录返回 JSON 且章节对象无完整 URL、只有内容 ID 字段（如 C/Cid/ChapterId/ContentId 等），chapterUrl 必须用 @js: 拼出完整正文 URL，例如 @js:'https://host/content.php?book_id='+book.bookUrl.match(/book_id=(\d+)/)[1]+'&chapter_id={{$.C}}'（{{$.C}} 表示取当前章节元素的 C 字段值）。
 - 正则替换：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"；正则里 \d、\s 等须写双反斜杠 \\d、\\s
