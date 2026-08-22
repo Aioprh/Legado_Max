@@ -232,15 +232,6 @@
     <string name="ai_settings_fix_rounds">自动修复最大轮次</string>
     <string name="ai_settings_custom_prompt">自定义 System Prompt（留空则用默认）</string>
     <string name="ai_settings_reset_prompt">恢复默认提示词</string>
-    <string name="ai_reader_assistant">AI 助手</string>
-    <string name="ai_reader_summary">AI 章节总结</string>
-    <string name="ai_reader_title">AI 阅读助手</string>
-    <string name="ai_reader_explain_title">AI 解析</string>
-    <string name="ai_reader_loading">正在调用 AI，请稍候…</string>
-    <string name="ai_reader_regenerate">重新生成</string>
-    <string name="ai_reader_empty">暂无内容</string>
-    <string name="ai_reader_error">AI 调用失败：%1$s</string>
-    <string name="ai_reader_copied">已复制到剪贴板</string>
     <string name="add_rss_source">Add RSS source</string>
     <string name="book_file_selector">Add books</string>
     <string name="scan_book_source">Scan</string>

@@ -32,10 +32,6 @@
         android:title="@string/web_search" />
 
     <item
-        android:id="@+id/menu_ai_reader"
-        android:title="@string/ai_reader_assistant" />
-
-    <item
         android:id="@+id/menu_text_menu_config"
         android:title="@string/menu_config" />
 
