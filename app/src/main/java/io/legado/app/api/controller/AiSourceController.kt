@@ -203,8 +203,16 @@ object AiSourceController {
                     SampleResult(ok = false, error = "搜索接口探测失败，跳过目录探测")
                 }
                 // 从首页提取分类/榜单/推荐导航链接，并抓取首个分类页真实 HTML 供 LLM 编写发现规则
-                val exploreLinks = discoverExploreLinks(html, effectiveUrl)
-                val sampleExplore = fetchExploreSample(exploreLinks, header, cookie)
+                var exploreLinks = discoverExploreLinks(html, effectiveUrl)
+                var sampleExplore = fetchExploreSample(exploreLinks, header, cookie)
+                // SPA / JSON-API 站点：首页客户端渲染，几乎没有 <a href> 分类链接（如起点代理站）时，
+                // 回退到从脚本中发现 JSON 分类/榜单接口，解析分类并抓取真实列表 JSON 供 LLM 编写发现规则
+                if ((exploreLinks.isEmpty() || !sampleExplore.ok) && endpoints.any { it.type == "explore" || it.type == "category" }) {
+                    discoverJsonExplore(html, endpoints, header, cookie)?.let { (links, sample) ->
+                        exploreLinks = links
+                        sampleExplore = sample
+                    }
+                }
 
                 HtmlContent(
                     url, charset, truncated.length, truncated,
@@ -273,9 +281,9 @@ object AiSourceController {
             val template = (1..6)
                 .firstNotNullOfOrNull { matcher.group(it)?.takeIf { g -> g.isNotBlank() } }
                 ?: continue
-            if (template.startsWith("$")) continue
-
-            var cleaned = template
+            // 解析开头 JS 变量前缀（如 `${api}?action=...`），这类模板此前会被整体跳过，
+            // 导致 SPA 站点常见的 ranking/config/list 等分类接口无法被发现
+            var cleaned = resolveVarPrefix(template, html)
             for ((re, rep) in templateReplacements) cleaned = cleaned.replace(re, rep)
             cleaned = cleaned.replace(Regex("""\$\{[^}]*\}"""), "")
             if (cleaned.isBlank()) continue
@@ -287,6 +295,12 @@ object AiSourceController {
                     cleaned.contains("chapterid") -> "content"
                 cleaned.contains("detail") || cleaned.contains("book_id") ||
                     cleaned.contains("bookid") -> "detail"
+                // 注意：config 接口 URL 往往也带 "ranking/rank" 字样，须先于 explore 判断，否则会被误判为榜单
+                cleaned.contains("config") -> "category"
+                // JSON-API / SPA 站点：把“榜单/分类/发现”类接口保留下来，供发现页规则探测
+                cleaned.contains("square") || cleaned.contains("action=list") ||
+                    cleaned.contains("ranking") || cleaned.contains("rank") ||
+                    cleaned.contains("category") -> "explore"
                 else -> "other"
             }
             if (type == "other") continue
@@ -319,7 +333,7 @@ object AiSourceController {
                     .apply { if (isPost && postBody.isNotBlank()) this.postBody = postBody }
             }
         }
-        val order = listOf("search", "detail", "catalog", "content")
+        val order = listOf("search", "detail", "catalog", "content", "category", "explore")
         return order.mapNotNull { found[it] }
     }
 
@@ -666,6 +680,133 @@ object AiSourceController {
         }.getOrElse {
             SampleResult(ok = false, url = first.second, error = it.message ?: it.javaClass.simpleName)
         }
+    }
+
+    /**
+     * 解析接口模板开头的 JS 变量前缀，如 `${api}?action=...`。
+     * 常见 SPA 会用 `const api = 'xxx.php'` 之类变量再拼接，此时模板带 `${}` 前缀，
+     * 旧逻辑直接跳过，导致这类站点的分类/榜单接口即使出现在脚本里也无法被发现。
+     * 这里把开头连续几个 `${var}` 替换成 html 中 `(const|let|var) var = '...'` 的字面值；
+     * 找不到字面值时原样返回（后续空/无关内容仍会被过滤）。
+     */
+    private fun resolveVarPrefix(template: String, html: String): String {
+        var t = template
+        var guard = 0
+        while (guard++ < 8) {
+            val m = Regex("""^\$\{([A-Za-z_$][A-Za-z0-9_$]*)\}""").find(t) ?: break
+            val name = m.groupValues[1]
+            val literal = Regex(
+                """(?<![A-Za-z0-9_$])(?:const|let|var)\s+$name\s*=\s*[`'"]\s*([^`'"]+)\s*[`'"]"""
+            ).find(html)?.groupValues?.get(1)
+            if (literal.isNullOrEmpty() || literal.contains("$")) break
+            t = literal + t.removeRange(m.range)
+        }
+        return t
+    }
+
+    /**
+     * 给接口 URL 中空着的站点参数填入默认站点值，保证探测返回有数据。
+     * 如 `${state.homeSite}` 这类模板被剥离后 URL 形如 `...&site=&page=1`，
+     * 从脚本 `homeSite: 18` / `data-home-site="18"` 取值填入，避免空参导致接口返回空。
+     */
+    private fun injectDefaultSite(url: String, html: String): String {
+        val site = Regex("""homeSite\s*:\s*(\d+)""").find(html)?.groupValues?.get(1)
+            ?: Regex("""data-home-site\s*=\s*"(\d+)""").find(html)?.groupValues?.get(1)
+            ?: return url
+        // 用 lambda 替换，避免 "$1" 后面紧跟站点数字被判成 "组 11/118" 而抛异常
+        return url.replace(Regex("""([?&](?:site_id|site)=)\s*&?""")) { m ->
+            m.groupValues[1] + site + "&"
+        }
+    }
+
+    /**
+     * SPA / JSON-API 站点回退：首页无静态分类链接时，从脚本发现的 JSON 接口探测分类/榜单。
+     * - 从分类 config 接口返回解析出分类名，据此生成 exploreLinks（分类名 -> 榜单列表 URL）
+     * - 抓首个分类的榜单列表真实 JSON 作为 sampleExplore，供 LLM 编写 JSONPath 发现规则
+     * 全程 best-effort：解析/请求失败即返回 null，不打断主流程。
+     */
+    private fun discoverJsonExplore(
+        html: String,
+        endpoints: List<ApiEndpoint>,
+        header: String?,
+        cookie: String?
+    ): Pair<List<Pair<String, String>>, SampleResult>? {
+        val explore = endpoints.firstOrNull { it.type == "explore" }
+        val config = endpoints.firstOrNull { it.type == "category" }
+
+        // 先尝试从分类 config 接口解析分类并生成榜单列表 URL
+        val links = mutableListOf<Pair<String, String>>()
+        if (config != null) {
+            runCatching {
+                val cfgUrl = injectDefaultSite(config.url, html)
+                val cfgJson = fetchJsonSample(cfgUrl, header, cookie)
+                if (cfgJson.ok) links += parseCategoryLinks(cfgJson.json, cfgUrl)
+            }
+        }
+
+        // 拿一个能真实返回书籍的榜单列表 JSON 作为发现页样例
+        val sample = if (links.isNotEmpty()) {
+            runCatching { fetchJsonSample(links.first().second.replace("{{page}}", "1"), header, cookie) }
+                .getOrNull() ?: SampleResult(ok = false, url = links.first().second, error = "榜单接口探测失败")
+        } else {
+            val url = explore?.url?.takeIf { it.isNotBlank() } ?: return null
+            runCatching { fetchJsonSample(injectDefaultSite(url, html), header, cookie) }
+                .getOrNull() ?: SampleResult(ok = false, url = url, error = "榜单接口探测失败")
+        }
+
+        // 无法解析出分类时至少保留一个通用榜单入口，避免“未探测到分类导航”
+        if (links.isEmpty() && explore?.url?.isNotBlank() == true) {
+            links.add("站内榜单" to injectDefaultSite(explore.url, html))
+        }
+        return links to sample
+    }
+
+    /**
+     * 从分类 config 返回的 JSON 中提取分类。
+     * 兼容常见结构：顶层包含若干个 {Name, Id, SubTag, Extvalue[]} 的对象（如起点代理站
+     * 的 Data.FiltrLines[].FilterUnions[]），仅取带非空 SubTag 且数字 Id>0 的「主分类」，
+     * 并据 config 地址推导出对应的榜单列表 URL。
+     */
+    private fun parseCategoryLinks(json: String, configUrl: String): List<Pair<String, String>> {
+        val result = LinkedHashMap<String, String>()
+        runCatching {
+            fun walk(el: JsonElement) {
+                when {
+                    el.isJsonArray -> el.asJsonArray.forEach { walk(it) }
+                    el.isJsonObject -> {
+                        val obj = el.asJsonObject
+                        val subTag = obj.get("SubTag")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+                        val id = obj.get("Id")?.takeIf { it.isJsonPrimitive }?.asString ?: ""
+                        val name = obj.get("Name")?.takeIf { it.isJsonPrimitive }?.asString?.trim() ?: ""
+                        if (subTag.isNotBlank() && id.isNotBlank() && id != "0" &&
+                            id.all { it.isDigit() } && name.isNotBlank()
+                        ) {
+                            result.putIfAbsent(name, buildCategoryListUrl(configUrl, id))
+                        }
+                        obj.entrySet().forEach { (_, v) ->
+                            if (v.isJsonArray || v.isJsonObject) walk(v)
+                        }
+                    }
+                }
+            }
+            walk(JsonParser.parseString(json))
+        }
+        return result.take(8).toList()
+    }
+
+    /**
+     * 由分类 config 地址推导榜单列表地址（分页用 {{page}}，App 自动替换翻页）。
+     * config 形如 `ranking.php?action=config&site_id=18`，榜单列表为
+     * `ranking.php?action=ranking&site_id=18&order=0&page={{page}}&page_size=20&category_id={id}`。
+     * 非 `action=config` 形态则原样追加 category_id 查询参数，尽力而为。
+     */
+    private fun buildCategoryListUrl(configUrl: String, categoryId: String): String {
+        var url = configUrl.substringBefore("#").trimEnd('&')
+        if (Regex("""action=config""", RegexOption.IGNORE_CASE).containsMatchIn(url)) {
+            url = url.replace(Regex("""action=config""", RegexOption.IGNORE_CASE), "action=ranking")
+        }
+        val sep = if (url.contains("?")) "&" else "?"
+        return url + sep + "order=0&page={{page}}&page_size=20&category_id=$categoryId"
     }
 
     fun fetchHtml(parameters: Map<String, List<String>>): ReturnData {
