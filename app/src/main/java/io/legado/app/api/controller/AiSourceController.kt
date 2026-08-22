@@ -791,7 +791,7 @@ object AiSourceController {
             }
             walk(JsonParser.parseString(json))
         }
-        return result.take(8).toList()
+        return result.toList().take(8)
     }
 
     /**
