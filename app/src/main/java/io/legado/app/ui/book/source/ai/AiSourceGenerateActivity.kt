@@ -40,15 +40,7 @@ class AiSourceGenerateActivity :
         binding.etBaseUrl.setText(viewModel.baseUrl)
         binding.etApiKey.setText(viewModel.apiKey)
         binding.etModel.setText(viewModel.model)
-        // 恢复最近一次历史（防退出丢失）：有历史则自动填充 URL/关键词/结果/HTML
-        AiSourceHistory.latest()?.let { rec ->
-            if (rec.url.isNotBlank()) {
-                binding.etUrl.setText(rec.url)
-                binding.etKeyword.setText(rec.keyword)
-                if (rec.result.isNotBlank()) binding.etResult.setText(rec.result)
-                if (rec.html.isNotBlank()) binding.etHtmlPreview.setText(rec.html)
-            }
-        }
+        // 注意：不在打开页面时自动填充历史，保持界面全新；用户需从菜单【历史】手动选择才恢复
         // 模型预设：选择预设时自动填充模型名
         binding.spModelPreset.setOnItemSelectedListener(object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
