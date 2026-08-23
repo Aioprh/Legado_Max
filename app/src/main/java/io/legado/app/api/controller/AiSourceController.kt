@@ -426,9 +426,16 @@ object AiSourceController {
     }
 
     /**
-     * 抓取接口示例 JSON（限时、截断、非 JSON 判失败）
+     * 抓取接口示例 JSON（限时、非 JSON 判失败）
+     * @param raw 为 true 时不截断，返回完整 JSON 供程序解析（如分类 config 接口）。
+     *        默认截断到 MAX_API_CHARS，仅用于喂给 LLM 的示例；截断后的 JSON 不合法，不能用于程序解析。
      */
-    private fun fetchJsonSample(url: String, header: String?, cookie: String?): SampleResult {
+    private fun fetchJsonSample(
+        url: String,
+        header: String?,
+        cookie: String?,
+        raw: Boolean = false
+    ): SampleResult {
         return runCatching {
             val request = buildRequest(url, header, cookie)
             val client = okHttpClient.newBuilder()
@@ -443,12 +450,12 @@ object AiSourceController {
                     if (text.isEmpty() || (!text.startsWith("{") && !text.startsWith("["))) {
                         SampleResult(ok = false, url = url, error = "响应非 JSON 或为空")
                     } else {
-                        val truncated = if (text.length > MAX_API_CHARS) {
+                        val result = if (text.length > MAX_API_CHARS && !raw) {
                             text.substring(0, MAX_API_CHARS) + "\n...(已截断)"
                         } else {
                             text
                         }
-                        SampleResult(ok = true, url = url, json = truncated)
+                        SampleResult(ok = true, url = url, json = result)
                     }
                 }
             }
@@ -764,7 +771,8 @@ object AiSourceController {
         if (config != null) {
             runCatching {
                 val cfgUrl = injectDefaultSite(config.url, html)
-                val cfgJson = fetchJsonSample(cfgUrl, header, cookie)
+                // 分类 config JSON 往往超过 MAX_API_CHARS，需完整抓取用于解析，不能截断成非法 JSON
+                val cfgJson = fetchJsonSample(cfgUrl, header, cookie, raw = true)
                 if (cfgJson.ok) links += parseCategoryLinks(cfgJson.json, cfgUrl)
             }
         }
