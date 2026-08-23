@@ -307,9 +307,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         var round = 0
         var current = sourceJson
         val log = StringBuilder()
-        // 动态收敛判定：记录上一轮失败指纹，连续两轮相同（LLM 修不到点子）即提前停止
-        var lastFingerprint: String? = null
-        var stopReason = "达到最大轮次（$maxRounds）仍未能通过"
+        val stopReason = "达到最大轮次（$maxRounds）仍未能通过"
         // 使用对话历史代替重复发送完整 HTML 上下文
         val messages = mutableListOf(
             mapOf("role" to "system", "content" to systemPrompt),
@@ -323,14 +321,6 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             if (verify.succeeded) {
                 return AutoFixResult(ok = true, rounds = round, json = verify.fixedJson ?: current, log = log.toString())
             }
-            val fingerprint = failureStage(verify.summary)
-            // 连续两轮同一阶段失败 → 不再收敛，提前结束
-            if (lastFingerprint == fingerprint && round >= 2) {
-                stopReason = "连续两轮失败于同一环节（$fingerprint），问题未收敛，提前停止（已用 $round 轮）"
-                log.appendLine(stopReason)
-                return AutoFixResult(ok = false, rounds = round, json = current, log = log.toString())
-            }
-            lastFingerprint = fingerprint
             // 组装修复提示词，只反馈错误信息，不重复发送 HTML
             val fixUserPrompt = buildString {
                 appendLine("你之前生成的书源经真实搜索验证不通过，请根据以下错误信息修复规则，只输出修复后的完整书源 JSON 数组（不要任何解释）：")
@@ -366,29 +356,6 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         }
         log.appendLine(stopReason)
         return AutoFixResult(ok = false, rounds = round, json = current, log = log.toString())
-    }
-
-    /**
-     * 从验证失败摘要中提取「失败阶段指纹」，用于判断连续轮次是否仍在收敛。
-     * 命中同一阶段（搜索/详情/目录/正文/发现）即视为同一类问题；
-     * 连续两轮指纹相同说明 LLM 没修到点子上，动态提前停止，避免空转到固定上限。
-     */
-    private fun failureStage(summary: String): String {
-        return when {
-            summary.contains("搜索规则执行异常") -> "search_exc"
-            summary.contains("搜索返回空列表") -> "search_empty"
-            summary.contains("搜索") && summary.contains("bookList") -> "search"
-            summary.contains("详情解析失败") || summary.contains("详情") -> "bookinfo"
-            summary.contains("目录地址为空") -> "toc_empty_url"
-            summary.contains("目录地址存在空参数") -> "toc_bad_url"
-            summary.contains("目录解析失败") || summary.contains("目录解析为空") -> "toc"
-            summary.contains("正文解析失败") || summary.contains("正文解析为空") -> "content"
-            summary.contains("发现页解析失败") || summary.contains("发现页解析为空") ||
-                summary.contains("缺少发现页规则") -> "explore"
-            summary.contains("无法解析为书源 JSON") -> "json"
-            summary.contains("验证失败") -> "verify"
-            else -> "other"
-        }
     }
 
     /**
