@@ -35,8 +35,13 @@ jobs:
     outputs:
       version: ${{ steps.set-ver.outputs.version }}
       versionL: ${{ steps.set-ver.outputs.versionL }}
+      lanzou: ${{ steps.check.outputs.lanzou }}
+      telegram: ${{ steps.check.outputs.telegram }}
+      gitee: ${{ steps.check.outputs.gitee }}
+      sgithub: ${{ steps.check.outputs.sgithub }}
       updateLog_updated: ${{ steps.updateLog.outputs.updated }}
       updateLog_content: ${{ steps.updateLog.outputs.body }}
+      build_matrix: ${{ steps.set-matrix.outputs.build_matrix }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -45,6 +50,20 @@ jobs:
         run: |
           echo "version=$(date -d "8 hour" -u +3.%y.%m%d%H)" >> $GITHUB_OUTPUT
           echo "versionL=$(date -d "8 hour" -u +3.%y.%m%d%H)" >> $GITHUB_OUTPUT
+      - id: check
+        run: |
+          if [ -n "${{ secrets.LANZOU_ID }}" ]; then
+            echo "lanzou=yes" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "${{ secrets.BOT_TOKEN }}" ]; then
+            echo "telegram=yes" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "${{ secrets.GITEE_TOKEN }}" ]; then
+            echo "gitee=yes" >> $GITHUB_OUTPUT
+          fi
+          if [ -n "${{ secrets.S_GITHUB_TOKEN }}" ]; then
+            echo "sgithub=yes" >> $GITHUB_OUTPUT
+          fi
       - id: updateLog
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
@@ -53,8 +72,8 @@ jobs:
           UPDATED_CONTENT=""
           IS_MERGE_PR=false
           if [[ -n "$COMMIT_MSG" ]]; then
-            if [[ "$COMMIT_MSG" =~ ^"Merge pull request" ]] ||
-              [[ "$COMMIT_MSG" =~ ^"Merge branch" ]] ||
+            if [[ "$COMMIT_MSG" =~ ^"Merge pull request" ]] || 
+              [[ "$COMMIT_MSG" =~ ^"Merge branch" ]] || 
               [[ "$COMMIT_MSG" =~ ^"Sync upstream" ]]; then
               IS_MERGE_PR=true
             fi
@@ -63,6 +82,8 @@ jobs:
           CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null)
           UPDATE_LOG_CHANGED=$(echo "$CHANGED_FILES" | grep -q "app/src/main/assets/updateLog.md" && echo "yes" || echo "no")
           CRONET_JSON_CHANGED=$(echo "$CHANGED_FILES" | grep -q "app/src/main/assets/cronet.json" && echo "yes" || echo "no")
+
+          echo "DEBUG: CHANGED_FILES=$CHANGED_FILES"
 
           if [ "$UPDATE_LOG_CHANGED" = "yes" ] && [ "$CRONET_JSON_CHANGED" = "no" ]; then
             echo "updated=yes" >> $GITHUB_OUTPUT
@@ -80,46 +101,62 @@ jobs:
                 UPDATED_CONTENT=$(head -n 10 app/src/main/assets/updateLog.md)
               fi
             fi
+            echo "DEBUG: UPDATED_CONTENT (from updateLog.md)="
+            echo "$UPDATED_CONTENT"
           elif [ "$IS_MERGE_PR" = true ]; then
             UPDATED_CONTENT="$COMMIT_MSG"
+            echo "DEBUG: UPDATED_CONTENT (from commit msg)=$UPDATED_CONTENT"
           else
             if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
               BEFORE_SHA="${{ github.event.before }}"
               AFTER_SHA="${{ github.event.after }}"
               COMMIT_RANGE="$BEFORE_SHA..$AFTER_SHA"
+              echo "DEBUG: COMMIT_RANGE=$COMMIT_RANGE"
               if git rev-parse "$COMMIT_RANGE" >/dev/null 2>&1; then
                 UPDATED_CONTENT=$(git log $COMMIT_RANGE --pretty=format:"* %s" --reverse 2>/dev/null | grep -v "^* Merge" || echo "* $COMMIT_MSG")
+                echo "DEBUG: UPDATED_CONTENT (from commit range) set"
               else
                 UPDATED_CONTENT=$(git log -10 --pretty=format:"* %s (%h)" --reverse 2>/dev/null | grep -v "^* Merge")
+                echo "DEBUG: UPDATED_CONTENT (from recent logs) set"
               fi
+              echo "$UPDATED_CONTENT"
             fi
           fi
 
           if [ -z "$UPDATED_CONTENT" ]; then
+            echo "DEBUG: fallback to last commit body"
             UPDATED_CONTENT=$(git log -1 --pretty=%B)
           fi
 
           if [[ "$UPDATED_CONTENT" =~ ^"Bump web" ]]; then
             PREVIOUS_COMMIT_BODY=$(git log --skip=1 -1 --pretty=%B)
             UPDATED_CONTENT=$(printf "* %s\n* %s" "$UPDATED_CONTENT" "$PREVIOUS_COMMIT_BODY")
+            echo "DEBUG: Updated content with previous commit message for Bump web"
           fi
 
           CONTENT_JSON=$(echo "$UPDATED_CONTENT" | jq -Rs . 2>/dev/null || echo "\"Error generating update content\"")
+          echo "DEBUG: CONTENT_JSON=$CONTENT_JSON"
           echo "body=$CONTENT_JSON" >> $GITHUB_OUTPUT
+      - id: set-matrix
+        run: |
+          # 新增 debug 构建类型
+          echo 'build_matrix={"product":["app"],"type":["release","releaseS","releaseLegacy","debug"]}' >> $GITHUB_OUTPUT
 
   build:
     needs: prepare
+    strategy:
+      matrix: ${{ fromJson(needs.prepare.outputs.build_matrix) }}
+      fail-fast: false
     runs-on: ubuntu-latest
     env:
+      product: ${{ matrix.product }}
+      type: ${{ matrix.type }}
       VERSION: ${{ needs.prepare.outputs.version }}
       VERSIONL: ${{ needs.prepare.outputs.versionL }}
-      UPDATE_UPDATED: ${{ needs.prepare.outputs.updateLog_updated }}
-      UPDATE_BODY: ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -141,7 +178,6 @@ jobs:
         run: |
           echo "清空18PlusList.txt"
           echo "">$GITHUB_WORKSPACE/app/src/main/assets/18PlusList.txt
-
       - name: Release Apk Sign
         run: |
           echo "给apk增加签名"
@@ -156,27 +192,60 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Build And Rename
+      - name: Build With Gradle
+        continue-on-error: true
         run: |
+          if [ "${{ env.type }}" == 'debug' ]; then
+            typeName="Debug调试包"
+            gradleTask="assembleAppMaxDebug"
+          elif [ "${{ env.type }}" == 'release' ]; then
+            typeName="原包名"
+            gradleTask="assembleAppMaxRelease"
+          elif [ "${{ env.type }}" == 'releaseS' ]; then
+            typeName="共存"
+            gradleTask="assembleAppSRelease"
+          else
+            typeName="旧版覆盖"
+            gradleTask="assembleAppLegacyRelease"
+          fi
           echo "统一版本号"
-          sed "/def version/c def version = \"$VERSION\"" $GITHUB_WORKSPACE/app/build.gradle -i
+          sed "/def version/c def version = \"${{ env.VERSION }}\"" $GITHUB_WORKSPACE/app/build.gradle  -i
+          echo "开始${{ env.product }}$typeName构建"
           chmod +x gradlew
+          ./gradlew $gradleTask --build-cache --parallel --daemon --warning-mode all
+          echo "修改APK文件名"
           mkdir -p ${{ github.workspace }}/apk/
+          for file in `ls ${{ github.workspace }}/app/build/outputs/apk/*/*/*.apk`; do
+            if [ "${{ env.type }}" == 'debug' ]; then
+              mv "$file" ${{ github.workspace }}/apk/legado_Debug调试包_${{ env.VERSIONL }}.apk
+            elif [ "${{ env.type }}" == 'release' ]; then
+              mv "$file" ${{ github.workspace }}/apk/legado_测试版_${{ env.VERSIONL }}_$typeName.apk
+            elif [ "${{ env.type }}" == 'releaseS' ]; then
+              mv "$file" ${{ github.workspace }}/apk/legado_正式版_${{ env.VERSIONL }}_$typeName.apk
+            else
+              mv "$file" ${{ github.workspace }}/apk/legado_兼容版_${{ env.VERSIONL }}_$typeName.apk
+            fi
+          done
+          echo "移动mapping文件"
+          mkdir -p ${{ github.workspace }}/mapping/
+          for file in `ls ${{ github.workspace }}/app/build/outputs/mapping/*/mapping.txt`; do
+            mv "$file" ${{ github.workspace }}/mapping/mapping.txt
+          done
 
-          build_one () {
-            local task="$1"; local rename="$2"
-            echo "开始构建：$task"
-            ./gradlew "$task" --build-cache --parallel --daemon --warning-mode all
-            echo "修改APK文件名"
-            for file in `ls ${{ github.workspace }}/app/build/outputs/apk/*/*/*.apk`; do
-              mv "$file" ${{ github.workspace }}/apk/"$rename"
-            done
-          }
+      - name: Move Missing Rules Files
+        run: |
+          echo "移动missing_rules.txt文件"
+          mkdir -p ${{ github.workspace }}/mapping/
+          for file in `ls ${{ github.workspace }}/app/build/outputs/mapping/*/missing_rules.txt`; do
+            mv "$file" ${{ github.workspace }}/mapping/missing_rules.txt
+          done
 
-          build_one "assembleAppMaxRelease"    "legado_测试版_${VERSIONL}_原包名.apk"
-          build_one "assembleAppSRelease"      "legado_正式版_${VERSIONL}_共存.apk"
-          build_one "assembleAppLegacyRelease" "legado_兼容版_${VERSIONL}_旧版覆盖.apk"
-          build_one "assembleAppMaxDebug"      "legado_Debug调试包_${VERSIONL}.apk"
+      - name: Upload Missing Rules File To Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: legado.${{ env.product }}.${{ env.type }}.mapping.missing_rules
+          if-no-files-found: ignore
+          path: ${{ github.workspace }}/mapping/missing_rules.txt
 
       - name: Check Build production
         run: |
@@ -190,28 +259,359 @@ jobs:
             exit 1
           fi
 
-      - name: 计算发布信息
-        run: |
-          if [ "$UPDATE_UPDATED" = "yes" ]; then
-            echo "RELEASE_TAG=$VERSION" >> $GITHUB_ENV
-            echo "RELEASE_NAME=legado_app_$VERSION" >> $GITHUB_ENV
-            echo "PRERELEASE=false" >> $GITHUB_ENV
-            printf '⚠️ **每次安装前请备份！**\n\n### 更新内容\n\n%s\n' "$UPDATE_BODY" > /tmp/release_body.md
-          else
-            echo "RELEASE_TAG=beta-$VERSIONL" >> $GITHUB_ENV
-            echo "RELEASE_NAME=legado_app_$VERSIONL" >> $GITHUB_ENV
-            echo "PRERELEASE=true" >> $GITHUB_ENV
-            printf '⚠️ **重要提醒：安装前请务必备份您的数据！**\n\n📦 **APK版本说明：**\n| 版本类型 | 文件标识 | 说明 |\n|---------|---------|------|\n| 测试版 | 原包名 | 测试版，专属于max版的安装包 |\n| 兼容版 | 旧版覆盖 | 可覆盖原版和lyc版 |\n| 共存版 | 共存 | 独立安装，与主版本共存 |\n| 调试包 | debug | 独立安装，无代码混淆，方便定位问题 |\n\n### 更新内容\n\n%s\n' "$UPDATE_BODY" > /tmp/release_body.md
-          fi
+      - name: Upload App To Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: legado.${{ env.product }}.${{ env.type }}
+          if-no-files-found: ignore
+          path: ${{ github.workspace }}/apk/*.apk
 
-      - name: Publish GitHub Release
+      - name: Upload Mapping File To Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: legado.${{ env.product }}.${{ env.type }}.mapping
+          if-no-files-found: ignore
+          path: ${{ github.workspace }}/mapping/mapping.txt
+
+  prerelease:
+    needs: [ prepare, build ]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      VERSIONL: ${{ needs.prepare.outputs.versionL }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+      - uses: actions/download-artifact@v8
+        with:
+          path: apk/
+          # 注释pattern，允许下载debug包上传GitHub Release
+          # pattern: 'legado.app.release*'
+
+      - working-directory: apk/
+        run: |
+          mv */*.apk .
+          rm -rf */
+
+          for file in `ls *.apk`; do
+            # Debug包重命名为 z_debug 开头，排到列表最后
+            if [[ "$file" == *Debug调试包* ]]; then
+              mv "$file" $(echo "$file" | sed -e 's/Debug调试包/z_debug/')
+              continue
+            fi
+            if [[ "$file" == *原包名* ]]; then
+              mv "$file" $(echo $file | sed -e s/原包名/release/ -e s/测试版/beta/)
+            elif [[ "$file" == *旧版覆盖* ]]; then
+              mv "$file" $(echo $file | sed -e s/旧版覆盖/legacy/ -e s/兼容版/compat/)
+            else
+              mv "$file" $(echo $file | sed -e s/共存/releaseS/ -e s/正式版/plus/)
+            fi
+          done
+
+      - name: Publish Official Release
+        if: needs.prepare.outputs.updateLog_updated == 'yes'
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ env.RELEASE_NAME }}
-          tag_name: ${{ env.RELEASE_TAG }}
-          body_path: /tmp/release_body.md
-          prerelease: ${{ env.PRERELEASE }}
+          name: legado_app_${{ env.VERSION }}
+          tag_name: ${{ env.VERSION }}
+          body: |
+            ⚠️ **每次安装前请备份！**
+            ### 更新内容
+            ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
+          prerelease: false
           files: ${{ github.workspace }}/apk/*.apk
           fail_on_unmatched_files: true
+
+      - name: Publish Pre-Release
+        if: needs.prepare.outputs.updateLog_updated != 'yes'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: legado_app_${{ env.VERSIONL }}
+          tag_name: beta-${{ env.VERSIONL }}
+          body: |
+            ⚠️ **重要提醒：安装前请务必备份您的数据！**
+
+            📦 **APK版本说明：**
+            | 版本类型 | 文件名标识 | 说明 |
+            |---------|-----------|------|
+            | 测试版 | beta | 测试版，包含新功能，专属于max版的安装包 |
+            | 兼容版 | compact | 可覆盖原版和lyc版 |
+            | 共存版 | plus | 独立安装，与主版本共存 |
+            | 调试包 | debug | 独立安装，与其他共存，适用于调试用，无代码混淆，函数名完整，方便抓取崩溃、报错日志定位问题。此版本能正常抓包 |
+            
+            四个包名都不同，在安卓系统中不同包名视为不同软件，都可以独立存在。
+
+            ### 更新内容
+            ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
+          prerelease: true
+          files: ${{ github.workspace }}/apk/*.apk
+          fail_on_unmatched_files: true
+
+  lanzou:
+    needs: [ prepare, build ]
+    if: ${{ github.event_name != 'pull_request' && needs.prepare.outputs.lanzou == 'yes' }}
+    runs-on: ubuntu-latest
+    env:
+      # 登录蓝奏云后在控制台运行document.cookie
+      ylogin: ${{ secrets.LANZOU_ID }}
+      phpdisk_info: ${{ secrets.LANZOU_PSD }}
+      # 蓝奏云里的文件夹ID（阅读3测试版:2670621）
+      LANZOU_FOLDER_ID: ${{ secrets.LANZOU_FOLDER_ID }}
+      #蓝奏云分享链接
+      LANZOU_URL: ${{ secrets.LANZOU_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v8
+        with:
+          path: apk/
+          # pattern: 'legado.app.release*'
+      - working-directory: apk/
+        run: mv */*.apk . ;rm -rf */
+      - name: Upload To Lanzou
+        continue-on-error: true
+        run: |
+          path="$GITHUB_WORKSPACE/apk/"
+          python3 $GITHUB_WORKSPACE/.github/scripts/lzy_web.py "$path" "$LANZOU_FOLDER_ID"
+          echo "[$(date -u -d '+8 hour' '+%Y.%m.%d %H:%M:%S')] 分享链接: $LANZOU_URL"
+
+  telegram:
+    needs: [prepare, build]
+    if: github.event_name != 'pull_request' && needs.prepare.outputs.telegram == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: apk/
+          # pattern: 'legado.app.release*'
+      - id: set-tags
+        working-directory: apk/
+        run: |
+          mv */*.apk .
+          rm -rf */
+          has_plus=false
+          has_legacy=false
+          for file in `ls *.apk`; do
+            if [[ "$file" == *原包名* ]]; then
+              mv "$file" $(echo $file | sed s/原包名/beta/)
+            elif [[ "$file" == *旧版覆盖* ]]; then
+              mv "$file" $(echo $file | sed s/旧版覆盖/legacy/)
+              has_legacy=true
+            else
+              mv "$file" $(echo $file | sed s/共存/plus/)
+              has_plus=true
+            fi
+          done
+          tags=""
+          if [ "$has_plus" = true ] && [ "$has_legacy" = true ]; then
+            tags="#beta #plus #legacy"
+          elif [ "$has_plus" = true ]; then
+            tags="#beta #plus"
+          elif [ "$has_legacy" = true ]; then
+            tags="#beta #legacy"
+          else
+            tags="#beta"
+          fi
+          echo "TAGS=$tags" >> $GITHUB_OUTPUT
+      - name: Post to channel
+        continue-on-error: true
+        uses: xireiki/channel-post@v1
+        with:
+          chat_id: ${{ secrets.CHANNEL_ID }}
+          bot_token: ${{ secrets.BOT_TOKEN }}
+          context: |
+            版本号：${{ needs.prepare.outputs.versionL }}
+            更新内容：
+            ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
+            #阅读 #Legado #阅读Sigma ${{ steps.set-tags.outputs.TAGS }}
+          path: apk/*
+          method: sendFile
+
+  gitee:
+    needs: [prepare, build]
+    if: github.event_name != 'pull_request' && needs.prepare.outputs.gitee == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          # pattern: 'legado.app.release*'
+          path: apk/
+          merge-multiple: true
+      - working-directory: apk/
+        run: |
+          echo "📋 下载的文件列表："
+          ls -la
+
+          for file in `ls *.apk`; do
+            if [[ "$file" == *原包名* ]]; then
+              mv "$file" $(echo $file | sed s/原包名/release/)
+            elif [[ "$file" == *旧版覆盖* ]]; then
+              mv "$file" $(echo $file | sed s/旧版覆盖/legacy/)
+            else
+              mv "$file" $(echo $file | sed s/共存/releaseS/)
+            fi
+          done
+
+      - name: Upload to Gitee Release
+        continue-on-error: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_USER: "GEd520"
+          GITEE_REPO: "legados"
+          VERSION: ${{ needs.prepare.outputs.version }}
+          UPDATE_CONTENT: ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
+          UPDATE_UPDATED: ${{ needs.prepare.outputs.updateLog_updated }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq curl 
+          API_BASE="https://gitee.com/api/v5/repos/$GITEE_USER/$GITEE_REPO"
+
+          # 根据条件设置标签和发布类型
+          if [ "$UPDATE_UPDATED" = "yes" ]; then
+            TAG_NAME="$VERSION"
+            PRERELEASE="false"
+            RELEASE_NAME="legado_app_$VERSION"
+            echo "🚀 发布正式版: $TAG_NAME"
+          else
+            TAG_NAME="beta-${{ needs.prepare.outputs.versionL }}"
+            PRERELEASE="true"
+            RELEASE_NAME="legado_app_${{ needs.prepare.outputs.versionL }}"
+            echo "🧪 发布预发布版: $TAG_NAME"
+          fi
+
+          echo "📦 直接创建新release，保留历史版本"
+
+          # 创建新Release，带重试机制
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          RELEASE_ID=""
+          RELEASE_JSON=""
+          BODY_ESCAPED=$(echo "$UPDATE_CONTENT" | jq -Rs .)
+          PAYLOAD=$(jq -n \
+            --arg tag_name "$TAG_NAME" \
+            --arg name "$RELEASE_NAME" \
+            --arg target_commitish "main" \
+            --argjson prerelease "$PRERELEASE" \
+            "{
+              tag_name: \$tag_name,
+              name: \$name,
+              body: ${BODY_ESCAPED},
+              target_commitish: \$target_commitish,
+              prerelease: \$prerelease
+            }")
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ -z "$RELEASE_ID" ]; do
+            set +e
+            RELEASE_JSON=$(curl -sS --fail --tlsv1.2 --retry 3 --retry-delay 5 --retry-connrefused --connect-timeout 20 -X POST \
+                -H "Content-Type: application/json" \
+                -d "$PAYLOAD" \
+                "${API_BASE}/releases?access_token=${GITEE_TOKEN}")
+            CURL_EXIT=$?
+            set -e
+
+            if [ "${CURL_EXIT:-1}" -eq 0 ] && [ -n "$RELEASE_JSON" ]; then
+              RELEASE_ID=$(echo "$RELEASE_JSON" | jq -r '.id // empty')
+            else
+              RETRY_COUNT=$((RETRY_COUNT+1))
+              echo "$RELEASE_JSON"
+              echo "⚠️  第 $RETRY_COUNT 次重试创建Release..."
+              sleep 5
+            fi
+          done
+
+          if [ -z "$RELEASE_ID" ]; then
+            echo "❌ 创建Release失败，跳过文件上传"
+            exit 1
+          fi
+
+          # 并行上传所有APK文件
+          echo "🚀 开始并行上传APK文件..."
+          PIDS=()
+          for APK_FILE in apk/*.apk; do
+            set +e
+            curl -sS --fail --tlsv1.2 --retry 2 --retry-delay 3 --connect-timeout 30 --max-time 6000 -X POST \
+              -F "file=@$APK_FILE" \
+              "${API_BASE}/releases/${RELEASE_ID}/attach_files?access_token=${GITEE_TOKEN}" &
+            PIDS+=($!)
+            set -e
+          done
+          
+          for PID in "${PIDS[@]}"; do
+            wait $PID
+          done
+          echo "✅ 所有APK上传完成"
+
+          # 删除最旧的Release，保留最近的10个版本
+          echo "🔄 开始清理旧版本..."
+          MAX_KEEP=10
+          RELEASES_JSON=$(curl -sS --tlsv1.2 --connect-timeout 10 \
+              "${API_BASE}/releases?access_token=${GITEE_TOKEN}&per_page=100")
+          
+          OLD_RELEASE_ID=$(echo "$RELEASES_JSON" | jq -r \
+              --argjson rid "$RELEASE_ID" \
+              '[.[] | select(.id != $rid)] | sort_by(.created_at) | .[0].id // empty')
+          
+          if [ -n "$OLD_RELEASE_ID" ] && [ "$OLD_RELEASE_ID" != "null" ]; then
+            RELEASE_COUNT=$(echo "$RELEASES_JSON" | jq -r 'length')
+            echo "📊 当前共有 $RELEASE_COUNT 个Release"
+            
+            if [ "$RELEASE_COUNT" -gt "$MAX_KEEP" ]; then
+              OLD_RELEASE_NAME=$(echo "$RELEASES_JSON" | jq -r \
+                  --argjson rid "$OLD_RELEASE_ID" \
+                  '.[] | select(.id == $rid) | .name')
+              echo "🗑️ 删除最旧的Release: $OLD_RELEASE_NAME (ID: $OLD_RELEASE_ID)"
+              
+              set +e
+              curl -sS --fail --tlsv1.2 --connect-timeout 10 -X DELETE \
+                  "${API_BASE}/releases/${OLD_RELEASE_ID}?access_token=${GITEE_TOKEN}"
+              if [ $? -eq 0 ]; then
+                echo "✅ 成功删除旧Release"
+              else
+                echo "⚠️ 删除旧Release失败，可能没有权限或已被删除"
+              fi
+              set -e
+            else
+              echo "ℹ️ 当前Release数量($RELEASE_COUNT)未超过保留上限($MAX_KEEP)，跳过删除"
+            fi
+          else
+            echo "ℹ️ 没有可删除的旧Release"
+          fi
+
+  update-storage:
+    needs: [prepare, build]
+    if: github.event_name != 'pull_request'&& needs.prepare.outputs.sgithub == 'yes' && needs.prepare.outputs.updateLog_updated == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: legado.app.releaseS
+          path: ./apk-releaseS
+
+      - name: Check releaseS APK exists
+        id: check-apk
+        run: |
+          if ls ./apk-releaseS/*.apk 1> /dev/null 2>&1; then
+            echo "releaseS APK found"
+            echo "apk_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "releaseS APK not found"
+            echo "apk_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload to yuedu repository
+        continue-on-error: true
+        if: steps.check-apk.outputs.apk_exists == 'true'
+        run: |
+          # 设置Git配置
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          # 克隆目标仓库
+          git clone https://${{ secrets.S_GITHUB_TOKEN }}@github.com/Luoyacheng/yuedu.git yuedu-repo
+          # 创建目录（如果不存在）
+          mkdir -p yuedu-repo/sigma
+          # 复制releaseS APK文件并重命名
+          cp ./apk-releaseS/*.apk yuedu-repo/sigma/leagado_Sigma_正式版.apk
+          # 提交更改
+          cd yuedu-repo
+          git add sigma/leagado_Sigma_正式版.apk
+          git commit -m "Update sigma.apk to version ${{ needs.prepare.outputs.versionL }}"
+          git push
