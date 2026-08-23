@@ -340,7 +340,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                 appendLine("   chapterList = $.Data.Chapters")
                 appendLine("   chapterName = $.Data.Chapters.*.N")
                 appendLine("   chapterUrl  = @js:'https://host/content.php?book_id='+book.bookUrl.match(/book_id=(\\d+)/)[1]+'&chapter_id={{$.C}}'")
-                appendLine("8. loginCheckJs 是纯 JS 字段，直接写 JS 代码、不要加 @js:/<js> 前缀（否则每次搜索/详情被 evalJS 执行时会报“在语句前面缺少 ;”）；用 java.ajax 请求登录态接口并按返回体判断，可写成 (()=>{try{return /\"user\"/.test(java.ajax('https://host/auth.php?action=me'));}catch(e){return false;}})()，并尽量在末尾返回 result 透传响应。")
+                appendLine("8. loginCheckJs 是纯 JS 字段，直接写 JS 代码、不要加 @js:/<js> 前缀（否则每次搜索/详情被 evalJS 执行时会报“在语句前面缺少 ;”）；并且【必须返回 result 透传响应】——Legado 会把返回值强转成 StrResponse，禁止 return true/false（会抛 ClassCastException: Boolean cannot be cast to StrResponse），正确写法：在该 JS 里用 java.ajax 请求登录态接口判断，未登录可 java.toast 提示，最后 return result，如 (function(r){var o={};try{o=JSON.parse(java.ajax('https://host/auth.php?action=me'));}catch(e){}if(!(o&&o.user)){java.toast('未登录');}return r;})(result)。")
                 appendLine()
                 appendLine("【上一次生成的书源 JSON】")
                 appendLine(current)
@@ -751,7 +751,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 - 【重要】本 App 的 JS 规则中没有 bookId/chapterId 变量（Book 无 bookId 字段），禁止使用 {{bookId}}、{{chapterId}} 或 JS 中的 bookId，否则报 ReferenceError。ID 只能从搜索结果 JSON/字段里取（JSONPath {{$.xxx}} 拼进 URL），或直接用 {{book.bookUrl}} 提取；可用正则 ##...## 从 bookUrl 中抠出 ID。
 - 若目录返回 JSON 且章节对象无完整 URL、只有内容 ID 字段（如 C/Cid/ChapterId/ContentId 等），chapterUrl 必须用 @js: 拼出完整正文 URL，例如 @js:'https://host/content.php?book_id='+book.bookUrl.match(/book_id=(\d+)/)[1]+'&chapter_id={{$.C}}'（{{$.C}} 表示取当前章节元素的 C 字段值）。
 - 正则替换：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"；正则里 \d、\s 等须写双反斜杠 \\d、\\s
-- 【登录】若用户提示词标明站点可登录并给出登录入口（loginUrl/登录接口），则书源 JSON 里 loginUrl 必须填写，loginUrl 填可当网页登录页使用的地址（网页登录页，或带 ?auth=login/?action=login 会自动弹出登录框的地址），禁止把纯 API 接口（auth.php?action=captcha / action=me 等返回 JSON 或图片的地址）填进 loginUrl；loginUi 用于表达无验证码的登录表单（账号/密码字段按接口字段提交），若站点有图片验证码/复杂表单导致 loginUi 无法表达，则 loginUi 留空字符串，让 App 用内置 WebView 打开 loginUrl 手动登录，并提醒用户：验证码为一次性且站点对高频操作有限流，提交前先看清验证码图片、答错会刷新换题、避免反复提交触发“验证码请求无效”；有登录态检测接口（如 auth.php?action=me）时才写 loginCheckJs。注意：loginCheckJs 是纯 JS 字段，直接写 JS 代码、不要加 @js: 或 <js> 前缀（否则每次搜索/详情被 evalJS 执行时会报“在语句前面缺少 ;”），用 java.ajax 请求检测接口、返回体含 user/登录字段即视为已登录返回 true，并尽量在末尾返回 result 透传响应；站点无登录态检测接口则 loginCheckJs 留空；无法从提示词/HTML 确认的一律留空字符串，禁止编造。
+- 【登录】若用户提示词标明站点可登录并给出登录入口（loginUrl/登录接口），则书源 JSON 里 loginUrl 必须填写，loginUrl 填可当网页登录页使用的地址（网页登录页，或带 ?auth=login/?action=login 会自动弹出登录框的地址），禁止把纯 API 接口（auth.php?action=captcha / action=me 等返回 JSON 或图片的地址）填进 loginUrl；loginUi 用于表达无验证码的登录表单（账号/密码字段按接口字段提交），若站点有图片验证码/复杂表单导致 loginUi 无法表达，则 loginUi 留空字符串，让 App 用内置 WebView 打开 loginUrl 手动登录，并提醒用户：验证码为一次性且站点对高频操作有限流，提交前先看清验证码图片、答错会刷新换题、避免反复提交触发“验证码请求无效”；有登录态检测接口（如 auth.php?action=me）时才写 loginCheckJs。注意：loginCheckJs 是纯 JS 字段，直接写 JS 代码、不要加 @js: 或 <js> 前缀（否则每次搜索/详情被 evalJS 执行时会报“在语句前面缺少 ;”）；并且【必须返回 result 透传响应】——Legado 会把返回值强转成 StrResponse，禁止 return true/false（会抛 ClassCastException），正确写法是在该 JS 里用 java.ajax 请求检测接口判断登录态（未登录可 java.toast 提示），最后 return result；站点无登录态检测接口则 loginCheckJs 留空；无法从提示词/HTML 确认的一律留空字符串，禁止编造。
 - 整页 JS 渲染：若页面数据完全由 JS 动态生成、HTML 里没有书籍数据，则在对应 webJs 字段写提取脚本，或用 preUpdateJs/formatJs 处理后端数据
 
 【输出要求】

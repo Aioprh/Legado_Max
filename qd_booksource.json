@@ -15,7 +15,7 @@
     "charset": "UTF-8",
     "loginUrl": "https://full.hnxianxin.cn/qd/home.php?auth=login",
     "loginUi": "",
-    "loginCheckJs": "@js:try{var o=JSON.parse(java.ajax('https://full.hnxianxin.cn/qd/auth.php?action=me'));return !!(o&&o.request_token)}catch(e){return false}",
+    "loginCheckJs": "@js:(function(r){var o={};try{o=JSON.parse(java.ajax('https://full.hnxianxin.cn/qd/auth.php?action=me'));}catch(e){}if(!(o&&o.request_token)){java.toast('未登录，VIP章节无法阅读');}return r;})(result)",
     "searchUrl": "https://full.hnxianxin.cn/qd/search.php?keyword={{key}}&page={{page}}&page_size=20",
     "ruleSearch": {
       "bookList": "$.Data.CardList[*].Body[*].ItemData[?(@.BookType == 1)]",

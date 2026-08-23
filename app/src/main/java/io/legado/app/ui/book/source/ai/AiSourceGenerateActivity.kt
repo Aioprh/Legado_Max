@@ -278,7 +278,7 @@ class AiSourceGenerateActivity :
             appendLine("【登录】探测到该站点为可登录站点，登录入口：$lurl")
             appendLine("请在书源 JSON 的 loginUrl 字段填入该登录入口（它是可当网页登录页使用的地址；若带 ?auth=login 参数，打开即自动弹出登录框）。该站点若使用图片验证码/复杂表单（无法用 loginUi 表达），loginUi 留空字符串，让 App 用内置 WebView 打开 loginUrl 手动登录；书源说明中提醒用户：验证码一次性、站点对高频操作有限流，答错需点验证码图片换新题、避免反复提交触发“验证码请求无效”。有登录状态检测接口时再写 loginCheckJs。")
             if (content?.loginCheckUrl?.isNotBlank() == true) {
-                appendLine("（已探测到登录状态检测接口：${content.loginCheckUrl}，可据此写 loginCheckJs。注意：loginCheckJs 是纯 JS 字段，直接写 JS 代码、不要加 @js: 或 <js> 前缀（否则每次搜索/详情都会被 evalJS 执行时报“在语句前面缺少 ;”）；用 java.ajax 请求该接口，返回体含 user/登录字段即视为已登录返回 true，例如 (()=>{try{return /\"user\"/.test(java.ajax('${content.loginCheckUrl}'));}catch(e){return false;}})()，并在末尾返回 result 透传响应）")
+                appendLine("（已探测到登录状态检测接口：${content.loginCheckUrl}，可据此写 loginCheckJs。注意：loginCheckJs 是纯 JS 字段，直接写 JS、不要加 @js:/<js> 前缀；并且【必须返回 result 透传响应】——Legado 会把返回值强转成 StrResponse，若 return true/false 会抛 ClassCastException。正确形态：(function(result){用 java.ajax 请求检测接口判断登录态，未登录时可 java.toast 提示；最后 return result})(result)。示例：(function(r){var o={};try{o=JSON.parse(java.ajax('${content.loginCheckUrl}'));}catch(e){}if(!(o&&o.user)){java.toast('未登录，部分内容受限');}return r;})(result)）")
             }
         }
         appendLine()
