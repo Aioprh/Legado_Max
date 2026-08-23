@@ -89,6 +89,12 @@ object AiSourceController {
         Pattern.CASE_INSENSITIVE
     )
 
+    /** 识别“固定URL模板+书籍ID 拼封面”的赋值，形如 `xxxCover = "https://cdn/.../${id}/..."` */
+    private val coverTemplatePattern: Pattern = Pattern.compile(
+        """\b\w*[Cc]over\w*\s*=\s*[`'"]([^`'"\s]*\$\{[^}]*\}[^`'"\s]*)[`'"]""",
+        Pattern.CASE_INSENSITIVE
+    )
+
     /** `${...}` 模板占位符 -> 供 LLM 识别的中性占位符
      *  注意：{{key}}/{{page}} 是 Legado 真实变量可保留；而本版 Legado 没有 bookId/chapterId 变量，
      *  若转成 {{bookId}} 会被 LLM 照抄进规则导致 ReferenceError，故转成 {book_id}/{chapter_id}
@@ -132,7 +138,8 @@ object AiSourceController {
         val sampleCatalog: SampleResult,
         val sampleExplore: SampleResult,
         val exploreLinks: List<Pair<String, String>>,
-        val embeddedJson: List<String>
+        val embeddedJson: List<String>,
+        val coverTemplates: List<String>
     )
 
     data class ApiEndpoint(
@@ -237,7 +244,8 @@ object AiSourceController {
                     url, charset, truncated.length, truncated,
                     discoverLoginUrl(html, effectiveUrl),
                     discoverLoginCheckUrl(html, effectiveUrl),
-                    endpoints, sampleSearch, sampleCatalog, sampleExplore, exploreLinks, embeddedJson
+                    endpoints, sampleSearch, sampleCatalog, sampleExplore, exploreLinks, embeddedJson,
+                    discoverCoverTemplates(html)
                 )
             }
         }
@@ -623,7 +631,9 @@ object AiSourceController {
         }.getOrNull()
     }
 
-    /** 首页导航中常见分类/榜单/推荐的链接文本关键词 */
+    /**
+     * 首页导航中常见分类/榜单/推荐的链接文本关键词
+     */
     private val exploreTextKeywords = listOf(
         "分类", "书库", "排行", "榜单", "推荐", "精选", "完本", "最新", "热门", "免费",
         "玄幻", "都市", "武侠", "科幻", "言情", "历史", "竞技", "悬疑",
@@ -645,6 +655,33 @@ object AiSourceController {
         "male", "female", "boy", "girl", "channel", "section", "index",
         "shuku", "bookstore", "plate", "tpl", "nav", "menu", "cate", "sub"
     )
+
+    /**
+     * 从页面脚本中识别“用固定 URL 模板 + 书籍ID 拼封面”的封面模板，
+     * 供 LLM 编写 ruleExplore / ruleBookInfo / ruleSearch 的 coverUrl。
+     * 这类站点（多为起点系/书库站）的列表/分类接口往往不含封面字段，只有 BookId，
+     * 封面需要按模板拼接，否则发现页/搜索列表加载不出封面。
+     *
+     * 识别特征：形如 `xxxCover = "https://cdn/.../${id}/..."` 的赋值，
+     * 模板含一个 `${...}` 书籍/图片 ID 插值。命中后把插值统一归一化为 {ID} 占位符并去重。
+     */
+    private fun discoverCoverTemplates(html: String): List<String> {
+        val found = LinkedHashSet<String>()
+        val matcher = coverTemplatePattern.matcher(html)
+        while (matcher.find()) {
+            var t = matcher.group(1)
+            // 归一化插值：${encodeURIComponent(x)} / ${x} -> {ID}
+            t = t.replace(
+                Regex("""\$\{(?:encodeURIComponent\s*\(\s*)?[A-Za-z0-9_.$]+(?:\s*\))?\}"""),
+                "{ID}"
+            )
+            if (t.contains("{ID}") && (t.startsWith("http://") || t.startsWith("https://"))) {
+                found.add(t)
+                if (found.size >= 3) break
+            }
+        }
+        return found.toList()
+    }
 
     /**
      * 从首页 HTML 中提取分类/榜单/推荐导航链接（书名/分类名, 绝对 URL）。
@@ -1075,7 +1112,8 @@ object AiSourceController {
                         "sampleCatalog" to it.sampleCatalog,
                         "sampleExplore" to it.sampleExplore,
                         "exploreLinks" to it.exploreLinks,
-                        "embeddedJson" to it.embeddedJson
+                        "embeddedJson" to it.embeddedJson,
+                        "coverTemplates" to it.coverTemplates
                     )
                 )
             },

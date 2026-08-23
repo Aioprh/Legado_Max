@@ -265,6 +265,12 @@ class AiSourceGenerateActivity :
                 appendLine("分类/榜单页探测失败：${se.error}（不影响搜索/详情/目录/正文生成）")
             }
         }
+        content?.coverTemplates?.takeIf { it.isNotEmpty() }?.let { templates ->
+            appendLine()
+            appendLine("【封面模板】页面脚本中用“固定 URL 模板 + 书籍ID”拼封面，列表/分类/搜索接口往往【不返回】封面字段，必须按模板拼接，否则列表页加载不出封面（点进详情才有）。已探测到封面模板：")
+            templates.forEach { appendLine("- $it") }
+            appendLine("请据此为 ruleExplore（发现页）、ruleBookInfo（详情页）、ruleSearch（搜索，若该接口无封面字段）编写 coverUrl：用 @js 规则把模板里的 {ID} 替换成对应接口 JSON 中实际的书籍ID字段（如 \$.BookId），例如：@js:'https://cdn/cover/'+{{$.BookId}}+'/180'。若某接口 JSON 已直接含完整封面 URL，则优先直接用该字段；含封面的优先用封面字段，无封面字段的再用模板拼接。")
+        }
         content?.loginUrl?.takeIf { it.isNotBlank() }?.let { lurl ->
             appendLine()
             appendLine("【登录】探测到该站点为可登录站点，登录入口：$lurl")
