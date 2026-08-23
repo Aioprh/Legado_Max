@@ -53,6 +53,9 @@ object AiSourceController {
     /** 内嵌 JSON 最多返回的块数 */
     private const val MAX_EMBEDDED_COUNT = 5
 
+    /** 发现页探测最多生成的联系入口数（分类+子分类+榜单，避免无限膨胀） */
+    private const val MAX_EXPLORE_LINKS = 400
+
     /** 接口探测超时（毫秒） */
     private const val API_TIMEOUT_MS = 15_000L
 
@@ -785,50 +788,138 @@ object AiSourceController {
 
     /**
      * 从分类 config 返回的 JSON 中提取分类。
-     * 兼容常见结构：顶层包含若干个 {Name, Id, SubTag, Extvalue[]} 的对象（如起点代理站
-     * 的 Data.FiltrLines[].FilterUnions[]），仅取带非空 SubTag 且数字 Id>0 的「主分类」，
-     * 并据 config 地址推导出对应的榜单列表 URL。
+     * 兼容两类常见结构：
+     * 1. 【Extvalue 分层】（起点系/搜索类站点，如 qd）：
+     *    `FiltrLines[].FilterUnions[]`，每个主分类是带 `Id`+`Name`+`Extvalue[]`（子分类）的对象，
+     *    且其 `Extvalue[]` 含 `Id==0` 的“全部XXX”占位，据此与“状态/字数/付费/标签”等其它
+     *    筛选组区分（这些组通常不带 Id==0 占位或 Id 很大）。
+     * 2. 【SubTag 标记】（旧形态）：顶层若干 `{Name, Id, SubTag}` 对象，SubTag 非空即主分类。
+     * 同时从 config JSON 的 Orders 数组取首个排序（如“人气最高”Id=11），拼进榜单 URL。
+     * 根据 config 地址推导每个子分类对应的榜单列表 URL（主分类 category_id，子分类 subcategory_id）。
      */
     private fun parseCategoryLinks(json: String, configUrl: String): List<Pair<String, String>> {
         val result = LinkedHashMap<String, String>()
+        val order = parseDefaultOrder(json)
         runCatching {
             fun walk(el: JsonElement) {
-                when {
-                    el.isJsonArray -> el.asJsonArray.forEach { walk(it) }
-                    el.isJsonObject -> {
-                        val obj = el.asJsonObject
-                        val subTag = obj.get("SubTag")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
-                        val id = obj.get("Id")?.takeIf { it.isJsonPrimitive }?.asString ?: ""
-                        val name = obj.get("Name")?.takeIf { it.isJsonPrimitive }?.asString?.trim() ?: ""
-                        if (subTag.isNotBlank() && id.isNotBlank() && id != "0" &&
-                            id.all { it.isDigit() } && name.isNotBlank()
-                        ) {
-                            result.putIfAbsent(name, buildCategoryListUrl(configUrl, id))
+                val obj = if (el.isJsonObject) el.asJsonObject else null
+                val arr = if (el.isJsonArray) el.asJsonArray else null
+                // Extvalue 分层形态：主分类对象带 Extvalue 数组，且含 Id==0 的“全部”占位
+                if (obj != null) {
+                    val ext = obj.get("Extvalue") ?: obj.get("extvalue")
+                    val parentId = obj.get("Id")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+                    val parentName = obj.get("Name")?.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
+                    if (ext != null && ext.isJsonArray && parentId.toIntOrNull()?.let { it > 0 } == true && parentName.isNotBlank()) {
+                        val hasAllPlaceholder = ext.asJsonArray.any { item ->
+                            item.isJsonObject &&
+                                item.asJsonObject.get("Id")?.takeIf { it.isJsonPrimitive }?.asString == "0"
                         }
-                        obj.entrySet().forEach { (_, v) ->
-                            if (v.isJsonArray || v.isJsonObject) walk(v)
+                        if (hasAllPlaceholder) {
+                            // 主分类入口
+                            result.putIfAbsent(
+                                parentName,
+                                buildCategorySubUrl(configUrl, parentId, "", order)
+                            )
+                            // 子分类入口
+                            for (sub in ext.asJsonArray) {
+                                if (!sub.isJsonObject) continue
+                                val so = sub.asJsonObject
+                                val subId = so.get("Id")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+                                val subName = so.get("Name")?.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
+                                if (subId.toIntOrNull()?.let { it > 0 } == true && subName.isNotBlank()) {
+                                    result.putIfAbsent(
+                                        "${parentName}·${subName}",
+                                        buildCategorySubUrl(configUrl, parentId, subId, order)
+                                    )
+                                }
+                            }
+                            return
                         }
+                    }
+                    // 旧形态 fallback：对象含 SubTag 且非空
+                    val subTag = obj.get("SubTag")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+                    val id = obj.get("Id")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+                    val name = obj.get("Name")?.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
+                    if (subTag.isNotBlank() && id.isNotBlank() && id != "0" &&
+                        id.all { it.isDigit() } && name.isNotBlank()
+                    ) {
+                        result.putIfAbsent(name, buildCategoryListUrl(configUrl, id, order))
+                        return
+                    }
+                }
+                if (arr != null) {
+                    for (item in arr) walk(item)
+                } else if (obj != null) {
+                    obj.entrySet().forEach { (_, v) ->
+                        if (v.isJsonArray || v.isJsonObject) walk(v)
                     }
                 }
             }
             walk(JsonParser.parseString(json))
         }
-        return result.toList().take(8)
+        val list = result.entries.toList().map { it.key to it.value }
+        return list.take(MAX_EXPLORE_LINKS)
+    }
+
+    /**
+     * 从 config JSON 中提取默认榜单排序 Id：取 Orders 数组首个（站点默认排序），取不到用 "0"。
+     */
+    private fun parseDefaultOrder(json: String): String {
+        return runCatching {
+            fun findOrders(el: JsonElement): String? {
+                when {
+                    el.isJsonArray -> el.asJsonArray.forEach { findOrders(it)?.let { r -> return r } }
+                    el.isJsonObject -> {
+                        val o = el.asJsonObject
+                        o.get("Orders")?.takeIf { it.isJsonArray }?.asJsonArray?.forEach { entry ->
+                            if (entry.isJsonObject) {
+                                val id = entry.asJsonObject.get("Id")
+                                    ?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+                                if (id.isNotBlank() && id.all { it.isDigit() }) return id
+                            }
+                        }
+                        o.entrySet().forEach { (_, v) ->
+                            if (v.isJsonArray || v.isJsonObject) findOrders(v)?.let { r -> return r }
+                        }
+                    }
+                }
+                return null
+            }
+            findOrders(JsonParser.parseString(json)) ?: "0"
+        }.getOrDefault("0")
     }
 
     /**
      * 由分类 config 地址推导榜单列表地址（分页用 {{page}}，App 自动替换翻页）。
-     * config 形如 `ranking.php?action=config&site_id=18`，榜单列表为
-     * `ranking.php?action=ranking&site_id=18&order=0&page={{page}}&page_size=20&category_id={id}`。
+     * config 形如 `ranking.php?action=config&site_id=11`，榜单列表为
+     * `ranking.php?action=ranking&site_id=11&order={order}&page={{page}}&page_size=20&category_id={id}`。
      * 非 `action=config` 形态则原样追加 category_id 查询参数，尽力而为。
      */
-    private fun buildCategoryListUrl(configUrl: String, categoryId: String): String {
+    private fun buildCategoryListUrl(configUrl: String, categoryId: String, order: String = "0"): String {
+        return buildCategorySubUrl(configUrl, categoryId, "", order)
+    }
+
+    /**
+     * 由分类 config 地址推导榜单列表地址，子分类（subId 非空）追加 subcategory_id 参数。
+     */
+    private fun buildCategorySubUrl(
+        configUrl: String,
+        categoryId: String,
+        subId: String,
+        order: String = "0"
+    ): String {
         var url = configUrl.substringBefore("#").trimEnd('&')
         if (Regex("""action=config""", RegexOption.IGNORE_CASE).containsMatchIn(url)) {
             url = url.replace(Regex("""action=config""", RegexOption.IGNORE_CASE), "action=ranking")
         }
         val sep = if (url.contains("?")) "&" else "?"
-        return url + sep + "order=0&page={{page}}&page_size=20&category_id=$categoryId"
+        return buildString {
+            append(url).append(sep)
+            append("order=").append(order)
+            append("&page={{page}}&page_size=20")
+            append("&category_id=").append(categoryId)
+            if (subId.isNotBlank()) append("&subcategory_id=").append(subId)
+        }
     }
 
     /**
