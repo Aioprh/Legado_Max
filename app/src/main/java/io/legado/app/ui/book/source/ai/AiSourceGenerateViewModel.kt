@@ -326,7 +326,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         while (round < maxRounds) {
             round++
             log.appendLine("[第 $round 轮] 用真实搜索验证书源...")
-            val verify = verifyByRealSearch(current, keyword, exploreLinks)
+            val verify = verifyByRealSearch(current, keyword, exploreLinks, reviewProbe, reviewUrl)
             log.appendLine(verify.summary)
             if (verify.succeeded) {
                 // 直接采用规则校验通过后的源 JSON：exploreUrl 保持 AI 生成的原始格式，
@@ -385,12 +385,33 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     private suspend fun verifyByRealSearch(
         jsonText: String,
         keyword: String,
-        exploreLinks: List<Pair<String, String>> = emptyList()
+        exploreLinks: List<Pair<String, String>> = emptyList(),
+        reviewProbe: Boolean = false,
+        reviewUrl: String = ""
     ): VerifyResult {
         if (keyword.isBlank()) {
             return VerifyResult(succeeded = false, summary = "未提供搜索关键词，无法用真实搜索验证")
         }
         val fixed = AiSourceValidate.parseSource(jsonText) ?: return VerifyResult(false, "生成结果无法解析为书源 JSON")
+        // 段评探测已开启时，先校验是否真的生成了段评气泡规则：缺失则优先让 AI 补齐，
+        // 否则模型可能忽略提示词里的段评要求（深水区：模板复杂、提示词很长）。
+        if (reviewProbe) {
+            val contentRule = fixed.ruleContent?.content.orEmpty()
+            if (!contentRule.contains("dp:") &&
+                !contentRule.contains("Getparagraphscommentcounts") &&
+                !contentRule.contains("showBrowser")
+            ) {
+                return VerifyResult(
+                    false,
+                    buildString {
+                        append("段评探测（已开启）但你生成的书源没有段评气泡规则：ruleContent.content 必须写 @js: 规则，先请求段评统计接口取每段段评数（起点系 comments.php?action=summary&book_id=..&chapter_id=.. 返回 $.Data.Getparagraphscommentcounts.DataList[]，字段 ParagraphId/CommentCount，-1 为章评不用于正文），把正文按换行拆段后，对段评数>0 的段落末尾插入 <img src=\"dp:<段评数>,{...}\"> 气泡标记，点击气泡弹出该段段评（完整实现见系统提示词【段评气泡】模板，type 参数用 type=text）。")
+                        if (reviewUrl.isNotBlank()) {
+                            append("已探测到段评接口：$reviewUrl（据此推断 summary/paragraph 等 action 参数与返回结构）。")
+                        }
+                    }
+                )
+            }
+        }
         // 静态预检：本版 Legado 没有 bookId 变量，直接引用会报 ReferenceError，尽早拦截以节省修复轮次
         val unsupportedBookId = AiSourceValidate.findUnsupportedBookId(fixed)
         if (unsupportedBookId.isNotEmpty()) {
