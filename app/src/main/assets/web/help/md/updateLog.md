@@ -17,6 +17,10 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/24
+- fix:修复阅读记录时间线视图崩溃
+- fix(backup): 备份遗漏 readRecordSession.json 导致时间线视图恢复后无数据
+
 **2026/8/21
 - feat(其他设置): 源编辑框最大行数改用可输入数值对话框
 - perf(readRecord): 时间线视图分页懒加载优化
