@@ -924,7 +924,7 @@ object AiSourceController {
                                     classifyExplore(subName) != ExploreNameType.DROP
                                 ) {
                                     result.putIfAbsent(
-                                        "${parentName}·${subName}",
+                                        subName,
                                         buildCategorySubUrl(configUrl, parentId, subId, order)
                                     )
                                 }
