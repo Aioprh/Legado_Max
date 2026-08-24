@@ -312,8 +312,10 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
                             }
                             apply(tv)
                         }
+                        // 子分类（「主分类·子分类」）只显示子分类名，去掉主分类前缀和「·」
+                        val linkTitle = cleanKindTitle(title)
                         if (viewName == null) {
-                            tv.text = title
+                            tv.text = linkTitle
                         } else if (viewName.length in 3..19 && viewName.first() == '\'' && viewName.last() == '\'') {
                             val n = viewName.substring(1, viewName.length - 1)
                             tv.text = n
@@ -336,7 +338,7 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
                             if (kind.title.startsWith("ERROR:")) {
                                 it.activity?.showDialogFragment(TextDialog("ERROR", url))
                             } else {
-                                callBack.openExplore(sourceUrl, kind.title, url)
+                                callBack.openExplore(sourceUrl, linkTitle, url)
                             }
                         }
                         tv.setOnTouchListener { view, event ->
@@ -355,7 +357,7 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
                                     if (kind.title.startsWith("ERROR:")) {
                                         view.activity?.showDialogFragment(TextDialog("ERROR", url))
                                     } else {
-                                        callBack.openExplore(sourceUrl, kind.title, url)
+                                        callBack.openExplore(sourceUrl, linkTitle, url)
                                     }
                                 }
                                 MotionEvent.ACTION_CANCEL -> {
@@ -694,6 +696,15 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
         } catch (e: Exception) {
             AppLog.put("ExploreUI Button $name JavaScript error", e)
         }
+    }
+
+    /**
+     * 去掉「主分类·子分类」名称里的主分类前缀和「·」，只显示子分类名；
+     * 名称不含「·」时原样返回（保持普通分类不变）。
+     */
+    private fun cleanKindTitle(title: String): String {
+        val dot = title.indexOf('·')
+        return if (dot > 0) title.substring(dot + 1) else title
     }
 
     /**

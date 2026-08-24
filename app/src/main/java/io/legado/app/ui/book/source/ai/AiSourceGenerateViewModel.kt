@@ -580,7 +580,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
      * 若链接非空且书源含 exploreUrl 字段，则用链接列表重建 exploreUrl（分类名::URL 每行一个）。
      * 仅当字段确实变化才返回新文本，否则原样返回，避免不必要的改写。
      */
-    private fun completeExploreUrl(sourceJsonText: String, exploreLinks: List<Pair<String, String>>): String {
+    fun completeExploreUrl(sourceJsonText: String, exploreLinks: List<Pair<String, String>>): String {
         if (exploreLinks.isEmpty()) return sourceJsonText
         val root = runCatching { JsonParser.parseString(sourceJsonText) }.getOrNull() ?: return sourceJsonText
         val obj = if (root.isJsonArray) root.asJsonArray.firstOrNull()?.takeIf { it.isJsonObject }?.asJsonObject

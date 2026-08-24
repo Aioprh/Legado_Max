@@ -181,8 +181,10 @@ class AiSourceGenerateActivity :
                 userPrompt = userPrompt
             )
         }.onSuccess { result ->
-            binding.etResult.setText(result)
-            AiSourceLog.log("SUCCESS", "生成书源", "生成完成，长度 ${result.length}")
+            // 归一化 exploreUrl：用探测到的「主分类·子分类」顺序重建，保证发现页能按主分类分组缩进显示
+            val finalJson = viewModel.completeExploreUrl(result, content?.exploreLinks.orEmpty())
+            binding.etResult.setText(finalJson)
+            AiSourceLog.log("SUCCESS", "生成书源", "生成完成，长度 ${finalJson.length}${if (finalJson != result) "（已按主分类重建 exploreUrl）" else ""}")
             AiSourceLog.raw("-------- 生成书源 JSON --------\n$result")
             binding.tvStatus.text = "生成完成，可查看/修改 JSON，再验证规则或导入编辑器"
             toastOnUi("生成完成，可查看/修改 JSON，再验证规则或导入编辑器")
