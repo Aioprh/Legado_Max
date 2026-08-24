@@ -915,12 +915,12 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
-            maxHeight = (resources.displayMetrics.heightPixels * 0.36f).toInt()
+            setMaxHeight((resources.displayMetrics.heightPixels * 0.36f).toInt())
         }
         tabScrollView = scrollView
         val listLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            layoutParams = NestedScrollView.LayoutParams(
+            layoutParams = android.widget.FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
@@ -977,8 +977,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
                     ).apply {
-                        marginStart = 20.dpToPx() // 缩进体现层级
-                        marginEnd = 6.dpToPx()
+                        marginLeft = 20.dpToPx() // 缩进体现层级
+                        marginRight = 6.dpToPx()
                         marginTop = 4.dpToPx()
                         marginBottom = 4.dpToPx()
                     }

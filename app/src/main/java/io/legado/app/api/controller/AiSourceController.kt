@@ -990,7 +990,7 @@ object AiSourceController {
             }
         }
         walk(JsonParser.parseString(json))
-        return out.entries.toList().take(ORDER_LIMIT)
+        return out.entries.take(ORDER_LIMIT).map { it.key to it.value }
     }
 
     /**
