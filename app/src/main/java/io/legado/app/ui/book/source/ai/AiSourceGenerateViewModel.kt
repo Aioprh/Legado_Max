@@ -605,9 +605,15 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         }
 
         val kinds = ArrayList<ExploreKind>()
-        // 榜单：普通 chip，一排排列
+        // 榜单：flexGrow 均匀铺满每行
         ranks.forEach { (name, url) ->
-            kinds.add(ExploreKind(title = name, url = url))
+            kinds.add(
+                ExploreKind(
+                    title = name,
+                    url = url,
+                    style = FlexChildStyle(layout_flexGrow = 1F)
+                )
+            )
         }
         // 分类：主分类占满整行，其下子分类换行缩进
         // 主分类 = (自身URL, 其下子分类列表)；来源里「纯主分类」项会先于「主分类·子分类」出现
@@ -625,20 +631,27 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             }
         }
         for ((main, group) in mainGroups) {
-            // 主分类占满整行，独立成行
+            // 主分类占满整行、独立成行，标题靠左呈小节标题样式
             kinds.add(
                 ExploreKind(
                     title = main,
                     url = group.url,
                     style = FlexChildStyle(
                         layout_flexBasisPercent = 1F,
-                        layout_wrapBefore = true
+                        layout_wrapBefore = true,
+                        layout_justifySelf = "flex_start"
                     )
                 )
             )
-            // 子分类换行排布（不加缩进空格，靠行宽自然换行）
+            // 子分类换行排布（不加缩进空格，flexGrow 使其均匀铺满每行）
             for ((sub, subUrl) in group.subs) {
-                kinds.add(ExploreKind(title = sub, url = subUrl))
+                kinds.add(
+                    ExploreKind(
+                        title = sub,
+                        url = subUrl,
+                        style = FlexChildStyle(layout_flexGrow = 1F)
+                    )
+                )
             }
         }
 
@@ -795,7 +808,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     "payAction": "付费章节处理规则（可选），无则空字符串",
     "callBackJs": "正文回调 JS（可选），无则空字符串"
   },
-  "exploreUrl": "发现地址（可选，但站点有分类/榜单/推荐导航时必须填写），优先输出 JSON 数组形式以支持主分类/子分类层级：每项为 {\"title\":\"分类名\",\"url\":\"...\"}。主分类项额外带 style={\"layout_flexBasisPercent\":1,\"layout_wrapBefore\":true} 使其占满整行，其子分类紧随其后换行排列、标题不加任何缩进/前缀/特殊符号；榜单（人气最高、月票榜…）放最前、同样普通项。也可用 分类名::URL 换行分隔（无层级，App 平铺）。分页参数写 page=1（App 会自动翻页）。禁止把风格/流派类标签（家族修仙、升级流、群像、多女主、高武、诡异、穿书、无CP…）或情节标签（爽文、甜宠…）放进 exploreUrl，只保留真正的书籍分类与排行榜；无发现页则空字符串",
+  "exploreUrl": "发现地址（可选，但站点有分类/榜单/推荐导航时必须填写），优先输出 JSON 数组形式以支持主分类/子分类层级：每项为 {\"title\":\"分类名\",\"url\":\"...\",\"style\":{...}}。榜单（人气最高、月票榜…）放最前，style={\"layout_flexGrow\":1} 均匀铺满每行；主分类项 style={\"layout_flexBasisPercent\":1,\"layout_wrapBefore\":true,\"layout_justifySelf\":\"flex_start\"} 占满整行且标题靠左，其子分类紧随其后、style={\"layout_flexGrow\":1} 均匀铺满每行，标题不加任何缩进/前缀/特殊符号。也可用 分类名::URL 换行分隔（无层级，App 平铺）。分页参数写 page=1（App 会自动翻页）。禁止把风格/流派类标签（家族修仙、升级流、群像、多女主、高武、诡异、穿书、无CP…）或情节标签（爽文、甜宠…）放进 exploreUrl，只保留真正的书籍分类与排行榜；无发现页则空字符串",
   "ruleExplore": {
     "bookList": "发现列表选择器（必填，若 exploreUrl 非空）",
     "name": "发现书名（必填，若 exploreUrl 非空）",
