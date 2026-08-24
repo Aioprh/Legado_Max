@@ -664,13 +664,31 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 
     /**
      * 解析 exploreUrl 为分类列表（分类名, URL）。
-     * 与 BookSource.exploreKinds() 的分割规则一致（(&&|\n) 分隔，每项 名称::地址）。
+     * 兼容两种格式：
+     * 1. JSON 数组（ExploreKind 数组，含 title/url/style 字段，completeExploreUrl 的输出）；
+     * 2. 旧格式（(&&|\n) 分隔，每项 名称::地址）。
      * @js:/<js> 动态分类无法离线拆分，整体视为一条交给 WebBook 处理。
      */
     private fun parseExploreKinds(exploreUrl: String?): List<Pair<String, String>> {
         if (exploreUrl.isNullOrBlank()) return emptyList()
         if (exploreUrl.startsWith("@js:", true) || exploreUrl.startsWith("<js>", true)) {
             return listOf(exploreUrl to exploreUrl)
+        }
+        val trimmed = exploreUrl.trim()
+        // JSON 数组形式：解析出 (title, url) 列表
+        if (trimmed.startsWith("[")) {
+            return runCatching {
+                val arr = JsonParser.parseString(trimmed).asJsonArray
+                val kinds = ArrayList<Pair<String, String>>(arr.size())
+                for (el in arr) {
+                    if (!el.isJsonObject) continue
+                    val o = el.asJsonObject
+                    val name = o.get("title")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+                    val url = o.get("url")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+                    kinds.add(name to url)
+                }
+                kinds
+            }.getOrDefault(emptyList())
         }
         return exploreUrl.split(Regex("(&&|\n)+")).mapNotNull { kindStr ->
             val kindCfg = kindStr.split("::")
