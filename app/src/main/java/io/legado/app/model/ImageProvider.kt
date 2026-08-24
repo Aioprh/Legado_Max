@@ -2,6 +2,7 @@ package io.legado.app.model
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.util.Size
 import androidx.collection.LruCache
 import com.bumptech.glide.Glide
@@ -21,7 +22,9 @@ import io.legado.app.model.localBook.MobiFile
 import io.legado.app.model.localBook.PdfFile
 import io.legado.app.utils.BitmapUtils
 import io.legado.app.utils.FileUtils
+import io.legado.app.utils.GSON
 import io.legado.app.utils.SvgUtils
+import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.toastOnUi
 import io.legado.app.model.ParagraphBubbleRenderer
 import kotlinx.coroutines.Dispatchers.IO
@@ -181,15 +184,16 @@ object ImageProvider {
     }
 
     /**
-     *获取图片宽度高度信息
+     * 获取图片宽度高度信息
      */
     suspend fun getImageSize(
         book: Book,
         src: String,
         bookSource: BookSource?
     ): Size {
-        if (ParagraphBubbleRenderer.isBubbleSrc(src)) {
-            return ParagraphBubbleRenderer.getSize(src)
+        val bubbleSrc = normalizeBubbleSrc(src)
+        if (ParagraphBubbleRenderer.isBubbleSrc(bubbleSrc)) {
+            return ParagraphBubbleRenderer.getSize(bubbleSrc)
         }
         val file = cacheImage(book, src, bookSource)
         val op = BitmapFactory.Options()
@@ -264,11 +268,12 @@ object ImageProvider {
         width: Int,
         height: Int? = null
     ): Bitmap {
-        if (ParagraphBubbleRenderer.isBubbleSrc(src)) {
-            val cacheKey = ParagraphBubbleRenderer.cacheKey(src, width, height)
+        val bubbleSrc = normalizeBubbleSrc(src)
+        if (ParagraphBubbleRenderer.isBubbleSrc(bubbleSrc)) {
+            val cacheKey = ParagraphBubbleRenderer.cacheKey(bubbleSrc, width, height)
             getNotRecycled(cacheKey)?.let { return it }
             return kotlin.runCatching {
-                ParagraphBubbleRenderer.render(src, width, height)
+                ParagraphBubbleRenderer.render(bubbleSrc, width, height)
                     ?: throw NoStackTraceException(appCtx.getString(R.string.error_decode_bitmap))
             }.onSuccess {
                 put(cacheKey, it)
@@ -298,6 +303,42 @@ object ImageProvider {
             //错误图片占位,防止重复获取
             put(vFile.absolutePath, errorBitmap)
         }.getOrDefault(errorBitmap)
+    }
+
+    /**
+     * 将 dp: 段评气泡协议归一化为 bubble://paragraph 气泡 URL。
+     *
+     * dp: 协议由 AI 生成书源使用，格式：dp:<count>,{...}
+     * 兜底确保任何路径下 dp: 都不会泄漏到网络层（否则抛
+     * MalformedURLException: unknown protocol: dp），并正确渲染为软件气泡。
+     */
+    private fun normalizeBubbleSrc(src: String): String {
+        if (!src.startsWith("dp:", ignoreCase = true)) return src
+        val payload = src.substring(3).trim()
+        val optionIndex = payload.indexOf(",{")
+        val count = if (optionIndex >= 0) {
+            payload.substring(0, optionIndex)
+        } else {
+            payload
+        }.trim()
+        val option = if (optionIndex >= 0) {
+            GSON.fromJsonObject<Map<String, String>>(payload.substring(optionIndex + 1))
+                .getOrNull()
+                .orEmpty()
+        } else {
+            emptyMap()
+        }
+        val displayText = option["displayText"]?.takeIf { it.isNotBlank() } ?: count
+        val status = option["status"]?.takeIf { it.isNotBlank() } ?: "normal"
+        val displayColor = option["displayColor"]?.takeIf { it.isNotBlank() }
+        val colorQuery = displayColor?.let { "&displayColor=${Uri.encode(it)}" }.orEmpty()
+        return buildString {
+            append("bubble://paragraph")
+            append("?displayText=").append(Uri.encode(displayText))
+            append("&num=").append(Uri.encode(displayText))
+            append("&status=").append(Uri.encode(status))
+            append(colorQuery)
+        }
     }
 
     /**
