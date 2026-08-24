@@ -74,8 +74,7 @@ class SourceLoginJsExtensions(
         }
     }
 
-    @JvmOverloads
-    fun showBrowser(url: String, html: String? = null, preloadJs: String? = null, config: String? = null) {
+    override fun showBrowser(url: String, html: String?, preloadJs: String?, config: String?) {
         val activity = activityRef.get() ?: return
         val source = getSource() ?: return
         // JS 脚本通常在 IO 线程执行，对话框必须切回主线程展示
@@ -92,5 +91,12 @@ class SourceLoginJsExtensions(
             )
         }
     }
+
+    // 覆盖接口默认实现不允许再声明默认参数，手动补齐重载以保持 JS 侧调用兼容
+    fun showBrowser(url: String) = showBrowser(url, null, null, null)
+
+    fun showBrowser(url: String, html: String?) = showBrowser(url, html, null, null)
+
+    fun showBrowser(url: String, html: String?, preloadJs: String?) = showBrowser(url, html, preloadJs, null)
 
 }
