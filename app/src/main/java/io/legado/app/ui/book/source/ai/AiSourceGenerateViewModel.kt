@@ -319,7 +319,13 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             val verify = verifyByRealSearch(current, keyword, exploreLinks)
             log.appendLine(verify.summary)
             if (verify.succeeded) {
-                return AutoFixResult(ok = true, rounds = round, json = verify.fixedJson ?: current, log = log.toString())
+                // 确定性补全探索分类：若首页探测到分类导航，用「主分类+其下二级、按主分类分组」重建
+                // exploreUrl，避免 AI 只保留一级分类而丢掉二级（如 玄幻/玄幻·东方玄幻）。
+                val finalJson = completeExploreUrl(verify.fixedJson ?: current, exploreLinks)
+                if (finalJson != (verify.fixedJson ?: current)) {
+                    log.appendLine("✓ 按「一级+分组二级」补全了发现页分类（exploreUrl 已含全部主分类及其二级分类）")
+                }
+                return AutoFixResult(ok = true, rounds = round, json = finalJson, log = log.toString())
             }
             // 组装修复提示词，只反馈错误信息，不重复发送 HTML
             val fixUserPrompt = buildString {
@@ -565,6 +571,35 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         }.getOrElse { e ->
             VerifyResult(false, "验证失败：${e.message ?: e.javaClass.simpleName}")
         }
+    }
+
+    /**
+     * 把书源的 exploreUrl 补全为「主分类 + 其下二级分类、按主分类分组」的完整列表。
+     * 输入为检测到的分类导航链接（名称, URL），顺序即 parseCategoryLinks 的“主分类→子分类”分组序；
+     * 若链接非空且书源含 exploreUrl 字段，则用链接列表重建 exploreUrl（分类名::URL 每行一个）。
+     * 仅当字段确实变化才返回新文本，否则原样返回，避免不必要的改写。
+     */
+    private fun completeExploreUrl(sourceJsonText: String, exploreLinks: List<Pair<String, String>>): String {
+        if (exploreLinks.isEmpty()) return sourceJsonText
+        val root = runCatching { JsonParser.parseString(sourceJsonText) }.getOrNull() ?: return sourceJsonText
+        val obj = if (root.isJsonArray) root.asJsonArray.firstOrNull()?.takeIf { it.isJsonObject }?.asJsonObject
+        else if (root.isJsonObject) root.asJsonObject else null
+        if (obj == null || !obj.has("exploreUrl")) return sourceJsonText
+        // 去掉可能混入的空/纯动态入口，按分组序拼成 exploreUrl
+        val lines = mutableListOf<String>()
+        val seen = HashSet<String>()
+        for ((name, url) in exploreLinks) {
+            if (name.isBlank() || url.isBlank()) continue
+            val line = "$name::$url"
+            if (seen.add(line)) lines.add(line)
+        }
+        if (lines.isEmpty()) return sourceJsonText
+        val newExplore = lines.joinToString("\n")
+        if (obj.get("exploreUrl").asString == newExplore) return sourceJsonText
+        obj.addProperty("exploreUrl", newExplore)
+        val arr = JsonArray()
+        arr.add(obj)
+        return arr.toString()
     }
 
     /**
