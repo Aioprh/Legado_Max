@@ -2,6 +2,7 @@ package io.legado.app.ui.book.source.ai
 
 import android.app.Application
 import cn.hutool.crypto.symmetric.AES
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import io.legado.app.api.controller.AiSourceController
