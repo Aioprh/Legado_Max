@@ -3,6 +3,8 @@ package io.legado.app.ui.widget.dialog
 import android.app.Application
 import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
+import io.legado.app.help.DirectLinkUpload
+import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.help.storage.BackupSelectorConfig
 import io.legado.app.ui.widget.components.dialog.MultiSelectGroup
@@ -146,6 +148,10 @@ class BackupSelectorViewModel(application: Application) : BaseViewModel(applicat
         return when (key) {
             // 选择器持久化的是 "bg"，但 BackupInfoHelper 统计时使用的是展示分组 key。
             "backgroundImages" -> "backgroundImages"
+            // BackupSelectorConfig 中 fileName 与 BackupInfoHelper 使用的常量不一致的条目。
+            "readShareConfig" -> ReadBookConfig.shareConfigFileName
+            "directLinkRule" -> DirectLinkUpload.ruleFileName
+            "bookChapter" -> "bookChapterCache.json"
             else -> fileName
         }
     }
