@@ -415,7 +415,7 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
                 return@launch
             }
             val sourceKey = args.getString("sourceKey") ?: return@launch
-            val url = args.getString("url") ?: return@launch
+            val url = args.getString("url")
             kotlin.runCatching {
                 source = appDb.bookSourceDao.getBookSource(sourceKey)
                     ?: appDb.rssSourceDao.getByKey(sourceKey)
@@ -452,6 +452,21 @@ class BottomWebViewDialog() : BottomSheetDialogFragment(R.layout.dialog_web_view
                     }
                 }
                 preloadJs = args.getString("preloadJs")
+                // 无 URL 场景（如段评气泡 java.showBrowser(null, html)）：直接渲染 html
+                if (url.isNullOrEmpty()) {
+                    val html = args.getString("html")
+                    if (html.isNullOrEmpty()) {
+                        dismiss()
+                        return@launch
+                    }
+                    val bookType = args.getInt("bookType", 0)
+                    currentWebView.post {
+                        currentWebView.onResume() //缓存库拿的需要激活
+                        initWebView("about:blank", html, HashMap(), bookType)
+                        currentWebView.clearHistory()
+                    }
+                    return@launch
+                }
                 val analyzeUrl =
                     AnalyzeUrl(url, source = source, coroutineContext = coroutineContext)
                 headerMap = analyzeUrl.headerMap
