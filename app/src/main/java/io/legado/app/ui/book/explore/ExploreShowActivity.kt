@@ -915,7 +915,6 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
-            setMaxHeight((resources.displayMetrics.heightPixels * 0.36f).toInt())
         }
         tabScrollView = scrollView
         val listLayout = LinearLayout(this).apply {
@@ -977,10 +976,8 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                         ViewGroup.LayoutParams.WRAP_CONTENT,
                         ViewGroup.LayoutParams.WRAP_CONTENT
                     ).apply {
-                        marginLeft = 20.dpToPx() // 缩进体现层级
-                        marginRight = 6.dpToPx()
-                        marginTop = 4.dpToPx()
-                        marginBottom = 4.dpToPx()
+                        // 缩进体现层级（边距通过 setMargins 设置，属性为只读）
+                        setMargins(20.dpToPx(), 4.dpToPx(), 6.dpToPx(), 4.dpToPx())
                     }
                     tv.layoutParams = lp
                     subFlex.addView(tv)
