@@ -3,6 +3,7 @@ package io.legado.app.help
 import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import androidx.annotation.Keep
+import androidx.appcompat.app.AppCompatActivity
 import cn.hutool.core.codec.Base64
 import cn.hutool.core.util.HexUtil
 import com.script.rhino.rhinoContext
@@ -11,6 +12,7 @@ import io.legado.app.constant.AppConst
 import io.legado.app.constant.AppConst.dateFormat
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
+import io.legado.app.constant.BookType
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.RssSource
@@ -30,6 +32,7 @@ import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.QueryTTF
 import io.legado.app.ui.association.OnLineImportActivity
 import io.legado.app.ui.association.OpenUrlConfirmActivity
+import io.legado.app.ui.widget.dialog.BottomWebViewDialog
 import io.legado.app.utils.ArchiveUtils
 import io.legado.app.utils.ChineseUtils
 import io.legado.app.utils.EncoderUtils
@@ -49,6 +52,7 @@ import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.isMainThread
 import io.legado.app.utils.longToastOnUi
 import io.legado.app.utils.mapAsync
+import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.stackTraceStr
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toStringArray
@@ -1106,6 +1110,28 @@ interface JsExtensions : JsEncodeUtils {
             ruleLine = ruleLine
         )
         appCtx.toastOnUi("${getTag()}: ${msg.toString()}", toastContext)
+    }
+
+    /**
+     * 弹窗展示网页/文本（段评气泡点击等场景使用）。
+     * 通用书源 JS 上下文（java 为 BookSource/AnalyzeRule 等）也可调用，
+     * 与登录 JS 扩展 [io.legado.app.ui.login.SourceLoginJsExtensions.showBrowser] 行为一致。
+     */
+    fun showBrowser(url: String, html: String? = null, preloadJs: String? = null, config: String? = null) {
+        val activity = LifecycleHelp.getCurrentActivity() as? AppCompatActivity ?: return
+        val source = getSource() ?: return
+        activity.runOnUiThread {
+            activity.showDialogFragment(
+                BottomWebViewDialog(
+                    source.getKey(),
+                    BookType.text,
+                    url,
+                    html,
+                    preloadJs,
+                    config
+                )
+            )
+        }
     }
 
     /**
