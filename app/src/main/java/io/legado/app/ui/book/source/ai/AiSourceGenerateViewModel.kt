@@ -396,7 +396,9 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         // 段评探测已开启时，先校验是否真的生成了段评气泡规则：缺失则优先让 AI 补齐，
         // 否则模型可能忽略提示词里的段评要求（深水区：模板复杂、提示词很长）。
         if (reviewProbe) {
-            val contentRule = fixed.ruleContent?.content.orEmpty()
+            val contentRule = runCatching {
+                fixed["ruleContent"]?.asJsonObject?.get("content")?.asString.orEmpty()
+            }.getOrDefault("")
             if (!contentRule.contains("dp:") &&
                 !contentRule.contains("Getparagraphscommentcounts") &&
                 !contentRule.contains("showBrowser")
