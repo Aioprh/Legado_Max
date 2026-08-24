@@ -12,6 +12,8 @@ import io.legado.app.help.http.okHttpClient
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.GSON
 import io.legado.app.utils.MD5Utils
+import io.legado.app.utils.getBoolean
+import io.legado.app.utils.putBoolean
 import io.legado.app.utils.putFloat
 import io.legado.app.utils.putInt
 import io.legado.app.utils.putString

@@ -161,6 +161,7 @@ export interface AiFetchHtmlResult {
   apiEndpoints: AiApiEndpoint[]
   sampleSearch: AiSampleResult
   sampleCatalog: AiSampleResult
+  reviewUrl?: string
 }
 const fetchHtml = (url: string, keyword = '') =>
   ajax.get<LeagdoApiResponse<AiFetchHtmlResult>>(
