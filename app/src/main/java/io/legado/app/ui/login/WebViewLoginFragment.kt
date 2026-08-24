@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.net.http.SslError
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -41,11 +43,29 @@ class WebViewLoginFragment : BaseFragment(R.layout.fragment_web_view_login) {
 
     private var checking = false
 
+    /**
+     * 周期性把 WebView 当前 Cookie 同步到 CookieStore。
+     * 部分站点登录是通过页面内 fetch/XHR 提交的（SPA），登录成功后不会触发页面跳转，
+     * 仅靠 onPageStarted/onPageFinished 可能漏存 Cookie，这里兜底定时同步。
+     */
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val cookieSyncRunnable = object : Runnable {
+        override fun run() {
+            if (viewModel.source == null || currentWebView == null) return
+            val cookie = CookieManager.getInstance().getCookie(viewModel.source?.getKey())
+            if (!cookie.isNullOrBlank()) {
+                CookieStore.setCookie(viewModel.source!!.getKey(), cookie)
+            }
+            mainHandler.postDelayed(this, COOKIE_SYNC_INTERVAL_MS)
+        }
+    }
+
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         setSupportToolbar(binding.titleBar.toolbar)
         viewModel.source?.let {
             binding.titleBar.title = getString(R.string.login_source, it.getTag())
             initWebView(it)
+            mainHandler.postDelayed(cookieSyncRunnable, COOKIE_SYNC_INTERVAL_MS)
         }
     }
 
@@ -157,9 +177,15 @@ class WebViewLoginFragment : BaseFragment(R.layout.fragment_web_view_login) {
 
     override fun onDestroy() {
         super.onDestroy()
+        mainHandler.removeCallbacks(cookieSyncRunnable)
         pooledWebView?.let { WebViewPool.release(it) }
         pooledWebView = null
         currentWebView = null
+    }
+
+    companion object {
+        /** Cookie 周期同步间隔（毫秒） */
+        private const val COOKIE_SYNC_INTERVAL_MS = 2000L
     }
 
 }

@@ -492,7 +492,7 @@ const SYSTEM_PROMPT = `你是"Legado书源驯兽师"，精通 Legado（阅读）
 - JSONPath（返回 JSON 的网站）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL
 - 正则：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"
 - 注意转义：正则里的 \\d、\\s 等需写双反斜杠
-- 【段评气泡（可选）】若站点有“本章说/段评”接口（页面脚本出现 comments.php / comment.php / review.php，或用户开启段评探测并提供了段评接口），在正文规则 content 里用 @js: 生成段评气泡：① 请求段评统计接口取每段段评数（起点系 comments.php?action=summary&book_id=...&chapter_id=... → $.Data.Getparagraphscommentcounts.DataList[]，字段 ParagraphId/CommentCount，-1 为章评不用于正文）；② 正文按换行拆段（跳过空段），第 i 段对应 ParagraphId=i；③ 对段评数>0 的段落末尾插入 <img src="dp:<段评数>,{\"pclick\":\"<点击JS>\",\"status\":\"normal\"}">；④ 点击 JS（pclick）用 java.ajax 请求该段段评列表（起点系 comments.php?action=paragraph&book_id=...&chapter_id=...&paragraph_id=<段号>&type=all&page=1&page_size=20 → $.Data.DataList[]，字段 Content/Floor/AgreeAmount/CreateTime）拼文本后 java.showBrowser('', 文本) 弹出。【重要】pclick 代码禁止出现双引号/反斜杠/尖括号 >，字符串一律用单引号，换行用 String.fromCharCode(10)
+- 【段评气泡（可选）】若站点有“本章说/段评”接口（页面脚本出现 comments.php / comment.php / review.php，或用户开启段评探测并提供了段评接口），在正文规则 content 里用 @js: 生成段评气泡：① 请求段评统计接口取每段段评数（起点系 comments.php?action=summary&book_id=...&chapter_id=... → $.Data.Getparagraphscommentcounts.DataList[]，字段 ParagraphId/CommentCount，-1 为章评不用于正文）；② 正文按换行拆段（跳过空段），第 i 段对应 ParagraphId=i；③ 对段评数>0 的段落末尾插入 <img src="dp:<段评数>,{\"pclick\":\"<点击JS>\",\"status\":\"normal\"}">；④ 点击 JS（pclick）用 java.ajax 请求该段段评列表（起点系 comments.php?action=paragraph&book_id=...&chapter_id=...&paragraph_id=<段号>&type=text&page=1&page_size=20 → $.Data.DataList[]，字段 Content/Floor/AgreeAmount/CreateTime，type 参数优先用 type=text：部分起点系镜像站 type=all 会报错，仅 text/image 有效）拼文本后 java.showBrowser('', 文本) 弹出。【重要】pclick 代码禁止出现双引号/反斜杠/尖括号 >，字符串一律用单引号，换行用 String.fromCharCode(10)
 
 【输出要求】
 1. 严格输出 JSON，最外层必须是数组 [...]，即使只有一个书源

@@ -278,6 +278,7 @@ class AiSourceGenerateActivity :
             appendLine()
             appendLine("【登录】探测到该站点为可登录站点，登录入口：$lurl")
             appendLine("请在书源 JSON 的 loginUrl 字段填入该登录入口（它是可当网页登录页使用的地址；若带 ?auth=login 参数，打开即自动弹出登录框）。该站点若使用图片验证码/复杂表单（无法用 loginUi 表达），loginUi 留空字符串，让 App 用内置 WebView 打开 loginUrl 手动登录；书源说明中提醒用户：验证码一次性、站点对高频操作有限流，答错需点验证码图片换新题、避免反复提交触发“验证码请求无效”。有登录状态检测接口时再写 loginCheckJs。")
+            appendLine("该站点既然可登录，正文（尤其 VIP/付费章节）很可能要求登录态或额外请求头才返回全文（部分起点系镜像站需 X-Content-Token 请求头并加 &vip=1 参数）。因此 ruleContent.content 必须写 @js: 规则：先普通请求取免费正文，取不到（空或返回需要登录的 detail）时，先从登录态接口（如 auth.php?action=me）提取 token，再带 {\"X-Content-Token\":token} 请求 &vip=1 接口兜底——完整参考模板见系统提示词 ruleContent.content 字段说明（token 字段名与请求头以站点实际为准）。")
             if (content?.loginCheckUrl?.isNotBlank() == true) {
                 appendLine("（已探测到登录状态检测接口：${content.loginCheckUrl}，可据此写 loginCheckJs。注意：loginCheckJs 是纯 JS 字段，直接写 JS、不要加 @js:/<js> 前缀；并且【必须返回 result 透传响应】——Legado 会把返回值强转成 StrResponse，若 return true/false 会抛 ClassCastException。正确形态：(function(result){用 java.ajax 请求检测接口判断登录态，未登录时可 java.toast 提示；最后 return result})(result)。示例：(function(r){var o={};try{o=JSON.parse(java.ajax('${content.loginCheckUrl}'));}catch(e){}if(!(o&&o.user)){java.toast('未登录，部分内容受限');}return r;})(result)）")
             }
@@ -361,6 +362,7 @@ class AiSourceGenerateActivity :
                 sourceJson = text,
                 keyword = keyword ?: "",
                 exploreLinks = content?.exploreLinks.orEmpty(),
+                reviewUrl = content?.reviewUrl.orEmpty(),
                 maxRounds = viewModel.maxFixRounds
             )
         }.onSuccess { result ->
