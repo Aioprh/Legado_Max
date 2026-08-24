@@ -675,13 +675,14 @@ object AiSourceController {
         "系统", "赘婿", "战神", "神医", "兵王", "马甲", "双洁", "双c", "虐文", "团宠",
         "龙傲天", "标签", "情节", "剧情", "风格", "治愈", "虐心", "轻松",
         "状态", "字数", "连载", "完结", "全本", "上架", "免费", "付费", "限免", "更新时间",
-        // 阅文/起点/飞卢等小说的“风格流派”标签，不是书籍分类，一律剔除
+        // 阅文/起点/飞卢等小说的“风格流派”标签，不是书籍分类，一律剔除。
+        // 注意：像“高武世界”“诡异神秘”“灵异民俗”“两晋隋唐”“秦汉三国”这类是正常子分类，
+        // 不能靠 contains 词表剔除（会误伤），它们对应的真子分类 id 很小、走分类逻辑保留；
+        // 而“高武”“诡异”“民俗”“两晋”等超长 category_id（>=51,000,000）的标签/元素页，
+        // 由 parseCategoryLinks 的 parentId 上限（1..100_000）精确剔除，不在此词表里。
         "流派", "家族修仙", "升级流", "悬疑流", "两界穿梭", "群像", "多女主", "玩梗",
-        "高武", "诡异", "蒸汽朋克", "设定党", "考据", "民俗", "江湖",
-        "无限流", "反派", "主角", "配角", "言情", "无cp", "穿书", "反套路", "扮猪吃虎",
-        // 历史朝代细分标签（两晋、南北朝…），不是书籍分类且通常无内容，剔除
-        "两晋", "魏晋", "南北朝", "隋唐", "隋末", "唐初", "秦汉", "先秦", "上古",
-        "五代", "五代十国", "两宋", "宋元", "明清", "明末", "清初"
+        "蒸汽朋克", "设定党", "考据", "江湖",
+        "无限流", "反派", "主角", "配角", "言情", "无cp", "穿书", "反套路", "扮猪吃虎"
     )
 
     /** 发现页入口（名称, URL）分类：榜单 / 书籍分类 / 需剔除的情节标签 */
@@ -908,7 +909,7 @@ object AiSourceController {
                     val ext = obj.get("Extvalue") ?: obj.get("extvalue")
                     val parentId = obj.get("Id")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
                     val parentName = obj.get("Name")?.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
-                    if (ext != null && ext.isJsonArray && parentId.toIntOrNull()?.let { it > 0 } == true && parentName.isNotBlank()) {
+                    if (ext != null && ext.isJsonArray && parentId.toIntOrNull()?.let { it in 1..100_000 } == true && parentName.isNotBlank()) {
                         val hasAllPlaceholder = ext.asJsonArray.any { item ->
                             item.isJsonObject &&
                                 item.asJsonObject.get("Id")?.takeIf { it.isJsonPrimitive }?.asString == "0"
@@ -943,8 +944,8 @@ object AiSourceController {
                     val subTag = obj.get("SubTag")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
                     val id = obj.get("Id")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
                     val name = obj.get("Name")?.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
-                    if (subTag.isNotBlank() && id.isNotBlank() && id != "0" &&
-                        id.all { it.isDigit() } && name.isNotBlank() &&
+                    if (subTag.isNotBlank() && id.toIntOrNull()?.let { it in 1..100_000 } == true &&
+                        name.isNotBlank() &&
                         classifyExplore(name) != ExploreNameType.DROP
                     ) {
                         result.putIfAbsent(name, buildCategoryListUrl(configUrl, id, order))
