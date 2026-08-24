@@ -56,6 +56,9 @@ object AiSourceController {
     /** 发现页探测最多生成的联系入口数（分类+子分类+榜单，避免无限膨胀） */
     private const val MAX_EXPLORE_LINKS = 400
 
+    /** 榜单（排序）入口最多生成的条数 */
+    private const val ORDER_LIMIT = 8
+
     /** 接口探测超时（毫秒） */
     private const val API_TIMEOUT_MS = 15_000L
 
@@ -656,6 +659,41 @@ object AiSourceController {
         "shuku", "bookstore", "plate", "tpl", "nav", "menu", "cate", "sub"
     )
 
+    /** 榜单/排行榜类入口名称关键词（人气最高、推荐榜、月票榜…），生成发现页时放到分类之上 */
+    private val exploreRankKeywords = listOf(
+        "排行", "榜单", "人气", "推荐", "月票", "点击", "收藏", "热榜", "好评", "畅销",
+        "新书", "飙升", "热度", "战力", "周榜", "月榜", "日榜", "总榜",
+        "top", "rank", "hot", "best", "popular"
+    )
+
+    /**
+     * 情节/风格/筛选类标签名称关键词（爽文、甜宠、穿越、状态、字数、免费…）：
+     * 不是真正的书籍分类，也不是排行榜入口，生成发现页时直接剔除。
+     */
+    private val exploreDropKeywords = listOf(
+        "爽文", "爽感", "甜宠", "宠文", "甜文", "甜爽", "种田", "穿越", "重生", "快穿",
+        "系统", "赘婿", "战神", "神医", "兵王", "马甲", "双洁", "双c", "虐文", "团宠",
+        "龙傲天", "标签", "情节", "剧情", "风格", "治愈", "虐心", "轻松",
+        "状态", "字数", "连载", "完结", "全本", "上架", "免费", "付费", "限免", "更新时间"
+    )
+
+    /** 发现页入口（名称, URL）分类：榜单 / 书籍分类 / 需剔除的情节标签 */
+    enum class ExploreNameType { RANK, CATEGORY, DROP }
+
+    /**
+     * 判断一个分类/榜单入口名称归为哪一类。
+     * 优先判榜单纯属（人气、推荐、点击…），其次剔除情节/风格/筛选类标签（爽文、甜宠…）；
+     * 其余视为真正的书籍分类。
+     */
+    fun classifyExplore(name: String): ExploreNameType {
+        val n = name.trim()
+        if (n.isBlank()) return ExploreNameType.DROP
+        val low = n.lowercase()
+        if (exploreRankKeywords.any { low.contains(it) }) return ExploreNameType.RANK
+        if (exploreDropKeywords.any { low.contains(it) }) return ExploreNameType.DROP
+        return ExploreNameType.CATEGORY
+    }
+
     /**
      * 从页面脚本中识别“用固定 URL 模板 + 书籍ID 拼封面”的封面模板，
      * 供 LLM 编写 ruleExplore / ruleBookInfo / ruleSearch 的 coverUrl。
@@ -706,6 +744,8 @@ object AiSourceController {
             val isExplore = exploreTextKeywords.any { text.contains(it) } ||
                 exploreHrefKeywords.any { hrefLower.contains(it) }
             if (!isExplore) continue
+            // 情节/风格/筛选类标签（爽文、甜宠、状态、免费…）不是真正的分类/榜单，剔除
+            if (classifyExplore(text) == ExploreNameType.DROP) continue
             found[text] = href
             if (found.size >= 8) break
         }
@@ -843,9 +883,16 @@ object AiSourceController {
      * 根据 config 地址推导每个子分类对应的榜单列表 URL（主分类 category_id，子分类 subcategory_id）。
      */
     private fun parseCategoryLinks(json: String, configUrl: String): List<Pair<String, String>> {
+        // 榜单（排序）入口如“人气最高”“月票榜”，来自 config 的 Orders，放到分类之上
+        val rankEntries = LinkedHashMap<String, String>()
         val result = LinkedHashMap<String, String>()
         val order = parseDefaultOrder(json)
         runCatching {
+            collectOrderEntries(json).forEach { (name, id) ->
+                if (classifyExplore(name) == ExploreNameType.RANK) {
+                    rankEntries.putIfAbsent(name, buildRankUrl(configUrl, id))
+                }
+            }
             fun walk(el: JsonElement) {
                 val obj = if (el.isJsonObject) el.asJsonObject else null
                 val arr = if (el.isJsonArray) el.asJsonArray else null
@@ -860,18 +907,22 @@ object AiSourceController {
                                 item.asJsonObject.get("Id")?.takeIf { it.isJsonPrimitive }?.asString == "0"
                         }
                         if (hasAllPlaceholder) {
+                            // 情节/状态/字数等筛选标签组不是真正的书籍分类，整组剔除
+                            if (classifyExplore(parentName) == ExploreNameType.DROP) return
                             // 主分类入口
                             result.putIfAbsent(
                                 parentName,
                                 buildCategorySubUrl(configUrl, parentId, "", order)
                             )
-                            // 子分类入口
+                            // 子分类入口（剔除情节标签类子项，如 玄幻→穿越）
                             for (sub in ext.asJsonArray) {
                                 if (!sub.isJsonObject) continue
                                 val so = sub.asJsonObject
                                 val subId = so.get("Id")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
                                 val subName = so.get("Name")?.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
-                                if (subId.toIntOrNull()?.let { it > 0 } == true && subName.isNotBlank()) {
+                                if (subId.toIntOrNull()?.let { it > 0 } == true && subName.isNotBlank() &&
+                                    classifyExplore(subName) != ExploreNameType.DROP
+                                ) {
                                     result.putIfAbsent(
                                         "${parentName}·${subName}",
                                         buildCategorySubUrl(configUrl, parentId, subId, order)
@@ -886,7 +937,8 @@ object AiSourceController {
                     val id = obj.get("Id")?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
                     val name = obj.get("Name")?.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
                     if (subTag.isNotBlank() && id.isNotBlank() && id != "0" &&
-                        id.all { it.isDigit() } && name.isNotBlank()
+                        id.all { it.isDigit() } && name.isNotBlank() &&
+                        classifyExplore(name) != ExploreNameType.DROP
                     ) {
                         result.putIfAbsent(name, buildCategoryListUrl(configUrl, id, order))
                         return
@@ -902,8 +954,59 @@ object AiSourceController {
             }
             walk(JsonParser.parseString(json))
         }
-        val list = result.entries.toList().map { it.key to it.value }
+        // 榜单在前，分类在后
+        val ordered = LinkedHashMap<String, String>()
+        rankEntries.forEach { (n, u) -> ordered.putIfAbsent(n, u) }
+        result.forEach { (n, u) -> ordered.putIfAbsent(n, u) }
+        val list = ordered.entries.toList().map { it.key to it.value }
         return list.take(MAX_EXPLORE_LINKS)
+    }
+
+    /**
+     * 收集 config JSON 中 Orders 数组的全部排序项（如“人气最高”“月票榜”），返回 (名称, Id)。
+     */
+    private fun collectOrderEntries(json: String): List<Pair<String, String>> {
+        val out = LinkedHashMap<String, String>()
+        fun walk(el: JsonElement) {
+            when {
+                el.isJsonArray -> el.asJsonArray.forEach { walk(it) }
+                el.isJsonObject -> {
+                    val o = el.asJsonObject
+                    o.get("Orders")?.takeIf { it.isJsonArray }?.asJsonArray?.forEach { entry ->
+                        if (entry.isJsonObject) {
+                            val id = entry.asJsonObject.get("Id")
+                                ?.takeIf { it.isJsonPrimitive }?.asString.orEmpty()
+                            val name = entry.asJsonObject.get("Name")
+                                ?.takeIf { it.isJsonPrimitive }?.asString?.trim().orEmpty()
+                            if (id.isNotBlank() && id.all { it.isDigit() } && name.isNotBlank()) {
+                                out.putIfAbsent(name, id)
+                            }
+                        }
+                    }
+                    o.entrySet().forEach { (_, v) ->
+                        if (v.isJsonArray || v.isJsonObject) walk(v)
+                    }
+                }
+            }
+        }
+        walk(JsonParser.parseString(json))
+        return out.entries.toList().take(ORDER_LIMIT)
+    }
+
+    /**
+     * 由分类 config 地址推导“全局榜单”地址（不带 category_id），排序用 Order 的 Id。
+     */
+    private fun buildRankUrl(configUrl: String, order: String): String {
+        var url = configUrl.substringBefore("#").trimEnd('&')
+        if (Regex("""action=config""", RegexOption.IGNORE_CASE).containsMatchIn(url)) {
+            url = url.replace(Regex("""action=config""", RegexOption.IGNORE_CASE), "action=ranking")
+        }
+        val sep = if (url.contains("?")) "&" else "?"
+        return buildString {
+            append(url).append(sep)
+            append("order=").append(order)
+            append("&page={{page}}&page_size=20")
+        }
     }
 
     /**

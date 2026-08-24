@@ -575,9 +575,12 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     }
 
     /**
-     * 把书源的 exploreUrl 补全为「主分类 + 其下二级分类、按主分类分组」的完整列表。
-     * 输入为检测到的分类导航链接（名称, URL），顺序即 parseCategoryLinks 的“主分类→子分类”分组序；
-     * 若链接非空且书源含 exploreUrl 字段，则用链接列表重建 exploreUrl（分类名::URL 每行一个）。
+     * 把书源的 exploreUrl 补全为「榜单 + 主分类 + 其下二级分类、按主分类分组」的完整列表。
+     * 输入为检测到的分类导航链接（名称, URL）：
+     * - 榜单类入口（人气最高、月票榜…）排在前面；
+     * - 情节/风格/筛选类标签（爽文、甜宠、穿越、状态、免费…）直接剔除；
+     * - 其余为书籍分类（主分类在前、其下二级分类随之），保留“主分类·子分类”分组关系。
+     * 若链接非空且书源含 exploreUrl 字段，则用重建后的列表拼接 exploreUrl（分类名::URL 每行一个）。
      * 仅当字段确实变化才返回新文本，否则原样返回，避免不必要的改写。
      */
     fun completeExploreUrl(sourceJsonText: String, exploreLinks: List<Pair<String, String>>): String {
@@ -586,14 +589,28 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
         val obj = if (root.isJsonArray) root.asJsonArray.firstOrNull()?.takeIf { it.isJsonObject }?.asJsonObject
         else if (root.isJsonObject) root.asJsonObject else null
         if (obj == null || !obj.has("exploreUrl")) return sourceJsonText
-        // 去掉可能混入的空/纯动态入口，按分组序拼成 exploreUrl
-        val lines = mutableListOf<String>()
-        val seen = HashSet<String>()
+        // 榜单在前、分类在后，并按“主分类→子分类”分组，剔除情节/筛选类标签
+        // 去掉可能混入的空/纯动态入口
+        val ranks = LinkedHashMap<String, String>()
+        val cats = LinkedHashMap<String, String>()
         for ((name, url) in exploreLinks) {
             if (name.isBlank() || url.isBlank()) continue
-            val line = "$name::$url"
-            if (seen.add(line)) lines.add(line)
+            when (AiSourceController.classifyExplore(name)) {
+                AiSourceController.ExploreNameType.RANK -> ranks.putIfAbsent(name, url)
+                AiSourceController.ExploreNameType.DROP -> Unit
+                AiSourceController.ExploreNameType.CATEGORY -> cats.putIfAbsent(name, url)
+            }
         }
+        val lines = mutableListOf<String>()
+        val seen = HashSet<String>()
+        fun addAll(map: LinkedHashMap<String, String>) {
+            for ((name, url) in map) {
+                val line = "$name::$url"
+                if (seen.add(line)) lines.add(line)
+            }
+        }
+        addAll(ranks)
+        addAll(cats)
         if (lines.isEmpty()) return sourceJsonText
         val newExplore = lines.joinToString("\n")
         if (obj.get("exploreUrl").asString == newExplore) return sourceJsonText
