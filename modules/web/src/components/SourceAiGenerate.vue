@@ -443,7 +443,7 @@ const SYSTEM_PROMPT = `你是"Legado书源驯兽师"，精通 Legado（阅读）
     "nextTocUrl": "下一页目录 URL"
   },
   "ruleContent": {
-    "content": "正文规则（必填）",
+    "content": "正文规则（必填）。若正文接口对 VIP/付费章节要求登录态或额外请求头才返回全文（如部分起点系镜像站需 X-Content-Token 请求头并加 &vip=1 参数），content 必须写 @js: 规则：先普通请求取免费正文，取不到时先从登录态接口（如 auth.php?action=me）提取 token，再带 {\"X-Content-Token\":token} 请求 &vip=1 接口兜底。参考模板：@js:var bid=(book.bookUrl.match(/book_id=(\\\\d+)/)||[])[1]||'';var cid=(chapter.url.match(/chapter_id=(\\\\d+)/)||[])[1]||'';var u='https://host/content.php?book_id='+bid+'&chapter_id='+cid;var v='';try{var o=JSON.parse(java.ajax(u));v=(o.content||o.Content||'').replace(/\\\\r\\\\n/g,'\\n')}catch(e){}if(!v){try{var t='';try{t=JSON.parse(java.ajax('https://host/auth.php?action=me')).request_token||''}catch(e){}var o2=JSON.parse(java.get(u+'&vip=1',{'X-Content-Token':t}).body());v=(o2.content||o2.Content||'').replace(/\\\\r\\\\n/g,'\\n');if(!v)v=o2.detail?'【'+o2.detail+'】':'【正文获取失败】'}catch(e){v='【正文获取失败】'}}v（token 字段名与请求头以站点实际为准）；站点无 VIP 或正文不要求登录则用简单 JSONPath/CSS 即可",
     "nextContentUrl": "下一章 URL",
     "webJs": "需 JS 渲染时注入的脚本",
     "replaceRegex": "正文净化正则，如 ##<script[\\s\\S]*?<\\/script>|请收藏.*##"

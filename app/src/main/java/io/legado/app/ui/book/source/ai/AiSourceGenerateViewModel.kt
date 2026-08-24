@@ -676,7 +676,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
   "loginUrl": "登录地址（可选），站点有登录页则填其 URL，无则空字符串",
   "loginUi": "登录界面规则（可选，无则空字符串）",
   "loginCheckJs": "登录检测 JS（可选），返回 true 表示已登录，无则空字符串",
-  "header": "请求头（可选），按行写 Key: Value，如 User-Agent: Mozilla/5.0；无反爬要求则空字符串",
+  "header": "请求头（可选），按行写 Key: Value，如 User-Agent: Mozilla/5.0；站点有反爬或校验 UA 时必须填桌面浏览器 User-Agent（User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36），无则空字符串",
   "jsLib": "公共 JS 库（可选），多段用换行分隔，无则空字符串",
   "enabledCookieJar": true,
   "coverDecodeJs": "封面解密 JS（可选），无则空字符串",
@@ -720,7 +720,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     "isVolume": "是否为卷规则（可选，如 chapterList 命中卷节点返回 1，普通章节返回 0；无分卷则空字符串）"
   },
   "ruleContent": {
-    "content": "正文规则（必填）",
+    "content": "正文规则（必填）。若正文接口对 VIP/付费章节要求登录态或额外请求头才返回全文（如部分起点系镜像站需 X-Content-Token 请求头并加 &vip=1 参数），content 必须写 @js: 规则：先普通请求取免费正文，取不到时先从登录态接口（如 auth.php?action=me）提取 token，再带 {\"X-Content-Token\":token} 请求 &vip=1 接口兜底。参考模板：@js:var bid=(book.bookUrl.match(/book_id=(\\d+)/)||[])[1]||'';var cid=(chapter.url.match(/chapter_id=(\\d+)/)||[])[1]||'';var u='https://host/content.php?book_id='+bid+'&chapter_id='+cid;var v='';try{var o=JSON.parse(java.ajax(u));v=(o.content||o.Content||'').replace(/\\r\\n/g,'\\n')}catch(e){}if(!v){try{var t='';try{t=JSON.parse(java.ajax('https://host/auth.php?action=me')).request_token||''}catch(e){}var o2=JSON.parse(java.get(u+'&vip=1',{'X-Content-Token':t}).body());v=(o2.content||o2.Content||'').replace(/\\r\\n/g,'\\n');if(!v)v=o2.detail?'【'+o2.detail+'】':'【正文获取失败】'}catch(e){v='【正文获取失败】'}}v（token 字段名与请求头以站点实际为准）；站点无 VIP 或正文不要求登录则用简单 JSONPath/CSS 即可",
     "nextContentUrl": "下一章 URL",
     "title": "正文标题规则（可选，无则空字符串）",
     "webJs": "需 JS 渲染时注入的脚本",
