@@ -2,14 +2,11 @@ package io.legado.app.ui.book.source.ai
 
 import android.app.Application
 import cn.hutool.crypto.symmetric.AES
-import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import io.legado.app.api.controller.AiSourceController
 import io.legado.app.base.BaseViewModel
 import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.rule.ExploreKind
-import io.legado.app.data.entities.rule.FlexChildStyle
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.model.webBook.WebBook
@@ -322,13 +319,9 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             val verify = verifyByRealSearch(current, keyword, exploreLinks)
             log.appendLine(verify.summary)
             if (verify.succeeded) {
-                // 确定性补全探索分类：若首页探测到分类导航，用「主分类+其下二级、按主分类分组」重建
-                // exploreUrl，避免 AI 只保留一级分类而丢掉二级（如 玄幻/玄幻·东方玄幻）。
-                val finalJson = completeExploreUrl(verify.fixedJson ?: current, exploreLinks)
-                if (finalJson != (verify.fixedJson ?: current)) {
-                    log.appendLine("✓ 按「一级+分组二级」补全了发现页分类（exploreUrl 已含全部主分类及其二级分类）")
-                }
-                return AutoFixResult(ok = true, rounds = round, json = finalJson, log = log.toString())
+                // 直接采用规则校验通过后的源 JSON：exploreUrl 保持 AI 生成的原始格式，
+                // App 端平铺渲染分类，不做层级/样式重建。
+                return AutoFixResult(ok = true, rounds = round, json = verify.fixedJson ?: current, log = log.toString())
             }
             // 组装修复提示词，只反馈错误信息，不重复发送 HTML
             val fixUserPrompt = buildString {
@@ -577,95 +570,9 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     }
 
     /**
-     * 把书源的 exploreUrl 重建为「ExploreKind JSON 数组」，让 App 原生渲染出「主分类 + 其下子分类」的层级发现页：
-     * - 榜单类入口（人气最高、月票榜…）排在前面，作为普通 chip；
-     * - 情节/风格/筛选类标签（爽文、甜宠、穿越、状态、免费…）直接剔除；
-     * - 书籍分类按「主分类 → 子分类」分组：主分类用 [FlexChildStyle] 占满整行独立成行，
-     *   其下子分类随后自动换行排布（不额外缩进、也不加任何特殊符号），层级靠行宽自然呈现。
-     * 输入 [exploreLinks] 中形如「主分类·子分类」的项会被拆分为层级；纯主分类/榜单项保持原样。
-     * 仅当字段确实变化才返回新文本，否则原样返回，避免不必要的改写。
-     */
-    fun completeExploreUrl(sourceJsonText: String, exploreLinks: List<Pair<String, String>>): String {
-        if (exploreLinks.isEmpty()) return sourceJsonText
-        val root = runCatching { JsonParser.parseString(sourceJsonText) }.getOrNull() ?: return sourceJsonText
-        val obj = if (root.isJsonArray) root.asJsonArray.firstOrNull()?.takeIf { it.isJsonObject }?.asJsonObject
-        else if (root.isJsonObject) root.asJsonObject else null
-        if (obj == null || !obj.has("exploreUrl")) return sourceJsonText
-
-        // 榜单在前、分类在后；子分类名带「主分类·」前缀（内部层级标记，展示时拆分）
-        val ranks = LinkedHashMap<String, String>()
-        val cats = LinkedHashMap<String, String>()
-        for ((name, url) in exploreLinks) {
-            if (name.isBlank() || url.isBlank()) continue
-            when (AiSourceController.classifyExplore(name)) {
-                AiSourceController.ExploreNameType.RANK -> ranks.putIfAbsent(name, url)
-                AiSourceController.ExploreNameType.DROP -> Unit
-                AiSourceController.ExploreNameType.CATEGORY -> cats.putIfAbsent(name, url)
-            }
-        }
-
-        val kinds = ArrayList<ExploreKind>()
-        // 榜单：flexGrow 均匀铺满每行，避免行尾留白不齐
-        ranks.forEach { (name, url) ->
-            kinds.add(
-                ExploreKind(
-                    title = name,
-                    url = url,
-                    style = FlexChildStyle(layout_flexGrow = 1F)
-                )
-            )
-        }
-        // 分类：主分类占满整行，其下子分类换行缩进
-        // 主分类 = (自身URL, 其下子分类列表)；来源里「纯主分类」项会先于「主分类·子分类」出现
-        data class MainGroup(val subs: MutableList<Pair<String, String>> = mutableListOf(), var url: String? = null)
-        val mainGroups = LinkedHashMap<String, MainGroup>()
-        for ((name, url) in cats) {
-            val dot = name.indexOf('·')
-            if (dot > 0) {
-                val main = name.substring(0, dot)
-                val sub = name.substring(dot + 1)
-                mainGroups.getOrPut(main) { MainGroup() }.subs.add(sub to url)
-            } else {
-                // 纯主分类：保留其自身 URL（若无子分类也独立成行）
-                mainGroups.getOrPut(name) { MainGroup() }.url = url
-            }
-        }
-        for ((main, group) in mainGroups) {
-            // 主分类占满整行、独立成行，标题居中
-            kinds.add(
-                ExploreKind(
-                    title = main,
-                    url = group.url,
-                    style = FlexChildStyle(
-                        layout_flexBasisPercent = 1F,
-                        layout_wrapBefore = true
-                    )
-                )
-            )
-            // 子分类换行排布（不设 flexGrow，胶囊按钮宽度贴合文字、紧凑排列）
-            for ((sub, subUrl) in group.subs) {
-                kinds.add(
-                    ExploreKind(
-                        title = sub,
-                        url = subUrl
-                    )
-                )
-            }
-        }
-
-        if (kinds.isEmpty()) return sourceJsonText
-        val newExplore = GSON.toJson(kinds)
-        if (obj.get("exploreUrl").asString == newExplore) return sourceJsonText
-        obj.addProperty("exploreUrl", newExplore)
-        val arr = JsonArray()
-        arr.add(obj)
-        return arr.toString()
-    }
-
-    /**
      * 解析 exploreUrl 为分类列表（分类名, URL）。
      * 兼容两种格式：
-     * 1. JSON 数组（ExploreKind 数组，含 title/url/style 字段，completeExploreUrl 的输出）；
+     * 1. JSON 数组（含 title/url 字段的探索分类数组）；
      * 2. 旧格式（(&&|\n) 分隔，每项 名称::地址）。
      * @js:/<js> 动态分类无法离线拆分，整体视为一条交给 WebBook 处理。
      */
@@ -824,7 +731,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     "payAction": "付费章节处理规则（可选），无则空字符串",
     "callBackJs": "正文回调 JS（可选），无则空字符串"
   },
-  "exploreUrl": "发现地址（可选，但站点有分类/榜单/推荐导航时必须填写），优先输出 JSON 数组形式以支持主分类/子分类层级：每项为 {\"title\":\"分类名\",\"url\":\"...\",\"style\":{...}}。榜单（人气最高、月票榜…）放最前，style={\"layout_flexGrow\":1} 均匀铺满每行；主分类项 style={\"layout_flexBasisPercent\":1,\"layout_wrapBefore\":true} 占满整行，其子分类紧随其后、不设 style（胶囊按钮宽度贴合文字、紧凑排列），标题不加任何缩进/前缀/特殊符号。也可用 分类名::URL 换行分隔（无层级，App 平铺）。分页参数写 page=1（App 会自动翻页）。禁止把风格/流派类标签（家族修仙、升级流、群像、多女主、高武、诡异、穿书、无CP…）或情节标签（爽文、甜宠…）放进 exploreUrl，只保留真正的书籍分类与排行榜；无发现页则空字符串",
+  "exploreUrl": "发现地址（可选，但站点有分类/榜单/推荐导航时必须填写），用 分类名::URL 换行分隔（每行一个，如 玄幻::https://host/cat/1\n东方玄幻::https://host/cat/1/s1），榜单（人气最高、月票榜…）放最前。App 会自动平铺渲染，不要输出任何 style/JSON 数组层级结构。分页参数写 page=1（App 会自动翻页）。禁止把风格/流派类标签（家族修仙、升级流、群像、多女主、高武、诡异、穿书、无CP…）或情节标签（爽文、甜宠…）放进 exploreUrl，只保留真正的书籍分类与排行榜；无发现页则空字符串",
   "ruleExplore": {
     "bookList": "发现列表选择器（必填，若 exploreUrl 非空）",
     "name": "发现书名（必填，若 exploreUrl 非空）",
