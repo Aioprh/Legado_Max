@@ -11,6 +11,7 @@ import io.legado.app.databinding.ViewLoadMoreBinding
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.utils.getCompatColor
 import io.legado.app.utils.invisible
+import io.legado.app.utils.sendToClip
 import io.legado.app.utils.visible
 
 @Suppress("unused")
@@ -99,6 +100,9 @@ class LoadMoreView(context: Context, attrs: AttributeSet? = null) : FrameLayout(
                 neutralButton(R.string.retry) {
                     onClickListener?.onClick(view)
                 }
+            }
+            positiveButton(R.string.copy) {
+                context.sendToClip(errorMsg)
             }
         }
         return true
