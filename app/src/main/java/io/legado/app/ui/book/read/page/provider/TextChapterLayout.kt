@@ -2046,12 +2046,13 @@ class TextChapterLayout(
      * 已是气泡 URL 或开关关闭时返回原始 src 和 null click。
      */
     private fun tryParseForcedBubbleSrcWithClick(src: String): ForcedBubbleResult {
-        if (!AppConfig.forceSoftwareParagraphBubble) return ForcedBubbleResult(src, null)
-        if (ParagraphBubbleRenderer.isBubbleSrc(src)) return ForcedBubbleResult(src, null)
-        // dp: 协议快速解析（如 dp:12,{"pclick":"...","status":"normal"}）
+        // dp: 段评气泡协议（AI 生成书源使用）始终解析成气泡，不受“强制使用软件气泡”开关限制；
+        // 该开关仅用于把站点原生图片形式的段评入口（data:svg/type/click 等）转换成软件气泡。
         if (src.startsWith(PARAGRAPH_BUBBLE_PREFIX, ignoreCase = true)) {
             return parseParagraphBubble(src)
         }
+        if (!AppConfig.forceSoftwareParagraphBubble) return ForcedBubbleResult(src, null)
+        if (ParagraphBubbleRenderer.isBubbleSrc(src)) return ForcedBubbleResult(src, null)
         val urlMatcher = paramPattern.matcher(src)
         if (!urlMatcher.find()) return ForcedBubbleResult(src, null)
         val renderSrc = src.substring(0, urlMatcher.start())
