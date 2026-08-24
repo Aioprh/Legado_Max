@@ -11,13 +11,12 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.content.Context
+import android.content.res.Configuration
 import android.view.Gravity
+import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.viewModels
-import androidx.core.widget.NestedScrollView
-import com.google.android.flexbox.FlexWrap
-import com.google.android.flexbox.FlexboxLayout
 import androidx.core.os.bundleOf
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -148,9 +147,10 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
 
     /** 分类Tab列表 */
     private val exploreKinds = mutableListOf<ExploreKind>()
-    /** 与 exploreKinds 对齐的 Tab 视图数组，用于选中态与自动滚动 */
-    private var tabViews: Array<TextView?> = emptyArray()
-    private var tabScrollView: NestedScrollView? = null
+    private val tabRows = mutableListOf<LinearLayout>()
+    private val tabScrollViews = mutableListOf<HorizontalScrollView>()
+    private var maxTagsPerRow = 10
+    private val orientation by lazy { resources.configuration.orientation }
     /** 当前选中的分类索引 */
     private var currentCategoryIndex by mutableIntStateOf(0)
     /** 手势检测器，用于左右滑动切换分类 */
@@ -883,123 +883,59 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     }
 
     /**
-     * 一个主分类及其从属的子分类节点。
-     * 元素为 (exploreKinds索引, ExploreKind, 显示名)；子分类显示名已去掉「主分类·」前缀。
-     */
-    private class KindSectionGroup(
-        val main: Triple<Int, ExploreKind, String>,
-        val subs: MutableList<Triple<Int, ExploreKind, String>> = mutableListOf()
-    )
-
-    /**
-     * 设置分类Tab布局，支持「主分类 -> 子分类」层级显示：
-     * - 名称形如「主分类·子分类」（AI 自动生成书源即此格式）的项，会缩进归并到其主分类之下显示，
-     *   子分类名去掉「主分类·」前缀，不再出现特殊符号；
-     * - 名称不带「·」的普通分类保持原样。
-     * 整体放入纵向滚动容器，分类较多时也不会挤压正文区域。
+     * 设置多行Tab布局（参考订阅源界面的实现）
+     * 最多3行，横屏最多2行，采用订阅源界面的视觉样式
      */
     private fun setupMultiLineTabs() {
         val tabsContainer = binding.tabsContainer
         tabsContainer.removeAllViews()
-        tabScrollView = null
+        tabRows.clear()
+        tabScrollViews.clear()
         if (exploreKinds.isEmpty()) {
             tabsContainer.gone()
             return
         }
-        tabViews = arrayOfNulls(exploreKinds.size)
-        // 纵向滚动容器，避免分类过多时挤压正文
-        val scrollView = NestedScrollView(this).apply {
-            overScrollMode = View.OVER_SCROLL_NEVER
-            isVerticalScrollBarEnabled = false
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
+        // 动态计算每行标签数量，最多3行
+        var rowCount = when {
+            exploreKinds.size <= 10 -> 1
+            exploreKinds.size <= 20 -> 2
+            else -> 3
         }
-        tabScrollView = scrollView
-        val listLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            layoutParams = android.widget.FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
-        scrollView.addView(listLayout)
-        tabsContainer.addView(scrollView)
-
-        // 先登记全部主分类（名称不含「·」），再按「主分类·子分类」归组子分类，避免源顺序影响分组
-        val sections = arrayListOf<KindSectionGroup>()
-        val sectionByMain = hashMapOf<String, KindSectionGroup>()
-        for ((index, kind) in exploreKinds.withIndex()) {
-            val title = kind.title.orEmpty()
-            if (title.indexOf('·') <= 0) {
-                val sec = KindSectionGroup(Triple(index, kind, title))
-                sections.add(sec)
-                sectionByMain[title] = sec
-            }
-        }
-        val standalones = arrayListOf<Triple<Int, ExploreKind, String>>()
-        for ((index, kind) in exploreKinds.withIndex()) {
-            val title = kind.title.orEmpty()
-            val dot = title.indexOf('·')
-            if (dot > 0) {
-                val parent = title.substring(0, dot)
-                val child = title.substring(dot + 1)
-                val sec = sectionByMain[parent]
-                if (sec != null) {
-                    sec.subs.add(Triple(index, kind, child))
-                } else {
-                    // 找不到所属主分类，作为独立子分类（去掉前缀）显示
-                    standalones.add(Triple(index, kind, child))
-                }
-            }
-        }
-
-        for (sec in sections) {
-            val (mainIndex, _, _) = sec.main
-            val mainTv = buildCategoryTab(sec.main, main = true)
-            tabViews[mainIndex] = mainTv
-            listLayout.addView(mainTv)
-            if (sec.subs.isNotEmpty()) {
-                val subFlex = FlexboxLayout(this).apply {
-                    layoutParams = LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                    )
-                    flexWrap = FlexWrap.WRAP
-                }
-                for (node in sec.subs) {
-                    val (index, _, _) = node
-                    val tv = buildCategoryTab(node, main = false)
-                    tabViews[index] = tv
-                    val lp = FlexboxLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                    ).apply {
-                        // 缩进体现层级（边距通过 setMargins 设置，属性为只读）
-                        setMargins(20.dpToPx(), 4.dpToPx(), 6.dpToPx(), 4.dpToPx())
-                    }
-                    tv.layoutParams = lp
-                    subFlex.addView(tv)
-                }
-                listLayout.addView(subFlex)
-            }
-        }
-        for (node in standalones) {
-            val (index, _, _) = node
-            val tv = buildCategoryTab(node, main = false)
-            tabViews[index] = tv
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
+        if (rowCount > 1 && orientation == Configuration.ORIENTATION_LANDSCAPE) rowCount-- // 横屏最多2行
+        maxTagsPerRow = (exploreKinds.size + rowCount - 1) / rowCount
+        exploreKinds.chunked(maxTagsPerRow).forEachIndexed { rowIndex, rowItems ->
+            // 创建横向滚动容器
+            val scrollView = HorizontalScrollView(this).apply {
+                overScrollMode = View.OVER_SCROLL_NEVER
+                isHorizontalScrollBarEnabled = false
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+                ).apply {
+                    // 只有非最后一行才有底部间距
+                    bottomMargin = if (rowIndex < rowCount - 1) 2.dpToPx() else 0
+                }
+                tabScrollViews.add(this)
             }
-            row.addView(tv)
-            listLayout.addView(row)
+            // 创建行容器
+            val rowLayout = LinearLayout(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+            }
+            // 添加标签到行
+            rowItems.forEachIndexed { indexInRow, kind ->
+                val globalIndex = rowIndex * maxTagsPerRow + indexInRow
+                val tabView = createTabView(kind.title, globalIndex, kind.url ?: "")
+                rowLayout.addView(tabView)
+            }
+            scrollView.addView(rowLayout)
+            tabsContainer.addView(scrollView)
+            tabRows.add(rowLayout)
         }
-
         // 初始选中状态：找到当前URL对应的分类索引
         val currentUrl = intent.getStringExtra("exploreUrl") ?: ""
         currentCategoryIndex = exploreKinds.indexOfFirst { it.url == currentUrl }.coerceAtLeast(0)
@@ -1007,38 +943,26 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     }
 
     /**
-     * 创建单个分类Tab视图。
-     * 主分类为通栏加粗块，子分类为普通芯片；点击均切换到对应分类。
+     * 创建单个Tab视图
      */
-    private fun buildCategoryTab(node: Triple<Int, ExploreKind, String>, main: Boolean): TextView {
-        val (position, kind, label) = node
-        val url = kind.url
+    private fun createTabView(title: String, position: Int, url: String): TextView {
         return TextView(this).apply {
-            text = label
-            gravity = Gravity.CENTER_VERTICAL
-            textSize = if (main) 14f else 13f
-            if (main) setTypeface(null, android.graphics.Typeface.BOLD)
+            text = title
+            gravity = Gravity.CENTER
+            textSize = 14f
             background = createTabBackground(accentColor, context)
             setPadding(12.dpToPx(), 6.dpToPx(), 12.dpToPx(), 6.dpToPx())
             tag = position
             setTextColor(context.getCompatColor(R.color.primaryText))
-            layoutParams = if (main) {
-                LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    topMargin = 4.dpToPx()
-                    bottomMargin = 2.dpToPx()
-                }
-            } else {
-                LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+            // 宽度自适应内容
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginEnd = 6.dpToPx()
             }
             setOnClickListener {
                 setTextColor(context.getCompatColor(R.color.secondaryText)) // 点击变色
-                val u = url ?: return@setOnClickListener
                 if (position != currentCategoryIndex) {
                     // 保存当前分类的滚动位置
                     saveCurrentScrollPosition()
@@ -1051,12 +975,12 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
                     loadMoreView.startLoad()
                     // 传入预加载参数和所有分类列表
                     viewModel.switchCategory(
-                        newUrl = u,
-                        exploreName = label,
+                        newUrl = url,
+                        exploreName = title,
                         preload = preloadMode == 1,
                         allKinds = exploreKinds
                     )
-                    binding.titleBar.title = label
+                    binding.titleBar.title = title
                 }
             }
         }
@@ -1091,30 +1015,41 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
      */
     private fun updateTabSelection(position: Int) {
         if (!isDestroyed && !isFinishing) {
-            for ((i, tabView) in tabViews.withIndex()) {
-                tabView?.isSelected = i == position
+            tabRows.forEachIndexed { rowIndex, row ->
+                for (i in 0 until row.childCount) {
+                    val tabIndex = rowIndex * maxTagsPerRow + i
+                    val tabView = row.getChildAt(i) as? TextView
+                    tabView?.isSelected = tabIndex == position
+                }
             }
-            // 确保选中标签在视图内可见
+            // 确保选中标签在视图内
             ensureTabVisible(position)
         }
     }
 
     /**
-     * 确保选中标签在视图内可见（在纵向滚动容器内滚动到可见位置）
+     * 确保选中标签在视图内可见
      */
     private fun ensureTabVisible(position: Int) {
-        if (position < 0 || position >= tabViews.size) return
-        val tabView = tabViews[position] ?: return
-        val scrollView = tabScrollView ?: return
+        if (position < 0 || position >= exploreKinds.size) return
+        val rowIndex = position / maxTagsPerRow
+        if (rowIndex >= tabScrollViews.size) return
+        val scrollView = tabScrollViews[rowIndex]
+        val rowLayout = tabRows[rowIndex]
+        val indexInRow = position % maxTagsPerRow
+        if (indexInRow >= rowLayout.childCount) return
+
+        val tabView = rowLayout.getChildAt(indexInRow)
         scrollView.post {
-            val top = tabView.top
-            val bottom = tabView.bottom
-            val scrollY = scrollView.scrollY
-            val height = scrollView.height
+            val tabLeft = tabView.left
+            val tabRight = tabView.right
+            val scrollViewWidth = scrollView.width
             val padding = 12.dpToPx()
             when {
-                top - padding < scrollY -> scrollView.smoothScrollTo(0, (top - padding).coerceAtLeast(0))
-                bottom + padding > scrollY + height -> scrollView.smoothScrollTo(0, bottom + padding - height)
+                tabLeft - padding < scrollView.scrollX ->
+                    scrollView.smoothScrollTo(tabLeft - padding, 0)
+                tabRight + padding > scrollView.scrollX + scrollViewWidth ->
+                    scrollView.smoothScrollTo(tabRight - scrollViewWidth + padding, 0)
             }
         }
     }
