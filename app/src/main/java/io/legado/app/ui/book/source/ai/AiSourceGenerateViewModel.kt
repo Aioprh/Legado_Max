@@ -581,7 +581,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
      * - 榜单类入口（人气最高、月票榜…）排在前面，作为普通 chip；
      * - 情节/风格/筛选类标签（爽文、甜宠、穿越、状态、免费…）直接剔除；
      * - 书籍分类按「主分类 → 子分类」分组：主分类用 [FlexChildStyle] 占满整行独立成行，
-     *   其下子分类随后自动换行排布、以两个全角空格作视觉缩进，不再出现「主分类·子分类」这类特殊符号。
+     *   其下子分类随后自动换行排布（不额外缩进、也不加任何特殊符号），层级靠行宽自然呈现。
      * 输入 [exploreLinks] 中形如「主分类·子分类」的项会被拆分为层级；纯主分类/榜单项保持原样。
      * 仅当字段确实变化才返回新文本，否则原样返回，避免不必要的改写。
      */
@@ -624,7 +624,6 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                 mainGroups.getOrPut(name) { MainGroup() }.url = url
             }
         }
-        val subIndent = "　　" // 两个全角空格，模拟缩进，避免引入额外特殊符号
         for ((main, group) in mainGroups) {
             // 主分类占满整行，独立成行
             kinds.add(
@@ -637,9 +636,9 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                     )
                 )
             )
-            // 子分类换行排布，带视觉缩进
+            // 子分类换行排布（不加缩进空格，靠行宽自然换行）
             for ((sub, subUrl) in group.subs) {
-                kinds.add(ExploreKind(title = subIndent + sub, url = subUrl))
+                kinds.add(ExploreKind(title = sub, url = subUrl))
             }
         }
 
@@ -796,7 +795,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
     "payAction": "付费章节处理规则（可选），无则空字符串",
     "callBackJs": "正文回调 JS（可选），无则空字符串"
   },
-  "exploreUrl": "发现地址（可选，但站点有分类/榜单/推荐导航时必须填写），多分类用 分类名::URL 换行分隔，如 热门::https://host/top/\n玄幻::https://host/sort/1/###...；分页参数写 page=1（App 会自动翻页）；无发现页则空字符串",
+  "exploreUrl": "发现地址（可选，但站点有分类/榜单/推荐导航时必须填写），优先输出 JSON 数组形式以支持主分类/子分类层级：每项为 {\"title\":\"分类名\",\"url\":\"...\"}。主分类项额外带 style={\"layout_flexBasisPercent\":1,\"layout_wrapBefore\":true} 使其占满整行，其子分类紧随其后换行排列、标题不加任何缩进/前缀/特殊符号；榜单（人气最高、月票榜…）放最前、同样普通项。也可用 分类名::URL 换行分隔（无层级，App 平铺）。分页参数写 page=1（App 会自动翻页）。禁止把风格/流派类标签（家族修仙、升级流、群像、多女主、高武、诡异、穿书、无CP…）或情节标签（爽文、甜宠…）放进 exploreUrl，只保留真正的书籍分类与排行榜；无发现页则空字符串",
   "ruleExplore": {
     "bookList": "发现列表选择器（必填，若 exploreUrl 非空）",
     "name": "发现书名（必填，若 exploreUrl 非空）",
@@ -845,7 +844,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 3. 只输出 JSON 本身，不要添加解释文字或 markdown 代码块标记
 4. 无法推断的字段填空字符串 ""
 5. 若 HTML 是 JSON 数据，使用 JSONPath 语法
-6. 必须输出完整书源：搜索、详情(ruleBookInfo)、目录(ruleToc)、正文(ruleContent) 为必填核心；发现(exploreUrl/ruleExplore) 必须分析目标站点是否有分类/榜单/推荐导航——用户提示词中会列出从首页导航中**自动探测**到的分类链接（如「玄幻::https://...」「热门::https://...」）以及首个分类页的真实 HTML，你必须基于这些链接编写 exploreUrl（"分类名::URL" 每行一个，如 "玄幻::https://host/sort/1/\n都市::https://host/sort/2/"）与 ruleExplore（bookList/name/bookUrl 必填），如果探测到的链接确实都是分类/榜单，则必须生成 exploreUrl/ruleExplore，不要留空；若用户提示词明确说「未探测到分类导航」才填空字符串；登录(loginUrl)、下载(ruleBookInfo.downloadUrls) 若网站支持则填写，不支持/无法推断时填空字符串 ""，但字段名必须保留在输出结构中
+6. 必须输出完整书源：搜索、详情(ruleBookInfo)、目录(ruleToc)、正文(ruleContent) 为必填核心；发现(exploreUrl/ruleExplore) 必须分析目标站点是否有分类/榜单/推荐导航——用户提示词中会列出从首页导航中**自动探测**到的分类链接（如「玄幻::https://...」「热门::https://...」）以及首个分类页的真实 HTML，你必须基于这些链接编写 exploreUrl 与 ruleExplore（bookList/name/bookUrl 必填），如果探测到的链接确实都是分类/榜单，则必须生成 exploreUrl/ruleExplore，不要留空。exploreUrl 建议用 JSON 数组形式（见字段说明）以支持主分类/子分类层级；**只保留真正的书籍分类与排行榜（人气最高、月票榜…），凡属风格/流派类标签（家族修仙、升级流、群像、多女主、高武、诡异、穿书、无CP、无限流、设定党、考据、民俗、江湖、玩梗 等）或情节/筛选类标签（爽文、甜宠、穿越、状态、免费 等）都必须剔除，不得放进 exploreUrl**；若用户提示词明确说「未探测到分类导航」才填空字符串；登录(loginUrl)、下载(ruleBookInfo.downloadUrls) 若网站支持则填写，不支持/无法推断时填空字符串 ""，但字段名必须保留在输出结构中
 7. 若提供了 JSON API 接口与示例响应，一律优先使用 JSONPath 规则并补齐上述全部字段
 8. 目录里的数字优先匹配章节更新时间 updateTime（若该章带时间戳/日期），不要把时间数字误当章节名或字数字段；周围同时有"字数/章节号"字段时才用 wordCount
 """.trimIndent()
