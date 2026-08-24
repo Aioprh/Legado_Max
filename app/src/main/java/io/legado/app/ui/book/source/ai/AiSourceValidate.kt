@@ -155,6 +155,20 @@ object AiSourceValidate {
             }
         )
 
+        // 高危 JS 写法检查：`.match(/re/)[n]`（match 可能返回 null，直接取下标会抛
+        // “无法读取 null 的属性”的 TypeError），必须写成 `(xxx.match(/re/)||[])[n]||''` 安全形式
+        val unsafeMatch = Regex("""\.match\s*\(/.*?/\)\s*\[""", RegexOption.DOT_MATCHES_ALL)
+        val unsafeMatchRules = allRules.filter { r -> unsafeMatch.containsMatchIn(r) }
+        check(
+            "match 取下标安全",
+            unsafeMatchRules.isEmpty(),
+            if (unsafeMatchRules.isNotEmpty()) {
+                "以下规则用了 `.match(/re/)[n]`：当正则匹配不上时 match() 返回 null，会报『无法读取 null 的属性』的 TypeError。请改成 `(xxx.match(/re/)||[])[n]||''` 安全形式。涉及规则：${unsafeMatchRules.take(3).joinToString("、") { it.take(30) }}"
+            } else {
+                "所有规则未直接对 match() 结果取下标"
+            }
+        )
+
         return list
     }
 

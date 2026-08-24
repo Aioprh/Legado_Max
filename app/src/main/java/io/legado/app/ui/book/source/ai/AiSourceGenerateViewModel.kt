@@ -348,7 +348,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
                 appendLine("7. 若目录返回 JSON 且章节对象无完整 URL、只有内容 ID 字段（如 C/Cid/ChapterId/ContentId 等），chapterUrl 必须用 @js: 规则拼出完整正文 URL。示例：目录返回 {\"Data\":{\"Chapters\":[{\"N\":\"第一章\",\"C\":123}]}} 时：")
                 appendLine("   chapterList = $.Data.Chapters")
                 appendLine("   chapterName = $.Data.Chapters.*.N")
-                appendLine("   chapterUrl  = @js:'https://host/content.php?book_id='+book.bookUrl.match(/book_id=(\\d+)/)[1]+'&chapter_id={{$.C}}'")
+                appendLine("   chapterUrl  = @js:'https://host/content.php?book_id='+((book.bookUrl.match(/book_id=(\\d+)/)||[])[1]||'')+'&chapter_id={{$.C}}'")
                 appendLine("8. loginCheckJs 是纯 JS 字段，直接写 JS 代码、不要加 @js:/<js> 前缀（否则每次搜索/详情被 evalJS 执行时会报“在语句前面缺少 ;”）；并且【必须返回 result 透传响应】——Legado 会把返回值强转成 StrResponse，禁止 return true/false（会抛 ClassCastException: Boolean cannot be cast to StrResponse），正确写法：在该 JS 里用 java.ajax 请求登录态接口判断，未登录可 java.toast 提示，最后 return result，如 (function(r){var o={};try{o=JSON.parse(java.ajax('https://host/auth.php?action=me'));}catch(e){}if(!(o&&o.user)){java.toast('未登录');}return r;})(result)。")
                 appendLine()
                 appendLine("【上一次生成的书源 JSON】")
@@ -834,7 +834,7 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
 - 内联 JS：{{表达式}} 嵌入 JS 片段；@get:{变量名} 读全局变量；@put:{变量名} 存全局变量
 - 【重要·JSON 列表规则】响应为 JSON 时，bookList/chapterList 等列表规则与字段规则一律用 JSONPath（如 $.data.list、$.Data.CardList[*].Body[*].ItemData、$.name），禁止写 @js:JSON.parse(this)：本版 Legado 在列表规则的 @js: 里 this 是 JS 作用域对象（"[object global]"）而非响应文本，JSON.parse(this) 必报 Unexpected token。需要基于 JSON 跑复杂逻辑时，请先确保该字段值来自 JSON 元素而非对整段响应用 JSON.parse(this)。
 - 【重要】本 App 的 JS 规则中没有 bookId/chapterId 变量（Book 无 bookId 字段），禁止使用 {{bookId}}、{{chapterId}} 或 JS 中的 bookId，否则报 ReferenceError。ID 只能从搜索结果 JSON/字段里取（JSONPath {{$.xxx}} 拼进 URL），或直接用 {{book.bookUrl}} 提取；可用正则 ##...## 从 bookUrl 中抠出 ID。
-- 若目录返回 JSON 且章节对象无完整 URL、只有内容 ID 字段（如 C/Cid/ChapterId/ContentId 等），chapterUrl 必须用 @js: 拼出完整正文 URL，例如 @js:'https://host/content.php?book_id='+book.bookUrl.match(/book_id=(\d+)/)[1]+'&chapter_id={{$.C}}'（{{$.C}} 表示取当前章节元素的 C 字段值）。
+- 若目录返回 JSON 且章节对象无完整 URL、只有内容 ID 字段（如 C/Cid/ChapterId/ContentId 等），chapterUrl 必须用 @js: 拼出完整正文 URL，例如 @js:'https://host/content.php?book_id='+((book.bookUrl.match(/book_id=(\d+)/)||[])[1]||'')+'&chapter_id={{$.C}}'（{{$.C}} 表示取当前章节元素的 C 字段值）。【重要】凡是从 URL/文本里 match 提取 ID 再拼 URL，必须先判空：match 可能返回 null（匹配不上就报 “无法读取 null 的属性”，如 TypeError: 无法读取 null 的属性 "1"），务必写成 `(xxx.match(/re/)||[])[1]||''` 这种安全形式，禁止直接 `xxx.match(/re/)[1]`。
 - 正则替换：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"；正则里 \d、\s 等须写双反斜杠 \\d、\\s
 - 【登录】若用户提示词标明站点可登录并给出登录入口（loginUrl/登录接口），则书源 JSON 里 loginUrl 必须填写，loginUrl 填可当网页登录页使用的地址（网页登录页，或带 ?auth=login/?action=login 会自动弹出登录框的地址），禁止把纯 API 接口（auth.php?action=captcha / action=me 等返回 JSON 或图片的地址）填进 loginUrl；loginUi 用于表达无验证码的登录表单（账号/密码字段按接口字段提交），若站点有图片验证码/复杂表单导致 loginUi 无法表达，则 loginUi 留空字符串，让 App 用内置 WebView 打开 loginUrl 手动登录，并提醒用户：验证码为一次性且站点对高频操作有限流，提交前先看清验证码图片、答错会刷新换题、避免反复提交触发“验证码请求无效”；有登录态检测接口（如 auth.php?action=me）时才写 loginCheckJs。注意：loginCheckJs 是纯 JS 字段，直接写 JS 代码、不要加 @js: 或 <js> 前缀（否则每次搜索/详情被 evalJS 执行时会报“在语句前面缺少 ;”）；并且【必须返回 result 透传响应】——Legado 会把返回值强转成 StrResponse，禁止 return true/false（会抛 ClassCastException），正确写法是在该 JS 里用 java.ajax 请求检测接口判断登录态（未登录可 java.toast 提示），最后 return result；站点无登录态检测接口则 loginCheckJs 留空；无法从提示词/HTML 确认的一律留空字符串，禁止编造。
 - 整页 JS 渲染：若页面数据完全由 JS 动态生成、HTML 里没有书籍数据，则在对应 webJs 字段写提取脚本，或用 preUpdateJs/formatJs 处理后端数据
