@@ -267,15 +267,15 @@ class ReadRecordViewModel : ViewModel() {
             uniqueBooks.map { (bookName, bookAuthor) ->
                 async(Dispatchers.IO) {
                     val key = cacheKey(bookName, bookAuthor)
-                    // 章节标题：缓存未命中才预取
+                    // 章节标题：缓存未命中才预取（ConcurrentHashMap 不允许 null value）
                     if (!chapterTitleCache.containsKey(key)) {
                         val title = bookRepository.getBookDurChapterTitle(bookName, bookAuthor)
-                        chapterTitleCache[key] = title
+                        title?.let { chapterTitleCache[key] = it }
                     }
                     // 封面路径：缓存未命中才预取（可能触发联网搜封面）
                     if (!coverPathCache.containsKey(key)) {
                         val cover = bookRepository.getBookCoverByNameAndAuthor(bookName, bookAuthor)
-                        coverPathCache[key] = cover
+                        cover?.let { coverPathCache[key] = it }
                     }
                 }
             }.awaitAll()
