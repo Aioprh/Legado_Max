@@ -142,7 +142,8 @@ object AiSourceController {
         val sampleExplore: SampleResult,
         val exploreLinks: List<Pair<String, String>>,
         val embeddedJson: List<String>,
-        val coverTemplates: List<String>
+        val coverTemplates: List<String>,
+        val reviewUrl: String
     )
 
     data class ApiEndpoint(
@@ -248,7 +249,8 @@ object AiSourceController {
                     discoverLoginUrl(html, effectiveUrl),
                     discoverLoginCheckUrl(html, effectiveUrl),
                     endpoints, sampleSearch, sampleCatalog, sampleExplore, exploreLinks, embeddedJson,
-                    discoverCoverTemplates(html)
+                    discoverCoverTemplates(html),
+                    discoverReviewUrl(html, effectiveUrl)
                 )
             }
         }
@@ -1199,6 +1201,31 @@ object AiSourceController {
         return ""
     }
 
+    /**
+     * 从页面脚本中发现“段评/本章说”接口（如 comments.php / comment.php / review.php）。
+     * 段评接口通常与正文/目录接口一样被 fetch/axios 调用；探测到则返回其绝对地址，
+     * 供用户开启“段评探测”时告知 AI 生成段评气泡规则；探测不到返回空串（不强制生成段评）。
+     */
+    private fun discoverReviewUrl(html: String, baseUrl: String): String {
+        val reviewName = Regex("""comments?|review|paragraphcomment|duanping|bookcomment""", RegexOption.IGNORE_CASE)
+        val matcher = fetchUrlPattern.matcher(html)
+        val candidates = LinkedHashSet<String>()
+        while (matcher.find()) {
+            val template = (1..6)
+                .firstNotNullOfOrNull { matcher.group(it)?.takeIf { g -> g.isNotBlank() } }
+                ?: continue
+            var cleaned = resolveVarPrefix(template, html)
+            for ((re, rep) in templateReplacements) cleaned = cleaned.replace(re, rep)
+            cleaned = cleaned.replace(Regex("""\$\{[^}]*\}"""), "")
+            if (cleaned.isBlank() || !reviewName.containsMatchIn(cleaned)) continue
+            // 排除明显不是段评的（如评论引入 disqus 等第三方，但 .php 段评接口一般可信）
+            val resolved = runCatching { URL(URL(baseUrl), cleaned).toString() }.getOrDefault("")
+            if (resolved.isBlank() || !resolved.startsWith("http")) continue
+            candidates.add(resolved.substringBefore('#'))
+        }
+        return candidates.firstOrNull { it.contains("action=") } ?: candidates.firstOrNull().orEmpty()
+    }
+
     fun fetchHtml(parameters: Map<String, List<String>>): ReturnData {
         val returnData = ReturnData()
         val url = parameters["url"]?.firstOrNull()?.trim()
@@ -1224,7 +1251,8 @@ object AiSourceController {
                         "sampleExplore" to it.sampleExplore,
                         "exploreLinks" to it.exploreLinks,
                         "embeddedJson" to it.embeddedJson,
-                        "coverTemplates" to it.coverTemplates
+                        "coverTemplates" to it.coverTemplates,
+                        "reviewUrl" to it.reviewUrl
                     )
                 )
             },

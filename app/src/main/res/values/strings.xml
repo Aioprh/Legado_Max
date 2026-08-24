@@ -214,6 +214,7 @@
     <string name="ai_keyword_hint">搜索关键词（可选，如书名）</string>
     <string name="ai_header_hint">请求头（可选，一行一个 "Key: Value"，用于反爬网站）</string>
     <string name="ai_cookie_hint">Cookie（可选，无需登录的站点留空）</string>
+    <string name="ai_review_probe">段评探测（生成时自动生成段评气泡规则，默认关闭）</string>
     <string name="ai_generate_title">②　生成书源</string>
     <string name="ai_fetch_html">抓取网页</string>
     <string name="ai_generate">AI 生成</string>

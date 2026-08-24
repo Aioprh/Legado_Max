@@ -54,6 +54,11 @@
       />
     </el-select>
 
+    <div class="review-probe-row">
+      <span class="review-probe-label">段评探测（生成时自动生成段评气泡规则，默认关闭）</span>
+      <el-switch v-model="reviewProbe" />
+    </div>
+
     <div class="actions">
       <el-button type="primary" :loading="fetching" :icon="Link" @click="fetchHtml">
         抓取HTML
@@ -179,6 +184,8 @@ const checks = ref<{ name: string; pass: boolean; msg: string }[]>([])
 const apiEndpoints = ref<{ type: string; url: string }[]>([])
 const sampleSearch = ref<AiSampleResult | null>(null)
 const sampleCatalog = ref<AiSampleResult | null>(null)
+const reviewUrl = ref('')
+const reviewProbe = ref(false)
 
 const htmlPreview = computed(() => html.value)
 
@@ -197,6 +204,7 @@ const fetchHtml = async () => {
     apiEndpoints.value = data.data.apiEndpoints || []
     sampleSearch.value = data.data.sampleSearch || null
     sampleCatalog.value = data.data.sampleCatalog || null
+    reviewUrl.value = data.data.reviewUrl || ''
     const apiCount = apiEndpoints.value.length
     const sampleOk = sampleSearch.value?.ok ? 1 : 0
     ElMessage.success(
@@ -254,6 +262,15 @@ const buildPrompt = () => {
       lines.push('----------')
     } else {
       lines.push(`目录接口探测失败：${sc.error}`)
+    }
+  }
+  if (reviewProbe.value) {
+    lines.push('')
+    lines.push('【段评探测（已开启）】请为书源生成“段评气泡”：正文规则 content 用 @js: 请求段评统计接口取每段段评数，把正文按换行拆段后，对段评数>0 的段落末尾插入 <img src="dp:<段评数>,{...}"> 气泡标记，点击气泡弹出该段段评内容（完整实现见系统提示词【段评气泡】模板，HOST 与接口路径替换为本站实际值）。')
+    if (reviewUrl.value) {
+      lines.push(`已从页面脚本探测到段评接口：${reviewUrl.value}（请据此推断 summary/paragraph 等 action 参数与返回结构；若该地址是带占位符的模板，用实际 book_id/chapter_id 替换）`)
+    } else {
+      lines.push('（未在页面脚本中探测到段评接口；若你从提供的 HTML 中发现段评接口请自行使用，否则 content 用普通规则即可）')
     }
   }
   lines.push('')
@@ -475,6 +492,7 @@ const SYSTEM_PROMPT = `你是"Legado书源驯兽师"，精通 Legado（阅读）
 - JSONPath（返回 JSON 的网站）：bookList=$.data.records、字段 $.name、$.id，可用 {{$.id}} 拼接 URL
 - 正则：规则后接 ##正则## 且必须成对，如 ".title@text##作者：##"
 - 注意转义：正则里的 \\d、\\s 等需写双反斜杠
+- 【段评气泡（可选）】若站点有“本章说/段评”接口（页面脚本出现 comments.php / comment.php / review.php，或用户开启段评探测并提供了段评接口），在正文规则 content 里用 @js: 生成段评气泡：① 请求段评统计接口取每段段评数（起点系 comments.php?action=summary&book_id=...&chapter_id=... → $.Data.Getparagraphscommentcounts.DataList[]，字段 ParagraphId/CommentCount，-1 为章评不用于正文）；② 正文按换行拆段（跳过空段），第 i 段对应 ParagraphId=i；③ 对段评数>0 的段落末尾插入 <img src="dp:<段评数>,{\"pclick\":\"<点击JS>\",\"status\":\"normal\"}">；④ 点击 JS（pclick）用 java.ajax 请求该段段评列表（起点系 comments.php?action=paragraph&book_id=...&chapter_id=...&paragraph_id=<段号>&type=all&page=1&page_size=20 → $.Data.DataList[]，字段 Content/Floor/AgreeAmount/CreateTime）拼文本后 java.showBrowser('', 文本) 弹出。【重要】pclick 代码禁止出现双引号/反斜杠/尖括号 >，字符串一律用单引号，换行用 String.fromCharCode(10)
 
 【输出要求】
 1. 严格输出 JSON，最外层必须是数组 [...]，即使只有一个书源
@@ -497,6 +515,20 @@ const SYSTEM_PROMPT = `你是"Legado书源驯兽师"，精通 Legado（阅读）
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
+}
+.review-probe-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter);
+}
+.review-probe-label {
+  font-size: 13px;
+  color: var(--el-text-color-regular);
 }
 .hint {
   font-size: 12px;

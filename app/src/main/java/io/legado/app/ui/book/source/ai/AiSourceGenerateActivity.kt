@@ -59,6 +59,7 @@ class AiSourceGenerateActivity :
         val presets = resources.getStringArray(R.array.ai_model_presets)
         val idx = presets.indexOfFirst { it == viewModel.model }
         if (idx > 0) binding.spModelPreset.setSelection(idx)
+        binding.swReviewProbe.isChecked = viewModel.reviewProbe
         binding.btnFetchHtml.setOnClickListener { fetchHtml() }
         binding.btnGenerate.setOnClickListener { generate() }
         binding.btnValidate.setOnClickListener { validate() }
@@ -94,6 +95,7 @@ class AiSourceGenerateActivity :
         viewModel.baseUrl = binding.etBaseUrl.text?.toString()?.trim() ?: ""
         viewModel.apiKey = binding.etApiKey.text?.toString()?.trim() ?: ""
         viewModel.model = binding.etModel.text?.toString()?.trim() ?: ""
+        viewModel.reviewProbe = binding.swReviewProbe.isChecked
     }
 
     private fun fetchHtml() {
@@ -279,6 +281,13 @@ class AiSourceGenerateActivity :
             if (content?.loginCheckUrl?.isNotBlank() == true) {
                 appendLine("（已探测到登录状态检测接口：${content.loginCheckUrl}，可据此写 loginCheckJs。注意：loginCheckJs 是纯 JS 字段，直接写 JS、不要加 @js:/<js> 前缀；并且【必须返回 result 透传响应】——Legado 会把返回值强转成 StrResponse，若 return true/false 会抛 ClassCastException。正确形态：(function(result){用 java.ajax 请求检测接口判断登录态，未登录时可 java.toast 提示；最后 return result})(result)。示例：(function(r){var o={};try{o=JSON.parse(java.ajax('${content.loginCheckUrl}'));}catch(e){}if(!(o&&o.user)){java.toast('未登录，部分内容受限');}return r;})(result)）")
             }
+        }
+        if (viewModel.reviewProbe) {
+            appendLine()
+            appendLine("【段评探测（已开启）】请为书源生成“段评气泡”：正文规则 content 用 @js: 请求段评统计接口取每段段评数，把正文按换行拆段后，对段评数>0 的段落末尾插入 <img src=\"dp:<段评数>,{...}\"> 气泡标记，点击气泡弹出该段段评内容（完整实现见系统提示词【段评气泡】模板，HOST 与接口路径替换为本站实际值）。")
+            content?.reviewUrl?.takeIf { it.isNotBlank() }?.let {
+                appendLine("已从页面脚本探测到段评接口：$it（请据此推断 summary/paragraph 等 action 参数与返回结构；若该地址是带占位符的模板，用实际 book_id/chapter_id 替换）")
+            } ?: appendLine("（未在页面脚本中探测到段评接口；若你从提供的 HTML 中发现段评接口请自行使用，否则 content 用普通规则即可）")
         }
         appendLine()
         appendLine("已抓取到的网页 HTML（预处理后，编码 ${content?.charset}，共 ${content?.length} 字符，已截断）：")
