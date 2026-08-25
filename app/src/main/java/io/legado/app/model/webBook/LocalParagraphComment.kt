@@ -267,7 +267,10 @@ object LocalParagraphComment {
         return out.joinToString("\n")
     }
 
-    /** 生成点击气泡时执行的 pclick 脚本：java.showParagraphComments(JSON.stringify(cfg)) */
+    /**
+     * 生成点击气泡时执行的 pclick 脚本：java.showParagraphComments(JSON.stringify(cfg))。
+     * bookId/chapterId 已内联进各 URL，脚本不依赖外部变量，可独立执行。
+     */
     private fun buildPclickScript(
         listPath: String,
         totalPath: String,
@@ -366,9 +369,9 @@ object LocalParagraphComment {
             return buildPclickScript(
                 listPath = "$.Data.DataList",
                 totalPath = "$.Data.TotalCount",
-                commentsUrl = "$endpoint?action=paragraph&book_id='+B+'&chapter_id='+C+'&paragraph_id=$pid" +
-                    "&type=text&page=[page]&page_size=[pageSize]",
-                repliesUrl = "$endpoint?action=replies&book_id='+B+'&chapter_id='+C'" +
+                commentsUrl = "$endpoint?action=paragraph&book_id=$bookId&chapter_id=$chapterId" +
+                    "&paragraph_id=$pid&type=text&page=[page]&page_size=[pageSize]",
+                repliesUrl = "$endpoint?action=replies&book_id=$bookId&chapter_id=$chapterId" +
                     "&review_id=[reviewId]&root_review_id=[rootId]&page=1&page_size=[pageSize]",
                 replyListPath = "$.Data.DataList",
                 audioUrl = "",
@@ -425,9 +428,9 @@ object LocalParagraphComment {
             return buildPclickScript(
                 listPath = "$.data.comments",
                 totalPath = "$.data.pagination.totalCount",
-                commentsUrl = "https://shenmoxs.top/chapter/comments?bookId='+B+'&chapterId='+C'" +
+                commentsUrl = "https://shenmoxs.top/chapter/comments?bookId=$bookId&chapterId=$chapterId" +
                     "&paragraphId=$pid&kind=paragraph&page=[page]&pageSize=[pageSize]$session",
-                repliesUrl = "https://shenmoxs.top/chapter/comment-replies?bookId='+B+'&chapterId='+C'" +
+                repliesUrl = "https://shenmoxs.top/chapter/comment-replies?bookId=$bookId&chapterId=$chapterId" +
                     "&paragraphId=$pid&commentId=[reviewId]&kind=paragraph&pageSize=20$session",
                 replyListPath = "$.data.comments",
                 audioUrl = "",
@@ -523,12 +526,12 @@ object LocalParagraphComment {
             return buildPclickScript(
                 listPath = "$.data.comments",
                 totalPath = "$.data.total",
-                commentsUrl = "$API?action=paragraph_comments&book_id='+B+'&chapter_id='+C'" +
+                commentsUrl = "$API?action=paragraph_comments&book_id=$bookId&chapter_id=$chapterId" +
                     "&paragraph_id=$pid&page=[page]&page_size=[pageSize]",
-                repliesUrl = "$API?action=comment_replies&book_id='+B+'&chapter_id='+C'" +
+                repliesUrl = "$API?action=comment_replies&book_id=$bookId&chapter_id=$chapterId" +
                     "&paragraph_id=$pid&root_review_id=[rootId]&page=1&page_size=[pageSize]",
                 replyListPath = "$.data.comments",
-                audioUrl = "$API?action=paragraph_audio_comments&book_id='+B+'&chapter_id='+C'" +
+                audioUrl = "$API?action=paragraph_audio_comments&book_id=$bookId&chapter_id=$chapterId" +
                     "&paragraph_id=$pid&page=[page]&page_size=[pageSize]",
                 pageSize = 20,
                 fields = ParagraphCommentConfig.FieldConfig(

@@ -1735,7 +1735,8 @@ class ReadBookActivity : BaseReadBookActivity(),
                 }
             }
         }.onError {
-            AppLog.put("执行图片链接click键值出错\n${it.localizedMessage}", it, true)
+            // 段评气泡等 click 脚本执行失败时，附带脚本内容便于定位（如 JS 语法/取参问题）
+            AppLog.put("执行图片链接click键值出错\n${it.localizedMessage}\nclick=$click", it, true)
         }
     }
 
