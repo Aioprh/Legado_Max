@@ -334,7 +334,7 @@ open class RssJsExtensions(
         val cfg = runCatching {
             GSON.fromJsonObject<ParagraphCommentConfig>(config).getOrThrow()
         }.getOrNull()
-        if (cfg == null || cfg.commentsUrl.isBlank()) {
+        if (cfg == null || cfg.commentsUrl.isNullOrBlank()) {
             AppLog.put("showParagraphComments 配置无效，回退文本展示", NoStackTraceException(config))
             showBrowser("", config)
             return

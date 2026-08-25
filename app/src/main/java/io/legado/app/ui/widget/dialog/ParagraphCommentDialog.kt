@@ -17,6 +17,7 @@ import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.databinding.DialogParagraphCommentBinding
+import io.legado.app.exception.NoStackTraceException
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.analyzeRule.AnalyzeUrl
@@ -117,6 +118,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 config = GSON.fromJsonObject<ParagraphCommentConfig>(json).getOrNull()
                     ?: ParagraphCommentConfig()
             }
+        }
+        if (config.commentsUrl.isNullOrBlank()) {
+            AppLog.put("段评弹窗 commentsUrl 为空，无法加载", NoStackTraceException())
+            showMsg(getString(R.string.paragraph_comment_load_failed))
+            return
         }
         loadPage(1)
     }

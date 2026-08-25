@@ -61,6 +61,10 @@
 -keep class * extends io.legado.app.help.JsExtensions{*;}
 # 数据类
 -keep class **.data.entities.**{*;}
+# 段评弹窗配置（由书源 JS 经 Gson 反射解析，需保留字段名，否则 release 下 commentsUrl 等字段被 R8 改名导致 null）
+-keep class io.legado.app.ui.widget.dialog.ParagraphCommentConfig {*;}
+-keep class io.legado.app.ui.widget.dialog.ParagraphCommentItem {*;}
+-keep class io.legado.app.ui.widget.dialog.ParagraphReplyItem {*;}
 -keep class io.legado.app.help.storage.BookCacheIndex{*;}
 -keep class io.legado.app.help.storage.ChapterCacheInfo{*;}
 -keep class io.legado.app.ui.book.cacheSelector.BookCacheIndex{*;}
