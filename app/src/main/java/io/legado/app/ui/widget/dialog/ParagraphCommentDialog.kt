@@ -402,7 +402,6 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 commentsUrl = commentsUrl,
                 repliesUrl = repliesUrl
             )
-            AppLog.put("旧版段评 pclick 已升级为原生弹窗: paragraph_id=$pid\n$commentsUrl")
             activity.runOnUiThread {
                 activity.showDialogFragment(ParagraphCommentDialog(source.getKey(), config))
             }

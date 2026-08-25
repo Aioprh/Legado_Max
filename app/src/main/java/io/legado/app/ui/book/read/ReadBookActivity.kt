@@ -1706,9 +1706,6 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     override fun clickImg(click: String, src: String) {
-        if (src.startsWith("bubble://paragraph", ignoreCase = true)) {
-            AppLog.put("执行段评气泡脚本: len=${click.length}\n${click.take(600)}")
-        }
         Coroutine.async(lifecycleScope,IO) {
             val source = ReadBook.bookSource ?: return@async
             val book = ReadBook.book ?: return@async
