@@ -195,10 +195,17 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 val content = readStr(itemRc, config.fields.content, DEFAULT_CONTENTS)
                 val images = readImages(map)
                 val audio = readAudio(map)
-                // 内容为空且未解析到图/音的可疑评论：记录字段名，便于定位真实字段
+                // 内容为空且未解析到图/音的可疑评论：记录关键字段实际值，便于定位真实字段
                 if (content.isBlank() && images.isEmpty() && audio.isBlank() && suspicious < 3) {
                     suspicious++
-                    AppLog.put("段评空内容评论字段: ${map.keys.joinToString("|")}")
+                    val detail = listOf(
+                        "Content", "ImgInfo", "AudioRoleId", "AudioTime", "HotAudioStatus",
+                        "FaceId", "FrameId", "FrameUrl", "BigmemeId", "UgcmemeId",
+                        "CommentType", "ReviewType", "ShowType", "ExtType", "Category"
+                    ).mapNotNull { key ->
+                        findKey(map, key)?.let { v -> "$key=${v.toString().take(100)}" }
+                    }.joinToString(" | ")
+                    AppLog.put("段评空内容评论字段: $detail")
                 }
                 ParagraphCommentItem(
                     id = readStr(itemRc, config.fields.id, DEFAULT_IDS),
