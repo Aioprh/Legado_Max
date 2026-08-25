@@ -120,7 +120,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             }
         }
         if (config.commentsUrl.isNullOrBlank()) {
-            AppLog.put("段评弹窗 commentsUrl 为空，无法加载", NoStackTraceException())
+            AppLog.put("段评弹窗 commentsUrl 为空，无法加载", NoStackTraceException("commentsUrl 为空"))
             showMsg(getString(R.string.paragraph_comment_load_failed))
             return
         }
