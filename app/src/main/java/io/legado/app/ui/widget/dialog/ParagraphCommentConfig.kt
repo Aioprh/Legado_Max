@@ -53,6 +53,8 @@ data class ParagraphCommentItem(
     val level: String = "",
     val ip: String = "",
     val content: String = "",
+    val images: List<String> = emptyList(),
+    val audio: String = "",
     val agree: Long = 0,
     val oppose: Long = 0,
     val time: Long = 0,
@@ -69,6 +71,8 @@ data class ParagraphReplyItem(
     val avatar: String = "",
     val replyTo: String = "",
     val content: String = "",
+    val images: List<String> = emptyList(),
+    val audio: String = "",
     val agree: Long = 0,
     val time: Long = 0
 )
