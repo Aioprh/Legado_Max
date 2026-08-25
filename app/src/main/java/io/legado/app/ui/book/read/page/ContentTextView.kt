@@ -299,12 +299,14 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
                     handled = true
                 }
 
-                is ImageColumn -> if (ParagraphBubbleRenderer.isBubbleSrc(column.src) && !column.click.isNullOrBlank()) {
-                    // 段评气泡：始终执行段评点击脚本，不依赖“点击图片方式”设置，
-                    // 避免被“预览图片/关闭”等设置拦截导致无法点击
-                    callBack.clickImg(column.click, column.src)
-                    handled = true
-                } else when (AppConfig.clickImgWay) {
+                is ImageColumn -> {
+                    val click = column.click
+                    if (ParagraphBubbleRenderer.isBubbleSrc(column.src) && !click.isNullOrBlank()) {
+                        // 段评气泡：始终执行段评点击脚本，不依赖“点击图片方式”设置，
+                        // 避免被“预览图片/关闭”等设置拦截导致无法点击
+                        callBack.clickImg(click, column.src)
+                        handled = true
+                    } else when (AppConfig.clickImgWay) {
                     "1" -> { //预览图片
                         activity?.showDialogFragment(PhotoDialog(column.src, isBook = true))
                         handled = true
