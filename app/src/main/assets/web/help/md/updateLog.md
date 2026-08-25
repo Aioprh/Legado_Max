@@ -17,8 +17,14 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/25
+- fix(目录): 修复点击书籍目录偶现闪烁问题
+- fix(主题): 修复加密 .red 主题包导入时误报「文件过大」的问题
+- feat(高亮规则): 添加阅读排版作用范围选择
+
 **2026/8/24
 - fix:修复阅读记录时间线视图崩溃
+- fix(漫画阅读): 移除章末图片强制撑高至屏幕 2/3 的逻辑，章末图片按自然高度显示，消除黑色空白背景
 - fix(backup): 备份遗漏 readRecordSession.json 导致时间线视图恢复后无数据
 
 **2026/8/21
