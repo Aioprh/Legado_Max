@@ -266,6 +266,12 @@ class TextFile(private var book: Book) {
                                 } else {
                                     chapterContent
                                 }
+                                // 自动从简介/前言中检索作者名填入书籍信息（作者为空时）
+                                if (book.author.isBlank()) {
+                                    detectAuthorFromIntro(chapterContent)?.let {
+                                        book.author = it
+                                    }
+                                }
                             }
                             val title = replacement(
                                 matcher.group(),
@@ -386,6 +392,27 @@ class TextFile(private var book: Book) {
         System.gc()
         System.runFinalization()
         return toc to bookWordCount
+    }
+
+    /**
+     * 从 txt 简介/前言中检索作者名。
+     * 常见格式：作者：xxx / 作者:xxx / 作 者：xxx / 原著作者：xxx / 行尾 xxx 著。
+     * 匹配不到返回 null。
+     */
+    private fun detectAuthorFromIntro(intro: String): String? {
+        val patterns = arrayOf(
+            // 作者：xxx / 作者:xxx / 原著作者：xxx（取到空白或常见标点前）
+            Regex("""(?:原著?)?作\s*者\s*[:：]\s*([^\s，,。;；！!？?\n（()）]{1,20})"""),
+            // 作者 xxx（无冒号）
+            Regex("""(?:原著?)?作\s*者\s+([^\s，,。;；！!？?\n（()）]{1,20})"""),
+            // 行尾 xxx 著 / xxx 著
+            Regex("""([\u4e00-\u9fa5A-Za-z0-9·]{2,10})\s*著\s*$""", RegexOption.MULTILINE)
+        )
+        for (p in patterns) {
+            p.find(intro)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotBlank() }
+                ?.let { return it }
+        }
+        return null
     }
 
     /**
