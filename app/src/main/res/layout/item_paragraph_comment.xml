@@ -108,6 +108,62 @@
         android:textSize="15sp"
         tools:text="这一段文字描述似乎遮天，圣墟，深空都有，不愧是祖传的东哥，流水的风景" />
 
+    <!-- 评论图片（动态填充，最多 9 张，单行三张） -->
+    <LinearLayout
+        android:id="@+id/ll_images"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <ImageView
+            android:id="@+id/iv_img_1"
+            android:layout_width="0dp"
+            android:layout_height="120dp"
+            android:layout_weight="1"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop"
+            tools:ignore="ContentDescription" />
+
+        <ImageView
+            android:id="@+id/iv_img_2"
+            android:layout_width="0dp"
+            android:layout_height="120dp"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop"
+            tools:ignore="ContentDescription" />
+
+        <ImageView
+            android:id="@+id/iv_img_3"
+            android:layout_width="0dp"
+            android:layout_height="120dp"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop"
+            tools:ignore="ContentDescription" />
+    </LinearLayout>
+
+    <!-- 语音评论标记 -->
+    <TextView
+        android:id="@+id/tv_audio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_tag"
+        android:drawablePadding="4dp"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="3dp"
+        android:textColor="@color/tv_text_summary"
+        android:textSize="12sp"
+        android:visibility="gone"
+        tools:text="🔊 语音评论"
+        tools:visibility="visible" />
+
     <!-- 点赞 / 踩 / 展开回复 -->
     <LinearLayout
         android:layout_width="match_parent"

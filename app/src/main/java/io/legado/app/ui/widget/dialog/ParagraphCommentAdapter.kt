@@ -1,7 +1,10 @@
 package io.legado.app.ui.widget.dialog
 
 import android.content.Context
+import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
@@ -68,7 +71,17 @@ class ParagraphCommentAdapter(context: Context) :
                 tvFloor.gone()
             }
 
-            tvContent.text = formatContent(item.content)
+            // 内容为空但有图/语音时显示占位提示
+            val text = formatContent(item.content)
+            tvContent.text = text.ifBlank {
+                if (item.images.isNotEmpty() || item.audio.isNotBlank()) {
+                    context.getString(R.string.paragraph_comment_image)
+                } else {
+                    ""
+                }
+            }
+            bindImages(binding.llImages, binding.ivImg1, binding.ivImg2, binding.ivImg3, item.images)
+            bindAudio(binding.tvAudio, item.audio)
 
             if (item.agree > 0) {
                 tvAgree.text = context.getString(R.string.paragraph_comment_like, item.agree)
@@ -149,7 +162,16 @@ class ParagraphCommentAdapter(context: Context) :
                         )
                         tvReplyTo.visible()
                     }
-                    tvContent.text = formatContent(reply.content)
+                    val text = formatContent(reply.content)
+                    tvContent.text = text.ifBlank {
+                        if (reply.images.isNotEmpty() || reply.audio.isNotBlank()) {
+                            context.getString(R.string.paragraph_comment_image)
+                        } else {
+                            ""
+                        }
+                    }
+                    bindImages(replyBinding.llImages, replyBinding.ivImg1, replyBinding.ivImg2, replyBinding.ivImg3, reply.images)
+                    bindAudio(replyBinding.tvAudio, reply.audio)
                     tvTime.text = formatTime(reply.time)
                     if (reply.agree > 0) {
                         tvAgree.text = context.getString(
@@ -173,6 +195,42 @@ class ParagraphCommentAdapter(context: Context) :
             getItem(holder.layoutPosition)?.let { item ->
                 replyListener?.onToggleReplies(item)
             }
+        }
+    }
+
+    /** 绑定评论/回复图片：单行最多 3 张，超过则只显示前 3 张 */
+    private fun bindImages(
+        container: View,
+        img1: ImageView,
+        img2: ImageView,
+        img3: ImageView,
+        images: List<String>
+    ) {
+        val list = images.take(3)
+        if (list.isEmpty()) {
+            container.gone()
+            return
+        }
+        container.visible()
+        val views = listOf(img1, img2, img3)
+        list.forEachIndexed { index, url ->
+            ImageLoader.load(context, url)
+                .placeholder(R.drawable.image_cover_default)
+                .error(R.drawable.image_cover_default)
+                .into(views[index])
+        }
+        for (i in list.size until 3) {
+            views[i].gone()
+        }
+    }
+
+    /** 绑定语音评论标记 */
+    private fun bindAudio(tvAudio: TextView, audio: String) {
+        if (audio.isBlank()) {
+            tvAudio.gone()
+        } else {
+            tvAudio.text = context.getString(R.string.paragraph_comment_voice)
+            tvAudio.visible()
         }
     }
 

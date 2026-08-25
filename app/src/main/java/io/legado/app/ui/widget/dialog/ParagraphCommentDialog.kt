@@ -199,6 +199,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     level = readStr(itemRc, config.fields.level, DEFAULT_LEVELS),
                     ip = readStr(itemRc, config.fields.ip, DEFAULT_IPS),
                     content = readStr(itemRc, config.fields.content, DEFAULT_CONTENTS),
+                    images = readImages(itemRc),
+                    audio = readAudio(itemRc),
                     agree = readLong(itemRc, config.fields.agree, DEFAULT_AGREES),
                     oppose = readLong(itemRc, config.fields.oppose, DEFAULT_OPPOSES),
                     time = readLong(itemRc, config.fields.time, DEFAULT_TIMES),
@@ -264,6 +266,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     avatar = readStr(itemRc, config.replyFields.avatar, DEFAULT_AVATARS),
                     replyTo = readStr(itemRc, config.replyFields.replyTo, DEFAULT_REPLY_TOS),
                     content = readStr(itemRc, config.replyFields.content, DEFAULT_CONTENTS),
+                    images = readImages(itemRc),
+                    audio = readAudio(itemRc),
                     agree = readLong(itemRc, config.replyFields.agree, DEFAULT_AGREES),
                     time = readLong(itemRc, config.replyFields.time, DEFAULT_TIMES)
                 )
@@ -320,6 +324,44 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         return readLong(rc, primary, defaults).toInt()
     }
 
+    /**
+     * 提取评论图片：优先取明确的图片字段，兼容字符串 JSON 数组/单个 URL。
+     * 字段顺序与前端 qd.html 的 commentImages 一致（ImageDetail/PreImage/ImageUrl/Images/ImageList）。
+     */
+    private fun readImages(rc: ReadContext): List<String> {
+        val result = LinkedHashSet<String>()
+        for (p in listOf("$.ImageDetail", "$.PreImage", "$.ImageUrl", "$.Images", "$.ImageList")) {
+            val v = runCatching { rc.read<Any>(p) }.getOrNull() ?: continue
+            collectImageUrls(v, result)
+            if (result.size >= 9) break
+        }
+        return result.take(9)
+    }
+
+    private fun collectImageUrls(v: Any?, out: MutableSet<String>) {
+        when (v) {
+            null -> Unit
+            is Map<*, *> -> v.values.forEach { collectImageUrls(it, out) }
+            is List<*> -> v.forEach { collectImageUrls(it, out) }
+            else -> {
+                val s = v.toString().trim()
+                if (s.isEmpty()) return
+                // 兼容“图片地址被序列化成字符串数组/JSON”的情况
+                if (s.startsWith("[") || s.startsWith("{")) {
+                    runCatching { GSON.fromJson<Any?>(s, Any::class.java) }
+                        .getOrNull()
+                        ?.let { collectImageUrls(it, out); return }
+                }
+                if (s.startsWith("http") && out.size < 9) out.add(s)
+            }
+        }
+    }
+
+    /** 提取语音评论地址（AudioUrl） */
+    private fun readAudio(rc: ReadContext): String {
+        return readStr(rc, "", DEFAULT_AUDIOS)
+    }
+
     private fun updateFooter(state: FooterState) {
         when (state) {
             FooterState.NONE -> binding.llFooter.gone()
@@ -364,6 +406,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber")
         private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount")
         private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName")
+        private val DEFAULT_AUDIOS = listOf("$.AudioUrl", "$.VoiceUrl", "$.Audio", "$.Voice")
 
         /** 旧版段评 pclick（java.showBrowser('',d)）里的段号 */
         private val OLD_PARAGRAPH_ID_REGEX = Regex("""paragraph_id[=:]\s*(\d+)""")
