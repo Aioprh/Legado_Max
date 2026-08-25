@@ -1,6 +1,7 @@
 package io.legado.app.ui.widget.dialog
 
 import android.graphics.drawable.GradientDrawable
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -29,6 +30,7 @@ import io.legado.app.utils.jsonPath
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.stackTraceStr
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 import kotlinx.coroutines.Dispatchers
@@ -69,6 +71,15 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.9).toInt())
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        // 释放语音播放器，避免页面关闭后继续占用
+        runCatching { mediaPlayer?.stop() }
+        mediaPlayer?.release()
+        mediaPlayer = null
+        playingItem = null
+    }
+
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         // 顶部圆角
         view.background = GradientDrawable().apply {
@@ -107,6 +118,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 } else {
                     loadReplies(item)
                 }
+            }
+        }
+        adapter.audioListener = object : ParagraphCommentAdapter.AudioListener {
+            override fun onToggleAudio(item: ParagraphCommentItem) {
+                toggleAudio(item)
             }
         }
         arguments?.let {
@@ -268,6 +284,116 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             .replace("[reviewId]", item.id)
             .replace("[rootId]", item.rootId.ifBlank { item.id })
             .replace("[pageSize]", config.pageSize.toString())
+    }
+
+    // ---------- 语音播放 ----------
+
+    private var mediaPlayer: MediaPlayer? = null
+    private var playingItem: ParagraphCommentItem? = null
+
+    /** 点击语音条：播放/停止；无地址时从 audio 接口补全 */
+    private fun toggleAudio(item: ParagraphCommentItem) {
+        if (item.audioLoading) return
+        if (item.audioPlaying) {
+            stopAudio(item)
+            return
+        }
+        stopOtherAudio(item)
+        if (item.audioUrl.startsWith("http")) {
+            playAudio(item, item.audioUrl)
+        } else {
+            loadAudio(item)
+        }
+    }
+
+    private fun stopOtherAudio(except: ParagraphCommentItem? = null) {
+        val current = playingItem ?: return
+        if (current === except) return
+        stopAudio(current)
+    }
+
+    /** 从 audio 接口拉取该段语音列表，按评论 Id 匹配音频地址后播放 */
+    private fun loadAudio(item: ParagraphCommentItem) {
+        item.audioLoading = true
+        adapter.updateItem(item)
+        execute {
+            val body = fetchBody(buildAudioUrl())
+            val audioUrl = body?.let { findAudioUrl(it, item.id) }.orEmpty()
+            withContext(Dispatchers.Main) {
+                item.audioLoading = false
+                if (audioUrl.startsWith("http")) {
+                    item.audioUrl = audioUrl
+                    adapter.updateItem(item)
+                    playAudio(item, audioUrl)
+                } else {
+                    adapter.updateItem(item)
+                    toastOnUi(getString(R.string.paragraph_comment_audio_failed))
+                }
+            }
+        }
+    }
+
+    private fun buildAudioUrl(): String {
+        val template = config.audioUrl.ifBlank {
+            config.commentsUrl
+                .replace("type=text", "type=audio")
+                .replace("type=all", "type=audio")
+        }
+        // 拉取该段全部语音评论，用较大页大小
+        return template
+            .replace("[page]", "1")
+            .replace("[pageSize]", "50")
+    }
+
+    /** 在 audio 接口返回列表中找到同 Id 评论的音频地址 */
+    private fun findAudioUrl(body: String, commentId: String): String {
+        if (commentId.isBlank()) return ""
+        return runCatching {
+            val rc = jsonPath.parse(body)
+            val listPath = config.listPath.ifBlank { "$.Data.DataList" }
+            val list = rc.read<List<Any?>>(listPath) ?: return@runCatching ""
+            for (map in list.mapNotNull { it as? Map<*, *> }) {
+                val id = map["Id"]?.toString()
+                    ?: map["CommentId"]?.toString()
+                    ?: map["ReviewId"]?.toString()
+                    ?: ""
+                if (id == commentId) {
+                    readAudio(map).takeIf { it.startsWith("http") }?.let { return it }
+                }
+            }
+            ""
+        }.getOrDefault("")
+    }
+
+    private fun playAudio(item: ParagraphCommentItem, url: String) {
+        try {
+            val player = MediaPlayer().apply {
+                setDataSource(url)
+                setOnPreparedListener { start() }
+                setOnCompletionListener { stopAudio(item) }
+                setOnErrorListener { _, _, _ ->
+                    stopAudio(item)
+                    true
+                }
+                prepareAsync()
+            }
+            mediaPlayer = player
+            playingItem = item
+            item.audioPlaying = true
+            adapter.updateItem(item)
+        } catch (e: Exception) {
+            AppLog.put("段评语音播放失败", e)
+            toastOnUi(getString(R.string.paragraph_comment_audio_failed))
+        }
+    }
+
+    private fun stopAudio(item: ParagraphCommentItem) {
+        runCatching { mediaPlayer?.stop() }
+        mediaPlayer?.release()
+        mediaPlayer = null
+        if (playingItem === item) playingItem = null
+        item.audioPlaying = false
+        adapter.updateItem(item)
     }
 
     private fun parseReplies(body: String): List<ParagraphReplyItem> {
@@ -440,10 +566,10 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount")
         private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName")
 
-        /** 评论图片字段候选（大小写不敏感匹配，ImgInfo 为起点系真实字段） */
+        /** 评论图片字段候选（大小写不敏感匹配，ImgInfo 为起点系真实字段；不含 FrameUrl——那是用户头像框，不是配图） */
         private val IMAGE_FIELD_CANDIDATES = listOf(
             "ImgInfo", "ImageDetail", "PreImage", "ImageUrl", "Images", "ImageList",
-            "ImgUrl", "Imgs", "Image", "CommentImg", "CommentImage", "Photo", "FrameUrl"
+            "ImgUrl", "Imgs", "Image", "CommentImg", "CommentImage", "Photo"
         )
         /** 评论语音字段候选（大小写不敏感匹配；起点系无 AudioUrl，用 AudioRoleId/AudioTime 标记语音评论） */
         private val AUDIO_FIELD_CANDIDATES = listOf(

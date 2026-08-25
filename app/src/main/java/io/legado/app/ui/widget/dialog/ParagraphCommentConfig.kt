@@ -22,6 +22,8 @@ data class ParagraphCommentConfig(
     var pageSize: Int = 20,
     // 回复列表（可选，无回复接口则只展示条数不展开）
     var repliesUrl: String = "",
+    // 语音列表（可选，起点系需 type=audio 接口获取音频地址；缺省从 commentsUrl 推导 type=text -> type=audio）
+    var audioUrl: String = "",
     // 评论字段路径
     var fields: FieldConfig = FieldConfig(),
     // 回复字段路径
@@ -62,7 +64,11 @@ data class ParagraphCommentItem(
     val replyCount: Int = 0,
     val replies: MutableList<ParagraphReplyItem> = mutableListOf(),
     var repliesLoaded: Boolean = false,
-    var repliesLoading: Boolean = false
+    var repliesLoading: Boolean = false,
+    // 语音播放：audioUrl 实际播放地址（点击后从 audio 接口补全）
+    var audioUrl: String = "",
+    var audioLoading: Boolean = false,
+    var audioPlaying: Boolean = false
 )
 
 /** 段评回复条目 */

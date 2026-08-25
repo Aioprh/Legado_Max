@@ -2421,5 +2421,7 @@
     <string name="paragraph_comment_reply_to">回复 %1$s</string>
     <string name="paragraph_comment_anonymous">匿名用户</string>
     <string name="paragraph_comment_voice">语音评论</string>
+    <string name="paragraph_comment_playing">播放中…</string>
+    <string name="paragraph_comment_audio_failed">未找到该语音的播放地址</string>
     <string name="paragraph_comment_image">图片评论</string>
 </resources>

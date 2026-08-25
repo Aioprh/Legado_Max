@@ -27,7 +27,13 @@ class ParagraphCommentAdapter(context: Context) :
         fun onToggleReplies(item: ParagraphCommentItem)
     }
 
+    interface AudioListener {
+        /** 点击语音条：请求 audio 接口补全音频地址并播放/停止 */
+        fun onToggleAudio(item: ParagraphCommentItem)
+    }
+
     var replyListener: ReplyListener? = null
+    var audioListener: AudioListener? = null
 
     override fun getViewBinding(parent: ViewGroup): ItemParagraphCommentBinding {
         return ItemParagraphCommentBinding.inflate(inflater, parent, false)
@@ -81,7 +87,7 @@ class ParagraphCommentAdapter(context: Context) :
                 }
             }
             bindImages(binding.llImages, binding.ivImg1, binding.ivImg2, binding.ivImg3, item.images)
-            bindAudio(binding.tvAudio, item.audio)
+            bindAudio(binding.tvAudio, item)
 
             if (item.agree > 0) {
                 tvAgree.text = context.getString(R.string.paragraph_comment_like, item.agree)
@@ -224,7 +230,22 @@ class ParagraphCommentAdapter(context: Context) :
         }
     }
 
-    /** 绑定语音评论标记 */
+    /** 绑定语音评论条：可点击，根据加载/播放状态切换文案 */
+    private fun bindAudio(tvAudio: TextView, item: ParagraphCommentItem) {
+        if (item.audio.isBlank()) {
+            tvAudio.gone()
+            return
+        }
+        tvAudio.visible()
+        tvAudio.text = when {
+            item.audioLoading -> context.getString(R.string.paragraph_comment_loading)
+            item.audioPlaying -> context.getString(R.string.paragraph_comment_playing)
+            else -> context.getString(R.string.paragraph_comment_voice)
+        }
+        tvAudio.setOnClickListener { audioListener?.onToggleAudio(item) }
+    }
+
+    /** 绑定回复语音标记（无播放能力，仅提示） */
     private fun bindAudio(tvAudio: TextView, audio: String) {
         if (audio.isBlank()) {
             tvAudio.gone()

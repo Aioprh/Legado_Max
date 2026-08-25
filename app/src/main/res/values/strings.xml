@@ -2456,5 +2456,7 @@ Night: %5$s / %6$s / %7$s / %8$s</string>
     <string name="paragraph_comment_reply_to">Reply %1$s</string>
     <string name="paragraph_comment_anonymous">Anonymous</string>
     <string name="paragraph_comment_voice">Voice comment</string>
+    <string name="paragraph_comment_playing">Playing…</string>
+    <string name="paragraph_comment_audio_failed">No playable audio address found</string>
     <string name="paragraph_comment_image">Image comment</string>
 </resources>
