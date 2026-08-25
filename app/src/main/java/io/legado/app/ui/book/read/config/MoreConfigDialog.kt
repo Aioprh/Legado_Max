@@ -17,8 +17,10 @@ import io.legado.app.R
 import io.legado.app.base.BasePrefDialogFragment
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
+import io.legado.app.data.appDb
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
+import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.prefs.fragment.PreferenceFragment
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.primaryColor
@@ -31,8 +33,10 @@ import io.legado.app.utils.canvasrecorder.CanvasRecorderFactory
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.postEvent
+import io.legado.app.utils.putPrefString
 import io.legado.app.utils.removePref
 import io.legado.app.utils.setEdgeEffectColor
+import splitties.init.appCtx
 
 /**
  * 阅读界面"更多设置"对话框
@@ -108,10 +112,19 @@ class MoreConfigDialog : BasePrefDialogFragment() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             addPreferencesFromResource(R.xml.pref_config_read)
             upPreferenceSummary(PreferKey.pageTouchSlop, slopSquare.toString())
+            upParagraphSourceSummary()
             if (!CanvasRecorderFactory.isSupport) {
                 removePref(PreferKey.optimizeRender)
                 preferenceScreen.removePreferenceRecursively(PreferKey.optimizeRender)
             }
+        }
+
+        /** 刷新“段评书源”的摘要为当前选择的书源名称 */
+        private fun upParagraphSourceSummary() {
+            val preference = findPreference<Preference>(PreferKey.localParagraphSource) ?: return
+            val url = AppConfig.localParagraphSource
+            val name = url?.let { appDb.bookSourceDao.getBookSourcePart(it)?.bookSourceName }
+            preference.summary = name ?: getString(R.string.local_paragraph_source_none)
         }
 
         override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -271,6 +284,28 @@ class MoreConfigDialog : BasePrefDialogFragment() {
                         .show {
                             AppConfig.keyPageAnimSpeed = it
                         }
+                }
+
+                PreferKey.localParagraphSource -> {
+                    val parts = appDb.bookSourceDao.allEnabledPart
+                        .sortedBy { it.customOrder }
+                    val names = ArrayList<CharSequence>()
+                    val urls = ArrayList<String>()
+                    names.add(getString(R.string.local_paragraph_source_none))
+                    urls.add("")
+                    parts.forEach {
+                        names.add(it.bookSourceName)
+                        urls.add(it.bookSourceUrl)
+                    }
+                    context?.selector(
+                        getString(R.string.local_paragraph_source),
+                        names
+                    ) { _, index ->
+                        if (index in urls.indices) {
+                            appCtx.putPrefString(PreferKey.localParagraphSource, urls[index])
+                            upParagraphSourceSummary()
+                        }
+                    }
                 }
             }
             return super.onPreferenceTreeClick(preference)

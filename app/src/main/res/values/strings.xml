@@ -2377,6 +2377,10 @@
     <string name="bubble_source_local">Local</string>
     <string name="bubble_force_software">Force software bubble</string>
     <string name="bubble_force_software_summary">Detect inline image-based paragraph review entries and render with current bubble style</string>
+    <string name="local_paragraph_comment">Local book paragraph comments</string>
+    <string name="local_paragraph_comment_summary">Show paragraph comments from another source on local books (tap bubbles to view)</string>
+    <string name="local_paragraph_source">Paragraph comment source</string>
+    <string name="local_paragraph_source_none">Not selected</string>
     <string name="app_theme_config_too_large">App theme config file too large</string>
     <string name="app_theme_config_corrupted">App theme config file corrupted, original preserved</string>
     <string name="app_theme_file_too_large">App theme file too large</string>

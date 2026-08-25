@@ -26,6 +26,9 @@ object PreferKey {
     const val bookCoverShadow = "bookCoverShadow"
     const val paragraphBubblePackage = "paragraphBubblePackage"
     const val forceSoftwareParagraphBubble = "forceSoftwareParagraphBubble"
+    // 本地书段评：为本地书籍接入其他书源的段评
+    const val localParagraphComment = "localParagraphComment"
+    const val localParagraphSource = "localParagraphSource"
     const val remoteServerId = "remoteServerId"
     const val hideStatusBar = "hideStatusBar"
     const val clickActionTL = "clickActionTopLeft"

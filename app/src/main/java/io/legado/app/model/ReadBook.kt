@@ -30,6 +30,7 @@ import io.legado.app.help.globalExecutor
 import io.legado.app.model.localBook.TextFile
 import io.legado.app.model.webBook.LazyContentCallback
 import io.legado.app.model.webBook.LazyContentManager
+import io.legado.app.model.webBook.LocalParagraphComment
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.service.CacheBookService
@@ -679,10 +680,11 @@ object ReadBook : CoroutineScope by MainScope() {
             if (addLoading(index, forceReload)) {
                 val cachedContent = BookHelp.getContent(book, chapter)
                 cachedContent?.let {
+                    val content = LocalParagraphComment.injectIfNeeded(book, chapter, it)
                     contentLoadFinish(
                         book,
                         chapter,
-                        it,
+                        content,
                         upContent,
                         resetPageOffset,
                         success = success
@@ -772,7 +774,8 @@ object ReadBook : CoroutineScope by MainScope() {
                 val bookSource = bookSource
                 if (BookHelp.getContent(book, chapter) != null) {
                     val content = BookHelp.getContent(book, chapter)!!
-                    contentLoadFinishAwait(book, chapter, content, upContent, resetPageOffset)
+                    val injected = LocalParagraphComment.injectIfNeeded(book, chapter, content)
+                    contentLoadFinishAwait(book, chapter, injected, upContent, resetPageOffset)
                 } else if (bookSource != null && bookSource.nextPageLazyLoad) {
                     val lazyCallback = object : LazyContentCallback {
                         override fun onPageLoading(pageIndex: Int) {

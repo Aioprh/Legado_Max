@@ -241,4 +241,18 @@
         android:title="@string/read_bar_style_follow_page"
         app:iconSpaceReserved="false"
         app:isBottomBackground="true" />
+
+    <io.legado.app.lib.prefs.SwitchPreference
+        android:defaultValue="false"
+        android:key="localParagraphComment"
+        android:summary="@string/local_paragraph_comment_summary"
+        android:title="@string/local_paragraph_comment"
+        app:iconSpaceReserved="false"
+        app:isBottomBackground="true" />
+
+    <io.legado.app.lib.prefs.Preference
+        android:key="localParagraphSource"
+        android:title="@string/local_paragraph_source"
+        app:iconSpaceReserved="false"
+        app:isBottomBackground="true" />
 </androidx.preference.PreferenceScreen>
