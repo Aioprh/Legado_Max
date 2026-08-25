@@ -367,12 +367,13 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
     }
 
-    /** 提取语音评论地址（AudioUrl 等），仅接受 http(s) 地址 */
+    /** 提取语音评论：有直接播放地址返回地址，否则检测到语音相关字段（AudioRoleId/AudioTime 等）返回标记值 */
     private fun readAudio(map: Map<*, *>): String {
         for (key in AUDIO_FIELD_CANDIDATES) {
             val v = findKey(map, key) ?: continue
             val s = v.toString().trim()
-            if (s.startsWith("http")) return s
+            if (s.isBlank() || s == "null" || s == "0") continue
+            return if (s.startsWith("http")) s else "voice"
         }
         return ""
     }
@@ -432,14 +433,15 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount")
         private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName")
 
-        /** 评论图片字段候选（大小写不敏感匹配） */
+        /** 评论图片字段候选（大小写不敏感匹配，ImgInfo 为起点系真实字段） */
         private val IMAGE_FIELD_CANDIDATES = listOf(
-            "ImageDetail", "PreImage", "ImageUrl", "Images", "ImageList",
-            "ImgUrl", "Imgs", "Image", "CommentImg", "CommentImage", "Photo"
+            "ImgInfo", "ImageDetail", "PreImage", "ImageUrl", "Images", "ImageList",
+            "ImgUrl", "Imgs", "Image", "CommentImg", "CommentImage", "Photo", "FrameUrl"
         )
-        /** 评论语音字段候选（大小写不敏感匹配） */
+        /** 评论语音字段候选（大小写不敏感匹配；起点系无 AudioUrl，用 AudioRoleId/AudioTime 标记语音评论） */
         private val AUDIO_FIELD_CANDIDATES = listOf(
-            "AudioUrl", "VoiceUrl", "Audio", "Voice", "SoundUrl"
+            "AudioUrl", "VoiceUrl", "Audio", "Voice", "SoundUrl",
+            "AudioRoleId", "AudioTime", "HotAudioStatus"
         )
 
         /** 旧版段评 pclick（java.showBrowser('',d)）里的段号 */
