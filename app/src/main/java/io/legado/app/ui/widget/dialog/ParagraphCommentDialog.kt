@@ -185,12 +185,21 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     }
 
     private fun parseComments(body: String): List<ParagraphCommentItem> {
+        var suspicious = 0
         return runCatching {
             val rc = jsonPath.parse(body)
             val listPath = config.listPath.ifBlank { "$.Data.DataList" }
             val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
             list.mapNotNull { it as? Map<*, *> }.map { map ->
                 val itemRc = jsonPath.parse(map)
+                val content = readStr(itemRc, config.fields.content, DEFAULT_CONTENTS)
+                val images = readImages(map)
+                val audio = readAudio(map)
+                // 内容为空且未解析到图/音的可疑评论：记录字段名，便于定位真实字段
+                if (content.isBlank() && images.isEmpty() && audio.isBlank() && suspicious < 3) {
+                    suspicious++
+                    AppLog.put("段评空内容评论字段: ${map.keys.joinToString("|")}")
+                }
                 ParagraphCommentItem(
                     id = readStr(itemRc, config.fields.id, DEFAULT_IDS),
                     rootId = readStr(itemRc, config.fields.rootId, DEFAULT_ROOT_IDS),
@@ -198,9 +207,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     avatar = readStr(itemRc, config.fields.avatar, DEFAULT_AVATARS),
                     level = readStr(itemRc, config.fields.level, DEFAULT_LEVELS),
                     ip = readStr(itemRc, config.fields.ip, DEFAULT_IPS),
-                    content = readStr(itemRc, config.fields.content, DEFAULT_CONTENTS),
-                    images = readImages(itemRc),
-                    audio = readAudio(itemRc),
+                    content = content,
+                    images = images,
+                    audio = audio,
                     agree = readLong(itemRc, config.fields.agree, DEFAULT_AGREES),
                     oppose = readLong(itemRc, config.fields.oppose, DEFAULT_OPPOSES),
                     time = readLong(itemRc, config.fields.time, DEFAULT_TIMES),
@@ -266,8 +275,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     avatar = readStr(itemRc, config.replyFields.avatar, DEFAULT_AVATARS),
                     replyTo = readStr(itemRc, config.replyFields.replyTo, DEFAULT_REPLY_TOS),
                     content = readStr(itemRc, config.replyFields.content, DEFAULT_CONTENTS),
-                    images = readImages(itemRc),
-                    audio = readAudio(itemRc),
+                    images = readImages(map),
+                    audio = readAudio(map),
                     agree = readLong(itemRc, config.replyFields.agree, DEFAULT_AGREES),
                     time = readLong(itemRc, config.replyFields.time, DEFAULT_TIMES)
                 )
@@ -325,13 +334,14 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     }
 
     /**
-     * 提取评论图片：优先取明确的图片字段，兼容字符串 JSON 数组/单个 URL。
-     * 字段顺序与前端 qd.html 的 commentImages 一致（ImageDetail/PreImage/ImageUrl/Images/ImageList）。
+     * 提取评论图片：直接基于 Map 读取，字段名大小写不敏感，
+     * 覆盖起点系常见命名（ImageDetail/PreImage/ImageUrl/Images/ImageList/ImgUrl…）。
+     * 兼容图片地址被序列化成 JSON 数组/对象字符串的情况。
      */
-    private fun readImages(rc: ReadContext): List<String> {
+    private fun readImages(map: Map<*, *>): List<String> {
         val result = LinkedHashSet<String>()
-        for (p in listOf("$.ImageDetail", "$.PreImage", "$.ImageUrl", "$.Images", "$.ImageList")) {
-            val v = runCatching { rc.read<Any>(p) }.getOrNull() ?: continue
+        for (key in IMAGE_FIELD_CANDIDATES) {
+            val v = findKey(map, key) ?: continue
             collectImageUrls(v, result)
             if (result.size >= 9) break
         }
@@ -357,9 +367,24 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
     }
 
-    /** 提取语音评论地址（AudioUrl） */
-    private fun readAudio(rc: ReadContext): String {
-        return readStr(rc, "", DEFAULT_AUDIOS)
+    /** 提取语音评论地址（AudioUrl 等），仅接受 http(s) 地址 */
+    private fun readAudio(map: Map<*, *>): String {
+        for (key in AUDIO_FIELD_CANDIDATES) {
+            val v = findKey(map, key) ?: continue
+            val s = v.toString().trim()
+            if (s.startsWith("http")) return s
+        }
+        return ""
+    }
+
+    /** 忽略大小写查找 Map 键 */
+    private fun findKey(map: Map<*, *>, key: String): Any? {
+        map[key]?.let { return it }
+        val lower = key.lowercase()
+        map.entries.forEach { (k, v) ->
+            if (k != null && k.toString().lowercase() == lower) return v
+        }
+        return null
     }
 
     private fun updateFooter(state: FooterState) {
@@ -399,14 +424,23 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         private val DEFAULT_AVATARS = listOf("$.UserHeadIcon", "$.UserPhoto", "$.Avatar", "$.HeadIcon", "$.Photo")
         private val DEFAULT_LEVELS = listOf("$.ShowTag", "$.Level", "$.UserLevel", "$.Grade")
         private val DEFAULT_IPS = listOf("$.IpLocation", "$.Ip", "$.Location", "$.Region")
-        private val DEFAULT_CONTENTS = listOf("$.Content", "$.Text", "$.Msg")
+        private val DEFAULT_CONTENTS = listOf("$.Content", "$.Text", "$.Msg", "$.ImageMeaning")
         private val DEFAULT_AGREES = listOf("$.AgreeAmount", "$.AgreeCount", "$.LikeCount", "$.LikeAmount", "$.Up")
         private val DEFAULT_OPPOSES = listOf("$.OpposeAmount", "$.OpposeCount", "$.Down")
         private val DEFAULT_TIMES = listOf("$.CreateTime", "$.Time", "$.CreatedAt", "$.CreateDate")
         private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber")
         private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount")
         private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName")
-        private val DEFAULT_AUDIOS = listOf("$.AudioUrl", "$.VoiceUrl", "$.Audio", "$.Voice")
+
+        /** 评论图片字段候选（大小写不敏感匹配） */
+        private val IMAGE_FIELD_CANDIDATES = listOf(
+            "ImageDetail", "PreImage", "ImageUrl", "Images", "ImageList",
+            "ImgUrl", "Imgs", "Image", "CommentImg", "CommentImage", "Photo"
+        )
+        /** 评论语音字段候选（大小写不敏感匹配） */
+        private val AUDIO_FIELD_CANDIDATES = listOf(
+            "AudioUrl", "VoiceUrl", "Audio", "Voice", "SoundUrl"
+        )
 
         /** 旧版段评 pclick（java.showBrowser('',d)）里的段号 */
         private val OLD_PARAGRAPH_ID_REGEX = Regex("""paragraph_id[=:]\s*(\d+)""")
