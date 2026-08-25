@@ -2327,6 +2327,7 @@
     <string name="app_theme_config_too_large">应用主题配置文件过大</string>
     <string name="app_theme_config_corrupted">应用主题配置文件损坏，已保留原文件</string>
     <string name="app_theme_file_too_large">应用主题文件过大</string>
+    <string name="app_theme_encrypted_not_supported">该主题包已加密，不支持导入</string>
     <string name="app_theme_missing_manifest">缺少 application_theme.json</string>
     <string name="app_theme_manifest_too_large">应用主题清单过大</string>
     <string name="app_theme_invalid_format">应用主题包格式错误</string>

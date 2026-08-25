@@ -2343,6 +2343,7 @@
     <string name="app_theme_config_too_large">App theme config file too large</string>
     <string name="app_theme_config_corrupted">App theme config file corrupted, original preserved</string>
     <string name="app_theme_file_too_large">App theme file too large</string>
+    <string name="app_theme_encrypted_not_supported">This theme package is encrypted and cannot be imported</string>
     <string name="app_theme_missing_manifest">Missing application_theme.json</string>
     <string name="app_theme_manifest_too_large">App theme manifest too large</string>
     <string name="app_theme_invalid_format">Invalid app theme package format</string>

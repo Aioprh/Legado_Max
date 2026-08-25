@@ -1935,6 +1935,7 @@
     <string name="app_theme_config_too_large">應用主題配置檔案過大</string>
     <string name="app_theme_config_corrupted">應用主題配置檔案損壞，已保留原檔案</string>
     <string name="app_theme_file_too_large">應用主題檔案過大</string>
+    <string name="app_theme_encrypted_not_supported">該主題包已加密，不支援匯入</string>
     <string name="app_theme_missing_manifest">缺少 application_theme.json</string>
     <string name="app_theme_manifest_too_large">應用主題清單過大</string>
     <string name="app_theme_invalid_format">應用主題包格式錯誤</string>
