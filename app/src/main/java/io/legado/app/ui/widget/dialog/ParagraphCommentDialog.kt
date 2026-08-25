@@ -201,7 +201,6 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     }
 
     private fun parseComments(body: String): List<ParagraphCommentItem> {
-        var suspicious = 0
         return runCatching {
             val rc = jsonPath.parse(body)
             val listPath = config.listPath.ifBlank { "$.Data.DataList" }
@@ -211,18 +210,6 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 val content = readStr(itemRc, config.fields.content, DEFAULT_CONTENTS)
                 val images = readImages(map)
                 val audio = readAudio(map)
-                // 内容为空且未解析到图/音的可疑评论：记录关键字段实际值，便于定位真实字段
-                if (content.isBlank() && images.isEmpty() && audio.isBlank() && suspicious < 3) {
-                    suspicious++
-                    val detail = listOf(
-                        "Content", "ImgInfo", "AudioRoleId", "AudioTime", "HotAudioStatus",
-                        "FaceId", "FrameId", "FrameUrl", "BigmemeId", "UgcmemeId",
-                        "CommentType", "ReviewType", "ShowType", "ExtType", "Category"
-                    ).mapNotNull { key ->
-                        findKey(map, key)?.let { v -> "$key=${v.toString().take(100)}" }
-                    }.joinToString(" | ")
-                    AppLog.put("段评空内容评论字段: $detail")
-                }
                 ParagraphCommentItem(
                     id = readStr(itemRc, config.fields.id, DEFAULT_IDS),
                     rootId = readStr(itemRc, config.fields.rootId, DEFAULT_ROOT_IDS),
@@ -239,6 +226,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     floor = readInt(itemRc, config.fields.floor, DEFAULT_FLOORS),
                     replyCount = readInt(itemRc, config.fields.replyCount, DEFAULT_REPLY_COUNTS)
                 )
+            }.filter { item ->
+                // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”
+                item.content.isNotBlank() || item.images.isNotEmpty() || item.audio.isNotBlank()
             }
         }.getOrElse {
             AppLog.put("段评解析失败", it)
@@ -413,6 +403,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     agree = readLong(itemRc, config.replyFields.agree, DEFAULT_AGREES),
                     time = readLong(itemRc, config.replyFields.time, DEFAULT_TIMES)
                 )
+            }.filter { reply ->
+                // 过滤完全无内容的空回复
+                reply.content.isNotBlank() || reply.images.isNotEmpty() || reply.audio.isNotBlank()
             }
         }.getOrElse {
             AppLog.put("段评回复解析失败", it)
