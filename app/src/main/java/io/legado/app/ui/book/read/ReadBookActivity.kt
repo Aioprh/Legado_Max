@@ -109,6 +109,7 @@ import io.legado.app.ui.login.SourceLoginActivity
 import io.legado.app.ui.replace.ReplaceRuleActivity
 import io.legado.app.ui.replace.edit.ReplaceEditActivity
 import io.legado.app.ui.widget.PopupAction
+import io.legado.app.ui.widget.dialog.ParagraphCommentDialog
 import io.legado.app.ui.widget.dialog.PhotoDialog
 import io.legado.app.utils.ACache
 import io.legado.app.utils.Debounce
@@ -1710,9 +1711,13 @@ class ReadBookActivity : BaseReadBookActivity(),
         }
         Coroutine.async(lifecycleScope,IO) {
             val source = ReadBook.bookSource ?: return@async
-            val java = SourceLoginJsExtensions(this@ReadBookActivity, source, BookType.text)
             val book = ReadBook.book ?: return@async
             val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex) ?: throw Exception("no find chapter")
+            // 旧版段评 pclick（java.showBrowser 纯文本）兼容：自动升级为原生段评弹窗
+            if (ParagraphCommentDialog.tryUpgradeOldPclick(this@ReadBookActivity, source, book, chapter, click)) {
+                return@async
+            }
+            val java = SourceLoginJsExtensions(this@ReadBookActivity, source, BookType.text)
             runScriptWithContext {
                 source.evalJS(click) {
                     put("java", java)

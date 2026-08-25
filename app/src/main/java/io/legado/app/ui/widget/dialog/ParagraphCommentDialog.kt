@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.jayway.jsonpath.ReadContext
@@ -13,6 +14,8 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BaseSource
+import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookChapter
 import io.legado.app.databinding.DialogParagraphCommentBinding
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.primaryColor
@@ -23,6 +26,7 @@ import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.gone
 import io.legado.app.utils.jsonPath
 import io.legado.app.utils.setLayout
+import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.stackTraceStr
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
@@ -354,5 +358,49 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber")
         private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount")
         private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName")
+
+        /** 旧版段评 pclick（java.showBrowser('',d)）里的段号 */
+        private val OLD_PARAGRAPH_ID_REGEX = Regex("""paragraph_id[=:]\s*(\d+)""")
+        /** 段评接口端点（如 https://host/qd/comments.php） */
+        private val OLD_COMMENTS_ENDPOINT_REGEX =
+            Regex("""https?://[^'"\s]*?(?:comments?|reviews?)\.[a-z]+""", RegexOption.IGNORE_CASE)
+
+        /**
+         * 兼容早期 AI 生成书源：pclick 用 `java.showBrowser('', d)` 展示纯文本段评。
+         * 这里从 pclick 中提取段评接口地址与段号，重新以结构化接口请求并打开原生段评弹窗
+         * （头像/昵称/内容/点赞/时间/分页/回复展开），避免弹出旧的纯文本拼接弹窗。
+         * 返回 true 表示已接管（原 pclick 不再执行）；false 表示不适用，仍走原逻辑。
+         */
+        fun tryUpgradeOldPclick(
+            activity: AppCompatActivity,
+            source: BaseSource,
+            book: Book,
+            chapter: BookChapter,
+            click: String
+        ): Boolean {
+            if (!click.contains("showBrowser", ignoreCase = true)) return false
+            if (!click.contains("action=paragraph", ignoreCase = true)) return false
+            val pid = OLD_PARAGRAPH_ID_REGEX.find(click)?.groupValues?.get(1) ?: return false
+            val endpoint = OLD_COMMENTS_ENDPOINT_REGEX.find(click)?.value?.trimEnd('?', '&') ?: return false
+            // 与书源内 pclick 相同的取参逻辑：从 book/chapter 的 URL 中抠出 id
+            val bookId = book.bookUrl.split("book_id=").getOrNull(1)?.substringBefore("&").orEmpty()
+            val chapterId = chapter.url.split("chapter_id=").getOrNull(1)?.substringBefore("&").orEmpty()
+            if (bookId.isBlank() || chapterId.isBlank()) return false
+            val commentsUrl = "$endpoint?action=paragraph&book_id=$bookId&chapter_id=$chapterId" +
+                "&paragraph_id=$pid&type=text&page=[page]&page_size=[pageSize]"
+            val repliesUrl = "$endpoint?action=replies&book_id=$bookId&chapter_id=$chapterId" +
+                "&review_id=[reviewId]&root_review_id=[rootId]&page=1&page_size=[pageSize]"
+            val config = ParagraphCommentConfig(
+                listPath = "$.Data.DataList",
+                totalPath = "$.Data.TotalCount",
+                commentsUrl = commentsUrl,
+                repliesUrl = repliesUrl
+            )
+            AppLog.put("旧版段评 pclick 已升级为原生弹窗: paragraph_id=$pid\n$commentsUrl")
+            activity.runOnUiThread {
+                activity.showDialogFragment(ParagraphCommentDialog(source.getKey(), config))
+            }
+            return true
+        }
     }
 }

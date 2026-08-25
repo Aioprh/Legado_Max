@@ -399,15 +399,11 @@ class AiSourceGenerateViewModel(application: Application) : BaseViewModel(applic
             val contentRule = runCatching {
                 fixed["ruleContent"]?.asJsonObject?.get("content")?.asString.orEmpty()
             }.getOrDefault("")
-            if (!contentRule.contains("dp:") &&
-                !contentRule.contains("Getparagraphscommentcounts") &&
-                !contentRule.contains("showBrowser") &&
-                !contentRule.contains("showParagraphComments")
-            ) {
+            if (!contentRule.contains("dp:") || !contentRule.contains("showParagraphComments")) {
                 return VerifyResult(
                     false,
                     buildString {
-                        append("段评探测（已开启）但你生成的书源没有段评气泡规则：ruleContent.content 必须写 @js: 规则，先请求段评统计接口取每段段评数（起点系 comments.php?action=summary&book_id=..&chapter_id=.. 返回 $.Data.Getparagraphscommentcounts.DataList[]，字段 ParagraphId/CommentCount，-1 为章评不用于正文），把正文按换行拆段后，对段评数>0 的段落末尾插入 <img src=\"dp:<段评数>,{...}\"> 气泡标记，点击气泡调用 java.showParagraphComments(JSON.stringify(config)) 打开原生段评弹窗（完整实现见系统提示词【段评气泡】模板，type 参数用 type=text）。")
+                        append("段评探测（已开启）但你生成的书源没有新版段评气泡规则（或仍是旧版 java.showBrowser 纯文本格式）：ruleContent.content 必须写 @js: 规则，先请求段评统计接口取每段段评数（起点系 comments.php?action=summary&book_id=..&chapter_id=.. 返回 $.Data.Getparagraphscommentcounts.DataList[]，字段 ParagraphId/CommentCount，-1 为章评不用于正文），把正文按换行拆段后，对段评数>0 的段落末尾插入 <img src=\"dp:<段评数>,{...}\"> 气泡标记，点击气泡必须调用 java.showParagraphComments(JSON.stringify(config)) 打开原生段评弹窗（禁止再用 java.showBrowser('',d) 纯文本拼接；完整实现见系统提示词【段评气泡】模板，type 参数用 type=text）。")
                         if (reviewUrl.isNotBlank()) {
                             append("已探测到段评接口：$reviewUrl（据此推断 summary/paragraph 等 action 参数与返回结构）。")
                         }
