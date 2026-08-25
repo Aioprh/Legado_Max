@@ -17,6 +17,11 @@ object HtmlFormatter {
         "<img[^>]*\\ssrc\\s*=\\s*['\"]([^'\"{>]*\\{(?:[^{}]|\\{[^}>]+\\})+\\})['\"][^>]*>|<img[^>]*\\sdata-(?:src|original|srcset)\\s*=\\s*['\"]([^'\">]+)['\"][^>]*>|<img[^>]*\\ssrc\\s*=\\s*\"([^\">]+)\"[^>]*>|<img[^>]*\\s(?:data-[^=>]*|src)=\\s*['\"]([^'\">]*)['\"][^>]*>",
         Pattern.CASE_INSENSITIVE
     )
+    /** 内部协议图片（段评气泡 dp:/bubble:// 等）：不参与 URL 拼接，整段原样保留 */
+    private val internalImgPattern = Pattern.compile(
+        "<img[^>]*\\ssrc\\s*=\\s*['\"](?:(?:dp|bubble):[^>]*?)['\"][^>]*>",
+        Pattern.CASE_INSENSITIVE or Pattern.DOTALL
+    )
     private val indent1Regex = "\\s*\\n+\\s*".toRegex()
     private val indent2Regex = "^[\\n\\s]+".toRegex()
     private val lastRegex = "[\\n\\s]+$".toRegex()
@@ -38,14 +43,30 @@ object HtmlFormatter {
         html ?: return ""
         val keepImgHtml = format(html, notImgHtmlRegex)
 
+        // 内部协议（段评气泡 dp:/bubble:// 等）不参与 URL 拼接，整段原样保留；
+        // 否则 formatImagePattern 会把含引号/大括号的 src 截断，导致气泡点击脚本丢失
+        val internalImgMap = HashMap<String, String>()
+        val protectedSb = StringBuilder()
+        val internalMatcher = internalImgPattern.matcher(keepImgHtml)
+        var internalPos = 0
+        while (internalMatcher.find()) {
+            protectedSb.append(keepImgHtml, internalPos, internalMatcher.start())
+            val placeholder = "\u0000internal_img_${internalImgMap.size}\u0000"
+            internalImgMap[placeholder] = internalMatcher.group()
+            protectedSb.append(placeholder)
+            internalPos = internalMatcher.end()
+        }
+        protectedSb.append(keepImgHtml, internalPos, keepImgHtml.length)
+        val protectedHtml = protectedSb.toString()
+
         //正则的“|”处于顶端而不处于（）中时，具有类似||的熔断效果，故以此机制简化原来的代码
-        val matcher = formatImagePattern.matcher(keepImgHtml)
+        val matcher = formatImagePattern.matcher(protectedHtml)
         var appendPos = 0
         val sb = StringBuilder()
         while (matcher.find()) {
             var param = ""
             sb.append(
-                keepImgHtml.substring(appendPos, matcher.start()), "<img src=\"${
+                protectedHtml.substring(appendPos, matcher.start()), "<img src=\"${
                     NetworkUtils.getAbsoluteURL(
                         redirectUrl,
                         matcher.group(1)?.let {
@@ -60,12 +81,16 @@ object HtmlFormatter {
             )
             appendPos = matcher.end()
         }
-        if (appendPos < keepImgHtml.length) sb.append(
-            keepImgHtml.substring(
+        if (appendPos < protectedHtml.length) sb.append(
+            protectedHtml.substring(
                 appendPos,
-                keepImgHtml.length
+                protectedHtml.length
             )
         )
-        return sb.toString()
+        var result = sb.toString()
+        internalImgMap.forEach { (placeholder, original) ->
+            result = result.replace(placeholder, original)
+        }
+        return result
     }
 }
