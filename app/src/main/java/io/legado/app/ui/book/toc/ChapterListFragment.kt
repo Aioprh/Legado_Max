@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DefaultItemAnimator
 import io.legado.app.R
 import io.legado.app.base.VMBaseFragment
 import io.legado.app.constant.AppLog
@@ -74,6 +75,10 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             ViewConfiguration.get(requireContext()).scaledScrollBarSize
         binding.recyclerView.setHideScrollbar(false)
         binding.recyclerView.addItemDecoration(VerticalDivider(requireContext()))
+        // 禁用 change 动画: upDisplayTitles 逐项 notifyItemChanged 时,
+        // 默认的交叉淡入淡出动画会表现为视觉闪烁
+        (binding.recyclerView.itemAnimator as? DefaultItemAnimator)?.supportsChangeAnimations =
+            false
         binding.recyclerView.adapter = adapter
     }
 
