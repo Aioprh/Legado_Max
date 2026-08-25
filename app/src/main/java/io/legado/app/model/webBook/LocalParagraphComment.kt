@@ -186,7 +186,9 @@ object LocalParagraphComment {
                 coroutineContext = currentCoroutineContext(),
                 headerMapF = headerMapF
             )
-            analyzeUrl.getStrResponseAwait().body()
+            // 去除响应体开头的 UTF-8 BOM：部分接口（如 pl.aadcn.cn）返回带 BOM 的 JSON，
+            // 直接交给 json-smart 解析会导致路径读取返回 null（静默变空，无异常抛出）。
+            analyzeUrl.getStrResponseAwait().body()?.trimStart('\uFEFF')
         }.getOrNull()
     }
 
