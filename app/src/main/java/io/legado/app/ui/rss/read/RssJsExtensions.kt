@@ -328,7 +328,7 @@ open class RssJsExtensions(
      * 此处显式实现，确保 Rhino 在具体扩展类上能反射到该方法。
      */
     @JavascriptInterface
-    fun showParagraphComments(config: String) {
+    override fun showParagraphComments(config: String) {
         val activity = activityRef.get() ?: return
         val source = getSource() ?: return
         val cfg = runCatching {
