@@ -18,8 +18,11 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.CheckBox
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.SwitchCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -331,6 +334,8 @@ class BookInfoActivity :
             viewModel.bookSource != null
         menu.findItem(R.id.menu_split_long_chapter)?.isVisible =
             viewModel.bookData.value?.isLocalTxt ?: false
+        menu.findItem(R.id.menu_set_book_paragraph_comment)?.isVisible =
+            viewModel.bookData.value?.isLocal ?: false
         menu.findItem(R.id.menu_upload)?.isVisible =
             viewModel.bookData.value?.isLocal ?: false
         menu.findItem(R.id.menu_delete_alert)?.isChecked =
@@ -402,6 +407,7 @@ class BookInfoActivity :
             R.id.menu_top -> viewModel.topBook()
             R.id.menu_set_source_variable -> setSourceVariable()
             R.id.menu_set_book_variable -> setBookVariable()
+            R.id.menu_set_book_paragraph_comment -> setBookParagraphComment()
             R.id.menu_copy_book_url -> viewModel.getBook()?.let {
                 SourceCallBack.callBackBtn(
                     this,
@@ -1093,6 +1099,74 @@ class BookInfoActivity :
                     viewModel.saveBook(it)
                 }
             }
+        }
+    }
+
+    /**
+     * 单本书段评设置：为本书单独接入其他源的段评。
+     * 配置存于 book.config（ReadConfig JSON 列），优先于全局设置。
+     */
+    @SuppressLint("SetTextI18n")
+    private fun setBookParagraphComment() {
+        val book = viewModel.getBook() ?: return
+        if (!book.isLocal) {
+            toastOnUi("仅本地书可单独接入其他源的段评")
+            return
+        }
+        val config = book.config
+        val padding = 24.dpToPx()
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padding, padding, padding, padding)
+        }
+        // 开关：为本书接入其他源的段评
+        val switch = SwitchCompat(this).apply {
+            text = getString(R.string.book_paragraph_comment_enable)
+            textSize = 16f
+            isChecked = config.paragraphComment
+        }
+        layout.addView(switch)
+        // 书源选择行
+        fun sourceName(url: String?): String = url?.takeIf { it.isNotBlank() }
+            ?.let { appDb.bookSourceDao.getBookSourcePart(it)?.bookSourceName }
+            ?: getString(R.string.book_paragraph_comment_source_none)
+        val sourceRow = TextView(this).apply {
+            text = getString(R.string.book_paragraph_comment_source) + "：" + sourceName(config.paragraphCommentSource)
+            textSize = 16f
+            setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
+            setPadding(0, padding, 0, 0)
+            isClickable = true
+        }
+        layout.addView(sourceRow)
+        val sourceHolder = arrayOf(config.paragraphCommentSource)
+        sourceRow.setOnClickListener {
+            val parts = appDb.bookSourceDao.allEnabledPart.sortedBy { it.customOrder }
+            val names = ArrayList<CharSequence>()
+            val urls = ArrayList<String>()
+            names.add(getString(R.string.book_paragraph_comment_source_none))
+            urls.add("")
+            parts.forEach {
+                names.add(it.bookSourceName)
+                urls.add(it.bookSourceUrl)
+            }
+            selector(getString(R.string.book_paragraph_comment_source), names) { _, index ->
+                if (index in urls.indices) {
+                    sourceHolder[0] = urls[index].ifBlank { null }
+                    sourceRow.text = getString(R.string.book_paragraph_comment_source) +
+                        "：" + sourceName(sourceHolder[0])
+                }
+            }
+        }
+        AlertDialog.Builder(this).apply {
+            setTitle(R.string.set_book_paragraph_comment)
+            setView(layout)
+            setPositiveButton(R.string.ok) { _, _ ->
+                config.paragraphComment = switch.isChecked
+                config.paragraphCommentSource = sourceHolder[0]
+                viewModel.saveBook(book)
+            }
+            setNegativeButton(R.string.cancel, null)
+            show()
         }
     }
 

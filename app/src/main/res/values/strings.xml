@@ -1132,6 +1132,10 @@
     <string name="skip_book_credits">Skip opening and closing</string>
     <string name="set_source_variable">Set source variable</string>
     <string name="set_book_variable">Set book variable</string>
+    <string name="set_book_paragraph_comment">Paragraph comment (this book)</string>
+    <string name="book_paragraph_comment_enable">Enable paragraph comments for this book</string>
+    <string name="book_paragraph_comment_source">Paragraph comment source</string>
+    <string name="book_paragraph_comment_source_none">Not selected (use global)</string>
     <string name="summary">summary</string>
     <string name="cover_config">cover config</string>
     <string name="cover_config_summary">Generic Cover Rules and Default Cover Style</string>

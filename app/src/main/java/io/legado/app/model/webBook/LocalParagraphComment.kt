@@ -43,15 +43,27 @@ object LocalParagraphComment {
     private val chapterMapCache = HashMap<String, Map<String, String>?>()
 
     /**
+     * 获取某本书的段评书源 URL。
+     * 每本书单独配置（book.config.paragraphComment）优先；未单独开启或未选书源时回退全局配置。
+     */
+    fun sourceUrlFor(book: Book): String? {
+        val config = book.readConfig
+        return when {
+            config?.paragraphComment == true ->
+                config.paragraphCommentSource?.takeIf { it.isNotBlank() } ?: AppConfig.localParagraphSource
+            AppConfig.localParagraphComment -> AppConfig.localParagraphSource
+            else -> null
+        }
+    }
+
+    /**
      * 若需要为本地书注入段评气泡，返回注入后的正文；否则原样返回。
      * 任何一步失败（未开启、无书源、搜索不到、无目录、无段评等）都安全回退原正文。
      */
     suspend fun injectIfNeeded(book: Book, chapter: BookChapter, content: String): String {
-        if (!AppConfig.localParagraphComment) return content
         if (!book.isLocal) return content
-        val source = AppConfig.localParagraphSource
-            ?.let { appDb.bookSourceDao.getBookSource(it) }
-            ?.takeIf { it.enabled }
+        val sourceUrl = sourceUrlFor(book) ?: return content
+        val source = appDb.bookSourceDao.getBookSource(sourceUrl)?.takeIf { it.enabled }
             ?: return content
         val remoteBook = getRemoteBook(book, source) ?: return content
         val remoteChapterUrl = getRemoteChapterUrl(book, chapter, source, remoteBook)

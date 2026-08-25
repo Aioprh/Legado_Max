@@ -1112,6 +1112,10 @@
     <string name="skip_book_credits">跳过片头片尾</string>
     <string name="set_source_variable">设置源变量</string>
     <string name="set_book_variable">设置书籍变量</string>
+    <string name="set_book_paragraph_comment">段评设置（本书）</string>
+    <string name="book_paragraph_comment_enable">为本书接入其他源的段评</string>
+    <string name="book_paragraph_comment_source">段评书源</string>
+    <string name="book_paragraph_comment_source_none">未选择（使用全局设置）</string>
     <string name="summary">注释</string>
     <string name="cover_config">封面设置</string>
     <string name="cover_config_summary">通用封面规则及默认封面样式</string>
