@@ -115,12 +115,16 @@ object LocalParagraphComment {
         remoteBook: Book
     ): String? {
         val key = "${book.bookUrl}|${source.bookSourceUrl}"
-        synchronized(chapterMapCache) {
-            if (!chapterMapCache.containsKey(key)) {
-                chapterMapCache[key] = fetchChapterMap(source, remoteBook)
+        val cached = synchronized(chapterMapCache) { chapterMapCache.containsKey(key) }
+        val map = if (cached) {
+            synchronized(chapterMapCache) { chapterMapCache[key] }
+        } else {
+            // 网络拉取目录在锁外执行，避免挂起点进入临界区
+            fetchChapterMap(source, remoteBook).also {
+                synchronized(chapterMapCache) { chapterMapCache[key] = it }
             }
         }
-        val map = chapterMapCache[key] ?: return null
+        if (map == null) return null
         // 依次尝试：精确标题 -> 去空白标题 -> 全角/半角归一化标题 -> 按章节序号兜底
         return map[chapter.title]
             ?: map[chapter.title.trim()]
