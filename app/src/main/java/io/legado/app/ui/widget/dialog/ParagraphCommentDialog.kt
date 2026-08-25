@@ -140,6 +140,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             showMsg(getString(R.string.paragraph_comment_load_failed))
             return
         }
+        // 诊断：记录弹窗收到的配置，便于确认是否为同人小说网（pl.aadcn.cn）适配配置
+        AppLog.put("段评弹窗配置: listPath=${config.listPath} totalPath=${config.totalPath} commentsUrl=${config.commentsUrl}")
         loadPage(1)
     }
 
@@ -156,9 +158,13 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             updateFooter(FooterState.LOADING)
         }
         execute {
-            val body = fetchBody(buildCommentsUrl(nextPage))
+            val url = buildCommentsUrl(nextPage)
+            val body = fetchBody(url)
+            // 诊断：段评弹窗请求与响应体前 400 字符，用于定位“没有段评”问题
+            AppLog.put("段评弹窗请求[$nextPage]\nurl=$url\nbody=${body?.take(400) ?: "null"}")
             val items = body?.let { parseComments(it) }.orEmpty()
             val newTotal = body?.let { parseTotal(it) } ?: -1L
+            AppLog.put("段评弹窗解析结果: items=${items.size} total=$newTotal")
             withContext(Dispatchers.Main) {
                 loading = false
                 binding.rotateLoading.gone()
@@ -205,6 +211,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             val rc = jsonPath.parse(body)
             val listPath = config.listPath.ifBlank { "$.Data.DataList" }
             val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
+            if (list.isEmpty()) {
+                // 诊断：路径存在但为空列表，记录根节点结构便于排查
+                val rootKeys = runCatching { (rc.read<Any>("$") as? Map<*, *>)?.keys?.take(10) }.getOrNull()
+                AppLog.put("段评解析: listPath=$listPath 返回空列表，根节点keys=$rootKeys")
+            }
             list.mapNotNull { it as? Map<*, *> }.map { map ->
                 val itemRc = jsonPath.parse(map)
                 val content = readStr(itemRc, config.fields.content, DEFAULT_CONTENTS)
