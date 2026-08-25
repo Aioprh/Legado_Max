@@ -1,0 +1,358 @@
+package io.legado.app.ui.widget.dialog
+
+import android.graphics.drawable.GradientDrawable
+import android.os.Bundle
+import android.view.Gravity
+import android.view.View
+import android.view.ViewGroup
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.jayway.jsonpath.ReadContext
+import io.legado.app.R
+import io.legado.app.base.BaseDialogFragment
+import io.legado.app.constant.AppLog
+import io.legado.app.data.appDb
+import io.legado.app.data.entities.BaseSource
+import io.legado.app.databinding.DialogParagraphCommentBinding
+import io.legado.app.lib.theme.ThemeStore
+import io.legado.app.lib.theme.primaryColor
+import io.legado.app.model.analyzeRule.AnalyzeUrl
+import io.legado.app.utils.GSON
+import io.legado.app.utils.dpToPx
+import io.legado.app.utils.fromJsonObject
+import io.legado.app.utils.gone
+import io.legado.app.utils.jsonPath
+import io.legado.app.utils.setLayout
+import io.legado.app.utils.stackTraceStr
+import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.utils.visible
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.EmptyCoroutineContext
+
+/**
+ * 段评弹窗：原生列表展示段评（头像/昵称/等级/地区/时间/内容/赞踩/楼层），
+ * 支持分页加载与回复展开/收起。
+ *
+ * 由书源 JS 通过 `java.showParagraphComments(JSON.stringify(config))` 打开，
+ * 配置见 [ParagraphCommentConfig]。
+ */
+class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_comment) {
+
+    constructor(sourceKey: String, config: ParagraphCommentConfig) : this() {
+        arguments = Bundle().apply {
+            putString("sourceKey", sourceKey)
+            putString("config", GSON.toJson(config))
+        }
+    }
+
+    private val binding by viewBinding(DialogParagraphCommentBinding::bind)
+    private val adapter by lazy { ParagraphCommentAdapter(requireContext()) }
+    private var source: BaseSource? = null
+    private var config: ParagraphCommentConfig = ParagraphCommentConfig()
+    private var page = 0
+    private var total = -1L // -1 表示未知总数，用空页判断是否还有更多
+    private var hasMore = true
+    private var loading = false
+
+    private enum class FooterState { NONE, LOADING, NO_MORE, FAILED }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.setGravity(Gravity.BOTTOM)
+        val dm = resources.displayMetrics
+        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.9).toInt())
+    }
+
+    override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
+        // 顶部圆角
+        view.background = GradientDrawable().apply {
+            val radius = 16.dpToPx().toFloat()
+            cornerRadii = floatArrayOf(radius, radius, radius, radius, 0f, 0f, 0f, 0f)
+            setColor(ThemeStore.backgroundColor())
+        }
+        binding.run {
+            toolBar.setBackgroundColor(primaryColor)
+            toolBar.title = getString(R.string.paragraph_comment_title)
+            toolBar.setNavigationOnClickListener { dismiss() }
+            recyclerView.layoutManager = LinearLayoutManager(requireContext())
+            recyclerView.adapter = adapter
+            recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                    val lm = rv.layoutManager as? LinearLayoutManager ?: return
+                    if (hasMore && !loading &&
+                        lm.findLastVisibleItemPosition() >= adapter.getActualItemCount() - 4
+                    ) {
+                        loadPage(page + 1)
+                    }
+                }
+            })
+            // 加载失败点击重试
+            llFooter.setOnClickListener {
+                if (loading) return@setOnClickListener
+                loadPage(page + 1)
+            }
+        }
+        adapter.replyListener = object : ParagraphCommentAdapter.ReplyListener {
+            override fun onToggleReplies(item: ParagraphCommentItem) {
+                if (item.repliesLoaded) {
+                    item.repliesLoaded = false
+                    item.replies.clear()
+                    adapter.updateItem(item)
+                } else {
+                    loadReplies(item)
+                }
+            }
+        }
+        arguments?.let {
+            val sourceKey = it.getString("sourceKey")
+            source = sourceKey?.let { key ->
+                appDb.bookSourceDao.getBookSource(key) ?: appDb.rssSourceDao.getByKey(key)
+            }
+            it.getString("config")?.let { json ->
+                config = GSON.fromJsonObject<ParagraphCommentConfig>(json).getOrNull()
+                    ?: ParagraphCommentConfig()
+            }
+        }
+        loadPage(1)
+    }
+
+    // ---------- 段评列表 ----------
+
+    private fun loadPage(nextPage: Int) {
+        if (loading) return
+        loading = true
+        if (nextPage == 1) {
+            binding.rotateLoading.visible()
+            binding.tvMsg.gone()
+            updateFooter(FooterState.NONE)
+        } else {
+            updateFooter(FooterState.LOADING)
+        }
+        execute {
+            val body = fetchBody(buildCommentsUrl(nextPage))
+            val items = body?.let { parseComments(it) }.orEmpty()
+            val newTotal = body?.let { parseTotal(it) } ?: -1L
+            withContext(Dispatchers.Main) {
+                loading = false
+                binding.rotateLoading.gone()
+                if (body == null) {
+                    if (nextPage == 1 && adapter.isEmpty()) {
+                        showMsg(getString(R.string.paragraph_comment_load_failed))
+                        updateFooter(FooterState.NONE)
+                    } else {
+                        hideMsg()
+                        updateFooter(FooterState.FAILED)
+                    }
+                    return@withContext
+                }
+                page = nextPage
+                if (nextPage == 1) {
+                    adapter.setItems(items)
+                } else {
+                    adapter.addItems(items)
+                }
+                if (newTotal >= 0) total = newTotal
+                // 无更多：返回空、或本页不足 pageSize（末页）、或已到总数
+                hasMore = items.isNotEmpty() &&
+                    items.size >= config.pageSize &&
+                    (total < 0 || adapter.getActualItemCount() < total)
+                if (adapter.isEmpty()) {
+                    showMsg(getString(R.string.paragraph_comment_empty))
+                    updateFooter(FooterState.NONE)
+                } else {
+                    hideMsg()
+                    updateFooter(if (hasMore) FooterState.NONE else FooterState.NO_MORE)
+                }
+            }
+        }
+    }
+
+    private fun buildCommentsUrl(nextPage: Int): String {
+        return config.commentsUrl
+            .replace("[page]", nextPage.toString())
+            .replace("[pageSize]", config.pageSize.toString())
+    }
+
+    private fun parseComments(body: String): List<ParagraphCommentItem> {
+        return runCatching {
+            val rc = jsonPath.parse(body)
+            val listPath = config.listPath.ifBlank { "$.Data.DataList" }
+            val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
+            list.mapNotNull { it as? Map<*, *> }.map { map ->
+                val itemRc = jsonPath.parse(map)
+                ParagraphCommentItem(
+                    id = readStr(itemRc, config.fields.id, DEFAULT_IDS),
+                    rootId = readStr(itemRc, config.fields.rootId, DEFAULT_ROOT_IDS),
+                    nickname = readStr(itemRc, config.fields.nickname, DEFAULT_NICKNAMES),
+                    avatar = readStr(itemRc, config.fields.avatar, DEFAULT_AVATARS),
+                    level = readStr(itemRc, config.fields.level, DEFAULT_LEVELS),
+                    ip = readStr(itemRc, config.fields.ip, DEFAULT_IPS),
+                    content = readStr(itemRc, config.fields.content, DEFAULT_CONTENTS),
+                    agree = readLong(itemRc, config.fields.agree, DEFAULT_AGREES),
+                    oppose = readLong(itemRc, config.fields.oppose, DEFAULT_OPPOSES),
+                    time = readLong(itemRc, config.fields.time, DEFAULT_TIMES),
+                    floor = readInt(itemRc, config.fields.floor, DEFAULT_FLOORS),
+                    replyCount = readInt(itemRc, config.fields.replyCount, DEFAULT_REPLY_COUNTS)
+                )
+            }
+        }.getOrElse {
+            AppLog.put("段评解析失败", it)
+            emptyList()
+        }
+    }
+
+    private fun parseTotal(body: String): Long {
+        return runCatching {
+            val totalPath = config.totalPath.ifBlank { "$.Data.TotalCount" }
+            val rc = jsonPath.parse(body)
+            (rc.read<Any>(totalPath) as? Number)?.toLong() ?: -1L
+        }.getOrDefault(-1L)
+    }
+
+    // ---------- 回复 ----------
+
+    private fun loadReplies(item: ParagraphCommentItem) {
+        if (item.repliesLoading) return
+        if (config.repliesUrl.isBlank()) {
+            // 无回复接口：直接标记已加载（空回复），收起按钮不显示
+            item.repliesLoaded = true
+            adapter.updateItem(item)
+            return
+        }
+        item.repliesLoading = true
+        adapter.updateItem(item)
+        execute {
+            val body = fetchBody(buildRepliesUrl(item))
+            val replies = body?.let { parseReplies(it) }.orEmpty()
+            withContext(Dispatchers.Main) {
+                item.repliesLoading = false
+                item.replies.clear()
+                item.replies.addAll(replies)
+                item.repliesLoaded = true
+                adapter.updateItem(item)
+            }
+        }
+    }
+
+    private fun buildRepliesUrl(item: ParagraphCommentItem): String {
+        return config.repliesUrl
+            .replace("[reviewId]", item.id)
+            .replace("[rootId]", item.rootId.ifBlank { item.id })
+            .replace("[pageSize]", config.pageSize.toString())
+    }
+
+    private fun parseReplies(body: String): List<ParagraphReplyItem> {
+        return runCatching {
+            val rc = jsonPath.parse(body)
+            val listPath = config.listPath.ifBlank { "$.Data.DataList" }
+            val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
+            list.mapNotNull { it as? Map<*, *> }.map { map ->
+                val itemRc = jsonPath.parse(map)
+                ParagraphReplyItem(
+                    nickname = readStr(itemRc, config.replyFields.nickname, DEFAULT_NICKNAMES),
+                    avatar = readStr(itemRc, config.replyFields.avatar, DEFAULT_AVATARS),
+                    replyTo = readStr(itemRc, config.replyFields.replyTo, DEFAULT_REPLY_TOS),
+                    content = readStr(itemRc, config.replyFields.content, DEFAULT_CONTENTS),
+                    agree = readLong(itemRc, config.replyFields.agree, DEFAULT_AGREES),
+                    time = readLong(itemRc, config.replyFields.time, DEFAULT_TIMES)
+                )
+            }
+        }.getOrElse {
+            AppLog.put("段评回复解析失败", it)
+            emptyList()
+        }
+    }
+
+    // ---------- 工具 ----------
+
+    private suspend fun fetchBody(url: String): String? {
+        if (url.isBlank()) return null
+        return runCatching {
+            val analyzeUrl = AnalyzeUrl(url, source = source, coroutineContext = EmptyCoroutineContext)
+            analyzeUrl.getStrResponse().body
+        }.onFailure {
+            AppLog.put("段评请求失败 $url\n${it.stackTraceStr}", it)
+        }.getOrNull()
+    }
+
+    private fun readStr(rc: ReadContext, primary: String, defaults: List<String>): String {
+        val paths = if (primary.isBlank()) {
+            defaults
+        } else {
+            listOf(primary) + defaults.filter { it != primary }
+        }
+        for (p in paths) {
+            val v = runCatching { rc.read<Any>(p) }.getOrNull() ?: continue
+            val s = v.toString().trim()
+            if (s.isNotEmpty() && s != "null") return s
+        }
+        return ""
+    }
+
+    private fun readLong(rc: ReadContext, primary: String, defaults: List<String>): Long {
+        val paths = if (primary.isBlank()) {
+            defaults
+        } else {
+            listOf(primary) + defaults.filter { it != primary }
+        }
+        for (p in paths) {
+            val v = runCatching { rc.read<Any>(p) }.getOrNull() ?: continue
+            when (v) {
+                is Number -> return v.toLong()
+                else -> v.toString().toLongOrNull()?.let { return it }
+            }
+        }
+        return 0
+    }
+
+    private fun readInt(rc: ReadContext, primary: String, defaults: List<String>): Int {
+        return readLong(rc, primary, defaults).toInt()
+    }
+
+    private fun updateFooter(state: FooterState) {
+        when (state) {
+            FooterState.NONE -> binding.llFooter.gone()
+            FooterState.LOADING -> {
+                binding.footerRotateLoading.visible()
+                binding.footerTvMsg.text = getString(R.string.paragraph_comment_loading)
+                binding.llFooter.visible()
+            }
+            FooterState.NO_MORE -> {
+                binding.footerRotateLoading.gone()
+                binding.footerTvMsg.text = getString(R.string.paragraph_comment_no_more)
+                binding.llFooter.visible()
+            }
+            FooterState.FAILED -> {
+                binding.footerRotateLoading.gone()
+                binding.footerTvMsg.text = getString(R.string.paragraph_comment_load_failed)
+                binding.llFooter.visible()
+            }
+        }
+    }
+
+    private fun showMsg(msg: String) {
+        binding.tvMsg.text = msg
+        binding.tvMsg.visible()
+    }
+
+    private fun hideMsg() {
+        binding.tvMsg.gone()
+    }
+
+    companion object {
+        private val DEFAULT_IDS = listOf("$.Id", "$.CommentId", "$.ReviewId", "$.Cid")
+        private val DEFAULT_ROOT_IDS = listOf("$.RootReviewId", "$.RootId", "$.CommentId", "$.Id")
+        private val DEFAULT_NICKNAMES = listOf("$.NickName", "$.UserName", "$.Name", "$.Uname")
+        private val DEFAULT_AVATARS = listOf("$.UserHeadIcon", "$.UserPhoto", "$.Avatar", "$.HeadIcon", "$.Photo")
+        private val DEFAULT_LEVELS = listOf("$.ShowTag", "$.Level", "$.UserLevel", "$.Grade")
+        private val DEFAULT_IPS = listOf("$.IpLocation", "$.Ip", "$.Location", "$.Region")
+        private val DEFAULT_CONTENTS = listOf("$.Content", "$.Text", "$.Msg")
+        private val DEFAULT_AGREES = listOf("$.AgreeAmount", "$.AgreeCount", "$.LikeCount", "$.LikeAmount", "$.Up")
+        private val DEFAULT_OPPOSES = listOf("$.OpposeAmount", "$.OpposeCount", "$.Down")
+        private val DEFAULT_TIMES = listOf("$.CreateTime", "$.Time", "$.CreatedAt", "$.CreateDate")
+        private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber")
+        private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount")
+        private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName")
+    }
+}

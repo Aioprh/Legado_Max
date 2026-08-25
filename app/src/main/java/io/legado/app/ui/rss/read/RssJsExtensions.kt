@@ -4,6 +4,7 @@ import android.webkit.JavascriptInterface
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.script.rhino.runScriptWithContext
+import io.legado.app.constant.AppLog
 import io.legado.app.constant.BookType
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BaseSource
@@ -12,6 +13,7 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.RssReadRecord
 import io.legado.app.data.entities.RssSource
+import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.JsExtensions
 import io.legado.app.model.AudioPlay
 import io.legado.app.model.ReadBook
@@ -23,7 +25,11 @@ import io.legado.app.ui.book.explore.ExploreShowActivity
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.login.SourceLoginActivity
 import io.legado.app.ui.rss.article.RssSortActivity
+import io.legado.app.ui.widget.dialog.ParagraphCommentConfig
+import io.legado.app.ui.widget.dialog.ParagraphCommentDialog
 import io.legado.app.ui.widget.dialog.PhotoDialog
+import io.legado.app.utils.GSON
+import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.isJsonObject
 import io.legado.app.utils.openUrl
 import io.legado.app.utils.showDialogFragment
@@ -313,6 +319,29 @@ open class RssJsExtensions(
 
     fun getElements(ruleStr: String): List<Any> {
         return analyzeRule.getElements(ruleStr)
+    }
+
+    /**
+     * 打开原生段评弹窗（头像/昵称/内容/点赞/时间/分页/回复展开）。
+     * 配置见 [io.legado.app.ui.widget.dialog.ParagraphCommentConfig]，
+     * 由书源 JS 的段评 pclick 脚本调用：java.showParagraphComments(JSON.stringify(config))。
+     * 此处显式实现，确保 Rhino 在具体扩展类上能反射到该方法。
+     */
+    @JavascriptInterface
+    fun showParagraphComments(config: String) {
+        val activity = activityRef.get() ?: return
+        val source = getSource() ?: return
+        val cfg = runCatching {
+            GSON.fromJsonObject<ParagraphCommentConfig>(config).getOrThrow()
+        }.getOrNull()
+        if (cfg == null || cfg.commentsUrl.isBlank()) {
+            AppLog.put("showParagraphComments 配置无效，回退文本展示", NoStackTraceException(config))
+            showBrowser("", config)
+            return
+        }
+        activity.runOnUiThread {
+            activity.showDialogFragment(ParagraphCommentDialog(source.getKey(), cfg))
+        }
     }
 
 }

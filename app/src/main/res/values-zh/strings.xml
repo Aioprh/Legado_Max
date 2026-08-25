@@ -2408,4 +2408,16 @@
     <string name="perm_toast_enabled_desc">控制脚本能否弹出Toast</string>
     <string name="perm_toast_duration">Toast时长控制</string>
     <string name="perm_toast_duration_desc">控制Toast显示时长</string>
+    <string name="paragraph_comment_title">段评</string>
+    <string name="paragraph_comment_loading">加载中…</string>
+    <string name="paragraph_comment_no_more">没有更多了</string>
+    <string name="paragraph_comment_load_failed">加载失败，点击重试</string>
+    <string name="paragraph_comment_empty">还没有段评</string>
+    <string name="paragraph_comment_like">赞 %1$d</string>
+    <string name="paragraph_comment_dislike">踩 %1$d</string>
+    <string name="paragraph_comment_floor">%1$d楼</string>
+    <string name="paragraph_comment_expand_replies">展开 %1$d 条回复</string>
+    <string name="paragraph_comment_collapse_replies">收起回复</string>
+    <string name="paragraph_comment_reply_to">回复 %1$s</string>
+    <string name="paragraph_comment_anonymous">匿名用户</string>
 </resources>

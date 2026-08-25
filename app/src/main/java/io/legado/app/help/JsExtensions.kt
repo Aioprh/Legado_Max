@@ -33,6 +33,8 @@ import io.legado.app.model.analyzeRule.QueryTTF
 import io.legado.app.ui.association.OnLineImportActivity
 import io.legado.app.ui.association.OpenUrlConfirmActivity
 import io.legado.app.ui.widget.dialog.BottomWebViewDialog
+import io.legado.app.ui.widget.dialog.ParagraphCommentConfig
+import io.legado.app.ui.widget.dialog.ParagraphCommentDialog
 import io.legado.app.utils.ArchiveUtils
 import io.legado.app.utils.ChineseUtils
 import io.legado.app.utils.EncoderUtils
@@ -1131,6 +1133,28 @@ interface JsExtensions : JsEncodeUtils {
                     config
                 )
             )
+        }
+    }
+
+    /**
+     * 打开原生段评弹窗（头像/昵称/内容/点赞/时间/分页/回复展开）。
+     * 配置见 [io.legado.app.ui.widget.dialog.ParagraphCommentConfig]，
+     * 由书源 JS 的段评 pclick 脚本调用：java.showParagraphComments(JSON.stringify(config))。
+     * 解析失败时兜底用 showBrowser 展示原始配置文本。
+     */
+    fun showParagraphComments(config: String) {
+        val activity = LifecycleHelp.getCurrentActivity() as? AppCompatActivity ?: return
+        val source = getSource() ?: return
+        val cfg = runCatching {
+            GSON.fromJsonObject<ParagraphCommentConfig>(config).getOrThrow()
+        }.getOrNull()
+        if (cfg == null || cfg.commentsUrl.isBlank()) {
+            AppLog.put("showParagraphComments 配置无效，回退文本展示", NoStackTraceException(config))
+            showBrowser("", config)
+            return
+        }
+        activity.runOnUiThread {
+            activity.showDialogFragment(ParagraphCommentDialog(source.getKey(), cfg))
         }
     }
 

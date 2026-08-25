@@ -2443,4 +2443,16 @@ Night: %5$s / %6$s / %7$s / %8$s</string>
     <string name="perm_toast_enabled_desc">Whether scripts can show Toast</string>
     <string name="perm_toast_duration">Toast Duration</string>
     <string name="perm_toast_duration_desc">Control Toast display duration</string>
+    <string name="paragraph_comment_title">Paragraph Comments</string>
+    <string name="paragraph_comment_loading">Loading…</string>
+    <string name="paragraph_comment_no_more">No more</string>
+    <string name="paragraph_comment_load_failed">Load failed, tap to retry</string>
+    <string name="paragraph_comment_empty">No comments yet</string>
+    <string name="paragraph_comment_like">Like %1$d</string>
+    <string name="paragraph_comment_dislike">Dislike %1$d</string>
+    <string name="paragraph_comment_floor">Floor %1$d</string>
+    <string name="paragraph_comment_expand_replies">Expand %1$d replies</string>
+    <string name="paragraph_comment_collapse_replies">Collapse replies</string>
+    <string name="paragraph_comment_reply_to">Reply %1$s</string>
+    <string name="paragraph_comment_anonymous">Anonymous</string>
 </resources>
