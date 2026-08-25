@@ -808,6 +808,7 @@
     <string name="highlight_rule_exclude_scope_hint">要排除的书名或书源URL，分号分隔</string>
     <string name="highlight_rule_layout_scope">作用排版</string>
     <string name="highlight_rule_layout_scope_all">所有排版</string>
+    <string name="highlight_rule_layout_scope_count">已选 %1$d 个排版</string>
     <string name="action_menu">功能</string>
     <string name="preview">预览</string>
     <string name="text_menu_config">展开文本菜单配置</string>

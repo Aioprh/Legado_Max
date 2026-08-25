@@ -167,27 +167,6 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         }.apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
-        // 排版作用范围 Spinner：第一项"所有排版"，后面为各排版名称
-        val layoutScopeItems = mutableListOf(getString(R.string.highlight_rule_layout_scope_all))
-        layoutScopeItems.addAll(ReadBookConfig.configList.map { it.name })
-        binding.spLayoutScope.adapter = object : ArrayAdapter<String>(
-            requireContext(),
-            R.layout.item_text_common,
-            layoutScopeItems
-        ) {
-            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getView(position, convertView, parent)
-                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
-                return view
-            }
-            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
-                val view = super.getDropDownView(position, convertView, parent)
-                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
-                return view
-            }
-        }.apply {
-            setDropDownViewResource(R.layout.item_spinner_dropdown)
-        }
 
         bindData()
         bindEvents()
@@ -319,6 +298,11 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etSampleText.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etScope.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etExcludeScope.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.etLayoutScope.setTextColor(primaryTextColor)
+        binding.etLayoutScope.setHintTextColor(secondaryTextColor)
+        binding.etLayoutScope.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.tvLayoutScopePick.setTextColor(primaryTextColor)
+        binding.tvLayoutScopePick.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.spBgImageFit.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvWidthMinus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvWidthPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
@@ -338,7 +322,6 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.spTarget.setPopupBackgroundDrawable(popupBg)
         binding.spUnderlineMode.setPopupBackgroundDrawable(popupBg)
         binding.spBgImageFit.setPopupBackgroundDrawable(popupBg)
-        binding.spLayoutScope.setPopupBackgroundDrawable(popupBg)
 
         // 递归遍历三个卡片容器，将静态标签的文字颜色替换为动态主题色
         applyThemeToStaticLabels()
@@ -425,21 +408,8 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         // 书籍作用域字段绑定
         binding.etScope.setText(editingRule.scope.orEmpty())
         binding.etExcludeScope.setText(editingRule.excludeScope.orEmpty())
-        // 排版作用范围绑定
-        val layoutScopeAdapter = binding.spLayoutScope.adapter
-        val savedLayoutNames = editingRule.layoutScope?.split(";")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
-        val layoutPos = if (savedLayoutNames.isEmpty()) 0 else {
-            var found = 0
-            for (i in 1 until layoutScopeAdapter.count) {
-                val itemName = layoutScopeAdapter.getItem(i) as String
-                if (savedLayoutNames.contains(itemName)) {
-                    found = i
-                    break
-                }
-            }
-            found
-        }
-        binding.spLayoutScope.setSelection(layoutPos)
+        // 排版作用范围显示
+        updateLayoutScopeText()
         
         updateColorPreview(binding.viewTextColorPreview, editingRule.textColor)
         updateColorPreview(binding.viewUnderlineColorPreview, editingRule.underlineColor)
@@ -620,23 +590,44 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etExcludeScope.doAfterTextChanged {
             editingRule.excludeScope = it?.toString().orEmpty().takeIf { it.isNotBlank() }
         }
-        binding.spLayoutScope.onItemSelectedListener =
-            object : android.widget.AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(
-                    parent: android.widget.AdapterView<*>?,
-                    view: View?,
-                    position: Int,
-                    id: Long
-                ) {
-                    val selectedItem = binding.spLayoutScope.adapter.getItem(position) as String
-                    editingRule.layoutScope = if (position == 0 || selectedItem == getString(R.string.highlight_rule_layout_scope_all)) {
+        // 排版作用范围多选弹窗
+        val openLayoutScopePicker = {
+            val layoutNames = ReadBookConfig.configList.map { it.name }
+            val savedSet = editingRule.layoutScope?.split(";")?.map { it.trim() }?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+            val checkedItems = BooleanArray(layoutNames.size) { index -> layoutNames[index] in savedSet }
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle(getString(R.string.highlight_rule_layout_scope))
+                .setMultiChoiceItems(layoutNames.toTypedArray(), checkedItems) { _, which, isChecked ->
+                    checkedItems[which] = isChecked
+                }
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    val selected = layoutNames.filterIndexed { index, _ -> checkedItems[index] }
+                    editingRule.layoutScope = if (selected.isEmpty() || selected.size == layoutNames.size) {
                         null
                     } else {
-                        selectedItem
+                        selected.joinToString(";")
                     }
+                    updateLayoutScopeText()
                 }
-                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
-            }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+        binding.etLayoutScope.setOnClickListener { openLayoutScopePicker() }
+        binding.tvLayoutScopePick.setOnClickListener { openLayoutScopePicker() }
+    }
+
+    private fun updateLayoutScopeText() {
+        val layoutScopeVal = editingRule.layoutScope
+        if (layoutScopeVal.isNullOrBlank()) {
+            binding.etLayoutScope.setText("")
+            binding.etLayoutScope.hint = getString(R.string.highlight_rule_layout_scope_all)
+        } else {
+            val names = layoutScopeVal.split(";").map { it.trim() }.filter { it.isNotBlank() }
+            binding.etLayoutScope.setText(
+                if (names.size == 1) names[0]
+                else getString(R.string.highlight_rule_layout_scope_count, names.size)
+            )
+        }
     }
 
     private fun updateRegexToggle() {

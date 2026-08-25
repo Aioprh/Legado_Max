@@ -811,6 +811,7 @@
     <string name="highlight_rule_exclude_scope_hint">Book name or source URL to exclude, semicolon separated</string>
     <string name="highlight_rule_layout_scope">Reading layout scope</string>
     <string name="highlight_rule_layout_scope_all">All layouts</string>
+    <string name="highlight_rule_layout_scope_count">%1$d layouts selected</string>
     <string name="action_menu">Actions</string>
     <string name="preview">Preview</string>
     <string name="text_menu_config">Expand Text Menu Config</string>
