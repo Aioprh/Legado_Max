@@ -2090,9 +2090,17 @@ class TextChapterLayout(
             payload
         }.trim()
         var option: Map<String, String> = if (optionIndex >= 0) {
-            GSON.fromJsonObject<Map<String, String>>(payload.substring(optionIndex + 1))
+            val optionStr = payload.substring(optionIndex + 1)
+            GSON.fromJsonObject<Map<String, String>>(optionStr)
                 .getOrNull()
                 .orEmpty()
+                .ifEmpty {
+                    // 兼容 AI 生成规则把 JSON 的 \" 原样输出成 \” 包裹的键值：
+                    // 先还原转义再解析，否则 pclick/click 提取不到，气泡点击会失效
+                    GSON.fromJsonObject<Map<String, String>>(unescapeJsonOption(optionStr))
+                        .getOrNull()
+                        .orEmpty()
+                }
         } else {
             emptyMap()
         }
@@ -2118,9 +2126,11 @@ class TextChapterLayout(
      * 兼容 option 被 HTML 实体解码（\" -> "）或 <img> 正则截断导致的非法 JSON。
      */
     private fun extractBubbleOptionFallback(optionStr: String): Map<String, String> {
+        // 先还原 \” 转义再提取，兼容 AI 生成规则把 JSON 的 \" 原样输出
+        val unescaped = unescapeJsonOption(optionStr)
         val result = HashMap<String, String>()
         val regex = Regex("""(?:"([A-Za-z_][A-Za-z0-9_]*)"\s*:\s*")((?:[^"\\]|\\.)*)""")
-        regex.findAll(optionStr).forEach { m ->
+        regex.findAll(unescaped).forEach { m ->
             val key = m.groupValues[1]
             val raw = m.groupValues[2]
             val value = raw
@@ -2131,6 +2141,16 @@ class TextChapterLayout(
             result[key] = value
         }
         return result
+    }
+
+    /**
+     * 还原 AI 生成规则泄漏进正文的 JSON 字符串转义（\" -> "，\\ -> \），
+     * 使 \” 包裹的键值能通过 GSON 正常解析。
+     */
+    private fun unescapeJsonOption(raw: String): String {
+        return raw
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
     }
 
     /** 判断图片源是否像段评气泡入口 */
