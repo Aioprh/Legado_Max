@@ -68,7 +68,7 @@ class ParagraphCommentAdapter(context: Context) :
                 tvFloor.gone()
             }
 
-            tvContent.text = item.content
+            tvContent.text = formatContent(item.content)
 
             if (item.agree > 0) {
                 tvAgree.text = context.getString(R.string.paragraph_comment_like, item.agree)
@@ -149,7 +149,7 @@ class ParagraphCommentAdapter(context: Context) :
                         )
                         tvReplyTo.visible()
                     }
-                    tvContent.text = reply.content
+                    tvContent.text = formatContent(reply.content)
                     tvTime.text = formatTime(reply.time)
                     if (reply.agree > 0) {
                         tvAgree.text = context.getString(
@@ -177,6 +177,30 @@ class ParagraphCommentAdapter(context: Context) :
     }
 
     companion object {
+        /** 起点段评表情码映射（与镜像站前端 qd.html 的 commentEmojiMap 一致） */
+        private val COMMENT_EMOJI_MAP: Map<Int, String> = mapOf(
+            1 to "👏", 2 to "🌹", 3 to "🤝", 4 to "😁", 5 to "😄", 6 to "🥺", 7 to "🙂", 8 to "😏",
+            9 to "😙", 10 to "👆🏻🐽", 11 to "🙄", 12 to "😭", 13 to "😵", 14 to "😥", 15 to "🖕🏻", 16 to "🥵",
+            17 to "😓", 18 to "🤫", 19 to "😂", 20 to "😢", 21 to "😍", 22 to "🤕🔨", 23 to "😑", 24 to "😫",
+            25 to "🤗", 26 to "🤪", 27 to "🙏", 28 to "😣", 29 to "💪", 30 to "💀", 31 to "😳", 32 to "😎",
+            33 to "🤭", 34 to "😄👏", 35 to "👍🏻", 36 to "🤓", 37 to "😡", 38 to "🙁", 39 to "😄❓", 40 to "😞",
+            41 to "😧", 42 to "💋", 43 to "☺️", 44 to "🤬", 45 to "😴", 46 to "🤠🚬", 47 to "😱", 48 to "🐷",
+            49 to "😪", 50 to "🤐", 51 to "🥴", 52 to "🌙", 53 to "❤️", 54 to "🔪", 55 to "🎁", 56 to "💔",
+            57 to "👊🏻", 58 to "😒", 59 to "✌🏻️", 60 to "😮", 61 to "🤨", 62 to "😴", 63 to "👏🏻", 64 to "🐲"
+        )
+
+        /** 段评内容里的表情码标记，如 `[fn=12]` / `*[fn＝12]` */
+        private val FN_EMOJI_REGEX = Regex("""\*?\[fn[=＝](\d+)\]""")
+
+        /** 将段评内容中的 `[fn=N]` 表情码替换为对应 emoji，未知码保留原文 */
+        fun formatContent(text: String): String {
+            if (text.isBlank()) return text
+            return FN_EMOJI_REGEX.replace(text) { match ->
+                val code = match.groupValues[1].toIntOrNull()
+                code?.let { COMMENT_EMOJI_MAP[it] } ?: match.value
+            }
+        }
+
         /** 时间戳（毫秒）转可读时间；兼容秒级时间戳 */
         fun formatTime(time: Long): String {
             if (time <= 0) return ""
