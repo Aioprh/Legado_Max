@@ -2089,12 +2089,17 @@ class TextChapterLayout(
         } else {
             payload
         }.trim()
-        val option = if (optionIndex >= 0) {
+        var option: Map<String, String> = if (optionIndex >= 0) {
             GSON.fromJsonObject<Map<String, String>>(payload.substring(optionIndex + 1))
                 .getOrNull()
                 .orEmpty()
         } else {
             emptyMap()
+        }
+        // GSON 严格解析失败（option 可能被 HTML 解码/正则截断破坏）时，
+        // 从原始 option 串手工提取 pclick/click 等键值，保证气泡可点击
+        if (option.isEmpty() && optionIndex >= 0) {
+            option = extractBubbleOptionFallback(payload.substring(optionIndex + 1))
         }
         val displayText = extractForcedBubbleDisplayText(src, src, option) ?: count
         val status = option.valueIgnoreCase("status")?.takeIf { it.isNotBlank() } ?: "normal"
@@ -2106,6 +2111,26 @@ class TextChapterLayout(
         val click = option.valueIgnoreCase("click")?.takeIf { it.isNotBlank() }
         val bubbleUrl = "bubble://paragraph?displayText=$encodedText&num=$encodedText&status=$encodedStatus$colorQuery"
         return ForcedBubbleResult(bubbleUrl, pclick ?: click)
+    }
+
+    /**
+     * GSON 解析 option 失败的兜底：从原始 option 串手工提取 "key":"value" 键值。
+     * 兼容 option 被 HTML 实体解码（\" -> "）或 <img> 正则截断导致的非法 JSON。
+     */
+    private fun extractBubbleOptionFallback(optionStr: String): Map<String, String> {
+        val result = HashMap<String, String>()
+        val regex = Regex("""(?:"([A-Za-z_][A-Za-z0-9_]*)"\s*:\s*")((?:[^"\\]|\\.)*)""")
+        regex.findAll(optionStr).forEach { m ->
+            val key = m.groupValues[1]
+            val raw = m.groupValues[2]
+            val value = raw
+                .replace("\\\"", "\"")
+                .replace("\\\\", "\\")
+                .replace("\\n", "\n")
+                .replace("\\r", "\r")
+            result[key] = value
+        }
+        return result
     }
 
     /** 判断图片源是否像段评气泡入口 */

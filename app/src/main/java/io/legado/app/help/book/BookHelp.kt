@@ -213,6 +213,11 @@ object BookHelp {
             val matcher = AppPattern.imgPattern.matcher(content)
             while (matcher.find()) {
                 val src = matcher.group(1) ?: continue
+                // 跳过内部协议（段评气泡 dp:/bubble: 等），
+                // 避免 getAbsoluteURL -> URL(baseUrl, "dp:...") 抛 MalformedURLException
+                if (isNonDownloadableImageSrc(src)) {
+                    continue
+                }
                 val mSrc = NetworkUtils.getAbsoluteURL(bookChapter.url, src)
                 emit(mSrc)
             }
