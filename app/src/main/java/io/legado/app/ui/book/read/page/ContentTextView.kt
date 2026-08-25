@@ -302,10 +302,10 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
 
                 is ImageColumn -> {
                     val click = column.click
-                    AppLog.put(
-                        "点击命中 ImageColumn: src=${column.src.take(100)} click空=${click.isNullOrBlank()} " +
-                            "气泡=${ParagraphBubbleRenderer.isBubbleSrc(column.src)}"
-                    )
+                    // 段评气泡但未提取到点击脚本属异常，仅此时记录日志
+                    if (ParagraphBubbleRenderer.isBubbleSrc(column.src) && click.isNullOrBlank()) {
+                        AppLog.put("点击段评气泡但 click 为空: src=${column.src.take(100)}")
+                    }
                     if (ParagraphBubbleRenderer.isBubbleSrc(column.src) && !click.isNullOrBlank()) {
                         // 段评气泡：始终执行段评点击脚本，不依赖“点击图片方式”设置，
                         // 避免被“预览图片/关闭”等设置拦截导致无法点击
