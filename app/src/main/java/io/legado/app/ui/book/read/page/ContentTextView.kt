@@ -348,6 +348,7 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
                             }
                         }
                     }
+                    }
                 }
                 is TextHtmlColumn -> {
                     column.linkUrl?.let {
