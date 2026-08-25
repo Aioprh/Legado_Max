@@ -29,6 +29,7 @@ import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.ui.file.HandleFileContract
 
 /**
@@ -159,6 +160,27 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
                 return view
             }
             override fun getDropDownView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
+                val view = super.getDropDownView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+        }.apply {
+            setDropDownViewResource(R.layout.item_spinner_dropdown)
+        }
+        // 排版作用范围 Spinner：第一项"所有排版"，后面为各排版名称
+        val layoutScopeItems = mutableListOf(getString(R.string.highlight_rule_layout_scope_all))
+        layoutScopeItems.addAll(ReadBookConfig.configList.map { it.name })
+        binding.spLayoutScope.adapter = object : ArrayAdapter<String>(
+            requireContext(),
+            R.layout.item_text_common,
+            layoutScopeItems
+        ) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val view = super.getDropDownView(position, convertView, parent)
                 if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
                 return view
@@ -316,6 +338,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.spTarget.setPopupBackgroundDrawable(popupBg)
         binding.spUnderlineMode.setPopupBackgroundDrawable(popupBg)
         binding.spBgImageFit.setPopupBackgroundDrawable(popupBg)
+        binding.spLayoutScope.setPopupBackgroundDrawable(popupBg)
 
         // 递归遍历三个卡片容器，将静态标签的文字颜色替换为动态主题色
         applyThemeToStaticLabels()
@@ -402,6 +425,21 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         // 书籍作用域字段绑定
         binding.etScope.setText(editingRule.scope.orEmpty())
         binding.etExcludeScope.setText(editingRule.excludeScope.orEmpty())
+        // 排版作用范围绑定
+        val layoutScopeAdapter = binding.spLayoutScope.adapter
+        val savedLayoutNames = editingRule.layoutScope?.split(";")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
+        val layoutPos = if (savedLayoutNames.isEmpty()) 0 else {
+            var found = 0
+            for (i in 1 until layoutScopeAdapter.count) {
+                val itemName = layoutScopeAdapter.getItem(i) as String
+                if (savedLayoutNames.contains(itemName)) {
+                    found = i
+                    break
+                }
+            }
+            found
+        }
+        binding.spLayoutScope.setSelection(layoutPos)
         
         updateColorPreview(binding.viewTextColorPreview, editingRule.textColor)
         updateColorPreview(binding.viewUnderlineColorPreview, editingRule.underlineColor)
@@ -582,6 +620,23 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etExcludeScope.doAfterTextChanged {
             editingRule.excludeScope = it?.toString().orEmpty().takeIf { it.isNotBlank() }
         }
+        binding.spLayoutScope.onItemSelectedListener =
+            object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: android.widget.AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    val selectedItem = binding.spLayoutScope.adapter.getItem(position) as String
+                    editingRule.layoutScope = if (position == 0 || selectedItem == getString(R.string.highlight_rule_layout_scope_all)) {
+                        null
+                    } else {
+                        selectedItem
+                    }
+                }
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+            }
     }
 
     private fun updateRegexToggle() {
@@ -722,6 +777,8 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             // 书籍作用域，空白时存为null表示对所有书籍生效
             scope = binding.etScope.text?.toString().orEmpty().takeIf { it.isNotBlank() },
             excludeScope = binding.etExcludeScope.text?.toString().orEmpty().takeIf { it.isNotBlank() },
+            // 排版作用范围，"所有排版"时存为null
+            layoutScope = editingRule.layoutScope?.takeIf { it.isNotBlank() },
         )
         onSave(editingRule)
         dismissAllowingStateLoss()

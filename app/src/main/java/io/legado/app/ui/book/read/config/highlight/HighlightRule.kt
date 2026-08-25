@@ -26,6 +26,8 @@ data class HighlightRule(
     var scope: String? = null,
     /** 排除范围，书名或书源URL，分号分隔，匹配的书籍不应用该规则 */
     var excludeScope: String? = null,
+    /** 作用的阅读排版名称，分号分隔，为空则对所有排版生效 */
+    var layoutScope: String? = null,
 ) {
 
     fun styleSummary(): String {
@@ -36,6 +38,9 @@ data class HighlightRule(
         }
         if (!excludeScope.isNullOrBlank()) {
             parts.add("排除: ${excludeScope!!.replace(";", "; ").trim()}")
+        }
+        if (!layoutScope.isNullOrBlank()) {
+            parts.add("排版: ${layoutScope!!.replace(";", "; ").trim()}")
         }
         textColor?.let {
             parts.add("字色 ${it.toHexColor()}")
@@ -131,6 +136,18 @@ data class HighlightRule(
             if (excluded) return false
         }
         return true
+    }
+
+    /**
+     * 判断规则是否对指定排版生效
+     * - layoutScope 为空时，默认对所有排版生效
+     * - layoutScope 非空时，仅对匹配名称的排版生效
+     */
+    fun matchesLayout(layoutName: String): Boolean {
+        val layoutVal = layoutScope ?: return true
+        if (layoutVal.isBlank()) return true
+        val layoutItems = layoutVal.split(";").map { it.trim() }.filter { it.isNotBlank() }
+        return layoutItems.any { item -> layoutName == item }
     }
 
     companion object {

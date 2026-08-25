@@ -1321,6 +1321,8 @@
     <string name="highlight_rule_scope_hint">書名或書源URL，分號分隔，留空則對所有書籍生效</string>
     <string name="highlight_rule_exclude_scope">排除範圍，書名或書源URL</string>
     <string name="highlight_rule_exclude_scope_hint">要排除的書名或書源URL，分號分隔</string>
+    <string name="highlight_rule_layout_scope">作用排版</string>
+    <string name="highlight_rule_layout_scope_all">所有排版</string>
     <string name="history">歷史記錄</string>
     <string name="book_read_record">閱讀記錄</string>
     <string name="view_read_record">查看</string>
