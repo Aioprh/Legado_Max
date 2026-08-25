@@ -237,6 +237,11 @@ object BookHelp {
         src: String,
         chapter: BookChapter? = null
     ) {
+        // 内部协议（段评气泡 dp:/bubble:// 等）不发起网络请求，
+        // 否则 AnalyzeUrl -> HttpUrl.parse 会抛 Expected URL scheme 'http' or 'https' but was 'dp'
+        if (isNonDownloadableImageSrc(src)) {
+            return
+        }
         if (isImageExist(book, src)) {
             return
         }
@@ -303,6 +308,28 @@ object BookHelp {
 
     fun getImageSuffix(src: String): String {
         return UrlUtil.getSuffix(src, "jpg")
+    }
+
+    /**
+     * 判断 src 是否属于非网络下载的内部协议（段评气泡 dp:/bubble:// 等）。
+     * 这类 src 不能交给 AnalyzeUrl/OkHttp 请求，否则 HttpUrl.parse 抛
+     * IllegalArgumentException: Expected URL scheme 'http' or 'https' but was '...'
+     * @return true 表示应跳过下载
+     */
+    private fun isNonDownloadableImageSrc(src: String): Boolean {
+        if (src.isBlank()) return true
+        val lower = src.lowercase()
+        return when {
+            lower.startsWith("http://") -> false
+            lower.startsWith("https://") -> false
+            lower.startsWith("data:") -> false
+            lower.startsWith("file://") -> false
+            lower.startsWith("content://") -> false
+            // 含协议头（xxx:// 或 xxx:）但不是 http/https 的，一律拦截
+            lower.contains("://") || lower.indexOf(':') >= 0 -> true
+            // 相对路径交给 getAbsoluteURL 处理
+            else -> false
+        }
     }
 
     @Throws(IOException::class, FileNotFoundException::class)
