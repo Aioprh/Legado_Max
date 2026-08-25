@@ -61,6 +61,7 @@ import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
+import io.legado.app.model.ParagraphBubbleRenderer
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setChapter
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
@@ -1707,9 +1708,14 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun clickImg(click: String, src: String) {
         Coroutine.async(lifecycleScope,IO) {
-            val source = ReadBook.bookSource ?: return@async
             val book = ReadBook.book ?: return@async
             val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex) ?: throw Exception("no find chapter")
+            var source = ReadBook.bookSource
+            // 本地书段评：本地书无书源，用用户选择的“段评书源”执行段评气泡的 pclick
+            if (source == null && ParagraphBubbleRenderer.isBubbleSrc(src) && AppConfig.localParagraphComment) {
+                source = AppConfig.localParagraphSource?.let { appDb.bookSourceDao.getBookSource(it) }
+            }
+            if (source == null) return@async
             // 旧版段评 pclick（java.showBrowser 纯文本）兼容：自动升级为原生段评弹窗
             if (ParagraphCommentDialog.tryUpgradeOldPclick(this@ReadBookActivity, source, book, chapter, click)) {
                 return@async
