@@ -1,6 +1,7 @@
 package io.legado.app.utils
 
 import io.legado.app.model.analyzeRule.AnalyzeUrl
+import org.apache.commons.text.StringEscapeUtils
 import java.net.URL
 import java.util.regex.Pattern
 
@@ -92,5 +93,86 @@ object HtmlFormatter {
             result = result.replace(placeholder, original)
         }
         return result
+    }
+
+    private val srcAttrRegex = Regex("""\bsrc\s*=\s*['"]""", RegexOption.IGNORE_CASE)
+
+    /**
+     * 解码 HTML 实体，但保护段评气泡（dp:/bubble:）等内部协议图片标签。
+     *
+     * 若直接对整个正文执行 StringEscapeUtils.unescapeHtml4，气泡点击脚本里的
+     * URL 参数如 &paragraph_id= 会被误当作 HTML 实体 &paragraph;（¶）解码成
+     * ¶graph_id=，导致段评弹窗请求到错误地址。这里先把内部气泡 img 标签整体
+     * 替换为占位符，解码完再还原。
+     */
+    fun unescapeHtml4KeepImg(html: String?): String {
+        html ?: return ""
+        if (html.indexOf('&') < 0) return html
+        val map = HashMap<String, String>()
+        val protected = protectInternalImgTags(html, map)
+        var result = StringEscapeUtils.unescapeHtml4(protected)
+        map.forEach { (placeholder, original) ->
+            result = result.replace(placeholder, original)
+        }
+        return result
+    }
+
+    /**
+     * 将正文中的内部协议气泡图片标签（<img ... src="dp:..."> 或 bubble:）整体替换为占位符。
+     * src 值内可能包含 >、双引号、反斜杠等（气泡点击 JS），因此不用 [^>]* 匹配，
+     * 而是扫描到「未转义的结束引号之后紧跟 > 或 />」作为标签结束。
+     */
+    private fun protectInternalImgTags(html: String, map: HashMap<String, String>): String {
+        val sb = StringBuilder()
+        var pos = 0
+        var searchFrom = 0
+        while (true) {
+            val imgStart = html.indexOf("<img", searchFrom, ignoreCase = true)
+            if (imgStart < 0) break
+            val end = internalImgTagEnd(html, imgStart)
+            if (end > imgStart) {
+                sb.append(html, pos, imgStart)
+                val placeholder = "\u0000internal_img_${map.size}\u0000"
+                map[placeholder] = html.substring(imgStart, end)
+                sb.append(placeholder)
+                pos = end
+                searchFrom = end
+            } else {
+                val nextGt = html.indexOf('>', imgStart)
+                if (nextGt < 0) break
+                searchFrom = nextGt + 1
+            }
+        }
+        sb.append(html, pos, html.length)
+        return sb.toString()
+    }
+
+    /** 返回内部协议 img 标签的结束下标（不含），非内部气泡图返回 -1 */
+    private fun internalImgTagEnd(html: String, tagStart: Int): Int {
+        val srcMatch = srcAttrRegex.find(html, tagStart) ?: return -1
+        val quoteChar = html[srcMatch.range.last]
+        val valueStart = srcMatch.range.last + 1
+        if (valueStart >= html.length) return -1
+        val value = html.substring(valueStart)
+        if (!value.startsWith("dp:", ignoreCase = true) &&
+            !value.startsWith("bubble:", ignoreCase = true)
+        ) {
+            return -1
+        }
+        var j = valueStart
+        while (j < html.length) {
+            val c = html[j]
+            if (c == '\\') {
+                j += 2
+                continue
+            }
+            if (c == quoteChar) {
+                var k = j + 1
+                while (k < html.length && (html[k] == ' ' || html[k] == '/')) k++
+                if (k < html.length && html[k] == '>') return k + 1
+            }
+            j++
+        }
+        return -1
     }
 }

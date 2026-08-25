@@ -2121,9 +2121,19 @@ class TextChapterLayout(
         return ForcedBubbleResult(bubbleUrl, pclick ?: click)
     }
 
+    /** 段评气泡 option 的已知键，用于从非法 JSON 中定位值边界 */
+    private val bubbleOptionKeys = setOf(
+        "pclick", "click", "status", "style", "type", "width",
+        "displayText", "displayColor", "num", "count", "text", "label", "js"
+    )
+
     /**
      * GSON 解析 option 失败的兜底：从原始 option 串手工提取 "key":"value" 键值。
      * 兼容 option 被 HTML 实体解码（\" -> "）或 <img> 正则截断导致的非法 JSON。
+     *
+     * pclick/click 是 JS 脚本，若 AI 未遵守“只用单引号”的约定而使用了双引号，
+     * 标准的 (?:[^"\\]|\\.)* 会在第一个内部引号处截断，导致 evalJS 报“文件意外结束”。
+     * 这里用「到下一个已知 option 键」的边界重新提取完整脚本。
      */
     private fun extractBubbleOptionFallback(optionStr: String): Map<String, String> {
         // 先还原 \” 转义再提取，兼容 AI 生成规则把 JSON 的 \" 原样输出
@@ -2133,14 +2143,54 @@ class TextChapterLayout(
         regex.findAll(unescaped).forEach { m ->
             val key = m.groupValues[1]
             val raw = m.groupValues[2]
-            val value = raw
-                .replace("\\\"", "\"")
-                .replace("\\\\", "\\")
-                .replace("\\n", "\n")
-                .replace("\\r", "\r")
-            result[key] = value
+            result[key] = unescapeOptionValue(raw)
+        }
+        // pclick/click 脚本可能含双引号被上面正则截断，改用边界重新提取完整脚本；
+        // 脚本值通常更长，取更长者即为完整脚本
+        listOf("pclick", "click").forEach { key ->
+            extractLongOptionValue(unescaped, key)?.let { long ->
+                val current = result[key]
+                if (current == null || long.length > current.length) {
+                    result[key] = long
+                }
+            }
         }
         return result
+    }
+
+    /**
+     * 用「下一个已知 option 键」作为边界提取含双引号的完整 JS 脚本值。
+     * option 通常形如 {"pclick":"<脚本>","status":"normal"}，
+     * 脚本内的 config（如 {"listPath":"..."}）键名不在 [bubbleOptionKeys] 中，
+     * 因此第一个 "，<已知键>": 即脚本值的结束位置。
+     */
+    private fun extractLongOptionValue(optionStr: String, key: String): String? {
+        val startRegex = Regex("\"$key\"\\s*:\\s*\"")
+        val start = startRegex.find(optionStr) ?: return null
+        val rest = optionStr.substring(start.range.last + 1)
+        val boundary = bubbleOptionKeys
+            .filter { it != key }
+            .mapNotNull { k ->
+                Regex(""","$k"\s*:""").find(rest)?.range?.first
+            }
+            .minOrNull()
+        var raw = if (boundary != null) {
+            rest.substring(0, boundary)
+        } else {
+            // 无后续已知键：值延伸到 option 结尾，去掉末尾的 "}
+            val trimmed = rest.trimEnd(' ', '\\')
+            if (trimmed.endsWith("\"}")) trimmed.dropLast(2) else trimmed
+        }
+        return unescapeOptionValue(raw)
+    }
+
+    /** 还原 option 字符串值内的 JSON 转义 */
+    private fun unescapeOptionValue(raw: String): String {
+        return raw
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+            .replace("\\n", "\n")
+            .replace("\\r", "\r")
     }
 
     /**

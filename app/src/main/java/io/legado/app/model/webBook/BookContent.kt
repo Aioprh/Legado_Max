@@ -28,7 +28,6 @@ import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.mapAsync
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.flow
-import org.apache.commons.text.StringEscapeUtils
 import splitties.init.appCtx
 import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.isOnLineTxt
@@ -111,7 +110,7 @@ object BookContent {
             }
             content = HtmlFormatter.formatKeepImg(content, rUrl)
             if (content.indexOf('&') > -1) {
-                content = StringEscapeUtils.unescapeHtml4(content)
+                content = HtmlFormatter.unescapeHtml4KeepImg(content)
             }
             useHtmlMap.forEach { (placeholder, originalContent) ->
                 content = content.replace(placeholder, originalContent)
@@ -446,7 +445,7 @@ object BookContent {
             }
             content = HtmlFormatter.formatKeepImg(content, rUrl) //内置净化格式化
             if (content.indexOf('&') > -1) {
-                content = StringEscapeUtils.unescapeHtml4(content)
+                content = HtmlFormatter.unescapeHtml4KeepImg(content)
             }
             useHtmlMap.forEach { (placeholder, originalContent) ->
                 content = content.replace(placeholder, originalContent)

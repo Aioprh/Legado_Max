@@ -20,7 +20,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.apache.commons.text.StringEscapeUtils
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -178,7 +177,7 @@ class LazyContentManager(
                         }
                         content = HtmlFormatter.formatKeepImg(content, rUrl)
                         if (content.indexOf('&') > -1) {
-                            content = StringEscapeUtils.unescapeHtml4(content)
+                            content = HtmlFormatter.unescapeHtml4KeepImg(content)
                         }
                         useHtmlMap.forEach { (placeholder, originalContent) ->
                             content = content.replace(placeholder, originalContent)
