@@ -346,6 +346,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 val id = map["Id"]?.toString()
                     ?: map["CommentId"]?.toString()
                     ?: map["ReviewId"]?.toString()
+                    ?: map["comment_id"]?.toString()
                     ?: ""
                 if (id == commentId) {
                     readAudio(map).takeIf { it.startsWith("http") }?.let { return it }
@@ -389,7 +390,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     private fun parseReplies(body: String): List<ParagraphReplyItem> {
         return runCatching {
             val rc = jsonPath.parse(body)
-            val listPath = config.listPath.ifBlank { "$.Data.DataList" }
+            val listPath = config.replyListPath.ifBlank { config.listPath.ifBlank { "$.Data.DataList" } }
             val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
             list.mapNotNull { it as? Map<*, *> }.map { map ->
                 val itemRc = jsonPath.parse(map)

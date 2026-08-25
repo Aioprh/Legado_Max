@@ -1,5 +1,6 @@
 package io.legado.app.model.webBook
 
+import android.util.Base64
 import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
@@ -7,40 +8,44 @@ import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.http.CookieStore
 import io.legado.app.model.analyzeRule.AnalyzeUrl
+import io.legado.app.ui.widget.dialog.ParagraphCommentConfig
 import io.legado.app.utils.jsonPath
 import kotlinx.coroutines.currentCoroutineContext
+import java.net.URLEncoder
+import java.util.Random
 
 /**
  * 本地书段评：为本地书籍接入其他书源的段评。
  *
  * 当“本地书段评”开关开启且已选择“段评书源”时，读取本地书正文后：
- * 1. 用书名/作者在段评书源中精确搜索远程书，得到远程 bookUrl（含 book_id）；
- * 2. 拉取远程书详情与目录，按章节标题把本地章节映射到远程章节 URL（含 chapter_id）；
- * 3. 从书源正文规则里提取段评接口地址，请求该章的段评摘要，得到各段评论数；
+ * 1. 用书名/作者在段评书源中精确搜索远程书，得到远程 bookUrl（含书籍 ID）；
+ * 2. 拉取远程书详情与目录，按章节标题把本地章节映射到远程章节 URL（含章节 ID）；
+ * 3. 按书源类型选择适配器，请求该章的段评摘要，得到各段评论数；
  * 4. 对有评论的段落后方注入 dp: 气泡，点击后经 pclick 打开原生段评弹窗。
  *
  * 本地段落号按“非空行序号”近似远程段落号（与书源内 ruleContent 的取段逻辑一致），
  * 因此要求本地书与远程书的换行/分段落基本一致，才能准确定位。
+ *
+ * 不同站点的段评接口差异很大，这里用 [ParagraphAdapter] 按书源 URL 分发：
+ * - 起点系镜像站（comments.php）   —— 通用/默认适配器
+ * - 神魔小说（shenmoxs.top）        —— 摘要走 m.qidian.com，评论走源站 /chapter/comments
+ * - 起点限免（同人小说网）           —— 走 pl.aadcn.cn/api/qidian_full_api.php
  */
 object LocalParagraphComment {
-
-    /** 段评接口地址（comments.php / reviews.php 等），从书源正文规则中提取 */
-    private val COMMENTS_ENDPOINT_REGEX =
-        Regex("""https?://[^'"\s]*?(?:comments?|reviews?)\.[a-z]+""", RegexOption.IGNORE_CASE)
-
-    /** 段评摘要接口返回的评论数列表候选路径（兼容不同站点命名） */
-    private val SUMMARY_LIST_PATHS = listOf(
-        "$.Data.Getparagraphscommentcounts.DataList",
-        "$.Data.DataList",
-        "$.Data.Paragraphs"
-    )
 
     /** 本地书 bookUrl|sourceUrl -> 远程书（null 表示搜索失败，避免反复搜索） */
     private val remoteBookCache = HashMap<String, Book?>()
 
     /** 本地书 bookUrl|sourceUrl -> 本地章节标题 -> 远程章节 URL（null 表示拉取失败） */
     private val chapterMapCache = HashMap<String, Map<String, String>?>()
+
+    private val adapters: List<ParagraphAdapter> = listOf(
+        ShenmoAdapter,
+        QidianFullAdapter,
+        GenericAdapter
+    )
 
     /**
      * 获取某本书的段评书源 URL。
@@ -65,34 +70,22 @@ object LocalParagraphComment {
         val sourceUrl = sourceUrlFor(book) ?: return content
         val source = appDb.bookSourceDao.getBookSource(sourceUrl)?.takeIf { it.enabled }
             ?: return content
+        val adapter = adapters.firstOrNull { it.match(source) } ?: return content
         val remoteBook = getRemoteBook(book, source) ?: return content
         val remoteChapterUrl = getRemoteChapterUrl(book, chapter, source, remoteBook)
             ?: return content
-        val bookId = remoteBook.bookUrl.split("book_id=").getOrNull(1)?.substringBefore("&").orEmpty()
-        val chapterId = remoteChapterUrl.split("chapter_id=").getOrNull(1)?.substringBefore("&").orEmpty()
-        if (bookId.isBlank() || chapterId.isBlank()) {
-            AppLog.put("本地书段评: 无法从书源 URL 提取 book_id/chapter_id")
+        val bookId = adapter.extractBookId(remoteBook.bookUrl, remoteChapterUrl)
+        val chapterId = adapter.extractChapterId(remoteChapterUrl)
+        if (bookId.isNullOrBlank() || chapterId.isNullOrBlank()) {
+            AppLog.put("本地书段评: 无法从书源[${source.bookSourceName}]的URL提取书籍/章节ID")
             return content
         }
-        val endpoint = extractCommentsEndpoint(source)
-        if (endpoint.isNullOrBlank()) {
-            AppLog.put("本地书段评: 书源[${source.bookSourceName}]正文规则中未找到段评接口")
-            return content
-        }
-        val summaryBody = fetchBody(
-            source,
-            "$endpoint?action=summary&book_id=$bookId&chapter_id=$chapterId"
-        )
-        if (summaryBody.isNullOrBlank()) {
-            AppLog.put("本地书段评: 段评摘要接口请求失败（$endpoint）")
-            return content
-        }
-        val counts = parseSummaryCounts(summaryBody)
+        val counts = adapter.fetchSummaryCounts(source, bookId, chapterId)
         if (counts.isEmpty()) {
             AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}]暂无段评")
             return content
         }
-        val injected = injectBubbles(content, bookId, chapterId, endpoint, counts)
+        val injected = injectBubbles(content, source, adapter, bookId, chapterId, counts)
         if (injected != content) {
             AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}] 已注入 ${counts.size} 个段评气泡")
         }
@@ -179,42 +172,62 @@ object LocalParagraphComment {
         return sb.toString()
     }
 
-    /** 从书源正文规则（ruleContent.content）中提取段评接口地址 */
-    private fun extractCommentsEndpoint(source: BookSource): String? {
-        val content = source.getContentRule()?.content ?: return null
-        return COMMENTS_ENDPOINT_REGEX.find(content)?.value?.trimEnd('?', '&')
-    }
-
-    /** 用书源自带请求头/Cookie 请求指定地址，返回响应正文 */
-    private suspend fun fetchBody(source: BookSource, url: String): String? {
+    /** 用书源自带请求头/Cookie 请求指定地址，返回响应正文；可额外传入请求头 */
+    private suspend fun fetchBody(
+        source: BookSource,
+        url: String,
+        headerMapF: Map<String, String>? = null
+    ): String? {
         return runCatching {
             val analyzeUrl = AnalyzeUrl(
                 mUrl = url,
                 baseUrl = source.bookSourceUrl,
                 source = source,
-                coroutineContext = currentCoroutineContext()
+                coroutineContext = currentCoroutineContext(),
+                headerMapF = headerMapF
             )
             analyzeUrl.getStrResponseAwait().body()
         }.getOrNull()
     }
 
-    /** 解析段评摘要：段落号 -> 评论数 */
-    private fun parseSummaryCounts(body: String): Map<Int, Int> {
+    /** 从 URL 中提取 `xxx=<数字>` 的 ID（兼容 ? 与 & 分隔） */
+    private fun pickId(url: String, param: String): String? {
+        return Regex("""(?:[?&]|^)$param=(\d+)""", RegexOption.IGNORE_CASE)
+            .find(url)?.groupValues?.get(1)
+    }
+
+    /** 解析段评摘要：段落号 -> 评论数。pidKeys/countKeys 按大小写不敏感匹配 */
+    private fun parseCounts(
+        body: String,
+        listPath: String,
+        pidKeys: List<String>,
+        countKeys: List<String>
+    ): Map<Int, Int> {
         return runCatching {
             val rc = jsonPath.parse(body)
-            val list = SUMMARY_LIST_PATHS.firstNotNullOfOrNull { path ->
-                runCatching { rc.read<List<Any?>>(path) }.getOrNull()
-            } ?: return@runCatching emptyMap()
+            val list = runCatching { rc.read<List<Any?>>(listPath) }.getOrNull()
+                ?: return@runCatching emptyMap()
             val result = HashMap<Int, Int>()
             list.mapNotNull { it as? Map<*, *> }.forEach { map ->
-                val pid = (map["ParagraphId"] ?: map["paragraphId"])
-                    ?.toString()?.toIntOrNull() ?: return@forEach
-                val count = (map["CommentCount"] ?: map["commentCount"])
-                    ?.toString()?.toIntOrNull() ?: 0
+                val pid = firstIntValue(map, pidKeys) ?: return@forEach
+                if (pid <= 0) return@forEach
+                val count = firstIntValue(map, countKeys) ?: 0
                 result[pid] = count
             }
             result
         }.getOrDefault(emptyMap())
+    }
+
+    private fun firstIntValue(map: Map<*, *>, keys: List<String>): Int? {
+        for (key in keys) {
+            for ((k, v) in map) {
+                if (k != null && k.toString().equals(key, ignoreCase = true) && v != null) {
+                    v.toString().toIntOrNull()?.let { return it }
+                    break
+                }
+            }
+        }
+        return null
     }
 
     /**
@@ -223,9 +236,10 @@ object LocalParagraphComment {
      */
     private fun injectBubbles(
         content: String,
+        source: BookSource,
+        adapter: ParagraphAdapter,
         bookId: String,
         chapterId: String,
-        endpoint: String,
         counts: Map<Int, Int>
     ): String {
         val lines = content.replace("\r\n", "\n").split("\n")
@@ -239,9 +253,13 @@ object LocalParagraphComment {
             pid++
             val count = counts[pid] ?: 0
             if (count > 0) {
-                val pclick = buildPclick(bookId, chapterId, endpoint, pid)
-                val option = "{\\\"pclick\\\":\\\"$pclick\\\",\\\"status\\\":\\\"normal\\\"}"
-                out.add("$line<img src=\"dp:$count,$option\">")
+                val pclick = adapter.buildPclick(source, bookId, chapterId, pid)
+                if (pclick.isNotBlank()) {
+                    val option = "{\\\"pclick\\\":\\\"$pclick\\\",\\\"status\\\":\\\"normal\\\"}"
+                    out.add("$line<img src=\"dp:$count,$option\">")
+                } else {
+                    out.add(line)
+                }
             } else {
                 out.add(line)
             }
@@ -249,19 +267,286 @@ object LocalParagraphComment {
         return out.joinToString("\n")
     }
 
-    /** 生成点击气泡时执行的 pclick 脚本：调用 java.showParagraphComments 打开原生段评弹窗 */
-    private fun buildPclick(bookId: String, chapterId: String, endpoint: String, pid: Int): String {
+    /** 生成点击气泡时执行的 pclick 脚本：java.showParagraphComments(JSON.stringify(cfg)) */
+    private fun buildPclickScript(
+        listPath: String,
+        totalPath: String,
+        commentsUrl: String,
+        repliesUrl: String,
+        replyListPath: String,
+        audioUrl: String,
+        pageSize: Int,
+        fields: ParagraphCommentConfig.FieldConfig,
+        replyFields: ParagraphCommentConfig.FieldConfig = fields
+    ): String {
         return buildString {
-            append("var B='").append(bookId).append("';")
-            append("var C='").append(chapterId).append("';")
-            append("var cfg={listPath:'$.Data.DataList',totalPath:'$.Data.TotalCount',")
-            append("commentsUrl:'").append(endpoint)
-            append("?action=paragraph&book_id='+B+'&chapter_id='+C+'&paragraph_id=").append(pid)
-            append("&type=text&page=[page]&page_size=[pageSize]',")
-            append("repliesUrl:'").append(endpoint)
-            append("?action=replies&book_id='+B+'&chapter_id='+C+'&review_id=[reviewId]&root_review_id=[rootId]&page=1&page_size=[pageSize]',")
-            append("pageSize:20};")
+            append("var cfg={")
+            append("listPath:'").append(listPath).append("',")
+            append("totalPath:'").append(totalPath).append("',")
+            append("commentsUrl:'").append(commentsUrl).append("',")
+            append("repliesUrl:'").append(repliesUrl).append("',")
+            append("replyListPath:'").append(replyListPath).append("',")
+            if (audioUrl.isNotBlank()) append("audioUrl:'").append(audioUrl).append("',")
+            append("pageSize:").append(pageSize).append(",")
+            append("fields:").append(fieldsScript(fields)).append(",")
+            append("replyFields:").append(fieldsScript(replyFields))
+            append("};")
             append("java.showParagraphComments(JSON.stringify(cfg));")
+        }
+    }
+
+    private fun fieldsScript(f: ParagraphCommentConfig.FieldConfig): String {
+        fun q(s: String) = if (s.isBlank()) "''" else "'$s'"
+        return buildString {
+            append("{nickname:").append(q(f.nickname)).append(",")
+            append("avatar:").append(q(f.avatar)).append(",")
+            append("level:").append(q(f.level)).append(",")
+            append("ip:").append(q(f.ip)).append(",")
+            append("content:").append(q(f.content)).append(",")
+            append("agree:").append(q(f.agree)).append(",")
+            append("oppose:").append(q(f.oppose)).append(",")
+            append("time:").append(q(f.time)).append(",")
+            append("floor:").append(q(f.floor)).append(",")
+            append("id:").append(q(f.id)).append(",")
+            append("rootId:").append(q(f.rootId)).append(",")
+            append("replyCount:").append(q(f.replyCount)).append(",")
+            append("replyTo:").append(q(f.replyTo)).append("}")
+        }
+    }
+
+    /** 段评书源适配器：负责提取 ID、拉取段评摘要、生成点击配置 */
+    private interface ParagraphAdapter {
+        fun match(source: BookSource): Boolean
+        fun extractBookId(bookUrl: String, chapterUrl: String): String?
+        fun extractChapterId(chapterUrl: String): String?
+        suspend fun fetchSummaryCounts(source: BookSource, bookId: String, chapterId: String): Map<Int, Int>
+        fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int): String
+    }
+
+    // ---------- 通用/默认适配器（起点系镜像站 comments.php） ----------
+
+    private object GenericAdapter : ParagraphAdapter {
+        private val COMMENTS_ENDPOINT_REGEX =
+            Regex("""https?://[^'"\s]*?(?:comments?|reviews?)\.[a-z]+""", RegexOption.IGNORE_CASE)
+        private val SUMMARY_LIST_PATHS = listOf(
+            "$.Data.Getparagraphscommentcounts.DataList",
+            "$.Data.DataList",
+            "$.Data.Paragraphs"
+        )
+
+        override fun match(source: BookSource): Boolean = true
+
+        override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
+            pickId(bookUrl, "book_id") ?: pickId(chapterUrl, "book_id")
+
+        override fun extractChapterId(chapterUrl: String): String? = pickId(chapterUrl, "chapter_id")
+
+        override suspend fun fetchSummaryCounts(
+            source: BookSource,
+            bookId: String,
+            chapterId: String
+        ): Map<Int, Int> {
+            val endpoint = extractCommentsEndpoint(source) ?: return emptyMap()
+            val body = fetchBody(
+                source,
+                "$endpoint?action=summary&book_id=$bookId&chapter_id=$chapterId"
+            ) ?: return emptyMap()
+            val listPath = SUMMARY_LIST_PATHS.firstOrNull {
+                runCatching { jsonPath.parse(body).read<List<Any?>>(it) }.getOrNull() != null
+            } ?: return emptyMap()
+            return parseCounts(
+                body, listPath,
+                pidKeys = listOf("ParagraphId", "paragraphId"),
+                countKeys = listOf("CommentCount", "commentCount")
+            )
+        }
+
+        override fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int): String {
+            val endpoint = extractCommentsEndpoint(source) ?: return ""
+            return buildPclickScript(
+                listPath = "$.Data.DataList",
+                totalPath = "$.Data.TotalCount",
+                commentsUrl = "$endpoint?action=paragraph&book_id='+B+'&chapter_id='+C+'&paragraph_id=$pid" +
+                    "&type=text&page=[page]&page_size=[pageSize]",
+                repliesUrl = "$endpoint?action=replies&book_id='+B+'&chapter_id='+C'" +
+                    "&review_id=[reviewId]&root_review_id=[rootId]&page=1&page_size=[pageSize]",
+                replyListPath = "$.Data.DataList",
+                audioUrl = "",
+                pageSize = 20,
+                fields = ParagraphCommentConfig.FieldConfig()
+            )
+        }
+
+        /** 从书源正文规则（ruleContent.content）中提取段评接口地址 */
+        private fun extractCommentsEndpoint(source: BookSource): String? {
+            val content = source.getContentRule()?.content ?: return null
+            return COMMENTS_ENDPOINT_REGEX.find(content)?.value?.trimEnd('?', '&')
+        }
+    }
+
+    // ---------- 神魔小说（shenmoxs.top） ----------
+
+    private object ShenmoAdapter : ParagraphAdapter {
+        private const val QD_SUMMARY = "https://m.qidian.com/majax/chapterReview/reviewSummary"
+
+        override fun match(source: BookSource): Boolean =
+            source.bookSourceUrl.contains("shenmoxs.top", ignoreCase = true)
+
+        override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
+            pickId(bookUrl, "bookId") ?: pickId(chapterUrl, "bookId")
+
+        override fun extractChapterId(chapterUrl: String): String? =
+            pickId(chapterUrl, "chapterId") ?: pickId(chapterUrl, "chapter_id")
+
+        override suspend fun fetchSummaryCounts(
+            source: BookSource,
+            bookId: String,
+            chapterId: String
+        ): Map<Int, Int> {
+            val token = qidianToken()
+            val url = "$QD_SUMMARY?bookId=$bookId&chapterId=$chapterId&_csrfToken=$token"
+            // headerMapF 会整体替换书源请求头，因此需同时带上 UA
+            val body = fetchBody(
+                source, url,
+                headerMapF = mapOf(
+                    "User-Agent" to "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+                    "Cookie" to "qd_client_id=$token; _csrfToken=$token"
+                )
+            ) ?: return emptyMap()
+            return parseCounts(
+                body, "$.data.list",
+                pidKeys = listOf("paragraphId", "ParagraphId"),
+                countKeys = listOf("textCount", "TextCount", "commentCount", "CommentCount")
+            )
+        }
+
+        override fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int): String {
+            val session = adminSession()
+            return buildPclickScript(
+                listPath = "$.data.comments",
+                totalPath = "$.data.pagination.totalCount",
+                commentsUrl = "https://shenmoxs.top/chapter/comments?bookId='+B+'&chapterId='+C'" +
+                    "&paragraphId=$pid&kind=paragraph&page=[page]&pageSize=[pageSize]$session",
+                repliesUrl = "https://shenmoxs.top/chapter/comment-replies?bookId='+B+'&chapterId='+C'" +
+                    "&paragraphId=$pid&commentId=[reviewId]&kind=paragraph&pageSize=20$session",
+                replyListPath = "$.data.comments",
+                audioUrl = "",
+                pageSize = 20,
+                fields = ParagraphCommentConfig.FieldConfig(
+                    nickname = "$.UserName",
+                    avatar = "$.UserHeadIcon",
+                    level = "$.ShowTag",
+                    ip = "$.IpLocation",
+                    content = "$.Content",
+                    agree = "$.AgreeAmount",
+                    oppose = "$.OpposeAmount",
+                    time = "$.CreateTime",
+                    floor = "$.Floor",
+                    id = "$.Id",
+                    rootId = "$.Id",
+                    replyCount = "$.ReviewCount",
+                    replyTo = "$.RelatedUser"
+                )
+            )
+        }
+
+        /** 取 m.qidian.com 的 csrf 令牌；缺省生成一个随机令牌（与书源内 qdEnsureToken 一致） */
+        private fun qidianToken(): String {
+            val existing = runCatching {
+                CookieStore.getKey("https://m.qidian.com", "_csrfToken")
+            }.getOrDefault("")
+            if (existing.isNotBlank()) return existing
+            val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            val random = Random()
+            return (1..40).map { chars[random.nextInt(chars.length)] }.joinToString("")
+        }
+
+        /** 取源站登录会话（admin_session），拼成 `&_s=` 参数（与书源内 appSession 一致） */
+        private fun adminSession(): String {
+            val ck = runCatching { CookieStore.getCookie("https://shenmoxs.top") }.getOrDefault("")
+            val m = Regex("admin_session=([^;]*)").find(ck)
+            val v = m?.groupValues?.get(1) ?: return ""
+            if (v.isBlank()) return ""
+            return "&_s=" + runCatching { URLEncoder.encode(v, "UTF-8") }.getOrDefault(v)
+        }
+    }
+
+    // ---------- 起点限免（同人小说网，pl.aadcn.cn） ----------
+
+    private object QidianFullAdapter : ParagraphAdapter {
+        private const val API = "https://pl.aadcn.cn/api/qidian_full_api.php"
+
+        override fun match(source: BookSource): Boolean =
+            source.bookSourceUrl.contains("m.qidian.com", ignoreCase = true) ||
+                source.bookSourceUrl.contains("pl.aadcn.cn", ignoreCase = true) ||
+                source.bookSourceUrl.contains("qd.aadcn.cn", ignoreCase = true)
+
+        override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
+            pickId(bookUrl, "novelId")
+                ?: pickId(bookUrl, "bookId")
+                ?: pickId(bookUrl, "book_id")
+
+        override fun extractChapterId(chapterUrl: String): String? {
+            if (chapterUrl.startsWith("data:;base64,")) {
+                val b64 = chapterUrl.substringAfter(";base64,").substringBefore(",")
+                val decoded = runCatching {
+                    String(Base64.decode(b64, Base64.DEFAULT), Charsets.UTF_8)
+                }.getOrNull()
+                // 只接受纯数字章节 ID（跳过彩蛋/分卷等 data URL）
+                if (decoded != null && decoded.isNotEmpty() && decoded.all { it.isDigit() }) {
+                    return decoded
+                }
+                return null
+            }
+            return pickId(chapterUrl, "chapterId")
+                ?: pickId(chapterUrl, "chapter_id")
+                ?: Regex("\"chapterId\"\\s*:\\s*\"(\\d+)\"").find(chapterUrl)?.groupValues?.get(1)
+        }
+
+        override suspend fun fetchSummaryCounts(
+            source: BookSource,
+            bookId: String,
+            chapterId: String
+        ): Map<Int, Int> {
+            val body = fetchBody(
+                source,
+                "$API?action=paragraph_summary&book_id=$bookId&chapter_id=$chapterId"
+            ) ?: return emptyMap()
+            return parseCounts(
+                body, "$.data.summary",
+                pidKeys = listOf("ParagraphId", "paragraphId"),
+                countKeys = listOf("CommentCount", "commentCount", "TextCount", "textCount")
+            )
+        }
+
+        override fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int): String {
+            return buildPclickScript(
+                listPath = "$.data.comments",
+                totalPath = "$.data.total",
+                commentsUrl = "$API?action=paragraph_comments&book_id='+B+'&chapter_id='+C'" +
+                    "&paragraph_id=$pid&page=[page]&page_size=[pageSize]",
+                repliesUrl = "$API?action=comment_replies&book_id='+B+'&chapter_id='+C'" +
+                    "&paragraph_id=$pid&root_review_id=[rootId]&page=1&page_size=[pageSize]",
+                replyListPath = "$.data.comments",
+                audioUrl = "$API?action=paragraph_audio_comments&book_id='+B+'&chapter_id='+C'" +
+                    "&paragraph_id=$pid&page=[page]&page_size=[pageSize]",
+                pageSize = 20,
+                fields = ParagraphCommentConfig.FieldConfig(
+                    nickname = "$.user_info.user_name",
+                    avatar = "$.user_info.user_avatar",
+                    level = "$.raw.ShowTag",
+                    ip = "$.raw.IpLocation",
+                    content = "$.text",
+                    agree = "$.digg_count",
+                    oppose = "$.raw.OpposeAmount",
+                    time = "$.create_timestamp",
+                    floor = "$.floor",
+                    id = "$.comment_id",
+                    rootId = "$.raw.RootReviewId",
+                    replyCount = "$.reply_count",
+                    replyTo = "$.raw.RelatedUser"
+                )
+            )
         }
     }
 }

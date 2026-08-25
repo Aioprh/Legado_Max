@@ -22,6 +22,8 @@ data class ParagraphCommentConfig(
     var pageSize: Int = 20,
     // 回复列表（可选，无回复接口则只展示条数不展开）
     var repliesUrl: String = "",
+    // 回复列表的列表路径（可选；缺省沿用 listPath，兼容回复接口与主列表结构不同的站点）
+    var replyListPath: String = "",
     // 语音列表（可选，起点系需 type=audio 接口获取音频地址；缺省从 commentsUrl 推导 type=text -> type=audio）
     var audioUrl: String = "",
     // 评论字段路径
