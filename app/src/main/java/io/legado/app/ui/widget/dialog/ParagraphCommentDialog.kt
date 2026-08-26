@@ -159,6 +159,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             val body = fetchBody(url)
             val items = body?.let { parseComments(it) }.orEmpty()
             val newTotal = body?.let { parseTotal(it) } ?: -1L
+            AppLog.putReaderDebug("段评弹窗: page=$nextPage 本页${items.size}条，total=$newTotal")
             withContext(Dispatchers.Main) {
                 loading = false
                 binding.rotateLoading.gone()
@@ -236,10 +237,22 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     ?.joinToString(",") { "${it.key}=${it.value}" }
                 AppLog.put("段评解析: 本页${items.size}条评论未解析到时间字段，首条keys=[$firstKeys] time字段值=[$timeVals]")
             }
-            items.filter { item ->
+            val shown = items.filter { item ->
                 // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”
                 item.content.isNotBlank() || item.images.isNotEmpty() || item.audio.isNotBlank()
-            }.sortedByDescending { it.time } // 按时间由新到旧排序（time=0 的未知时间排在最后，不影响排序稳定性）
+            }
+            if (shown.size < items.size) {
+                // 诊断：有评论被“无内容”过滤掉，打印被过滤评论的原始字段，判断是真正空评论还是字段没解析到
+                val detail = maps.withIndex()
+                    .filter { (i, _) -> i < items.size && items[i] !in shown }
+                    .take(3)
+                    .joinToString(";") { (i, m) ->
+                        val it = items[i]
+                        "第${i}条 content=[${it.content.take(20)}] img=${it.images.size} audio=[${it.audio}] keys=[${m.keys.joinToString(",")}]"
+                    }
+                AppLog.put("段评解析: 本页${items.size}条中被无内容过滤掉${items.size - shown.size}条 [$detail]")
+            }
+            shown.sortedByDescending { it.time } // 按时间由新到旧排序（time=0 的未知时间排在最后，不影响排序稳定性）
         }.getOrElse {
             AppLog.put("段评解析失败", it)
             emptyList()
@@ -659,35 +672,35 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     }
 
     companion object {
-        private val DEFAULT_IDS = listOf("$.Id", "$.CommentId", "$.ReviewId", "$.Cid", "$.comment_id", "$.id")
-        private val DEFAULT_ROOT_IDS = listOf("$.RootReviewId", "$.RootId", "$.CommentId", "$.Id", "$.root_review_id", "$.rootReviewId")
-        private val DEFAULT_NICKNAMES = listOf("$.NickName", "$.UserName", "$.Name", "$.Uname", "$.user_name", "$.nickname", "$.user_info.user_name")
-        private val DEFAULT_AVATARS = listOf("$.UserHeadIcon", "$.UserPhoto", "$.Avatar", "$.HeadIcon", "$.Photo", "$.user_avatar", "$.avatar", "$.user_info.user_avatar")
+        private val DEFAULT_IDS = listOf("$.Id", "$.CommentId", "$.ReviewId", "$.Cid", "$.comment_id", "$.review_id", "$.cid", "$.id")
+        private val DEFAULT_ROOT_IDS = listOf("$.RootReviewId", "$.RootId", "$.CommentId", "$.Id", "$.root_review_id", "$.root_comment_id", "$.rootCommentId", "$.parent_comment_id")
+        private val DEFAULT_NICKNAMES = listOf("$.NickName", "$.UserName", "$.Name", "$.Uname", "$.user_name", "$.nickname", "$.comment_user.user_name", "$.comment_user.nickname", "$.user.nickname", "$.user.name", "$.user_info.user_name")
+        private val DEFAULT_AVATARS = listOf("$.UserHeadIcon", "$.UserPhoto", "$.Avatar", "$.HeadIcon", "$.Photo", "$.user_avatar", "$.avatar", "$.comment_user.user_avatar", "$.comment_user.avatar", "$.user.avatar", "$.user.avatar_url", "$.user_info.user_avatar")
         private val DEFAULT_LEVELS = listOf("$.ShowTag", "$.Level", "$.UserLevel", "$.Grade")
-        private val DEFAULT_IPS = listOf("$.IpLocation", "$.Ip", "$.Location", "$.Region", "$.ip_location")
+        private val DEFAULT_IPS = listOf("$.IpLocation", "$.Ip", "$.Location", "$.Region", "$.ip_location", "$.ip_address")
         // 内容兜底必须含小写 text/content：同人小说网（pl.aadcn.cn）评论正文是 text，若 fields 未携带路径也能读到
-        private val DEFAULT_CONTENTS = listOf("$.Content", "$.Text", "$.Msg", "$.ImageMeaning", "$.text", "$.content", "$.body")
-        private val DEFAULT_AGREES = listOf("$.AgreeAmount", "$.AgreeCount", "$.LikeCount", "$.LikeAmount", "$.Up", "$.digg_count", "$.like_count", "$.agree_count")
+        private val DEFAULT_CONTENTS = listOf("$.Content", "$.Text", "$.Msg", "$.ImageMeaning", "$.text", "$.content", "$.body", "$.comment_content", "$.comment_text", "$.review_content")
+        private val DEFAULT_AGREES = listOf("$.AgreeAmount", "$.AgreeCount", "$.LikeCount", "$.LikeAmount", "$.Up", "$.digg_count", "$.like_count", "$.comment_like_count", "$.agree_count")
         private val DEFAULT_OPPOSES = listOf("$.OpposeAmount", "$.OpposeCount", "$.Down", "$.oppose_count", "$.oppose_amount")
-        private val DEFAULT_TIMES = listOf("$.CreateTime", "$.Time", "$.CreatedAt", "$.CreateDate", "$.create_timestamp", "$.timestamp", "$.created_at", "$.create_time", "$.createTime", "$.createTimestamp", "$.pub_time", "$.publish_time", "$.comment_time", "$.update_time")
+        private val DEFAULT_TIMES = listOf("$.CreateTime", "$.Time", "$.CreatedAt", "$.CreateDate", "$.create_timestamp", "$.timestamp", "$.created_at", "$.create_time", "$.comment_create_time", "$.review_create_time", "$.post_time", "$.createTime", "$.createTimestamp", "$.pub_time", "$.publish_time", "$.comment_time", "$.update_time")
         private val DATE_STR_REGEX = Regex(
             """(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?(?:\.\d+)?(?:\s*(?:Z|[+-]\d{1,2}:?\d{0,2}))?)?"""
         )
         private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber", "$.floor")
-        private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount", "$.reply_count", "$.replyCount")
-        private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName", "$.related_user", "$.reply_to")
+        private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount", "$.reply_count", "$.comment_count", "$.replyCount", "$.child_count")
+        private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName", "$.related_user", "$.reply_to", "$.to_user_name", "$.reply_user_name")
 
         /** 评论图片字段候选（大小写不敏感匹配，ImgInfo 为起点系真实字段；不含 FrameUrl——那是用户头像框，不是配图） */
         private val IMAGE_FIELD_CANDIDATES = listOf(
             "ImgInfo", "ImageDetail", "PreImage", "ImageUrl", "Images", "ImageList",
             "ImgUrl", "Imgs", "Image", "CommentImg", "CommentImage", "Photo",
-            "image_url", "img_url"
+            "image_url", "img_url", "image_list", "comment_images", "comment_imgs", "pic_list"
         )
         /** 评论语音字段候选（大小写不敏感匹配；起点系无 AudioUrl，用 AudioRoleId/AudioTime 标记语音评论） */
         private val AUDIO_FIELD_CANDIDATES = listOf(
             "AudioUrl", "VoiceUrl", "Audio", "Voice", "SoundUrl",
             "AudioRoleId", "AudioTime", "HotAudioStatus",
-            "audio_url", "voice_url"
+            "audio_url", "voice_url", "comment_audio", "audio_urls"
         )
 
         /** 旧版段评 pclick（java.showBrowser('',d)）里的段号 */
