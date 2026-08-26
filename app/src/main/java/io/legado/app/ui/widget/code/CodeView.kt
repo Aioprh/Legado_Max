@@ -224,9 +224,8 @@ class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     }
 
     private fun highlight(editable: Editable): Editable {
-        // if (editable.isEmpty() || editable.length > 1024) return editable
         if (editable.isBlank()) return editable
-        if (editable.length !in 1..4096) {
+        if (editable.length !in 1..2000) {
             return editable
         }
         try {
