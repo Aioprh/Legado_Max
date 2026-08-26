@@ -1,6 +1,5 @@
 package io.legado.app.ui.rss.source.edit
 
-import android.annotation.SuppressLint
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
@@ -19,13 +18,14 @@ import io.legado.app.utils.isTrue
 
 class RssSourceEditAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    val editEntityMaxLine = AppConfig.sourceEditMaxLine
+    // P2: 当用户设置 maxLine >= 999（即不限行数）时，在列表中 clamp 为 30 行，
+    // 避免 TextView 对全文做 StaticLayout 排版导致 measure 极重。
+    // 用户需要查看/编辑完整内容时通过已有的"全屏编辑"入口。
+    val editEntityMaxLine = if (AppConfig.sourceEditMaxLine >= 999) 30 else AppConfig.sourceEditMaxLine
 
     var editEntities: ArrayList<EditEntity> = ArrayList()
-        @SuppressLint("NotifyDataSetChanged")
         set(value) {
             field = value
-            notifyDataSetChanged()
         }
 
     override fun getItemViewType(position: Int): Int {
@@ -66,6 +66,9 @@ class RssSourceEditAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     inner class EditTextViewHolder(val binding: ItemSourceEditBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
+        // P1: 记录上次绑定的 key，用于判断是否需要跳过 setText
+        private var lastBoundKey: String? = null
+
         fun bind(editEntity: EditEntity) = binding.run {
             editText.setTag(R.id.tag, editEntity.key)
             editText.maxLines = editEntityMaxLine
@@ -90,6 +93,34 @@ class RssSourceEditAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     editText.removeTextChangedListener(it)
                 }
             }
+            // P1: 如果 key 相同且文本内容一致，跳过 setText 及相关高亮操作
+            val currentText = editText.text?.toString()
+            if (editEntity.key == lastBoundKey && currentText == editEntity.value) {
+                // 内容未变，只更新 TextWatcher 指向的 entity
+                textInputLayout.hint = editEntity.hint
+                val textWatcher = object : TextWatcher {
+                    override fun beforeTextChanged(
+                        s: CharSequence,
+                        start: Int,
+                        count: Int,
+                        after: Int
+                    ) {
+
+                    }
+
+                    override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
+
+                    }
+
+                    override fun afterTextChanged(s: Editable?) {
+                        editEntity.value = (s?.toString())
+                    }
+                }
+                editText.addTextChangedListener(textWatcher)
+                editText.setTag(R.id.tag2, textWatcher)
+                return
+            }
+            lastBoundKey = editEntity.key
             // P0: setText 前关闭 CodeView 内部高亮级联，避免 bind 时触发全文正则匹配 + span 操作
             editText.skipNextHighlight = true
             editText.cancelHighlighterRender()

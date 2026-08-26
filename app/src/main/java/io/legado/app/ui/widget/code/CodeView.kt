@@ -225,6 +225,7 @@ class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
 
     private fun highlight(editable: Editable): Editable {
         // if (editable.isEmpty() || editable.length > 1024) return editable
+        if (editable.isBlank()) return editable
         if (editable.length !in 1..4096) {
             return editable
         }
@@ -287,10 +288,14 @@ class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
      * 请求一次高亮渲染（延迟 mUpdateDelayTime 执行）。
      * 供 Adapter 在 bind 后调用，恢复初始语法着色，
      * 同时避免在 bind 同步流程中触发 13 次高亮 + requestLayout 堆叠。
+     * 
+     * @param position RecyclerView adapter position，用于错峰调度
      */
-    fun requestHighlight() {
+    fun requestHighlight(position: Int = -1) {
         cancelHighlighterRender()
-        mUpdateHandler.postDelayed(mUpdateRunnable, mUpdateDelayTime.toLong())
+        val baseDelay = mUpdateDelayTime.toLong()
+        val staggerDelay = if (position >= 0) position * 80L else 0L
+        mUpdateHandler.postDelayed(mUpdateRunnable, baseDelay + staggerDelay)
     }
 
     private fun convertTabs(editable: Editable, start: Int, count: Int) {

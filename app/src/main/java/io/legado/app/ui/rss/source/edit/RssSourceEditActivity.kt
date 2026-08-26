@@ -22,6 +22,7 @@ import io.legado.app.base.VMBaseActivity
 import io.legado.app.data.entities.RssSource
 import io.legado.app.databinding.ActivityRssSourceEditBinding
 import io.legado.app.help.config.LocalConfig
+import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.accentColor
@@ -218,7 +219,8 @@ class RssSourceEditActivity :
                     adapter.editEntities = entities
                 }
                 binding.recyclerView.post {
-                    adapter.notifyDataSetChanged()
+                    // P4: 用增量更新替代 notifyDataSetChanged
+                    adapter.notifyItemRangeChanged(0, adapter.editEntities.size)
                     scrollToFieldAndUpdate(entity, value, cursorPosition)
                 }
                 return
@@ -283,7 +285,8 @@ class RssSourceEditActivity :
             adapter.editEntities = entities
         }
         binding.recyclerView.post {
-            adapter.notifyDataSetChanged()
+            // P4: 用增量更新替代 notifyDataSetChanged
+            adapter.notifyItemRangeChanged(0, adapter.editEntities.size)
             scrollToFieldAndUpdate(entity, entity.value ?: "", -1)
         }
     }
@@ -357,7 +360,7 @@ class RssSourceEditActivity :
                 else -> 2 //占2个span（整行）
             }
         }
-        val gridLayoutManager = if (adapter.editEntityMaxLine < 999) {
+        val gridLayoutManager = if (AppConfig.sourceEditMaxLine < 999) {
             object : GridLayoutManager(this, 2) {
                 init {
                     spanSizeLookup = createSpanSizeLookup
@@ -402,11 +405,23 @@ class RssSourceEditActivity :
     }
 
     private fun setEditEntities(tabPosition: Int?) {
+        // P4: 用增量更新替代 notifyDataSetChanged
+        val oldSize = adapter.editEntities.size
         when (tabPosition) {
             1 -> adapter.editEntities = startEntities
             2 -> adapter.editEntities = listEntities
             3 -> adapter.editEntities = webViewEntities
             else -> adapter.editEntities = sourceEntities
+        }
+        val newSize = adapter.editEntities.size
+        if (newSize > oldSize) {
+            adapter.notifyItemRangeChanged(0, oldSize)
+            adapter.notifyItemRangeInserted(oldSize, newSize - oldSize)
+        } else if (newSize < oldSize) {
+            adapter.notifyItemRangeChanged(0, newSize)
+            adapter.notifyItemRangeRemoved(newSize, oldSize - newSize)
+        } else {
+            adapter.notifyItemRangeChanged(0, newSize)
         }
         binding.recyclerView.scrollToPosition(0)
         window.decorView.rootView.clearFocus()
@@ -659,7 +674,7 @@ class RssSourceEditActivity :
                     edit.replace(start, end, text)//光标所在位置插入文字
                 }
             }
-            if (adapter.editEntityMaxLine >= 999) {
+            if (AppConfig.sourceEditMaxLine >= 999) {
                 view.post {
                     val editTextLocation = IntArray(2)
                     view.getLocationOnScreen(editTextLocation)

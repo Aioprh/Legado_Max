@@ -26,6 +26,7 @@ import io.legado.app.data.entities.rule.SearchRule
 import io.legado.app.data.entities.rule.TocRule
 import io.legado.app.databinding.ActivityBookSourceEditBinding
 import io.legado.app.help.config.LocalConfig
+import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
@@ -262,7 +263,8 @@ class BookSourceEditActivity :
             adapter.editEntities = entities
         }
         binding.recyclerView.post {
-            adapter.notifyDataSetChanged()
+            // P4: 用增量更新替代 notifyDataSetChanged
+            adapter.notifyItemRangeChanged(0, adapter.editEntities.size)
             scrollToEntity(entity, cursorPosition, value)
         }
     }
@@ -433,7 +435,7 @@ class BookSourceEditActivity :
         binding.recyclerView.setHasFixedSize(true)
         binding.recyclerView.setItemViewCacheSize(15)
         binding.recyclerView.recycledViewPool.setMaxRecycledViews(0, 15)
-        if (adapter.editEntityMaxLine < 999) {
+        if (AppConfig.sourceEditMaxLine < 999) {
             binding.recyclerView.layoutManager = NoChildScrollLinearLayoutManager(this)
         }
         binding.recyclerView.adapter = adapter
@@ -531,6 +533,15 @@ class BookSourceEditActivity :
      * @param tabPosition Tab索引：0=基本信息, 1=搜索, 2=发现, 3=详情, 4=目录, 5=正文
      */
     private fun setEditEntities(tabPosition: Int?) {
+        // P1: 取消当前可见 CodeView 的待执行高亮任务，避免与新 Tab 的高亮叠加
+        for (i in 0 until binding.recyclerView.childCount) {
+            val holder = binding.recyclerView.getChildViewHolder(binding.recyclerView.getChildAt(i))
+            if (holder is BookSourceEditAdapter.MyViewHolder) {
+                holder.binding.editText.cancelHighlighterRender()
+            }
+        }
+        // P4: 用增量更新替代 notifyDataSetChanged
+        val oldSize = adapter.editEntities.size
         adapter.editEntities = when (tabPosition) {
             1 -> searchEntities
             2 -> exploreEntities
@@ -539,6 +550,16 @@ class BookSourceEditActivity :
             5 -> contentEntities
 //            6 -> reviewEntities
             else -> sourceEntities
+        }
+        val newSize = adapter.editEntities.size
+        if (newSize > oldSize) {
+            adapter.notifyItemRangeChanged(0, oldSize)
+            adapter.notifyItemRangeInserted(oldSize, newSize - oldSize)
+        } else if (newSize < oldSize) {
+            adapter.notifyItemRangeChanged(0, newSize)
+            adapter.notifyItemRangeRemoved(newSize, oldSize - newSize)
+        } else {
+            adapter.notifyItemRangeChanged(0, newSize)
         }
         binding.recyclerView.scrollToPosition(0)
         window.decorView.rootView.clearFocus()
@@ -1008,7 +1029,7 @@ class BookSourceEditActivity :
                     edit.replace(start, end, text)//光标所在位置插入文字
                 }
             }
-            if (adapter.editEntityMaxLine >= 999) {
+            if (AppConfig.sourceEditMaxLine >= 999) {
                 view.post {
                     val editTextLocation = IntArray(2)
                     view.getLocationOnScreen(editTextLocation)
