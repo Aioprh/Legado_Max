@@ -17,16 +17,17 @@ import java.net.URLEncoder
 import java.util.Random
 
 /**
- * 本地书段评：为本地书籍接入其他书源的段评。
+ * 段评注入：为本地书或联网书接入其他书源的段评。
  *
- * 当“本地书段评”开关开启且已选择“段评书源”时，读取本地书正文后：
+ * 当“本地书段评”开关开启且已选择“段评书源”（本地书），或某本书单独配置了“本书段评书源”时，
+ * 读取正文后：
  * 1. 用书名/作者在段评书源中精确搜索远程书，得到远程 bookUrl（含书籍 ID）；
- * 2. 拉取远程书详情与目录，按章节标题把本地章节映射到远程章节 URL（含章节 ID）；
+ * 2. 拉取远程书详情与目录，按章节标题把本书章节映射到远程章节 URL（含章节 ID）；
  * 3. 按书源类型选择适配器，请求该章的段评摘要，得到各段评论数；
  * 4. 对有评论的段落后方注入 dp: 气泡，点击后经 pclick 打开原生段评弹窗。
  *
- * 本地段落号按“非空行序号”近似远程段落号（与书源内 ruleContent 的取段逻辑一致），
- * 因此要求本地书与远程书的换行/分段落基本一致，才能准确定位。
+ * 段落号按“非空行序号”近似远程段落号（与书源内 ruleContent 的取段逻辑一致），
+ * 因此要求本书与远程书的换行/分段落基本一致，才能准确定位。
  *
  * 不同站点的段评接口差异很大，这里用 [ParagraphAdapter] 按书源 URL 分发：
  * - 起点系镜像站（comments.php）   —— 通用/默认适配器
@@ -49,24 +50,24 @@ object LocalParagraphComment {
 
     /**
      * 获取某本书的段评书源 URL。
-     * 每本书单独配置（book.config.paragraphComment）优先；未单独开启或未选书源时回退全局配置。
+     * 每本书单独配置（book.config.paragraphComment）优先；未单独开启或未选书源时，
+     * 仅本地书回退全局配置。联网书必须每本书单独配置，避免与书源自身的段评冲突。
      */
     fun sourceUrlFor(book: Book): String? {
         val config = book.readConfig
         return when {
             config?.paragraphComment == true ->
                 config.paragraphCommentSource?.takeIf { it.isNotBlank() } ?: AppConfig.localParagraphSource
-            AppConfig.localParagraphComment -> AppConfig.localParagraphSource
+            book.isLocal && AppConfig.localParagraphComment -> AppConfig.localParagraphSource
             else -> null
         }
     }
 
     /**
-     * 若需要为本地书注入段评气泡，返回注入后的正文；否则原样返回。
+     * 若需要为本书（本地书或联网书）注入段评气泡，返回注入后的正文；否则原样返回。
      * 任何一步失败（未开启、无书源、搜索不到、无目录、无段评等）都安全回退原正文。
      */
     suspend fun injectIfNeeded(book: Book, chapter: BookChapter, content: String): String {
-        if (!book.isLocal) return content
         val sourceUrl = sourceUrlFor(book) ?: return content
         val source = appDb.bookSourceDao.getBookSource(sourceUrl)?.takeIf { it.enabled }
             ?: return content

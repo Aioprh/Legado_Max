@@ -1712,12 +1712,14 @@ class ReadBookActivity : BaseReadBookActivity(),
             val book = ReadBook.book ?: return@async
             val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex) ?: throw Exception("no find chapter")
             var source = ReadBook.bookSource
-            // 本地书段评：本地书无书源，用“本书单独配置优先、其次全局”的段评书源执行段评气泡 pclick
-            if (source == null && ParagraphBubbleRenderer.isBubbleSrc(src)) {
+            // 段评气泡：本地书无书源，或本书（含联网书）单独配置了段评书源时，
+            // 用“本书单独配置优先、其次全局（仅本地书）”的段评书源执行气泡 pclick
+            if (ParagraphBubbleRenderer.isBubbleSrc(src)) {
                 val curBook = ReadBook.book
-                if (curBook != null) {
-                    source = LocalParagraphComment.sourceUrlFor(curBook)
-                        ?.let { appDb.bookSourceDao.getBookSource(it) }
+                val paraSource = curBook?.let { LocalParagraphComment.sourceUrlFor(it) }
+                    ?.let { appDb.bookSourceDao.getBookSource(it) }
+                if (paraSource != null) {
+                    source = paraSource
                 }
             }
             if (source == null) return@async

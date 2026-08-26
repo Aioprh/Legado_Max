@@ -805,7 +805,8 @@ object ReadBook : CoroutineScope by MainScope() {
                     contentLoadFinishLazy(book, chapter, content, lazyContent, upContent, resetPageOffset)
                 } else {
                     val content = downloadAwait(chapter)
-                    contentLoadFinishAwait(book, chapter, content, upContent, resetPageOffset)
+                    val injected = LocalParagraphComment.injectIfNeeded(book, chapter, content)
+                    contentLoadFinishAwait(book, chapter, injected, upContent, resetPageOffset)
                 }
                 success?.invoke()
             } catch (e: Exception) {

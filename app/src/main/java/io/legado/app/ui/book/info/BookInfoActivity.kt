@@ -335,7 +335,7 @@ class BookInfoActivity :
         menu.findItem(R.id.menu_split_long_chapter)?.isVisible =
             viewModel.bookData.value?.isLocalTxt ?: false
         menu.findItem(R.id.menu_set_book_paragraph_comment)?.isVisible =
-            viewModel.bookData.value?.isLocal ?: false
+            viewModel.bookData.value != null
         menu.findItem(R.id.menu_upload)?.isVisible =
             viewModel.bookData.value?.isLocal ?: false
         menu.findItem(R.id.menu_delete_alert)?.isChecked =
