@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
+import io.legado.app.R
 import io.legado.app.base.BaseViewModel
 import io.legado.app.help.storage.CacheDetail
 import io.legado.app.help.storage.StorageCalculator
@@ -126,20 +127,20 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
                 val webViewCount = webViewCacheCountDeferred.await()
                 
                 val items = mutableListOf<CacheItem>()
-                items.add(createCacheItem(CacheType.BOOK_CACHE, bookSize, true, "${bookCount}本"))
+                items.add(createCacheItem(CacheType.BOOK_CACHE, bookSize, true, context.getString(R.string.storage_cache_count_books, bookCount)))
                 items.add(createCacheItem(CacheType.EPUB_CACHE, epubSize, false, null))
                 items.add(createCacheItem(CacheType.TEMP_CACHE, tempSize, false, null))
-                items.add(createCacheItem(CacheType.TTS_CACHE, ttsSize, true, "${ttsCount}个引擎"))
-                items.add(createCacheItem(CacheType.ACACHE_DISK, aCacheSize, true, "${aCacheCount}项"))
-                items.add(createCacheItem(CacheType.DB_CACHE, dbSize, true, "${dbCacheCount}项"))
-                items.add(createCacheItem(CacheType.WEBVIEW_CACHE, webViewSize, true, "${webViewCount}项"))
+                items.add(createCacheItem(CacheType.TTS_CACHE, ttsSize, true, context.getString(R.string.storage_cache_count_engines, ttsCount)))
+                items.add(createCacheItem(CacheType.ACACHE_DISK, aCacheSize, true, context.getString(R.string.storage_cache_count_items, aCacheCount)))
+                items.add(createCacheItem(CacheType.DB_CACHE, dbSize, true, context.getString(R.string.storage_cache_count_items, dbCacheCount)))
+                items.add(createCacheItem(CacheType.WEBVIEW_CACHE, webViewSize, true, context.getString(R.string.storage_cache_count_items, webViewCount)))
                 items.add(createCacheItem(CacheType.LOG_CACHE, logSize, false, null))
                 
                 _cacheItems.value = items
                 _totalSize.value = items.sumOf { it.size }
                 _uiState.value = StorageUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = StorageUiState.Error(e.message ?: "加载失败")
+                _uiState.value = StorageUiState.Error(e.message ?: context.getString(R.string.storage_load_failed))
             }
         }
     }
@@ -181,14 +182,14 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
                 }
                 loadCacheInfo()
             } catch (e: Exception) {
-                _uiState.value = StorageUiState.Error(e.message ?: "清理失败")
+                _uiState.value = StorageUiState.Error(e.message ?: context.getString(R.string.storage_clear_failed))
             }
         }
     }
 
     fun clearAllCache() {
         execute {
-            _uiState.value = StorageUiState.Clearing("所有缓存")
+            _uiState.value = StorageUiState.Clearing(context.getString(R.string.storage_cache_all))
             try {
                 StorageCalculator.clearBookCache()
                 StorageCalculator.clearEpubCache()
@@ -200,7 +201,7 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
                 StorageCalculator.clearWebViewCache()
                 loadCacheInfo()
             } catch (e: Exception) {
-                _uiState.value = StorageUiState.Error(e.message ?: "清理失败")
+                _uiState.value = StorageUiState.Error(e.message ?: context.getString(R.string.storage_clear_failed))
             }
         }
     }
@@ -256,27 +257,27 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
 
     fun getCacheName(type: CacheType): String {
         return when (type) {
-            CacheType.BOOK_CACHE -> "书籍内容缓存"
-            CacheType.EPUB_CACHE -> "Epub 解压缓存"
-            CacheType.TEMP_CACHE -> "临时文件缓存"
-            CacheType.TTS_CACHE -> "TTS 语音缓存"
-            CacheType.ACACHE_DISK -> "ACache 磁盘缓存"
-            CacheType.DB_CACHE -> "数据库缓存"
-            CacheType.LOG_CACHE -> "日志文件"
-            CacheType.WEBVIEW_CACHE -> "WebView 缓存"
+            CacheType.BOOK_CACHE -> context.getString(R.string.storage_cache_book_name)
+            CacheType.EPUB_CACHE -> context.getString(R.string.storage_cache_epub_name)
+            CacheType.TEMP_CACHE -> context.getString(R.string.storage_cache_temp_name)
+            CacheType.TTS_CACHE -> context.getString(R.string.storage_cache_tts_name)
+            CacheType.ACACHE_DISK -> context.getString(R.string.storage_cache_acache_name)
+            CacheType.DB_CACHE -> context.getString(R.string.storage_cache_db_name)
+            CacheType.LOG_CACHE -> context.getString(R.string.storage_cache_log_name)
+            CacheType.WEBVIEW_CACHE -> context.getString(R.string.storage_cache_webview_name)
         }
     }
 
     private fun getCacheDescription(type: CacheType): String {
         return when (type) {
-            CacheType.BOOK_CACHE -> "章节文本、漫画图片等阅读内容"
-            CacheType.EPUB_CACHE -> "Epub 格式书籍的解压临时文件"
-            CacheType.TEMP_CACHE -> "下载临时文件、解压临时目录等"
-            CacheType.TTS_CACHE -> "在线朗读引擎下载的语音文件"
-            CacheType.ACACHE_DISK -> "书源变量、用户信息等运行时缓存"
-            CacheType.DB_CACHE -> "CacheDao 存储的临时数据记录"
-            CacheType.LOG_CACHE -> "应用运行日志、错误日志等"
-            CacheType.WEBVIEW_CACHE -> "WebView 页面数据、本地缓存、Cookie 等持久化内容"
+            CacheType.BOOK_CACHE -> context.getString(R.string.storage_cache_book_desc)
+            CacheType.EPUB_CACHE -> context.getString(R.string.storage_cache_epub_desc)
+            CacheType.TEMP_CACHE -> context.getString(R.string.storage_cache_temp_desc)
+            CacheType.TTS_CACHE -> context.getString(R.string.storage_cache_tts_desc)
+            CacheType.ACACHE_DISK -> context.getString(R.string.storage_cache_acache_desc)
+            CacheType.DB_CACHE -> context.getString(R.string.storage_cache_db_desc)
+            CacheType.LOG_CACHE -> context.getString(R.string.storage_cache_log_desc)
+            CacheType.WEBVIEW_CACHE -> context.getString(R.string.storage_cache_webview_desc)
         }
     }
 

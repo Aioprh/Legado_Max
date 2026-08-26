@@ -11,11 +11,12 @@ import io.legado.app.help.source.SourceRecycleBinHelp
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -27,13 +28,13 @@ class SourceRecycleBinViewModel(application: Application) : BaseViewModel(applic
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val items: Flow<List<SourceRecycleBin>> = _filter.flatMapLatest { filter ->
+    val items: StateFlow<List<SourceRecycleBin>> = _filter.flatMapLatest { filter ->
         if (filter.type == null) {
             appDb.sourceRecycleBinDao.flowAll()
         } else {
             appDb.sourceRecycleBinDao.flowByType(filter.type)
         }
-    }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         viewModelScope.launch(Dispatchers.IO) {

@@ -26,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,19 +33,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.platform.LocalContext
+import io.legado.app.R
 import io.legado.app.ui.book.storage.components.CacheItemCard
 import io.legado.app.ui.book.storage.components.CacheSummaryCard
 import io.legado.app.ui.book.storage.components.ClearAllConfirmDialog
 import io.legado.app.ui.book.storage.components.ClearConfirmDialog
-import io.legado.app.ui.file.FileManageActivity
+import io.legado.app.ui.theme.PageDimens
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
-import io.legado.app.utils.startActivity
 
 // UI层
 // 4. StorageManageScreen.kt
@@ -67,12 +66,12 @@ data class ClearTarget(
 @Composable
 fun StorageManageScreen(
     viewModel: StorageManageViewModel = viewModel(),
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onOpenPath: (String) -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val cacheItems by viewModel.cacheItems.collectAsState()
-    val totalSize by viewModel.totalSize.collectAsState()
-    val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val cacheItems by viewModel.cacheItems.collectAsStateWithLifecycle()
+    val totalSize by viewModel.totalSize.collectAsStateWithLifecycle()
     
     var showClearDialog by remember { mutableStateOf<ClearTarget?>(null) }
     var showClearAllDialog by remember { mutableStateOf(false) }
@@ -116,25 +115,23 @@ fun StorageManageScreen(
                 title = {
                     Column {
                         Text(
-                            text = "存储管理",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontSize = 20.sp, 
-                                fontWeight = FontWeight.Medium
-                            )
+                            text = stringResource(R.string.storage_manage_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.loadCacheInfo() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
                     }
                     IconButton(onClick = { showClearAllDialog = true }) {
-                        Icon(Icons.Default.DeleteSweep, contentDescription = "一键清理")
+                        Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.storage_clear_all))
                     }
                 }
             )
@@ -162,7 +159,7 @@ fun StorageManageScreen(
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "正在清理 ${state.target}...",
+                            text = stringResource(R.string.storage_clearing, state.target),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -191,7 +188,7 @@ fun StorageManageScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         IconButton(onClick = { viewModel.loadCacheInfo() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "重试")
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.retry))
                         }
                     }
                 }
@@ -199,8 +196,8 @@ fun StorageManageScreen(
             is StorageUiState.Idle -> {
                 LazyColumn(
                     modifier = Modifier.padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(PageDimens.screenPadding),
+                    verticalArrangement = Arrangement.spacedBy(PageDimens.cardSpacing)
                 ) {
                     item {
                         CacheSummaryCard(
@@ -209,7 +206,7 @@ fun StorageManageScreen(
                         )
                     }
                     
-                    items(cacheItems) { item ->
+                    items(cacheItems, key = { it.id }) { item ->
                         CacheItemCard(
                             item = item,
                             onExpandClick = { 
@@ -221,11 +218,7 @@ fun StorageManageScreen(
                             onDetailClearClick = { detailId ->
                                 showClearDialog = ClearTarget(CacheType.valueOf(item.id), detailId)
                             },
-                            onOpenPathClick = { path ->
-                                context.startActivity<FileManageActivity> {
-                                    putExtra(FileManageActivity.EXTRA_INITIAL_PATH, path)
-                                }
-                            }
+                            onOpenPathClick = onOpenPath
                         )
                     }
                     

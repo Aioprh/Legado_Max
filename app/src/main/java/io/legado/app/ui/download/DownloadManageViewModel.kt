@@ -1,36 +1,45 @@
 package io.legado.app.ui.download
 
 import android.app.Application
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Environment
-import android.webkit.MimeTypeMap
+import androidx.annotation.StringRes
 import androidx.lifecycle.viewModelScope
+import io.legado.app.R
 import io.legado.app.base.BaseViewModel
 import io.legado.app.service.DownloadState
-import io.legado.app.utils.toastOnUi
 import io.legado.app.service.DownloadStatus
 import io.legado.app.service.DownloadTask
 import io.legado.app.service.DownloadService
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-enum class DownloadTab(val label: String) {
-    ALL("全部"),
-    DOWNLOADING("下载中"),
-    PAUSED("已暂停"),
-    COMPLETED("已完成"),
-    FAILED("失败")
+enum class DownloadTab(@StringRes val labelRes: Int) {
+    ALL(R.string.all),
+    DOWNLOADING(R.string.download_tab_downloading),
+    PAUSED(R.string.download_tab_paused),
+    COMPLETED(R.string.download_tab_completed),
+    FAILED(R.string.download_tab_failed)
+}
+
+/**
+ * 下载管理一次性 UI 事件
+ * 平台操作（打开文件、剪贴板、Toast）统一由 Activity 执行，ViewModel 只做数据准备并抛事件（state-events.md §4.1）
+ */
+sealed interface DownloadEvent {
+    data class OpenFile(val taskId: Long) : DownloadEvent
+    data object OpenFolder : DownloadEvent
+    data class CopyPath(val path: String) : DownloadEvent
+    data class Toast(@StringRes val msgRes: Int) : DownloadEvent
 }
 
 /**
@@ -38,6 +47,15 @@ enum class DownloadTab(val label: String) {
  * 负责管理UI状态、轮询下载进度、执行下载操作
  */
 class DownloadManageViewModel(application: Application) : BaseViewModel(application) {
+
+    // 关键事件（打开文件/文件夹、复制路径）：UNLIMITED 缓冲，事件不允许丢失（§4.1）
+    private val _events = Channel<DownloadEvent>(Channel.UNLIMITED)
+    val events: Flow<DownloadEvent> = _events.receiveAsFlow()
+
+    // Toast 事件：天然允许"只留最新"，使用 CONFLATED 通道（等价容量 1 + DROP_OLDEST）；
+    // 页面后台期间新 Toast 到达会丢弃旧的，丢事件语义符合预期（§4.1）
+    private val _toasts = Channel<DownloadEvent.Toast>(Channel.CONFLATED)
+    val toasts: Flow<DownloadEvent.Toast> = _toasts.receiveAsFlow()
 
     // 任务列表StateFlow，供UI订阅
     private val _tasks = MutableStateFlow<List<DownloadTask>>(emptyList())
@@ -111,10 +129,10 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
 
     /**
      * 重试下载
-     * @param context 上下文
      * @param id 下载任务ID
      */
-    fun retryDownload(context: Context, id: Long) {
+    fun retryDownload(id: Long) {
+        // context 为 Application，Download.start 仅用于 startService，不涉及平台 UI 操作
         DownloadService.retryDownload(context, id)
     }
 
@@ -139,66 +157,32 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
 
     /**
      * 打开已下载的文件
-     * @param context 上下文
+     * 只做数据准备，打开动作通过事件抛给 Activity 执行（§4.1）
      * @param id 下载任务ID
      */
-    fun openFile(context: Context, id: Long) {
-        val task = DownloadState.getTask(id) ?: return
-        kotlin.runCatching {
-            val downloadManager =
-                context.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-            downloadManager.getUriForDownloadedFile(id)?.let { uri ->
-                val mimeType = MimeTypeMap.getSingleton()
-                    .getMimeTypeFromExtension(task.fileName.substringAfterLast(".", "")) ?: "*/*"
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, mimeType)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(intent)
-            }
-        }.onFailure {
-            it.printStackTrace()
-            context.toastOnUi("无法打开文件")
-        }
+    fun openFile(id: Long) {
+        _events.trySend(DownloadEvent.OpenFile(id))
     }
 
     /**
      * 打开下载文件所在的文件夹
-     * @param context 上下文
+     * 打开动作通过事件抛给 Activity 执行（§4.1）
      */
-    fun openFolder(context: Context) {
-        kotlin.runCatching {
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(
-                    android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                    "resource/folder"
-                )
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-        }.onFailure {
-            // 降级：打开系统下载管理器
-            kotlin.runCatching {
-                val intent = Intent(android.app.DownloadManager.ACTION_VIEW_DOWNLOADS)
-                context.startActivity(intent)
-            }.onFailure { e ->
-                context.toastOnUi("无法打开文件夹")
-            }
-        }
+    fun openFolder() {
+        _events.trySend(DownloadEvent.OpenFolder)
     }
 
     /**
      * 复制文件路径到剪贴板
-     * @param context 上下文
+     * 只计算路径（数据准备），剪贴板与 Toast 由 Activity 执行（§4.1）
      * @param id 下载任务ID
      */
-    fun copyPath(context: Context, id: Long) {
+    fun copyPath(id: Long) {
         val task = DownloadState.getTask(id) ?: return
         val filePath =
             "${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath}/${task.fileName}"
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("file path", filePath))
-        context.toastOnUi("已复制路径")
+        _events.trySend(DownloadEvent.CopyPath(filePath))
+        _toasts.trySend(DownloadEvent.Toast(R.string.download_path_copied))
     }
 
 }

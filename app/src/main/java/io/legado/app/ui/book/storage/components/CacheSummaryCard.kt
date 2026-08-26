@@ -23,7 +23,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import io.legado.app.R
 import io.legado.app.utils.ConvertUtils
 
 @Composable
@@ -50,17 +51,15 @@ fun CacheSummaryCard(
         if (compactWidth) {
             Column {
                 Text(
-                    text = "缓存总大小",
+                    text = stringResource(R.string.storage_total_size),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontSize = 13.sp
+                    color = Color.White.copy(alpha = 0.9f)
                 )
                 Text(
                     text = ConvertUtils.formatFileSize(totalSize),
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.headlineLarge,
                     color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 32.sp
+                    fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -70,11 +69,10 @@ fun CacheSummaryCard(
                         tint = Color.White.copy(alpha = 0.8f)
                     )
                     Text(
-                        text = "${itemCount} 项缓存",
+                        text = stringResource(R.string.storage_cache_item_count, itemCount),
                         modifier = Modifier.padding(start = 8.dp),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 13.sp
+                        color = Color.White.copy(alpha = 0.85f)
                     )
                 }
             }
@@ -86,17 +84,15 @@ fun CacheSummaryCard(
             ) {
                 Column {
                     Text(
-                        text = "缓存总大小",
+                        text = stringResource(R.string.storage_total_size),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 13.sp
+                        color = Color.White.copy(alpha = 0.9f)
                     )
                     Text(
                         text = ConvertUtils.formatFileSize(totalSize),
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.displaySmall,
                         color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 36.sp
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
@@ -108,10 +104,9 @@ fun CacheSummaryCard(
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
                     Text(
-                        text = "${itemCount} 项缓存",
+                        text = stringResource(R.string.storage_cache_item_count, itemCount),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 13.sp
+                        color = Color.White.copy(alpha = 0.8f)
                     )
                 }
             }

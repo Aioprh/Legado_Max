@@ -1,12 +1,9 @@
 package io.legado.app.ui.file
 
-import android.graphics.BitmapFactory
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,24 +22,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.SubdirectoryArrowLeft
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,17 +47,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
-import io.legado.app.ui.file.utils.FilePickerIcon
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
 import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
@@ -85,9 +77,9 @@ fun FileManageScreen(
     onBackClick: () -> Unit
 ) {
     // 从 ViewModel 收集状态
-    val files by viewModel.filesLiveData.collectAsState(initial = emptyList())
-    val subDocs by viewModel.subDocsFlow.collectAsState(initial = emptyList())
-    val searchQuery by viewModel.searchQuery.collectAsState(initial = "")
+    val files by viewModel.files.collectAsStateWithLifecycle()
+    val subDocs by viewModel.subDocsFlow.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     
     // 删除确认对话框状态
     var showDeleteDialog by remember { mutableStateOf<File?>(null) }
@@ -97,12 +89,6 @@ fun FileManageScreen(
     LaunchedEffect(initialPath) {
         initialPath?.let { viewModel.openPath(it) }
     }
-    
-    // 使用原来的 PNG 图标，保持视觉风格一致
-    val upIcon = remember { bitmapFromBytes(FilePickerIcon.getUpDir()) }
-    val folderIcon = remember { bitmapFromBytes(FilePickerIcon.getFolder()) }
-    val fileIcon = remember { bitmapFromBytes(FilePickerIcon.getFile()) }
-    val arrowIcon = remember { bitmapFromBytes(FilePickerIcon.getArrow()) }
     
     // 删除确认对话框
     showDeleteDialog?.let { file ->
@@ -132,15 +118,13 @@ fun FileManageScreen(
                     title = {
                         Text(
                             text = stringResource(R.string.file_manage),
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium
                         )
                     },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                            Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                         }
                     }
                 )
@@ -161,7 +145,6 @@ fun FileManageScreen(
             // 路径导航条
             PathBreadcrumb(
                 subDocs = subDocs,
-                arrowIcon = arrowIcon,
                 onRootClick = { viewModel.goToRoot() },
                 onPathClick = { index -> viewModel.goToPath(index) }
             )
@@ -173,9 +156,6 @@ fun FileManageScreen(
                 FileList(
                     files = files,
                     lastDir = viewModel.lastDir,
-                    upIcon = upIcon,
-                    folderIcon = folderIcon,
-                    fileIcon = fileIcon,
                     onFileClick = { file ->
                         when {
                             file == viewModel.lastDir -> viewModel.gotoLastDir()  // 点击 ".." 返回上级
@@ -192,13 +172,6 @@ fun FileManageScreen(
             }
         }
     }
-}
-
-/**
- * 将 PNG 字节数组转换为 ImageBitmap
- */
-private fun bitmapFromBytes(bytes: ByteArray): ImageBitmap {
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size).asImageBitmap()
 }
 
 /**
@@ -274,7 +247,6 @@ private fun SearchBar(
 @Composable
 private fun PathBreadcrumb(
     subDocs: List<File>,
-    arrowIcon: ImageBitmap,
     onRootClick: () -> Unit,
     onPathClick: (Int) -> Unit
 ) {
@@ -293,7 +265,6 @@ private fun PathBreadcrumb(
         // 根目录项
         PathItem(
             text = "root",
-            arrowIcon = arrowIcon,
             onClick = onRootClick
         )
         
@@ -301,7 +272,6 @@ private fun PathBreadcrumb(
         subDocs.forEachIndexed { index, file ->
             PathItem(
                 text = file.name,
-                arrowIcon = arrowIcon,
                 onClick = { onPathClick(index) }
             )
         }
@@ -315,7 +285,6 @@ private fun PathBreadcrumb(
 @Composable
 private fun PathItem(
     text: String,
-    arrowIcon: ImageBitmap,
     onClick: () -> Unit
 ) {
     Row(
@@ -331,12 +300,13 @@ private fun PathItem(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Image(
-            bitmap = arrowIcon,
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
             modifier = Modifier
                 .width(20.dp)
-                .height(24.dp)
+                .height(24.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -349,9 +319,6 @@ private fun PathItem(
 private fun FileList(
     files: List<File>,
     lastDir: File?,
-    upIcon: ImageBitmap,
-    folderIcon: ImageBitmap,
-    fileIcon: ImageBitmap,
     onFileClick: (File) -> Unit,
     onFileLongClick: (File) -> Unit
 ) {
@@ -359,13 +326,10 @@ private fun FileList(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(vertical = 0.dp)
     ) {
-        items(files) { file ->
+        items(files, key = { it.absolutePath }) { file ->
             FileItem(
                 file = file,
                 isParentDir = file == lastDir,
-                upIcon = upIcon,
-                folderIcon = folderIcon,
-                fileIcon = fileIcon,
                 onClick = { onFileClick(file) },
                 onLongClick = { onFileLongClick(file) }
             )
@@ -376,15 +340,12 @@ private fun FileList(
 /**
  * 单个文件项
  * 显示图标 + 文件名
- * 图标类型：上级目录(..)、文件夹、普通文件
+ * 图标类型：上级目录(..)、文件夹、普通文件（Material Icons，禁止手写 Bitmap 解码 theme-styles.md §7.3）
  */
 @Composable
 private fun FileItem(
     file: File,
     isParentDir: Boolean,
-    upIcon: ImageBitmap,
-    folderIcon: ImageBitmap,
-    fileIcon: ImageBitmap,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
@@ -395,17 +356,18 @@ private fun FileItem(
             .padding(horizontal = 5.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 根据类型选择图标
-        val icon = when {
-            isParentDir -> upIcon      // 返回上级图标
-            file.isDirectory -> folderIcon  // 文件夹图标
-            else -> fileIcon          // 普通文件图标
+        // 根据类型选择图标与语义色
+        val (icon, tint) = when {
+            isParentDir -> Icons.Default.SubdirectoryArrowLeft to MaterialTheme.colorScheme.onSurfaceVariant  // 返回上级图标
+            file.isDirectory -> Icons.Default.Folder to MaterialTheme.colorScheme.primary                     // 文件夹图标
+            else -> Icons.Default.InsertDriveFile to MaterialTheme.colorScheme.onSurfaceVariant               // 普通文件图标
         }
         
-        Image(
-            bitmap = icon,
+        Icon(
+            imageVector = icon,
             contentDescription = null,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(24.dp),
+            tint = tint
         )
         
         Spacer(modifier = Modifier.width(4.dp))
@@ -447,7 +409,7 @@ private fun DeleteConfirmDialog(
 ) {
     AppConfirmDialog(
         title = stringResource(R.string.delete),
-        text = "确定要删除 \"$fileName\" 吗？",
+        text = stringResource(R.string.file_delete_confirm, fileName),
         confirmText = stringResource(R.string.delete),
         destructive = true,
         onConfirm = onConfirm,

@@ -49,7 +49,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +60,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.res.stringResource
 import io.legado.app.R
@@ -81,9 +80,9 @@ fun SourceRecycleBinScreen(
     viewModel: SourceRecycleBinViewModel = viewModel(),
     onBackClick: () -> Unit
 ) {
-    val items by viewModel.items.collectAsState(initial = emptyList())
-    val filter by viewModel.filter.collectAsState()
-    val enabled by viewModel.enabled.collectAsState()
+    val items by viewModel.items.collectAsStateWithLifecycle()
+    val filter by viewModel.filter.collectAsStateWithLifecycle()
+    val enabled by viewModel.enabled.collectAsStateWithLifecycle()
     var filterMenuExpanded by remember { mutableStateOf(false) }
     var actionMenuExpanded by remember { mutableStateOf(false) }
     var itemMenuExpanded by remember { mutableStateOf<Long?>(null) }
@@ -140,10 +139,8 @@ fun SourceRecycleBinScreen(
                         Column {
                             Text(
                                 text = stringResource(R.string.selected, selectedItems.size),
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Medium
                             )
                             Text(
                                 text = stringResource(
@@ -160,10 +157,8 @@ fun SourceRecycleBinScreen(
                         Column {
                             Text(
                                 text = stringResource(R.string.source_recycle_bin),
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Medium
                             )
                             Text(
                                 text = stringResource(

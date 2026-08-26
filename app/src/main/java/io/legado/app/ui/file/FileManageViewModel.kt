@@ -33,8 +33,8 @@ class FileManageViewModel(application: Application) : BaseViewModel(application)
     val subDocsFlow: StateFlow<List<File>> = _subDocs.asStateFlow()
     
     /** 当前目录下的文件列表 */
-    private val _filesLiveData = MutableStateFlow<List<File>>(emptyList())
-    val filesLiveData: StateFlow<List<File>> = _filesLiveData.asStateFlow()
+    private val _files = MutableStateFlow<List<File>>(emptyList())
+    val files: StateFlow<List<File>> = _files.asStateFlow()
     
     /** 搜索关键词 */
     private val _searchQuery = MutableStateFlow("")
@@ -69,10 +69,10 @@ class FileManageViewModel(application: Application) : BaseViewModel(application)
             currentFiles.filter {
                 it.name == ".." || it.name.contains(query)
             }.let {
-                _filesLiveData.value = it
+                _files.value = it
             }
         } else {
-            _filesLiveData.value = currentFiles
+            _files.value = currentFiles
         }
     }
 
@@ -107,7 +107,7 @@ class FileManageViewModel(application: Application) : BaseViewModel(application)
                 }
                 currentFiles = result
                 _searchQuery.value = ""
-                _filesLiveData.value = result
+                _files.value = result
             } catch (e: Exception) {
                 context.toastOnUi(e.localizedMessage)
             }

@@ -47,7 +47,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,14 +55,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.legado.app.R
 import io.legado.app.service.DownloadStatus
 import io.legado.app.service.DownloadTask
+import io.legado.app.ui.theme.PageDimens
 import io.legado.app.ui.theme.pageCardContainerColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
 import io.legado.app.utils.ConvertUtils
@@ -78,10 +79,9 @@ fun DownloadManageScreen(
     viewModel: DownloadManageViewModel = viewModel(),
     onBackClick: () -> Unit
 ) {
-    val allTasks by viewModel.tasks.collectAsState()
-    val filteredTasks by viewModel.filteredTasks.collectAsState()
-    val selectedTab by viewModel.selectedTab.collectAsState()
-    val context = LocalContext.current
+    val allTasks by viewModel.tasks.collectAsStateWithLifecycle()
+    val filteredTasks by viewModel.filteredTasks.collectAsStateWithLifecycle()
+    val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
 
     val topBarColor = pageTopBarContainerColor()
 
@@ -103,15 +103,16 @@ fun DownloadManageScreen(
                 title = {
                     Column {
                         Text(
-                            text = "下载管理",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                            text = stringResource(R.string.download_manage_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium
                         )
                         if (allTasks.isNotEmpty()) {
                             Text(
-                                text = "下载中: $activeCount  已完成: $completedCount  失败: $failedCount",
+                                text = stringResource(
+                                    R.string.download_manage_stats,
+                                    activeCount, completedCount, failedCount
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -120,12 +121,12 @@ fun DownloadManageScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.clearCompletedTasks() }) {
-                        Icon(Icons.Default.DeleteSweep, contentDescription = "清除已完成")
+                        Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.download_manage_clear_completed))
                     }
                 }
             )
@@ -152,7 +153,7 @@ fun DownloadManageScreen(
                         onClick = { viewModel.selectTab(tab) },
                         text = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(text = tab.label, style = MaterialTheme.typography.bodySmall)
+                                Text(text = stringResource(tab.labelRes), style = MaterialTheme.typography.bodySmall)
                                 if (count > 0) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Badge(containerColor = MaterialTheme.colorScheme.primary) {
@@ -179,21 +180,21 @@ fun DownloadManageScreen(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        val (emptyTitle, emptySubtitle) = when (selectedTab) {
-                            DownloadTab.ALL -> "暂无下载任务" to "在浏览器中下载的文件会显示在这里"
-                            DownloadTab.DOWNLOADING -> "暂无正在下载的任务" to "当前没有下载中的任务"
-                            DownloadTab.PAUSED -> "暂无已暂停的任务" to "没有被暂停的下载任务"
-                            DownloadTab.COMPLETED -> "暂无已完成的任务" to "没有已完成的下载任务"
-                            DownloadTab.FAILED -> "暂无下载失败的任务" to "所有下载任务均正常"
+                        val (emptyTitleRes, emptySubtitleRes) = when (selectedTab) {
+                            DownloadTab.ALL -> R.string.download_empty_all_title to R.string.download_empty_all_subtitle
+                            DownloadTab.DOWNLOADING -> R.string.download_empty_downloading_title to R.string.download_empty_downloading_subtitle
+                            DownloadTab.PAUSED -> R.string.download_empty_paused_title to R.string.download_empty_paused_subtitle
+                            DownloadTab.COMPLETED -> R.string.download_empty_completed_title to R.string.download_empty_completed_subtitle
+                            DownloadTab.FAILED -> R.string.download_empty_failed_title to R.string.download_empty_failed_subtitle
                         }
                         Text(
-                            text = emptyTitle,
+                            text = stringResource(emptyTitleRes),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = emptySubtitle,
+                            text = stringResource(emptySubtitleRes),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
@@ -201,17 +202,17 @@ fun DownloadManageScreen(
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(PageDimens.screenPadding),
+                    verticalArrangement = Arrangement.spacedBy(PageDimens.cardSpacing)
                 ) {
                     items(filteredTasks, key = { it.id }) { task ->
                         DownloadTaskCard(
                             task = task,
                             onCancelClick = { viewModel.cancelDownload(task.id) },
-                            onRetryClick = { viewModel.retryDownload(context, task.id) },
-                            onOpenFileClick = { viewModel.openFile(context, task.id) },
-                            onOpenFolderClick = { viewModel.openFolder(context) },
-                            onCopyPathClick = { viewModel.copyPath(context, task.id) }
+                            onRetryClick = { viewModel.retryDownload(task.id) },
+                            onOpenFileClick = { viewModel.openFile(task.id) },
+                            onOpenFolderClick = { viewModel.openFolder() },
+                            onCopyPathClick = { viewModel.copyPath(task.id) }
                         )
                     }
                     item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -310,7 +311,7 @@ fun DownloadTaskCard(
                         IconButton(onClick = onCancelClick) {
                             Icon(
                                 Icons.Default.Pause,
-                                contentDescription = "取消",
+                                contentDescription = stringResource(R.string.cancel),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -320,7 +321,7 @@ fun DownloadTaskCard(
                         IconButton(onClick = onRetryClick) {
                             Icon(
                                 Icons.Default.PlayArrow,
-                                contentDescription = "继续",
+                                contentDescription = stringResource(R.string.download_resume),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -330,7 +331,7 @@ fun DownloadTaskCard(
                         IconButton(onClick = onRetryClick) {
                             Icon(
                                 Icons.Default.Refresh,
-                                contentDescription = "重试",
+                                contentDescription = stringResource(R.string.retry),
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -380,7 +381,7 @@ fun DownloadTaskCard(
                 Spacer(modifier = Modifier.height(8.dp))
                 if (task.sourceUrl.isNotEmpty()) {
                     Text(
-                        text = "来源: ${task.sourceUrl}",
+                        text = stringResource(R.string.download_source_label, task.sourceUrl),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         maxLines = 1,
@@ -390,7 +391,7 @@ fun DownloadTaskCard(
                 }
                 if (task.downloadUrl.isNotEmpty()) {
                     Text(
-                        text = "链接: ${task.downloadUrl}",
+                        text = stringResource(R.string.download_link_label, task.downloadUrl),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         maxLines = 1,
@@ -406,23 +407,23 @@ fun DownloadTaskCard(
                 onDismissRequest = { showMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("打开文件") },
+                    text = { Text(stringResource(R.string.download_open_file)) },
                     onClick = { showMenu = false; onOpenFileClick() },
                     leadingIcon = { Icon(Icons.Default.OpenInNew, contentDescription = null) }
                 )
                 DropdownMenuItem(
-                    text = { Text("打开文件所在文件夹") },
+                    text = { Text(stringResource(R.string.download_open_folder)) },
                     onClick = { showMenu = false; onOpenFolderClick() },
                     leadingIcon = { Icon(Icons.Default.Folder, contentDescription = null) }
                 )
                 DropdownMenuItem(
-                    text = { Text("复制路径") },
+                    text = { Text(stringResource(R.string.download_copy_path)) },
                     onClick = { showMenu = false; onCopyPathClick() },
                     leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) }
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
-                    text = { Text("删除", color = MaterialTheme.colorScheme.error) },
+                    text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                     onClick = { showMenu = false; onCancelClick() },
                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) }
                 )
@@ -441,7 +442,7 @@ fun StatusIcon(status: DownloadStatus, modifier: Modifier = Modifier) {
         DownloadStatus.RUNNING -> Icons.Default.Refresh to MaterialTheme.colorScheme.primary
         DownloadStatus.PENDING -> Icons.Default.Schedule to MaterialTheme.colorScheme.onSurfaceVariant
         DownloadStatus.PAUSED -> Icons.Default.Pause to MaterialTheme.colorScheme.onSurfaceVariant
-        DownloadStatus.SUCCESSFUL -> Icons.Default.CheckCircle to Color(0xFF4CAF50)
+        DownloadStatus.SUCCESSFUL -> Icons.Default.CheckCircle to MaterialTheme.colorScheme.tertiary
         DownloadStatus.FAILED -> Icons.Default.Error to MaterialTheme.colorScheme.error
     }
     
@@ -459,11 +460,11 @@ fun StatusIcon(status: DownloadStatus, modifier: Modifier = Modifier) {
 @Composable
 fun getStatusText(status: DownloadStatus): String {
     return when (status) {
-        DownloadStatus.RUNNING -> "下载中"
-        DownloadStatus.PENDING -> "等待中"
-        DownloadStatus.PAUSED -> "已暂停"
-        DownloadStatus.SUCCESSFUL -> "已完成"
-        DownloadStatus.FAILED -> "下载失败"
+        DownloadStatus.RUNNING -> stringResource(R.string.download_status_running)
+        DownloadStatus.PENDING -> stringResource(R.string.download_status_pending)
+        DownloadStatus.PAUSED -> stringResource(R.string.download_status_paused)
+        DownloadStatus.SUCCESSFUL -> stringResource(R.string.download_status_completed)
+        DownloadStatus.FAILED -> stringResource(R.string.download_status_failed)
     }
 }
 
@@ -476,7 +477,7 @@ fun getStatusColor(status: DownloadStatus): Color {
         DownloadStatus.RUNNING -> MaterialTheme.colorScheme.primary
         DownloadStatus.PENDING -> MaterialTheme.colorScheme.onSurfaceVariant
         DownloadStatus.PAUSED -> MaterialTheme.colorScheme.onSurfaceVariant
-        DownloadStatus.SUCCESSFUL -> Color(0xFF4CAF50)
+        DownloadStatus.SUCCESSFUL -> MaterialTheme.colorScheme.tertiary
         DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
     }
 }
