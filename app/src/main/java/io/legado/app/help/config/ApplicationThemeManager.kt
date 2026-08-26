@@ -288,6 +288,10 @@ object ApplicationThemeManager {
         if (gzipJson != null) {
             return RedThemeImporter.importGzipJson(gzipJson, options)
         }
+        // 检测 RED10 加密私有格式，给出明确提示而非误导性的"文件过大"
+        if (RedAssetPackage.detectFormat(file) == RedAssetPackage.RedFormat.RED10_PRIVATE) {
+            throw IllegalArgumentException(appCtx.getString(R.string.app_theme_encrypted_not_supported))
+        }
         // 不是 ZIP 也不是 .red，尝试作为纯 JSON 导入
         require(file.length() <= maxManifestBytes) { appCtx.getString(R.string.app_theme_file_too_large) }
         val imported = sanitize(

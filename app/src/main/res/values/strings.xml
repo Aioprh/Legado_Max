@@ -809,6 +809,9 @@
     <string name="highlight_rule_scope_hint">Book name or source URL, semicolon separated, leave empty for all books</string>
     <string name="highlight_rule_exclude_scope">Exclude scope, book name or source URL</string>
     <string name="highlight_rule_exclude_scope_hint">Book name or source URL to exclude, semicolon separated</string>
+    <string name="highlight_rule_layout_scope">Reading layout scope</string>
+    <string name="highlight_rule_layout_scope_all">All layouts</string>
+    <string name="highlight_rule_layout_scope_count">%1$d layouts selected</string>
     <string name="action_menu">Actions</string>
     <string name="preview">Preview</string>
     <string name="text_menu_config">Expand Text Menu Config</string>
@@ -2343,6 +2346,7 @@
     <string name="app_theme_config_too_large">App theme config file too large</string>
     <string name="app_theme_config_corrupted">App theme config file corrupted, original preserved</string>
     <string name="app_theme_file_too_large">App theme file too large</string>
+    <string name="app_theme_encrypted_not_supported">This theme package is encrypted and cannot be imported</string>
     <string name="app_theme_missing_manifest">Missing application_theme.json</string>
     <string name="app_theme_manifest_too_large">App theme manifest too large</string>
     <string name="app_theme_invalid_format">Invalid app theme package format</string>

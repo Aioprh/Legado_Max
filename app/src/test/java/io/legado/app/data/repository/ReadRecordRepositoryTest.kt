@@ -693,6 +693,24 @@ class ReadRecordRepositoryTest {
                 .map { it.copy() }
         }
 
+        override suspend fun getFilteredSessionsBefore(
+            query: String,
+            dateFilter: String?,
+            beforeTimestamp: Long?,
+            limit: Int
+        ): List<ReadRecordSession> {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd")
+            return sessions
+                .filter { s ->
+                    (query.isEmpty() || s.bookName.contains(query) || s.bookAuthor.contains(query)) &&
+                        (dateFilter == null || sdf.format(java.util.Date(s.startTime)) == dateFilter) &&
+                        (beforeTimestamp == null || s.startTime < beforeTimestamp)
+                }
+                .sortedByDescending { it.startTime }
+                .take(limit)
+                .map { it.copy() }
+        }
+
         override fun getRecordsWithDetailTime(query: String): Flow<List<ReadRecord>> {
             val detailSums = details.groupBy {
                 Triple(it.deviceId, it.bookName, it.bookAuthor)

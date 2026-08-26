@@ -196,6 +196,9 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
             val replaceBook = book.toReplaceBook()
             val useReplace = AppConfig.tocUiUseReplace && book.getUseReplaceRule()
             val items = getItems()
+            // 收集需要刷新的位置, 计算完后批量 notifyItemRangeChanged, 避免逐项刷新引发闪烁
+            val changedForward = mutableListOf<Int>()
+            val changedBackward = mutableListOf<Int>()
             launch {
                 for (i in startIndex until items.size) {
                     val item = items[i]
@@ -204,11 +207,10 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                         val displayTitle = item.getDisplayTitle(replaceRules, useReplace, replaceBook = replaceBook)
                         ensureActive()
                         displayTitleMap[item.title] = displayTitle
-                        handler.post {
-                            notifyItemChanged(i, true)
-                        }
+                        changedForward.add(i)
                     }
                 }
+                flushChangedItems(changedForward)
             }
             launch {
                 for (i in startIndex downTo 0) {
@@ -218,12 +220,35 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                         val displayTitle = item.getDisplayTitle(replaceRules, useReplace, replaceBook = replaceBook)
                         ensureActive()
                         displayTitleMap[item.title] = displayTitle
-                        handler.post {
-                            notifyItemChanged(i, true)
-                        }
+                        changedBackward.add(i)
                     }
                 }
+                flushChangedItems(changedBackward)
             }
+        }
+    }
+
+    /**
+     * 将分散的 [notifyItemChanged] 合并为连续区间的 [notifyItemRangeChanged],
+     * 减少 RecyclerView 的刷新次数, 避免逐项刷新动画造成的视觉闪烁。
+     */
+    private fun flushChangedItems(positions: List<Int>) {
+        if (positions.isEmpty()) return
+        handler.post {
+            val sorted = positions.sorted()
+            var rangeStart = sorted.first()
+            var prev = rangeStart
+            for (i in 1 until sorted.size) {
+                val cur = sorted[i]
+                if (cur == prev + 1) {
+                    prev = cur
+                    continue
+                }
+                notifyItemRangeChanged(rangeStart, prev - rangeStart + 1, true)
+                rangeStart = cur
+                prev = cur
+            }
+            notifyItemRangeChanged(rangeStart, prev - rangeStart + 1, true)
         }
     }
 
@@ -298,7 +323,11 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
 
                 upHasCache(binding, isDur, cached)
             } else {
-                tvChapterName.text = getDisplayTitle(item)
+                // 仅当 displayTitle 与当前文本不同时才赋值, 避免无意义重绘
+                val displayTitle = getDisplayTitle(item)
+                if (tvChapterName.text?.toString() != displayTitle) {
+                    tvChapterName.text = displayTitle
+                }
                 tvChapterName.isSingleLine = !AppConfig.tocShowFullChapterName
                 upHasCache(binding, isDur, cached)
             }

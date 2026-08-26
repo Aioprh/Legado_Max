@@ -806,6 +806,9 @@
     <string name="highlight_rule_scope_hint">书名或书源URL，分号分隔，留空则对所有书籍生效</string>
     <string name="highlight_rule_exclude_scope">排除范围，书名或书源URL</string>
     <string name="highlight_rule_exclude_scope_hint">要排除的书名或书源URL，分号分隔</string>
+    <string name="highlight_rule_layout_scope">作用排版</string>
+    <string name="highlight_rule_layout_scope_all">所有排版</string>
+    <string name="highlight_rule_layout_scope_count">已选 %1$d 个排版</string>
     <string name="action_menu">功能</string>
     <string name="preview">预览</string>
     <string name="text_menu_config">展开文本菜单配置</string>
@@ -2327,6 +2330,7 @@
     <string name="app_theme_config_too_large">应用主题配置文件过大</string>
     <string name="app_theme_config_corrupted">应用主题配置文件损坏，已保留原文件</string>
     <string name="app_theme_file_too_large">应用主题文件过大</string>
+    <string name="app_theme_encrypted_not_supported">该主题包已加密，不支持导入</string>
     <string name="app_theme_missing_manifest">缺少 application_theme.json</string>
     <string name="app_theme_manifest_too_large">应用主题清单过大</string>
     <string name="app_theme_invalid_format">应用主题包格式错误</string>

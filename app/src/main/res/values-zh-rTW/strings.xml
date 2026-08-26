@@ -1326,6 +1326,9 @@
     <string name="highlight_rule_scope_hint">書名或書源URL，分號分隔，留空則對所有書籍生效</string>
     <string name="highlight_rule_exclude_scope">排除範圍，書名或書源URL</string>
     <string name="highlight_rule_exclude_scope_hint">要排除的書名或書源URL，分號分隔</string>
+    <string name="highlight_rule_layout_scope">作用排版</string>
+    <string name="highlight_rule_layout_scope_all">所有排版</string>
+    <string name="highlight_rule_layout_scope_count">已選 %1$d 個排版</string>
     <string name="history">歷史記錄</string>
     <string name="book_read_record">閱讀記錄</string>
     <string name="view_read_record">查看</string>
@@ -1935,6 +1938,7 @@
     <string name="app_theme_config_too_large">應用主題配置檔案過大</string>
     <string name="app_theme_config_corrupted">應用主題配置檔案損壞，已保留原檔案</string>
     <string name="app_theme_file_too_large">應用主題檔案過大</string>
+    <string name="app_theme_encrypted_not_supported">該主題包已加密，不支援匯入</string>
     <string name="app_theme_missing_manifest">缺少 application_theme.json</string>
     <string name="app_theme_manifest_too_large">應用主題清單過大</string>
     <string name="app_theme_invalid_format">應用主題包格式錯誤</string>
