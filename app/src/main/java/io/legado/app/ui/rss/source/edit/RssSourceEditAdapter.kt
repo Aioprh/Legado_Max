@@ -15,6 +15,7 @@ import io.legado.app.ui.widget.code.addJsonPattern
 import io.legado.app.ui.widget.code.addLegadoPattern
 import io.legado.app.ui.widget.text.EditEntity
 import io.legado.app.utils.isTrue
+import io.legado.app.utils.safeTake
 
 class RssSourceEditAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -154,7 +155,7 @@ class RssSourceEditAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 if (!unchanged) {
                     editText.skipNextHighlight = true
                     editText.cancelHighlighterRender()
-                    editText.setText(fullValue.take(PREVIEW_MAX_CHARS))
+                    editText.setText(fullValue.safeTake(PREVIEW_MAX_CHARS))
                     editText.skipNextHighlight = false
                 }
                 return

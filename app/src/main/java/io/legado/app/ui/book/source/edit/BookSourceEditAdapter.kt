@@ -14,6 +14,7 @@ import io.legado.app.ui.widget.code.addJsPattern
 import io.legado.app.ui.widget.code.addJsonPattern
 import io.legado.app.ui.widget.code.addLegadoPattern
 import io.legado.app.ui.widget.text.EditEntity
+import io.legado.app.utils.safeTake
 
 class BookSourceEditAdapter : RecyclerView.Adapter<BookSourceEditAdapter.MyViewHolder>() {
 
@@ -205,7 +206,7 @@ class BookSourceEditAdapter : RecyclerView.Adapter<BookSourceEditAdapter.MyViewH
                 if (!unchanged) {
                     editText.skipNextHighlight = true
                     editText.cancelHighlighterRender()
-                    editText.setText(fullValue.take(PREVIEW_MAX_CHARS))
+                    editText.setText(fullValue.safeTake(PREVIEW_MAX_CHARS))
                     editText.skipNextHighlight = false
                 }
                 return
