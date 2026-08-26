@@ -103,6 +103,9 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
             R.id.menu_update_toc -> activityViewModel.upToc(books, onlyUpdateRead)
             R.id.menu_bookshelf_layout -> configBookshelf()
             R.id.menu_group_manage -> showDialogFragment<GroupManageDialog>()
+            R.id.menu_tag_manage -> startActivity<BookshelfTagManageActivity> {
+                putExtra("groupId", groupId)
+            }
             R.id.menu_add_local -> startActivity<ImportBookActivity>()
             R.id.menu_add_url -> showAddBookByUrlAlert()
             R.id.menu_bookshelf_manage -> startActivity<BookshelfManageActivity> {

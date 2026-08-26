@@ -343,4 +343,9 @@ object PreferKey {
     const val appThemeDeleteNightBottomBar = "appThemeDeleteNightBottomBar"
     const val appThemeDeleteDayCover = "appThemeDeleteDayCover"
     const val appThemeDeleteNightCover = "appThemeDeleteNightCover"
+
+    /** 书架分组配置的标签，JSON Map<groupId, List<tag>> */
+    const val bookshelfGroupTags = "bookshelfGroupTags"
+    /** 书架分组隐藏的标签，JSON Map<groupId, Set<tag>> */
+    const val bookshelfHiddenTags = "bookshelfHiddenTags"
 }

@@ -348,6 +348,56 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.dropdownSelectGroup, value)
         }
 
+    /**
+     * 书架每个分组配置的标签列表。
+     * key = groupId, value = 标签名列表
+     */
+    var bookshelfGroupTags: Map<Long, List<String>>
+        get() {
+            val rawMap = GSON.fromJsonObject<Map<String, List<String>>>(
+                appCtx.getPrefString(PreferKey.bookshelfGroupTags)
+            ).getOrDefault(emptyMap())
+            return rawMap.mapNotNull { (key, value) ->
+                key.toLongOrNull()?.let { k -> k to value }
+            }.toMap()
+        }
+        set(value) {
+            val normalized = value
+                .mapKeys { it.key.toString() }
+                .mapValues { (_, tags) -> tags.map { it.trim() }.filter { it.isNotBlank() }.distinct() }
+                .filterValues { it.isNotEmpty() }
+            if (normalized.isEmpty()) {
+                appCtx.removePref(PreferKey.bookshelfGroupTags)
+            } else {
+                appCtx.putPrefString(PreferKey.bookshelfGroupTags, GSON.toJson(normalized))
+            }
+        }
+
+    /**
+     * 书架每个分组隐藏的标签集合。
+     * key = groupId, value = 隐藏的标签名集合
+     */
+    var bookshelfHiddenTags: Map<Long, Set<String>>
+        get() {
+            val rawMap = GSON.fromJsonObject<Map<String, List<String>>>(
+                appCtx.getPrefString(PreferKey.bookshelfHiddenTags)
+            ).getOrDefault(emptyMap())
+            return rawMap.mapNotNull { (key, value) ->
+                key.toLongOrNull()?.let { k -> k to value.toSet() }
+            }.toMap()
+        }
+        set(value) {
+            val normalized = value
+                .mapKeys { it.key.toString() }
+                .mapValues { (_, tags) -> tags.map { it.trim() }.filter { it.isNotBlank() }.distinct() }
+                .filterValues { it.isNotEmpty() }
+            if (normalized.isEmpty()) {
+                appCtx.removePref(PreferKey.bookshelfHiddenTags)
+            } else {
+                appCtx.putPrefString(PreferKey.bookshelfHiddenTags, GSON.toJson(normalized))
+            }
+        }
+
     var saveTabPosition: Int
         get() = appCtx.getPrefInt(PreferKey.saveTabPosition, 0)
         set(value) {
