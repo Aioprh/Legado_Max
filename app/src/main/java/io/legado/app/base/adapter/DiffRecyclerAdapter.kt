@@ -146,7 +146,10 @@ abstract class DiffRecyclerAdapter<ITEM, VB : ViewBinding>(protected val context
     ) {
         registerListener(holder, (holder.binding as VB))
         registerItemListener(holder)
-        getItem(holder.layoutPosition)?.let {
+        // 必须使用参数 position 而非 holder.layoutPosition:
+        // 在 AsyncListDiffer 触发 move/change 动画期间, layoutPosition 可能仍指向旧位置,
+        // 导致取到错误数据写入正在做动画的 ViewHolder, 造成重影/叠字
+        getItem(position)?.let {
             convert(holder, holder.binding, it, payloads)
         }
     }
