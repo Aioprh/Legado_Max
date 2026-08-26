@@ -168,7 +168,6 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             val body = fetchBody(url)
             val items = body?.let { parseComments(it) }.orEmpty()
             val newTotal = body?.let { parseTotal(it) } ?: -1L
-            AppLog.putReaderDebug("段评弹窗: page=$nextPage 本页${items.size}条，total=$newTotal")
             withContext(Dispatchers.Main) {
                 loading = false
                 binding.rotateLoading.gone()
@@ -246,31 +245,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     replies = inlineReplies.toMutableList()
                 )
             }
-            if (items.isNotEmpty() && items.all { it.time <= 0 }) {
-                // 诊断：有评论但本页均未解析到时间字段，打印首条字段名便于补充兜底路径
-                val firstMap = maps.firstOrNull()
-                val firstKeys = firstMap?.keys?.joinToString(",")
-                val timeVals = firstMap?.entries
-                    ?.filter { it.key.toString().contains("time", ignoreCase = true) }
-                    ?.joinToString(",") { "${it.key}=${it.value}" }
-                AppLog.put("段评解析: 本页${items.size}条评论未解析到时间字段，首条keys=[$firstKeys] time字段值=[$timeVals]")
-            }
-            val shown = items.filter { item ->
-                // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”
+            // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”；
+            // 按时间由新到旧排序（time=0 的未知时间排在最后，不影响排序稳定性）
+            items.filter { item ->
                 item.content.isNotBlank() || item.images.isNotEmpty() || item.audio.isNotBlank()
-            }
-            if (shown.size < items.size) {
-                // 诊断：有评论被“无内容”过滤掉，打印被过滤评论的原始字段，判断是真正空评论还是字段没解析到
-                val detail = maps.withIndex()
-                    .filter { (i, _) -> i < items.size && items[i] !in shown }
-                    .take(3)
-                    .joinToString(";") { (i, m) ->
-                        val it = items[i]
-                        "第${i}条 content=[${it.content.take(20)}] img=${it.images.size} audio=[${it.audio}] keys=[${m.keys.joinToString(",")}]"
-                    }
-                AppLog.put("段评解析: 本页${items.size}条中被无内容过滤掉${items.size - shown.size}条 [$detail]")
-            }
-            shown.sortedByDescending { it.time } // 按时间由新到旧排序（time=0 的未知时间排在最后，不影响排序稳定性）
+            }.sortedByDescending { it.time }
         }.getOrElse {
             AppLog.put("段评解析失败", it)
             emptyList()
