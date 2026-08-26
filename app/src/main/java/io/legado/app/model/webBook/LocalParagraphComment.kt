@@ -274,6 +274,52 @@ object LocalParagraphComment {
     }
 
     /**
+     * 解析番茄段评摘要：review_list 里的 paragraphId 是"原始行号"（含空行，1基），
+     * 而本地段评注入按"非空段落号"计数（与书源 jsLib 的 fqGetComments 一致）。
+     * 这里结合章节正文把原始行号换算成非空段落号，避免正文带空行时气泡错位。
+     * 取不到正文映射时退回原始行号（退化为 [parseCounts] 行为）。
+     */
+    private fun parseFanqieCounts(body: String): Map<Int, Int> {
+        return runCatching {
+            val rc = jsonPath.parse(body)
+            val content = runCatching { rc.read<String>("$.content") }.getOrNull()
+                ?: runCatching { rc.read<String>("$.data.content") }.getOrNull()
+            val list = runCatching { rc.read<List<Any?>>("$.review_list") }.getOrNull()
+                ?: runCatching { rc.read<List<Any?>>("$.data.review_list") }.getOrNull()
+                ?: return@runCatching emptyMap()
+            // 与书源 jsLib 一致：含 <p> 时按 <p> 分段，否则按 \n 分段
+            val paragraphs = if (content == null) {
+                emptyList()
+            } else if (content.contains("<p>", ignoreCase = true)) {
+                content.replace("\r\n", "\n").split("<p>")
+            } else {
+                content.replace("\r\n", "\n").split("\n")
+            }
+            // 原始行号(1基) -> 非空段落号(1基)
+            val lineToPara = HashMap<Int, Int>()
+            var para = 0
+            paragraphs.forEachIndexed { i, line ->
+                if (line.trim().isNotEmpty()) {
+                    para++
+                    lineToPara[i + 1] = para
+                }
+            }
+            val result = HashMap<Int, Int>()
+            list.mapNotNull { it as? Map<*, *> }.forEach { map ->
+                val rawLine = firstIntValue(map, listOf("paragraphId", "ParagraphId"))
+                    ?: return@forEach
+                val paraNum = lineToPara[rawLine] ?: rawLine
+                if (paraNum <= 0) return@forEach
+                val count = firstIntValue(
+                    map, listOf("textCount", "TextCount", "commentCount", "CommentCount")
+                ) ?: 0
+                result[paraNum] = count
+            }
+            result
+        }.getOrDefault(emptyMap())
+    }
+
+    /**
      * 对有评论的段落后方注入 dp: 气泡。
      * 生成格式与书源 ruleContent 一致：`<img src="dp:<count>,{\"pclick\":\"<脚本>\",\"status\":\"normal\"}">`。
      */
@@ -491,19 +537,10 @@ object LocalParagraphComment {
             chapterUrl: String?
         ): Map<Int, Int> {
             if (chapterUrl != null && chapterUrl.contains("item_id=", ignoreCase = true)) {
-                // 番茄段评：段计数随章节正文（review_list）一起返回
+                // 番茄段评：段计数随章节正文（review_list）一起返回；
+                // 用 parseFanqieCounts 把原始行号换算成非空段落号，与本地注入计数对齐
                 val body = fetchBody(source, chapterUrl) ?: return emptyMap()
-                return parseCounts(
-                    body, "$.review_list",
-                    pidKeys = listOf("paragraphId", "ParagraphId"),
-                    countKeys = listOf("textCount", "TextCount", "commentCount", "CommentCount")
-                ).ifEmpty {
-                    parseCounts(
-                        body, "$.data.review_list",
-                        pidKeys = listOf("paragraphId", "ParagraphId"),
-                        countKeys = listOf("textCount", "TextCount", "commentCount", "CommentCount")
-                    )
-                }
+                return parseFanqieCounts(body)
             }
             val token = qidianToken()
             val url = "$QD_SUMMARY?bookId=$bookId&chapterId=$chapterId&_csrfToken=$token"
