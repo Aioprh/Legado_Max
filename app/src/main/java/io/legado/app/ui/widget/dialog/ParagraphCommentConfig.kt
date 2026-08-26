@@ -64,6 +64,7 @@ data class ParagraphCommentItem(
     val time: Long = 0,
     val floor: Int = 0,
     val replyCount: Int = 0,
+    val isGod: Boolean = false,
     val replies: MutableList<ParagraphReplyItem> = mutableListOf(),
     var repliesLoaded: Boolean = false,
     var repliesLoading: Boolean = false,

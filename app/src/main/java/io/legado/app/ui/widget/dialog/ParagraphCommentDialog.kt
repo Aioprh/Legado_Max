@@ -242,14 +242,17 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                         readInt(map, config.fields.replyCount, DEFAULT_REPLY_COUNTS),
                         inlineReplies.size
                     ),
+                    isGod = isGodComment(map),
                     replies = inlineReplies.toMutableList()
                 )
             }
             // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”；
-            // 按时间由新到旧排序（time=0 的未知时间排在最后，不影响排序稳定性）
+            // 排序：神评论置顶，其余按时间由新到旧（time=0 的未知时间排在最后，不影响排序稳定性）
             items.filter { item ->
                 item.content.isNotBlank() || item.images.isNotEmpty() || item.audio.isNotBlank()
-            }.sortedByDescending { it.time }
+            }.sortedWith(
+                compareByDescending<ParagraphCommentItem> { it.isGod }.thenByDescending { it.time }
+            )
         }.getOrElse {
             AppLog.put("段评解析失败", it)
             emptyList()
@@ -612,6 +615,25 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
         if (cur.isNotEmpty()) tokens.add(cur.toString())
         return tokens
+    }
+
+    /**
+     * 判断评论是否为"神评论"（起点段评）：EssenceType === 2 或 IsEssence === true。
+     * 与书源前端 qd 页面 isGod 的判定一致。
+     */
+    private fun isGodComment(map: Map<*, *>): Boolean {
+        val essence = findKey(map, "EssenceType")
+        if (essence is Number) {
+            if (essence.toInt() == 2) return true
+        } else if (essence != null) {
+            essence.toString().toIntOrNull()?.let { if (it == 2) return true }
+        }
+        val isEssence = findKey(map, "IsEssence")
+        if (isEssence is Boolean) return isEssence
+        if (isEssence != null) {
+            isEssence.toString().toBooleanStrictOrNull()?.let { return it }
+        }
+        return false
     }
 
     /**

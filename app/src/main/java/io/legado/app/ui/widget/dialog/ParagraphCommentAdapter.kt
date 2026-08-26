@@ -62,6 +62,13 @@ class ParagraphCommentAdapter(context: Context) :
                 context.getString(R.string.paragraph_comment_anonymous)
             }
 
+            // 神评论角标（起点 EssenceType==2 / IsEssence==true）
+            if (item.isGod) {
+                tvGod.visible()
+            } else {
+                tvGod.gone()
+            }
+
             if (item.level.isBlank()) {
                 tvLevel.gone()
             } else {
