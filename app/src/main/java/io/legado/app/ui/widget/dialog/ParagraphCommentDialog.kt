@@ -139,8 +139,6 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             showMsg(getString(R.string.paragraph_comment_load_failed))
             return
         }
-        // 诊断：记录弹窗收到的配置与字段路径，便于确认是否为同人小说网（pl.aadcn.cn）适配配置
-        AppLog.put("段评弹窗配置: listPath=${config.listPath} totalPath=${config.totalPath} fields.content='${config.fields.content}' fields.nickname='${config.fields.nickname}' commentsUrl=${config.commentsUrl}")
         loadPage(1)
     }
 
@@ -159,11 +157,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         execute {
             val url = buildCommentsUrl(nextPage)
             val body = fetchBody(url)
-            // 诊断：段评弹窗请求与响应体前 400 字符，用于定位“没有段评”问题
-            AppLog.put("段评弹窗请求[$nextPage]\nurl=$url\nbody=${body?.take(400) ?: "null"}")
             val items = body?.let { parseComments(it) }.orEmpty()
             val newTotal = body?.let { parseTotal(it) } ?: -1L
-            AppLog.put("段评弹窗解析结果: items=${items.size} total=$newTotal")
             withContext(Dispatchers.Main) {
                 loading = false
                 binding.rotateLoading.gone()
@@ -210,14 +205,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             val rc = jsonPath.parse(body)
             val listPath = config.listPath.ifBlank { "$.Data.DataList" }
             val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
-            AppLog.put("段评解析[${listPath}] list.size=${list.size} fields.content='${config.fields.content}'")
-            val maps = list.mapNotNull { it as? Map<*, *> }
-            if (maps.size != list.size) {
-                AppLog.put("段评解析: 有 ${list.size - maps.size} 条不是 Map（类型=${list.firstOrNull()?.javaClass?.name}）")
-            }
-            val items = maps.map { map ->
+            list.mapNotNull { it as? Map<*, *> }.map { map ->
                 val content = readStr(map, config.fields.content, DEFAULT_CONTENTS)
-                AppLog.put("段评解析: 条目 content='$content'")
                 val images = readImages(map)
                 val audio = readAudio(map)
                 ParagraphCommentItem(
@@ -236,15 +225,10 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     floor = readInt(map, config.fields.floor, DEFAULT_FLOORS),
                     replyCount = readInt(map, config.fields.replyCount, DEFAULT_REPLY_COUNTS)
                 )
-            }
-            val filtered = items.filter { item ->
+            }.filter { item ->
                 // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”
                 item.content.isNotBlank() || item.images.isNotEmpty() || item.audio.isNotBlank()
             }
-            if (filtered.size != items.size) {
-                AppLog.put("段评解析: 过滤掉 ${items.size - filtered.size} 条空评论")
-            }
-            filtered
         }.getOrElse {
             AppLog.put("段评解析失败", it)
             emptyList()
