@@ -60,6 +60,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     private var total = -1L // -1 表示未知总数，用空页判断是否还有更多
     private var hasMore = true
     private var loading = false
+    private var footerState = FooterState.NONE
 
     private enum class FooterState { NONE, LOADING, NO_MORE, FAILED }
 
@@ -102,10 +103,14 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     }
                 }
             })
-            // 加载失败点击重试
+            // 加载失败点击重试 / 加载更多点击翻页
             llFooter.setOnClickListener {
                 if (loading) return@setOnClickListener
-                loadPage(page + 1)
+                // 仅在有更多（点击继续加载）或加载失败（点击重试）时可点；
+                // 真正的"没有更多了"点击不再触发加载
+                if (hasMore || footerState == FooterState.FAILED) {
+                    loadPage(page + 1)
+                }
             }
         }
         adapter.replyListener = object : ParagraphCommentAdapter.ReplyListener {
@@ -180,10 +185,14 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     adapter.addItems(items)
                 }
                 if (newTotal >= 0) total = newTotal
-                // 无更多：返回空、或本页不足 pageSize（末页）、或已到总数
-                hasMore = items.isNotEmpty() &&
+                // 无更多判断：优先用接口返回的 hasNext 标志（pagination.hasNextPage/hasNext）。
+                // 部分站点（如神魔番茄）的 totalCount 不可靠、或每页返回条数不足 pageSize，
+                // 用"条数>=页大小 && 已加载<总数"推断会提前显示"没有更多了"，
+                // 而接口的 hasNext 标志是权威的（站点自己的前端也用它）。
+                val hasNextFlag = body?.let { parseHasNext(it) }
+                hasMore = hasNextFlag ?: (items.isNotEmpty() &&
                     items.size >= config.pageSize &&
-                    (total < 0 || adapter.getActualItemCount() < total)
+                    (total < 0 || adapter.getActualItemCount() < total))
                 if (adapter.isEmpty()) {
                     showMsg(getString(R.string.paragraph_comment_empty))
                     updateFooter(FooterState.NONE)
@@ -265,6 +274,27 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             val rc = jsonPath.parse(body)
             (rc.read<Any>(totalPath) as? Number)?.toLong() ?: -1L
         }.getOrDefault(-1L)
+    }
+
+    /**
+     * 读取接口返回的"是否还有下一页"标志（pagination.hasNextPage / hasNext）。
+     * 部分站点（如神魔番茄）的 totalCount 不可靠，分页必须以此为准；取不到返回 null，
+     * 由调用方退回条数推断。
+     */
+    private fun parseHasNext(body: String): Boolean? {
+        return runCatching {
+            val rc = jsonPath.parse(body)
+            val pagination = runCatching { rc.read<Any>("$.data.pagination") as? Map<*, *> }
+                .getOrNull()
+                ?: runCatching { rc.read<Any>("$.Data.Pagination") as? Map<*, *> }.getOrNull()
+            val v = pagination?.let { findKey(it, "hasNextPage") ?: findKey(it, "hasNext") }
+                ?: return@runCatching null
+            when (v) {
+                is Boolean -> v
+                is Number -> v.toInt() > 0
+                else -> v.toString().toBooleanStrictOrNull()
+            }
+        }.getOrNull()
     }
 
     // ---------- 回复 ----------
@@ -642,6 +672,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     }
 
     private fun updateFooter(state: FooterState) {
+        footerState = state
         when (state) {
             FooterState.NONE -> binding.llFooter.gone()
             FooterState.LOADING -> {
