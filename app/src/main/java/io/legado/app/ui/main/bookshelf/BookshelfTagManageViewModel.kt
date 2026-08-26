@@ -50,10 +50,7 @@ class BookshelfTagManageViewModel(
                 val books = appDb.bookDao.allTagInfos
                 val groups = appDb.bookGroupDao.all
                     .filter { it.groupId != BookGroup.IdRoot }
-                    .sortedWith(
-                        compareBy<BookGroup> { if (it.groupId == focusGroupId) 0 else 1 }
-                            .thenBy { it.order }
-                    )
+                    .sortedBy { it.order }
                 val userGroupMask = groups.asSequence()
                     .filter { it.groupId > 0 }
                     .fold(0L) { acc, group -> acc or group.groupId }
