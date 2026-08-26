@@ -205,7 +205,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             val rc = jsonPath.parse(body)
             val listPath = config.listPath.ifBlank { "$.Data.DataList" }
             val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
-            list.mapNotNull { it as? Map<*, *> }.map { map ->
+            val maps = list.mapNotNull { it as? Map<*, *> }
+            val items = maps.map { map ->
                 val content = readStr(map, config.fields.content, DEFAULT_CONTENTS)
                 val images = readImages(map)
                 val audio = readAudio(map)
@@ -225,7 +226,13 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     floor = readInt(map, config.fields.floor, DEFAULT_FLOORS),
                     replyCount = readInt(map, config.fields.replyCount, DEFAULT_REPLY_COUNTS)
                 )
-            }.filter { item ->
+            }
+            if (items.isNotEmpty() && items.all { it.time <= 0 }) {
+                // 诊断：有评论但本页均未解析到时间字段，打印首条字段名便于补充兜底路径
+                val firstKeys = maps.firstOrNull()?.keys?.joinToString(",")
+                AppLog.put("段评解析: 本页${items.size}条评论未解析到时间字段，首条keys=[$firstKeys]")
+            }
+            items.filter { item ->
                 // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”
                 item.content.isNotBlank() || item.images.isNotEmpty() || item.audio.isNotBlank()
             }.sortedByDescending { it.time } // 按时间由新到旧排序（time=0 的未知时间排在最后，不影响排序稳定性）
