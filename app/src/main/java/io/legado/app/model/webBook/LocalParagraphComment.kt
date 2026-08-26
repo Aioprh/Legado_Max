@@ -81,14 +81,16 @@ object LocalParagraphComment {
             AppLog.put("本地书段评: 无法从书源[${source.bookSourceName}]的URL提取书籍/章节ID")
             return content
         }
-        val counts = adapter.fetchSummaryCounts(source, bookId, chapterId, remoteChapterUrl)
-        if (counts.isEmpty()) {
+        val summary = adapter.fetchSummaryCounts(source, bookId, chapterId, remoteChapterUrl)
+        if (summary.counts.isEmpty()) {
             AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}]暂无段评")
             return content
         }
-        val injected = injectBubbles(content, source, adapter, bookId, chapterId, remoteChapterUrl, counts)
+        val injected = injectBubbles(
+            content, source, adapter, bookId, chapterId, remoteChapterUrl, summary
+        )
         if (injected != content) {
-            AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}] 已注入 ${counts.size} 个段评气泡")
+            AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}] 已注入 ${summary.counts.size} 个段评气泡")
         }
         return injected
     }
@@ -276,35 +278,39 @@ object LocalParagraphComment {
     /**
      * 解析番茄段评摘要：review_list 里的 paragraphId 是"原始行号"（含空行，1基），
      * 而本地段评注入按"非空段落号"计数（与书源 jsLib 的 fqGetComments 一致）。
-     * 这里结合章节正文把原始行号换算成非空段落号，避免正文带空行时气泡错位。
+     * 这里结合章节正文把原始行号换算成非空段落号，避免正文带空行时气泡错位；
+     * 同时带出远程非空段落（供跨书源文本对齐）与各段请求接口用的 paragraphId
+     * （paraIndex 优先，缺省取原始行号，与书源 jsLib 的 pIndex 一致）。
      * 取不到正文映射时退回原始行号（退化为 [parseCounts] 行为）。
      */
-    private fun parseFanqieCounts(body: String): Map<Int, Int> {
+    private fun parseFanqieCounts(body: String): SummaryResult {
         return runCatching {
             val rc = jsonPath.parse(body)
             val content = runCatching { rc.read<String>("$.content") }.getOrNull()
                 ?: runCatching { rc.read<String>("$.data.content") }.getOrNull()
             val list = runCatching { rc.read<List<Any?>>("$.review_list") }.getOrNull()
                 ?: runCatching { rc.read<List<Any?>>("$.data.review_list") }.getOrNull()
-                ?: return@runCatching emptyMap()
+                ?: return@runCatching SummaryResult()
             // 与书源 jsLib 一致：含 <p> 时按 <p> 分段，否则按 \n 分段
-            val paragraphs = if (content == null) {
+            val rawParagraphs = if (content == null) {
                 emptyList()
             } else if (content.contains("<p>", ignoreCase = true)) {
-                content.replace("\r\n", "\n").split("<p>")
+                content.replace("\r\n", "\n").replace("\r", "\n").split("<p>")
             } else {
-                content.replace("\r\n", "\n").split("\n")
+                content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
             }
+            val remoteParagraphs = rawParagraphs.map { it.trim() }.filter { it.isNotEmpty() }
             // 原始行号(1基) -> 非空段落号(1基)
             val lineToPara = HashMap<Int, Int>()
             var para = 0
-            paragraphs.forEachIndexed { i, line ->
+            rawParagraphs.forEachIndexed { i, line ->
                 if (line.trim().isNotEmpty()) {
                     para++
                     lineToPara[i + 1] = para
                 }
             }
-            val result = HashMap<Int, Int>()
+            val counts = HashMap<Int, Int>()
+            val apiPids = HashMap<Int, Int>()
             list.mapNotNull { it as? Map<*, *> }.forEach { map ->
                 val rawLine = firstIntValue(map, listOf("paragraphId", "ParagraphId"))
                     ?: return@forEach
@@ -313,17 +319,37 @@ object LocalParagraphComment {
                 val count = firstIntValue(
                     map, listOf("textCount", "TextCount", "commentCount", "CommentCount")
                 ) ?: 0
-                result[paraNum] = count
+                val apiPid = firstIntValue(map, listOf("paraIndex", "ParaIndex")) ?: rawLine
+                counts[paraNum] = count
+                apiPids[paraNum] = apiPid
             }
-            result
-        }.getOrDefault(emptyMap())
+            SummaryResult(counts, apiPids, remoteParagraphs)
+        }.getOrDefault(SummaryResult())
     }
 
     /**
      * 对有评论的段落后方注入 dp: 气泡。
      * 生成格式与书源 ruleContent 一致：`<img src="dp:<count>,{\"pclick\":\"<脚本>\",\"status\":\"normal\"}">`。
+     * 提供了远程正文段落时走文本对齐定位，否则按非空段落序号定位。
      */
     private fun injectBubbles(
+        content: String,
+        source: BookSource,
+        adapter: ParagraphAdapter,
+        bookId: String,
+        chapterId: String,
+        chapterUrl: String,
+        summary: SummaryResult
+    ): String {
+        return if (summary.remoteParagraphs.isNotEmpty()) {
+            injectByTextAlign(content, source, adapter, bookId, chapterId, chapterUrl, summary)
+        } else {
+            injectByPosition(content, source, adapter, bookId, chapterId, chapterUrl, summary.counts)
+        }
+    }
+
+    /** 按非空段落序号定位注入（起点等段落结构与远程基本一致的情况） */
+    private fun injectByPosition(
         content: String,
         source: BookSource,
         adapter: ParagraphAdapter,
@@ -355,6 +381,77 @@ object LocalParagraphComment {
             }
         }
         return out.joinToString("\n")
+    }
+
+    /**
+     * 文本对齐注入（跨书源，如其他书源的书接入神魔番茄段评）：
+     * 本地章节与远程章节分段不一定一致，先把远程正文段落与本地段落按文字匹配，
+     * 再把段评数挂到正确的本地段落后方。paragraphId 传远程段落对应的接口编号。
+     */
+    private fun injectByTextAlign(
+        content: String,
+        source: BookSource,
+        adapter: ParagraphAdapter,
+        bookId: String,
+        chapterId: String,
+        chapterUrl: String,
+        summary: SummaryResult
+    ): String {
+        val lines = content.replace("\r\n", "\n").split("\n")
+        val localParas = ArrayList<String>()
+        val lineIndexOfPara = ArrayList<Int>()
+        lines.forEachIndexed { i, line ->
+            if (line.trim().isNotEmpty()) {
+                localParas.add(line)
+                lineIndexOfPara.add(i)
+            }
+        }
+        val align = alignLocalToRemote(localParas, summary.remoteParagraphs)
+        val out = lines.toMutableList()
+        for (pi in localParas.indices) {
+            val ri = align[pi]
+            if (ri < 0) continue
+            val remotePara = ri + 1 // 远程非空段落号(1基)
+            val count = summary.counts[remotePara] ?: 0
+            if (count > 0) {
+                val apiPid = summary.apiPids[remotePara] ?: remotePara
+                val pclick = adapter.buildPclick(source, bookId, chapterId, apiPid, chapterUrl)
+                if (pclick.isNotBlank()) {
+                    val option = "{\\\"pclick\\\":\\\"$pclick\\\",\\\"status\\\":\\\"normal\\\"}"
+                    val lineIndex = lineIndexOfPara[pi]
+                    out[lineIndex] = "${out[lineIndex]}<img src=\"dp:$count,$option\">"
+                }
+            }
+        }
+        return out.joinToString("\n")
+    }
+
+    /** 文本对齐：把本地非空段落映射到远程非空段落序号（-1=本地多出/未匹配）。按顺序约束匹配。 */
+    private fun alignLocalToRemote(local: List<String>, remote: List<String>): IntArray {
+        val result = IntArray(local.size) { -1 }
+        var j = 0
+        local.indices.forEach { i ->
+            val nl = normalizePara(local[i])
+            if (nl.isEmpty()) return@forEach
+            var found = -1
+            for (k in j until remote.size) {
+                val nr = normalizePara(remote[k])
+                if (nr.isNotEmpty() && (nr == nl || nr.contains(nl) || nl.contains(nr))) {
+                    found = k
+                    break
+                }
+            }
+            if (found >= 0) {
+                result[i] = found
+                j = found + 1
+            }
+        }
+        return result
+    }
+
+    /** 段落文本归一化：去 HTML 标签、空白，用于跨书源比对 */
+    private fun normalizePara(s: String): String {
+        return s.replace(Regex("<[^>]*>"), "").replace(Regex("\\s+"), "").trim()
     }
 
     /**
@@ -407,6 +504,18 @@ object LocalParagraphComment {
         }
     }
 
+    /**
+     * 段评摘要结果：
+     * - [counts]：远程"非空段落号"(1基) -> 评论数
+     * - [apiPids]：远程非空段落号 -> 请求段评接口用的 paragraphId（缺省用段落号本身）
+     * - [remoteParagraphs]：远程正文非空段落，用于跨书源文本对齐定位（为空则退回按段落序号定位）
+     */
+    data class SummaryResult(
+        val counts: Map<Int, Int> = emptyMap(),
+        val apiPids: Map<Int, Int> = emptyMap(),
+        val remoteParagraphs: List<String> = emptyList()
+    )
+
     /** 段评书源适配器：负责提取 ID、拉取段评摘要、生成点击配置 */
     private interface ParagraphAdapter {
         fun match(source: BookSource): Boolean
@@ -422,7 +531,7 @@ object LocalParagraphComment {
             bookId: String,
             chapterId: String,
             chapterUrl: String? = null
-        ): Map<Int, Int>
+        ): SummaryResult
 
         fun buildPclick(
             source: BookSource,
@@ -456,19 +565,21 @@ object LocalParagraphComment {
             bookId: String,
             chapterId: String,
             chapterUrl: String?
-        ): Map<Int, Int> {
-            val endpoint = extractCommentsEndpoint(source) ?: return emptyMap()
+        ): SummaryResult {
+            val endpoint = extractCommentsEndpoint(source) ?: return SummaryResult()
             val body = fetchBody(
                 source,
                 "$endpoint?action=summary&book_id=$bookId&chapter_id=$chapterId"
-            ) ?: return emptyMap()
+            ) ?: return SummaryResult()
             val listPath = SUMMARY_LIST_PATHS.firstOrNull {
                 runCatching { jsonPath.parse(body).read<List<Any?>>(it) }.getOrNull() != null
-            } ?: return emptyMap()
-            return parseCounts(
-                body, listPath,
-                pidKeys = listOf("ParagraphId", "paragraphId"),
-                countKeys = listOf("CommentCount", "commentCount")
+            } ?: return SummaryResult()
+            return SummaryResult(
+                parseCounts(
+                    body, listPath,
+                    pidKeys = listOf("ParagraphId", "paragraphId"),
+                    countKeys = listOf("CommentCount", "commentCount")
+                )
             )
         }
 
@@ -535,11 +646,11 @@ object LocalParagraphComment {
             bookId: String,
             chapterId: String,
             chapterUrl: String?
-        ): Map<Int, Int> {
+        ): SummaryResult {
             if (chapterUrl != null && chapterUrl.contains("item_id=", ignoreCase = true)) {
                 // 番茄段评：段计数随章节正文（review_list）一起返回；
-                // 用 parseFanqieCounts 把原始行号换算成非空段落号，与本地注入计数对齐
-                val body = fetchBody(source, chapterUrl) ?: return emptyMap()
+                // 用 parseFanqieCounts 把原始行号换算成非空段落号，并带出远程段落做文本对齐
+                val body = fetchBody(source, chapterUrl) ?: return SummaryResult()
                 return parseFanqieCounts(body)
             }
             val token = qidianToken()
@@ -551,11 +662,13 @@ object LocalParagraphComment {
                     "User-Agent" to "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
                     "Cookie" to "qd_client_id=$token; _csrfToken=$token"
                 )
-            ) ?: return emptyMap()
-            return parseCounts(
-                body, "$.data.list",
-                pidKeys = listOf("paragraphId", "ParagraphId"),
-                countKeys = listOf("textCount", "TextCount", "commentCount", "CommentCount")
+            ) ?: return SummaryResult()
+            return SummaryResult(
+                parseCounts(
+                    body, "$.data.list",
+                    pidKeys = listOf("paragraphId", "ParagraphId"),
+                    countKeys = listOf("textCount", "TextCount", "commentCount", "CommentCount")
+                )
             )
         }
 
@@ -660,15 +773,17 @@ object LocalParagraphComment {
             bookId: String,
             chapterId: String,
             chapterUrl: String?
-        ): Map<Int, Int> {
+        ): SummaryResult {
             val body = fetchBody(
                 source,
                 "$API?action=paragraph_summary&book_id=$bookId&chapter_id=$chapterId"
-            ) ?: return emptyMap()
-            return parseCounts(
-                body, "$.data.summary",
-                pidKeys = listOf("ParagraphId", "paragraphId"),
-                countKeys = listOf("CommentCount", "commentCount", "TextCount", "textCount")
+            ) ?: return SummaryResult()
+            return SummaryResult(
+                parseCounts(
+                    body, "$.data.summary",
+                    pidKeys = listOf("ParagraphId", "paragraphId"),
+                    countKeys = listOf("CommentCount", "commentCount", "TextCount", "textCount")
+                )
             )
         }
 
