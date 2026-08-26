@@ -17,6 +17,11 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/26
+- 移除高亮规则应用排版多余的选择按钮
+- refactor(书架): 将「显示标签」重命名为「显示分类信息等」
+- feat(书架): 参考archive增加标签管理功能，在书架布局设置里由“显示标签栏”控制显隐状态
+
 **2026/8/25
 - fix(目录): 修复点击书籍目录偶现闪烁问题
 - fix(主题): 修复加密 .red 主题包导入时误报「文件过大」的问题
