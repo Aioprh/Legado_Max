@@ -70,7 +70,13 @@ class BookSourceEditAdapter : RecyclerView.Adapter<BookSourceEditAdapter.MyViewH
                     editText.removeTextChangedListener(it)
                 }
             }
+            // P0: setText 前关闭 CodeView 内部高亮级联，避免 bind 时触发全文正则匹配 + span 操作
+            editText.skipNextHighlight = true
+            editText.cancelHighlighterRender()
             editText.setText(editEntity.value)
+            editText.skipNextHighlight = false
+            // bind 后请求一次高亮，恢复初始语法着色（延迟执行，避免在 bind 同步流程中堆叠）
+            editText.requestHighlight()
             textInputLayout.hint = editEntity.hint
             val textWatcher = object : TextWatcher {
                 override fun beforeTextChanged(
@@ -92,7 +98,7 @@ class BookSourceEditAdapter : RecyclerView.Adapter<BookSourceEditAdapter.MyViewH
             }
             editText.addTextChangedListener(textWatcher)
             editText.setTag(R.id.tag2, textWatcher)
-            editText.clearFocus()
+            // P6: 移除逐个 clearFocus()，setEditEntities() 已有全局 clearFocus
         }
     }
 

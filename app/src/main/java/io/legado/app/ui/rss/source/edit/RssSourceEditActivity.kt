@@ -346,6 +346,11 @@ class RssSourceEditActivity :
             text = "WEB_VIEW"
         })
         binding.recyclerView.setEdgeEffectColor(primaryColor)
+        // P3: RecyclerView 高度为 match_parent，不受内容数量影响
+        binding.recyclerView.setHasFixedSize(true)
+        binding.recyclerView.setItemViewCacheSize(15)
+        binding.recyclerView.recycledViewPool.setMaxRecycledViews(0, 15)
+        binding.recyclerView.recycledViewPool.setMaxRecycledViews(1, 10)
         val createSpanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int = when (adapter.getItemViewType(position)) {
                 EditEntity.ViewType.checkBox -> 1 //CheckBox 占1个span

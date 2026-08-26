@@ -30,6 +30,12 @@ class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
     private var highlightWhileTextChanging = true
     private var hasErrors = false
     private var mRemoveErrorsWhenTextChanged = true
+
+    /**
+     * 当为 true 时，mEditorTextWatcher.onTextChanged / afterTextChanged 跳过高亮调度。
+     * 用于 Adapter bind 时 setText 不触发全文正则匹配 + span 操作。
+     */
+    var skipNextHighlight = false
     private val mUpdateHandler = Handler(Looper.getMainLooper())
     private var mAutoCompleteTokenizer: Tokenizer? = null
     private val displayDensity = resources.displayMetrics.density
@@ -62,6 +68,7 @@ class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
             count: Int
         ) {
             if (!modified) return
+            if (skipNextHighlight) return
             if (highlightWhileTextChanging) {
                 if (mSyntaxPatternMap.isNotEmpty()) {
                     convertTabs(editableText, start, count)
@@ -72,6 +79,7 @@ class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
         }
 
         override fun afterTextChanged(editable: Editable) {
+            if (skipNextHighlight) return
             if (!highlightWhileTextChanging) {
                 if (!modified) return
                 cancelHighlighterRender()
@@ -273,6 +281,16 @@ class CodeView @JvmOverloads constructor(context: Context, attrs: AttributeSet? 
 
     fun cancelHighlighterRender() {
         mUpdateHandler.removeCallbacks(mUpdateRunnable)
+    }
+
+    /**
+     * 请求一次高亮渲染（延迟 mUpdateDelayTime 执行）。
+     * 供 Adapter 在 bind 后调用，恢复初始语法着色，
+     * 同时避免在 bind 同步流程中触发 13 次高亮 + requestLayout 堆叠。
+     */
+    fun requestHighlight() {
+        cancelHighlighterRender()
+        mUpdateHandler.postDelayed(mUpdateRunnable, mUpdateDelayTime.toLong())
     }
 
     private fun convertTabs(editable: Editable, start: Int, count: Int) {
