@@ -81,12 +81,12 @@ object LocalParagraphComment {
             AppLog.put("本地书段评: 无法从书源[${source.bookSourceName}]的URL提取书籍/章节ID")
             return content
         }
-        val counts = adapter.fetchSummaryCounts(source, bookId, chapterId)
+        val counts = adapter.fetchSummaryCounts(source, bookId, chapterId, remoteChapterUrl)
         if (counts.isEmpty()) {
             AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}]暂无段评")
             return content
         }
-        val injected = injectBubbles(content, source, adapter, bookId, chapterId, counts)
+        val injected = injectBubbles(content, source, adapter, bookId, chapterId, remoteChapterUrl, counts)
         if (injected != content) {
             AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}] 已注入 ${counts.size} 个段评气泡")
         }
@@ -243,6 +243,7 @@ object LocalParagraphComment {
         adapter: ParagraphAdapter,
         bookId: String,
         chapterId: String,
+        chapterUrl: String,
         counts: Map<Int, Int>
     ): String {
         val lines = content.replace("\r\n", "\n").split("\n")
@@ -256,7 +257,7 @@ object LocalParagraphComment {
             pid++
             val count = counts[pid] ?: 0
             if (count > 0) {
-                val pclick = adapter.buildPclick(source, bookId, chapterId, pid)
+                val pclick = adapter.buildPclick(source, bookId, chapterId, pid, chapterUrl)
                 if (pclick.isNotBlank()) {
                     val option = "{\\\"pclick\\\":\\\"$pclick\\\",\\\"status\\\":\\\"normal\\\"}"
                     out.add("$line<img src=\"dp:$count,$option\">")
@@ -325,8 +326,25 @@ object LocalParagraphComment {
         fun match(source: BookSource): Boolean
         fun extractBookId(bookUrl: String, chapterUrl: String): String?
         fun extractChapterId(chapterUrl: String): String?
-        suspend fun fetchSummaryCounts(source: BookSource, bookId: String, chapterId: String): Map<Int, Int>
-        fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int): String
+
+        /**
+         * 拉取各段评论数。部分站点（如神魔小说的番茄段评）段计数随章节正文一起返回，
+         * 需要 chapterUrl 才能取到，故额外传入远程章节 URL（无该需求的可忽略）。
+         */
+        suspend fun fetchSummaryCounts(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            chapterUrl: String? = null
+        ): Map<Int, Int>
+
+        fun buildPclick(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            pid: Int,
+            chapterUrl: String? = null
+        ): String
     }
 
     // ---------- 通用/默认适配器（起点系镜像站 comments.php） ----------
@@ -350,7 +368,8 @@ object LocalParagraphComment {
         override suspend fun fetchSummaryCounts(
             source: BookSource,
             bookId: String,
-            chapterId: String
+            chapterId: String,
+            chapterUrl: String?
         ): Map<Int, Int> {
             val endpoint = extractCommentsEndpoint(source) ?: return emptyMap()
             val body = fetchBody(
@@ -367,7 +386,13 @@ object LocalParagraphComment {
             )
         }
 
-        override fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int): String {
+        override fun buildPclick(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            pid: Int,
+            chapterUrl: String?
+        ): String {
             val endpoint = extractCommentsEndpoint(source) ?: return ""
             return buildPclickScript(
                 listPath = "$.Data.DataList",
@@ -390,25 +415,56 @@ object LocalParagraphComment {
         }
     }
 
-    // ---------- 神魔小说（shenmoxs.top） ----------
+    // ---------- 神魔小说（shenmoxs.top，起点/番茄段评） ----------
 
     private object ShenmoAdapter : ParagraphAdapter {
+        private const val API = "https://shenmoxs.top"
         private const val QD_SUMMARY = "https://m.qidian.com/majax/chapterReview/reviewSummary"
 
         override fun match(source: BookSource): Boolean =
             source.bookSourceUrl.contains("shenmoxs.top", ignoreCase = true)
 
+        /** 判断是否为番茄书：番茄书详情 URL 带 source=fanqie，章节正文 URL 带 item_id */
+        private fun isFanqie(bookUrl: String, chapterUrl: String?): Boolean =
+            bookUrl.contains("source=fanqie", ignoreCase = true) ||
+                chapterUrl?.contains("item_id=", ignoreCase = true) == true
+
         override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
-            pickId(bookUrl, "bookId") ?: pickId(chapterUrl, "bookId")
+            if (isFanqie(bookUrl, chapterUrl)) {
+                // 番茄：正文 URL 里的 book_id 即番茄 bookId
+                pickId(chapterUrl, "book_id") ?: pickId(bookUrl, "bookId")
+            } else {
+                pickId(bookUrl, "bookId") ?: pickId(chapterUrl, "bookId")
+            }
 
         override fun extractChapterId(chapterUrl: String): String? =
-            pickId(chapterUrl, "chapterId") ?: pickId(chapterUrl, "chapter_id")
+            if (chapterUrl.contains("item_id=", ignoreCase = true)) {
+                pickId(chapterUrl, "item_id")
+            } else {
+                pickId(chapterUrl, "chapterId") ?: pickId(chapterUrl, "chapter_id")
+            }
 
         override suspend fun fetchSummaryCounts(
             source: BookSource,
             bookId: String,
-            chapterId: String
+            chapterId: String,
+            chapterUrl: String?
         ): Map<Int, Int> {
+            if (chapterUrl != null && chapterUrl.contains("item_id=", ignoreCase = true)) {
+                // 番茄段评：段计数随章节正文（review_list）一起返回
+                val body = fetchBody(source, chapterUrl) ?: return emptyMap()
+                return parseCounts(
+                    body, "$.review_list",
+                    pidKeys = listOf("paragraphId", "ParagraphId"),
+                    countKeys = listOf("textCount", "TextCount", "commentCount", "CommentCount")
+                ).ifEmpty {
+                    parseCounts(
+                        body, "$.data.review_list",
+                        pidKeys = listOf("paragraphId", "ParagraphId"),
+                        countKeys = listOf("textCount", "TextCount", "commentCount", "CommentCount")
+                    )
+                }
+            }
             val token = qidianToken()
             val url = "$QD_SUMMARY?bookId=$bookId&chapterId=$chapterId&_csrfToken=$token"
             // headerMapF 会整体替换书源请求头，因此需同时带上 UA
@@ -426,33 +482,46 @@ object LocalParagraphComment {
             )
         }
 
-        override fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int): String {
+        override fun buildPclick(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            pid: Int,
+            chapterUrl: String?
+        ): String {
             val session = adminSession()
+            val fanqie = chapterUrl?.contains("item_id=", ignoreCase = true) == true
+            val sourceParam = if (fanqie) "&source=fanqie" else ""
             return buildPclickScript(
                 listPath = "$.data.comments",
                 totalPath = "$.data.pagination.totalCount",
-                commentsUrl = "https://shenmoxs.top/chapter/comments?bookId=$bookId&chapterId=$chapterId" +
-                    "&paragraphId=$pid&kind=paragraph&page=[page]&pageSize=[pageSize]$session",
-                repliesUrl = "https://shenmoxs.top/chapter/comment-replies?bookId=$bookId&chapterId=$chapterId" +
-                    "&paragraphId=$pid&commentId=[reviewId]&kind=paragraph&pageSize=20$session",
+                commentsUrl = "$API/chapter/comments?bookId=$bookId&chapterId=$chapterId" +
+                    "&paragraphId=$pid$sourceParam&kind=paragraph&page=[page]&pageSize=[pageSize]$session",
+                repliesUrl = "$API/chapter/comment-replies?bookId=$bookId&chapterId=$chapterId" +
+                    "&paragraphId=$pid$sourceParam&commentId=[reviewId]&kind=paragraph&pageSize=20$session",
                 replyListPath = "$.data.comments",
                 audioUrl = "",
                 pageSize = 20,
-                fields = ParagraphCommentConfig.FieldConfig(
-                    nickname = "$.UserName",
-                    avatar = "$.UserHeadIcon",
-                    level = "$.ShowTag",
-                    ip = "$.IpLocation",
-                    content = "$.Content",
-                    agree = "$.AgreeAmount",
-                    oppose = "$.OpposeAmount",
-                    time = "$.CreateTime",
-                    floor = "$.Floor",
-                    id = "$.Id",
-                    rootId = "$.Id",
-                    replyCount = "$.ReviewCount",
-                    replyTo = "$.RelatedUser"
-                )
+                // 番茄评论字段与起点不同（小写 snake_case），交给弹窗 DEFAULT_* 兜底解析
+                fields = if (fanqie) {
+                    ParagraphCommentConfig.FieldConfig()
+                } else {
+                    ParagraphCommentConfig.FieldConfig(
+                        nickname = "$.UserName",
+                        avatar = "$.UserHeadIcon",
+                        level = "$.ShowTag",
+                        ip = "$.IpLocation",
+                        content = "$.Content",
+                        agree = "$.AgreeAmount",
+                        oppose = "$.OpposeAmount",
+                        time = "$.CreateTime",
+                        floor = "$.Floor",
+                        id = "$.Id",
+                        rootId = "$.Id",
+                        replyCount = "$.ReviewCount",
+                        replyTo = "$.RelatedUser"
+                    )
+                }
             )
         }
 
@@ -512,7 +581,8 @@ object LocalParagraphComment {
         override suspend fun fetchSummaryCounts(
             source: BookSource,
             bookId: String,
-            chapterId: String
+            chapterId: String,
+            chapterUrl: String?
         ): Map<Int, Int> {
             val body = fetchBody(
                 source,
@@ -525,7 +595,13 @@ object LocalParagraphComment {
             )
         }
 
-        override fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int): String {
+        override fun buildPclick(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            pid: Int,
+            chapterUrl: String?
+        ): String {
             return buildPclickScript(
                 listPath = "$.data.comments",
                 totalPath = "$.data.total",
