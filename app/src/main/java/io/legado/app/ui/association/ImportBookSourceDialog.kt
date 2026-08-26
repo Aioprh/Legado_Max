@@ -14,7 +14,6 @@ import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
@@ -333,7 +332,6 @@ class ImportBookSourceDialog() : BaseDialogFragment(R.layout.dialog_recycler_vie
                 ivLocate.setOnClickListener {
                     val source = viewModel.checkSources.getOrNull(holder.layoutPosition)
                         ?: return@setOnClickListener
-                    AppLog.put("点击定位图标: url=${source.bookSourceUrl}, name=${source.bookSourceName}")
                     startActivity<BookSourceActivity> {
                         putExtra("locateSourceUrl", source.bookSourceUrl)
                         putExtra("locateSourceName", source.bookSourceName)

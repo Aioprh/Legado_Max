@@ -139,7 +139,6 @@ sendToClip(text)
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         locateSourceUrl = intent.getStringExtra("locateSourceUrl")
         locateSourceName = intent.getStringExtra("locateSourceName")
-        AppLog.put("RssSourceActivity启动: locateSourceUrl=$locateSourceUrl, locateSourceName=$locateSourceName")
         initRecyclerView()
         initSearchView()
         if (locateSourceUrl != null) {
@@ -155,7 +154,6 @@ sendToClip(text)
         setIntent(intent)
         locateSourceUrl = intent.getStringExtra("locateSourceUrl")
         locateSourceName = intent.getStringExtra("locateSourceName")
-        AppLog.put("RssSourceActivity onNewIntent: locateSourceUrl=$locateSourceUrl, locateSourceName=$locateSourceName")
         if (locateSourceUrl != null) {
             searchView.setQuery("", false)
             upSourceFlow()
@@ -520,7 +518,6 @@ sendToClip(text)
         val nameToLocate = locateSourceName
         val index = data.indexOfFirst { it.sourceUrl == urlToLocate }.takeIf { it >= 0 }
             ?: data.indexOfFirst { nameToLocate != null && it.sourceName == nameToLocate }
-        AppLog.put("locate rss source: url=$urlToLocate, name=$nameToLocate, index=$index, dataSize=${data.size}")
         if (index < 0) {
             return
         }
@@ -531,7 +528,6 @@ sendToClip(text)
                 ?.scrollToPositionWithOffset(index, 72.dpToPx())
                 ?: binding.recyclerView.scrollToPosition(index)
             adapter.setSelection(index)
-            AppLog.put("locate rss source done: index=$index")
         }
     }
 
