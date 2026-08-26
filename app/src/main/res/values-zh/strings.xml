@@ -2432,4 +2432,6 @@
     <string name="local_paragraph_source_none">未选择</string>
     <string name="paragraph_comment_audio_failed">未找到该语音的播放地址</string>
     <string name="paragraph_comment_image">图片评论</string>
+    <string name="paragraph_comment_realtime">实时</string>
+    <string name="paragraph_comment_newest">最新</string>
 </resources>

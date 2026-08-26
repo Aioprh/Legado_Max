@@ -61,6 +61,10 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     private var hasMore = true
     private var loading = false
     private var footerState = FooterState.NONE
+    // 排序模式：true=最新（神评论置顶+按时间由新到旧）；false=实时（接口原始顺序）
+    private var newestFirst = true
+    // 接口原始顺序（跨页累积），供切换排序时恢复
+    private val rawItems = mutableListOf<ParagraphCommentItem>()
 
     private enum class FooterState { NONE, LOADING, NO_MORE, FAILED }
 
@@ -91,6 +95,19 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             toolBar.setBackgroundColor(primaryColor)
             toolBar.title = getString(R.string.paragraph_comment_title)
             toolBar.setNavigationOnClickListener { dismiss() }
+            // 排序切换：最新（时间由新到旧）/ 实时（接口原始顺序）
+            tvSort.text = getString(
+                if (newestFirst) R.string.paragraph_comment_newest
+                else R.string.paragraph_comment_realtime
+            )
+            tvSort.setOnClickListener {
+                newestFirst = !newestFirst
+                tvSort.text = getString(
+                    if (newestFirst) R.string.paragraph_comment_newest
+                    else R.string.paragraph_comment_realtime
+                )
+                applySort()
+            }
             recyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = adapter
             recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -183,9 +200,12 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 }
                 page = nextPage
                 if (nextPage == 1) {
-                    adapter.setItems(items)
+                    rawItems.clear()
+                    rawItems.addAll(items)
+                    adapter.setItems(if (newestFirst) rawItems.sortedWith(sortComparator()) else rawItems)
                 } else {
-                    adapter.addItems(items)
+                    rawItems.addAll(items)
+                    appendPageItems(items)
                 }
                 if (newTotal >= 0) total = newTotal
                 // 无更多判断：优先用接口返回的 hasNext 标志（pagination.hasNextPage/hasNext）。
@@ -211,6 +231,38 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         return config.commentsUrl
             .replace("[page]", nextPage.toString())
             .replace("[pageSize]", config.pageSize.toString())
+    }
+
+    /** 最新模式排序：神评论置顶，其余按时间由新到旧（time=0 的未知时间排最后） */
+    private fun sortComparator(): Comparator<ParagraphCommentItem> =
+        compareByDescending<ParagraphCommentItem> { it.isGod }.thenByDescending { it.time }
+
+    /** 切换排序模式后整表重排（以接口原始顺序 rawItems 为基准） */
+    private fun applySort() {
+        if (newestFirst) {
+            adapter.setItems(rawItems.sortedWith(sortComparator()))
+        } else {
+            adapter.setItems(rawItems)
+        }
+    }
+
+    /** 追加下一页：实时模式直接末尾追加；最新模式按序插入，保持整体有序且不重置滚动位置 */
+    private fun appendPageItems(newItems: List<ParagraphCommentItem>) {
+        if (newItems.isEmpty()) return
+        if (!newestFirst) {
+            adapter.addItems(newItems)
+            return
+        }
+        val comparator = sortComparator()
+        newItems.forEach { item ->
+            val items = adapter.getItems()
+            val idx = items.indexOfFirst { comparator.compare(it, item) < 0 }
+            if (idx < 0) {
+                adapter.addItem(item)
+            } else {
+                adapter.addItems(idx, listOf(item))
+            }
+        }
     }
 
     private fun parseComments(body: String): List<ParagraphCommentItem> {
@@ -247,12 +299,10 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 )
             }
             // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”；
-            // 排序：神评论置顶，其余按时间由新到旧（time=0 的未知时间排在最后，不影响排序稳定性）
+            // 排序交由 [applySort] 按当前模式处理，这里保持接口原始顺序
             items.filter { item ->
                 item.content.isNotBlank() || item.images.isNotEmpty() || item.audio.isNotBlank()
-            }.sortedWith(
-                compareByDescending<ParagraphCommentItem> { it.isGod }.thenByDescending { it.time }
-            )
+            }
         }.getOrElse {
             AppLog.put("段评解析失败", it)
             emptyList()

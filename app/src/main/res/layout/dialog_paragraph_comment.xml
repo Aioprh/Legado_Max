@@ -14,7 +14,22 @@
         app:navigationIcon="@drawable/ic_arrow_back"
         app:popupTheme="@style/AppTheme.PopupOverlay"
         app:title="@string/paragraph_comment_title"
-        app:titleTextAppearance="@style/ToolbarTitle" />
+        app:titleTextAppearance="@style/ToolbarTitle">
+
+        <!-- 排序切换：最新（时间由新到旧） / 实时（接口原始顺序） -->
+        <TextView
+            android:id="@+id/tv_sort"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:paddingStart="8dp"
+            android:paddingEnd="16dp"
+            android:gravity="center"
+            android:text="@string/paragraph_comment_newest"
+            android:textColor="@color/white"
+            android:textSize="14sp" />
+
+    </androidx.appcompat.widget.Toolbar>
 
     <FrameLayout
         android:layout_width="match_parent"
