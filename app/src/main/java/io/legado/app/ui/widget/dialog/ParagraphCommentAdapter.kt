@@ -32,8 +32,14 @@ class ParagraphCommentAdapter(context: Context) :
         fun onToggleAudio(item: ParagraphCommentItem)
     }
 
+    interface ImageListener {
+        /** 点击评论/回复图片：打开大图查看 */
+        fun onImageClick(url: String)
+    }
+
     var replyListener: ReplyListener? = null
     var audioListener: AudioListener? = null
+    var imageListener: ImageListener? = null
 
     override fun getViewBinding(parent: ViewGroup): ItemParagraphCommentBinding {
         return ItemParagraphCommentBinding.inflate(inflater, parent, false)
@@ -207,7 +213,7 @@ class ParagraphCommentAdapter(context: Context) :
         }
     }
 
-    /** 绑定评论/回复图片：单行最多 3 张，超过则只显示前 3 张 */
+    /** 绑定评论/回复图片：单行最多 3 张，超过则只显示前 3 张；点击图片打开大图 */
     private fun bindImages(
         container: View,
         img1: ImageView,
@@ -227,6 +233,9 @@ class ParagraphCommentAdapter(context: Context) :
                 .placeholder(R.drawable.image_cover_default)
                 .error(R.drawable.image_cover_default)
                 .into(views[index])
+            views[index].setOnClickListener {
+                if (url.isNotBlank()) imageListener?.onImageClick(url)
+            }
         }
         for (i in list.size until 3) {
             views[i].gone()

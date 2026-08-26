@@ -128,6 +128,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 toggleAudio(item)
             }
         }
+        adapter.imageListener = object : ParagraphCommentAdapter.ImageListener {
+            override fun onImageClick(url: String) {
+                showDialogFragment(PhotoDialog(url))
+            }
+        }
         arguments?.let {
             val sourceKey = it.getString("sourceKey")
             source = sourceKey?.let { key ->
