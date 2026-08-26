@@ -274,10 +274,52 @@ class ParagraphCommentAdapter(context: Context) :
         /** 段评内容里的表情码标记，如 `[fn=12]` / `*[fn＝12]` */
         private val FN_EMOJI_REGEX = Regex("""\*?\[fn[=＝](\d+)\]""")
 
-        /** 将段评内容中的 `[fn=N]` 表情码替换为对应 emoji，未知码保留原文 */
+        /** 中文名表情占位符，如 `[笑哭]`（番茄等站点评论里的常见表情） */
+        private val FQ_EMOJI_REGEX = Regex("""\[[^\[\]]+\]""")
+
+        /** 番茄/中文段评占位符 → Unicode 表情。番茄评论的表情是 `[名称]` 占位符，
+         *  站点前端由后端 emojiEndpoint 映射为图片，原生端用 Unicode emoji 兜底展示。 */
+        private val FQ_EMOJI_MAP: Map<String, String> = mapOf(
+            // 笑 / 开心
+            "[笑哭]" to "😂", "[大笑]" to "😄", "[哈哈]" to "😃", "[嘻嘻]" to "😁", "[憨笑]" to "😊",
+            "[微笑]" to "🙂", "[呲牙]" to "😁", "[开心]" to "😄", "[高兴]" to "😀", "[得意]" to "😏",
+            "[坏笑]" to "😏", "[奸笑]" to "😏", "[滑稽]" to "🤪", "[调皮]" to "😜", "[吐舌]" to "😛",
+            // 喜欢 / 害羞
+            "[色]" to "😍", "[花痴]" to "😍", "[可爱]" to "🥰", "[害羞]" to "😳", "[脸红]" to "😳",
+            "[眨眼]" to "😉", "[飞吻]" to "😘", "[亲亲]" to "😗",
+            // 哭 / 难过
+            "[大哭]" to "😭", "[流泪]" to "😢", "[哭]" to "😭", "[委屈]" to "🥺", "[可怜]" to "🥺",
+            "[难过]" to "😔", "[失望]" to "😞", "[伤心]" to "😢",
+            // 生气
+            "[生气]" to "😡", "[发怒]" to "😡", "[愤怒]" to "😡", "[抓狂]" to "🤬", "[怄火]" to "😤",
+            // 惊讶 / 恐惧
+            "[惊讶]" to "😲", "[震惊]" to "😱", "[惊恐]" to "😱", "[吓]" to "😱", "[恐惧]" to "😨", "[吃惊]" to "😮",
+            // 无语 / 鄙视 / 思考
+            "[无语]" to "😒", "[白眼]" to "🙄", "[翻白眼]" to "🙄", "[鄙视]" to "😒", "[嫌弃]" to "🙄",
+            "[傲慢]" to "😏", "[抠鼻]" to "🤨", "[疑惑]" to "🤔", "[疑问]" to "🤔", "[思考]" to "🤔",
+            // 尴尬 / 汗
+            "[尴尬]" to "😅", "[汗]" to "😓", "[流汗]" to "😓", "[擦汗]" to "😅", "[冷汗]" to "😰", "[天啊]" to "😱",
+            // 困 / 累 / 晕
+            "[困]" to "😴", "[睡觉]" to "😴", "[哈欠]" to "🥱", "[发呆]" to "😶", "[晕]" to "😵",
+            // 手势 / 动作
+            "[强]" to "👍", "[赞]" to "👍", "[good]" to "👍", "[弱]" to "👎", "[加油]" to "💪",
+            "[抱拳]" to "🙏", "[握手]" to "🤝", "[胜利]" to "✌️", "[拳头]" to "👊", "[鼓掌]" to "👏",
+            "[拜拜]" to "👋", "[OK]" to "👌", "[666]" to "6️⃣", "[比心]" to "🫶",
+            // 物品 / 符号
+            "[爱心]" to "❤️", "[心]" to "❤️", "[心碎]" to "💔", "[玫瑰]" to "🌹", "[鲜花]" to "🌸",
+            "[礼物]" to "🎁", "[蛋糕]" to "🎂", "[啤酒]" to "🍺", "[咖啡]" to "☕", "[西瓜]" to "🍉",
+            "[月亮]" to "🌙", "[太阳]" to "☀️", "[星星]" to "⭐", "[便便]" to "💩", "[骷髅]" to "💀",
+            "[炸弹]" to "💣", "[闪电]" to "⚡", "[烟花]" to "🎆", "[爆竹]" to "🧨", "[干杯]" to "🍻"
+        )
+
+        /** 将段评内容中的表情占位符替换为真正的 emoji：
+         *  先替换 `[中文名]`（番茄等），再替换起点 `[fn=N]` 表情码，未知占位符保留原文 */
         fun formatContent(text: String): String {
             if (text.isBlank()) return text
-            return FN_EMOJI_REGEX.replace(text) { match ->
+            val fqReplaced = FQ_EMOJI_REGEX.replace(text) { match ->
+                FQ_EMOJI_MAP[match.value] ?: match.value
+            }
+            return FN_EMOJI_REGEX.replace(fqReplaced) { match ->
                 val code = match.groupValues[1].toIntOrNull()
                 code?.let { COMMENT_EMOJI_MAP[it] } ?: match.value
             }
