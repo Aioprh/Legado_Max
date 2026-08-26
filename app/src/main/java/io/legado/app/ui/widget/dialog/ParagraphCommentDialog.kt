@@ -9,7 +9,6 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.jayway.jsonpath.ReadContext
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.constant.AppLog
@@ -140,8 +139,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             showMsg(getString(R.string.paragraph_comment_load_failed))
             return
         }
-        // 诊断：记录弹窗收到的配置，便于确认是否为同人小说网（pl.aadcn.cn）适配配置
-        AppLog.put("段评弹窗配置: listPath=${config.listPath} totalPath=${config.totalPath} commentsUrl=${config.commentsUrl}")
+        // 诊断：记录弹窗收到的配置与字段路径，便于确认是否为同人小说网（pl.aadcn.cn）适配配置
+        AppLog.put("段评弹窗配置: listPath=${config.listPath} totalPath=${config.totalPath} fields.content='${config.fields.content}' fields.nickname='${config.fields.nickname}' commentsUrl=${config.commentsUrl}")
         loadPage(1)
     }
 
@@ -211,36 +210,41 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             val rc = jsonPath.parse(body)
             val listPath = config.listPath.ifBlank { "$.Data.DataList" }
             val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
-            if (list.isEmpty()) {
-                // 诊断：路径存在但为空列表，记录根节点结构便于排查
-                val rootKeys = runCatching { (rc.read<Any>("$") as? Map<*, *>)?.keys?.take(10) }.getOrNull()
-                AppLog.put("段评解析: listPath=$listPath 返回空列表，根节点keys=$rootKeys")
+            AppLog.put("段评解析[${listPath}] list.size=${list.size} fields.content='${config.fields.content}'")
+            val maps = list.mapNotNull { it as? Map<*, *> }
+            if (maps.size != list.size) {
+                AppLog.put("段评解析: 有 ${list.size - maps.size} 条不是 Map（类型=${list.firstOrNull()?.javaClass?.name}）")
             }
-            list.mapNotNull { it as? Map<*, *> }.map { map ->
-                val itemRc = jsonPath.parse(map)
-                val content = readStr(itemRc, config.fields.content, DEFAULT_CONTENTS)
+            val items = maps.map { map ->
+                val content = readStr(map, config.fields.content, DEFAULT_CONTENTS)
+                AppLog.put("段评解析: 条目 content='$content'")
                 val images = readImages(map)
                 val audio = readAudio(map)
                 ParagraphCommentItem(
-                    id = readStr(itemRc, config.fields.id, DEFAULT_IDS),
-                    rootId = readStr(itemRc, config.fields.rootId, DEFAULT_ROOT_IDS),
-                    nickname = readStr(itemRc, config.fields.nickname, DEFAULT_NICKNAMES),
-                    avatar = readStr(itemRc, config.fields.avatar, DEFAULT_AVATARS),
-                    level = readStr(itemRc, config.fields.level, DEFAULT_LEVELS),
-                    ip = readStr(itemRc, config.fields.ip, DEFAULT_IPS),
+                    id = readStr(map, config.fields.id, DEFAULT_IDS),
+                    rootId = readStr(map, config.fields.rootId, DEFAULT_ROOT_IDS),
+                    nickname = readStr(map, config.fields.nickname, DEFAULT_NICKNAMES),
+                    avatar = readStr(map, config.fields.avatar, DEFAULT_AVATARS),
+                    level = readStr(map, config.fields.level, DEFAULT_LEVELS),
+                    ip = readStr(map, config.fields.ip, DEFAULT_IPS),
                     content = content,
                     images = images,
                     audio = audio,
-                    agree = readLong(itemRc, config.fields.agree, DEFAULT_AGREES),
-                    oppose = readLong(itemRc, config.fields.oppose, DEFAULT_OPPOSES),
-                    time = readLong(itemRc, config.fields.time, DEFAULT_TIMES),
-                    floor = readInt(itemRc, config.fields.floor, DEFAULT_FLOORS),
-                    replyCount = readInt(itemRc, config.fields.replyCount, DEFAULT_REPLY_COUNTS)
+                    agree = readLong(map, config.fields.agree, DEFAULT_AGREES),
+                    oppose = readLong(map, config.fields.oppose, DEFAULT_OPPOSES),
+                    time = readLong(map, config.fields.time, DEFAULT_TIMES),
+                    floor = readInt(map, config.fields.floor, DEFAULT_FLOORS),
+                    replyCount = readInt(map, config.fields.replyCount, DEFAULT_REPLY_COUNTS)
                 )
-            }.filter { item ->
+            }
+            val filtered = items.filter { item ->
                 // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”
                 item.content.isNotBlank() || item.images.isNotEmpty() || item.audio.isNotBlank()
             }
+            if (filtered.size != items.size) {
+                AppLog.put("段评解析: 过滤掉 ${items.size - filtered.size} 条空评论")
+            }
+            filtered
         }.getOrElse {
             AppLog.put("段评解析失败", it)
             emptyList()
@@ -404,16 +408,15 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             val listPath = config.replyListPath.ifBlank { config.listPath.ifBlank { "$.Data.DataList" } }
             val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
             list.mapNotNull { it as? Map<*, *> }.map { map ->
-                val itemRc = jsonPath.parse(map)
                 ParagraphReplyItem(
-                    nickname = readStr(itemRc, config.replyFields.nickname, DEFAULT_NICKNAMES),
-                    avatar = readStr(itemRc, config.replyFields.avatar, DEFAULT_AVATARS),
-                    replyTo = readStr(itemRc, config.replyFields.replyTo, DEFAULT_REPLY_TOS),
-                    content = readStr(itemRc, config.replyFields.content, DEFAULT_CONTENTS),
+                    nickname = readStr(map, config.replyFields.nickname, DEFAULT_NICKNAMES),
+                    avatar = readStr(map, config.replyFields.avatar, DEFAULT_AVATARS),
+                    replyTo = readStr(map, config.replyFields.replyTo, DEFAULT_REPLY_TOS),
+                    content = readStr(map, config.replyFields.content, DEFAULT_CONTENTS),
                     images = readImages(map),
                     audio = readAudio(map),
-                    agree = readLong(itemRc, config.replyFields.agree, DEFAULT_AGREES),
-                    time = readLong(itemRc, config.replyFields.time, DEFAULT_TIMES)
+                    agree = readLong(map, config.replyFields.agree, DEFAULT_AGREES),
+                    time = readLong(map, config.replyFields.time, DEFAULT_TIMES)
                 )
             }.filter { reply ->
                 // 过滤完全无内容的空回复
@@ -439,28 +442,28 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }.getOrNull()
     }
 
-    private fun readStr(rc: ReadContext, primary: String, defaults: List<String>): String {
+    private fun readStr(map: Map<*, *>, primary: String, defaults: List<String>): String {
         val paths = if (primary.isBlank()) {
             defaults
         } else {
             listOf(primary) + defaults.filter { it != primary }
         }
         for (p in paths) {
-            val v = runCatching { rc.read<Any>(p) }.getOrNull() ?: continue
+            val v = resolvePath(map, p) ?: continue
             val s = v.toString().trim()
             if (s.isNotEmpty() && s != "null") return s
         }
         return ""
     }
 
-    private fun readLong(rc: ReadContext, primary: String, defaults: List<String>): Long {
+    private fun readLong(map: Map<*, *>, primary: String, defaults: List<String>): Long {
         val paths = if (primary.isBlank()) {
             defaults
         } else {
             listOf(primary) + defaults.filter { it != primary }
         }
         for (p in paths) {
-            val v = runCatching { rc.read<Any>(p) }.getOrNull() ?: continue
+            val v = resolvePath(map, p) ?: continue
             when (v) {
                 is Number -> return v.toLong()
                 else -> v.toString().toLongOrNull()?.let { return it }
@@ -469,8 +472,55 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         return 0
     }
 
-    private fun readInt(rc: ReadContext, primary: String, defaults: List<String>): Int {
-        return readLong(rc, primary, defaults).toInt()
+    private fun readInt(map: Map<*, *>, primary: String, defaults: List<String>): Int {
+        return readLong(map, primary, defaults).toInt()
+    }
+
+    /**
+     * 解析形如 `$.user_info.user_name` / `$.list[0].name` 的字段路径。
+     * 直接基于 Map 逐级读取（大小写不敏感），不依赖 jsonpath 对 Map 的二次解析，
+     * 避免“列表能取到但字段全空”的静默失败。
+     */
+    private fun resolvePath(map: Map<*, *>, path: String): Any? {
+        var cur: Any? = map
+        for (tok in tokenize(path)) {
+            if (tok == "$") continue
+            cur = when (cur) {
+                is Map<*, *> -> findKey(cur, tok)
+                is List<*> -> {
+                    val idx = tok.removePrefix("[").removeSuffix("]").toIntOrNull() ?: return null
+                    if (idx in cur.indices) cur[idx] else null
+                }
+                else -> return null
+            } ?: return null
+        }
+        return cur
+    }
+
+    /** 按点号拆分路径，同时把 [n] 数组下标保留为一个整体 */
+    private fun tokenize(path: String): List<String> {
+        val tokens = mutableListOf<String>()
+        val cur = StringBuilder()
+        var inBracket = false
+        for (c in path) {
+            when {
+                c == '[' -> {
+                    inBracket = true
+                    cur.append(c)
+                }
+                c == ']' -> {
+                    inBracket = false
+                    cur.append(c)
+                }
+                c == '.' && !inBracket -> if (cur.isNotEmpty()) {
+                    tokens.add(cur.toString())
+                    cur.clear()
+                }
+                else -> cur.append(c)
+            }
+        }
+        if (cur.isNotEmpty()) tokens.add(cur.toString())
+        return tokens
     }
 
     /**
@@ -559,29 +609,32 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     }
 
     companion object {
-        private val DEFAULT_IDS = listOf("$.Id", "$.CommentId", "$.ReviewId", "$.Cid")
-        private val DEFAULT_ROOT_IDS = listOf("$.RootReviewId", "$.RootId", "$.CommentId", "$.Id")
-        private val DEFAULT_NICKNAMES = listOf("$.NickName", "$.UserName", "$.Name", "$.Uname")
-        private val DEFAULT_AVATARS = listOf("$.UserHeadIcon", "$.UserPhoto", "$.Avatar", "$.HeadIcon", "$.Photo")
+        private val DEFAULT_IDS = listOf("$.Id", "$.CommentId", "$.ReviewId", "$.Cid", "$.comment_id", "$.id")
+        private val DEFAULT_ROOT_IDS = listOf("$.RootReviewId", "$.RootId", "$.CommentId", "$.Id", "$.root_review_id", "$.rootReviewId")
+        private val DEFAULT_NICKNAMES = listOf("$.NickName", "$.UserName", "$.Name", "$.Uname", "$.user_name", "$.nickname", "$.user_info.user_name")
+        private val DEFAULT_AVATARS = listOf("$.UserHeadIcon", "$.UserPhoto", "$.Avatar", "$.HeadIcon", "$.Photo", "$.user_avatar", "$.avatar", "$.user_info.user_avatar")
         private val DEFAULT_LEVELS = listOf("$.ShowTag", "$.Level", "$.UserLevel", "$.Grade")
-        private val DEFAULT_IPS = listOf("$.IpLocation", "$.Ip", "$.Location", "$.Region")
-        private val DEFAULT_CONTENTS = listOf("$.Content", "$.Text", "$.Msg", "$.ImageMeaning")
-        private val DEFAULT_AGREES = listOf("$.AgreeAmount", "$.AgreeCount", "$.LikeCount", "$.LikeAmount", "$.Up")
-        private val DEFAULT_OPPOSES = listOf("$.OpposeAmount", "$.OpposeCount", "$.Down")
-        private val DEFAULT_TIMES = listOf("$.CreateTime", "$.Time", "$.CreatedAt", "$.CreateDate")
-        private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber")
-        private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount")
-        private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName")
+        private val DEFAULT_IPS = listOf("$.IpLocation", "$.Ip", "$.Location", "$.Region", "$.ip_location")
+        // 内容兜底必须含小写 text/content：同人小说网（pl.aadcn.cn）评论正文是 text，若 fields 未携带路径也能读到
+        private val DEFAULT_CONTENTS = listOf("$.Content", "$.Text", "$.Msg", "$.ImageMeaning", "$.text", "$.content", "$.body")
+        private val DEFAULT_AGREES = listOf("$.AgreeAmount", "$.AgreeCount", "$.LikeCount", "$.LikeAmount", "$.Up", "$.digg_count", "$.like_count", "$.agree_count")
+        private val DEFAULT_OPPOSES = listOf("$.OpposeAmount", "$.OpposeCount", "$.Down", "$.oppose_count", "$.oppose_amount")
+        private val DEFAULT_TIMES = listOf("$.CreateTime", "$.Time", "$.CreatedAt", "$.CreateDate", "$.create_timestamp", "$.timestamp", "$.created_at")
+        private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber", "$.floor")
+        private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount", "$.reply_count", "$.replyCount")
+        private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName", "$.related_user", "$.reply_to")
 
         /** 评论图片字段候选（大小写不敏感匹配，ImgInfo 为起点系真实字段；不含 FrameUrl——那是用户头像框，不是配图） */
         private val IMAGE_FIELD_CANDIDATES = listOf(
             "ImgInfo", "ImageDetail", "PreImage", "ImageUrl", "Images", "ImageList",
-            "ImgUrl", "Imgs", "Image", "CommentImg", "CommentImage", "Photo"
+            "ImgUrl", "Imgs", "Image", "CommentImg", "CommentImage", "Photo",
+            "image_url", "img_url"
         )
         /** 评论语音字段候选（大小写不敏感匹配；起点系无 AudioUrl，用 AudioRoleId/AudioTime 标记语音评论） */
         private val AUDIO_FIELD_CANDIDATES = listOf(
             "AudioUrl", "VoiceUrl", "Audio", "Voice", "SoundUrl",
-            "AudioRoleId", "AudioTime", "HotAudioStatus"
+            "AudioRoleId", "AudioTime", "HotAudioStatus",
+            "audio_url", "voice_url"
         )
 
         /** 旧版段评 pclick（java.showBrowser('',d)）里的段号 */
