@@ -1,10 +1,14 @@
 package io.legado.app.ui.widget.dialog
 
 import android.content.Context
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ImageSpan
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
@@ -12,6 +16,7 @@ import io.legado.app.constant.AppConst
 import io.legado.app.databinding.ItemParagraphCommentBinding
 import io.legado.app.databinding.ItemParagraphReplyBinding
 import io.legado.app.help.glide.ImageLoader
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.gone
 import io.legado.app.utils.visible
 import java.util.Date
@@ -91,13 +96,15 @@ class ParagraphCommentAdapter(context: Context) :
             }
 
             // 内容为空但有图/语音时显示占位提示
-            val text = formatContent(item.content)
-            tvContent.text = text.ifBlank {
+            val text = formatContent(context, item.content)
+            tvContent.text = if (item.content.isBlank()) {
                 if (item.images.isNotEmpty() || item.audio.isNotBlank()) {
                     context.getString(R.string.paragraph_comment_image)
                 } else {
                     ""
                 }
+            } else {
+                text
             }
             bindImages(binding.llImages, binding.ivImg1, binding.ivImg2, binding.ivImg3, item.images)
             bindAudio(binding.tvAudio, item)
@@ -184,13 +191,15 @@ class ParagraphCommentAdapter(context: Context) :
                         )
                         tvReplyTo.visible()
                     }
-                    val text = formatContent(reply.content)
-                    tvContent.text = text.ifBlank {
+                    val text = formatContent(context, reply.content)
+                    tvContent.text = if (reply.content.isBlank()) {
                         if (reply.images.isNotEmpty() || reply.audio.isNotBlank()) {
                             context.getString(R.string.paragraph_comment_image)
                         } else {
                             ""
                         }
+                    } else {
+                        text
                     }
                     bindImages(replyBinding.llImages, replyBinding.ivImg1, replyBinding.ivImg2, replyBinding.ivImg3, reply.images)
                     bindAudio(replyBinding.tvAudio, reply.audio)
@@ -290,8 +299,11 @@ class ParagraphCommentAdapter(context: Context) :
         /** 段评内容里的表情码标记，如 `[fn=12]` / `*[fn＝12]` */
         private val FN_EMOJI_REGEX = Regex("""\*?\[fn[=＝](\d+)\]""")
 
-        /** 中文名表情占位符，如 `[笑哭]`（番茄等站点评论里的常见表情） */
-        private val FQ_EMOJI_REGEX = Regex("""\[[^\[\]]+\]""")
+        /** 内联表情图片的占位字符（对象替换符，用于承载 ImageSpan） */
+        private val EMOJI_PLACEHOLDER = '\uFFFC'
+
+        /** 匹配所有方括号表情标记：起点 `*[fn=N]` / `[fn=N]` 与番茄 `[中文名]` */
+        private val EMOJI_TOKEN_REGEX = Regex("""\*?\[fn[=＝]\d+\]|\[[^\[\]]+\]""")
 
         /** 番茄/中文段评占位符 → Unicode 表情。番茄评论的表情是 `[名称]` 占位符，
          *  站点前端由后端 emojiEndpoint 映射为图片，原生端用 Unicode emoji 兜底展示。 */
@@ -339,17 +351,76 @@ class ParagraphCommentAdapter(context: Context) :
             "[求关注]" to "🙏", "[我也强推]" to "💪", "[雀食神作]" to "🌟", "[已种草]" to "🌱", "[书架加一]" to "📚"
         )
 
-        /** 将段评内容中的表情占位符替换为真正的 emoji：
-         *  先替换 `[中文名]`（番茄等），再替换起点 `[fn=N]` 表情码，未知占位符保留原文 */
-        fun formatContent(text: String): String {
+        /** 番茄官方 53 个段评表情：占位符 -> 本地 drawable 资源。
+         *  资源图片来自番茄小说 App 内置的官方段评表情（emoji_config 序号 1~53），
+         *  原图为 120x120 webp，存放于 drawable-nodpi/fq_emoji_*.webp。 */
+        private val FQ_EMOJI_IMAGE_MAP: Map<String, Int> = mapOf(
+            "[微笑]" to R.drawable.fq_emoji_1, "[偷笑]" to R.drawable.fq_emoji_2, "[笑]" to R.drawable.fq_emoji_3,
+            "[什么]" to R.drawable.fq_emoji_4, "[害羞]" to R.drawable.fq_emoji_5, "[爱慕]" to R.drawable.fq_emoji_6,
+            "[飞吻]" to R.drawable.fq_emoji_7, "[奸笑]" to R.drawable.fq_emoji_8, "[尬笑]" to R.drawable.fq_emoji_9,
+            "[思考]" to R.drawable.fq_emoji_10, "[撇嘴]" to R.drawable.fq_emoji_11, "[做鬼脸]" to R.drawable.fq_emoji_12,
+            "[酷]" to R.drawable.fq_emoji_13, "[翻白眼]" to R.drawable.fq_emoji_14, "[惊呆]" to R.drawable.fq_emoji_15,
+            "[震惊]" to R.drawable.fq_emoji_16, "[送心]" to R.drawable.fq_emoji_17, "[委屈]" to R.drawable.fq_emoji_18,
+            "[快哭了]" to R.drawable.fq_emoji_19, "[笑哭]" to R.drawable.fq_emoji_20, "[哭]" to R.drawable.fq_emoji_21,
+            "[大笑]" to R.drawable.fq_emoji_22, "[舔屏]" to R.drawable.fq_emoji_23, "[怒]" to R.drawable.fq_emoji_24,
+            "[捂脸]" to R.drawable.fq_emoji_25, "[吐]" to R.drawable.fq_emoji_26, "[恐惧]" to R.drawable.fq_emoji_27,
+            "[抓狂]" to R.drawable.fq_emoji_28, "[敬礼]" to R.drawable.fq_emoji_29, "[石化]" to R.drawable.fq_emoji_30,
+            "[OK]" to R.drawable.fq_emoji_31, "[赞]" to R.drawable.fq_emoji_32, "[爱心]" to R.drawable.fq_emoji_33,
+            "[伤心]" to R.drawable.fq_emoji_34, "[KISS]" to R.drawable.fq_emoji_35, "[懂了]" to R.drawable.fq_emoji_36,
+            "[探究]" to R.drawable.fq_emoji_37, "[重拳出击]" to R.drawable.fq_emoji_38, "[吃瓜]" to R.drawable.fq_emoji_39,
+            "[盯]" to R.drawable.fq_emoji_40, "[你细品]" to R.drawable.fq_emoji_41, "[赶稿中]" to R.drawable.fq_emoji_42,
+            "[注意]" to R.drawable.fq_emoji_43, "[饱了]" to R.drawable.fq_emoji_44, "[码住]" to R.drawable.fq_emoji_45,
+            "[学会了]" to R.drawable.fq_emoji_46, "[顶帖]" to R.drawable.fq_emoji_47, "[求爆更]" to R.drawable.fq_emoji_48,
+            "[求关注]" to R.drawable.fq_emoji_49, "[我也强推]" to R.drawable.fq_emoji_50, "[雀食神作]" to R.drawable.fq_emoji_51,
+            "[已种草]" to R.drawable.fq_emoji_52, "[书架加一]" to R.drawable.fq_emoji_53
+        )
+
+        /** 内联表情图片的显示尺寸（dp），约等于文字高度 */
+        private const val FQ_EMOJI_SIZE_DP = 18
+
+        /**
+         * 将段评内容渲染为带官方表情图片的富文本（Spannable）：
+         * 1. 番茄 `[中文名]` 占位符 -> 本地官方表情图片（ImageSpan）
+         * 2. 起点 `[fn=N]` 表情码 -> Unicode emoji 兜底
+         * 3. 其余未知占位符保留原文
+         */
+        fun formatContent(context: Context, text: String): CharSequence {
             if (text.isBlank()) return text
-            val fqReplaced = FQ_EMOJI_REGEX.replace(text) { match ->
-                FQ_EMOJI_MAP[match.value] ?: match.value
+            val sb = SpannableStringBuilder()
+            val emojiSize = FQ_EMOJI_SIZE_DP.dpToPx()
+            var last = 0
+            EMOJI_TOKEN_REGEX.findAll(text).forEach { m ->
+                sb.append(text, last, m.range.first)
+                val token = m.value
+                val fnCode = FN_EMOJI_REGEX.matchEntire(token)
+                if (fnCode != null) {
+                    // 起点 `[fn=N]` / `*[fn=N]`：Unicode emoji 兜底
+                    val code = fnCode.groupValues[1].toIntOrNull()
+                    sb.append(code?.let { COMMENT_EMOJI_MAP[it] } ?: token)
+                } else {
+                    val resId = FQ_EMOJI_IMAGE_MAP[token]
+                    if (resId != null) {
+                        val drawable = ContextCompat.getDrawable(context, resId)?.mutate()
+                        if (drawable != null) {
+                            drawable.setBounds(0, 0, emojiSize, emojiSize)
+                            val start = sb.length
+                            sb.append(EMOJI_PLACEHOLDER)
+                            sb.setSpan(
+                                ImageSpan(drawable, ImageSpan.ALIGN_BASELINE),
+                                start, start + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                            )
+                        } else {
+                            sb.append(token)
+                        }
+                    } else {
+                        // 非官方表情占位符：Unicode 兜底，兜底也没有则保留原文
+                        sb.append(FQ_EMOJI_MAP[token] ?: token)
+                    }
+                }
+                last = m.range.last + 1
             }
-            return FN_EMOJI_REGEX.replace(fqReplaced) { match ->
-                val code = match.groupValues[1].toIntOrNull()
-                code?.let { COMMENT_EMOJI_MAP[it] } ?: match.value
-            }
+            sb.append(text, last, text.length)
+            return sb
         }
 
         /** 时间戳（毫秒）转可读时间；兼容秒级时间戳 */
