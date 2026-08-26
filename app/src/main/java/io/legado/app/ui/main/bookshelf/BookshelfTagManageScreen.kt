@@ -37,6 +37,7 @@ import io.legado.app.help.book.BookTagManagement
  */
 internal data class BookshelfTagManageCallbacks(
     val onBack: () -> Unit,
+    val onShowAddTagDialog: (Long, String) -> Unit,
     val onAddTags: (Long, List<String>) -> Unit,
     val onTagVisibilityChange: (Long, String, Boolean) -> Unit,
     val onManageBooks: (BookshelfTagGroupUi, String) -> Unit,
@@ -112,7 +113,7 @@ internal fun BookshelfTagManageScreen(
                 selectedGroup == null -> EmptyContent()
                 else -> TagGroupContent(
                     group = selectedGroup,
-                    onAddTags = { callbacks.onAddTags(selectedGroup.groupId, emptyList()) },
+                    onAddTags = { callbacks.onShowAddTagDialog(selectedGroup.groupId, selectedGroup.groupName) },
                     onTagVisibilityChange = { tag, visible ->
                         callbacks.onTagVisibilityChange(selectedGroup.groupId, tag, visible)
                     },

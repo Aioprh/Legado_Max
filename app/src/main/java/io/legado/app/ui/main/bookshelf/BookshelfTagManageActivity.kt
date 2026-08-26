@@ -30,6 +30,7 @@ class BookshelfTagManageActivity : BaseActivity<ActivityBookshelfTagManageBindin
                     state = uiState,
                     callbacks = BookshelfTagManageCallbacks(
                         onBack = ::finish,
+                        onShowAddTagDialog = viewModel::showAddTagDialog,
                         onAddTags = viewModel::addTags,
                         onTagVisibilityChange = viewModel::setTagVisible,
                         onManageBooks = viewModel::startManageBooks,

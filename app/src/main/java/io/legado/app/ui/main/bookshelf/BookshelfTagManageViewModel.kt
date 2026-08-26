@@ -100,6 +100,15 @@ class BookshelfTagManageViewModel(
         }
     }
 
+    /**
+     * 打开添加标签对话框，让用户输入或选择标签。
+     */
+    fun showAddTagDialog(groupId: Long, groupName: String) {
+        _uiState.value = _uiState.value.copy(
+            dialog = BookshelfTagDialogState.AddTags(groupId, groupName)
+        )
+    }
+
     fun addTags(groupId: Long, tags: List<String>) {
         val newTags = BookTagManagement.mergeTags(emptyList(), tags)
         if (newTags.isEmpty()) return

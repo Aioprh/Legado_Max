@@ -22,6 +22,8 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.FragmentBookshelf1Binding
+import io.legado.app.help.book.BookTagHelper
+import io.legado.app.help.book.BookTagManagement
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
@@ -30,11 +32,16 @@ import io.legado.app.ui.book.group.GroupEditDialog
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.style1.books.BooksFragment
+import io.legado.app.ui.widget.RoundedTagBarView
 import io.legado.app.utils.isCreated
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.collections.set
 
 /**
@@ -61,6 +68,10 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
     private var ivArrow: ImageView? = null
     // TabLayout 模式相关控件
     private var tabLayout: TabLayout? = null
+    // 二级标签栏
+    private var tagBar: RoundedTagBarView? = null
+    private var tagSelectedIndex = -1
+    private var currentTagList: List<String> = emptyList()
     private val bookGroups = mutableListOf<BookGroup>()
     private val fragmentMap = hashMapOf<Long, BooksFragment>()
     private var currentPosition = 0
@@ -94,6 +105,12 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         binding.viewPagerBookshelf.setEdgeEffectColor(primaryColor)
         binding.viewPagerBookshelf.offscreenPageLimit = 2
         binding.viewPagerBookshelf.adapter = adapter
+        tagBar = binding.tagBar
+        tagBar?.setOnTagClickListener { index ->
+            tagSelectedIndex = index
+            tagBar?.setSelectedIndex(index)
+            refreshBooksByTag()
+        }
         // 根据"下拉选择分组"开关动态添加布局到 TitleBar
         if (AppConfig.dropdownSelectGroup) {
             // 下拉选择模式：添加 view_group_selector 布局
@@ -105,11 +122,12 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             ivArrow = groupSelectorView.findViewById(R.id.iv_arrow)
             // 监听 ViewPager 页面切换，更新当前分组名称显示
             binding.viewPagerBookshelf.addOnPageChangeListener(object : ViewPager.OnPageChangeListener {
-                override fun onPageSelected(position: Int) {
-                    currentPosition = position
-                    AppConfig.saveTabPosition = position
-                    tvGroupName?.text = bookGroups.getOrNull(position)?.groupName ?: ""
-                }
+            override fun onPageSelected(position: Int) {
+                currentPosition = position
+                AppConfig.saveTabPosition = position
+                tvGroupName?.text = bookGroups.getOrNull(position)?.groupName ?: ""
+                loadTagBar()
+            }
                 override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
                 override fun onPageScrollStateChanged(state: Int) {}
             })
@@ -221,6 +239,7 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
                 if (AppConfig.dropdownSelectGroup) {
                     AppConfig.saveTabPosition = lastPosition
                     updateTitleSelect()
+                    loadTagBar()
                 } else {
                     selectLastTab(lastPosition)
                     // 设置长按分组标签编辑分组
@@ -230,6 +249,7 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
                             true
                         }
                     }
+                    loadTagBar()
                 }
             }
         }
@@ -263,6 +283,7 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
     override fun onTabSelected(tab: TabLayout.Tab) {
         currentPosition = tab.position
         AppConfig.saveTabPosition = tab.position
+        loadTagBar()
     }
 
     // TabLayout 模式：Tab 未选中回调
@@ -274,6 +295,51 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             fragmentMap[group.groupId]?.let {
                 toastOnUi("${group.groupName}(${it.getBooksCount()})")
             }
+        }
+    }
+
+    /**
+     * 加载当前分组的二级标签栏数据。
+     */
+    private fun loadTagBar() {
+        val currentGroupId = groupId
+        viewLifecycleOwner.lifecycleScope.launch {
+            val tags = withContext(Dispatchers.IO) {
+                val configured = AppConfig.bookshelfGroupTags[currentGroupId].orEmpty()
+                val hidden = AppConfig.bookshelfHiddenTags[currentGroupId].orEmpty()
+                val books = appDb.bookDao.allTagInfos.filter { info ->
+                    info.group and currentGroupId > 0 || currentGroupId <= 0
+                }
+                val existing = books.flatMap { BookTagHelper.parse(it.customTag) }
+                val merged = BookTagManagement.mergeTags(configured, existing)
+                merged.filter { tag -> hidden.none { it.equals(tag, ignoreCase = true) } }
+            }
+            currentTagList = tags
+            tagSelectedIndex = -1
+            if (tags.isEmpty()) {
+                tagBar?.visibility = View.GONE
+                fragmentMap[currentGroupId]?.filterByTag(null)
+            } else {
+                tagBar?.visibility = View.VISIBLE
+                tagBar?.applyTopBarStyle(force = true)
+                tagBar?.submitItems(tags.map { RoundedTagBarView.Item(it) }, 0)
+                tagBar?.setSelectedIndex(0, false)
+                tagSelectedIndex = 0
+                refreshBooksByTag()
+            }
+        }
+    }
+
+    /**
+     * 根据选中的标签筛选当前分组的书籍。
+     */
+    private fun refreshBooksByTag() {
+        val fragment = fragmentMap[groupId] ?: return
+        val selectedIndex = tagSelectedIndex
+        if (selectedIndex < 0 || selectedIndex >= currentTagList.size) {
+            fragment.filterByTag(null)
+        } else {
+            fragment.filterByTag(currentTagList[selectedIndex])
         }
     }
 
