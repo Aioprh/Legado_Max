@@ -1887,6 +1887,10 @@
     <string name="cover_gallery">封面图集</string>
     <string name="cover_gallery_summary">管理分组封面图集，可设置为全局默认封面源</string>
 
+    <!-- Multi Select Dialog -->
+    <string name="multi_select_selected_count">已选 %1$d/%2$d</string>
+    <string name="multi_select_total_size">总大小: %1$s</string>
+
     <!-- File Validation Dialog -->
     <string name="fvd_title">选择恢复内容</string>
     <string name="fvd_detect_format">检测格式</string>
