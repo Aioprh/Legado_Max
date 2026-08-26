@@ -228,7 +228,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             }.filter { item ->
                 // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”
                 item.content.isNotBlank() || item.images.isNotEmpty() || item.audio.isNotBlank()
-            }
+            }.sortedByDescending { it.time } // 按时间由新到旧排序（time=0 的未知时间排在最后，不影响排序稳定性）
         }.getOrElse {
             AppLog.put("段评解析失败", it)
             emptyList()
@@ -405,7 +405,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             }.filter { reply ->
                 // 过滤完全无内容的空回复
                 reply.content.isNotBlank() || reply.images.isNotEmpty() || reply.audio.isNotBlank()
-            }
+            }.sortedByDescending { it.time } // 回复同样按时间由新到旧排序
         }.getOrElse {
             AppLog.put("段评回复解析失败", it)
             emptyList()
@@ -603,7 +603,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         private val DEFAULT_CONTENTS = listOf("$.Content", "$.Text", "$.Msg", "$.ImageMeaning", "$.text", "$.content", "$.body")
         private val DEFAULT_AGREES = listOf("$.AgreeAmount", "$.AgreeCount", "$.LikeCount", "$.LikeAmount", "$.Up", "$.digg_count", "$.like_count", "$.agree_count")
         private val DEFAULT_OPPOSES = listOf("$.OpposeAmount", "$.OpposeCount", "$.Down", "$.oppose_count", "$.oppose_amount")
-        private val DEFAULT_TIMES = listOf("$.CreateTime", "$.Time", "$.CreatedAt", "$.CreateDate", "$.create_timestamp", "$.timestamp", "$.created_at")
+        private val DEFAULT_TIMES = listOf("$.CreateTime", "$.Time", "$.CreatedAt", "$.CreateDate", "$.create_timestamp", "$.timestamp", "$.created_at", "$.create_time", "$.createTime", "$.createTimestamp", "$.pub_time", "$.publish_time", "$.comment_time", "$.update_time")
         private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber", "$.floor")
         private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount", "$.reply_count", "$.replyCount")
         private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName", "$.related_user", "$.reply_to")
