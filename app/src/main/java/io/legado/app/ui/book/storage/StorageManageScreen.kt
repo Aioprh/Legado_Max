@@ -1,5 +1,7 @@
 package io.legado.app.ui.book.storage
 
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,10 +28,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -55,12 +55,7 @@ import io.legado.app.ui.theme.pageTopBarContainerColor
 //   - TopAppBar 显示标题、刷新按钮、一键清理按钮
 //   - 根据 UI状态 显示不同内容（Loading、Clearing、Error、Idle）
 //   - LazyColumn 渲染缓存汇总卡片和缓存项列表
-//   - 管理清理确认对话框的显示
-
-data class ClearTarget(
-    val cacheType: CacheType,
-    val detailId: String?
-)
+//   - 管理清理确认对话框的显示（由 ViewModel 状态驱动，§4.5）
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,33 +67,43 @@ fun StorageManageScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val cacheItems by viewModel.cacheItems.collectAsStateWithLifecycle()
     val totalSize by viewModel.totalSize.collectAsStateWithLifecycle()
-    
-    var showClearDialog by remember { mutableStateOf<ClearTarget?>(null) }
-    var showClearAllDialog by remember { mutableStateOf(false) }
-    
+    val dialog by viewModel.dialog.collectAsStateWithLifecycle()
+
     val containerColor = pageCardContainerColor()
     val topBarColor = pageTopBarContainerColor()
-    
-    showClearDialog?.let { target ->
-        val targetName = target.detailId ?: viewModel.getCacheName(target.cacheType)
-        ClearConfirmDialog(
-            targetName = targetName,
-            onConfirm = {
-                viewModel.clearCache(target.cacheType, target.detailId)
-                showClearDialog = null
-            },
-            onDismiss = { showClearDialog = null }
-        )
+
+    // 返回键拦截：有 Dialog 时先关闭 Dialog，无则正常返回（§4.5）
+    val hasDialog = dialog != null
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    DisposableEffect(hasDialog, backDispatcher) {
+        val callback = object : OnBackPressedCallback(hasDialog) {
+            override fun handleOnBackPressed() = viewModel.dismissDialog()
+        }
+        backDispatcher?.addCallback(callback)
+        onDispose { callback.remove() }
     }
-    
-    if (showClearAllDialog) {
-        ClearAllConfirmDialog(
+
+    // 清理确认对话框（ViewModel 状态条件渲染，§4.5）
+    when (val state = dialog) {
+        is StorageDialogState.ClearConfirm -> {
+            val targetName = state.detailId ?: viewModel.getCacheName(state.cacheType)
+            ClearConfirmDialog(
+                targetName = targetName,
+                onConfirm = {
+                    viewModel.clearCache(state.cacheType, state.detailId)
+                    viewModel.dismissDialog()
+                },
+                onDismiss = { viewModel.dismissDialog() }
+            )
+        }
+        is StorageDialogState.ClearAll -> ClearAllConfirmDialog(
             onConfirm = {
                 viewModel.clearAllCache()
-                showClearAllDialog = false
+                viewModel.dismissDialog()
             },
-            onDismiss = { showClearAllDialog = false }
+            onDismiss = { viewModel.dismissDialog() }
         )
+        null -> Unit
     }
     
     Scaffold(
@@ -130,7 +135,7 @@ fun StorageManageScreen(
                     IconButton(onClick = { viewModel.loadCacheInfo() }) {
                         Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
                     }
-                    IconButton(onClick = { showClearAllDialog = true }) {
+                    IconButton(onClick = { viewModel.requestClearAll() }) {
                         Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.storage_clear_all))
                     }
                 }
@@ -212,11 +217,11 @@ fun StorageManageScreen(
                             onExpandClick = { 
                                 viewModel.toggleExpand(CacheType.valueOf(item.id))
                             },
-                            onClearClick = { 
-                                showClearDialog = ClearTarget(CacheType.valueOf(item.id), null)
+                            onClearClick = {
+                                viewModel.requestClear(CacheType.valueOf(item.id))
                             },
                             onDetailClearClick = { detailId ->
-                                showClearDialog = ClearTarget(CacheType.valueOf(item.id), detailId)
+                                viewModel.requestClear(CacheType.valueOf(item.id), detailId)
                             },
                             onOpenPathClick = onOpenPath
                         )

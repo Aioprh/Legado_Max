@@ -11,8 +11,20 @@ import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
+
+/**
+ * 文件管理 Dialog 状态（state-events.md §4.5：Dialog 由 UiState 条件渲染）
+ */
+sealed interface FileDialogState {
+    data class DeleteConfirm(val file: File) : FileDialogState
+}
+
+data class FileManageUiState(
+    val dialog: FileDialogState? = null
+)
 
 /**
  * 文件管理 ViewModel
@@ -24,6 +36,26 @@ import java.io.File
  * - 处理文件删除和打开
  */
 class FileManageViewModel(application: Application) : BaseViewModel(application) {
+
+    /** UI 状态（承载 Dialog 显隐，§4.5） */
+    private val _uiState = MutableStateFlow(FileManageUiState())
+    val uiState: StateFlow<FileManageUiState> = _uiState.asStateFlow()
+
+    /** 请求删除文件：弹出确认 Dialog */
+    fun requestDelete(file: File) {
+        _uiState.update { it.copy(dialog = FileDialogState.DeleteConfirm(file)) }
+    }
+
+    /** 关闭当前 Dialog */
+    fun dismissDialog() {
+        _uiState.update { it.copy(dialog = null) }
+    }
+
+    /** 确认删除：清 Dialog 状态后执行删除 */
+    fun confirmDelete(file: File) {
+        _uiState.update { it.copy(dialog = null) }
+        delFile(file)
+    }
 
     /** 根目录：应用外部存储目录的父目录 */
     val rootDoc = context.getExternalFilesDir(null)?.parentFile

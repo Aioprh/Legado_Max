@@ -72,6 +72,18 @@ sealed class StorageUiState {
     data class Error(val message: String) : StorageUiState()
 }
 
+/**
+ * 存储管理清理确认 Dialog 状态
+ * （state-events.md §4.5：Dialog 由 ViewModel 状态条件渲染）
+ */
+sealed interface StorageDialogState {
+    /** 清理指定缓存（可精确到某本书/条目） */
+    data class ClearConfirm(val cacheType: CacheType, val detailId: String?) : StorageDialogState
+
+    /** 一键清理全部缓存 */
+    data object ClearAll : StorageDialogState
+}
+
 class StorageManageViewModel(application: Application) : BaseViewModel(application) {
 
     private val _uiState = MutableStateFlow<StorageUiState>(StorageUiState.Loading)
@@ -82,6 +94,25 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
 
     private val _totalSize = MutableStateFlow(0L)
     val totalSize: StateFlow<Long> = _totalSize.asStateFlow()
+
+    /** 清理确认 Dialog 状态（§4.5） */
+    private val _dialog = MutableStateFlow<StorageDialogState?>(null)
+    val dialog: StateFlow<StorageDialogState?> = _dialog.asStateFlow()
+
+    /** 请求清理指定缓存项：弹出确认 Dialog */
+    fun requestClear(cacheType: CacheType, detailId: String? = null) {
+        _dialog.value = StorageDialogState.ClearConfirm(cacheType, detailId)
+    }
+
+    /** 请求一键清理：弹出确认 Dialog */
+    fun requestClearAll() {
+        _dialog.value = StorageDialogState.ClearAll
+    }
+
+    /** 关闭当前 Dialog */
+    fun dismissDialog() {
+        _dialog.value = null
+    }
 
     init {
         loadCacheInfo()

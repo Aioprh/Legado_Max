@@ -1,6 +1,8 @@
 package io.legado.app.ui.file
 
 import androidx.compose.foundation.background
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -38,6 +40,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,9 +83,9 @@ fun FileManageScreen(
     val files by viewModel.files.collectAsStateWithLifecycle()
     val subDocs by viewModel.subDocsFlow.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
-    
-    // 删除确认对话框状态
-    var showDeleteDialog by remember { mutableStateOf<File?>(null) }
+
+    // UI 状态（承载删除确认 Dialog 显隐，state-events.md §4.5）
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
     val topBarColor = pageTopBarContainerColor()
 
@@ -90,16 +93,25 @@ fun FileManageScreen(
         initialPath?.let { viewModel.openPath(it) }
     }
     
-    // 删除确认对话框
-    showDeleteDialog?.let { file ->
-        DeleteConfirmDialog(
-            fileName = file.name,
-            onConfirm = {
-                viewModel.delFile(file)
-                showDeleteDialog = null
-            },
-            onDismiss = { showDeleteDialog = null }
+    // 返回键拦截：有 Dialog 时先关闭 Dialog，无则正常返回（§4.5）
+    val hasDialog = uiState.dialog != null
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    DisposableEffect(hasDialog, backDispatcher) {
+        val callback = object : OnBackPressedCallback(hasDialog) {
+            override fun handleOnBackPressed() = viewModel.dismissDialog()
+        }
+        backDispatcher?.addCallback(callback)
+        onDispose { callback.remove() }
+    }
+
+    // 删除确认对话框（UiState 条件渲染）
+    when (val dialog = uiState.dialog) {
+        is FileDialogState.DeleteConfirm -> DeleteConfirmDialog(
+            fileName = dialog.file.name,
+            onConfirm = { viewModel.confirmDelete(dialog.file) },
+            onDismiss = { viewModel.dismissDialog() }
         )
+        null -> Unit
     }
     
     Scaffold(
@@ -165,7 +177,7 @@ fun FileManageScreen(
                     },
                     onFileLongClick = { file ->
                         if (file != viewModel.lastDir) {
-                            showDeleteDialog = file
+                            viewModel.requestDelete(file)
                         }
                     }
                 )

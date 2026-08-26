@@ -1,5 +1,7 @@
 package io.legado.app.ui.source.recycle
 
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,10 +50,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +74,7 @@ import io.legado.app.help.source.SourceRecycleBinHelp
 import io.legado.app.ui.theme.pageSecondaryTextColor
 import io.legado.app.ui.theme.pageTopBarContainerColor
 import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -83,22 +89,20 @@ fun SourceRecycleBinScreen(
     val items by viewModel.items.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val enabled by viewModel.enabled.collectAsStateWithLifecycle()
+    val dialog by viewModel.dialog.collectAsStateWithLifecycle()
+    val selectedIds by viewModel.selectedIds.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
+
+    // 瞬态状态（§4.2 上限 3 个）：菜单展开态保留本地；
+    // searchQuery 为可空（null = 关闭，"" = 展开且为空），用 rememberSaveable 支持进程重建恢复（§4.2）
     var filterMenuExpanded by remember { mutableStateOf(false) }
     var actionMenuExpanded by remember { mutableStateOf(false) }
     var itemMenuExpanded by remember { mutableStateOf<Long?>(null) }
-    var restoreTarget by remember { mutableStateOf<SourceRecycleBin?>(null) }
-    var conflictTarget by remember { mutableStateOf<SourceRecycleBin?>(null) }
-    var deleteTarget by remember { mutableStateOf<SourceRecycleBin?>(null) }
-    var selectedIds by remember { mutableStateOf(setOf<Long>()) }
-    var showBatchRestoreDialog by remember { mutableStateOf(false) }
-    var showBatchConflictDialog by remember { mutableStateOf(false) }
-    var showBatchDeleteDialog by remember { mutableStateOf(false) }
-    var showClearDialog by remember { mutableStateOf(false) }
-    var showSearch by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf<String?>(null) }
+    val showSearch = searchQuery != null
     val filterLabel = stringResource(filter.labelRes)
     val displayedItems = remember(items, searchQuery) {
-        val query = searchQuery.trim()
+        val query = searchQuery?.trim().orEmpty()
         if (query.isEmpty()) {
             items
         } else {
@@ -116,12 +120,22 @@ fun SourceRecycleBinScreen(
     val isSelectionMode = selectedIds.isNotEmpty()
 
     LaunchedEffect(items) {
-        val validIds = items.mapTo(linkedSetOf()) { it.id }
-        selectedIds = selectedIds.filterTo(linkedSetOf()) { it in validIds }
+        viewModel.pruneInvalidSelection(items)
     }
 
     val topBarColor = pageTopBarContainerColor()
     val secondaryTextColor = pageSecondaryTextColor()
+
+    // 返回键拦截：有 Dialog 时先关闭 Dialog，无则正常返回（state-events.md §4.5）
+    val hasDialog = dialog != null
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    DisposableEffect(hasDialog, backDispatcher) {
+        val callback = object : OnBackPressedCallback(hasDialog) {
+            override fun handleOnBackPressed() = viewModel.dismissDialog()
+        }
+        backDispatcher?.addCallback(callback)
+        onDispose { callback.remove() }
+    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -176,7 +190,7 @@ fun SourceRecycleBinScreen(
                     IconButton(
                         onClick = {
                             if (isSelectionMode) {
-                                selectedIds = emptySet()
+                                viewModel.clearSelection()
                             } else {
                                 onBackClick()
                             }
@@ -199,12 +213,16 @@ fun SourceRecycleBinScreen(
                         IconButton(
                             enabled = selectedItems.isNotEmpty(),
                             onClick = {
-                                viewModel.checkConflict(selectedItems) { hasConflict ->
-                                    if (hasConflict) {
-                                        showBatchConflictDialog = true
-                                    } else {
-                                        showBatchRestoreDialog = true
-                                    }
+                                val targets = selectedItems
+                                coroutineScope.launch {
+                                    // R3：suspend 获取冲突结果后设置 Dialog 状态（§4.5）
+                                    viewModel.showDialog(
+                                        if (viewModel.hasConflict(targets)) {
+                                            RecycleBinDialogState.ConflictConfirm(targets)
+                                        } else {
+                                            RecycleBinDialogState.RestoreConfirm(targets)
+                                        }
+                                    )
                                 }
                             }
                         ) {
@@ -215,7 +233,11 @@ fun SourceRecycleBinScreen(
                         }
                         IconButton(
                             enabled = selectedItems.isNotEmpty(),
-                            onClick = { showBatchDeleteDialog = true }
+                            onClick = {
+                                viewModel.showDialog(
+                                    RecycleBinDialogState.DeleteConfirm(selectedItems)
+                                )
+                            }
                         ) {
                             Icon(
                                 Icons.Default.DeleteForever,
@@ -243,10 +265,12 @@ fun SourceRecycleBinScreen(
                                     ),
                                     selected = selectedIds.size == displayedItems.size,
                                     onClick = {
-                                        selectedIds = if (selectedIds.size == displayedItems.size) {
-                                            emptySet()
+                                        if (selectedIds.size == displayedItems.size) {
+                                            viewModel.clearSelection()
                                         } else {
-                                            displayedItems.mapTo(linkedSetOf()) { it.id }
+                                            viewModel.setSelected(
+                                                displayedItems.mapTo(linkedSetOf()) { it.id }
+                                            )
                                         }
                                         actionMenuExpanded = false
                                     }
@@ -256,10 +280,7 @@ fun SourceRecycleBinScreen(
                     } else {
                         IconButton(
                             onClick = {
-                                showSearch = !showSearch
-                                if (!showSearch) {
-                                    searchQuery = ""
-                                }
+                                searchQuery = if (searchQuery == null) "" else null
                             }
                         ) {
                             Icon(
@@ -319,7 +340,9 @@ fun SourceRecycleBinScreen(
                                     text = stringResource(R.string.select_all),
                                     enabled = displayedItems.isNotEmpty(),
                                     onClick = {
-                                        selectedIds = displayedItems.mapTo(linkedSetOf()) { it.id }
+                                        viewModel.setSelected(
+                                            displayedItems.mapTo(linkedSetOf()) { it.id }
+                                        )
                                         actionMenuExpanded = false
                                     }
                                 )
@@ -335,7 +358,7 @@ fun SourceRecycleBinScreen(
                                     enabled = items.isNotEmpty(),
                                     onClick = {
                                         actionMenuExpanded = false
-                                        showClearDialog = true
+                                        viewModel.showDialog(RecycleBinDialogState.ClearAll)
                                     }
                                 )
                             }
@@ -352,7 +375,7 @@ fun SourceRecycleBinScreen(
         ) {
             AnimatedVisibility(visible = showSearch && !isSelectionMode) {
                 OutlinedTextField(
-                    value = searchQuery,
+                    value = searchQuery.orEmpty(),
                     onValueChange = { searchQuery = it },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -360,7 +383,7 @@ fun SourceRecycleBinScreen(
                     placeholder = { Text(stringResource(R.string.search)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
+                        if (!searchQuery.isNullOrEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
                                 Icon(
                                     Icons.Default.Clear,
@@ -409,25 +432,28 @@ fun SourceRecycleBinScreen(
                             menuExpanded = itemMenuExpanded == item.id,
                             onToggleSelected = {
                                 itemMenuExpanded = null
-                                selectedIds = selectedIds.toMutableSet().apply {
-                                    if (!add(item.id)) remove(item.id)
-                                }
+                                viewModel.toggleSelected(item.id)
                             },
                             onMenuOpen = { itemMenuExpanded = item.id },
                             onMenuDismiss = { itemMenuExpanded = null },
                             onRestoreClick = {
                                 itemMenuExpanded = null
-                                viewModel.checkConflict(item) { hasConflict ->
-                                    if (hasConflict) {
-                                        conflictTarget = item
-                                    } else {
-                                        restoreTarget = item
-                                    }
+                                coroutineScope.launch {
+                                    // R3：suspend 获取冲突结果后设置 Dialog 状态（§4.5）
+                                    viewModel.showDialog(
+                                        if (viewModel.hasConflict(item)) {
+                                            RecycleBinDialogState.ConflictConfirm(listOf(item))
+                                        } else {
+                                            RecycleBinDialogState.RestoreConfirm(listOf(item))
+                                        }
+                                    )
                                 }
                             },
                             onDeleteClick = {
                                 itemMenuExpanded = null
-                                deleteTarget = item
+                                viewModel.showDialog(
+                                    RecycleBinDialogState.DeleteConfirm(listOf(item))
+                                )
                             }
                         )
                     }
@@ -437,113 +463,64 @@ fun SourceRecycleBinScreen(
         }
     }
 
-    restoreTarget?.let { item ->
-        AppConfirmDialog(
-            onDismissRequest = { restoreTarget = null },
+    // 确认对话框统一由 ViewModel Dialog 状态条件渲染（§4.5）；
+    // 单个/批量操作复用同一状态（items.size == 1 时显示单条文案）
+    when (val state = dialog) {
+        is RecycleBinDialogState.RestoreConfirm -> AppConfirmDialog(
+            onDismissRequest = { viewModel.dismissDialog() },
             title = stringResource(R.string.restore),
-            text = stringResource(R.string.source_recycle_bin_restore_msg, item.name),
+            text = if (state.items.size == 1) {
+                stringResource(R.string.source_recycle_bin_restore_msg, state.items.first().name)
+            } else {
+                stringResource(R.string.source_recycle_bin_batch_restore_msg, state.items.size)
+            },
             confirmText = stringResource(R.string.restore),
             onConfirm = {
-                viewModel.restore(item, overwrite = false)
-                restoreTarget = null
-                selectedIds = selectedIds - item.id
+                viewModel.restore(state.items, overwrite = false)
+                viewModel.dismissDialog()
             }
         )
-    }
-
-    conflictTarget?.let { item ->
-        AppConfirmDialog(
-            onDismissRequest = { conflictTarget = null },
+        is RecycleBinDialogState.ConflictConfirm -> AppConfirmDialog(
+            onDismissRequest = { viewModel.dismissDialog() },
             title = stringResource(R.string.source_recycle_bin_conflict_title),
-            text = stringResource(R.string.source_recycle_bin_conflict_msg, item.name),
+            text = if (state.items.size == 1) {
+                stringResource(R.string.source_recycle_bin_conflict_msg, state.items.first().name)
+            } else {
+                stringResource(R.string.source_recycle_bin_batch_conflict_msg, state.items.size)
+            },
             confirmText = stringResource(R.string.overwrite),
             onConfirm = {
-                viewModel.restore(item, overwrite = true)
-                conflictTarget = null
-                selectedIds = selectedIds - item.id
+                viewModel.restore(state.items, overwrite = true)
+                viewModel.dismissDialog()
             }
         )
-    }
-
-    deleteTarget?.let { item ->
-        AppConfirmDialog(
-            onDismissRequest = { deleteTarget = null },
+        is RecycleBinDialogState.DeleteConfirm -> AppConfirmDialog(
+            onDismissRequest = { viewModel.dismissDialog() },
             title = stringResource(R.string.delete_forever),
-            text = stringResource(R.string.source_recycle_bin_delete_msg, item.name),
+            text = if (state.items.size == 1) {
+                stringResource(R.string.source_recycle_bin_delete_msg, state.items.first().name)
+            } else {
+                stringResource(R.string.source_recycle_bin_batch_delete_msg, state.items.size)
+            },
             confirmText = stringResource(R.string.delete),
             destructive = true,
             onConfirm = {
-                viewModel.delete(item)
-                deleteTarget = null
-                selectedIds = selectedIds - item.id
+                viewModel.delete(state.items)
+                viewModel.dismissDialog()
             }
         )
-    }
-
-    if (showClearDialog) {
-        AppConfirmDialog(
-            onDismissRequest = { showClearDialog = false },
+        is RecycleBinDialogState.ClearAll -> AppConfirmDialog(
+            onDismissRequest = { viewModel.dismissDialog() },
             title = stringResource(R.string.source_recycle_bin_clear_title),
             text = stringResource(R.string.source_recycle_bin_clear_msg),
             confirmText = stringResource(R.string.clear),
             destructive = true,
             onConfirm = {
                 viewModel.clearAll()
-                showClearDialog = false
+                viewModel.dismissDialog()
             }
         )
-    }
-
-    if (showBatchRestoreDialog) {
-        AppConfirmDialog(
-            onDismissRequest = { showBatchRestoreDialog = false },
-            title = stringResource(R.string.restore),
-            text = stringResource(
-                R.string.source_recycle_bin_batch_restore_msg,
-                selectedItems.size
-            ),
-            confirmText = stringResource(R.string.restore),
-            onConfirm = {
-                viewModel.restore(selectedItems, overwrite = false)
-                selectedIds = emptySet()
-                showBatchRestoreDialog = false
-            }
-        )
-    }
-
-    if (showBatchConflictDialog) {
-        AppConfirmDialog(
-            onDismissRequest = { showBatchConflictDialog = false },
-            title = stringResource(R.string.source_recycle_bin_conflict_title),
-            text = stringResource(
-                R.string.source_recycle_bin_batch_conflict_msg,
-                selectedItems.size
-            ),
-            confirmText = stringResource(R.string.overwrite),
-            onConfirm = {
-                viewModel.restore(selectedItems, overwrite = true)
-                selectedIds = emptySet()
-                showBatchConflictDialog = false
-            }
-        )
-    }
-
-    if (showBatchDeleteDialog) {
-        AppConfirmDialog(
-            onDismissRequest = { showBatchDeleteDialog = false },
-            title = stringResource(R.string.delete_forever),
-            text = stringResource(
-                R.string.source_recycle_bin_batch_delete_msg,
-                selectedItems.size
-            ),
-            confirmText = stringResource(R.string.delete),
-            destructive = true,
-            onConfirm = {
-                viewModel.delete(selectedItems)
-                selectedIds = emptySet()
-                showBatchDeleteDialog = false
-            }
-        )
+        null -> Unit
     }
 }
 
