@@ -222,15 +222,19 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     audio = audio,
                     agree = readLong(map, config.fields.agree, DEFAULT_AGREES),
                     oppose = readLong(map, config.fields.oppose, DEFAULT_OPPOSES),
-                    time = readLong(map, config.fields.time, DEFAULT_TIMES),
+                    time = readTime(map, config.fields.time, DEFAULT_TIMES),
                     floor = readInt(map, config.fields.floor, DEFAULT_FLOORS),
                     replyCount = readInt(map, config.fields.replyCount, DEFAULT_REPLY_COUNTS)
                 )
             }
             if (items.isNotEmpty() && items.all { it.time <= 0 }) {
                 // 诊断：有评论但本页均未解析到时间字段，打印首条字段名便于补充兜底路径
-                val firstKeys = maps.firstOrNull()?.keys?.joinToString(",")
-                AppLog.put("段评解析: 本页${items.size}条评论未解析到时间字段，首条keys=[$firstKeys]")
+                val firstMap = maps.firstOrNull()
+                val firstKeys = firstMap?.keys?.joinToString(",")
+                val timeVals = firstMap?.entries
+                    ?.filter { it.key.toString().contains("time", ignoreCase = true) }
+                    ?.joinToString(",") { "${it.key}=${it.value}" }
+                AppLog.put("段评解析: 本页${items.size}条评论未解析到时间字段，首条keys=[$firstKeys] time字段值=[$timeVals]")
             }
             items.filter { item ->
                 // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”
@@ -407,7 +411,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     images = readImages(map),
                     audio = readAudio(map),
                     agree = readLong(map, config.replyFields.agree, DEFAULT_AGREES),
-                    time = readLong(map, config.replyFields.time, DEFAULT_TIMES)
+                    time = readTime(map, config.replyFields.time, DEFAULT_TIMES)
                 )
             }.filter { reply ->
                 // 过滤完全无内容的空回复
@@ -461,6 +465,61 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             }
         }
         return 0
+    }
+
+    /**
+     * 时间字段解析：兼容三种格式
+     * 1. 数字（秒/毫秒时间戳）
+     * 2. 纯数字字符串（秒/毫秒时间戳）
+     * 3. 日期字符串（如 "2024-01-01 12:00:00"），解析为毫秒时间戳
+     * 神魔小说番茄段评的 CreateTime 即为日期字符串，数字解析会静默得 0。
+     */
+    private fun readTime(map: Map<*, *>, primary: String, defaults: List<String>): Long {
+        val paths = if (primary.isBlank()) {
+            defaults
+        } else {
+            listOf(primary) + defaults.filter { it != primary }
+        }
+        for (p in paths) {
+            val v = resolvePath(map, p) ?: continue
+            val ts = when (v) {
+                is Number -> toEpochMillis(v.toLong())
+                is Boolean -> null
+                else -> {
+                    val s = v.toString().trim()
+                    when {
+                        s.isEmpty() || s == "null" -> null
+                        else -> s.toLongOrNull()?.let { toEpochMillis(it) }
+                            ?: parseDateString(s)
+                    }
+                }
+            }
+            if (ts != null && ts > 0) return ts
+        }
+        return 0
+    }
+
+    /** 兼容秒/毫秒时间戳：小于 1e11 视为秒级，统一转毫秒 */
+    private fun toEpochMillis(ts: Long): Long {
+        return if (ts in 1 until 100_000_000_000L) ts * 1000 else ts
+    }
+
+    /** 解析 "yyyy-MM-dd HH:mm:ss" / "yyyy-MM-dd HH:mm" / "yyyy-MM-dd"（兼容 / 与 T 分隔符）为毫秒时间戳 */
+    private fun parseDateString(s: String): Long? {
+        val clean = s.trim().replace('T', ' ').replace('/', '-')
+        val m = DATE_STR_REGEX.matchEntire(clean) ?: return null
+        return runCatching {
+            val (y, mo, d, h, mi, se) = m.destructured
+            java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.YEAR, y.toInt())
+                set(java.util.Calendar.MONTH, mo.toInt() - 1)
+                set(java.util.Calendar.DAY_OF_MONTH, d.toInt())
+                set(java.util.Calendar.HOUR_OF_DAY, h.toIntOrNull() ?: 0)
+                set(java.util.Calendar.MINUTE, mi.toIntOrNull() ?: 0)
+                set(java.util.Calendar.SECOND, se.toIntOrNull() ?: 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }.timeInMillis
+        }.getOrNull()
     }
 
     private fun readInt(map: Map<*, *>, primary: String, defaults: List<String>): Int {
@@ -611,6 +670,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         private val DEFAULT_AGREES = listOf("$.AgreeAmount", "$.AgreeCount", "$.LikeCount", "$.LikeAmount", "$.Up", "$.digg_count", "$.like_count", "$.agree_count")
         private val DEFAULT_OPPOSES = listOf("$.OpposeAmount", "$.OpposeCount", "$.Down", "$.oppose_count", "$.oppose_amount")
         private val DEFAULT_TIMES = listOf("$.CreateTime", "$.Time", "$.CreatedAt", "$.CreateDate", "$.create_timestamp", "$.timestamp", "$.created_at", "$.create_time", "$.createTime", "$.createTimestamp", "$.pub_time", "$.publish_time", "$.comment_time", "$.update_time")
+        private val DATE_STR_REGEX = Regex(
+            """(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?(?:\.\d+)?(?:\s*(?:Z|[+-]\d{1,2}:?\d{0,2}))?)?"""
+        )
         private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber", "$.floor")
         private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount", "$.reply_count", "$.replyCount")
         private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName", "$.related_user", "$.reply_to")
