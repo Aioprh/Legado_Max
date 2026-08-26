@@ -158,7 +158,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
         /** 更新简介和标签的显示状态 */
         private fun upMoreInfo(binding: ItemBookshelfListBinding, item: Book) {
             // 显示标签（使用 FlexboxLayout，每个标签有外框）
-            if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
+            if (AppConfig.showMoreInfoInList && AppConfig.showCategoryInfoInList) {
                 binding.flexboxTags.visible()
                 updateTagViews(binding.flexboxTags, item)
             } else {

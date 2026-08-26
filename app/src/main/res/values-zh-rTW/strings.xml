@@ -1568,7 +1568,7 @@
     <!-- 列表視圖顯示更多資訊 -->
     <string name="show_more_info">顯示更多資訊</string>
     <string name="show_intro">顯示簡介</string>
-    <string name="show_tags">顯示標籤</string>
+    <string name="show_category_info">顯示分類資訊等</string>
     <string name="show_book_border">顯示外邊框</string>
     <!-- 簡介行數選擇 -->
     <string name="intro_lines">簡介行數</string>

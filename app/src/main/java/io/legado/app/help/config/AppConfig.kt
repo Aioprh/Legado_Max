@@ -321,10 +321,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.showIntroInList, value)
         }
 
-    var showTagsInList: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.showTagsInList, false)
+    var showCategoryInfoInList: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.showCategoryInfoInList, false)
         set(value) {
-            appCtx.putPrefBoolean(PreferKey.showTagsInList, value)
+            appCtx.putPrefBoolean(PreferKey.showCategoryInfoInList, value)
         }
 
     // 书籍外边框开关（默认关闭，仅在列表/紧凑列表视图时生效）
