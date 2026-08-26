@@ -1109,10 +1109,6 @@ class BookInfoActivity :
     @SuppressLint("SetTextI18n")
     private fun setBookParagraphComment() {
         val book = viewModel.getBook() ?: return
-        if (!book.isLocal) {
-            toastOnUi("仅本地书可单独接入其他源的段评")
-            return
-        }
         val config = book.config
         val padding = 24.dpToPx()
         val layout = LinearLayout(this).apply {
