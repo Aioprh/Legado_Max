@@ -71,6 +71,8 @@ object PreferKey {
     const val introLinesInList = "introLinesInList"
     // 下拉选择分组开关（仅在分组样式为标签时生效）
     const val dropdownSelectGroup = "dropdownSelectGroup"
+    // 显示标签栏开关
+    const val showBookshelfTagBar = "showBookshelfTagBar"
     const val bookExportFileName = "bookExportFileName"
     const val bookImportFileName = "bookImportFileName"
     const val episodeExportFileName = "episodeExportFileName"

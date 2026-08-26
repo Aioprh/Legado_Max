@@ -216,6 +216,7 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         swShowLastUpdateTime.isChecked = AppConfig.showLastUpdateTime
                         swShowWaitUpBooks.isChecked = AppConfig.showWaitUpCount
                         swShowBookshelfFastScroller.isChecked = AppConfig.showBookshelfFastScroller
+                        swShowBookshelfTagBar.isChecked = AppConfig.showBookshelfTagBar
                         // 初始化"显示更多信息"相关开关状态
                         llShowMoreInfo.visibility = if (bookLayout == 0) View.VISIBLE else View.GONE
                         swShowMoreInfo.isChecked = AppConfig.showMoreInfoInList
@@ -311,6 +312,10 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                     }
                     if (AppConfig.showBookshelfFastScroller != swShowBookshelfFastScroller.isChecked) {
                         AppConfig.showBookshelfFastScroller = swShowBookshelfFastScroller.isChecked
+                        postEvent(EventBus.BOOKSHELF_REFRESH, "")
+                    }
+                    if (AppConfig.showBookshelfTagBar != swShowBookshelfTagBar.isChecked) {
+                        AppConfig.showBookshelfTagBar = swShowBookshelfTagBar.isChecked
                         postEvent(EventBus.BOOKSHELF_REFRESH, "")
                     }
                     // 保存"显示更多信息"相关配置

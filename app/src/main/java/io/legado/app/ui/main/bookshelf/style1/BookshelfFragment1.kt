@@ -2,6 +2,7 @@
 
 package io.legado.app.ui.main.bookshelf.style1
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -18,6 +19,7 @@ import androidx.fragment.app.FragmentStatePagerAdapter
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
 import io.legado.app.R
+import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
@@ -35,6 +37,8 @@ import io.legado.app.ui.main.bookshelf.style1.books.BooksFragment
 import io.legado.app.ui.widget.RoundedTagBarView
 import io.legado.app.utils.isCreated
 import io.legado.app.utils.setEdgeEffectColor
+import io.legado.app.utils.observeEvent
+import io.legado.app.utils.postEvent
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -302,8 +306,16 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
      * 加载当前分组的二级标签栏数据。
      */
     private fun loadTagBar() {
+        if (!AppConfig.showBookshelfTagBar) {
+            tagBar?.visibility = View.GONE
+            tagSelectedIndex = -1
+            currentTagList = emptyList()
+            fragmentMap[groupId]?.filterByTag(null)
+            return
+        }
         val currentGroupId = groupId
         viewLifecycleOwner.lifecycleScope.launch {
+            val allText = getString(R.string.bookshelf_tag_all)
             val tags = withContext(Dispatchers.IO) {
                 val configured = AppConfig.bookshelfGroupTags[currentGroupId].orEmpty()
                 val hidden = AppConfig.bookshelfHiddenTags[currentGroupId].orEmpty()
@@ -314,29 +326,28 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
                 val merged = BookTagManagement.mergeTags(configured, existing)
                 merged.filter { tag -> hidden.none { it.equals(tag, ignoreCase = true) } }
             }
-            currentTagList = tags
-            tagSelectedIndex = -1
-            if (tags.isEmpty()) {
-                tagBar?.visibility = View.GONE
-                fragmentMap[currentGroupId]?.filterByTag(null)
-            } else {
-                tagBar?.visibility = View.VISIBLE
-                tagBar?.applyTopBarStyle(force = true)
-                tagBar?.submitItems(tags.map { RoundedTagBarView.Item(it) }, 0)
-                tagBar?.setSelectedIndex(0, false)
-                tagSelectedIndex = 0
-                refreshBooksByTag()
-            }
+            // 在标签列表前插入空字符串作为“全部”标签，显示时转为 allText
+            currentTagList = listOf("") + tags
+            tagSelectedIndex = 0
+            tagBar?.visibility = View.VISIBLE
+            tagBar?.applyTopBarStyle(force = true)
+            tagBar?.submitItems(
+                currentTagList.map { RoundedTagBarView.Item(it.ifBlank { allText }) },
+                0
+            )
+            tagBar?.setSelectedIndex(0, false)
+            refreshBooksByTag()
         }
     }
 
     /**
      * 根据选中的标签筛选当前分组的书籍。
+     * “全部”标签（索引0）传 null 表示不筛选。
      */
     private fun refreshBooksByTag() {
         val fragment = fragmentMap[groupId] ?: return
         val selectedIndex = tagSelectedIndex
-        if (selectedIndex < 0 || selectedIndex >= currentTagList.size) {
+        if (selectedIndex <= 0 || selectedIndex >= currentTagList.size) {
             fragment.filterByTag(null)
         } else {
             fragment.filterByTag(currentTagList[selectedIndex])
@@ -345,6 +356,14 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
 
     override fun gotoTop() {
         fragmentMap[groupId]?.gotoTop()
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    override fun observeLiveBus() {
+        super.observeLiveBus()
+        observeEvent<String>(EventBus.BOOKSHELF_REFRESH) {
+            loadTagBar()
+        }
     }
 
     override fun updateMainBottomPadding(bottomPadding: Int) {

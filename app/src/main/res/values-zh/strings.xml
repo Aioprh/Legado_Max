@@ -662,6 +662,8 @@
 <string name="bookshelf_tag_clear_results">清空结果</string>
 <string name="bookshelf_tag_no_matching_books">当前筛选条件下没有书籍</string>
 <string name="bookshelf_tag_save">保存</string>
+<string name="bookshelf_tag_all">全部</string>
+<string name="show_bookshelf_tag_bar">显示标签栏</string>
     <string name="group_edit">编辑分组</string>
     <string name="move_to_group">移入分组</string>
     <string name="add_group">添加分组</string>

@@ -364,8 +364,17 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
      * 加载当前分组的二级标签栏数据。
      */
     private fun loadTagBar() {
+        if (!AppConfig.showBookshelfTagBar) {
+            tagBar?.visibility = View.GONE
+            tagSelectedIndex = -1
+            currentTagList = emptyList()
+            tagFilter = null
+            initBooksData()
+            return
+        }
         val currentGroupId = groupId
         viewLifecycleOwner.lifecycleScope.launch {
+            val allText = getString(R.string.bookshelf_tag_all)
             val tags = withContext(Dispatchers.IO) {
                 val configured = AppConfig.bookshelfGroupTags[currentGroupId].orEmpty()
                 val hidden = AppConfig.bookshelfHiddenTags[currentGroupId].orEmpty()
@@ -376,29 +385,27 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                 val merged = BookTagManagement.mergeTags(configured, existing)
                 merged.filter { tag -> hidden.none { it.equals(tag, ignoreCase = true) } }
             }
-            currentTagList = tags
-            tagSelectedIndex = -1
-            if (tags.isEmpty()) {
-                tagBar?.visibility = View.GONE
-                tagFilter = null
-                initBooksData()
-            } else {
-                tagBar?.visibility = View.VISIBLE
-                tagBar?.applyTopBarStyle(force = true)
-                tagBar?.submitItems(tags.map { RoundedTagBarView.Item(it) }, 0)
-                tagBar?.setSelectedIndex(0, false)
-                tagSelectedIndex = 0
-                applyTagFilter()
-            }
+            // 在标签列表前插入空字符串作为“全部”标签
+            currentTagList = listOf("") + tags
+            tagSelectedIndex = 0
+            tagBar?.visibility = View.VISIBLE
+            tagBar?.applyTopBarStyle(force = true)
+            tagBar?.submitItems(
+                currentTagList.map { RoundedTagBarView.Item(it.ifBlank { allText }) },
+                0
+            )
+            tagBar?.setSelectedIndex(0, false)
+            applyTagFilter()
         }
     }
 
     /**
      * 应用当前选中的标签筛选。
+     * “全部”标签（索引0）传 null 表示不筛选。
      */
     private fun applyTagFilter() {
         val selectedIndex = tagSelectedIndex
-        tagFilter = if (selectedIndex < 0 || selectedIndex >= currentTagList.size) {
+        tagFilter = if (selectedIndex <= 0 || selectedIndex >= currentTagList.size) {
             null
         } else {
             currentTagList[selectedIndex]
@@ -456,6 +463,10 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             initRecyclerView()
             booksAdapter.notifyDataSetChanged()
             upFastScrollerBar()
+            // 刷新标签栏（开关状态可能变化）
+            if (groupId != BookGroup.IdRoot) {
+                loadTagBar()
+            }
         }
     }
 }

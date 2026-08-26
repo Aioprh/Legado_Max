@@ -624,6 +624,8 @@
 <string name="bookshelf_tag_clear_results">清空結果</string>
 <string name="bookshelf_tag_no_matching_books">目前篩選條件下沒有書籍</string>
 <string name="bookshelf_tag_save">儲存</string>
+<string name="bookshelf_tag_all">全部</string>
+<string name="show_bookshelf_tag_bar">顯示標籤欄</string>
     <string name="group_edit">編輯分組</string>
     <string name="move_to_group">移入分組</string>
     <string name="add_group">新增分組</string>

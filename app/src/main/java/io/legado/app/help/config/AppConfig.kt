@@ -341,12 +341,19 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefInt(PreferKey.introLinesInList, value.coerceIn(1, 10))
         }
 
-    // 下拉选择分组开关（默认关闭，仅在分组样式为标签时生效）
-    var dropdownSelectGroup: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.dropdownSelectGroup, false)
-        set(value) {
-            appCtx.putPrefBoolean(PreferKey.dropdownSelectGroup, value)
-        }
+// 下拉选择分组开关（默认关闭，仅在分组样式为标签时生效）
+var dropdownSelectGroup: Boolean
+get() = appCtx.getPrefBoolean(PreferKey.dropdownSelectGroup, false)
+set(value) {
+appCtx.putPrefBoolean(PreferKey.dropdownSelectGroup, value)
+}
+
+// 显示标签栏开关（默认关闭，开启后在书架分组下方显示二级标签栏）
+var showBookshelfTagBar: Boolean
+get() = appCtx.getPrefBoolean(PreferKey.showBookshelfTagBar, false)
+set(value) {
+appCtx.putPrefBoolean(PreferKey.showBookshelfTagBar, value)
+}
 
     /**
      * 书架每个分组配置的标签列表。
