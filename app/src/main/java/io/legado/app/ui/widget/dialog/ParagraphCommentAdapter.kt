@@ -128,12 +128,15 @@ class ParagraphCommentAdapter(context: Context) :
             }
 
             else -> {
-                if (item.replyCount <= 0) {
+                // 无评论 ID（如番茄主楼无 Id 字段）时只能展开评论自带的内嵌回复，
+                // 按钮条数以实际内嵌条数为准，避免"展开 N 条"却只显示预览里的几条
+                val showCount = if (item.id.isBlank()) item.replies.size else item.replyCount
+                if (showCount <= 0) {
                     btn.gone()
                 } else {
                     btn.text = context.getString(
                         R.string.paragraph_comment_expand_replies,
-                        item.replyCount
+                        showCount
                     )
                     btn.visible()
                     btn.isEnabled = true

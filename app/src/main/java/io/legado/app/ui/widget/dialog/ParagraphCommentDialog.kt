@@ -117,7 +117,6 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             override fun onToggleReplies(item: ParagraphCommentItem) {
                 if (item.repliesLoaded) {
                     item.repliesLoaded = false
-                    item.replies.clear()
                     adapter.updateItem(item)
                 } else {
                     loadReplies(item)
@@ -220,6 +219,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 val content = readStr(map, config.fields.content, DEFAULT_CONTENTS)
                 val images = readImages(map)
                 val audio = readAudio(map)
+                val inlineReplies = readInlineReplies(map)
                 ParagraphCommentItem(
                     id = readStr(map, config.fields.id, DEFAULT_IDS),
                     rootId = readStr(map, config.fields.rootId, DEFAULT_ROOT_IDS),
@@ -234,7 +234,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     oppose = readLong(map, config.fields.oppose, DEFAULT_OPPOSES),
                     time = readTime(map, config.fields.time, DEFAULT_TIMES),
                     floor = readInt(map, config.fields.floor, DEFAULT_FLOORS),
-                    replyCount = readInt(map, config.fields.replyCount, DEFAULT_REPLY_COUNTS)
+                    replyCount = maxOf(
+                        readInt(map, config.fields.replyCount, DEFAULT_REPLY_COUNTS),
+                        inlineReplies.size
+                    ),
+                    replies = inlineReplies.toMutableList()
                 )
             }
             if (items.isNotEmpty() && items.all { it.time <= 0 }) {
@@ -301,6 +305,13 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
 
     private fun loadReplies(item: ParagraphCommentItem) {
         if (item.repliesLoading) return
+        // 评论无 ID（番茄主楼评论没有 Id/CommentId 字段）但自带内嵌回复：
+        // 直接展开内嵌预览，避免用空 commentId 请求 comment-replies 接口后一片空白
+        if (item.id.isBlank() && item.replies.isNotEmpty()) {
+            item.repliesLoaded = true
+            adapter.updateItem(item)
+            return
+        }
         if (config.repliesUrl.isBlank()) {
             // 无回复接口：直接标记已加载（空回复），收起按钮不显示
             item.repliesLoaded = true
@@ -314,8 +325,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             val replies = body?.let { parseReplies(it) }.orEmpty()
             withContext(Dispatchers.Main) {
                 item.repliesLoading = false
-                item.replies.clear()
-                item.replies.addAll(replies)
+                if (replies.isNotEmpty()) {
+                    item.replies.clear()
+                    item.replies.addAll(replies)
+                }
+                // 接口失败/空响应时保留评论自带的内嵌回复预览，避免点击后一片空白
                 item.repliesLoaded = true
                 adapter.updateItem(item)
             }
@@ -614,6 +628,40 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
         if (cur.isNotEmpty()) tokens.add(cur.toString())
         return tokens
+    }
+
+    /**
+     * 读取评论自带的内嵌回复预览（$.Replies / $.replies）。
+     * 起点/番茄的主评论都会带 Replies 数组，点击"展开回复"可直接展示；
+     * 番茄主楼评论无 Id 字段，依赖 comment-replies 接口请求不到，必须用内嵌回复兜底。
+     */
+    private fun readInlineReplies(map: Map<*, *>): List<ParagraphReplyItem> {
+        val v = findKey(map, "Replies") ?: findKey(map, "replies") ?: return emptyList()
+        val list: List<*> = when (v) {
+            is List<*> -> v
+            is String -> runCatching {
+                GSON.fromJson<List<Any?>>(
+                    v,
+                    object : com.google.gson.reflect.TypeToken<List<Any?>>() {}.type
+                )
+            }.getOrNull() ?: return emptyList()
+            else -> return emptyList()
+        }
+        return list.mapNotNull { it as? Map<*, *> }.map { m ->
+            ParagraphReplyItem(
+                nickname = readStr(m, config.replyFields.nickname, DEFAULT_NICKNAMES),
+                avatar = readStr(m, config.replyFields.avatar, DEFAULT_AVATARS),
+                replyTo = readStr(m, config.replyFields.replyTo, DEFAULT_REPLY_TOS),
+                content = readStr(m, config.replyFields.content, DEFAULT_CONTENTS),
+                images = readImages(m),
+                audio = readAudio(m),
+                agree = readLong(m, config.replyFields.agree, DEFAULT_AGREES),
+                time = readTime(m, config.replyFields.time, DEFAULT_TIMES)
+            )
+        }.filter { r ->
+            // 过滤完全无内容的空回复
+            r.content.isNotBlank() || r.images.isNotEmpty() || r.audio.isNotBlank()
+        }
     }
 
     /**
