@@ -42,6 +42,9 @@ object LocalParagraphComment {
     /** 本地书 bookUrl|sourceUrl -> 本地章节标题 -> 远程章节 URL（null 表示拉取失败） */
     private val chapterMapCache = HashMap<String, Map<String, String>?>()
 
+    /** 远程章节 URL -> 段评摘要（空摘要=该章无段评）。避免重复阅读同一章节时反复请求 */
+    private val summaryCache = HashMap<String, SummaryResult>()
+
     private val adapters: List<ParagraphAdapter> = listOf(
         ShenmoAdapter,
         QidianFullAdapter,
@@ -81,7 +84,12 @@ object LocalParagraphComment {
             AppLog.put("本地书段评: 无法从书源[${source.bookSourceName}]的URL提取书籍/章节ID")
             return content
         }
-        val summary = adapter.fetchSummaryCounts(source, bookId, chapterId, remoteChapterUrl)
+        // 摘要按远程章节 URL 缓存，重复阅读同一章节不再请求
+        val summary = synchronized(summaryCache) {
+            summaryCache[remoteChapterUrl]
+        } ?: adapter.fetchSummaryCounts(source, bookId, chapterId, remoteChapterUrl).also {
+            synchronized(summaryCache) { summaryCache[remoteChapterUrl] = it }
+        }
         if (summary.counts.isEmpty()) {
             AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}]暂无段评")
             return content
@@ -428,14 +436,17 @@ object LocalParagraphComment {
 
     /** 文本对齐：把本地非空段落映射到远程非空段落序号（-1=本地多出/未匹配）。按顺序约束匹配。 */
     private fun alignLocalToRemote(local: List<String>, remote: List<String>): IntArray {
+        // 预归一化：避免每轮匹配都重复做正则替换（O(n*m) 场景下是主要性能开销）
+        val normLocal = local.map { normalizePara(it) }
+        val normRemote = remote.map { normalizePara(it) }
         val result = IntArray(local.size) { -1 }
         var j = 0
-        local.indices.forEach { i ->
-            val nl = normalizePara(local[i])
+        normLocal.indices.forEach { i ->
+            val nl = normLocal[i]
             if (nl.isEmpty()) return@forEach
             var found = -1
-            for (k in j until remote.size) {
-                val nr = normalizePara(remote[k])
+            for (k in j until normRemote.size) {
+                val nr = normRemote[k]
                 if (nr.isNotEmpty() && (nr == nl || nr.contains(nl) || nl.contains(nr))) {
                     found = k
                     break
@@ -449,9 +460,13 @@ object LocalParagraphComment {
         return result
     }
 
+    /** 段落文本归一化用的正则（预编译，避免每次匹配重新编译） */
+    private val HTML_TAG_REGEX = Regex("<[^>]*>")
+    private val WHITESPACE_REGEX = Regex("\\s+")
+
     /** 段落文本归一化：去 HTML 标签、空白，用于跨书源比对 */
     private fun normalizePara(s: String): String {
-        return s.replace(Regex("<[^>]*>"), "").replace(Regex("\\s+"), "").trim()
+        return HTML_TAG_REGEX.replace(s, "").replace(WHITESPACE_REGEX, "").trim()
     }
 
     /**
