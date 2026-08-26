@@ -93,7 +93,7 @@ object LocalParagraphComment {
         return injected
     }
 
-    /** 在段评书源中精确搜索本地书，得到远程书（含 bookUrl、tocUrl） */
+    /** 在段评书源中搜索本地书，得到远程书（含 bookUrl、tocUrl）。精确匹配失败时降级模糊匹配。 */
     private suspend fun getRemoteBook(book: Book, source: BookSource): Book? {
         val key = "${book.bookUrl}|${source.bookSourceUrl}"
         synchronized(remoteBookCache) {
@@ -102,8 +102,9 @@ object LocalParagraphComment {
             }
         }
         val remote = WebBook.preciseSearchAwait(source, book.name, book.author).getOrNull()
+            ?: fuzzySearchRemoteBook(source, book.name, book.author)
         if (remote == null) {
-            AppLog.put("本地书段评: 书源[${source.bookSourceName}]未搜索到《${book.name}》(${book.author})")
+            AppLog.put("本地书段评: 书源[${source.bookSourceName}]未搜索到《${book.name}》(${book.author})${loginHint(source)}")
             synchronized(remoteBookCache) { remoteBookCache[key] = null }
             return null
         }
@@ -111,6 +112,43 @@ object LocalParagraphComment {
         val full = runCatching { WebBook.getBookInfoAwait(source, remote) }.getOrDefault(remote)
         synchronized(remoteBookCache) { remoteBookCache[key] = full }
         return full
+    }
+
+    /**
+     * 精确匹配（书名+作者完全相等）失败时的降级搜索：
+     * 重新按书名搜索一次，用归一化后的书名/作者做模糊匹配。
+     */
+    private suspend fun fuzzySearchRemoteBook(source: BookSource, name: String, author: String): Book? {
+        val list = runCatching { WebBook.searchBookAwait(source, name) }.getOrNull()
+            ?: return null
+        if (list.isEmpty()) return null
+        AppLog.putReaderDebug("本地书段评: 模糊搜索《$name》返回 ${list.size} 条（书源${source.bookSourceName}）")
+        val n = normalizeTitle(name)
+        val a = normalizeTitle(author)
+        // 1) 书名归一化相等
+        list.firstOrNull { normalizeTitle(it.name) == n }?.toBook()?.let { return it }
+        // 2) 作者归一化相等
+        if (a.isNotEmpty()) {
+            list.firstOrNull { normalizeTitle(it.author) == a }?.toBook()?.let { return it }
+        }
+        // 3) 书名互相包含（忽略标点/空白）
+        list.firstOrNull {
+            val bn = normalizeTitle(it.name)
+            bn.isNotEmpty() && (bn.contains(n) || n.contains(bn))
+        }?.toBook()?.let { return it }
+        // 4) 兜底取第一条
+        return list.first().toBook()
+    }
+
+    /** 神魔小说等需登录的后端：未带登录会话时提示登录，便于区分“没登录”与“真没这本书” */
+    private fun loginHint(source: BookSource): String {
+        if (!source.bookSourceUrl.contains("shenmoxs.top", ignoreCase = true)) return ""
+        val ck = runCatching { CookieStore.getCookie("https://shenmoxs.top") }.getOrDefault("")
+        return if (Regex("admin_session=[^;]+").containsMatchIn(ck)) {
+            ""
+        } else {
+            "（神魔小说书源未登录，搜索被拒；请先到书源登录页登录）"
+        }
     }
 
     /** 把本地章节标题映射到远程章节 URL（一次拉取整书目录并缓存） */
@@ -158,15 +196,17 @@ object LocalParagraphComment {
         return map
     }
 
-    /** 章节标题归一化：全角数字/字母转半角并去掉空白，用于本地/远程章节标题模糊匹配 */
+    /** 章节/书名归一化：去空白、去书名号等成对标点、全角数字/字母转半角、全角冒号转半角，用于模糊匹配 */
     private fun normalizeTitle(title: String): String {
         val sb = StringBuilder(title.length)
         for (c in title) {
             when {
                 c == ' ' || c == '\u3000' || c == '\t' -> Unit
+                c in "《》（）()【】〔〕「」『』" -> Unit
                 c in '\uFF10'..'\uFF19' -> sb.append(c - 0xFEE0) // 全角数字
                 c in '\uFF21'..'\uFF3A' -> sb.append(c - 0xFEE0) // 全角大写字母
                 c in '\uFF41'..'\uFF5A' -> sb.append(c - 0xFEE0) // 全角小写字母
+                c == '：' -> sb.append(':')
                 else -> sb.append(c)
             }
         }
