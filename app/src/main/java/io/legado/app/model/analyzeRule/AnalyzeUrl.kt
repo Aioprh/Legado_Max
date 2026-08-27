@@ -422,8 +422,10 @@ class AnalyzeUrl(
         isTest: Boolean = false,
         skipRateLimit: Boolean = false
     ): StrResponse {
-        // Data URL 短路：解码后直接返回文本，不走 OkHttp / WebView
-        getDataUrlStrContent()?.let { return it }
+        // Data URL 短路：解码后返回 hex 编码的字符串，不走 OkHttp / WebView。
+        // 必须返回 hex 编码以与 type 路径（HexUtil.encodeHexStr(getByteArrayAwait())）保持一致，
+        // 否则 JS 侧 hexDecodeToString() 会因遇到非 hex 字符而抛出异常。
+        getDataUrlHexContent()?.let { return it }
         if (type != null) {
             return StrResponse(url, HexUtil.encodeHexStr(getByteArrayAwait()))
         }
@@ -436,15 +438,18 @@ class AnalyzeUrl(
     }
 
     /**
-     * 解析 Data URL 并返回文本内容的 StrResponse。
+     * 解析 Data URL 并返回 hex 编码的 StrResponse。
+     *
+     * 与 [getByteArrayAwait] + [HexUtil.encodeHexStr] 路径返回格式一致，
+     * 确保 JS 侧 `hexDecodeToString()` 能正常解码。
      *
      * 支持两种格式：
      * - `data:text/html;charset=utf-8;base64,<base64>` — base64 编码
      * - `data:text/html;charset=utf-8,<raw>` — 非 base64 的原始文本（percent-decoded）
      *
-     * @return 已解码的 StrResponse；如果当前 URL 不是 data URL 或解析失败则返回 null
+     * @return hex 编码的 StrResponse；如果当前 URL 不是 data URL 或解析失败则返回 null
      */
-    private fun getDataUrlStrContent(): StrResponse? {
+    private fun getDataUrlHexContent(): StrResponse? {
         if (!urlNoQuery.startsWith("data:")) return null
         val dataUriRegex = AppPattern.dataUriRegex
         // 获取 data URL 声明的 charset，优先取选项中的 charset
@@ -453,7 +458,7 @@ class AnalyzeUrl(
         if (base64Match != null) {
             val base64Data = base64Match.groupValues[1]
             val bytes = Base64.decode(base64Data, Base64.DEFAULT)
-            return StrResponse(url, String(bytes, Charset.forName(charsetName)))
+            return StrResponse(url, HexUtil.encodeHexStr(bytes))
         }
         // 非 base64 的 data URL：data:[<mediatype>][;charset=xxx],<data>
         val commaIdx = urlNoQuery.indexOf(',')
@@ -461,10 +466,10 @@ class AnalyzeUrl(
             val raw = urlNoQuery.substring(commaIdx + 1)
             // data URL 非基础编码部分使用 percent-encoding
             val decoded = java.net.URLDecoder.decode(raw, charsetName)
-            return StrResponse(url, decoded)
+            return StrResponse(url, HexUtil.encodeHexStr(decoded.toByteArray(Charset.forName(charsetName))))
         }
         // 格式不合法的 data URL，返回空 body 避免崩溃
-        return StrResponse(url, "")
+        return StrResponse(url, HexUtil.encodeHexStr(ByteArray(0)))
     }
 
     /**
