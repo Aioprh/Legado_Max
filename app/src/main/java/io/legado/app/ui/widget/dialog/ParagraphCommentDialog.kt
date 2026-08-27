@@ -159,7 +159,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
         adapter.imageListener = object : ParagraphCommentAdapter.ImageListener {
             override fun onImageClick(url: String) {
-                showDialogFragment(PhotoDialog(url))
+                showDialogFragment(PhotoDialog(url, source?.getKey()))
             }
         }
         arguments?.let {
@@ -167,6 +167,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             source = sourceKey?.let { key ->
                 appDb.bookSourceDao.getBookSource(key) ?: appDb.rssSourceDao.getByKey(key)
             }
+            // 段评图片也必须使用当前书源的请求环境（Cookie / UA / Referer 等）。
+            adapter.sourceOrigin = source?.getKey()
             it.getString("config")?.let { json ->
                 config = GSON.fromJsonObject<ParagraphCommentConfig>(json).getOrNull()
                     ?: ParagraphCommentConfig()
@@ -834,20 +836,59 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     private fun collectImageUrls(v: Any?, out: MutableSet<String>) {
         when (v) {
             null -> Unit
-            is Map<*, *> -> v.values.forEach { collectImageUrls(it, out) }
+            is Map<*, *> -> {
+                // 番茄部分接口会返回 {md5: "..."} 而不是完整 URL。
+                // 正文解析采用的就是 p3-novel.byteimg.com/origin/novel-pic/{md5}。
+                val md5 = findKey(v, "md5")?.toString()?.trim().orEmpty()
+                if (md5.matches(Regex("[0-9a-fA-F]{16,64}")) && out.size < 9) {
+                    out.add("https://p3-novel.byteimg.com/origin/novel-pic/$md5")
+                }
+                v.values.forEach { collectImageUrls(it, out) }
+            }
             is List<*> -> v.forEach { collectImageUrls(it, out) }
             else -> {
-                val s = v.toString().trim()
-                if (s.isEmpty()) return
-                // 兼容“图片地址被序列化成字符串数组/JSON”的情况
+                var s = v.toString().trim()
+                if (s.isEmpty() || s == "null") return
+
+                // JSON / HTML 转义还原。
+                s = s.replace("\\/", "/")
+                    .replace("\\u002F", "/")
+                    .replace("\\u002f", "/")
+                    .replace("&amp;", "&")
+                    .replace("&quot;", "\"")
+
+                // 图片字段偶尔本身就是 JSON 字符串或带 <img src="..."> 的 HTML。
                 if (s.startsWith("[") || s.startsWith("{")) {
                     runCatching { GSON.fromJson<Any?>(s, Any::class.java) }
                         .getOrNull()
                         ?.let { collectImageUrls(it, out); return }
                 }
-                if (s.startsWith("http") && out.size < 9) out.add(s)
+
+                val candidates = LinkedHashSet<String>()
+                val imgRegex = Regex("""(?:src|url|imageUrl|image_url|imgUrl|img_url)\s*[=:]\s*[\"']?(https?://[^\"'<>\s]+|//[^\"'<>\s]+)""", RegexOption.IGNORE_CASE)
+                imgRegex.findAll(s).forEach { candidates.add(it.groupValues[1]) }
+                if (candidates.isEmpty()) {
+                    Regex("""https?://[^\s\"'<>]+|//[^\s\"'<>]+""", RegexOption.IGNORE_CASE)
+                        .findAll(s).forEach { candidates.add(it.value) }
+                }
+                candidates.forEach { raw ->
+                    val url = normalizeImageUrl(raw)
+                    if (url.isNotBlank() && out.size < 9) out.add(url)
+                }
             }
         }
+    }
+
+    /** 统一番茄常见图片 URL：协议相对地址、转义地址、尾随 JSON/HTML 标点。 */
+    private fun normalizeImageUrl(raw: String): String {
+        var url = raw.trim()
+            .replace("\\/", "/")
+            .replace("\\u002F", "/")
+            .replace("\\u002f", "/")
+            .replace("&amp;", "&")
+            .trim('"', '\'', '`', ' ', '\n', '\r', '\t', ',', ';')
+        if (url.startsWith("//")) url = "https:$url"
+        return url
     }
 
     /** 提取语音评论：有直接播放地址返回地址，否则检测到语音相关字段（AudioRoleId/AudioTime 等）返回标记值 */
