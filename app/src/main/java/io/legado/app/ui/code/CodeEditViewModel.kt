@@ -98,6 +98,7 @@ class CodeEditViewModel(application: Application) : BaseViewModel(application) {
             title = intent.getStringExtra("title")
             sourceType = intent.getStringExtra("sourceType")
             fieldKey = intent.getStringExtra("fieldKey")
+            tabKey = intent.getStringExtra("tabKey")
             val sourceKey = intent.getStringExtra("sourceKey")
             if (!sourceKey.isNullOrBlank()) {
                 when (sourceType) {
