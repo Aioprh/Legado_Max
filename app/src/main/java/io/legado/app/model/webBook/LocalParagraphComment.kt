@@ -48,6 +48,7 @@ object LocalParagraphComment {
     private val adapters: List<ParagraphAdapter> = listOf(
         ShenmoAdapter,
         QidianFullAdapter,
+        JiuJiuAdapter,
         GenericAdapter
     )
 
@@ -861,6 +862,71 @@ object LocalParagraphComment {
                     replyTo = "$.raw.RelatedUser"
                 )
             )
+        }
+    }
+
+    /**
+     * 玖玖小说（番茄镜像，sunianxincue.love 系）：段评是"网页方案"。
+     * 摘要走 distUrl（/api/fanqie/comments/{sources}/{book_id}/{item_id}，返回 distributions 列表），
+     * 点击气泡用内嵌浏览器打开玖玖的段评网页（index.php/ui/...，含图片与发评论）。
+     * para_index 为"非空正文段落号"（0基），与项目"1基非空段落号"相差 1。
+     */
+    private object JiuJiuAdapter : ParagraphAdapter {
+        private const val COMMENTS_ROOT = "/api/fanqie/comments/"
+
+        override fun match(source: BookSource): Boolean =
+            source.bookSourceUrl.contains("sunianxincue.love", ignoreCase = true)
+
+        /** book_id：玖玖详情/章节 URL 末尾数字 */
+        override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
+            trailingNumber(bookUrl) ?: pickId(chapterUrl, "book_id")
+
+        /** item_id：玖玖章节 URL 末尾数字 */
+        override fun extractChapterId(chapterUrl: String): String? =
+            pickId(chapterUrl, "item_id") ?: trailingNumber(chapterUrl)
+
+        /** 从章节 URL /api/content/{sources}/... 提取站点标识，缺省 fanqie */
+        private fun sources(chapterUrl: String?): String =
+            chapterUrl?.let {
+                Regex("""/api/content/([a-z]+)/""", RegexOption.IGNORE_CASE)
+                    .find(it)?.groupValues?.get(1)
+            } ?: "fanqie"
+
+        private fun trailingNumber(u: String): String? =
+            Regex("""/(\d+)(?=[/?]|$)""").find(u)?.groupValues?.get(1)
+
+        override suspend fun fetchSummaryCounts(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            chapterUrl: String?
+        ): SummaryResult {
+            val url = source.bookSourceUrl.trimEnd('/') + COMMENTS_ROOT +
+                sources(chapterUrl) + "/$bookId/$chapterId"
+            val body = fetchBody(source, url) ?: return SummaryResult()
+            val counts = HashMap<Int, Int>()
+            runCatching {
+                val list = jsonPath.parse(body).read<List<Any?>>("$.data.distributions")
+                list.filterIsInstance<Map<*, *>>().forEach { d ->
+                    val idx = d["para_index"]?.toString()?.toIntOrNull() ?: return@forEach
+                    val count = d["count"]?.toString()?.toIntOrNull() ?: return@forEach
+                    if (idx < 0 || count <= 0) return@forEach
+                    counts[idx + 1] = (counts[idx + 1] ?: 0) + count
+                }
+            }
+            return SummaryResult(counts)
+        }
+
+        override fun buildPclick(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            pid: Int,
+            chapterUrl: String?
+        ): String {
+            val url = source.bookSourceUrl.trimEnd('/') + COMMENTS_ROOT +
+                "index.php/ui/" + sources(chapterUrl) + "/$bookId/$chapterId/${pid - 1}"
+            return "java.openUrl('$url');"
         }
     }
 }

@@ -814,7 +814,21 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             collectImageUrls(v, result)
             if (result.size >= 9) break
         }
+        // 兜底：候选字段名未命中时，按 key 名（含 img/pic/image）扫描，兼容其它站点不同命名
+        if (result.isEmpty()) collectImpliedImageUrls(map, result)
         return result.take(9)
+    }
+
+    /** 兼容候选字段名未命中时，收集字段名含 img/pic/image 的 http 地址（避开头像/正文里的普通链接） */
+    private fun collectImpliedImageUrls(map: Map<*, *>, out: MutableSet<String>) {
+        for ((k, v) in map) {
+            val keyName = k?.toString() ?: continue
+            if (!keyName.contains("img", true) && !keyName.contains("pic", true) &&
+                !keyName.contains("image", true)
+            ) continue
+            collectImageUrls(v, out)
+            if (out.size >= 9) break
+        }
     }
 
     private fun collectImageUrls(v: Any?, out: MutableSet<String>) {
