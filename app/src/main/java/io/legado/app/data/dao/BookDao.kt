@@ -468,6 +468,9 @@ interface BookDao {
     @get:Query("SELECT bookUrl FROM books")
     val allBookUrls: List<String>
 
+    @get:Query("SELECT bookUrl, name, author, customTag, type, `group` FROM books")
+    val allTagInfos: List<BookTagInfo>
+
     @get:Query("SELECT COUNT(*) FROM books")
     val allBookCount: Int
 
@@ -510,6 +513,9 @@ interface BookDao {
     @Query("update books set durChapterPos = :pos where bookUrl = :bookUrl")
     fun upProgress(bookUrl: String, pos: Int)
 
+    @Query("update books set customTag = :customTag where bookUrl = :bookUrl")
+    fun updateCustomTag(bookUrl: String, customTag: String?)
+
     @Query("update books set `group` = :newGroupId where `group` = :oldGroupId")
     fun upGroup(oldGroupId: Long, newGroupId: Long)
 
@@ -519,3 +525,15 @@ interface BookDao {
     @Query("delete from books where type & ${BookType.notShelf} > 0")
     fun deleteNotShelfBook()
 }
+
+/**
+ * 轻量标签查询数据类，仅包含标签管理所需字段。
+ */
+data class BookTagInfo(
+    val bookUrl: String,
+    val name: String,
+    val author: String,
+    val customTag: String?,
+    val type: Int,
+    val group: Long
+)

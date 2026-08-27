@@ -301,8 +301,6 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etLayoutScope.setTextColor(primaryTextColor)
         binding.etLayoutScope.setHintTextColor(secondaryTextColor)
         binding.etLayoutScope.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
-        binding.tvLayoutScopePick.setTextColor(primaryTextColor)
-        binding.tvLayoutScopePick.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.spBgImageFit.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvWidthMinus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvWidthPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
@@ -613,7 +611,6 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
                 .show()
         }
         binding.etLayoutScope.setOnClickListener { openLayoutScopePicker() }
-        binding.tvLayoutScopePick.setOnClickListener { openLayoutScopePicker() }
     }
 
     private fun updateLayoutScopeText() {

@@ -25,6 +25,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.FragmentBooksBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.book.BookTagHelper
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.book.info.BookInfoActivity
@@ -80,6 +81,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     private var onlyUpdateRead = false
     private val bookshelfMargin by lazy { AppConfig.bookshelfMargin }
     private var itemCount = 0
+    private var tagFilter: String? = null
 
     private fun createBooksAdapter(): BaseBooksAdapter<*> {
         return when (AppConfig.bookLayout) {
@@ -288,10 +290,13 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
             ).catch {
                 AppLog.put("书架更新出错", it)
             }.conflate().flowOn(Dispatchers.Default).collect { list ->
-                itemCount = list.size
+                val filtered = if (tagFilter == null) list else list.filter {
+                    BookTagHelper.has(it.customTag, tagFilter!!)
+                }
+                itemCount = filtered.size
                 binding.tvEmptyMsg.isGone = itemCount > 0
                 binding.refreshLayout.isEnabled = enableRefresh && itemCount > 0
-                booksAdapter.setItems(list)
+                booksAdapter.setItems(filtered)
             }
         }
     }
@@ -325,6 +330,14 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
 
     fun getBooksCount(): Int {
         return booksAdapter.itemCount
+    }
+
+    /**
+     * 按标签筛选书籍。传 null 表示清除筛选。
+     */
+    fun filterByTag(tag: String?) {
+        tagFilter = tag
+        upRecyclerData()
     }
 
     override fun onDestroyView() {

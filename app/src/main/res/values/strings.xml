@@ -635,6 +635,36 @@
     <string name="select_image_failed">Failed to select image</string>
     <string name="group_manage">Group management</string>
     <string name="group_select">Group selection</string>
+
+    <!-- Bookshelf tag management -->
+    <string name="bookshelf_tag_manage">Manage tags</string>
+    <string name="bookshelf_tag_none">No tags set</string>
+    <string name="bookshelf_tag_add_title">Add tags</string>
+    <string name="bookshelf_tag_add_group">Add to \"%1$s\"</string>
+    <string name="bookshelf_tag_new_label">New tag</string>
+    <string name="bookshelf_tag_new_hint">New tags, separated by spaces or commas</string>
+    <string name="bookshelf_tag_search_existing">Search existing tags</string>
+    <string name="bookshelf_tag_reusable_summary">Reusable: %1$d · Selected: %2$d</string>
+    <string name="bookshelf_tag_no_reusable">No reusable tags, enter new ones below</string>
+    <string name="bookshelf_tag_no_matching_existing">No matching tags</string>
+    <string name="bookshelf_tag_delete_title">Delete tag</string>
+    <string name="bookshelf_tag_delete_message">Remove tag \"%1$s\" from all books in \"%2$s\"? Books will not be deleted.</string>
+    <string name="bookshelf_tag_group_summary">%1$d books · %2$d tags</string>
+    <string name="bookshelf_tag_empty_summary">No tags in this group yet, tap \"Add\" to create.</string>
+    <string name="bookshelf_tag_book_count">%1$d books tagged</string>
+    <string name="bookshelf_tag_visible">Show in tag bar</string>
+    <string name="bookshelf_tag_manage_books">Manage books</string>
+    <string name="bookshelf_tag_search_book">Search by title or author</string>
+    <string name="bookshelf_tag_filter_all">All</string>
+    <string name="bookshelf_tag_filter_selected">Selected</string>
+    <string name="bookshelf_tag_filter_unselected">Unselected</string>
+    <string name="bookshelf_tag_selected_count">Selected %1$d / %2$d</string>
+    <string name="bookshelf_tag_select_results">Select all results</string>
+    <string name="bookshelf_tag_clear_results">Clear results</string>
+    <string name="bookshelf_tag_no_matching_books">No books match the current filter</string>
+    <string name="bookshelf_tag_save">Save</string>
+    <string name="bookshelf_tag_all">All</string>
+    <string name="show_bookshelf_tag_bar">Show tag bar</string>
     <string name="group_edit">Group editing</string>
     <string name="move_to_group">Move to group</string>
     <string name="add_group">Add to Groups</string>
@@ -1960,7 +1990,7 @@
     <!-- Show more info in list view -->
     <string name="show_more_info">Show More Info</string>
     <string name="show_intro">Show Intro</string>
-    <string name="show_tags">Show Tags</string>
+    <string name="show_category_info">Show Category Info, etc.</string>
     <string name="show_book_border">Show Border</string>
     <!-- Intro lines selection -->
     <string name="intro_lines">Intro Lines</string>

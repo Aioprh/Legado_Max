@@ -294,6 +294,11 @@
             android:name=".ui.book.manage.BookshelfManageActivity"
             android:launchMode="singleTop"
             android:screenOrientation="behind" />
+        <!-- 书架标签管理 -->
+        <activity
+            android:name=".ui.main.bookshelf.BookshelfTagManageActivity"
+            android:launchMode="singleTask"
+            android:screenOrientation="behind" />
         <!-- 书源调试 -->
         <activity
             android:name=".ui.book.source.debug.BookSourceDebugActivity"

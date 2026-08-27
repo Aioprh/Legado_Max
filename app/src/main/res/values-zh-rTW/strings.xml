@@ -594,8 +594,38 @@
     <string name="text_color">文字顏色</string>
     <string name="select_image">選擇圖片</string>
     <string name="select_image_failed">選擇圖片失敗</string>
-    <string name="group_manage">分組管理</string>
-    <string name="group_select">分組選擇</string>
+<string name="group_manage">分組管理</string>
+<string name="group_select">分組選擇</string>
+
+<!-- Bookshelf tag management -->
+<string name="bookshelf_tag_manage">管理標籤</string>
+<string name="bookshelf_tag_none">未設定標籤</string>
+<string name="bookshelf_tag_add_title">新增標籤</string>
+<string name="bookshelf_tag_add_group">新增至「%1$s」</string>
+<string name="bookshelf_tag_new_label">新標籤</string>
+<string name="bookshelf_tag_new_hint">新增標籤，多個以空格或逗號分隔</string>
+<string name="bookshelf_tag_search_existing">搜尋現有標籤</string>
+<string name="bookshelf_tag_reusable_summary">可重用 %1$d 個 · 已選 %2$d 個</string>
+<string name="bookshelf_tag_no_reusable">沒有可重用的現有標籤，可直接輸入新標籤</string>
+<string name="bookshelf_tag_no_matching_existing">沒有符合的現有標籤</string>
+<string name="bookshelf_tag_delete_title">刪除標籤</string>
+<string name="bookshelf_tag_delete_message">確定從「%2$s」分組的所有書籍中移除「%1$s」標籤嗎？不會刪除書籍。</string>
+<string name="bookshelf_tag_group_summary">%1$d 本書 · %2$d 個標籤</string>
+<string name="bookshelf_tag_empty_summary">目前分組尚無標籤，點擊「新增」建立。</string>
+<string name="bookshelf_tag_book_count">已標記 %1$d 本書</string>
+<string name="bookshelf_tag_visible">標籤列顯示</string>
+<string name="bookshelf_tag_manage_books">管理書籍</string>
+<string name="bookshelf_tag_search_book">搜尋書名或作者</string>
+<string name="bookshelf_tag_filter_all">全部</string>
+<string name="bookshelf_tag_filter_selected">已選</string>
+<string name="bookshelf_tag_filter_unselected">未選</string>
+<string name="bookshelf_tag_selected_count">已選 %1$d / %2$d</string>
+<string name="bookshelf_tag_select_results">選擇結果</string>
+<string name="bookshelf_tag_clear_results">清空結果</string>
+<string name="bookshelf_tag_no_matching_books">目前篩選條件下沒有書籍</string>
+<string name="bookshelf_tag_save">儲存</string>
+<string name="bookshelf_tag_all">全部</string>
+<string name="show_bookshelf_tag_bar">顯示標籤欄</string>
     <string name="group_edit">編輯分組</string>
     <string name="move_to_group">移入分組</string>
     <string name="add_group">新增分組</string>
@@ -1568,7 +1598,7 @@
     <!-- 列表視圖顯示更多資訊 -->
     <string name="show_more_info">顯示更多資訊</string>
     <string name="show_intro">顯示簡介</string>
-    <string name="show_tags">顯示標籤</string>
+    <string name="show_category_info">顯示分類資訊等</string>
     <string name="show_book_border">顯示外邊框</string>
     <!-- 簡介行數選擇 -->
     <string name="intro_lines">簡介行數</string>

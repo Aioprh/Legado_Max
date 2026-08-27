@@ -40,4 +40,15 @@
     <!-- Shared modern UI shape tokens -->
     <dimen name="ui_panel_radius">10dp</dimen>
     <dimen name="ui_action_radius">9dp</dimen>
+
+    <!-- Bookshelf tag bar -->
+    <dimen name="bookshelf_tag_bar_height">38dp</dimen>
+    <dimen name="bookshelf_tag_bar_margin_horizontal">16dp</dimen>
+    <dimen name="bookshelf_tag_bar_padding_horizontal">3dp</dimen>
+    <dimen name="bookshelf_tag_bar_padding_vertical">1dp</dimen>
+    <dimen name="bookshelf_tag_recycler_padding_vertical">4dp</dimen>
+    <dimen name="bookshelf_tag_item_height">28dp</dimen>
+    <dimen name="bookshelf_tag_item_margin_horizontal">2dp</dimen>
+    <dimen name="bookshelf_tag_item_min_width">36dp</dimen>
+    <dimen name="bookshelf_tag_item_padding_horizontal">12dp</dimen>
 </resources>
