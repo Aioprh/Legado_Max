@@ -163,12 +163,12 @@ data class BookSource(
         return rule
     }
 
-//    fun getReviewRule(): ReviewRule {
-//        ruleReview?.let { return it }
-//        val rule = ReviewRule()
-//        ruleReview = rule
-//        return rule
-//    }
+    fun getReviewRule(): ReviewRule {
+        ruleReview?.let { return it }
+        val rule = ReviewRule()
+        ruleReview = rule
+        return rule
+    }
 
     fun getDisPlayNameGroup(): String {
         return if (bookSourceGroup.isNullOrBlank()) {
@@ -326,10 +326,12 @@ data class BookSource(
             GSON.fromJsonObject<ContentRule>(json).getOrNull()
 
         @TypeConverter
-        fun stringToReviewRule(json: String?): ReviewRule? = null
+        fun stringToReviewRule(json: String?): ReviewRule? =
+            GSON.fromJsonObject<ReviewRule>(json).getOrNull()
 
         @TypeConverter
-        fun reviewRuleToString(reviewRule: ReviewRule?): String = "null"
+        fun reviewRuleToString(reviewRule: ReviewRule?): String =
+            GSON.toJson(reviewRule)
 
     }
 }
