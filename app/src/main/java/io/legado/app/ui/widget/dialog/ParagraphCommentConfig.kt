@@ -29,7 +29,9 @@ data class ParagraphCommentConfig(
     // 评论字段路径
     var fields: FieldConfig = FieldConfig(),
     // 回复字段路径
-    var replyFields: FieldConfig = FieldConfig()
+    var replyFields: FieldConfig = FieldConfig(),
+    // 是否允许切换排序模式（番茄段评接口不按时间/回复数排序，仅保留实时；起点段评保留全部排序）
+    var sortEnabled: Boolean = true
 ) {
     data class FieldConfig(
         var nickname: String = "",

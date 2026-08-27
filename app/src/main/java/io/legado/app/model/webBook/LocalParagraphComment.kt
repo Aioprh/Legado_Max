@@ -502,7 +502,8 @@ object LocalParagraphComment {
         audioUrl: String,
         pageSize: Int,
         fields: ParagraphCommentConfig.FieldConfig,
-        replyFields: ParagraphCommentConfig.FieldConfig = fields
+        replyFields: ParagraphCommentConfig.FieldConfig = fields,
+        sortEnabled: Boolean = true
     ): String {
         return buildString {
             append("var cfg={")
@@ -513,6 +514,7 @@ object LocalParagraphComment {
             append("replyListPath:'").append(replyListPath).append("',")
             if (audioUrl.isNotBlank()) append("audioUrl:'").append(audioUrl).append("',")
             append("pageSize:").append(pageSize).append(",")
+            append("sortEnabled:").append(sortEnabled).append(",")
             append("fields:").append(fieldsScript(fields)).append(",")
             append("replyFields:").append(fieldsScript(replyFields))
             append("};")
@@ -727,6 +729,9 @@ object LocalParagraphComment {
                 replyListPath = "$.data.comments",
                 audioUrl = "",
                 pageSize = 20,
+                // 番茄段评接口不按时间/回复数排序，仅保留实时模式；
+                // 起点段评保留全部排序（最新/实时/回复最多）
+                sortEnabled = !fanqie,
                 // 番茄评论字段与起点不同（小写 snake_case），交给弹窗 DEFAULT_* 兜底解析
                 fields = if (fanqie) {
                     ParagraphCommentConfig.FieldConfig()

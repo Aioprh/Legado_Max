@@ -172,6 +172,12 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     ?: ParagraphCommentConfig()
             }
         }
+        // 番茄段评接口不按时间/回复数排序，仅保留实时模式，隐藏排序按钮；
+        // 起点段评保留全部排序（默认最新）
+        if (!config.sortEnabled) {
+            sortMode = SortMode.REALTIME
+            binding.tvSort.gone()
+        }
         if (config.commentsUrl.isNullOrBlank()) {
             AppLog.put("段评弹窗 commentsUrl 为空，无法加载", NoStackTraceException("commentsUrl 为空"))
             showMsg(getString(R.string.paragraph_comment_load_failed))
