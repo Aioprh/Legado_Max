@@ -1,441 +1,980 @@
 package io.legado.app.ui.widget.dialog
 
-import android.content.Context
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.style.ImageSpan
+import android.graphics.drawable.GradientDrawable
+import android.media.MediaPlayer
+import android.os.Bundle
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
-import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatActivity
+import android.widget.PopupMenu
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
-import io.legado.app.base.adapter.ItemViewHolder
-import io.legado.app.base.adapter.RecyclerAdapter
-import io.legado.app.constant.AppConst
-import io.legado.app.databinding.ItemParagraphCommentBinding
-import io.legado.app.databinding.ItemParagraphReplyBinding
-import io.legado.app.help.glide.ImageLoader
+import io.legado.app.base.BaseDialogFragment
+import io.legado.app.constant.AppLog
+import io.legado.app.data.appDb
+import io.legado.app.data.entities.BaseSource
+import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookChapter
+import io.legado.app.databinding.DialogParagraphCommentBinding
+import io.legado.app.exception.NoStackTraceException
+import io.legado.app.lib.theme.ThemeStore
+import io.legado.app.lib.theme.primaryColor
+import io.legado.app.model.analyzeRule.AnalyzeUrl
+import io.legado.app.utils.GSON
 import io.legado.app.utils.dpToPx
+import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.gone
+import io.legado.app.utils.jsonPath
+import io.legado.app.utils.setLayout
+import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.stackTraceStr
+import io.legado.app.utils.toastOnUi
+import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
-import java.util.Date
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.EmptyCoroutineContext
 
 /**
- * 段评列表适配器：展示头像 / 昵称 / 等级 / 地区 / 时间 / 内容 / 赞踩 / 楼层，
- * 并支持展开/收起某条评论的回复列表。
+ * 段评弹窗：原生列表展示段评（头像/昵称/等级/地区/时间/内容/赞踩/楼层），
+ * 支持分页加载与回复展开/收起。
+ *
+ * 由书源 JS 通过 `java.showParagraphComments(JSON.stringify(config))` 打开，
+ * 配置见 [ParagraphCommentConfig]。
  */
-class ParagraphCommentAdapter(context: Context) :
-    RecyclerAdapter<ParagraphCommentItem, ItemParagraphCommentBinding>(context) {
+class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_comment) {
 
-    interface ReplyListener {
-        fun onToggleReplies(item: ParagraphCommentItem)
-    }
-
-    interface AudioListener {
-        /** 点击语音条：请求 audio 接口补全音频地址并播放/停止 */
-        fun onToggleAudio(item: ParagraphCommentItem)
-    }
-
-    interface ImageListener {
-        /** 点击评论/回复图片：打开大图查看 */
-        fun onImageClick(url: String)
-    }
-
-    var replyListener: ReplyListener? = null
-    var audioListener: AudioListener? = null
-    var imageListener: ImageListener? = null
-
-    /** 列表每次真正更新（含 DiffUtil 异步重排完成）后回调，供弹窗在末尾处自动继续加载下一页 */
-    var onListChanged: (() -> Unit)? = null
-
-    override fun getViewBinding(parent: ViewGroup): ItemParagraphCommentBinding {
-        return ItemParagraphCommentBinding.inflate(inflater, parent, false)
-    }
-
-    override fun onCurrentListChanged() {
-        // 同步调用，弹窗内部会再 post 一次，保证发生在本次数据提交完成、hasMore/页码更新之后
-        onListChanged?.invoke()
-    }
-
-    override fun convert(
-        holder: ItemViewHolder,
-        binding: ItemParagraphCommentBinding,
-        item: ParagraphCommentItem,
-        payloads: MutableList<Any>
-    ) {
-        binding.apply {
-            ImageLoader.load(context, item.avatar)
-                .placeholder(R.drawable.image_cover_default)
-                .error(R.drawable.image_cover_default)
-                .circleCrop()
-                .into(ivAvatar)
-
-            tvNickname.text = item.nickname.ifBlank {
-                context.getString(R.string.paragraph_comment_anonymous)
-            }
-
-            // 神评论角标（起点 EssenceType==2 / IsEssence==true）
-            if (item.isGod) {
-                tvGod.visible()
-            } else {
-                tvGod.gone()
-            }
-
-            if (item.level.isBlank()) {
-                tvLevel.gone()
-            } else {
-                tvLevel.text = item.level
-                tvLevel.visible()
-            }
-            if (item.ip.isBlank()) {
-                tvIp.gone()
-            } else {
-                tvIp.text = item.ip
-                tvIp.visible()
-            }
-            tvTime.text = formatTime(item.time)
-
-            if (item.floor > 0) {
-                tvFloor.text = context.getString(R.string.paragraph_comment_floor, item.floor)
-                tvFloor.visible()
-            } else {
-                tvFloor.gone()
-            }
-
-            // 内容为空但有图/语音时显示占位提示
-            val text = formatContent(context, item.content)
-            tvContent.text = if (item.content.isBlank()) {
-                if (item.images.isNotEmpty() || item.audio.isNotBlank()) {
-                    context.getString(R.string.paragraph_comment_image)
-                } else {
-                    ""
-                }
-            } else {
-                text
-            }
-            bindImages(binding.llImages, binding.ivImg1, binding.ivImg2, binding.ivImg3, item.images)
-            bindAudio(binding.tvAudio, item)
-
-            if (item.agree > 0) {
-                tvAgree.text = context.getString(R.string.paragraph_comment_like, item.agree)
-                tvAgree.visible()
-            } else {
-                tvAgree.gone()
-            }
-            if (item.oppose > 0) {
-                tvDislike.text = context.getString(R.string.paragraph_comment_dislike, item.oppose)
-                tvDislike.visible()
-            } else {
-                tvDislike.gone()
-            }
-
-            setupReplyButton(binding, item)
-            bindReplies(binding, item)
+    constructor(sourceKey: String, config: ParagraphCommentConfig) : this() {
+        arguments = Bundle().apply {
+            putString("sourceKey", sourceKey)
+            putString("config", GSON.toJson(config))
         }
     }
 
-    /** 回复按钮状态：未加载->展开 N 条回复；加载中->加载中…；已加载->收起/无回复隐藏 */
-    private fun setupReplyButton(binding: ItemParagraphCommentBinding, item: ParagraphCommentItem) {
-        val btn = binding.tvReplyBtn
-        when {
-            item.repliesLoading -> {
-                btn.text = context.getString(R.string.paragraph_comment_loading)
-                btn.visible()
-                btn.isEnabled = false
-            }
+    private val binding by viewBinding(DialogParagraphCommentBinding::bind)
+    private val adapter by lazy { ParagraphCommentAdapter(requireContext()) }
+    private var source: BaseSource? = null
+    private var config: ParagraphCommentConfig = ParagraphCommentConfig()
+    private var page = 0
+    private var total = -1L // -1 表示未知总数，用空页判断是否还有更多
+    private var hasMore = true
+    private var loading = false
+    private var footerState = FooterState.NONE
+    // 接口原始顺序（跨页累积），供切换排序时恢复
+    private val rawItems = mutableListOf<ParagraphCommentItem>()
+    // 排序模式：实时=接口原始顺序；最新=神评论置顶+按时间由新到旧；回复最多=按回复数降序
+    private enum class SortMode { REALTIME, NEWEST, HOT }
+    private var sortMode = SortMode.REALTIME
+    // 排序模式分页追加时临时抑制 onCurrentListChanged 触发的自动加载，
+    // 防止 DiffUtil 重排后可见项被推到列表末尾造成链式加载
+    private var suppressAutoLoad = false
 
-            item.repliesLoaded -> {
-                if (item.replies.isEmpty()) {
-                    btn.gone()
-                } else {
-                    btn.text = context.getString(R.string.paragraph_comment_collapse_replies)
-                    btn.visible()
-                    btn.isEnabled = true
+    // 同一次会话内经 rawItems 持有的对象引用恒定，用 === 判断即等价于"同一评论"
+    private val commentDiff = object : DiffUtil.ItemCallback<ParagraphCommentItem>() {
+        override fun areItemsTheSame(oldItem: ParagraphCommentItem, newItem: ParagraphCommentItem) =
+            oldItem === newItem
+
+        override fun areContentsTheSame(
+            oldItem: ParagraphCommentItem,
+            newItem: ParagraphCommentItem
+        ) = true
+    }
+
+    private enum class FooterState { NONE, LOADING, NO_MORE, FAILED }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.setGravity(Gravity.BOTTOM)
+        val dm = resources.displayMetrics
+        setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.9).toInt())
+        // 弹窗显示期间启用 DiffUtil 增量更新，分页/排序重排时保持滚动位置；
+        // 否则 setItems(list, callback) 会退化为 notifyDataSetChanged 全量刷新导致列表跳回顶部
+        adapter.upResumed(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        adapter.upResumed(false)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // 释放语音播放器，避免页面关闭后继续占用
+        runCatching { mediaPlayer?.stop() }
+        mediaPlayer?.release()
+        mediaPlayer = null
+        playingItem = null
+    }
+
+    override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
+        // 顶部圆角
+        view.background = GradientDrawable().apply {
+            val radius = 16.dpToPx().toFloat()
+            cornerRadii = floatArrayOf(radius, radius, radius, radius, 0f, 0f, 0f, 0f)
+            setColor(ThemeStore.backgroundColor())
+        }
+        binding.run {
+            toolBar.setBackgroundColor(primaryColor)
+            toolBar.title = getString(R.string.paragraph_comment_title)
+            toolBar.setNavigationOnClickListener { dismiss() }
+            // 排序切换：齿轮图标弹出菜单选择 实时评论 / 最新评论 / 回复最多
+            tvSort.setOnClickListener { view -> showSortMenu(view) }
+            recyclerView.layoutManager = LinearLayoutManager(requireContext())
+            recyclerView.adapter = adapter
+            // 滚动 + 每次列表更新（含异步 DiffUtil 重排完成）都检查是否已到末尾，自动续接下一页。
+            // 排序模式下分页数据会重排到可视区上方，滚动事件可能不触发，必须靠列表更新回调兜底
+            recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
+                    maybeLoadMore()
+                }
+            })
+            adapter.onListChanged = { if (!suppressAutoLoad) maybeLoadMore() }
+            // 加载失败点击重试 / 加载更多点击翻页
+            llFooter.setOnClickListener {
+                if (loading) return@setOnClickListener
+                // 仅在有更多（点击继续加载）或加载失败（点击重试）时可点；
+                // 真正的"没有更多了"点击不再触发加载
+                if (hasMore || footerState == FooterState.FAILED) {
+                    loadPage(page + 1)
                 }
             }
-
-            else -> {
-                // 无评论 ID（如番茄主楼无 Id 字段）时只能展开评论自带的内嵌回复，
-                // 按钮条数以实际内嵌条数为准，避免"展开 N 条"却只显示预览里的几条
-                val showCount = if (item.id.isBlank()) item.replies.size else item.replyCount
-                if (showCount <= 0) {
-                    btn.gone()
+        }
+        adapter.replyListener = object : ParagraphCommentAdapter.ReplyListener {
+            override fun onToggleReplies(item: ParagraphCommentItem) {
+                if (item.repliesLoaded) {
+                    item.repliesLoaded = false
+                    adapter.updateItem(item)
                 } else {
-                    btn.text = context.getString(
-                        R.string.paragraph_comment_expand_replies,
-                        showCount
+                    loadReplies(item)
+                }
+            }
+        }
+        adapter.audioListener = object : ParagraphCommentAdapter.AudioListener {
+            override fun onToggleAudio(item: ParagraphCommentItem) {
+                toggleAudio(item)
+            }
+        }
+        adapter.imageListener = object : ParagraphCommentAdapter.ImageListener {
+            override fun onImageClick(url: String) {
+                showDialogFragment(PhotoDialog(url))
+            }
+        }
+        arguments?.let {
+            val sourceKey = it.getString("sourceKey")
+            source = sourceKey?.let { key ->
+                appDb.bookSourceDao.getBookSource(key) ?: appDb.rssSourceDao.getByKey(key)
+            }
+            it.getString("config")?.let { json ->
+                config = GSON.fromJsonObject<ParagraphCommentConfig>(json).getOrNull()
+                    ?: ParagraphCommentConfig()
+            }
+        }
+        // 番茄段评接口不按时间/回复数排序，仅保留实时模式，隐藏排序按钮；
+        // 起点段评保留全部排序（默认最新）
+        if (!config.sortEnabled) {
+            sortMode = SortMode.REALTIME
+            binding.tvSort.gone()
+        }
+        if (config.commentsUrl.isNullOrBlank()) {
+            AppLog.put("段评弹窗 commentsUrl 为空，无法加载", NoStackTraceException("commentsUrl 为空"))
+            showMsg(getString(R.string.paragraph_comment_load_failed))
+            return
+        }
+        loadPage(1)
+    }
+
+    // ---------- 段评列表 ----------
+
+    private fun loadPage(nextPage: Int) {
+        if (loading) return
+        loading = true
+        if (nextPage == 1) {
+            binding.rotateLoading.visible()
+            binding.tvMsg.gone()
+            updateFooter(FooterState.NONE)
+        } else {
+            updateFooter(FooterState.LOADING)
+        }
+        execute {
+            val url = buildCommentsUrl(nextPage)
+            val body = fetchBody(url)
+            val items = body?.let { parseComments(it) }.orEmpty()
+            val newTotal = body?.let { parseTotal(it) } ?: -1L
+            withContext(Dispatchers.Main) {
+                loading = false
+                binding.rotateLoading.gone()
+                if (body == null) {
+                    if (nextPage == 1 && adapter.isEmpty()) {
+                        showMsg(getString(R.string.paragraph_comment_load_failed))
+                        updateFooter(FooterState.NONE)
+                    } else {
+                        hideMsg()
+                        updateFooter(FooterState.FAILED)
+                    }
+                    return@withContext
+                }
+                page = nextPage
+                if (nextPage == 1) {
+                    rawItems.clear()
+                    rawItems.addAll(items)
+                    adapter.setItems(
+                        if (sortMode != SortMode.REALTIME) rawItems.sortedWith(sortComparator())
+                        else rawItems
                     )
-                    btn.visible()
-                    btn.isEnabled = true
+                } else {
+                    rawItems.addAll(items)
+                    appendPageItems(items)
+                }
+                if (newTotal >= 0) total = newTotal
+                updateTitle()
+                // 无更多判断：优先用接口返回的 hasNext 标志（pagination.hasNextPage/hasNext）。
+                // 部分站点（如神魔番茄）的 totalCount 不可靠、或每页返回条数不足 pageSize，
+                // 用"条数>=页大小 && 已加载<总数"推断会提前显示"没有更多了"，
+                // 而接口的 hasNext 标志是权威的（站点自己的前端也用它）。
+                val hasNextFlag = body?.let { parseHasNext(it) }
+                hasMore = hasNextFlag ?: (items.isNotEmpty() &&
+                    items.size >= config.pageSize &&
+                    (total < 0 || rawItems.size < total))
+                if (adapter.isEmpty()) {
+                    showMsg(getString(R.string.paragraph_comment_empty))
+                    updateFooter(FooterState.NONE)
+                } else {
+                    hideMsg()
+                    updateFooter(if (hasMore) FooterState.NONE else FooterState.NO_MORE)
                 }
             }
         }
     }
 
-    /** 展开/收起回复列表 */
-    private fun bindReplies(binding: ItemParagraphCommentBinding, item: ParagraphCommentItem) {
-        val container = binding.replyContainer
-        container.removeAllViews()
-        if (item.repliesLoaded) {
-            container.visible()
-            item.replies.forEach { reply ->
-                val replyBinding = ItemParagraphReplyBinding.inflate(inflater, container, false)
-                replyBinding.apply {
-                    ImageLoader.load(context, reply.avatar)
-                        .placeholder(R.drawable.image_cover_default)
-                        .error(R.drawable.image_cover_default)
-                        .circleCrop()
-                        .into(ivAvatar)
-                    tvNickname.text = reply.nickname.ifBlank {
-                        context.getString(R.string.paragraph_comment_anonymous)
-                    }
-                    if (reply.replyTo.isBlank()) {
-                        tvReplyTo.gone()
-                    } else {
-                        tvReplyTo.text = context.getString(
-                            R.string.paragraph_comment_reply_to,
-                            reply.replyTo
-                        )
-                        tvReplyTo.visible()
-                    }
-                    val text = formatContent(context, reply.content)
-                    tvContent.text = if (reply.content.isBlank()) {
-                        if (reply.images.isNotEmpty() || reply.audio.isNotBlank()) {
-                            context.getString(R.string.paragraph_comment_image)
-                        } else {
-                            ""
-                        }
-                    } else {
-                        text
-                    }
-                    bindImages(replyBinding.llImages, replyBinding.ivImg1, replyBinding.ivImg2, replyBinding.ivImg3, reply.images)
-                    bindAudio(replyBinding.tvAudio, reply.audio)
-                    tvTime.text = formatTime(reply.time)
-                    if (reply.agree > 0) {
-                        tvAgree.text = context.getString(
-                            R.string.paragraph_comment_like,
-                            reply.agree
-                        )
-                        tvAgree.visible()
-                    } else {
-                        tvAgree.gone()
+    private fun buildCommentsUrl(nextPage: Int): String {
+        return config.commentsUrl
+            .replace("[page]", nextPage.toString())
+            .replace("[pageSize]", config.pageSize.toString())
+    }
+
+    /**
+     * 当已滚动到（或列表更新后处于）列表末尾附近时，自动加载下一页。
+     * 用配置项 post 执行，确保发生在本次数据提交（hasMore/页码）完成之后，避免同帧内重复触发同一页。
+     */
+    private fun maybeLoadMore() {
+        val rv = binding.recyclerView
+        rv.post {
+            if (loading || !hasMore) return@post
+            if (isRemoving || isDetached) return@post
+            val lm = rv.layoutManager as? LinearLayoutManager ?: return@post
+            // 用真正渲染出来的条数（adapter 位置空间）判断是否到末尾；
+            // 与 findLastVisibleItemPosition 同属一个坐标，避免 pending DiffUtil 时 rawItems.size 失真
+            if (lm.findLastVisibleItemPosition() >= adapter.getActualItemCount() - 4) {
+                loadPage(page + 1)
+            }
+        }
+    }
+
+    /** 最新模式排序：神评论置顶，其余按时间由新到旧（time=0 的未知时间排最后） */
+    private fun sortComparator(): Comparator<ParagraphCommentItem> = when (sortMode) {
+        SortMode.NEWEST -> compareByDescending<ParagraphCommentItem> { it.isGod }
+            .thenByDescending { it.time }
+        SortMode.HOT -> compareByDescending<ParagraphCommentItem> { it.replyCount }
+            .thenByDescending { it.time }
+        SortMode.REALTIME -> Comparator { _, _ -> 0 }
+    }
+
+    /** 顶栏齿轮图标点击弹排序菜单：实时评论 / 最新评论 / 回复最多 */
+    private fun showSortMenu(anchor: View) {
+        val menu = PopupMenu(requireContext(), anchor)
+        menu.menu.add(0, 2, 0, R.string.paragraph_comment_sort_realtime).apply {
+            isCheckable = true
+            isChecked = sortMode == SortMode.REALTIME
+        }
+        menu.menu.add(0, 1, 1, R.string.paragraph_comment_sort_newest).apply {
+            isCheckable = true
+            isChecked = sortMode == SortMode.NEWEST
+        }
+        menu.menu.add(0, 3, 2, R.string.paragraph_comment_sort_hot).apply {
+            isCheckable = true
+            isChecked = sortMode == SortMode.HOT
+        }
+        menu.setOnMenuItemClickListener { item ->
+            sortMode = when (item.itemId) {
+                1 -> SortMode.NEWEST
+                2 -> SortMode.REALTIME
+                else -> SortMode.HOT
+            }
+            applySort()
+            true
+        }
+        menu.show()
+    }
+
+    /** 顶栏居中标题实时显示评论总数（总数未知时退化为已加载条数） */
+    private fun updateTitle() {
+        val count = if (total >= 0) total else rawItems.size.toLong()
+        binding.toolBar.title = if (count > 0) {
+            getString(R.string.paragraph_comment_total, count)
+        } else {
+            getString(R.string.paragraph_comment_title)
+        }
+    }
+
+    /** 切换排序模式后整表重排（以接口原始顺序 rawItems 为基准） */
+    private fun applySort() {
+        if (sortMode == SortMode.REALTIME) {
+            adapter.setItems(rawItems)
+        } else {
+            adapter.setItems(rawItems.sortedWith(sortComparator()))
+        }
+    }
+
+    /** 追加下一页：实时模式直接末尾追加；排序模式用 DiffUtil 全量重排已加载数据。
+     *  排序模式重排后，新评论可能插到列表上方，把原有可见项推到列表末尾，
+     *  导致 findLastVisibleItemPosition() 仍在底部 → onCurrentListChanged → maybeLoadMore → 链式加载。
+     *  修复：重排期间临时抑制 onCurrentListChanged 触发的自动加载，延迟 300ms 后用真实滚动位置判断是否需要续接。 */
+    private fun appendPageItems(newItems: List<ParagraphCommentItem>) {
+        if (newItems.isEmpty()) return
+        if (sortMode == SortMode.REALTIME) {
+            adapter.addItems(newItems)
+        } else {
+            suppressAutoLoad = true
+            adapter.setItems(rawItems.sortedWith(sortComparator()), commentDiff)
+            // 等 DiffUtil 异步分发完成、RecyclerView 重排落定后，用真实位置判断是否需要续接
+            binding.recyclerView.postDelayed({
+                suppressAutoLoad = false
+                if (!isRemoving && !isDetached) maybeLoadMore()
+            }, 300)
+        }
+    }
+
+    private fun parseComments(body: String): List<ParagraphCommentItem> {
+        return runCatching {
+            val rc = jsonPath.parse(body)
+            val listPath = config.listPath.ifBlank { "$.Data.DataList" }
+            val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
+            val maps = list.mapNotNull { it as? Map<*, *> }
+            val items = maps.map { map ->
+                val content = readStr(map, config.fields.content, DEFAULT_CONTENTS)
+                val images = readImages(map)
+                val audio = readAudio(map)
+                val inlineReplies = readInlineReplies(map)
+                ParagraphCommentItem(
+                    id = readStr(map, config.fields.id, DEFAULT_IDS),
+                    rootId = readStr(map, config.fields.rootId, DEFAULT_ROOT_IDS),
+                    nickname = readStr(map, config.fields.nickname, DEFAULT_NICKNAMES),
+                    avatar = readStr(map, config.fields.avatar, DEFAULT_AVATARS),
+                    level = readStr(map, config.fields.level, DEFAULT_LEVELS),
+                    ip = readStr(map, config.fields.ip, DEFAULT_IPS),
+                    content = content,
+                    images = images,
+                    audio = audio,
+                    agree = readLong(map, config.fields.agree, DEFAULT_AGREES),
+                    oppose = readLong(map, config.fields.oppose, DEFAULT_OPPOSES),
+                    time = readTime(map, config.fields.time, DEFAULT_TIMES),
+                    floor = readInt(map, config.fields.floor, DEFAULT_FLOORS),
+                    replyCount = maxOf(
+                        readInt(map, config.fields.replyCount, DEFAULT_REPLY_COUNTS),
+                        inlineReplies.size
+                    ),
+                    isGod = isGodComment(map),
+                    replies = inlineReplies.toMutableList()
+                )
+            }
+            // 过滤完全无内容的空评论（无文字/图片/语音，如起点 ReviewType=4 特殊类型），避免显示“匿名用户+空白”；
+            // 排序交由 [applySort] 按当前模式处理，这里保持接口原始顺序
+            items.filter { item ->
+                item.content.isNotBlank() || item.images.isNotEmpty() || item.audio.isNotBlank()
+            }
+        }.getOrElse {
+            AppLog.put("段评解析失败", it)
+            emptyList()
+        }
+    }
+
+    private fun parseTotal(body: String): Long {
+        return runCatching {
+            val totalPath = config.totalPath.ifBlank { "$.Data.TotalCount" }
+            val rc = jsonPath.parse(body)
+            (rc.read<Any>(totalPath) as? Number)?.toLong() ?: -1L
+        }.getOrDefault(-1L)
+    }
+
+    /**
+     * 读取接口返回的"是否还有下一页"标志（pagination.hasNextPage / hasNext）。
+     * 部分站点（如神魔番茄）的 totalCount 不可靠，分页必须以此为准；取不到返回 null，
+     * 由调用方退回条数推断。
+     */
+    private fun parseHasNext(body: String): Boolean? {
+        return runCatching {
+            val rc = jsonPath.parse(body)
+            val pagination = runCatching { rc.read<Any>("$.data.pagination") as? Map<*, *> }
+                .getOrNull()
+                ?: runCatching { rc.read<Any>("$.Data.Pagination") as? Map<*, *> }.getOrNull()
+            val v = pagination?.let { findKey(it, "hasNextPage") ?: findKey(it, "hasNext") }
+                ?: return@runCatching null
+            when (v) {
+                is Boolean -> v
+                is Number -> v.toInt() > 0
+                else -> v.toString().toBooleanStrictOrNull()
+            }
+        }.getOrNull()
+    }
+
+    // ---------- 回复 ----------
+
+    private fun loadReplies(item: ParagraphCommentItem) {
+        if (item.repliesLoading) return
+        // 评论无 ID（番茄主楼评论没有 Id/CommentId 字段）但自带内嵌回复：
+        // 直接展开内嵌预览，避免用空 commentId 请求 comment-replies 接口后一片空白
+        if (item.id.isBlank() && item.replies.isNotEmpty()) {
+            item.repliesLoaded = true
+            adapter.updateItem(item)
+            return
+        }
+        if (config.repliesUrl.isBlank()) {
+            // 无回复接口：直接标记已加载（空回复），收起按钮不显示
+            item.repliesLoaded = true
+            adapter.updateItem(item)
+            return
+        }
+        item.repliesLoading = true
+        adapter.updateItem(item)
+        execute {
+            val body = fetchBody(buildRepliesUrl(item))
+            val replies = body?.let { parseReplies(it) }.orEmpty()
+            withContext(Dispatchers.Main) {
+                item.repliesLoading = false
+                if (replies.isNotEmpty()) {
+                    item.replies.clear()
+                    item.replies.addAll(replies)
+                }
+                // 接口失败/空响应时保留评论自带的内嵌回复预览，避免点击后一片空白
+                item.repliesLoaded = true
+                adapter.updateItem(item)
+            }
+        }
+    }
+
+    private fun buildRepliesUrl(item: ParagraphCommentItem): String {
+        return config.repliesUrl
+            .replace("[reviewId]", item.id)
+            .replace("[rootId]", item.rootId.ifBlank { item.id })
+            .replace("[pageSize]", config.pageSize.toString())
+    }
+
+    // ---------- 语音播放 ----------
+
+    private var mediaPlayer: MediaPlayer? = null
+    private var playingItem: ParagraphCommentItem? = null
+
+    /** 点击语音条：播放/停止；无地址时从 audio 接口补全 */
+    private fun toggleAudio(item: ParagraphCommentItem) {
+        if (item.audioLoading) return
+        if (item.audioPlaying) {
+            stopAudio(item)
+            return
+        }
+        stopOtherAudio(item)
+        if (item.audioUrl.startsWith("http")) {
+            playAudio(item, item.audioUrl)
+        } else {
+            loadAudio(item)
+        }
+    }
+
+    private fun stopOtherAudio(except: ParagraphCommentItem? = null) {
+        val current = playingItem ?: return
+        if (current === except) return
+        stopAudio(current)
+    }
+
+    /** 从 audio 接口拉取该段语音列表，按评论 Id 匹配音频地址后播放 */
+    private fun loadAudio(item: ParagraphCommentItem) {
+        item.audioLoading = true
+        adapter.updateItem(item)
+        execute {
+            val body = fetchBody(buildAudioUrl())
+            val audioUrl = body?.let { findAudioUrl(it, item.id) }.orEmpty()
+            withContext(Dispatchers.Main) {
+                item.audioLoading = false
+                if (audioUrl.startsWith("http")) {
+                    item.audioUrl = audioUrl
+                    adapter.updateItem(item)
+                    playAudio(item, audioUrl)
+                } else {
+                    adapter.updateItem(item)
+                    toastOnUi(getString(R.string.paragraph_comment_audio_failed))
+                }
+            }
+        }
+    }
+
+    private fun buildAudioUrl(): String {
+        val template = config.audioUrl.ifBlank {
+            config.commentsUrl
+                .replace("type=text", "type=audio")
+                .replace("type=all", "type=audio")
+        }
+        // 拉取该段全部语音评论，用较大页大小
+        return template
+            .replace("[page]", "1")
+            .replace("[pageSize]", "50")
+    }
+
+    /** 在 audio 接口返回列表中找到同 Id 评论的音频地址 */
+    private fun findAudioUrl(body: String, commentId: String): String {
+        if (commentId.isBlank()) return ""
+        return runCatching {
+            val rc = jsonPath.parse(body)
+            val listPath = config.listPath.ifBlank { "$.Data.DataList" }
+            val list = rc.read<List<Any?>>(listPath) ?: return@runCatching ""
+            for (map in list.mapNotNull { it as? Map<*, *> }) {
+                val id = map["Id"]?.toString()
+                    ?: map["CommentId"]?.toString()
+                    ?: map["ReviewId"]?.toString()
+                    ?: map["comment_id"]?.toString()
+                    ?: ""
+                if (id == commentId) {
+                    readAudio(map).takeIf { it.startsWith("http") }?.let { return it }
+                }
+            }
+            ""
+        }.getOrDefault("")
+    }
+
+    private fun playAudio(item: ParagraphCommentItem, url: String) {
+        try {
+            val player = MediaPlayer().apply {
+                setDataSource(url)
+                setOnPreparedListener { start() }
+                setOnCompletionListener { stopAudio(item) }
+                setOnErrorListener { _, _, _ ->
+                    stopAudio(item)
+                    true
+                }
+                prepareAsync()
+            }
+            mediaPlayer = player
+            playingItem = item
+            item.audioPlaying = true
+            adapter.updateItem(item)
+        } catch (e: Exception) {
+            AppLog.put("段评语音播放失败", e)
+            toastOnUi(getString(R.string.paragraph_comment_audio_failed))
+        }
+    }
+
+    private fun stopAudio(item: ParagraphCommentItem) {
+        runCatching { mediaPlayer?.stop() }
+        mediaPlayer?.release()
+        mediaPlayer = null
+        if (playingItem === item) playingItem = null
+        item.audioPlaying = false
+        adapter.updateItem(item)
+    }
+
+    private fun parseReplies(body: String): List<ParagraphReplyItem> {
+        return runCatching {
+            val rc = jsonPath.parse(body)
+            val listPath = config.replyListPath.ifBlank { config.listPath.ifBlank { "$.Data.DataList" } }
+            val list = rc.read<List<Any?>>(listPath) ?: return@runCatching emptyList()
+            list.mapNotNull { it as? Map<*, *> }.map { map ->
+                ParagraphReplyItem(
+                    nickname = readStr(map, config.replyFields.nickname, DEFAULT_NICKNAMES),
+                    avatar = readStr(map, config.replyFields.avatar, DEFAULT_AVATARS),
+                    replyTo = readStr(map, config.replyFields.replyTo, DEFAULT_REPLY_TOS),
+                    content = readStr(map, config.replyFields.content, DEFAULT_CONTENTS),
+                    images = readImages(map),
+                    audio = readAudio(map),
+                    agree = readLong(map, config.replyFields.agree, DEFAULT_AGREES),
+                    time = readTime(map, config.replyFields.time, DEFAULT_TIMES)
+                )
+            }.filter { reply ->
+                // 过滤完全无内容的空回复
+                reply.content.isNotBlank() || reply.images.isNotEmpty() || reply.audio.isNotBlank()
+            }.sortedByDescending { it.time } // 回复同样按时间由新到旧排序
+        }.getOrElse {
+            AppLog.put("段评回复解析失败", it)
+            emptyList()
+        }
+    }
+
+    // ---------- 工具 ----------
+
+    private suspend fun fetchBody(url: String): String? {
+        if (url.isBlank()) return null
+        return runCatching {
+            val analyzeUrl = AnalyzeUrl(url, source = source, coroutineContext = EmptyCoroutineContext)
+            // 去除响应体开头的 UTF-8 BOM：部分接口（如 pl.aadcn.cn）返回带 BOM 的 JSON，
+            // 直接交给 json-smart 解析会导致路径读取返回 null（静默变空，无异常抛出）。
+            analyzeUrl.getStrResponse().body?.trimStart('\uFEFF')
+        }.onFailure {
+            AppLog.put("段评请求失败 $url\n${it.stackTraceStr}", it)
+        }.getOrNull()
+    }
+
+    private fun readStr(map: Map<*, *>, primary: String, defaults: List<String>): String {
+        val paths = if (primary.isBlank()) {
+            defaults
+        } else {
+            listOf(primary) + defaults.filter { it != primary }
+        }
+        for (p in paths) {
+            val v = resolvePath(map, p) ?: continue
+            val s = v.toString().trim()
+            if (s.isNotEmpty() && s != "null") return s
+        }
+        return ""
+    }
+
+    private fun readLong(map: Map<*, *>, primary: String, defaults: List<String>): Long {
+        val paths = if (primary.isBlank()) {
+            defaults
+        } else {
+            listOf(primary) + defaults.filter { it != primary }
+        }
+        for (p in paths) {
+            val v = resolvePath(map, p) ?: continue
+            when (v) {
+                is Number -> return v.toLong()
+                else -> v.toString().toLongOrNull()?.let { return it }
+            }
+        }
+        return 0
+    }
+
+    /**
+     * 时间字段解析：兼容三种格式
+     * 1. 数字（秒/毫秒时间戳）
+     * 2. 纯数字字符串（秒/毫秒时间戳）
+     * 3. 日期字符串（如 "2024-01-01 12:00:00"），解析为毫秒时间戳
+     * 神魔小说番茄段评的 CreateTime 即为日期字符串，数字解析会静默得 0。
+     */
+    private fun readTime(map: Map<*, *>, primary: String, defaults: List<String>): Long {
+        val paths = if (primary.isBlank()) {
+            defaults
+        } else {
+            listOf(primary) + defaults.filter { it != primary }
+        }
+        for (p in paths) {
+            val v = resolvePath(map, p) ?: continue
+            val ts = when (v) {
+                is Number -> toEpochMillis(v.toLong())
+                is Boolean -> null
+                else -> {
+                    val s = v.toString().trim()
+                    when {
+                        s.isEmpty() || s == "null" -> null
+                        else -> s.toLongOrNull()?.let { toEpochMillis(it) }
+                            ?: parseDateString(s)
                     }
                 }
-                container.addView(replyBinding.root)
             }
-        } else {
-            container.gone()
+            if (ts != null && ts > 0) return ts
+        }
+        return 0
+    }
+
+    /** 兼容秒/毫秒时间戳：小于 1e11 视为秒级，统一转毫秒 */
+    private fun toEpochMillis(ts: Long): Long {
+        return if (ts in 1 until 100_000_000_000L) ts * 1000 else ts
+    }
+
+    /** 解析 "yyyy-MM-dd HH:mm:ss" / "yyyy-MM-dd HH:mm" / "yyyy-MM-dd"（兼容 / 与 T 分隔符）为毫秒时间戳 */
+    private fun parseDateString(s: String): Long? {
+        val clean = s.trim().replace('T', ' ').replace('/', '-')
+        val m = DATE_STR_REGEX.matchEntire(clean) ?: return null
+        return runCatching {
+            val (y, mo, d, h, mi, se) = m.destructured
+            java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.YEAR, y.toInt())
+                set(java.util.Calendar.MONTH, mo.toInt() - 1)
+                set(java.util.Calendar.DAY_OF_MONTH, d.toInt())
+                set(java.util.Calendar.HOUR_OF_DAY, h.toIntOrNull() ?: 0)
+                set(java.util.Calendar.MINUTE, mi.toIntOrNull() ?: 0)
+                set(java.util.Calendar.SECOND, se.toIntOrNull() ?: 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }.timeInMillis
+        }.getOrNull()
+    }
+
+    private fun readInt(map: Map<*, *>, primary: String, defaults: List<String>): Int {
+        return readLong(map, primary, defaults).toInt()
+    }
+
+    /**
+     * 解析形如 `$.user_info.user_name` / `$.list[0].name` 的字段路径。
+     * 直接基于 Map 逐级读取（大小写不敏感），不依赖 jsonpath 对 Map 的二次解析，
+     * 避免“列表能取到但字段全空”的静默失败。
+     */
+    private fun resolvePath(map: Map<*, *>, path: String): Any? {
+        var cur: Any? = map
+        for (tok in tokenize(path)) {
+            if (tok == "$") continue
+            cur = when (cur) {
+                is Map<*, *> -> findKey(cur, tok)
+                is List<*> -> {
+                    val idx = tok.removePrefix("[").removeSuffix("]").toIntOrNull() ?: return null
+                    if (idx in cur.indices) cur[idx] else null
+                }
+                else -> return null
+            } ?: return null
+        }
+        return cur
+    }
+
+    /** 按点号拆分路径，同时把 [n] 数组下标保留为一个整体 */
+    private fun tokenize(path: String): List<String> {
+        val tokens = mutableListOf<String>()
+        val cur = StringBuilder()
+        var inBracket = false
+        for (c in path) {
+            when {
+                c == '[' -> {
+                    inBracket = true
+                    cur.append(c)
+                }
+                c == ']' -> {
+                    inBracket = false
+                    cur.append(c)
+                }
+                c == '.' && !inBracket -> if (cur.isNotEmpty()) {
+                    tokens.add(cur.toString())
+                    cur.clear()
+                }
+                else -> cur.append(c)
+            }
+        }
+        if (cur.isNotEmpty()) tokens.add(cur.toString())
+        return tokens
+    }
+
+    /**
+     * 判断评论是否为"神评论"（起点段评）：EssenceType === 2 或 IsEssence === true。
+     * 与书源前端 qd 页面 isGod 的判定一致。
+     */
+    private fun isGodComment(map: Map<*, *>): Boolean {
+        val essence = findKey(map, "EssenceType")
+        if (essence is Number) {
+            if (essence.toInt() == 2) return true
+        } else if (essence != null) {
+            essence.toString().toIntOrNull()?.let { if (it == 2) return true }
+        }
+        val isEssence = findKey(map, "IsEssence")
+        if (isEssence is Boolean) return isEssence
+        if (isEssence != null) {
+            isEssence.toString().toBooleanStrictOrNull()?.let { return it }
+        }
+        return false
+    }
+
+    /**
+     * 读取评论自带的内嵌回复预览（$.Replies / $.replies）。
+     * 起点/番茄的主评论都会带 Replies 数组，点击"展开回复"可直接展示；
+     * 番茄主楼评论无 Id 字段，依赖 comment-replies 接口请求不到，必须用内嵌回复兜底。
+     */
+    private fun readInlineReplies(map: Map<*, *>): List<ParagraphReplyItem> {
+        val v = findKey(map, "Replies") ?: findKey(map, "replies") ?: return emptyList()
+        val list: List<*> = when (v) {
+            is List<*> -> v
+            is String -> runCatching {
+                GSON.fromJson<List<Any?>>(
+                    v,
+                    object : com.google.gson.reflect.TypeToken<List<Any?>>() {}.type
+                )
+            }.getOrNull() ?: return emptyList()
+            else -> return emptyList()
+        }
+        return list.mapNotNull { it as? Map<*, *> }.map { m ->
+            ParagraphReplyItem(
+                nickname = readStr(m, config.replyFields.nickname, DEFAULT_NICKNAMES),
+                avatar = readStr(m, config.replyFields.avatar, DEFAULT_AVATARS),
+                replyTo = readStr(m, config.replyFields.replyTo, DEFAULT_REPLY_TOS),
+                content = readStr(m, config.replyFields.content, DEFAULT_CONTENTS),
+                images = readImages(m),
+                audio = readAudio(m),
+                agree = readLong(m, config.replyFields.agree, DEFAULT_AGREES),
+                time = readTime(m, config.replyFields.time, DEFAULT_TIMES)
+            )
+        }.filter { r ->
+            // 过滤完全无内容的空回复
+            r.content.isNotBlank() || r.images.isNotEmpty() || r.audio.isNotBlank()
         }
     }
 
-    override fun registerListener(holder: ItemViewHolder, binding: ItemParagraphCommentBinding) {
-        binding.tvReplyBtn.setOnClickListener {
-            getItem(holder.layoutPosition)?.let { item ->
-                replyListener?.onToggleReplies(item)
+    /**
+     * 提取评论图片：直接基于 Map 读取，字段名大小写不敏感，
+     * 覆盖起点系常见命名（ImageDetail/PreImage/ImageUrl/Images/ImageList/ImgUrl…）。
+     * 兼容图片地址被序列化成 JSON 数组/对象字符串的情况。
+     */
+    private fun readImages(map: Map<*, *>): List<String> {
+        val result = LinkedHashSet<String>()
+        for (key in IMAGE_FIELD_CANDIDATES) {
+            val v = findKey(map, key) ?: continue
+            collectImageUrls(v, result)
+            if (result.size >= 9) break
+        }
+        // 兜底：候选字段名未命中时，按 key 名（含 img/pic/image）扫描，兼容其它站点不同命名
+        if (result.isEmpty()) collectImpliedImageUrls(map, result)
+        return result.take(9)
+    }
+
+    /** 兼容候选字段名未命中时，收集字段名含 img/pic/image 的 http 地址（避开头像/正文里的普通链接） */
+    private fun collectImpliedImageUrls(map: Map<*, *>, out: MutableSet<String>) {
+        for ((k, v) in map) {
+            val keyName = k?.toString() ?: continue
+            if (!keyName.contains("img", true) && !keyName.contains("pic", true) &&
+                !keyName.contains("image", true)
+            ) continue
+            collectImageUrls(v, out)
+            if (out.size >= 9) break
+        }
+    }
+
+    private fun collectImageUrls(v: Any?, out: MutableSet<String>) {
+        when (v) {
+            null -> Unit
+            is Map<*, *> -> v.values.forEach { collectImageUrls(it, out) }
+            is List<*> -> v.forEach { collectImageUrls(it, out) }
+            else -> {
+                val s = v.toString().trim()
+                if (s.isEmpty()) return
+                // 兼容“图片地址被序列化成字符串数组/JSON”的情况
+                if (s.startsWith("[") || s.startsWith("{")) {
+                    runCatching { GSON.fromJson<Any?>(s, Any::class.java) }
+                        .getOrNull()
+                        ?.let { collectImageUrls(it, out); return }
+                }
+                if (s.startsWith("http") && out.size < 9) out.add(s)
             }
         }
     }
 
-    /** 绑定评论/回复图片：单行最多 3 张，超过则只显示前 3 张；点击图片打开大图 */
-    private fun bindImages(
-        container: View,
-        img1: ImageView,
-        img2: ImageView,
-        img3: ImageView,
-        images: List<String>
-    ) {
-        val list = images.take(3)
-        if (list.isEmpty()) {
-            container.gone()
-            return
+    /** 提取语音评论：有直接播放地址返回地址，否则检测到语音相关字段（AudioRoleId/AudioTime 等）返回标记值 */
+    private fun readAudio(map: Map<*, *>): String {
+        for (key in AUDIO_FIELD_CANDIDATES) {
+            val v = findKey(map, key) ?: continue
+            val s = v.toString().trim()
+            if (s.isBlank() || s == "null" || s == "0") continue
+            return if (s.startsWith("http")) s else "voice"
         }
-        container.visible()
-        val views = listOf(img1, img2, img3)
-        list.forEachIndexed { index, url ->
-            ImageLoader.load(context, url)
-                .placeholder(R.drawable.image_cover_default)
-                .error(R.drawable.image_cover_default)
-                .into(views[index])
-            views[index].setOnClickListener {
-                if (url.isNotBlank()) imageListener?.onImageClick(url)
+        return ""
+    }
+
+    /** 忽略大小写查找 Map 键 */
+    private fun findKey(map: Map<*, *>, key: String): Any? {
+        map[key]?.let { return it }
+        val lower = key.lowercase()
+        map.entries.forEach { (k, v) ->
+            if (k != null && k.toString().lowercase() == lower) return v
+        }
+        return null
+    }
+
+    private fun updateFooter(state: FooterState) {
+        footerState = state
+        when (state) {
+            FooterState.NONE -> binding.llFooter.gone()
+            FooterState.LOADING -> {
+                binding.footerRotateLoading.visible()
+                binding.footerTvMsg.text = getString(R.string.paragraph_comment_loading)
+                binding.llFooter.visible()
+            }
+            FooterState.NO_MORE -> {
+                binding.footerRotateLoading.gone()
+                binding.footerTvMsg.text = getString(R.string.paragraph_comment_no_more)
+                binding.llFooter.visible()
+            }
+            FooterState.FAILED -> {
+                binding.footerRotateLoading.gone()
+                binding.footerTvMsg.text = getString(R.string.paragraph_comment_load_failed)
+                binding.llFooter.visible()
             }
         }
-        for (i in list.size until 3) {
-            views[i].gone()
-        }
     }
 
-    /** 绑定语音评论条：可点击，根据加载/播放状态切换文案 */
-    private fun bindAudio(tvAudio: TextView, item: ParagraphCommentItem) {
-        if (item.audio.isBlank()) {
-            tvAudio.gone()
-            return
-        }
-        tvAudio.visible()
-        tvAudio.text = when {
-            item.audioLoading -> context.getString(R.string.paragraph_comment_loading)
-            item.audioPlaying -> context.getString(R.string.paragraph_comment_playing)
-            else -> context.getString(R.string.paragraph_comment_voice)
-        }
-        tvAudio.setOnClickListener { audioListener?.onToggleAudio(item) }
+    private fun showMsg(msg: String) {
+        binding.tvMsg.text = msg
+        binding.tvMsg.visible()
     }
 
-    /** 绑定回复语音标记（无播放能力，仅提示） */
-    private fun bindAudio(tvAudio: TextView, audio: String) {
-        if (audio.isBlank()) {
-            tvAudio.gone()
-        } else {
-            tvAudio.text = context.getString(R.string.paragraph_comment_voice)
-            tvAudio.visible()
-        }
+    private fun hideMsg() {
+        binding.tvMsg.gone()
     }
 
     companion object {
-        /** 起点段评表情码映射（与镜像站前端 qd.html 的 commentEmojiMap 一致） */
-        private val COMMENT_EMOJI_MAP: Map<Int, String> = mapOf(
-            1 to "👏", 2 to "🌹", 3 to "🤝", 4 to "😁", 5 to "😄", 6 to "🥺", 7 to "🙂", 8 to "😏",
-            9 to "😙", 10 to "👆🏻🐽", 11 to "🙄", 12 to "😭", 13 to "😵", 14 to "😥", 15 to "🖕🏻", 16 to "🥵",
-            17 to "😓", 18 to "🤫", 19 to "😂", 20 to "😢", 21 to "😍", 22 to "🤕🔨", 23 to "😑", 24 to "😫",
-            25 to "🤗", 26 to "🤪", 27 to "🙏", 28 to "😣", 29 to "💪", 30 to "💀", 31 to "😳", 32 to "😎",
-            33 to "🤭", 34 to "😄👏", 35 to "👍🏻", 36 to "🤓", 37 to "😡", 38 to "🙁", 39 to "😄❓", 40 to "😞",
-            41 to "😧", 42 to "💋", 43 to "☺️", 44 to "🤬", 45 to "😴", 46 to "🤠🚬", 47 to "😱", 48 to "🐷",
-            49 to "😪", 50 to "🤐", 51 to "🥴", 52 to "🌙", 53 to "❤️", 54 to "🔪", 55 to "🎁", 56 to "💔",
-            57 to "👊🏻", 58 to "😒", 59 to "✌🏻️", 60 to "😮", 61 to "🤨", 62 to "😴", 63 to "👏🏻", 64 to "🐲"
+        private val DEFAULT_IDS = listOf("$.Id", "$.CommentId", "$.ReviewId", "$.Cid", "$.comment_id", "$.review_id", "$.cid", "$.id")
+        private val DEFAULT_ROOT_IDS = listOf("$.RootReviewId", "$.RootId", "$.CommentId", "$.Id", "$.root_review_id", "$.root_comment_id", "$.rootCommentId", "$.parent_comment_id")
+        private val DEFAULT_NICKNAMES = listOf("$.NickName", "$.UserName", "$.Name", "$.Uname", "$.user_name", "$.nickname", "$.comment_user.user_name", "$.comment_user.nickname", "$.user.nickname", "$.user.name", "$.user_info.user_name")
+        private val DEFAULT_AVATARS = listOf("$.UserHeadIcon", "$.UserPhoto", "$.Avatar", "$.HeadIcon", "$.Photo", "$.user_avatar", "$.avatar", "$.comment_user.user_avatar", "$.comment_user.avatar", "$.user.avatar", "$.user.avatar_url", "$.user_info.user_avatar")
+        private val DEFAULT_LEVELS = listOf("$.ShowTag", "$.Level", "$.UserLevel", "$.Grade")
+        private val DEFAULT_IPS = listOf("$.IpLocation", "$.Ip", "$.Location", "$.Region", "$.ip_location", "$.ip_address")
+        // 内容兜底必须含小写 text/content：同人小说网（pl.aadcn.cn）评论正文是 text，若 fields 未携带路径也能读到
+        private val DEFAULT_CONTENTS = listOf("$.Content", "$.Text", "$.Msg", "$.ImageMeaning", "$.text", "$.content", "$.body", "$.comment_content", "$.comment_text", "$.review_content")
+        private val DEFAULT_AGREES = listOf("$.AgreeAmount", "$.AgreeCount", "$.LikeCount", "$.LikeAmount", "$.Up", "$.digg_count", "$.like_count", "$.comment_like_count", "$.agree_count")
+        private val DEFAULT_OPPOSES = listOf("$.OpposeAmount", "$.OpposeCount", "$.Down", "$.oppose_count", "$.oppose_amount")
+        private val DEFAULT_TIMES = listOf("$.CreateTime", "$.Time", "$.CreatedAt", "$.CreateDate", "$.create_timestamp", "$.timestamp", "$.created_at", "$.create_time", "$.comment_create_time", "$.review_create_time", "$.post_time", "$.createTime", "$.createTimestamp", "$.pub_time", "$.publish_time", "$.comment_time", "$.update_time")
+        private val DATE_STR_REGEX = Regex(
+            """(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?(?:\.\d+)?(?:\s*(?:Z|[+-]\d{1,2}:?\d{0,2}))?)?"""
+        )
+        private val DEFAULT_FLOORS = listOf("$.Floor", "$.FloorNum", "$.FloorNumber", "$.floor")
+        private val DEFAULT_REPLY_COUNTS = listOf("$.ReviewCount", "$.ReplyCount", "$.ReplyNum", "$.SubCount", "$.reply_count", "$.comment_count", "$.replyCount", "$.child_count")
+        private val DEFAULT_REPLY_TOS = listOf("$.RelatedUser", "$.ReplyToUser", "$.ToUserName", "$.ReplyName", "$.related_user", "$.reply_to", "$.to_user_name", "$.reply_user_name")
+
+        /** 评论图片字段候选（大小写不敏感匹配，ImgInfo 为起点系真实字段；不含 FrameUrl——那是用户头像框，不是配图） */
+        private val IMAGE_FIELD_CANDIDATES = listOf(
+            "ImgInfo", "ImageDetail", "PreImage", "ImageUrl", "Images", "ImageList",
+            "ImgUrl", "Imgs", "Image", "CommentImg", "CommentImage", "Photo",
+            "image_url", "img_url", "image_list", "comment_images", "comment_imgs", "pic_list"
+        )
+        /** 评论语音字段候选（大小写不敏感匹配；起点系无 AudioUrl，用 AudioRoleId/AudioTime 标记语音评论） */
+        private val AUDIO_FIELD_CANDIDATES = listOf(
+            "AudioUrl", "VoiceUrl", "Audio", "Voice", "SoundUrl",
+            "AudioRoleId", "AudioTime", "HotAudioStatus",
+            "audio_url", "voice_url", "comment_audio", "audio_urls"
         )
 
-        /** 段评内容里的表情码标记，如 `[fn=12]` / `*[fn＝12]` */
-        private val FN_EMOJI_REGEX = Regex("""\*?\[fn[=＝](\d+)\]""")
-
-        /** 内联表情图片的占位字符（对象替换符，用于承载 ImageSpan） */
-        private val EMOJI_PLACEHOLDER = '\uFFFC'
-
-        /** 匹配所有方括号表情标记：起点 `*[fn=N]` / `[fn=N]` 与番茄 `[中文名]` */
-        private val EMOJI_TOKEN_REGEX = Regex("""\*?\[fn[=＝]\d+\]|\[[^\[\]]+\]""")
-
-        /** 番茄/中文段评占位符 → Unicode 表情。番茄评论的表情是 `[名称]` 占位符，
-         *  站点前端由后端 emojiEndpoint 映射为图片，原生端用 Unicode emoji 兜底展示。 */
-        private val FQ_EMOJI_MAP: Map<String, String> = mapOf(
-            // 笑 / 开心
-            "[笑哭]" to "😂", "[大笑]" to "😄", "[笑]" to "😄", "[哈哈]" to "😃", "[嘻嘻]" to "😁", "[憨笑]" to "😊",
-            "[微笑]" to "🙂", "[呲牙]" to "😁", "[开心]" to "😄", "[高兴]" to "😀", "[得意]" to "😏",
-            "[坏笑]" to "😏", "[奸笑]" to "😏", "[偷笑]" to "😏", "[阴险]" to "😏", "[滑稽]" to "🤪",
-            "[调皮]" to "😜", "[吐舌]" to "😛", "[哇]" to "😮", "[期待]" to "🥰",
-            // 喜欢 / 害羞
-            "[色]" to "😍", "[花痴]" to "😍", "[可爱]" to "🥰", "[害羞]" to "😳", "[脸红]" to "😳",
-            "[眨眼]" to "😉", "[飞吻]" to "😘", "[亲亲]" to "😗", "[送心]" to "😘",
-            // 哭 / 难过
-            "[大哭]" to "😭", "[流泪]" to "😢", "[哭]" to "😭", "[哭泣]" to "😢", "[委屈]" to "🥺", "[可怜]" to "🥺",
-            "[难过]" to "😔", "[失望]" to "😞", "[伤心]" to "😢", "[不开心]" to "😞",
-            // 生气
-            "[生气]" to "😡", "[发怒]" to "😡", "[愤怒]" to "😡", "[抓狂]" to "🤬", "[怄火]" to "😤",
-            "[哼]" to "😤", "[不服]" to "😤",
-            // 惊讶 / 恐惧
-            "[惊讶]" to "😲", "[惊呆]" to "😲", "[震惊]" to "😱", "[惊恐]" to "😱", "[吓]" to "😱",
-            "[恐惧]" to "😨", "[吃惊]" to "😮",
-            // 无语 / 鄙视 / 思考
-            "[无语]" to "😒", "[白眼]" to "🙄", "[翻白眼]" to "🙄", "[鄙视]" to "😒", "[嫌弃]" to "🙄",
-            "[傲慢]" to "😏", "[抠鼻]" to "🤨", "[疑惑]" to "🤔", "[疑问]" to "🤔", "[思考]" to "🤔", "[嘘]" to "🤫",
-            // 尴尬 / 汗
-            "[尴尬]" to "😅", "[汗]" to "😓", "[流汗]" to "😓", "[擦汗]" to "😅", "[冷汗]" to "😰", "[天啊]" to "😱",
-            // 困 / 累 / 晕
-            "[困]" to "😴", "[睡觉]" to "😴", "[哈欠]" to "🥱", "[发呆]" to "😶", "[晕]" to "😵",
-            // 手势 / 动作
-            "[强]" to "👍", "[赞]" to "👍", "[good]" to "👍", "[弱]" to "👎", "[加油]" to "💪", "[奋斗]" to "💪",
-            "[抱拳]" to "🙏", "[握手]" to "🤝", "[胜利]" to "✌️", "[耶]" to "✌️", "[拳头]" to "👊", "[鼓掌]" to "👏",
-            "[拜拜]" to "👋", "[打call]" to "🙌", "[OK]" to "👌", "[666]" to "6️⃣", "[比心]" to "🫶",
-            "[收到]" to "👍", "[好的]" to "👍", "[狗头]" to "🐶", "[吃瓜]" to "🍉",
-            // 物品 / 符号
-            "[爱心]" to "❤️", "[心]" to "❤️", "[心碎]" to "💔", "[玫瑰]" to "🌹", "[鲜花]" to "🌸",
-            "[礼物]" to "🎁", "[蛋糕]" to "🎂", "[啤酒]" to "🍺", "[咖啡]" to "☕", "[西瓜]" to "🍉",
-            "[月亮]" to "🌙", "[太阳]" to "☀️", "[星星]" to "⭐", "[便便]" to "💩", "[骷髅]" to "💀",
-            "[炸弹]" to "💣", "[闪电]" to "⚡", "[烟花]" to "🎆", "[爆竹]" to "🧨", "[干杯]" to "🍻",
-            // 补充（陆续反馈补充）
-            "[什么]" to "🤔", "[尬笑]" to "😅", "[撇嘴]" to "😒", "[做鬼脸]" to "😜", "[酷]" to "😎",
-            "[快哭了]" to "😭", "[舔屏]" to "😋", "[怒]" to "😡", "[捂脸]" to "🤦", "[吐]" to "🤮",
-            "[敬礼]" to "🫡", "[石化]" to "🗿", "[KISS]" to "😘", "[懂了]" to "👌", "[探究]" to "🔍",
-            "[重拳出击]" to "👊", "[盯]" to "👀", "[你细品]" to "🤔", "[赶稿中]" to "✍️", "[注意]" to "⚠️",
-            "[饱了]" to "😋", "[码住]" to "📌", "[学会了]" to "🎓", "[顶帖]" to "⬆️", "[求爆更]" to "🙏",
-            "[求关注]" to "🙏", "[我也强推]" to "💪", "[雀食神作]" to "🌟", "[已种草]" to "🌱", "[书架加一]" to "📚"
-        )
-
-        /** 番茄官方 53 个段评表情：占位符 -> 本地 drawable 资源。
-         *  资源图片来自番茄小说 App 内置的官方段评表情（emoji_config 序号 1~53），
-         *  原图为 120x120 webp，存放于 drawable-nodpi/fq_emoji_*.webp。 */
-        private val FQ_EMOJI_IMAGE_MAP: Map<String, Int> = mapOf(
-            "[微笑]" to R.drawable.fq_emoji_1, "[偷笑]" to R.drawable.fq_emoji_2, "[笑]" to R.drawable.fq_emoji_3,
-            "[什么]" to R.drawable.fq_emoji_4, "[害羞]" to R.drawable.fq_emoji_5, "[爱慕]" to R.drawable.fq_emoji_6,
-            "[飞吻]" to R.drawable.fq_emoji_7, "[奸笑]" to R.drawable.fq_emoji_8, "[尬笑]" to R.drawable.fq_emoji_9,
-            "[思考]" to R.drawable.fq_emoji_10, "[撇嘴]" to R.drawable.fq_emoji_11, "[做鬼脸]" to R.drawable.fq_emoji_12,
-            "[酷]" to R.drawable.fq_emoji_13, "[翻白眼]" to R.drawable.fq_emoji_14, "[惊呆]" to R.drawable.fq_emoji_15,
-            "[震惊]" to R.drawable.fq_emoji_16, "[送心]" to R.drawable.fq_emoji_17, "[委屈]" to R.drawable.fq_emoji_18,
-            "[快哭了]" to R.drawable.fq_emoji_19, "[笑哭]" to R.drawable.fq_emoji_20, "[哭]" to R.drawable.fq_emoji_21,
-            "[大笑]" to R.drawable.fq_emoji_22, "[舔屏]" to R.drawable.fq_emoji_23, "[怒]" to R.drawable.fq_emoji_24,
-            "[捂脸]" to R.drawable.fq_emoji_25, "[吐]" to R.drawable.fq_emoji_26, "[恐惧]" to R.drawable.fq_emoji_27,
-            "[抓狂]" to R.drawable.fq_emoji_28, "[敬礼]" to R.drawable.fq_emoji_29, "[石化]" to R.drawable.fq_emoji_30,
-            "[OK]" to R.drawable.fq_emoji_31, "[赞]" to R.drawable.fq_emoji_32, "[爱心]" to R.drawable.fq_emoji_33,
-            "[伤心]" to R.drawable.fq_emoji_34, "[KISS]" to R.drawable.fq_emoji_35, "[懂了]" to R.drawable.fq_emoji_36,
-            "[探究]" to R.drawable.fq_emoji_37, "[重拳出击]" to R.drawable.fq_emoji_38, "[吃瓜]" to R.drawable.fq_emoji_39,
-            "[盯]" to R.drawable.fq_emoji_40, "[你细品]" to R.drawable.fq_emoji_41, "[赶稿中]" to R.drawable.fq_emoji_42,
-            "[注意]" to R.drawable.fq_emoji_43, "[饱了]" to R.drawable.fq_emoji_44, "[码住]" to R.drawable.fq_emoji_45,
-            "[学会了]" to R.drawable.fq_emoji_46, "[顶帖]" to R.drawable.fq_emoji_47, "[求爆更]" to R.drawable.fq_emoji_48,
-            "[求关注]" to R.drawable.fq_emoji_49, "[我也强推]" to R.drawable.fq_emoji_50, "[雀食神作]" to R.drawable.fq_emoji_51,
-            "[已种草]" to R.drawable.fq_emoji_52, "[书架加一]" to R.drawable.fq_emoji_53
-        )
-
-        /** 内联表情图片的显示尺寸（dp），约等于文字高度 */
-        private const val FQ_EMOJI_SIZE_DP = 18
+        /** 旧版段评 pclick（java.showBrowser('',d)）里的段号 */
+        private val OLD_PARAGRAPH_ID_REGEX = Regex("""paragraph_id[=:]\s*(\d+)""")
+        /** 段评接口端点（如 https://host/qd/comments.php） */
+        private val OLD_COMMENTS_ENDPOINT_REGEX =
+            Regex("""https?://[^'"\s]*?(?:comments?|reviews?)\.[a-z]+""", RegexOption.IGNORE_CASE)
 
         /**
-         * 将段评内容渲染为带官方表情图片的富文本（Spannable）：
-         * 1. 番茄 `[中文名]` 占位符 -> 本地官方表情图片（ImageSpan）
-         * 2. 起点 `[fn=N]` 表情码 -> Unicode emoji 兜底
-         * 3. 其余未知占位符保留原文
+         * 兼容早期 AI 生成书源：pclick 用 `java.showBrowser('', d)` 展示纯文本段评。
+         * 这里从 pclick 中提取段评接口地址与段号，重新以结构化接口请求并打开原生段评弹窗
+         * （头像/昵称/内容/点赞/时间/分页/回复展开），避免弹出旧的纯文本拼接弹窗。
+         * 返回 true 表示已接管（原 pclick 不再执行）；false 表示不适用，仍走原逻辑。
          */
-        fun formatContent(context: Context, text: String): CharSequence {
-            if (text.isBlank()) return text
-            val sb = SpannableStringBuilder()
-            val emojiSize = FQ_EMOJI_SIZE_DP.dpToPx()
-            var last = 0
-            EMOJI_TOKEN_REGEX.findAll(text).forEach { m ->
-                sb.append(text, last, m.range.first)
-                val token = m.value
-                val fnCode = FN_EMOJI_REGEX.matchEntire(token)
-                if (fnCode != null) {
-                    // 起点 `[fn=N]` / `*[fn=N]`：Unicode emoji 兜底
-                    val code = fnCode.groupValues[1].toIntOrNull()
-                    sb.append(code?.let { COMMENT_EMOJI_MAP[it] } ?: token)
-                } else {
-                    val resId = FQ_EMOJI_IMAGE_MAP[token]
-                    if (resId != null) {
-                        val drawable = ContextCompat.getDrawable(context, resId)?.mutate()
-                        if (drawable != null) {
-                            drawable.setBounds(0, 0, emojiSize, emojiSize)
-                            val start = sb.length
-                            sb.append(EMOJI_PLACEHOLDER)
-                            sb.setSpan(
-                                ImageSpan(drawable, ImageSpan.ALIGN_BASELINE),
-                                start, start + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                            )
-                        } else {
-                            sb.append(token)
-                        }
-                    } else {
-                        // 非官方表情占位符：Unicode 兜底，兜底也没有则保留原文
-                        sb.append(FQ_EMOJI_MAP[token] ?: token)
-                    }
-                }
-                last = m.range.last + 1
+        fun tryUpgradeOldPclick(
+            activity: AppCompatActivity,
+            source: BaseSource,
+            book: Book,
+            chapter: BookChapter,
+            click: String
+        ): Boolean {
+            if (!click.contains("showBrowser", ignoreCase = true)) return false
+            if (!click.contains("action=paragraph", ignoreCase = true)) return false
+            val pid = OLD_PARAGRAPH_ID_REGEX.find(click)?.groupValues?.get(1) ?: return false
+            val endpoint = OLD_COMMENTS_ENDPOINT_REGEX.find(click)?.value?.trimEnd('?', '&') ?: return false
+            // 与书源内 pclick 相同的取参逻辑：从 book/chapter 的 URL 中抠出 id
+            val bookId = book.bookUrl.split("book_id=").getOrNull(1)?.substringBefore("&").orEmpty()
+            val chapterId = chapter.url.split("chapter_id=").getOrNull(1)?.substringBefore("&").orEmpty()
+            if (bookId.isBlank() || chapterId.isBlank()) return false
+            val commentsUrl = "$endpoint?action=paragraph&book_id=$bookId&chapter_id=$chapterId" +
+                "&paragraph_id=$pid&type=text&page=[page]&page_size=[pageSize]"
+            val repliesUrl = "$endpoint?action=replies&book_id=$bookId&chapter_id=$chapterId" +
+                "&review_id=[reviewId]&root_review_id=[rootId]&page=1&page_size=[pageSize]"
+            val config = ParagraphCommentConfig(
+                listPath = "$.Data.DataList",
+                totalPath = "$.Data.TotalCount",
+                commentsUrl = commentsUrl,
+                repliesUrl = repliesUrl
+            )
+            activity.runOnUiThread {
+                activity.showDialogFragment(ParagraphCommentDialog(source.getKey(), config))
             }
-            sb.append(text, last, text.length)
-            return sb
-        }
-
-        /** 时间戳（毫秒）转可读时间；兼容秒级时间戳 */
-        fun formatTime(time: Long): String {
-            if (time <= 0) return ""
-            val t = if (time < 100_000_000_000L) time * 1000 else time
-            return AppConst.dateFormat.format(Date(t))
+            return true
         }
     }
 }
