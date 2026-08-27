@@ -27,6 +27,7 @@ jobs:
       matrix:
         product: [ appS, appMax, appLegacy ]   # 打三个包：共存版、测试版、兼容版
       fail-fast: false
+      max-parallel: 2
     outputs:
       version: ${{ needs.prepare.outputs.version }}
     env:
