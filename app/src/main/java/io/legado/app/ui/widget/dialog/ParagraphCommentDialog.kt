@@ -67,7 +67,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     private val rawItems = mutableListOf<ParagraphCommentItem>()
     // 排序模式：实时=接口原始顺序；最新=神评论置顶+按时间由新到旧；回复最多=按回复数降序
     private enum class SortMode { REALTIME, NEWEST, HOT }
-    private var sortMode = SortMode.NEWEST
+    private var sortMode = SortMode.REALTIME
     // 排序模式分页追加时临时抑制 onCurrentListChanged 触发的自动加载，
     // 防止 DiffUtil 重排后可见项被推到列表末尾造成链式加载
     private var suppressAutoLoad = false
@@ -285,13 +285,13 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     /** 顶栏齿轮图标点击弹排序菜单：实时评论 / 最新评论 / 回复最多 */
     private fun showSortMenu(anchor: View) {
         val menu = PopupMenu(requireContext(), anchor)
-        menu.menu.add(0, 1, 0, R.string.paragraph_comment_sort_newest).apply {
-            isCheckable = true
-            isChecked = sortMode == SortMode.NEWEST
-        }
-        menu.menu.add(0, 2, 1, R.string.paragraph_comment_sort_realtime).apply {
+        menu.menu.add(0, 2, 0, R.string.paragraph_comment_sort_realtime).apply {
             isCheckable = true
             isChecked = sortMode == SortMode.REALTIME
+        }
+        menu.menu.add(0, 1, 1, R.string.paragraph_comment_sort_newest).apply {
+            isCheckable = true
+            isChecked = sortMode == SortMode.NEWEST
         }
         menu.menu.add(0, 3, 2, R.string.paragraph_comment_sort_hot).apply {
             isCheckable = true
