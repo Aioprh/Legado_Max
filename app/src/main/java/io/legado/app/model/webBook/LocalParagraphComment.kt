@@ -1035,13 +1035,27 @@ object LocalParagraphComment {
         private fun trailingNumber(u: String): String? =
             Regex("""/(\d+)(?=[/?]|$)""").find(u)?.groupValues?.get(1)
 
+        /**
+         * 玖玖段评接口实际挂在镜像的第二个域名 api[1]（serene.sunianxincue.love），
+         * 书源自身域名（cumcuer.sunianxincue.love）只提供搜索/目录/正文，段评接口返回 404。
+         * 与 jsLib 中 `api = ["https://cumcuer...", "https://serene..."]`、取 api[1] 一致。
+         */
+        private fun commentHost(source: BookSource): String {
+            val base = source.bookSourceUrl.trimEnd('/')
+            return if (base.contains("cumcuer", ignoreCase = true)) {
+                "https://serene.sunianxincue.love"
+            } else {
+                base
+            }
+        }
+
         override suspend fun fetchSummaryCounts(
             source: BookSource,
             bookId: String,
             chapterId: String,
             chapterUrl: String?
         ): SummaryResult {
-            val url = source.bookSourceUrl.trimEnd('/') + COMMENTS_ROOT +
+            val url = commentHost(source) + COMMENTS_ROOT +
                 sources(chapterUrl) + "/$bookId/$chapterId"
             val body = fetchBody(source, url) ?: return SummaryResult()
             val counts = HashMap<Int, Int>()
@@ -1064,7 +1078,7 @@ object LocalParagraphComment {
             pid: Int,
             chapterUrl: String?
         ): String {
-            val url = source.bookSourceUrl.trimEnd('/') + COMMENTS_ROOT +
+            val url = commentHost(source) + COMMENTS_ROOT +
                 "index.php/ui/" + sources(chapterUrl) + "/$bookId/$chapterId/${pid - 1}"
             return "java.openUrl('$url');"
         }
