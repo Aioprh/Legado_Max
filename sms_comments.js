@@ -541,12 +541,71 @@ function titlesHtml(list) {
     return out ? '<div class="user-titles">' + out + '</div>' : '';
 }
 
+/* 评论图片字段候选（大小写敏感直查；番茄/起点系常见命名尽量都覆盖）。
+ * 番茄段评此前只读 ImageDetail 单字段，图片放其它字段/多图时全部丢失，
+ * 这里改成与起点页 commentImages 一致的多字段 + 递归提取。 */
+var COMMENT_IMG_FIELDS = [
+    'ImageDetail', 'PreImage', 'ImageUrl', 'Images', 'ImageList', 'ImgUrl', 'Imgs',
+    'Image', 'CommentImg', 'CommentImage', 'Photo', 'PicUrl',
+    'image_url', 'img_url', 'image_list', 'pic_list', 'reply_img_url'
+];
+
+/* 递归收集图片地址：
+ * null/数组/嵌套对象(取所有值)/JSON 字符串(数组或对象串)/普通字符串。
+ * 去重并限制数量，避免恶意/超长列表拖垮渲染。 */
+function collectCommentImages(value, out, limit) {
+    if (out.length >= limit) return out;
+    if (value == null) return out;
+    if (Array.isArray(value)) {
+        for (var i = 0; i < value.length; i++) {
+            collectCommentImages(value[i], out, limit);
+            if (out.length >= limit) break;
+        }
+        return out;
+    }
+    if (typeof value === 'string') {
+        var t = value.trim();
+        if (!t) return out;
+        if (t.charAt(0) === '{' || t.charAt(0) === '[') {
+            try { collectCommentImages(JSON.parse(t), out, limit); } catch (e) {}
+            return out;
+        }
+        if (out.indexOf(t) >= 0) return out;
+        var u = safeUrl(t);
+        if (u) out.push(u);
+        return out;
+    }
+    if (typeof value === 'object') {
+        for (var k in value) {
+            if (Object.prototype.hasOwnProperty.call(value, k)) {
+                collectCommentImages(value[k], out, limit);
+                if (out.length >= limit) break;
+            }
+        }
+    }
+    return out;
+}
+
+function extractCommentImages(item) {
+    var found = [];
+    for (var i = 0; i < COMMENT_IMG_FIELDS.length; i++) {
+        var v = item == null ? null : item[COMMENT_IMG_FIELDS[i]];
+        if (v == null) continue;
+        collectCommentImages(v, found, 6);
+        if (found.length >= 6) break;
+    }
+    return found;
+}
+
 function mediaHtml(item, imgClass) {
     var out = '';
     var au = safeUrl(item.AudioUrl);
     if (au) out += '<audio src="' + au + '" class="comment-audio" controls preload="none"></audio>';
-    var im = safeUrl(item.ImageDetail);
-    if (im) out += '<img src="' + im + '" class="' + (imgClass || 'comment-image') + '" alt="评论图片" onerror="this.style.display=\'none\'">';
+    var cls = imgClass || 'comment-image';
+    var imgs = extractCommentImages(item);
+    for (var i = 0; i < imgs.length; i++) {
+        out += '<img src="' + imgs[i] + '" class="' + cls + '" alt="评论图片" loading="lazy" onerror="this.style.display=\'none\'">';
+    }
     return out;
 }
 
