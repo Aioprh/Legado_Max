@@ -27,7 +27,7 @@
             android:paddingStart="8dp"
             android:paddingEnd="16dp"
             android:scaleType="fitCenter"
-            android:src="@drawable/ic_interface_setting"
+            android:src="@drawable/ic_settings"
             app:tint="@color/primaryText" />
 
     </androidx.appcompat.widget.Toolbar>
