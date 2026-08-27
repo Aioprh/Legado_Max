@@ -87,6 +87,14 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         dialog?.window?.setGravity(Gravity.BOTTOM)
         val dm = resources.displayMetrics
         setLayout(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.9).toInt())
+        // 弹窗显示期间启用 DiffUtil 增量更新，分页/排序重排时保持滚动位置；
+        // 否则 setItems(list, callback) 会退化为 notifyDataSetChanged 全量刷新导致列表跳回顶部
+        adapter.upResumed(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        adapter.upResumed(false)
     }
 
     override fun onDestroy() {
@@ -117,7 +125,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
                     val lm = rv.layoutManager as? LinearLayoutManager ?: return
                     if (hasMore && !loading &&
-                        lm.findLastVisibleItemPosition() >= adapter.getActualItemCount() - 4
+                        lm.findLastVisibleItemPosition() >= rawItems.size - 4
                     ) {
                         loadPage(page + 1)
                     }
@@ -222,7 +230,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 val hasNextFlag = body?.let { parseHasNext(it) }
                 hasMore = hasNextFlag ?: (items.isNotEmpty() &&
                     items.size >= config.pageSize &&
-                    (total < 0 || adapter.getActualItemCount() < total))
+                    (total < 0 || rawItems.size < total))
                 if (adapter.isEmpty()) {
                     showMsg(getString(R.string.paragraph_comment_empty))
                     updateFooter(FooterState.NONE)
@@ -278,7 +286,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
 
     /** 顶栏居中标题实时显示评论总数（总数未知时退化为已加载条数） */
     private fun updateTitle() {
-        val count = if (total >= 0) total else adapter.getActualItemCount().toLong()
+        val count = if (total >= 0) total else rawItems.size.toLong()
         binding.toolBar.title = if (count > 0) {
             getString(R.string.paragraph_comment_total, count)
         } else {
