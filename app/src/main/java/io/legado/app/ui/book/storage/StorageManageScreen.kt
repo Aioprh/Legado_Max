@@ -14,19 +14,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -34,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -45,7 +40,7 @@ import io.legado.app.ui.book.storage.components.ClearAllConfirmDialog
 import io.legado.app.ui.book.storage.components.ClearConfirmDialog
 import io.legado.app.ui.theme.PageDimens
 import io.legado.app.ui.theme.pageCardContainerColor
-import io.legado.app.ui.theme.pageTopBarContainerColor
+import io.legado.app.ui.widget.components.AppPageTopBar
 
 // UI层
 // 4. StorageManageScreen.kt
@@ -57,7 +52,6 @@ import io.legado.app.ui.theme.pageTopBarContainerColor
 //   - LazyColumn 渲染缓存汇总卡片和缓存项列表
 //   - 管理清理确认对话框的显示（由 ViewModel 状态驱动，§4.5）
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StorageManageScreen(
     viewModel: StorageManageViewModel = viewModel(),
@@ -70,7 +64,6 @@ fun StorageManageScreen(
     val dialog by viewModel.dialog.collectAsStateWithLifecycle()
 
     val containerColor = pageCardContainerColor()
-    val topBarColor = pageTopBarContainerColor()
 
     // 返回键拦截：有 Dialog 时先关闭 Dialog，无则正常返回（§4.5）
     val hasDialog = dialog != null
@@ -109,37 +102,18 @@ fun StorageManageScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarColor,
-                    scrolledContainerColor = topBarColor,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
-                    titleContentColor = MaterialTheme.colorScheme.onSecondary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSecondary
-                ),
-                title = {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.storage_manage_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.loadCacheInfo() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
-                    }
-                    IconButton(onClick = { viewModel.requestClearAll() }) {
-                        Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.storage_clear_all))
-                    }
+            // 统一顶栏（theme-styles.md §14.2）
+            AppPageTopBar(
+                title = stringResource(R.string.storage_manage_title),
+                onBackClick = onBackClick
+            ) {
+                IconButton(onClick = { viewModel.loadCacheInfo() }) {
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
                 }
-            )
+                IconButton(onClick = { viewModel.requestClearAll() }) {
+                    Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.storage_clear_all))
+                }
+            }
         }
     ) { paddingValues ->
         when (val state = uiState) {

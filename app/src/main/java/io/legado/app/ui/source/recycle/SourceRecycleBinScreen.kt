@@ -3,15 +3,10 @@ package io.legado.app.ui.source.recycle
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +16,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteForever
@@ -30,25 +24,13 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -61,26 +43,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.res.stringResource
 import io.legado.app.R
-import io.legado.app.data.entities.SourceRecycleBin
-import io.legado.app.help.source.SourceRecycleBinHelp
+import io.legado.app.ui.source.recycle.components.SourceRecycleBinItem
+import io.legado.app.ui.source.recycle.components.SourceRecycleDropdownMenu
+import io.legado.app.ui.source.recycle.components.SourceRecycleDropdownMenuItem
 import io.legado.app.ui.theme.pageSecondaryTextColor
-import io.legado.app.ui.theme.pageTopBarContainerColor
+import io.legado.app.ui.widget.components.AppPageTopBar
 import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.TimeUnit
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SourceRecycleBinScreen(
     viewModel: SourceRecycleBinViewModel = viewModel(),
@@ -123,7 +98,6 @@ fun SourceRecycleBinScreen(
         viewModel.pruneInvalidSelection(items)
     }
 
-    val topBarColor = pageTopBarContainerColor()
     val secondaryTextColor = pageSecondaryTextColor()
 
     // 返回键拦截：有 Dialog 时先关闭 Dialog，无则正常返回（state-events.md §4.5）
@@ -140,76 +114,31 @@ fun SourceRecycleBinScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarColor,
-                    scrolledContainerColor = topBarColor,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
-                    titleContentColor = MaterialTheme.colorScheme.onSecondary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSecondary
-                ),
-                title = {
+            // 统一顶栏（theme-styles.md §14.2）；选择态切换标题/返回图标
+            AppPageTopBar(
+                title = if (isSelectionMode) {
+                    stringResource(R.string.selected, selectedItems.size)
+                } else {
+                    stringResource(R.string.source_recycle_bin)
+                },
+                subtitle = if (isSelectionMode) {
+                    stringResource(R.string.select_count, selectedItems.size, items.size)
+                } else {
+                    stringResource(R.string.source_recycle_bin_count, filterLabel, items.size)
+                },
+                onBackClick = {
                     if (isSelectionMode) {
-                        Column {
-                            Text(
-                                text = stringResource(R.string.selected, selectedItems.size),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = stringResource(
-                                    R.string.select_count,
-                                    selectedItems.size,
-                                    items.size
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.88f),
-                                maxLines = 1
-                            )
-                        }
+                        viewModel.clearSelection()
                     } else {
-                        Column {
-                            Text(
-                                text = stringResource(R.string.source_recycle_bin),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = stringResource(
-                                    R.string.source_recycle_bin_count,
-                                    filterLabel,
-                                    items.size
-                                ),
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1
-                            )
-                        }
+                        onBackClick()
                     }
                 },
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            if (isSelectionMode) {
-                                viewModel.clearSelection()
-                            } else {
-                                onBackClick()
-                            }
-                        }
-                    ) {
-                        Icon(
-                            if (isSelectionMode) {
-                                Icons.Default.Close
-                            } else {
-                                Icons.AutoMirrored.Filled.ArrowBack
-                            },
-                            contentDescription = stringResource(
-                                if (isSelectionMode) R.string.cancel else R.string.back
-                            )
-                        )
-                    }
-                },
-                actions = {
-                    if (isSelectionMode) {
+                backIcon = if (isSelectionMode) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
+                backContentDescription = stringResource(
+                    if (isSelectionMode) R.string.cancel else R.string.back
+                )
+            ) {
+                if (isSelectionMode) {
                         IconButton(
                             enabled = selectedItems.isNotEmpty(),
                             onClick = {
@@ -364,9 +293,8 @@ fun SourceRecycleBinScreen(
                             }
                         }
                     }
-                }
-            )
-        }
+            }
+        },
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -522,189 +450,4 @@ fun SourceRecycleBinScreen(
         )
         null -> Unit
     }
-}
-
-@Composable
-private fun SourceRecycleBinItem(
-    item: SourceRecycleBin,
-    selected: Boolean,
-    secondaryTextColor: Color,
-    menuExpanded: Boolean,
-    onToggleSelected: () -> Unit,
-    onMenuOpen: () -> Unit,
-    onMenuDismiss: () -> Unit,
-    onRestoreClick: () -> Unit,
-    onDeleteClick: () -> Unit
-) {
-    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, borderColor, MaterialTheme.shapes.medium)
-            .clickable(onClick = onToggleSelected),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 14.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(
-                checked = selected,
-                onCheckedChange = { onToggleSelected() },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = MaterialTheme.colorScheme.primary,
-                    uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.name.ifBlank { item.key },
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = stringResource(
-                        R.string.source_recycle_bin_type_group,
-                        typeLabel(item.type),
-                        item.groupName.orEmpty().ifBlank { stringResource(R.string.no_group) }
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = secondaryTextColor
-                )
-                Text(
-                    text = stringResource(
-                        R.string.source_recycle_bin_time_left,
-                        formatTime(item.deletedAt),
-                        remainingDays(item.expireAt)
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = secondaryTextColor
-                )
-            }
-            Box {
-                IconButton(onClick = onMenuOpen) {
-                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more))
-                }
-                SourceRecycleDropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = onMenuDismiss
-                ) {
-                    SourceRecycleDropdownMenuItem(
-                        text = stringResource(R.string.restore),
-                        leadingIcon = {
-                            Icon(Icons.Default.RestoreFromTrash, contentDescription = null)
-                        },
-                        onClick = onRestoreClick
-                    )
-                    SourceRecycleDropdownMenuItem(
-                        text = stringResource(R.string.delete_forever),
-                        leadingIcon = {
-                            Icon(Icons.Default.DeleteForever, contentDescription = null)
-                        },
-                        destructive = true,
-                        onClick = onDeleteClick
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SourceRecycleDropdownMenu(
-    expanded: Boolean,
-    onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier,
-    offset: DpOffset = DpOffset.Zero,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismissRequest,
-        modifier = modifier,
-        offset = offset,
-        containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 8.dp,
-        content = content
-    )
-}
-
-@Composable
-private fun SourceRecycleDropdownMenuItem(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    selected: Boolean = false,
-    destructive: Boolean = false,
-    leadingIcon: @Composable (() -> Unit)? = null
-) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val textColor = when {
-        !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-        destructive -> MaterialTheme.colorScheme.error
-        selected -> primaryColor
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-    DropdownMenuItem(
-        text = {
-            Text(
-                text = text,
-                color = textColor,
-                style = MaterialTheme.typography.bodyMedium
-            )
-        },
-        onClick = onClick,
-        modifier = modifier.background(
-            if (selected) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            else Color.Transparent
-        ),
-        enabled = enabled,
-        leadingIcon = leadingIcon,
-        trailingIcon = {
-            if (selected) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    tint = primaryColor
-                )
-            }
-        },
-        colors = MenuDefaults.itemColors(
-            textColor = textColor,
-            leadingIconColor = textColor,
-            trailingIconColor = primaryColor,
-            disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-            disabledLeadingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-        )
-    )
-}
-
-@Composable
-private fun typeLabel(type: String): String {
-    return when (type) {
-        SourceRecycleBinHelp.TYPE_BOOK_SOURCE -> stringResource(R.string.book_source)
-        SourceRecycleBinHelp.TYPE_RSS_SOURCE -> stringResource(R.string.rss_source)
-        SourceRecycleBinHelp.TYPE_REPLACE_RULE -> stringResource(R.string.replace_rule)
-        SourceRecycleBinHelp.TYPE_TXT_TOC_RULE -> stringResource(R.string.txt_toc_rule)
-        SourceRecycleBinHelp.TYPE_HTTP_TTS -> stringResource(R.string.speak_engine)
-        SourceRecycleBinHelp.TYPE_DICT_RULE -> stringResource(R.string.dict_rule)
-        SourceRecycleBinHelp.TYPE_HIGHLIGHT_RULE -> stringResource(R.string.highlight_rule_config)
-        SourceRecycleBinHelp.TYPE_SEARCH_ENGINE -> stringResource(R.string.search_engine_rule)
-        else -> type
-    }
-}
-
-private fun formatTime(time: Long): String {
-    return SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(time))
-}
-
-private fun remainingDays(expireAt: Long): Long {
-    val millis = expireAt - System.currentTimeMillis()
-    return TimeUnit.MILLISECONDS.toDays(millis).coerceAtLeast(0)
 }

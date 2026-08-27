@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -38,6 +39,8 @@ fun CacheSummaryCard(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
+            // 无障碍：合并汇总卡片内文本节点（accessibility.md §15.2）
+            .semantics(mergeDescendants = true) {}
             .clip(RoundedCornerShape(16.dp))
             .background(
                 Brush.linearGradient(
