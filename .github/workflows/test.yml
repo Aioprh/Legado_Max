@@ -147,6 +147,7 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.prepare.outputs.build_matrix) }}
       fail-fast: false
+      max-parallel: 2
     runs-on: ubuntu-latest
     env:
       product: ${{ matrix.product }}
