@@ -84,11 +84,18 @@ object LocalParagraphComment {
             AppLog.put("本地书段评: 无法从书源[${source.bookSourceName}]的URL提取书籍/章节ID")
             return content
         }
-        // 摘要按远程章节 URL 缓存，重复阅读同一章节不再请求
-        val summary = synchronized(summaryCache) {
-            summaryCache[remoteChapterUrl]
-        } ?: adapter.fetchSummaryCounts(source, bookId, chapterId, remoteChapterUrl).also {
-            synchronized(summaryCache) { summaryCache[remoteChapterUrl] = it }
+        // 摘要按远程章节 URL 缓存，重复阅读同一章节不再请求。
+        // 注意：仅缓存"非空"摘要。首次打开时远程章节段评数据（review_list）可能尚未就绪或瞬时拉取失败，
+        // 若把空摘要也缓存会导致该章整个会话段评气泡都不显示；不缓存后下次打开会重新拉取自愈。
+        val cached = synchronized(summaryCache) { summaryCache[remoteChapterUrl] }
+        val summary = if (cached != null && cached.counts.isNotEmpty()) {
+            cached
+        } else {
+            adapter.fetchSummaryCounts(source, bookId, chapterId, remoteChapterUrl).also { fetched ->
+                if (fetched.counts.isNotEmpty()) {
+                    synchronized(summaryCache) { summaryCache[remoteChapterUrl] = fetched }
+                }
+            }
         }
         if (summary.counts.isEmpty()) {
             AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}]暂无段评")
