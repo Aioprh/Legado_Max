@@ -17,6 +17,20 @@ import org.junit.Test
 import java.time.LocalDateTime
 import java.time.ZoneId
 
+/**
+ * 阅读记录 Repository 测试（构造注入 + 手写 Fake 模式，testing.md §16 固化的模板来源）。
+ *
+ * 质量评估（2026-08-27）：
+ * - 全项目写得最好的存量测试：用例都是真实业务场景（跨天会话拆分、导入合并、脏数据修复），
+ *   断言到字段级终态；四个新增 *ViewModelTest 均照此模式写。
+ * - 已知取舍：
+ *   1. 用 runBlocking 而非 runTest（testing.md §16.2 要求新测试用 runTest）；
+ *      当前被测逻辑纯同步无害，迁移期保留，随迭代清理。
+ *   2. FakeReadRecordDao（约 500 行）在内存里重实现了 Room 的 SQL 聚合语义，
+ *      存在 Fake 与真实 SQL「错得一致」的风险；聚合查询建议后续用
+ *      room-testing 内存库真 DAO 测试补一层。
+ *   3. Fake 内 SimpleDateFormat 未指定 Locale，跨环境有理论格式差异风险。
+ */
 class ReadRecordRepositoryTest {
 
     @Test
@@ -689,6 +703,24 @@ class ReadRecordRepositoryTest {
                 }
                 .sortedByDescending { it.startTime }
                 .drop(offset)
+                .take(limit)
+                .map { it.copy() }
+        }
+
+        override suspend fun getFilteredSessionsBefore(
+            query: String,
+            dateFilter: String?,
+            beforeTimestamp: Long?,
+            limit: Int
+        ): List<ReadRecordSession> {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd")
+            return sessions
+                .filter { s ->
+                    (query.isEmpty() || s.bookName.contains(query) || s.bookAuthor.contains(query)) &&
+                        (dateFilter == null || sdf.format(java.util.Date(s.startTime)) == dateFilter) &&
+                        (beforeTimestamp == null || s.startTime < beforeTimestamp)
+                }
+                .sortedByDescending { it.startTime }
                 .take(limit)
                 .map { it.copy() }
         }

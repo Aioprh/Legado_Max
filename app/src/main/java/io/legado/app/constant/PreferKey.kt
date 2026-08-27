@@ -64,13 +64,15 @@ object PreferKey {
     const val bookLayout = "bookLayout"
     const val showMoreInfoInList = "showMoreInfoInList"
     const val showIntroInList = "showIntroInList"
-    const val showTagsInList = "showTagsInList"
+    const val showCategoryInfoInList = "showCategoryInfoInList"
     // 书籍外边框开关（仅在列表/紧凑列表视图时生效）
     const val showBookBorder = "showBookBorder"
     // 简介显示行数（1-4行）
     const val introLinesInList = "introLinesInList"
     // 下拉选择分组开关（仅在分组样式为标签时生效）
     const val dropdownSelectGroup = "dropdownSelectGroup"
+    // 显示标签栏开关
+    const val showBookshelfTagBar = "showBookshelfTagBar"
     const val bookExportFileName = "bookExportFileName"
     const val bookImportFileName = "bookImportFileName"
     const val episodeExportFileName = "episodeExportFileName"
@@ -343,4 +345,9 @@ object PreferKey {
     const val appThemeDeleteNightBottomBar = "appThemeDeleteNightBottomBar"
     const val appThemeDeleteDayCover = "appThemeDeleteDayCover"
     const val appThemeDeleteNightCover = "appThemeDeleteNightCover"
+
+    /** 书架分组配置的标签，JSON Map<groupId, List<tag>> */
+    const val bookshelfGroupTags = "bookshelfGroupTags"
+    /** 书架分组隐藏的标签，JSON Map<groupId, Set<tag>> */
+    const val bookshelfHiddenTags = "bookshelfHiddenTags"
 }

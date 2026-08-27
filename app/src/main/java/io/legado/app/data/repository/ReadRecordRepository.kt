@@ -157,6 +157,19 @@ class ReadRecordRepository(
     }
 
     /**
+     * 分页懒加载 sessions：返回 startTime < [beforeTimestamp] 的前 [limit] 条记录。
+     * 用于时间线视图的首屏加载和滚动加载更多。
+     */
+    suspend fun loadSessionsPage(
+        query: String,
+        dateFilter: String?,
+        beforeTimestamp: Long?,
+        limit: Int
+    ): List<ReadRecordSession> {
+        return dao.getFilteredSessionsBefore(query, dateFilter, beforeTimestamp, limit)
+    }
+
+    /**
      * 带详情时间校正的阅读记录列表（无日期筛选时使用）。
      * SQL JOIN 完成 readTime = MAX(readRecord.readTime, detail 之和) 的计算。
      */

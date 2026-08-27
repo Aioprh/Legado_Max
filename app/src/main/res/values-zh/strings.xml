@@ -632,8 +632,38 @@
     <string name="text_accent_color">强调颜色</string>
     <string name="select_image">选择图片</string>
     <string name="select_image_failed">选择图片失败</string>
-    <string name="group_manage">分组管理</string>
-    <string name="group_select">分组选择</string>
+<string name="group_manage">分组管理</string>
+<string name="group_select">分组选择</string>
+
+<!-- Bookshelf tag management -->
+<string name="bookshelf_tag_manage">管理标签</string>
+<string name="bookshelf_tag_none">未设置标签</string>
+<string name="bookshelf_tag_add_title">添加标签</string>
+<string name="bookshelf_tag_add_group">添加到"%1$s"</string>
+<string name="bookshelf_tag_new_label">新标签</string>
+<string name="bookshelf_tag_new_hint">新增标签，多个用空格或逗号分隔</string>
+<string name="bookshelf_tag_search_existing">搜索已有标签</string>
+<string name="bookshelf_tag_reusable_summary">可复用 %1$d 个 · 已选择 %2$d 个</string>
+<string name="bookshelf_tag_no_reusable">没有可复用的已有标签，可直接输入新标签</string>
+<string name="bookshelf_tag_no_matching_existing">没有匹配的已有标签</string>
+<string name="bookshelf_tag_delete_title">删除标签</string>
+<string name="bookshelf_tag_delete_message">确定从"%2$s"分组的所有书籍中移除"%1$s"标签吗？不会删除书籍。</string>
+<string name="bookshelf_tag_group_summary">%1$d 本书 · %2$d 个标签</string>
+<string name="bookshelf_tag_empty_summary">当前分组还没有标签，可以点击"新增"创建。</string>
+<string name="bookshelf_tag_book_count">已标记 %1$d 本书</string>
+<string name="bookshelf_tag_visible">标签栏显示</string>
+<string name="bookshelf_tag_manage_books">管理书籍</string>
+<string name="bookshelf_tag_search_book">搜索书名或作者</string>
+<string name="bookshelf_tag_filter_all">全部</string>
+<string name="bookshelf_tag_filter_selected">已选择</string>
+<string name="bookshelf_tag_filter_unselected">未选择</string>
+<string name="bookshelf_tag_selected_count">已选择 %1$d / %2$d</string>
+<string name="bookshelf_tag_select_results">选择结果</string>
+<string name="bookshelf_tag_clear_results">清空结果</string>
+<string name="bookshelf_tag_no_matching_books">当前筛选条件下没有书籍</string>
+<string name="bookshelf_tag_save">保存</string>
+<string name="bookshelf_tag_all">全部</string>
+<string name="show_bookshelf_tag_bar">显示标签栏</string>
     <string name="group_edit">编辑分组</string>
     <string name="move_to_group">移入分组</string>
     <string name="add_group">添加分组</string>
@@ -806,6 +836,9 @@
     <string name="highlight_rule_scope_hint">书名或书源URL，分号分隔，留空则对所有书籍生效</string>
     <string name="highlight_rule_exclude_scope">排除范围，书名或书源URL</string>
     <string name="highlight_rule_exclude_scope_hint">要排除的书名或书源URL，分号分隔</string>
+    <string name="highlight_rule_layout_scope">作用排版</string>
+    <string name="highlight_rule_layout_scope_all">所有排版</string>
+    <string name="highlight_rule_layout_scope_count">已选 %1$d 个排版</string>
     <string name="action_menu">功能</string>
     <string name="preview">预览</string>
     <string name="text_menu_config">展开文本菜单配置</string>
@@ -1291,6 +1324,7 @@
     <string name="progress_bar_behavior">进度条行为</string>
     <string name="source_edit_text_max_line">源编辑框最大行数</string>
     <string name="source_edit_max_line_summary">%s,设置行数小于屏幕可显示的最大行数可以更方便的滑动到其他的字段进行编辑</string>
+    <string name="source_edit_preview_truncated">内容过长（%1$d 字符），已截断显示，点击全屏编辑</string>
     <string name="restore_last_book_process">是否恢复到跳转前的阅读进度？</string>
     <string name="search_scope">搜索范围</string>
     <string name="toggle_search_scope">切换</string>
@@ -1853,6 +1887,10 @@
     <string name="cover_gallery">封面图集</string>
     <string name="cover_gallery_summary">管理分组封面图集，可设置为全局默认封面源</string>
 
+    <!-- Multi Select Dialog -->
+    <string name="multi_select_selected_count">已选 %1$d/%2$d</string>
+    <string name="multi_select_total_size">总大小: %1$s</string>
+
     <!-- File Validation Dialog -->
     <string name="fvd_title">选择恢复内容</string>
     <string name="fvd_detect_format">检测格式</string>
@@ -1892,7 +1930,7 @@
     <!-- 列表视图显示更多信息 -->
     <string name="show_more_info">显示更多信息</string>
     <string name="show_intro">显示简介</string>
-    <string name="show_tags">显示标签</string>
+    <string name="show_category_info">显示分类信息等</string>
     <string name="show_book_border">显示外边框</string>
     <!-- 简介行数选择 -->
     <string name="intro_lines">简介行数</string>
@@ -2327,6 +2365,7 @@
     <string name="app_theme_config_too_large">应用主题配置文件过大</string>
     <string name="app_theme_config_corrupted">应用主题配置文件损坏，已保留原文件</string>
     <string name="app_theme_file_too_large">应用主题文件过大</string>
+    <string name="app_theme_encrypted_not_supported">该主题包已加密，不支持导入</string>
     <string name="app_theme_missing_manifest">缺少 application_theme.json</string>
     <string name="app_theme_manifest_too_large">应用主题清单过大</string>
     <string name="app_theme_invalid_format">应用主题包格式错误</string>
@@ -2390,4 +2429,71 @@
     <string name="perm_toast_enabled_desc">控制脚本能否弹出Toast</string>
     <string name="perm_toast_duration">Toast时长控制</string>
     <string name="perm_toast_duration_desc">控制Toast显示时长</string>
+    <!-- 精准管理：下载管理 -->
+    <string name="download_manage_title">下载管理</string>
+    <string name="download_manage_stats">下载中: %1$d  已完成: %2$d  失败: %3$d</string>
+    <string name="download_manage_clear_completed">清除已完成</string>
+    <string name="download_tab_downloading">下载中</string>
+    <string name="download_tab_paused">已暂停</string>
+    <string name="download_tab_completed">已完成</string>
+    <string name="download_tab_failed">失败</string>
+    <string name="download_empty_all_title">暂无下载任务</string>
+    <string name="download_empty_all_subtitle">在浏览器中下载的文件会显示在这里</string>
+    <string name="download_empty_downloading_title">暂无正在下载的任务</string>
+    <string name="download_empty_downloading_subtitle">当前没有下载中的任务</string>
+    <string name="download_empty_paused_title">暂无已暂停的任务</string>
+    <string name="download_empty_paused_subtitle">没有被暂停的下载任务</string>
+    <string name="download_empty_completed_title">暂无已完成的任务</string>
+    <string name="download_empty_completed_subtitle">没有已完成的下载任务</string>
+    <string name="download_empty_failed_title">暂无下载失败的任务</string>
+    <string name="download_empty_failed_subtitle">所有下载任务均正常</string>
+    <string name="download_resume">继续</string>
+    <string name="download_open_file">打开文件</string>
+    <string name="download_open_folder">打开文件所在文件夹</string>
+    <string name="download_copy_path">复制路径</string>
+    <string name="download_status_running">下载中</string>
+    <string name="download_status_pending">等待中</string>
+    <string name="download_status_paused">已暂停</string>
+    <string name="download_status_completed">已完成</string>
+    <string name="download_status_failed">下载失败</string>
+    <string name="download_path_copied">已复制路径</string>
+    <string name="download_open_file_failed">无法打开文件</string>
+    <string name="download_open_folder_failed">无法打开文件夹</string>
+    <string name="download_source_label">来源: %1$s</string>
+    <string name="download_link_label">链接: %1$s</string>
+    <!-- 精准管理：存储管理 -->
+    <string name="storage_manage_title">存储管理</string>
+    <string name="storage_clearing">正在清理 %1$s…</string>
+    <string name="storage_clear_all">一键清理</string>
+    <string name="storage_clear_confirm_title">确认清理</string>
+    <string name="storage_clear_confirm_msg">确定要清理 \"%1$s\" 吗？此操作不可撤销。</string>
+    <string name="storage_clear_all_msg">确定要清理所有缓存吗？\n\n注意：这不会清理数据库中的书籍、书源等重要数据，仅清理临时缓存文件。</string>
+    <string name="storage_cache_all">所有缓存</string>
+    <string name="storage_load_failed">加载失败</string>
+    <string name="storage_clear_failed">清理失败</string>
+    <string name="storage_cache_book_name">书籍内容缓存</string>
+    <string name="storage_cache_epub_name">Epub 解压缓存</string>
+    <string name="storage_cache_temp_name">临时文件缓存</string>
+    <string name="storage_cache_tts_name">TTS 语音缓存</string>
+    <string name="storage_cache_acache_name">ACache 磁盘缓存</string>
+    <string name="storage_cache_db_name">数据库缓存</string>
+    <string name="storage_cache_log_name">日志文件</string>
+    <string name="storage_cache_webview_name">WebView 缓存</string>
+    <string name="storage_cache_book_desc">章节文本、漫画图片等阅读内容</string>
+    <string name="storage_cache_epub_desc">Epub 格式书籍的解压临时文件</string>
+    <string name="storage_cache_temp_desc">下载临时文件、解压临时目录等</string>
+    <string name="storage_cache_tts_desc">在线朗读引擎下载的语音文件</string>
+    <string name="storage_cache_acache_desc">书源变量、用户信息等运行时缓存</string>
+    <string name="storage_cache_db_desc">CacheDao 存储的临时数据记录</string>
+    <string name="storage_cache_log_desc">应用运行日志、错误日志等</string>
+    <string name="storage_cache_webview_desc">WebView 页面数据、本地缓存、Cookie 等持久化内容</string>
+    <string name="storage_cache_count_books">%1$d本</string>
+    <string name="storage_cache_count_engines">%1$d个引擎</string>
+    <string name="storage_cache_count_items">%1$d项</string>
+    <string name="storage_clear_action">清理</string>
+    <string name="storage_open_path">打开路径</string>
+    <string name="storage_total_size">缓存总大小</string>
+    <string name="storage_cache_item_count">%1$d 项缓存</string>
+    <!-- 精准管理：文件管理 -->
+    <string name="file_delete_confirm">确定要删除 \"%1$s\" 吗？</string>
 </resources>

@@ -52,6 +52,7 @@ data class MultiSelectGroup(
  * - 实时计算选中项总大小
  * - 全选/全不选快捷按钮
  * - 主题适配
+ * - 可选插槽: 标题栏动作按钮、行尾内容、独立的确定回调(如"开始恢复")
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -64,7 +65,10 @@ fun MultiSelectDialogContent(
     onSelectionChange: (String, Boolean) -> Unit, // 选择变化回调
     onDismiss: () -> Unit,              // 关闭回调
     onSelectAll: () -> Unit,            // 全选回调
-    onDeselectAll: () -> Unit           // 全不选回调
+    onDeselectAll: () -> Unit,          // 全不选回调
+    headerAction: (@Composable () -> Unit)? = null, // 标题栏动作按钮插槽 (如"检测格式")
+    itemTrailing: (@Composable (MultiSelectItem) -> Unit)? = null, // 行尾内容插槽 (如验证状态图标)
+    onConfirm: (() -> Unit)? = null     // 确定按钮回调, 为空时确定按钮仅关闭弹窗
 ) {
     val topBarColor = pageTopBarContainerColor()
     val cardColor = pageCardContainerColor()
@@ -128,15 +132,29 @@ fun MultiSelectDialogContent(
                             }
                         }
 
-                        // 右侧：已选数量
-                        Text(
-                            text = "已选 ${selectedItems.size}/${groups.sumOf { it.items.size }}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(start = 16.dp)
-                        )
+                        // 右侧：有动作按钮时放按钮（已选数量下移到底部），否则显示已选数量
+                        if (headerAction != null) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(start = 16.dp)
+                                    .align(Alignment.CenterVertically)
+                            ) {
+                                headerAction()
+                            }
+                        } else {
+                            Text(
+                                text = stringResource(
+                                    R.string.multi_select_selected_count,
+                                    selectedItems.size,
+                                    groups.sumOf { it.items.size }
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(start = 16.dp)
+                            )
+                        }
                     }
 
                     // 项目列表
@@ -147,14 +165,16 @@ fun MultiSelectDialogContent(
                             .padding(vertical = 8.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        // 分组展示
+                        // 分组展示 (分组名为空时按平铺列表处理, 不渲染分组头)
                         groups.forEach { group ->
-                            // 分组标题
-                            item {
-                                GroupHeader(
-                                    groupName = group.name,
-                                    iconEmoji = group.iconEmoji
-                                )
+                            if (group.name.isNotBlank()) {
+                                // 分组标题
+                                item {
+                                    GroupHeader(
+                                        groupName = group.name,
+                                        iconEmoji = group.iconEmoji
+                                    )
+                                }
                             }
 
                             // 分组内的项目
@@ -164,7 +184,8 @@ fun MultiSelectDialogContent(
                                     isSelected = item.key in selectedKeys,
                                     onSelectionChange = { isSelected ->
                                         onSelectionChange(item.key, isSelected)
-                                    }
+                                    },
+                                    trailing = itemTrailing
                                 )
                             }
 
@@ -175,18 +196,39 @@ fun MultiSelectDialogContent(
                         }
                     }
 
-                    // 总大小显示（在操作按钮上方）
-                    if (totalSize != null) {
-                        Text(
-                            text = "总大小: $totalSize",
+                    // 底部信息区：总大小显示（在操作按钮上方）
+                    // 标题栏有动作按钮时，已选数量从标题栏下移到这里展示
+                    if (totalSize != null || headerAction != null) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            textAlign = TextAlign.Center
-                        )
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            if (headerAction != null) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.multi_select_selected_count,
+                                        selectedItems.size,
+                                        groups.sumOf { it.items.size }
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (totalSize != null) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                }
+                            }
+                            if (totalSize != null) {
+                                Text(
+                                    text = stringResource(R.string.multi_select_total_size, totalSize),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
 
                     // 操作按钮
@@ -224,7 +266,7 @@ fun MultiSelectDialogContent(
                         }
 
                         Button(
-                            onClick = onDismiss,
+                            onClick = onConfirm ?: onDismiss,
                             modifier = Modifier
                                 .weight(1f)
                                 .defaultMinSize(minWidth = 96.dp)
@@ -291,7 +333,8 @@ private fun GroupHeader(
 private fun MultiSelectItemRow(
     item: MultiSelectItem,
     isSelected: Boolean,
-    onSelectionChange: (Boolean) -> Unit
+    onSelectionChange: (Boolean) -> Unit,
+    trailing: (@Composable (MultiSelectItem) -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -382,5 +425,8 @@ private fun MultiSelectItemRow(
                 }
             }
         }
+
+        // 行尾插槽 (如验证状态图标)
+        trailing?.invoke(item)
     }
 }

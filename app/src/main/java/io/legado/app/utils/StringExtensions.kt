@@ -14,11 +14,30 @@ import java.io.File
 import java.lang.Character.codePointCount
 import java.lang.Character.offsetByCodePoints
 import java.net.InetAddress
+import java.text.BreakIterator
 import java.util.Locale
 import java.util.regex.Pattern
 import androidx.core.net.toUri
 
 fun String?.safeTrim() = if (this.isNullOrBlank()) null else this.trim()
+
+/**
+ * 源编辑界面超出字符限制后，按字符簇边界安全截断，不会切断代理对（emoji）或组合字符序列，避免截断出乱码。
+ * 结果长度不超过 limit 个 char（UTF-16 code unit）。
+ */
+fun String.safeTake(limit: Int): String {
+    if (length <= limit) return this
+    return runCatching {
+        val iterator = BreakIterator.getCharacterInstance()
+        iterator.setText(this)
+        // preceding 返回不超过 limit 的最后一个字符簇边界
+        substring(0, iterator.preceding(limit + 1))
+    }.getOrElse {
+        // 退路：截断点若落在代理对中间则回退一位，保证不切出半个 emoji
+        val end = if (Character.isHighSurrogate(this[limit - 1])) limit - 1 else limit
+        substring(0, end)
+    }
+}
 
 fun String?.isContentScheme(): Boolean = this?.startsWith("content://") == true
 

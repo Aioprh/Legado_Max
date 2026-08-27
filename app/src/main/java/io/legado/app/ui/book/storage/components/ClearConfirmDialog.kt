@@ -1,6 +1,8 @@
 package io.legado.app.ui.book.storage.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import io.legado.app.R
 import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 
 // ### UI组件
@@ -18,9 +20,9 @@ fun ClearConfirmDialog(
     onDismiss: () -> Unit
 ) {
     AppConfirmDialog(
-        title = "确认清理",
-        text = "确定要清理 \"$targetName\" 吗？此操作不可撤销。",
-        confirmText = "确定",
+        title = stringResource(R.string.storage_clear_confirm_title),
+        text = stringResource(R.string.storage_clear_confirm_msg, targetName),
+        confirmText = stringResource(R.string.ok),
         destructive = true,
         onConfirm = onConfirm,
         onDismissRequest = onDismiss
@@ -33,9 +35,9 @@ fun ClearAllConfirmDialog(
     onDismiss: () -> Unit
 ) {
     AppConfirmDialog(
-        title = "一键清理",
-        text = "确定要清理所有缓存吗？\n\n注意：这不会清理数据库中的书籍、书源等重要数据，仅清理临时缓存文件。",
-        confirmText = "确定",
+        title = stringResource(R.string.storage_clear_all),
+        text = stringResource(R.string.storage_clear_all_msg),
+        confirmText = stringResource(R.string.ok),
         destructive = true,
         onConfirm = onConfirm,
         onDismissRequest = onDismiss

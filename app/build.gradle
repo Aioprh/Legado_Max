@@ -136,6 +136,21 @@ android {
             // proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'cronet-proguard-rules.pro'
         }
     }
+    // ABI 分拆仅用于 Release 发布产物；Debug 本地构建保持单一 universal 包，
+    // 避免按 armeabi-v7a/arm64-v8a/universal 重复打包拖慢日常构建。
+    // 配置缓存已关闭（gradle.properties: unsafe.configuration-cache=false），读取任务名安全。
+    def enableAbiSplits = gradle.startParameter.taskNames.any {
+        it.toLowerCase().contains('release')
+    }
+    logger.lifecycle("ABI splits enabled: {} (tasks: {})", enableAbiSplits, gradle.startParameter.taskNames)
+    splits {
+        abi {
+            enable enableAbiSplits
+            reset()
+            include 'armeabi-v7a', 'arm64-v8a'
+            universalApk true
+        }
+    }
     android.applicationVariants.configureEach { variant ->
         variant.outputs.configureEach { output ->
             def flavorName = variant.flavorName
@@ -149,7 +164,16 @@ android {
                     appMax   : "release",
                     appLegacy: "legacy"
             ][flavorName] ?: flavorName
-            outputFileName = "${name}_${flavorLabel}_${defaultConfig.versionName}_${flavorSuffix}.apk"
+            // ABI splits: 从输出目录名提取 ABI 标识
+            // splits.abi 启用后，output.dirName 会是 "armeabi-v7a" / "arm64-v8a" / "" (universal)
+            def outputDir = output.dirName ?: ""
+            def abiPart = "_universal"
+            if (outputDir.contains("armeabi-v7a")) {
+                abiPart = "_armeabi-v7a"
+            } else if (outputDir.contains("arm64-v8a")) {
+                abiPart = "_arm64-v8a"
+            }
+            outputFileName = "${name}_${flavorLabel}_${defaultConfig.versionName}_${flavorSuffix}${abiPart}.apk"
         }
     }
 
@@ -203,6 +227,11 @@ dependencies {
     //coreLibraryDesugaring('com.android.tools:desugar_jdk_libs_nio:2.0.4')
     coreLibraryDesugaring(libs.desugar)
     testImplementation(libs.junit)
+    // ViewModel 单测基建（testing.md §16）：runTest 虚拟时间 + Turbine Flow 断言
+    //必须写测试作用域，不要写全局 implementation：，写错成 implementation 才会打进包、增加包体积，正确写法完全无害。
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.mockk)
     androidTestImplementation(libs.bundles.androidTest)
     
     //Compose

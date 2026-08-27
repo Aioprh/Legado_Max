@@ -25,6 +25,7 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.FragmentBooksBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.book.BookTagHelper
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.book.info.BookInfoActivity
@@ -80,12 +81,29 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     private var onlyUpdateRead = false
     private val bookshelfMargin by lazy { AppConfig.bookshelfMargin }
     private var itemCount = 0
+    private var tagFilter: String? = null
 
     private fun createBooksAdapter(): BaseBooksAdapter<*> {
         return when (AppConfig.bookLayout) {
             0 -> BooksAdapterList(requireContext(), this, this, viewLifecycleOwner.lifecycle)
             1 -> BooksAdapterList2(requireContext(), this, this, viewLifecycleOwner.lifecycle)
             else -> BooksAdapterGrid(requireContext(), this)
+        }
+    }
+
+    /**
+     * 判断当前 adapter 类型是否与 AppConfig.bookLayout 不匹配。
+     * 当 Fragment view 被销毁后重建（如 ViewPager 切换分组页面）时，
+     * Fragment 实例复用，booksAdapter 保留旧值。如果用户在 view 不可见期间
+     * 切换了布局（如从列表变为紧凑列表），重建时需要检测并重新创建 adapter。
+     */
+    private fun isAdapterLayoutStale(): Boolean {
+        val currentLayout = AppConfig.bookLayout
+        return when (booksAdapter) {
+            is BooksAdapterList -> currentLayout != 0
+            is BooksAdapterList2 -> currentLayout != 1
+            is BooksAdapterGrid -> currentLayout < 2
+            else -> true
         }
     }
 
@@ -98,13 +116,21 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
             onlyUpdateRead = it.getBoolean("onlyUpdateRead", false)
             binding.refreshLayout.isEnabled = enableRefresh
         }
+        // 同步最新的布局配置：Fragment view 被销毁后重建时，
+        // 构造时赋值的 bookLayout 已过期，需在此更新以确保
+        // initRecyclerView 使用最新的布局参数。
+        bookLayout = AppConfig.bookLayout
         initRecyclerView()
         upRecyclerData()
     }
 
     private fun initRecyclerView() {
-        // 初始化适配器
-        if (!this::booksAdapter.isInitialized) {
+        // 初始化适配器；若已初始化但布局类型已变更，则重新创建以匹配最新配置。
+        // 这是 view 被销毁后重建时仍复用旧 Fragment 实例的场景：
+        // booksAdapter 是 lateinit，Fragment 未销毁时其值保留，
+        // 如果用户在 view 不可见期间切换了 bookLayout，
+        // 重建 view 时必须用新 adapter，否则布局不会生效。
+        if (!this::booksAdapter.isInitialized || isAdapterLayoutStale()) {
             booksAdapter = createBooksAdapter()
         }
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
@@ -264,10 +290,13 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
             ).catch {
                 AppLog.put("书架更新出错", it)
             }.conflate().flowOn(Dispatchers.Default).collect { list ->
-                itemCount = list.size
+                val filtered = if (tagFilter == null) list else list.filter {
+                    BookTagHelper.has(it.customTag, tagFilter!!)
+                }
+                itemCount = filtered.size
                 binding.tvEmptyMsg.isGone = itemCount > 0
                 binding.refreshLayout.isEnabled = enableRefresh && itemCount > 0
-                booksAdapter.setItems(list)
+                booksAdapter.setItems(filtered)
             }
         }
     }
@@ -301,6 +330,14 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
 
     fun getBooksCount(): Int {
         return booksAdapter.itemCount
+    }
+
+    /**
+     * 按标签筛选书籍。传 null 表示清除筛选。
+     */
+    fun filterByTag(tag: String?) {
+        tagFilter = tag
+        upRecyclerData()
     }
 
     override fun onDestroyView() {

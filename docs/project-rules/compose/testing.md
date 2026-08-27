@@ -11,9 +11,11 @@
 
 ## 16. 测试规范
 
-> 现状：仅 JUnit4 + `runBlocking` + 手写 Fake。`ReadRecordRepositoryTest` 的模式是对的（Fake 只实现用到的接口、行为是真数据、断言终态），**固化**；但 ViewModel 测试为零、无 Turbine、无 `kotlinx-coroutines-test`。新增代码零容忍，存量按 `migration-review.md` §13 三阶段策略随迭代清理。
+> 现状（2026-08-27 更新）：`ReadRecordRepositoryTest` 的模式已固化；`kotlinx-coroutines-test`/`turbine`/`mockk` 依赖已补，
+> `MainDispatcherRule` 测试基建已就位，四个精准管理 ViewModel（回收站/文件/存储/下载）已按 §16.3 模板完成构造注入改造与单测。
+> 存量 `runBlocking` 测试（如 `ReadRecordRepositoryTest`）迁移期保留，按 `migration-review.md` §13 三阶段策略随迭代清理。
 >
-> 首条 ViewModel 测试落地前，`gradle/libs.versions.toml` 需补三个依赖：`org.jetbrains.kotlinx:kotlinx-coroutines-test`、`app.cash.turbine:turbine`、`io.mockk:mockk`（与 coroutines 同版本线）。
+> ~~首条 ViewModel 测试落地前，`gradle/libs.versions.toml` 需补三个依赖~~（已补）：`org.jetbrains.kotlinx:kotlinx-coroutines-test`、`app.cash.turbine:turbine`、`io.mockk:mockk`（与 coroutines 同版本线）。
 
 ### 16.1 测什么（分档，强制）
 
@@ -67,7 +69,7 @@ class ThemeManageViewModelTest {
 
 ### 16.4 CI 接入
 
-- JVM 单测（`testDebugUnitTest`）进 PR CI，红 = 不合，现有 pipeline 已有此行为，**禁止**以"CI 慢"为由降级为 warning。
+- JVM 单测（`:app:testAppMaxDebugUnitTest`）进 PR CI，红 = 不合，由 `.github/workflows/unit-test.yaml` 执行（test 分支 push/PR 触发），**禁止**以“CI 慢”为由降级为 warning。
 - 覆盖率数字**禁止**当验收指标（数字是虚荣指标）；真实约束落在 Checklist：新增 ViewModel / 修改状态机的 PR 没有对应测试，直接打回。
 - androidTest 留在 release 验证阶段，不进 PR CI。
 

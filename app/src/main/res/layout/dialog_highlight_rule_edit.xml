@@ -230,6 +230,29 @@
                         android:paddingEnd="12dp"
                         android:textSize="14sp" />
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:text="@string/highlight_rule_layout_scope"
+                        android:textColor="@color/primaryText"
+                        android:textSize="13sp" />
+
+                    <EditText
+                        android:id="@+id/et_layout_scope"
+                        android:layout_width="match_parent"
+                        android:layout_height="42dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/shape_highlight_rule_input"
+                        android:hint="@string/highlight_rule_layout_scope_all"
+                        android:inputType="none"
+                        android:focusable="false"
+                        android:clickable="true"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:singleLine="true"
+                        android:textSize="14sp" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

@@ -321,10 +321,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.showIntroInList, value)
         }
 
-    var showTagsInList: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.showTagsInList, false)
+    var showCategoryInfoInList: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.showCategoryInfoInList, false)
         set(value) {
-            appCtx.putPrefBoolean(PreferKey.showTagsInList, value)
+            appCtx.putPrefBoolean(PreferKey.showCategoryInfoInList, value)
         }
 
     // 书籍外边框开关（默认关闭，仅在列表/紧凑列表视图时生效）
@@ -341,11 +341,68 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefInt(PreferKey.introLinesInList, value.coerceIn(1, 10))
         }
 
-    // 下拉选择分组开关（默认关闭，仅在分组样式为标签时生效）
-    var dropdownSelectGroup: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.dropdownSelectGroup, false)
+// 下拉选择分组开关（默认关闭，仅在分组样式为标签时生效）
+var dropdownSelectGroup: Boolean
+get() = appCtx.getPrefBoolean(PreferKey.dropdownSelectGroup, false)
+set(value) {
+appCtx.putPrefBoolean(PreferKey.dropdownSelectGroup, value)
+}
+
+// 显示标签栏开关（默认关闭，开启后在书架分组下方显示二级标签栏）
+var showBookshelfTagBar: Boolean
+get() = appCtx.getPrefBoolean(PreferKey.showBookshelfTagBar, false)
+set(value) {
+appCtx.putPrefBoolean(PreferKey.showBookshelfTagBar, value)
+}
+
+    /**
+     * 书架每个分组配置的标签列表。
+     * key = groupId, value = 标签名列表
+     */
+    var bookshelfGroupTags: Map<Long, List<String>>
+        get() {
+            val rawMap = GSON.fromJsonObject<Map<String, List<String>>>(
+                appCtx.getPrefString(PreferKey.bookshelfGroupTags)
+            ).getOrDefault(emptyMap())
+            return rawMap.mapNotNull { (key, value) ->
+                key.toLongOrNull()?.let { k -> k to value }
+            }.toMap()
+        }
         set(value) {
-            appCtx.putPrefBoolean(PreferKey.dropdownSelectGroup, value)
+            val normalized = value
+                .mapKeys { it.key.toString() }
+                .mapValues { (_, tags) -> tags.map { it.trim() }.filter { it.isNotBlank() }.distinct() }
+                .filterValues { it.isNotEmpty() }
+            if (normalized.isEmpty()) {
+                appCtx.removePref(PreferKey.bookshelfGroupTags)
+            } else {
+                appCtx.putPrefString(PreferKey.bookshelfGroupTags, GSON.toJson(normalized))
+            }
+        }
+
+    /**
+     * 书架每个分组隐藏的标签集合。
+     * key = groupId, value = 隐藏的标签名集合
+     */
+    var bookshelfHiddenTags: Map<Long, Set<String>>
+        get() {
+            val rawMap = GSON.fromJsonObject<Map<String, List<String>>>(
+                appCtx.getPrefString(PreferKey.bookshelfHiddenTags)
+            ).getOrDefault(emptyMap())
+            return rawMap.mapNotNull { (key, value) ->
+                key.toLongOrNull()?.let { k -> k to value.toSet() }
+            }.toMap()
+        }
+        set(value) {
+            val normalized = value
+                .mapKeys { it.key.toString() }
+                .mapValues { (_, tags) -> tags.map { it.trim() }.filter { it.isNotBlank() }.distinct() }
+                .filterValues { it.isNotEmpty() }
+            if (normalized.isEmpty()) {
+                appCtx.removePref(PreferKey.bookshelfHiddenTags)
+            } else {
+                appCtx.putPrefString(PreferKey.bookshelfHiddenTags, GSON.toJson(normalized))
+            }
         }
 
     var saveTabPosition: Int

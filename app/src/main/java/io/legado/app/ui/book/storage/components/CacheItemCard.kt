@@ -34,9 +34,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.legado.app.R
 import io.legado.app.help.storage.CacheDetail
 import io.legado.app.ui.book.storage.CacheItem
 
@@ -57,6 +60,8 @@ fun CacheItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            // 无障碍：合并卡片内文本节点（accessibility.md §15.2）
+            .semantics(mergeDescendants = true) {}
             .border(1.dp, borderColor, RoundedCornerShape(12.dp)),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
@@ -182,7 +187,7 @@ fun CacheItemCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
-                                contentDescription = "清理",
+                                contentDescription = stringResource(R.string.storage_clear_action),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -194,7 +199,7 @@ fun CacheItemCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.FolderOpen,
-                                    contentDescription = "打开路径",
+                                    contentDescription = stringResource(R.string.storage_open_path),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -308,7 +313,7 @@ private fun CacheDetailItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "清理",
+                        contentDescription = stringResource(R.string.storage_clear_action),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
@@ -320,7 +325,7 @@ private fun CacheDetailItem(
                     ) {
                         Icon(
                             imageVector = Icons.Default.FolderOpen,
-                            contentDescription = "打开路径",
+                            contentDescription = stringResource(R.string.storage_open_path),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )

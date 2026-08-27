@@ -1,6 +1,5 @@
 ﻿package io.legado.app.ui.book.storage
 
-import android.app.Application
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Description
@@ -10,22 +9,18 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
-import io.legado.app.base.BaseViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import io.legado.app.help.storage.CacheDetail
-import io.legado.app.help.storage.StorageCalculator
 import io.legado.app.utils.ConvertUtils
-import io.legado.app.utils.externalCache
-import io.legado.app.utils.externalFiles
-import io.legado.app.utils.getFile
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
-import splitties.init.appCtx
-import java.io.File
+import kotlinx.coroutines.launch
 
 // ### 业务层
 // 2. StorageManageViewModel.kt
@@ -71,7 +66,25 @@ sealed class StorageUiState {
     data class Error(val message: String) : StorageUiState()
 }
 
-class StorageManageViewModel(application: Application) : BaseViewModel(application) {
+/**
+ * 存储管理清理确认 Dialog 状态
+ * （state-events.md §4.5：Dialog 由 ViewModel 状态条件渲染）
+ */
+sealed interface StorageDialogState {
+    /** 清理指定缓存项（可精确到某本书/条目） */
+    data class ClearConfirm(val cacheType: CacheType, val detailId: String?) : StorageDialogState
+
+    /** 一键清理全部缓存 */
+    data object ClearAll : StorageDialogState
+}
+
+/**
+ * 存储管理 ViewModel
+ * 数据源经 [StorageDataProvider] 构造注入（默认 Default 实现），JVM 单测可直接 Fake（testing.md §16）
+ */
+class StorageManageViewModel(
+    private val dataProvider: StorageDataProvider = StorageDataProvider.Default
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<StorageUiState>(StorageUiState.Loading)
     val uiState: StateFlow<StorageUiState> = _uiState.asStateFlow()
@@ -81,6 +94,25 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
 
     private val _totalSize = MutableStateFlow(0L)
     val totalSize: StateFlow<Long> = _totalSize.asStateFlow()
+
+    /** 清理确认 Dialog 状态（§4.5） */
+    private val _dialog = MutableStateFlow<StorageDialogState?>(null)
+    val dialog: StateFlow<StorageDialogState?> = _dialog.asStateFlow()
+
+    /** 请求清理指定缓存项：弹出确认 Dialog */
+    fun requestClear(cacheType: CacheType, detailId: String? = null) {
+        _dialog.value = StorageDialogState.ClearConfirm(cacheType, detailId)
+    }
+
+    /** 请求一键清理：弹出确认 Dialog */
+    fun requestClearAll() {
+        _dialog.value = StorageDialogState.ClearAll
+    }
+
+    /** 关闭当前 Dialog */
+    fun dismissDialog() {
+        _dialog.value = null
+    }
 
     init {
         loadCacheInfo()
@@ -92,69 +124,72 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
      * 原来串行执行需要等待每个计算完成，现在所有计算同时进行
      */
     fun loadCacheInfo() {
-        execute {
+        viewModelScope.launch {
             _uiState.value = StorageUiState.Loading
             try {
-                // 并行启动所有缓存计算任务
-                val bookCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateBookCacheSize() }
-                val bookCountDeferred = async(Dispatchers.IO) { StorageCalculator.countCachedBooks() }
-                val epubCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateEpubCacheSize() }
-                val tempCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateTempCacheSize() }
-                val ttsCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateTtsCacheSize() }
-                val ttsCountDeferred = async(Dispatchers.IO) { StorageCalculator.countTtsEngines() }
-                val aCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateACacheSize() }
-                val aCacheCountDeferred = async(Dispatchers.IO) { StorageCalculator.countACacheItems() }
-                val dbCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateDbCacheSize() }
-                val dbCacheCountDeferred = async(Dispatchers.IO) { StorageCalculator.countDbCacheItems() }
-                val logCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateLogCacheSize() }
-                val webViewCacheDeferred = async(Dispatchers.IO) { StorageCalculator.calculateWebViewCacheSize() }
-                val webViewCacheCountDeferred = async(Dispatchers.IO) { StorageCalculator.countWebViewCacheDirs() }
-                
-                // 等待所有并行任务完成
-                val bookSize = bookCacheDeferred.await()
-                val bookCount = bookCountDeferred.await()
-                val epubSize = epubCacheDeferred.await()
-                val tempSize = tempCacheDeferred.await()
-                val ttsSize = ttsCacheDeferred.await()
-                val ttsCount = ttsCountDeferred.await()
-                val aCacheSize = aCacheDeferred.await()
-                val aCacheCount = aCacheCountDeferred.await()
-                val dbSize = dbCacheDeferred.await()
-                val dbCacheCount = dbCacheCountDeferred.await()
-                val logSize = logCacheDeferred.await()
-                val webViewSize = webViewCacheDeferred.await()
-                val webViewCount = webViewCacheCountDeferred.await()
-                
-                val items = mutableListOf<CacheItem>()
-                items.add(createCacheItem(CacheType.BOOK_CACHE, bookSize, true, "${bookCount}本"))
-                items.add(createCacheItem(CacheType.EPUB_CACHE, epubSize, false, null))
-                items.add(createCacheItem(CacheType.TEMP_CACHE, tempSize, false, null))
-                items.add(createCacheItem(CacheType.TTS_CACHE, ttsSize, true, "${ttsCount}个引擎"))
-                items.add(createCacheItem(CacheType.ACACHE_DISK, aCacheSize, true, "${aCacheCount}项"))
-                items.add(createCacheItem(CacheType.DB_CACHE, dbSize, true, "${dbCacheCount}项"))
-                items.add(createCacheItem(CacheType.WEBVIEW_CACHE, webViewSize, true, "${webViewCount}项"))
-                items.add(createCacheItem(CacheType.LOG_CACHE, logSize, false, null))
-                
+                // 并行启动所有缓存计算任务（数据源自带调度切换）
+                val items = coroutineScope {
+                    val bookSize = async { dataProvider.bookCacheSize() }
+                    val bookCount = async { dataProvider.cachedBookCount() }
+                    val epubSize = async { dataProvider.epubCacheSize() }
+                    val tempSize = async { dataProvider.tempCacheSize() }
+                    val ttsSize = async { dataProvider.ttsCacheSize() }
+                    val ttsCount = async { dataProvider.ttsEngineCount() }
+                    val aCacheSize = async { dataProvider.aCacheSize() }
+                    val aCacheCount = async { dataProvider.aCacheItemCount() }
+                    val dbSize = async { dataProvider.dbCacheSize() }
+                    val dbCacheCount = async { dataProvider.dbCacheItemCount() }
+                    val logSize = async { dataProvider.logCacheSize() }
+                    val webViewSize = async { dataProvider.webViewCacheSize() }
+                    val webViewCount = async { dataProvider.webViewCacheDirCount() }
+
+                    mutableListOf(
+                        createCacheItem(
+                            CacheType.BOOK_CACHE, bookSize.await(), true,
+                            dataProvider.bookCountBadge(bookCount.await())
+                        ),
+                        createCacheItem(CacheType.EPUB_CACHE, epubSize.await(), false, null),
+                        createCacheItem(CacheType.TEMP_CACHE, tempSize.await(), false, null),
+                        createCacheItem(
+                            CacheType.TTS_CACHE, ttsSize.await(), true,
+                            dataProvider.engineCountBadge(ttsCount.await())
+                        ),
+                        createCacheItem(
+                            CacheType.ACACHE_DISK, aCacheSize.await(), true,
+                            dataProvider.itemCountBadge(aCacheCount.await())
+                        ),
+                        createCacheItem(
+                            CacheType.DB_CACHE, dbSize.await(), true,
+                            dataProvider.itemCountBadge(dbCacheCount.await())
+                        ),
+                        createCacheItem(
+                            CacheType.WEBVIEW_CACHE, webViewSize.await(), true,
+                            dataProvider.itemCountBadge(webViewCount.await())
+                        ),
+                        createCacheItem(CacheType.LOG_CACHE, logSize.await(), false, null)
+                    )
+                }
+
                 _cacheItems.value = items
                 _totalSize.value = items.sumOf { it.size }
                 _uiState.value = StorageUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = StorageUiState.Error(e.message ?: "加载失败")
+                _uiState.value = StorageUiState.Error(e.message ?: dataProvider.loadFailedMessage())
             }
         }
     }
 
     fun toggleExpand(cacheType: CacheType) {
-        execute {
+        viewModelScope.launch {
             val currentItems = _cacheItems.value.toMutableList()
             val index = currentItems.indexOfFirst { it.id == cacheType.name }
-            if (index == -1) return@execute
-            
+            if (index == -1) return@launch
+
             val item = currentItems[index]
             if (item.isExpanded) {
                 currentItems[index] = item.copy(isExpanded = false)
             } else {
-                val details = loadCacheDetails(cacheType)
+                val details = dataProvider.details(cacheType)
                 currentItems[index] = item.copy(
                     isExpanded = true,
                     details = details
@@ -165,59 +200,43 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
     }
 
     fun clearCache(cacheType: CacheType, detailId: String? = null) {
-        execute {
-            val target = detailId ?: getCacheName(cacheType)
+        viewModelScope.launch {
+            val target = detailId ?: dataProvider.cacheName(cacheType)
             _uiState.value = StorageUiState.Clearing(target)
             try {
-                when (cacheType) {
-                    CacheType.BOOK_CACHE -> StorageCalculator.clearBookCache(detailId)
-                    CacheType.EPUB_CACHE -> StorageCalculator.clearEpubCache()
-                    CacheType.TEMP_CACHE -> StorageCalculator.clearTempCache()
-                    CacheType.TTS_CACHE -> StorageCalculator.clearTtsCache(detailId)
-                    CacheType.ACACHE_DISK -> StorageCalculator.clearACacheAccurate(detailId)
-                    CacheType.DB_CACHE -> StorageCalculator.clearDbCacheByPrefix(detailId)
-                    CacheType.LOG_CACHE -> StorageCalculator.clearLogCache()
-                    CacheType.WEBVIEW_CACHE -> StorageCalculator.clearWebViewCache(detailId)
-                }
+                dataProvider.clear(cacheType, detailId)
                 loadCacheInfo()
             } catch (e: Exception) {
-                _uiState.value = StorageUiState.Error(e.message ?: "清理失败")
+                _uiState.value = StorageUiState.Error(e.message ?: dataProvider.clearFailedMessage())
             }
         }
     }
 
     fun clearAllCache() {
-        execute {
-            _uiState.value = StorageUiState.Clearing("所有缓存")
+        viewModelScope.launch {
+            _uiState.value = StorageUiState.Clearing(dataProvider.allCacheLabel())
             try {
-                StorageCalculator.clearBookCache()
-                StorageCalculator.clearEpubCache()
-                StorageCalculator.clearTempCache()
-                StorageCalculator.clearTtsCache()
-                StorageCalculator.clearACache()
-                StorageCalculator.clearDbCache()
-                StorageCalculator.clearLogCache()
-                StorageCalculator.clearWebViewCache()
+                dataProvider.clearAll()
                 loadCacheInfo()
             } catch (e: Exception) {
-                _uiState.value = StorageUiState.Error(e.message ?: "清理失败")
+                _uiState.value = StorageUiState.Error(e.message ?: dataProvider.clearFailedMessage())
             }
         }
     }
 
     private fun createCacheItem(
-        type: CacheType, 
-        size: Long, 
-        canExpand: Boolean, 
+        type: CacheType,
+        size: Long,
+        canExpand: Boolean,
         expandBadge: String?
     ): CacheItem {
         return CacheItem(
             id = type.name,
-            name = getCacheName(type),
-            description = getCacheDescription(type),
+            name = dataProvider.cacheName(type),
+            description = dataProvider.cacheDescription(type),
             size = size,
             formattedSize = ConvertUtils.formatFileSize(size),
-            path = getCachePath(type),
+            path = dataProvider.cachePath(type),
             icon = getCacheIcon(type),
             iconColor = getCacheIconColor(type),
             canExpand = canExpand,
@@ -225,60 +244,7 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
         )
     }
 
-    private suspend fun loadCacheDetails(type: CacheType): List<CacheDetail> {
-        return withContext(Dispatchers.IO) {
-            when (type) {
-                CacheType.BOOK_CACHE -> StorageCalculator.calculateBookCacheDetails()
-                CacheType.TTS_CACHE -> StorageCalculator.calculateTtsCacheDetails()
-                CacheType.ACACHE_DISK -> StorageCalculator.calculateACacheDetailsAccurate()
-                CacheType.DB_CACHE -> StorageCalculator.calculateDbCacheDetailsAccurate()
-                CacheType.WEBVIEW_CACHE -> StorageCalculator.calculateWebViewCacheDetails()
-                else -> emptyList()
-            }
-        }
-    }
-
-    private fun getCachePath(type: CacheType): String {
-        return when (type) {
-            CacheType.BOOK_CACHE -> appCtx.externalFiles.getFile("book_cache").absolutePath
-            CacheType.EPUB_CACHE -> appCtx.externalFiles.getFile("epub").absolutePath
-            CacheType.TEMP_CACHE -> appCtx.externalCache.absolutePath
-            CacheType.TTS_CACHE -> appCtx.cacheDir.getFile("httpTTS").absolutePath
-            CacheType.ACACHE_DISK -> File(appCtx.cacheDir, "ACache").absolutePath
-            CacheType.DB_CACHE -> appCtx.getDatabasePath("legado.db").absolutePath
-            CacheType.WEBVIEW_CACHE -> listOf(
-                appCtx.getDir("webview", android.content.Context.MODE_PRIVATE).absolutePath,
-                appCtx.getDir("hws_webview", android.content.Context.MODE_PRIVATE).absolutePath
-            ).joinToString("\n")
-            CacheType.LOG_CACHE -> appCtx.externalCache.getFile("log").absolutePath
-        }
-    }
-
-    fun getCacheName(type: CacheType): String {
-        return when (type) {
-            CacheType.BOOK_CACHE -> "书籍内容缓存"
-            CacheType.EPUB_CACHE -> "Epub 解压缓存"
-            CacheType.TEMP_CACHE -> "临时文件缓存"
-            CacheType.TTS_CACHE -> "TTS 语音缓存"
-            CacheType.ACACHE_DISK -> "ACache 磁盘缓存"
-            CacheType.DB_CACHE -> "数据库缓存"
-            CacheType.LOG_CACHE -> "日志文件"
-            CacheType.WEBVIEW_CACHE -> "WebView 缓存"
-        }
-    }
-
-    private fun getCacheDescription(type: CacheType): String {
-        return when (type) {
-            CacheType.BOOK_CACHE -> "章节文本、漫画图片等阅读内容"
-            CacheType.EPUB_CACHE -> "Epub 格式书籍的解压临时文件"
-            CacheType.TEMP_CACHE -> "下载临时文件、解压临时目录等"
-            CacheType.TTS_CACHE -> "在线朗读引擎下载的语音文件"
-            CacheType.ACACHE_DISK -> "书源变量、用户信息等运行时缓存"
-            CacheType.DB_CACHE -> "CacheDao 存储的临时数据记录"
-            CacheType.LOG_CACHE -> "应用运行日志、错误日志等"
-            CacheType.WEBVIEW_CACHE -> "WebView 页面数据、本地缓存、Cookie 等持久化内容"
-        }
-    }
+    fun getCacheName(type: CacheType): String = dataProvider.cacheName(type)
 
     private fun getCacheIcon(type: CacheType): ImageVector {
         return when (type) {
@@ -303,6 +269,13 @@ class StorageManageViewModel(application: Application) : BaseViewModel(applicati
             CacheType.DB_CACHE -> 0xFF6366F1
             CacheType.LOG_CACHE -> 0xFF64748B
             CacheType.WEBVIEW_CACHE -> 0xFF0EA5E9
+        }
+    }
+
+    companion object {
+        /** 默认工厂：生产环境使用 Default 数据源（构造参数有默认值，反射工厂需要显式构造） */
+        val Factory = viewModelFactory {
+            initializer { StorageManageViewModel() }
         }
     }
 }

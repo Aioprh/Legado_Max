@@ -16,7 +16,10 @@ import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.putPrefInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +31,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -53,7 +57,9 @@ data class ReadRecordUiState(
     val dailyReadCounts: Map<LocalDate, Int> = emptyMap(),
     val dailyReadTimes: Map<LocalDate, Long> = emptyMap(),
     val isSelectionMode: Boolean = false,
-    val selectedRecords: Set<RecordIdentity> = emptySet()
+    val selectedRecords: Set<RecordIdentity> = emptySet(),
+    val timelineHasMore: Boolean = false,
+    val timelineLoadingMore: Boolean = false
 )
 
 enum class DisplayMode {
@@ -66,12 +72,11 @@ enum class DisplayMode {
 /**
  * 按显示模式加载的额外数据。
  * - AGGREGATE 模式加载 details
- * - TIMELINE 模式加载 sessions
+ * - TIMELINE 模式不再使用此结构（改用 _timelineSessions 分页加载）
  * - LATEST / READ_TIME 模式不需要额外数据（使用 recordsFlow）
  */
 private data class ModeData(
-    val details: List<ReadRecordDetail>? = null,
-    val sessions: List<ReadRecordSession>? = null
+    val details: List<ReadRecordDetail>? = null
 )
 
 /** 轻量级统计数据（SQL 聚合，始终加载）。 */
@@ -129,7 +134,7 @@ class ReadRecordViewModel : ViewModel() {
         return enumValueOf<DisplayMode>(DisplayMode.values().getOrNull(savedOrdinal)?.name ?: DisplayMode.AGGREGATE.name)
     }
 
-    // ==================== 拆分后的 Flow（方案三核心） ====================
+    // ==================== 拆分后的 Flow ====================
 
     /** 搜索 + 日期筛选状态（派生自 _searchKey 和 _selectedDate） */
     private val filterState = combine(_searchKey, _selectedDate) { query, date ->
@@ -138,7 +143,6 @@ class ReadRecordViewModel : ViewModel() {
 
     /**
      * 轻量级统计数据 Flow —— SQL 聚合，始终加载。
-     * 包含：总阅读时间、每日统计（热力图）、今日阅读时间、今日书籍数。
      */
     private val statsFlow = combine(
         repository.getTotalReadTime(),
@@ -151,8 +155,6 @@ class ReadRecordViewModel : ViewModel() {
 
     /**
      * 阅读记录 Flow（SummaryCard + LATEST / READ_TIME 模式共用）。
-     * - 无日期筛选：SQL JOIN 返回 readTime = MAX(record, detail_sum)
-     * - 有日期筛选：SQL GROUP BY 返回该日期的每书统计
      */
     private val recordsFlow = filterState.flatMapLatest { filter ->
         if (filter.dateStr == null) {
@@ -164,7 +166,7 @@ class ReadRecordViewModel : ViewModel() {
 
     /**
      * 按显示模式加载的额外数据 Flow。
-     * flatMapLatest 确保切换模式时自动取消上一个模式的数据加载。
+     * TIMELINE 模式不再使用此 Flow（改用 _timelineSessions 分页加载）。
      */
     private val modeDataFlow: StateFlow<ModeData> = _displayMode
         .flatMapLatest { mode ->
@@ -173,11 +175,7 @@ class ReadRecordViewModel : ViewModel() {
                     repository.getFilteredDetails(filter.query, filter.dateStr)
                         .map { ModeData(details = it) }
                 }
-                DisplayMode.TIMELINE -> filterState.flatMapLatest { filter ->
-                    repository.getFilteredSessions(filter.query, filter.dateStr)
-                        .map { ModeData(sessions = it) }
-                }
-                DisplayMode.LATEST, DisplayMode.READ_TIME -> flowOf(ModeData())
+                DisplayMode.TIMELINE, DisplayMode.LATEST, DisplayMode.READ_TIME -> flowOf(ModeData())
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ModeData())
@@ -187,31 +185,140 @@ class ReadRecordViewModel : ViewModel() {
         isSel to selRecs
     }
 
+    // ==================== TIMELINE 分页加载 ====================
+
+    private val timelinePageSize = 50
+
+    /** 当前已加载的 timeline sessions（已合并+分组后的 Map） */
+    private val _timelineSessions = MutableStateFlow<Map<String, List<ReadRecordSession>>>(emptyMap())
+    /** 当前已加载的原始 sessions（用于增量追加） */
+    private val _timelineRawSessions = MutableStateFlow<List<ReadRecordSession>>(emptyList())
+    /** 是否还有更多数据可加载 */
+    private val _timelineHasMore = MutableStateFlow(false)
+    /** 是否正在加载更多 */
+    private val _timelineLoadingMore = MutableStateFlow(false)
+
+    /** 用于取消上一次首屏加载的 Job */
+    private var timelineReloadJob: Job? = null
+
+    init {
+        // 当 displayMode / 搜索 / 日期筛选 变化时，重置 timeline 分页并重新加载首屏
+        viewModelScope.launch(Dispatchers.IO) {
+            combine(_displayMode, filterState) { mode, filter -> mode to filter }
+                .collect { (mode, filter) ->
+                    if (mode == DisplayMode.TIMELINE) {
+                        timelineReloadJob?.cancel()
+                        timelineReloadJob = launch(Dispatchers.IO) {
+                            loadTimelineFirstPage(filter.query, filter.dateStr)
+                        }
+                    }
+                }
+        }
+    }
+
+    private suspend fun loadTimelineFirstPage(query: String, dateFilter: String?) {
+        _timelineLoadingMore.value = true
+        val sessions = withContext(Dispatchers.IO) {
+            repository.loadSessionsPage(query, dateFilter, null, timelinePageSize)
+        }
+        _timelineRawSessions.value = sessions
+        _timelineSessions.value = buildTimelineMap(sessions)
+        _timelineHasMore.value = sessions.size >= timelinePageSize
+        _timelineLoadingMore.value = false
+        // 批量预取章节标题和封面路径
+        prefetchMetadata(sessions)
+    }
+
+    fun loadMoreTimelineSessions() {
+        if (_timelineLoadingMore.value || !_timelineHasMore.value) return
+        if (_displayMode.value != DisplayMode.TIMELINE) return
+        val currentRaw = _timelineRawSessions.value
+        if (currentRaw.isEmpty()) return
+        val lastSession = currentRaw.last()
+        val query = _searchKey.value
+        val dateStr = _selectedDate.value?.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        viewModelScope.launch(Dispatchers.IO) {
+            _timelineLoadingMore.value = true
+            val moreSessions = repository.loadSessionsPage(
+                query, dateStr, lastSession.startTime, timelinePageSize
+            )
+            if (moreSessions.isEmpty()) {
+                _timelineHasMore.value = false
+                _timelineLoadingMore.value = false
+                return@launch
+            }
+            val combinedRaw = currentRaw + moreSessions
+            _timelineRawSessions.value = combinedRaw
+            _timelineSessions.value = buildTimelineMap(combinedRaw)
+            _timelineHasMore.value = moreSessions.size >= timelinePageSize
+            _timelineLoadingMore.value = false
+            // 批量预取新增 sessions 的元数据
+            prefetchMetadata(moreSessions)
+        }
+    }
+
     /**
-     * UI 状态 Flow —— 组合统计数据、记录、模式数据和选择状态。
-     * 计算量极小：SQL 已完成聚合/过滤/排序，此处仅做轻量组装。
+     * 批量预取 sessions 中 unique 书对的章节标题和封面路径，填充缓存。
+     * 使用并发协程加速预取。
+     */
+    private suspend fun prefetchMetadata(sessions: List<ReadRecordSession>) {
+        val uniqueBooks = sessions.map { it.bookName to it.bookAuthor }.distinct()
+        coroutineScope {
+            uniqueBooks.map { (bookName, bookAuthor) ->
+                async(Dispatchers.IO) {
+                    val key = cacheKey(bookName, bookAuthor)
+                    // 章节标题：缓存未命中才预取（ConcurrentHashMap 不允许 null value）
+                    if (!chapterTitleCache.containsKey(key)) {
+                        val title = bookRepository.getBookDurChapterTitle(bookName, bookAuthor)
+                        title?.let { chapterTitleCache[key] = it }
+                    }
+                    // 封面路径：缓存未命中才预取（可能触发联网搜封面）
+                    if (!coverPathCache.containsKey(key)) {
+                        val cover = bookRepository.getBookCoverByNameAndAuthor(bookName, bookAuthor)
+                        cover?.let { coverPathCache[key] = it }
+                    }
+                }
+            }.awaitAll()
+        }
+    }
+
+    /** Timeline + 选择模式合并状态（用于 combine，避免超过 5 路合流） */
+    private data class ExtraState(
+        val timelineRecords: Map<String, List<ReadRecordSession>>,
+        val timelineHasMore: Boolean,
+        val timelineLoadingMore: Boolean,
+        val isSelectionMode: Boolean,
+        val selectedRecords: Set<RecordIdentity>
+    )
+
+    private val extraState = combine(
+        _timelineSessions,
+        _timelineHasMore,
+        _timelineLoadingMore,
+        selectionState
+    ) { sessions, hasMore, loadingMore, selection ->
+        val (isSel, selRecs) = selection
+        ExtraState(sessions, hasMore, loadingMore, isSel, selRecs)
+    }
+
+    /**
+     * UI 状态 Flow —— 组合统计数据、记录、模式数据、筛选状态和额外状态（timeline 分页 + 选择模式）。
      */
     val uiState: StateFlow<ReadRecordUiState> = combine(
         statsFlow,
         recordsFlow,
         modeDataFlow,
         filterState,
-        selectionState
-    ) { stats, records, modeData, filter, selection ->
-        val (isSelectionMode, selectedRecords) = selection
+        extraState
+    ) { stats, records, modeData, filter, extra ->
         val selectedDate = filter.dateStr?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) }
 
-        // AGGREGATE 模式：details 按 date 分组（轻量操作，数据已被 SQL 过滤）
+        // AGGREGATE 模式：details 按 date 分组
         val groupedRecords = modeData.details
             ?.groupBy { it.date }
             ?: emptyMap()
 
-        // TIMELINE 模式：sessions 按日期分组 + 合并连续会话
-        val timelineRecords = modeData.sessions
-            ?.let { sessions -> buildTimelineMap(sessions) }
-            ?: emptyMap()
-
-        // daily stats 转 Map（SQL 已聚合，仅需转换 key 类型）
+        // daily stats 转 Map
         val dailyReadCounts = stats.dailyStats.associate {
             LocalDate.parse(it.date, DateTimeFormatter.ISO_LOCAL_DATE) to it.readCount
         }
@@ -225,15 +332,17 @@ class ReadRecordViewModel : ViewModel() {
             todayReadTime = stats.todayReadTime,
             todayBookCount = stats.todayBookCount,
             groupedRecords = groupedRecords,
-            timelineRecords = timelineRecords,
+            timelineRecords = extra.timelineRecords,
             latestRecords = records,
             readTimeRecords = records.sortedByDescending { it.readTime },
             selectedDate = selectedDate,
             searchKey = filter.query,
             dailyReadCounts = dailyReadCounts,
             dailyReadTimes = dailyReadTimes,
-            isSelectionMode = isSelectionMode,
-            selectedRecords = selectedRecords
+            isSelectionMode = extra.isSelectionMode,
+            selectedRecords = extra.selectedRecords,
+            timelineHasMore = extra.timelineHasMore,
+            timelineLoadingMore = extra.timelineLoadingMore
         )
     }.flowOn(Dispatchers.Default)
         .stateIn(
@@ -244,7 +353,6 @@ class ReadRecordViewModel : ViewModel() {
 
     /**
      * 构建时间线 Map：按日期分组 + 合并连续会话。
-     * 数据已被 SQL 过滤，此处仅做合并和分组。
      */
     private fun buildTimelineMap(sessions: List<ReadRecordSession>): Map<String, List<ReadRecordSession>> {
         return sessions

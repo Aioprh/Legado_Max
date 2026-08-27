@@ -1,43 +1,67 @@
 package io.legado.app.ui.download
 
-import android.app.Application
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Environment
-import android.webkit.MimeTypeMap
+import androidx.annotation.StringRes
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.legado.app.base.BaseViewModel
-import io.legado.app.service.DownloadState
-import io.legado.app.utils.toastOnUi
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import io.legado.app.R
 import io.legado.app.service.DownloadStatus
 import io.legado.app.service.DownloadTask
-import io.legado.app.service.DownloadService
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-enum class DownloadTab(val label: String) {
-    ALL("全部"),
-    DOWNLOADING("下载中"),
-    PAUSED("已暂停"),
-    COMPLETED("已完成"),
-    FAILED("失败")
+enum class DownloadTab(@StringRes val labelRes: Int) {
+    ALL(R.string.all),
+    DOWNLOADING(R.string.download_tab_downloading),
+    PAUSED(R.string.download_tab_paused),
+    COMPLETED(R.string.download_tab_completed),
+    FAILED(R.string.download_tab_failed)
+}
+
+/**
+ * 下载管理一次性 UI 事件
+ * 平台操作（打开文件、剪贴板、Toast）统一由 Activity 执行，ViewModel 只做数据准备并抛事件（state-events.md §4.1）
+ */
+sealed interface DownloadEvent {
+    data class OpenFile(val taskId: Long) : DownloadEvent
+    data object OpenFolder : DownloadEvent
+    data class CopyPath(val path: String) : DownloadEvent
+    data class Toast(@StringRes val msgRes: Int) : DownloadEvent
 }
 
 /**
  * 下载管理ViewModel
  * 负责管理UI状态、轮询下载进度、执行下载操作
+ *
+ * 依赖经 [DownloadTaskSource]/[DownloadCommander]/下载目录提供器构造注入（默认 Default 实现），
+ * JVM 单测可直接 Fake（testing.md §16）
  */
-class DownloadManageViewModel(application: Application) : BaseViewModel(application) {
+class DownloadManageViewModel(
+    private val taskSource: DownloadTaskSource = DownloadTaskSource.Default,
+    private val commander: DownloadCommander = DownloadCommander.Default,
+    private val downloadsDir: () -> String = DefaultDownloadsDir
+) : ViewModel() {
+
+    // 关键事件（打开文件/文件夹、复制路径）：UNLIMITED 缓冲，事件不允许丢失（§4.1）
+    private val _events = Channel<DownloadEvent>(Channel.UNLIMITED)
+    val events: Flow<DownloadEvent> = _events.receiveAsFlow()
+
+    // Toast 事件：天然允许"只留最新"，使用 CONFLATED 通道（等价容量 1 + DROP_OLDEST）；
+    // 页面后台期间新 Toast 到达会丢弃旧的，丢事件语义符合预期（§4.1）
+    private val _toasts = Channel<DownloadEvent.Toast>(Channel.CONFLATED)
+    val toasts: Flow<DownloadEvent.Toast> = _toasts.receiveAsFlow()
 
     // 任务列表StateFlow，供UI订阅
     private val _tasks = MutableStateFlow<List<DownloadTask>>(emptyList())
@@ -86,7 +110,7 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
         pollJob?.cancel()
         pollJob = viewModelScope.launch {
             while (true) {
-                val updatedTasks = DownloadState.queryAllTaskStatus()
+                val updatedTasks = taskSource.queryAllTaskStatus()
                 _tasks.value = updatedTasks
                 delay(500)
             }
@@ -106,16 +130,15 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
      * @param id 下载任务ID
      */
     fun cancelDownload(id: Long) {
-        DownloadService.cancelDownload(id)
+        commander.cancelDownload(id)
     }
 
     /**
      * 重试下载
-     * @param context 上下文
      * @param id 下载任务ID
      */
-    fun retryDownload(context: Context, id: Long) {
-        DownloadService.retryDownload(context, id)
+    fun retryDownload(id: Long) {
+        commander.retryDownload(id)
     }
 
     /**
@@ -123,10 +146,10 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
      * 包括成功和失败的任务
      */
     fun clearCompletedTasks() {
-        _tasks.value.filter { 
-            it.status == DownloadStatus.SUCCESSFUL || it.status == DownloadStatus.FAILED 
+        _tasks.value.filter {
+            it.status == DownloadStatus.SUCCESSFUL || it.status == DownloadStatus.FAILED
         }.forEach {
-            DownloadState.removeTask(it.id)
+            taskSource.removeTask(it.id)
         }
     }
 
@@ -134,71 +157,48 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
      * 清除所有任务
      */
     fun clearAllTasks() {
-        DownloadService.clearAllTasks()
+        commander.clearAllTasks()
     }
 
     /**
      * 打开已下载的文件
-     * @param context 上下文
+     * 只做数据准备，打开动作通过事件抛给 Activity 执行（§4.1）
      * @param id 下载任务ID
      */
-    fun openFile(context: Context, id: Long) {
-        val task = DownloadState.getTask(id) ?: return
-        kotlin.runCatching {
-            val downloadManager =
-                context.getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-            downloadManager.getUriForDownloadedFile(id)?.let { uri ->
-                val mimeType = MimeTypeMap.getSingleton()
-                    .getMimeTypeFromExtension(task.fileName.substringAfterLast(".", "")) ?: "*/*"
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, mimeType)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(intent)
-            }
-        }.onFailure {
-            it.printStackTrace()
-            context.toastOnUi("无法打开文件")
-        }
+    fun openFile(id: Long) {
+        _events.trySend(DownloadEvent.OpenFile(id))
     }
 
     /**
      * 打开下载文件所在的文件夹
-     * @param context 上下文
+     * 打开动作通过事件抛给 Activity 执行（§4.1）
      */
-    fun openFolder(context: Context) {
-        kotlin.runCatching {
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(
-                    android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                    "resource/folder"
-                )
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-        }.onFailure {
-            // 降级：打开系统下载管理器
-            kotlin.runCatching {
-                val intent = Intent(android.app.DownloadManager.ACTION_VIEW_DOWNLOADS)
-                context.startActivity(intent)
-            }.onFailure { e ->
-                context.toastOnUi("无法打开文件夹")
-            }
-        }
+    fun openFolder() {
+        _events.trySend(DownloadEvent.OpenFolder)
     }
 
     /**
      * 复制文件路径到剪贴板
-     * @param context 上下文
+     * 只计算路径（数据准备），剪贴板与 Toast 由 Activity 执行（§4.1）
      * @param id 下载任务ID
      */
-    fun copyPath(context: Context, id: Long) {
-        val task = DownloadState.getTask(id) ?: return
-        val filePath =
-            "${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath}/${task.fileName}"
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("file path", filePath))
-        context.toastOnUi("已复制路径")
+    fun copyPath(id: Long) {
+        val task = taskSource.getTask(id) ?: return
+        val filePath = "${downloadsDir()}/${task.fileName}"
+        _events.trySend(DownloadEvent.CopyPath(filePath))
+        _toasts.trySend(DownloadEvent.Toast(R.string.download_path_copied))
     }
 
+    companion object {
+        /** 生产环境默认下载目录（公共 Downloads 目录） */
+        val DefaultDownloadsDir: () -> String = {
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                .absolutePath
+        }
+
+        /** 默认工厂：生产环境使用 Default 依赖（构造参数有默认值，反射工厂需要显式构造） */
+        val Factory = viewModelFactory {
+            initializer { DownloadManageViewModel() }
+        }
+    }
 }

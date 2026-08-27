@@ -2013,9 +2013,10 @@ class TextChapterLayout(
         }
     }
 
-    /** 判断规则是否对当前文本生效，同时检查书籍作用域和标题/正文作用域 */
+    /** 判断规则是否对当前文本生效，同时检查书籍作用域、排版作用域和标题/正文作用域 */
     private fun HighlightRule.appliesTo(isTitle: Boolean, bookName: String, bookOrigin: String): Boolean {
         if (!matchesScope(bookName, bookOrigin)) return false
+        if (!matchesLayout(ReadBookConfig.durConfig.name)) return false
         return when (targetScope) {
             HighlightRule.TARGET_TITLE -> isTitle
             HighlightRule.TARGET_BODY -> !isTitle

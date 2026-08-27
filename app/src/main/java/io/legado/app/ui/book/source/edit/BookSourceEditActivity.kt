@@ -26,6 +26,7 @@ import io.legado.app.data.entities.rule.SearchRule
 import io.legado.app.data.entities.rule.TocRule
 import io.legado.app.databinding.ActivityBookSourceEditBinding
 import io.legado.app.help.config.LocalConfig
+import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
@@ -262,7 +263,8 @@ class BookSourceEditActivity :
             adapter.editEntities = entities
         }
         binding.recyclerView.post {
-            adapter.notifyDataSetChanged()
+            // P4: 用增量更新替代 notifyDataSetChanged
+            adapter.notifyItemRangeChanged(0, adapter.editEntities.size)
             scrollToEntity(entity, cursorPosition, value)
         }
     }
@@ -287,6 +289,11 @@ class BookSourceEditActivity :
         } else {
             binding.recyclerView.scrollToPosition(position)
         }
+        // 超长字段处于截断预览模式，只滚动定位，
+        // 不能把全文灌回预览控件，也不能获焦（控件不可聚焦）
+        if ((entity.value?.length ?: 0) > BookSourceEditAdapter.PREVIEW_MAX_CHARS) {
+            return
+        }
         // 双层 post 确保布局完成后再获焦，避免 onBindViewHolder.clearFocus() 冲突
         binding.recyclerView.post {
             binding.recyclerView.post {
@@ -306,6 +313,23 @@ class BookSourceEditActivity :
                 }
             }
         }
+    }
+
+    /**
+     * 打开指定字段的全屏编辑器（供列表内截断预览字段点击时调用）。
+     * 传入 entity.value 全文，保存后通过 textEditLauncher 回传更新。
+     */
+    private fun openFullEdit(editEntity: EditEntity) {
+        val intent = Intent(this, CodeEditActivity::class.java).apply {
+            putExtra("text", editEntity.value ?: "")
+            putExtra("title", editEntity.hint)
+            putExtra("cursorPosition", 0)
+            putExtra("sourceType", "bookSource")
+            putExtra("sourceKey", getSource().bookSourceUrl)
+            putExtra("fieldKey", editEntity.key)
+            putExtra("tabKey", getCurrentTabKey())
+        }
+        textEditLauncher.launch(intent)
     }
 
     /**
@@ -429,7 +453,13 @@ class BookSourceEditActivity :
             setText(R.string.source_tab_content)
         })
         binding.recyclerView.setEdgeEffectColor(primaryColor)
-        if (adapter.editEntityMaxLine < 999) {
+        // P3: RecyclerView 高度为 match_parent，不受内容数量影响
+        binding.recyclerView.setHasFixedSize(true)
+        binding.recyclerView.setItemViewCacheSize(15)
+        binding.recyclerView.recycledViewPool.setMaxRecycledViews(0, 15)
+        // 预览模式（超长文本截断显示）的字段被点击时打开全屏编辑
+        adapter.onRequestFullEdit = { entity -> openFullEdit(entity) }
+        if (AppConfig.sourceEditMaxLine < 999) {
             binding.recyclerView.layoutManager = NoChildScrollLinearLayoutManager(this)
         }
         binding.recyclerView.adapter = adapter
@@ -527,6 +557,9 @@ class BookSourceEditActivity :
      * @param tabPosition Tab索引：0=基本信息, 1=搜索, 2=发现, 3=详情, 4=目录, 5=正文
      */
     private fun setEditEntities(tabPosition: Int?) {
+        adapter.cancelAllPendingHighlights()
+        // P4: 用增量更新替代 notifyDataSetChanged
+        val oldSize = adapter.editEntities.size
         adapter.editEntities = when (tabPosition) {
             1 -> searchEntities
             2 -> exploreEntities
@@ -536,7 +569,20 @@ class BookSourceEditActivity :
 //            6 -> reviewEntities
             else -> sourceEntities
         }
+        val newSize = adapter.editEntities.size
+        if (newSize > oldSize) {
+            adapter.notifyItemRangeChanged(0, oldSize)
+            adapter.notifyItemRangeInserted(oldSize, newSize - oldSize)
+        } else if (newSize < oldSize) {
+            adapter.notifyItemRangeChanged(0, newSize)
+            adapter.notifyItemRangeRemoved(newSize, oldSize - newSize)
+        } else {
+            adapter.notifyItemRangeChanged(0, newSize)
+        }
         binding.recyclerView.scrollToPosition(0)
+        binding.recyclerView.post {
+            adapter.highlightVisibleItems()
+        }
         window.decorView.rootView.clearFocus()
     }
 
@@ -1004,7 +1050,7 @@ class BookSourceEditActivity :
                     edit.replace(start, end, text)//光标所在位置插入文字
                 }
             }
-            if (adapter.editEntityMaxLine >= 999) {
+            if (AppConfig.sourceEditMaxLine >= 999) {
                 view.post {
                     val editTextLocation = IntArray(2)
                     view.getLocationOnScreen(editTextLocation)

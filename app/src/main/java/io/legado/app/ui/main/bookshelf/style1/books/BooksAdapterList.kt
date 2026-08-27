@@ -49,11 +49,13 @@ class BooksAdapterList(
             // 根据配置控制书籍外边框显示和间距
             if (AppConfig.showBookBorder) {
                 root.background = context.bookBorderBackground
+                root.setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
                     4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()
                 )
             } else {
                 root.background = null
+                root.setPadding(4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx())
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 0, 0, 0)
             }
             tvName.text = item.name
@@ -113,7 +115,7 @@ class BooksAdapterList(
     /** 更新简介和标签的显示状态 */
     private fun upMoreInfo(binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
         // 显示标签（使用 FlexboxLayout，每个标签有外框）
-        if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
+        if (AppConfig.showMoreInfoInList && AppConfig.showCategoryInfoInList) {
             binding.flexboxTags.visible()
             updateTagViews(binding.flexboxTags, item)
         } else {

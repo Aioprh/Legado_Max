@@ -213,17 +213,27 @@ jobs:
           echo "开始${{ env.product }}$typeName构建"
           chmod +x gradlew
           ./gradlew $gradleTask --build-cache --parallel --daemon --warning-mode all
-          echo "修改APK文件名"
+          echo "修改APK文件名（含ABI标识）"
           mkdir -p ${{ github.workspace }}/apk/
           for file in `ls ${{ github.workspace }}/app/build/outputs/apk/*/*/*.apk`; do
+            # 从Gradle输出文件名中提取ABI标识 (armeabi-v7a / arm64-v8a / universal)
+            baseName=$(basename "$file" .apk)
+            abiPart=""
+            if [[ "$baseName" == *"_armeabi-v7a" ]]; then
+              abiPart="_armeabi-v7a"
+            elif [[ "$baseName" == *"_arm64-v8a" ]]; then
+              abiPart="_arm64-v8a"
+            elif [[ "$baseName" == *"_universal" ]]; then
+              abiPart="_universal"
+            fi
             if [ "${{ env.type }}" == 'debug' ]; then
-              mv "$file" ${{ github.workspace }}/apk/legado_Debug调试包_${{ env.VERSIONL }}.apk
+              mv "$file" "${{ github.workspace }}/apk/legado_Debug调试包_${{ env.VERSIONL }}${abiPart}.apk"
             elif [ "${{ env.type }}" == 'release' ]; then
-              mv "$file" ${{ github.workspace }}/apk/legado_测试版_${{ env.VERSIONL }}_$typeName.apk
+              mv "$file" "${{ github.workspace }}/apk/legado_测试版_${{ env.VERSIONL }}_$typeName${abiPart}.apk"
             elif [ "${{ env.type }}" == 'releaseS' ]; then
-              mv "$file" ${{ github.workspace }}/apk/legado_正式版_${{ env.VERSIONL }}_$typeName.apk
+              mv "$file" "${{ github.workspace }}/apk/legado_正式版_${{ env.VERSIONL }}_$typeName${abiPart}.apk"
             else
-              mv "$file" ${{ github.workspace }}/apk/legado_兼容版_${{ env.VERSIONL }}_$typeName.apk
+              mv "$file" "${{ github.workspace }}/apk/legado_兼容版_${{ env.VERSIONL }}_$typeName${abiPart}.apk"
             fi
           done
           echo "移动mapping文件"
@@ -342,6 +352,15 @@ jobs:
             | 调试包 | debug | 独立安装，与其他共存，适用于调试用，无代码混淆，函数名完整，方便抓取崩溃、报错日志定位问题。此版本能正常抓包 |
             
             四个包名都不同，在安卓系统中不同包名视为不同软件，都可以独立存在。
+
+            📱 **ABI架构说明：**
+            | ABI标识 | 说明 |
+            |---------|------|
+            | arm64-v8a | 64位ARM设备（推荐，绝大多数现代手机） |
+            | armeabi-v7a | 32位ARM设备（老款手机） |
+            | universal | 包含所有ABI的通用包（体积较大，兼容所有设备） |
+
+            请根据您的设备架构选择对应的APK安装。如果不确定设备架构，请选择 universal 版本。
 
             ### 更新内容
             ${{ fromJSON(needs.prepare.outputs.updateLog_content) }}
@@ -608,8 +627,18 @@ jobs:
           git clone https://${{ secrets.S_GITHUB_TOKEN }}@github.com/Luoyacheng/yuedu.git yuedu-repo
           # 创建目录（如果不存在）
           mkdir -p yuedu-repo/sigma
+          # 优先使用universal APK，如果不存在则用arm64-v8a
+          SIGMA_APK=""
+          if ls ./apk-releaseS/*universal*.apk 1> /dev/null 2>&1; then
+            SIGMA_APK=$(ls ./apk-releaseS/*universal*.apk | head -1)
+          elif ls ./apk-releaseS/*arm64-v8a*.apk 1> /dev/null 2>&1; then
+            SIGMA_APK=$(ls ./apk-releaseS/*arm64-v8a*.apk | head -1)
+          else
+            SIGMA_APK=$(ls ./apk-releaseS/*.apk | head -1)
+          fi
+          echo "使用APK: $SIGMA_APK"
           # 复制releaseS APK文件并重命名
-          cp ./apk-releaseS/*.apk yuedu-repo/sigma/leagado_Sigma_正式版.apk
+          cp "$SIGMA_APK" yuedu-repo/sigma/leagado_Sigma_正式版.apk
           # 提交更改
           cd yuedu-repo
           git add sigma/leagado_Sigma_正式版.apk

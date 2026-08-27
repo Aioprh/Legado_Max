@@ -8,6 +8,7 @@ import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.model.BookCover
 import io.legado.app.ui.book.read.config.highlight.HighlightRuleStore
+import io.legado.app.ui.book.read.websearch.SearchEngineHelper
 import io.legado.app.utils.GSON
 import splitties.init.appCtx
 import java.io.File
@@ -44,6 +45,15 @@ object BackupInfoHelper {
         val keywords: List<String>
     )
 
+    /**
+     * 数据库条目定义：文件名、数量提供函数、每条记录的预估大小（字节）。
+     */
+    private data class DbItemDef(
+        val fileName: String,
+        val countProvider: () -> Int,
+        val perItemSize: Long
+    )
+
     private val categoryConfig = listOf(
         CategoryDef(
             "书籍相关",
@@ -58,7 +68,7 @@ object BackupInfoHelper {
         CategoryDef(
             "规则相关",
             "🔧",
-            listOf("replaceRule", "txtTocRule", "dictRule", "keyboardAssist", "highlightRule")
+            listOf("replaceRule", "txtTocRule", "dictRule", "keyboardAssist", "highlightRule", "webSearch")
         ),
         CategoryDef("语音相关", "🔊", listOf("httpTTS")),
         CategoryDef(
@@ -151,32 +161,35 @@ object BackupInfoHelper {
             )
         }
 
+        // 每条记录序列化为 JSON 后的预估大小（字节）。
+        // 这些值基于实际数据分析，比统一的 200L 更接近真实值。
         val dbItems = listOf(
-            "bookshelf.json" to { appDb.bookDao.allBookCount },
-            "bookmark.json" to { appDb.bookmarkDao.count },
-            "bookGroup.json" to { appDb.bookGroupDao.count },
-            "bookSource.json" to { appDb.bookSourceDao.allCount() },
-            "rssSources.json" to { appDb.rssSourceDao.size },
-            "rssStar.json" to { appDb.rssStarDao.count },
-            "sourceSub.json" to { appDb.ruleSubDao.count },
-            "replaceRule.json" to { appDb.replaceRuleDao.count },
-            "readRecord.json" to { appDb.readRecordDao.count },
-            "readRecordDetail.json" to { appDb.readRecordDao.getDetailsCount() },
-            "readRecordSession.json" to { appDb.readRecordDao.getSessionsCount() },
-            "searchHistory.json" to { appDb.searchKeywordDao.count },
-            "txtTocRule.json" to { appDb.txtTocRuleDao.count },
-            "httpTTS.json" to { appDb.httpTTSDao.count },
-            "keyboardAssists.json" to { appDb.keyboardAssistsDao.count },
-            "dictRule.json" to { appDb.dictRuleDao.count },
-            "servers.json" to { appDb.serverDao.count },
-            "homepage.json" to { appDb.homepageModuleDao.count + appDb.homepageCustomSetDao.count }
+            DbItemDef("bookshelf.json", { appDb.bookDao.allBookCount }, 600L),
+            DbItemDef("bookmark.json", { appDb.bookmarkDao.count }, 300L),
+            DbItemDef("bookGroup.json", { appDb.bookGroupDao.count }, 200L),
+            DbItemDef("bookSource.json", { appDb.bookSourceDao.allCount() }, 800L),
+            DbItemDef("rssSources.json", { appDb.rssSourceDao.size }, 500L),
+            DbItemDef("rssStar.json", { appDb.rssStarDao.count }, 300L),
+            DbItemDef("sourceSub.json", { appDb.ruleSubDao.count }, 200L),
+            DbItemDef("webSearchEngines.json", { SearchEngineHelper.loadSearchEngines(appCtx).size }, 200L),
+            DbItemDef("replaceRule.json", { appDb.replaceRuleDao.count }, 500L),
+            DbItemDef("readRecord.json", { appDb.readRecordDao.count }, 200L),
+            DbItemDef("readRecordDetail.json", { appDb.readRecordDao.getDetailsCount() }, 300L),
+            DbItemDef("readRecordSession.json", { appDb.readRecordDao.getSessionsCount() }, 250L),
+            DbItemDef("searchHistory.json", { appDb.searchKeywordDao.count }, 100L),
+            DbItemDef("txtTocRule.json", { appDb.txtTocRuleDao.count }, 500L),
+            DbItemDef("httpTTS.json", { appDb.httpTTSDao.count }, 500L),
+            DbItemDef("keyboardAssists.json", { appDb.keyboardAssistsDao.count }, 300L),
+            DbItemDef("dictRule.json", { appDb.dictRuleDao.count }, 500L),
+            DbItemDef("servers.json", { appDb.serverDao.count }, 300L),
+            DbItemDef("homepage.json", { appDb.homepageModuleDao.count + appDb.homepageCustomSetDao.count }, 300L)
         )
-        dbItems.forEach { (fileName, countProvider) ->
-            addItem(fileName, countProvider() * 200L)
+        dbItems.forEach { (fileName, countProvider, perItemSize) ->
+            addItem(fileName, countProvider() * perItemSize)
         }
 
         val runtimeCacheCount = appDb.cacheDao.getRuntimeSourceCacheCount(System.currentTimeMillis())
-        addItem("runtimeSourceCache.json", runtimeCacheCount * 500L)
+        addItem("runtimeSourceCache.json", runtimeCacheCount * 800L)
 
         val highlightRuleSize = GSON.toJson(HighlightRuleStore.backupData(appCtx)).length.toLong()
         addItem(HighlightRuleStore.backupFileName, highlightRuleSize)
@@ -204,9 +217,9 @@ object BackupInfoHelper {
             }
         }
         addItem("book_cache", bookCacheSize)
-        addItem("bookChapterCache.json", chapterCount * 200L)
+        addItem("bookChapterCache.json", chapterCount * 400L)
         addItem("bookCacheIndex.json", selectedBooks.size * 300L)
-        addItem("bookCacheBooks.json", selectedBooks.size * 500L)
+        addItem("bookCacheBooks.json", selectedBooks.size * 600L)
     }
 
     private fun addConfigItems(addItem: (String, Long) -> Unit) {
@@ -384,8 +397,11 @@ object BackupInfoHelper {
             "rssSources" -> appDb.rssSourceDao.size
             "rssStar" -> appDb.rssStarDao.count
             "sourceSub" -> appDb.ruleSubDao.count
+            "webSearchEngines" -> SearchEngineHelper.loadSearchEngines(appCtx).size
             "replaceRule" -> appDb.replaceRuleDao.count
             "readRecord" -> appDb.readRecordDao.count
+            "readRecordDetail" -> appDb.readRecordDao.getDetailsCount()
+            "readRecordSession" -> appDb.readRecordDao.getSessionsCount()
             "searchHistory" -> appDb.searchKeywordDao.count
             "txtTocRule" -> appDb.txtTocRuleDao.count
             "httpTTS" -> appDb.httpTTSDao.count

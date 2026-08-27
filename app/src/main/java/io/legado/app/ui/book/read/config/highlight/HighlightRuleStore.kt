@@ -101,6 +101,7 @@ object HighlightRuleStore {
             group = rule.group.takeIf { it.isNotBlank() } ?: fallbackGroup,
             scope = rule.scope?.trim()?.takeIf { it.isNotBlank() },
             excludeScope = rule.excludeScope?.trim()?.takeIf { it.isNotBlank() },
+            layoutScope = rule.layoutScope?.trim()?.takeIf { it.isNotBlank() },
         )
     }
 

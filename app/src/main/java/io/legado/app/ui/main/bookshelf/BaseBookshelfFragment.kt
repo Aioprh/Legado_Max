@@ -103,6 +103,9 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
             R.id.menu_update_toc -> activityViewModel.upToc(books, onlyUpdateRead)
             R.id.menu_bookshelf_layout -> configBookshelf()
             R.id.menu_group_manage -> showDialogFragment<GroupManageDialog>()
+            R.id.menu_tag_manage -> startActivity<BookshelfTagManageActivity> {
+                putExtra("groupId", groupId)
+            }
             R.id.menu_add_local -> startActivity<ImportBookActivity>()
             R.id.menu_add_url -> showAddBookByUrlAlert()
             R.id.menu_bookshelf_manage -> startActivity<BookshelfManageActivity> {
@@ -213,17 +216,18 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         swShowLastUpdateTime.isChecked = AppConfig.showLastUpdateTime
                         swShowWaitUpBooks.isChecked = AppConfig.showWaitUpCount
                         swShowBookshelfFastScroller.isChecked = AppConfig.showBookshelfFastScroller
+                        swShowBookshelfTagBar.isChecked = AppConfig.showBookshelfTagBar
                         // 初始化"显示更多信息"相关开关状态
                         llShowMoreInfo.visibility = if (bookLayout == 0) View.VISIBLE else View.GONE
                         swShowMoreInfo.isChecked = AppConfig.showMoreInfoInList
                         swShowIntro.isChecked = AppConfig.showIntroInList
-                        swShowTags.isChecked = AppConfig.showTagsInList
+                        swShowCategoryInfo.isChecked = AppConfig.showCategoryInfoInList
                         // 书籍外边框开关（仅在列表/紧凑列表视图时显示，默认关闭）
                         swShowBookBorder.visibility = if (bookLayout <= 1) View.VISIBLE else View.GONE
                         swShowBookBorder.isChecked = AppConfig.showBookBorder
                         // 子菜单可见性
                         swShowIntro.visibility = if (AppConfig.showMoreInfoInList) View.VISIBLE else View.GONE
-                        swShowTags.visibility = if (AppConfig.showMoreInfoInList) View.VISIBLE else View.GONE
+                        swShowCategoryInfo.visibility = if (AppConfig.showMoreInfoInList) View.VISIBLE else View.GONE
                         // 简介行数选择器可见性（仅在显示简介勾选时显示）
                         tvIntroLines.visibility = if (AppConfig.showMoreInfoInList && AppConfig.showIntroInList) View.VISIBLE else View.GONE
                         // 更新简介行数显示文本
@@ -231,7 +235,7 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         // 监听"显示更多信息"开关变化
                         swShowMoreInfo.setOnCheckedChangeListener { _, isChecked ->
                             swShowIntro.visibility = if (isChecked) View.VISIBLE else View.GONE
-                            swShowTags.visibility = if (isChecked) View.VISIBLE else View.GONE
+                            swShowCategoryInfo.visibility = if (isChecked) View.VISIBLE else View.GONE
                             // 更新简介行数选择器可见性
                             tvIntroLines.visibility = if (isChecked && swShowIntro.isChecked) View.VISIBLE else View.GONE
                         }
@@ -310,6 +314,10 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         AppConfig.showBookshelfFastScroller = swShowBookshelfFastScroller.isChecked
                         postEvent(EventBus.BOOKSHELF_REFRESH, "")
                     }
+                    if (AppConfig.showBookshelfTagBar != swShowBookshelfTagBar.isChecked) {
+                        AppConfig.showBookshelfTagBar = swShowBookshelfTagBar.isChecked
+                        postEvent(EventBus.BOOKSHELF_REFRESH, "")
+                    }
                     // 保存"显示更多信息"相关配置
                     if (AppConfig.showMoreInfoInList != swShowMoreInfo.isChecked) {
                         AppConfig.showMoreInfoInList = swShowMoreInfo.isChecked
@@ -319,8 +327,8 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                         AppConfig.showIntroInList = swShowIntro.isChecked
                         refreshBookshelf = true
                     }
-                    if (AppConfig.showTagsInList != swShowTags.isChecked) {
-                        AppConfig.showTagsInList = swShowTags.isChecked
+                    if (AppConfig.showCategoryInfoInList != swShowCategoryInfo.isChecked) {
+                        AppConfig.showCategoryInfoInList = swShowCategoryInfo.isChecked
                         refreshBookshelf = true
                     }
                     // 简介行数已在 NumberPickerDialog 回调中保存，无需在此处保存

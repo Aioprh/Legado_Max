@@ -74,6 +74,11 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             ViewConfiguration.get(requireContext()).scaledScrollBarSize
         binding.recyclerView.setHideScrollbar(false)
         binding.recyclerView.addItemDecoration(VerticalDivider(requireContext()))
+        // 完全禁用 itemAnimator:
+        // 1. 折叠/展开卷时 AsyncListDiffer 触发大量 insert/remove 动画, 导致整个列表跳动
+        // 2. upDisplayTitles 逐项 notifyItemChanged 触发 change 动画, 导致闪烁
+        // 目录列表不需要任何 item 动画, 折叠/展开和内容更新都应即时完成
+        binding.recyclerView.itemAnimator = null
         binding.recyclerView.adapter = adapter
     }
 
