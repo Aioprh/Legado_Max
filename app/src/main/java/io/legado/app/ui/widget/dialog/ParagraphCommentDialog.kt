@@ -95,7 +95,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
         binding.run {
             toolBar.setBackgroundColor(primaryColor)
-            tvTitle.text = getString(R.string.paragraph_comment_title)
+            toolBar.title = getString(R.string.paragraph_comment_title)
             toolBar.setNavigationOnClickListener { dismiss() }
             // 排序切换：齿轮图标弹出菜单选择 实时评论 / 最新评论 / 回复最多
             tvSort.setOnClickListener { view -> showSortMenu(view) }
@@ -267,7 +267,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     /** 顶栏居中标题实时显示评论总数（总数未知时退化为已加载条数） */
     private fun updateTitle() {
         val count = if (total >= 0) total else adapter.getActualItemCount().toLong()
-        binding.tvTitle.text = if (count > 0) {
+        binding.toolBar.title = if (count > 0) {
             getString(R.string.paragraph_comment_total, count)
         } else {
             getString(R.string.paragraph_comment_title)

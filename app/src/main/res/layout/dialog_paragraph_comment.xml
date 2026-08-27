@@ -12,22 +12,9 @@
         android:layout_height="wrap_content"
         android:theme="?attr/actionBarStyle"
         app:navigationIcon="@drawable/ic_arrow_back"
-        app:popupTheme="@style/AppTheme.PopupOverlay">
-
-        <!-- 顶栏标题：居中显示“段评”，打开后实时更新为评论总数 -->
-        <TextView
-            android:id="@+id/tv_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginStart="56dp"
-            android:layout_marginEnd="56dp"
-            android:ellipsize="end"
-            android:gravity="center"
-            android:singleLine="true"
-            android:text="@string/paragraph_comment_title"
-            android:textColor="@color/primaryText"
-            android:textSize="20sp" />
+        app:popupTheme="@style/AppTheme.PopupOverlay"
+        app:title="@string/paragraph_comment_title"
+        app:titleTextAppearance="@style/ToolbarTitle">
 
         <!-- 排序切换：齿轮图标，点击弹出 实时评论/最新评论/回复最多 菜单 -->
         <ImageButton
