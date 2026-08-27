@@ -271,7 +271,8 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                 enableRefresh = it.enableRefresh
                 onlyUpdateRead = it.onlyUpdateRead
             }
-            loadTagBar()
+            // 传 false 避免 initBooksData → loadTagBar → initBooksData 无限递归
+            loadTagBar(refreshBooks = false)
         }
         booksFlowJob?.cancel()
         booksFlowJob = viewLifecycleOwner.lifecycleScope.launch {
@@ -362,14 +363,20 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
 
     /**
      * 加载当前分组的二级标签栏数据。
+     *
+     * @param refreshBooks 是否在操作完成后刷新书籍列表。
+     *   - 当由 [initBooksData] 调用时传 false，避免循环递归（initBooksData → loadTagBar → initBooksData）。
+     *   - 当由 [observeLiveBus] 的配置变更调用时传 true，需要刷新书籍以应用新的筛选状态。
      */
-    private fun loadTagBar() {
+    private fun loadTagBar(refreshBooks: Boolean = true) {
         if (!AppConfig.showBookshelfTagBar) {
             tagBar?.visibility = View.GONE
             tagSelectedIndex = -1
             currentTagList = emptyList()
             tagFilter = null
-            initBooksData()
+            if (refreshBooks) {
+                initBooksData()
+            }
             return
         }
         val currentGroupId = groupId
@@ -465,7 +472,7 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             upFastScrollerBar()
             // 刷新标签栏（开关状态可能变化）
             if (groupId != BookGroup.IdRoot) {
-                loadTagBar()
+                loadTagBar(refreshBooks = true)
             }
         }
     }
