@@ -1080,7 +1080,12 @@ object LocalParagraphComment {
         ): String {
             val url = commentHost(source) + COMMENTS_ROOT +
                 "index.php/ui/" + sources(chapterUrl) + "/$bookId/$chapterId/${pid - 1}"
-            return "java.openUrl('$url');"
+            // 玖玖/番茄段评网页本身负责渲染评论图片。
+            // 不再使用 java.openUrl()（会走外部 URL 确认/系统浏览器），
+            // 改用应用内 BottomWebViewDialog，并通过 AnalyzeUrl 继承书源请求环境。
+            // 这样网页中的 <img> 可以由 WebView 直接加载，图片、表情、回复保持与书源网页一致。
+            val config = "{\"expandedCornersRadius\":20,\"dismissOnTouchOutside\":true,\"isDraggable\":true,\"shouldDimBackground\":true,\"backgroundDimAmount\":0.5,\"hardwareAccelerated\":true,\"isNestedScrollingEnabled\":true,\"isGestureInsetBottomIgnored\":true,\"setFitToContents\":false,\"heightPercentage\":0.75,\"isHideable\":true}"
+            return "java.showBrowser('$url',null,\"window.java=java;\",'$config');"
         }
     }
 }
