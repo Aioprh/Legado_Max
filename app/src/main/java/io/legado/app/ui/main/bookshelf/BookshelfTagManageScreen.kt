@@ -57,14 +57,20 @@ internal fun BookshelfTagManageScreen(
     callbacks: BookshelfTagManageCallbacks,
     modifier: Modifier = Modifier
 ) {
+    // 用不可能是真实分组 ID 的值表示"尚未初始化"。
+    // 不能用 -1L，因为那恰好是 BookGroup.IdAll，会导致初始状态被误判为已选中"全部"分组。
     var selectedGroupId by rememberSaveable {
-        mutableLongStateOf(state.groups.firstOrNull()?.groupId ?: -1L)
+        mutableLongStateOf(Long.MIN_VALUE)
     }
-    LaunchedEffect(state.groups) {
+    // focusGroupId 由 Activity 传入，首次加载数据后才有有效值；
+    // 仅在尚未选择任何分组时使用它作为初始选中项。
+    LaunchedEffect(state.focusGroupId, state.groups) {
         if (state.groups.isNotEmpty() &&
             state.groups.none { it.groupId == selectedGroupId }
         ) {
-            selectedGroupId = state.groups.firstOrNull()?.groupId ?: -1L
+            // 优先使用传入的 focusGroupId，不存在时回退到第一个分组
+            selectedGroupId = state.groups.firstOrNull { it.groupId == state.focusGroupId }?.groupId
+                ?: state.groups.firstOrNull()?.groupId ?: -1L
         }
     }
     val selectedGroup = state.groups.firstOrNull { it.groupId == selectedGroupId }

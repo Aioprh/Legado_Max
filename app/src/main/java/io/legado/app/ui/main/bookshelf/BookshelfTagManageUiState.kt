@@ -55,6 +55,7 @@ sealed interface BookshelfTagDialogState {
  */
 data class BookshelfTagManageUiState(
     val loading: Boolean = true,
+    val focusGroupId: Long = -1L,
     val groups: List<BookshelfTagGroupUi> = emptyList(),
     val dialog: BookshelfTagDialogState? = null
 )

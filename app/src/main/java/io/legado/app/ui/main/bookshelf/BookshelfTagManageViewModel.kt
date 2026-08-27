@@ -92,6 +92,7 @@ class BookshelfTagManageViewModel(
             }
             _uiState.value = _uiState.value.copy(
                 groups = data,
+                focusGroupId = focusGroupId,
                 loading = false
             )
         }
