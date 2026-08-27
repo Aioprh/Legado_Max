@@ -40,8 +40,6 @@ object BubblePackageManager {
     /** 最大缩放比例 */
     const val MAX_SIZE_SCALE = 1.5f
     private const val packageFileName = "bubble.json"
-    private const val defaultBubblePath =
-        "M44 48 Q48 48 48 44 L48 20 Q48 16 44 16 L20 16 Q16 16 16 20 L16 24 S16 28 10 30 Q6 32 10 34 Q16 36 16 38 L16 44 Q16 48 20 48 Z"
 
     @Volatile
     private var cachedEntry: Entry? = null
@@ -324,12 +322,12 @@ object BubblePackageManager {
         return candidate
     }
 
-    /** 生成默认 SVG 模板，包含气泡路径和数字文本 */
+    /** 生成默认 SVG 模板（番茄风格气泡：圆角气泡框 + 中部粗体数字） */
     private fun defaultSvgTemplate(): String {
         return """
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-              <path d="$defaultBubblePath" fill="none" stroke="${'$'}{color}" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
-              <text x="32" y="32" dy=".35em" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="600" fill="${'$'}{color}">${'$'}{num}</text>
+            <svg xmlns="http://www.w3.org/2000/svg" width="160" height="120">
+              <path d="M 55 10 L 120 10 Q 150 10 150 40 L 150 80 Q 150 110 120 110 L 55 110 Q 25 110 25 80 L 25 75 L 3 60 L 25 45 L 25 40 Q 25 10 55 10 Z" fill="none" stroke="{{color}}" stroke-width="5" stroke-linejoin="round"/>
+              <text x="87" y="77" font-family="Arial, sans-serif" text-anchor="middle" dominant-baseline="middle" font-size="50" font-weight="bold" fill="{{color}}">{{displayText}}</text>
             </svg>
         """.trimIndent()
     }
