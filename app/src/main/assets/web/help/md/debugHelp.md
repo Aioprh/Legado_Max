@@ -47,6 +47,11 @@ Data URL 会直接解码为文本内容进行规则解析，无需网络请求�
 - 有 type 的 Data URL → 走 `getByteArrayAwait()` → 里面有 `getByteArrayIfDataUri()` 短路 → **能工作，但返回的是 Hex 编码而非文本**
 
 所以改动前的项目里，Data URL 必须带 `,{"type":"xxx"}` 才能通过 `getStrResponseAwait` 正常工作。改动后就不需要了。
+
+因此，无论有没有 type，Data URL 都会被自动识别并解码为文本。
+返回的是正确的 文本字符串，AnalyzeRule.setContent(body) 能正常解析。
+不需要 OkHttp 网络请求，不需要 WebView。
+
 * 调试正文下一页说明
 ```
 从正文开始调试时，并且正文下一页也写了规则，这时如果下一章的元素和下一页的元素相同时，就会无限地解析网页。所以当网站有这种情况时，最好从目录开始调试，因为阅读会自动识别下一页的链接是否是目录里包含的章节链接，当目录里包含了，会自动停止解析。
