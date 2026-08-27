@@ -19,7 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
 import io.legado.app.ui.file.components.FileList
 import io.legado.app.ui.file.components.FileSearchBar
@@ -40,7 +39,7 @@ import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
  */
 @Composable
 fun FileManageScreen(
-    viewModel: FileManageViewModel = viewModel(),
+    viewModel: FileManageViewModel,
     initialPath: String? = null,
     onBackClick: () -> Unit
 ) {

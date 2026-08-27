@@ -45,7 +45,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.res.stringResource
 import io.legado.app.R
 import io.legado.app.ui.source.recycle.components.SourceRecycleBinItem
@@ -58,7 +57,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SourceRecycleBinScreen(
-    viewModel: SourceRecycleBinViewModel = viewModel(),
+    viewModel: SourceRecycleBinViewModel,
     onBackClick: () -> Unit
 ) {
     val items by viewModel.items.collectAsStateWithLifecycle()

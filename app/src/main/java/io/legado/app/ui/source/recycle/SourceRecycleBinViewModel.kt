@@ -1,15 +1,13 @@
 package io.legado.app.ui.source.recycle
 
-import android.app.Application
 import androidx.annotation.StringRes
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import io.legado.app.R
-import io.legado.app.base.BaseViewModel
-import io.legado.app.data.appDb
 import io.legado.app.data.entities.SourceRecycleBin
-import io.legado.app.help.config.AppConfig
 import io.legado.app.help.source.SourceRecycleBinHelp
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -22,7 +20,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * 回收站确认 Dialog 状态
@@ -48,11 +45,17 @@ sealed interface RecycleBinEvent {
     data class Toast(@StringRes val msgRes: Int) : RecycleBinEvent
 }
 
-class SourceRecycleBinViewModel(application: Application) : BaseViewModel(application) {
+/**
+ * 回收站 ViewModel
+ * 依赖经 [RecycleBinRepository] 构造注入（默认 Default 实现），JVM 单测可直接 Fake（testing.md §16）
+ */
+class SourceRecycleBinViewModel(
+    private val repository: RecycleBinRepository = RecycleBinRepository.Default
+) : ViewModel() {
 
     private val _filter = MutableStateFlow(SourceRecycleBinFilter.ALL)
     val filter: StateFlow<SourceRecycleBinFilter> = _filter.asStateFlow()
-    private val _enabled = MutableStateFlow(AppConfig.sourceRecycleBinEnabled)
+    private val _enabled = MutableStateFlow(repository.enabled)
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
 
     /** 确认 Dialog 状态（§4.5） */
@@ -70,15 +73,15 @@ class SourceRecycleBinViewModel(application: Application) : BaseViewModel(applic
     @OptIn(ExperimentalCoroutinesApi::class)
     val items: StateFlow<List<SourceRecycleBin>> = _filter.flatMapLatest { filter ->
         if (filter.type == null) {
-            appDb.sourceRecycleBinDao.flowAll()
+            repository.flowAll()
         } else {
-            appDb.sourceRecycleBinDao.flowByType(filter.type)
+            repository.flowByType(filter.type)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        viewModelScope.launch(Dispatchers.IO) {
-            SourceRecycleBinHelp.cleanupExpired()
+        viewModelScope.launch {
+            repository.cleanupExpired()
         }
     }
 
@@ -87,7 +90,7 @@ class SourceRecycleBinViewModel(application: Application) : BaseViewModel(applic
     }
 
     fun setEnabled(enabled: Boolean) {
-        AppConfig.sourceRecycleBinEnabled = enabled
+        repository.enabled = enabled
         _enabled.value = enabled
     }
 
@@ -120,32 +123,31 @@ class SourceRecycleBinViewModel(application: Application) : BaseViewModel(applic
     }
 
     /** 是否存在同名源（R3：回调改 suspend，由调用方协程获取结果） */
-    suspend fun hasConflict(item: SourceRecycleBin): Boolean =
-        withContext(Dispatchers.IO) { SourceRecycleBinHelp.hasConflict(item) }
+    suspend fun hasConflict(item: SourceRecycleBin): Boolean = repository.hasConflict(item)
 
     /** 列表中任意一项是否存在同名源 */
     suspend fun hasConflict(items: List<SourceRecycleBin>): Boolean =
-        withContext(Dispatchers.IO) { items.any { SourceRecycleBinHelp.hasConflict(it) } }
+        items.any { repository.hasConflict(it) }
 
     fun restore(items: List<SourceRecycleBin>, overwrite: Boolean) {
-        viewModelScope.launch(Dispatchers.IO) {
-            items.forEach { SourceRecycleBinHelp.restore(it, overwrite) }
+        viewModelScope.launch {
+            items.forEach { repository.restore(it, overwrite) }
             _toasts.trySend(RecycleBinEvent.Toast(R.string.source_recycle_bin_restored))
             removeSelected(items.map { it.id })
         }
     }
 
     fun delete(items: List<SourceRecycleBin>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            appDb.sourceRecycleBinDao.delete(*items.toTypedArray())
+        viewModelScope.launch {
+            repository.delete(items)
             _toasts.trySend(RecycleBinEvent.Toast(R.string.source_recycle_bin_deleted))
             removeSelected(items.map { it.id })
         }
     }
 
     fun clearAll() {
-        viewModelScope.launch(Dispatchers.IO) {
-            appDb.sourceRecycleBinDao.deleteAll()
+        viewModelScope.launch {
+            repository.deleteAll()
             _toasts.trySend(RecycleBinEvent.Toast(R.string.source_recycle_bin_cleared))
             _selectedIds.value = emptySet()
         }
@@ -154,6 +156,13 @@ class SourceRecycleBinViewModel(application: Application) : BaseViewModel(applic
     private fun removeSelected(ids: List<Long>) {
         val idSet = ids.toSet()
         _selectedIds.update { current -> current - idSet }
+    }
+
+    companion object {
+        /** 默认工厂：生产环境使用 Default 数据源（构造参数有默认值，反射工厂需要显式构造） */
+        val Factory = viewModelFactory {
+            initializer { SourceRecycleBinViewModel() }
+        }
     }
 }
 

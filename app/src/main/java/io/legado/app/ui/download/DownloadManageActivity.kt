@@ -9,13 +9,11 @@ import android.os.Bundle
 import android.webkit.MimeTypeMap
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.runtime.Composable
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import io.legado.app.R
 import io.legado.app.service.DownloadState
-import io.legado.app.ui.theme.LegadoThemeWithBackground
 import io.legado.app.ui.theme.initLegadoComposeTheme
 import io.legado.app.ui.theme.setLegadoContent
 import io.legado.app.utils.toastOnUi
@@ -23,7 +21,9 @@ import kotlinx.coroutines.launch
 
 class DownloadManageActivity : AppCompatActivity() {
 
-    private val viewModel: DownloadManageViewModel by viewModels()
+    private val viewModel: DownloadManageViewModel by viewModels {
+        DownloadManageViewModel.Factory
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         initLegadoComposeTheme()
@@ -101,14 +101,5 @@ class DownloadManageActivity : AppCompatActivity() {
     private fun copyPathToClipboard(path: String) {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("file path", path))
-    }
-}
-
-@Composable
-fun DownloadManageContent(
-    onBackClick: () -> Unit
-) {
-    LegadoThemeWithBackground(backgroundDrawable = null) {
-        DownloadManageScreen(onBackClick = onBackClick)
     }
 }

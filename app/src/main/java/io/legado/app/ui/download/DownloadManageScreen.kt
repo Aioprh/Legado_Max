@@ -33,7 +33,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
 import io.legado.app.service.DownloadStatus
 import io.legado.app.ui.download.components.DownloadTaskCard
@@ -47,7 +46,7 @@ import io.legado.app.ui.widget.components.AppPageTopBar
  */
 @Composable
 fun DownloadManageScreen(
-    viewModel: DownloadManageViewModel = viewModel(),
+    viewModel: DownloadManageViewModel,
     onBackClick: () -> Unit
 ) {
     val allTasks by viewModel.tasks.collectAsStateWithLifecycle()

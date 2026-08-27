@@ -1,15 +1,14 @@
 package io.legado.app.ui.download
 
-import android.app.Application
 import android.os.Environment
 import androidx.annotation.StringRes
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import io.legado.app.R
-import io.legado.app.base.BaseViewModel
-import io.legado.app.service.DownloadState
 import io.legado.app.service.DownloadStatus
 import io.legado.app.service.DownloadTask
-import io.legado.app.service.DownloadService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -45,8 +44,15 @@ sealed interface DownloadEvent {
 /**
  * 下载管理ViewModel
  * 负责管理UI状态、轮询下载进度、执行下载操作
+ *
+ * 依赖经 [DownloadTaskSource]/[DownloadCommander]/下载目录提供器构造注入（默认 Default 实现），
+ * JVM 单测可直接 Fake（testing.md §16）
  */
-class DownloadManageViewModel(application: Application) : BaseViewModel(application) {
+class DownloadManageViewModel(
+    private val taskSource: DownloadTaskSource = DownloadTaskSource.Default,
+    private val commander: DownloadCommander = DownloadCommander.Default,
+    private val downloadsDir: () -> String = DefaultDownloadsDir
+) : ViewModel() {
 
     // 关键事件（打开文件/文件夹、复制路径）：UNLIMITED 缓冲，事件不允许丢失（§4.1）
     private val _events = Channel<DownloadEvent>(Channel.UNLIMITED)
@@ -104,7 +110,7 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
         pollJob?.cancel()
         pollJob = viewModelScope.launch {
             while (true) {
-                val updatedTasks = DownloadState.queryAllTaskStatus()
+                val updatedTasks = taskSource.queryAllTaskStatus()
                 _tasks.value = updatedTasks
                 delay(500)
             }
@@ -124,7 +130,7 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
      * @param id 下载任务ID
      */
     fun cancelDownload(id: Long) {
-        DownloadService.cancelDownload(id)
+        commander.cancelDownload(id)
     }
 
     /**
@@ -132,8 +138,7 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
      * @param id 下载任务ID
      */
     fun retryDownload(id: Long) {
-        // context 为 Application，Download.start 仅用于 startService，不涉及平台 UI 操作
-        DownloadService.retryDownload(context, id)
+        commander.retryDownload(id)
     }
 
     /**
@@ -141,10 +146,10 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
      * 包括成功和失败的任务
      */
     fun clearCompletedTasks() {
-        _tasks.value.filter { 
-            it.status == DownloadStatus.SUCCESSFUL || it.status == DownloadStatus.FAILED 
+        _tasks.value.filter {
+            it.status == DownloadStatus.SUCCESSFUL || it.status == DownloadStatus.FAILED
         }.forEach {
-            DownloadState.removeTask(it.id)
+            taskSource.removeTask(it.id)
         }
     }
 
@@ -152,7 +157,7 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
      * 清除所有任务
      */
     fun clearAllTasks() {
-        DownloadService.clearAllTasks()
+        commander.clearAllTasks()
     }
 
     /**
@@ -178,11 +183,22 @@ class DownloadManageViewModel(application: Application) : BaseViewModel(applicat
      * @param id 下载任务ID
      */
     fun copyPath(id: Long) {
-        val task = DownloadState.getTask(id) ?: return
-        val filePath =
-            "${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath}/${task.fileName}"
+        val task = taskSource.getTask(id) ?: return
+        val filePath = "${downloadsDir()}/${task.fileName}"
         _events.trySend(DownloadEvent.CopyPath(filePath))
         _toasts.trySend(DownloadEvent.Toast(R.string.download_path_copied))
     }
 
+    companion object {
+        /** 生产环境默认下载目录（公共 Downloads 目录） */
+        val DefaultDownloadsDir: () -> String = {
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                .absolutePath
+        }
+
+        /** 默认工厂：生产环境使用 Default 依赖（构造参数有默认值，反射工厂需要显式构造） */
+        val Factory = viewModelFactory {
+            initializer { DownloadManageViewModel() }
+        }
+    }
 }

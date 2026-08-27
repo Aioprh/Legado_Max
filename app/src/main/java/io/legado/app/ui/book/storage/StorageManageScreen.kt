@@ -32,7 +32,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import io.legado.app.R
 import io.legado.app.ui.book.storage.components.CacheItemCard
 import io.legado.app.ui.book.storage.components.CacheSummaryCard
@@ -54,7 +53,7 @@ import io.legado.app.ui.widget.components.AppPageTopBar
 
 @Composable
 fun StorageManageScreen(
-    viewModel: StorageManageViewModel = viewModel(),
+    viewModel: StorageManageViewModel,
     onBackClick: () -> Unit,
     onOpenPath: (String) -> Unit = {}
 ) {

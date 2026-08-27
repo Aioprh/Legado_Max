@@ -220,6 +220,11 @@ dependencies {
     //coreLibraryDesugaring('com.android.tools:desugar_jdk_libs_nio:2.0.4')
     coreLibraryDesugaring(libs.desugar)
     testImplementation(libs.junit)
+    // ViewModel 单测基建（testing.md §16）：runTest 虚拟时间 + Turbine Flow 断言
+    //必须写测试作用域，不要写全局 implementation：，写错成 implementation 才会打进包、增加包体积，正确写法完全无害。
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.mockk)
     androidTestImplementation(libs.bundles.androidTest)
     
     //Compose

@@ -13,7 +13,9 @@ import kotlinx.coroutines.launch
 
 class SourceRecycleBinActivity : AppCompatActivity() {
 
-    private val viewModel: SourceRecycleBinViewModel by viewModels()
+    private val viewModel: SourceRecycleBinViewModel by viewModels {
+        SourceRecycleBinViewModel.Factory
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         initLegadoComposeTheme()
