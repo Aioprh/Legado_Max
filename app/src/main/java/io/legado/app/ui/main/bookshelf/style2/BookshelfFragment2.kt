@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.constant.AppLog
+import io.legado.app.constant.BookType
 import io.legado.app.constant.EventBus
 import io.legado.app.data.AppDatabase
 import io.legado.app.data.appDb
@@ -374,6 +375,8 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
      *
      * 标签栏关闭时清除筛选状态并刷新数据流；
      * 标签栏开启时异步加载标签，完成后设置默认筛选（全部）并刷新数据流。
+     * 标签来源：当前分组中实际有书籍使用的标签 + 用户手动配置的标签，
+     * 减去被隐藏的标签。只显示当前分组中有对应书籍的标签。
      * 本方法不会回调 [initBooksData]，避免循环调用。
      */
     private fun loadTagBar() {
@@ -391,10 +394,9 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             val tags = withContext(Dispatchers.IO) {
                 val configured = AppConfig.bookshelfGroupTags[currentGroupId].orEmpty()
                 val hidden = AppConfig.bookshelfHiddenTags[currentGroupId].orEmpty()
-                val books = appDb.bookDao.allTagInfos.filter { info ->
-                    info.group and currentGroupId > 0 || currentGroupId <= 0
-                }
-                val existing = books.flatMap { BookTagHelper.parse(it.customTag) }
+                val allBooks = appDb.bookDao.allTagInfos
+                val groupBooks = filterBooksByGroup(allBooks, currentGroupId)
+                val existing = groupBooks.flatMap { BookTagHelper.parse(it.customTag) }
                 val merged = BookTagManagement.mergeTags(configured, existing)
                 merged.filter { tag -> hidden.none { it.equals(tag, ignoreCase = true) } }
             }
@@ -413,6 +415,47 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             if (tagFilter != null) {
                 tagFilter = null
                 restartBooksFlow()
+            }
+        }
+    }
+
+    /**
+     * 根据 groupId 过滤书籍，逻辑与 [io.legado.app.ui.main.bookshelf.BookshelfTagManageViewModel.booksInGroup] 一致。
+     * 默认分组（负数 ID）基于 [BookType] 筛选，用户分组（正数 ID）基于 group 位掩码筛选。
+     */
+    private fun filterBooksByGroup(
+        books: List<io.legado.app.data.dao.BookTagInfo>,
+        currentGroupId: Long
+    ): List<io.legado.app.data.dao.BookTagInfo> {
+        return when (currentGroupId) {
+            BookGroup.IdAll -> books
+            BookGroup.IdLocal -> books.filter { it.type and BookType.local > 0 }
+            BookGroup.IdAudio -> books.filter { it.type and BookType.audio > 0 }
+            BookGroup.IdVideo -> books.filter { it.type and BookType.video > 0 }
+            BookGroup.IdError -> books.filter { it.type and BookType.updateError > 0 }
+            else -> {
+                val userGroupMask = appDb.bookGroupDao.all
+                    .filter { it.groupId > 0 }
+                    .fold(0L) { acc, group -> acc or group.groupId }
+                when (currentGroupId) {
+                    BookGroup.IdNetNone -> books.filter {
+                        it.type and BookType.audio == 0 &&
+                            it.type and BookType.video == 0 &&
+                            it.type and BookType.local == 0 &&
+                            (it.group and userGroupMask) == 0L
+                    }
+                    BookGroup.IdLocalNone -> books.filter {
+                        it.type and BookType.audio == 0 &&
+                            it.type and BookType.video == 0 &&
+                            it.type and BookType.local > 0 &&
+                            (it.group and userGroupMask) == 0L
+                    }
+                    else -> if (currentGroupId > 0) {
+                        books.filter { it.group and currentGroupId > 0 }
+                    } else {
+                        emptyList()
+                    }
+                }
             }
         }
     }
