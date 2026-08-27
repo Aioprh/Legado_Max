@@ -46,7 +46,6 @@ object LocalParagraphComment {
     private val summaryCache = HashMap<String, SummaryResult>()
 
     private val adapters: List<ParagraphAdapter> = listOf(
-        ConfigAdapter,
         ShenmoAdapter,
         QidianFullAdapter,
         JiuJiuAdapter,
@@ -80,8 +79,8 @@ object LocalParagraphComment {
         val remoteBook = getRemoteBook(book, source) ?: return content
         val remoteChapterUrl = getRemoteChapterUrl(book, chapter, source, remoteBook)
             ?: return content
-        val bookId = adapter.extractBookId(source, remoteBook.bookUrl, remoteChapterUrl)
-        val chapterId = adapter.extractChapterId(source, remoteChapterUrl)
+        val bookId = adapter.extractBookId(remoteBook.bookUrl, remoteChapterUrl)
+        val chapterId = adapter.extractChapterId(remoteChapterUrl)
         if (bookId.isNullOrBlank() || chapterId.isNullOrBlank()) {
             AppLog.put("本地书段评: 无法从书源[${source.bookSourceName}]的URL提取书籍/章节ID")
             return content
@@ -558,8 +557,8 @@ object LocalParagraphComment {
     /** 段评书源适配器：负责提取 ID、拉取段评摘要、生成点击配置 */
     private interface ParagraphAdapter {
         fun match(source: BookSource): Boolean
-        fun extractBookId(source: BookSource, bookUrl: String, chapterUrl: String): String?
-        fun extractChapterId(source: BookSource, chapterUrl: String): String?
+        fun extractBookId(bookUrl: String, chapterUrl: String): String?
+        fun extractChapterId(chapterUrl: String): String?
 
         /**
          * 拉取各段评论数。部分站点（如神魔小说的番茄段评）段计数随章节正文一起返回，
@@ -581,145 +580,6 @@ object LocalParagraphComment {
         ): String
     }
 
-    // ---------- 配置驱动适配器（ruleReview JSON 配置接入新源，无需改 Kotlin 代码） ----------
-
-    /**
-     * 通用配置适配器：只要书源 ruleReview 里填写了摘要接口（summaryUrl）等配置，
-     * 就用这套配置驱动实现段评接入。这样新增段评源无需新增 Kotlin 适配器，
-     * 只需在书源 JSON 的 ruleReview 中填写对应字段即可。
-     */
-    private object ConfigAdapter : ParagraphAdapter {
-
-        override fun match(source: BookSource): Boolean =
-            source.ruleReview?.summaryUrl?.isNotBlank() == true
-
-        /** [ReviewRule.bookIdRule] 正则取第一个捕获组；缺省回退 param 与末尾数字 */
-        override fun extractBookId(source: BookSource, bookUrl: String, chapterUrl: String): String? {
-            val rule = source.ruleReview?.bookIdRule
-            if (!rule.isNullOrBlank()) {
-                regexGroup(rule, bookUrl)?.let { return it }
-                regexGroup(rule, chapterUrl)?.let { return it }
-            }
-            return pickId(bookUrl, "book_id") ?: pickId(chapterUrl, "book_id")
-                ?: trailingNumber(bookUrl)
-        }
-
-        override fun extractChapterId(source: BookSource, chapterUrl: String): String? {
-            val rule = source.ruleReview?.chapterIdRule
-            if (!rule.isNullOrBlank()) {
-                regexGroup(rule, chapterUrl)?.let { return it }
-            }
-            return pickId(chapterUrl, "item_id") ?: pickId(chapterUrl, "chapter_id")
-                ?: pickId(chapterUrl, "chapterId")
-                ?: trailingNumber(chapterUrl)
-        }
-
-        private fun trailingNumber(u: String): String? =
-            Regex("""/(\d+)(?=[/?]|$)""").find(u)?.groupValues?.get(1)
-
-        private fun regexGroup(pattern: String, s: String): String? =
-            runCatching {
-                // 优先用具名/普通捕获组取第一组；若无捕获组则取整段匹配
-                val m = Regex(pattern).find(s) ?: return@runCatching null
-                m.groupValues.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: m.value
-            }.getOrNull()
-
-        override suspend fun fetchSummaryCounts(
-            source: BookSource,
-            bookId: String,
-            chapterId: String,
-            chapterUrl: String?
-        ): SummaryResult {
-            val rule = source.ruleReview ?: return SummaryResult()
-            val url = rule.summaryUrl ?: return SummaryResult()
-            val body = fetchBody(source, fillUrl(url, bookId, chapterId, 0)) ?: return SummaryResult()
-            return SummaryResult(parseConfigCounts(body, rule))
-        }
-
-        /** 解析摘要响应：注入段落号 -> 评论数。注入段号 = 远程 pid + offset */
-        private fun parseConfigCounts(body: String, rule: io.legado.app.data.entities.rule.ReviewRule): Map<Int, Int> {
-            val offset = rule.summaryOffset ?: 1
-            val pidKey = rule.summaryPidKey ?: "para_index"
-            val countKey = rule.summaryCountKey ?: "count"
-            val listPath = rule.summaryListPath ?: return emptyMap()
-            return runCatching {
-                val list = jsonPath.parse(body).read<List<Any?>>(listPath) ?: return@runCatching emptyMap()
-                val result = HashMap<Int, Int>()
-                list.filterIsInstance<Map<*, *>>().forEach { d ->
-                    val pid = d[pidKey]?.toString()?.toIntOrNull()
-                        ?: d[duck(pidKey)]?.toString()?.toIntOrNull() ?: return@forEach
-                    val count = d[countKey]?.toString()?.toIntOrNull()
-                        ?: d[duck(countKey)]?.toString()?.toIntOrNull() ?: return@forEach
-                    val para = pid + offset
-                    if (para <= 0 || count <= 0) return@forEach
-                    result[para] = (result[para] ?: 0) + count
-                }
-                result
-            }.getOrDefault(emptyMap())
-        }
-
-        /** 大小写不敏感兜底找 key */
-        private fun duck(key: String): String {
-            for (c in 'A'..'Z') {
-                if (key.contains(c)) return key[0].toString().uppercase() + key.drop(1)
-            }
-            return key
-        }
-
-        override fun buildPclick(
-            source: BookSource,
-            bookId: String,
-            chapterId: String,
-            pid: Int,
-            chapterUrl: String?
-        ): String {
-            val rule = source.ruleReview ?: return ""
-            val offset = rule.summaryOffset ?: 1
-            val remotePid = pid - offset
-            val isWeb = rule.openMode?.equals("web", ignoreCase = true) == true
-                || rule.commentsUrl.isNullOrBlank()
-            if (isWeb) {
-                val openUrl = rule.openUrl ?: return ""
-                val url = fillUrl(openUrl, bookId, chapterId, remotePid)
-                return "java.showBrowser('$url');"
-            }
-            val commentsUrl = fillUrl(rule.commentsUrl ?: return "", bookId, chapterId, remotePid)
-            val fields = ParagraphCommentConfig.FieldConfig(
-                nickname = rule.nicknamePath ?: "",
-                avatar = rule.avatarPath ?: "",
-                level = rule.levelPath ?: "",
-                ip = rule.ipPath ?: "",
-                content = rule.commentContentPath ?: "",
-                agree = rule.agreePath ?: "",
-                oppose = rule.opposePath ?: "",
-                time = rule.timePath ?: "",
-                floor = rule.floorPath ?: "",
-                id = rule.commentIdPath ?: "",
-                rootId = rule.rootIdPath ?: "",
-                replyCount = rule.replyCountPath ?: "",
-                replyTo = rule.replyToPath ?: ""
-            )
-            return buildPclickScript(
-                listPath = rule.listPath ?: "$.data.list",
-                totalPath = rule.totalPath ?: "",
-                commentsUrl = commentsUrl,
-                repliesUrl = rule.repliesUrl ?: "",
-                replyListPath = rule.replyListPath ?: rule.listPath ?: "$.data.list",
-                audioUrl = rule.audioUrl ?: "",
-                pageSize = rule.pageSize ?: 20,
-                fields = fields,
-                replyFields = fields,
-                sortEnabled = rule.sortEnabled ?: true
-            )
-        }
-
-        /** 替换 URL 里的 {bookId} {chapterId} {pid} 占位符；其余 [page] 等保留给弹窗 */
-        private fun fillUrl(url: String, bookId: String, chapterId: String, pid: Int): String =
-            url.replace("{bookId}", bookId)
-                .replace("{chapterId}", chapterId)
-                .replace("{pid}", pid.toString())
-    }
-
     // ---------- 通用/默认适配器（起点系镜像站 comments.php） ----------
 
     private object GenericAdapter : ParagraphAdapter {
@@ -733,10 +593,10 @@ object LocalParagraphComment {
 
         override fun match(source: BookSource): Boolean = true
 
-        override fun extractBookId(source: BookSource, bookUrl: String, chapterUrl: String): String? =
+        override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
             pickId(bookUrl, "book_id") ?: pickId(chapterUrl, "book_id")
 
-        override fun extractChapterId(source: BookSource, chapterUrl: String): String? = pickId(chapterUrl, "chapter_id")
+        override fun extractChapterId(chapterUrl: String): String? = pickId(chapterUrl, "chapter_id")
 
         override suspend fun fetchSummaryCounts(
             source: BookSource,
@@ -804,7 +664,7 @@ object LocalParagraphComment {
             bookUrl.contains("source=fanqie", ignoreCase = true) ||
                 chapterUrl?.contains("item_id=", ignoreCase = true) == true
 
-        override fun extractBookId(source: BookSource, bookUrl: String, chapterUrl: String): String? =
+        override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
             if (isFanqie(bookUrl, chapterUrl)) {
                 // 番茄：正文 URL 里的 book_id 即番茄 bookId
                 pickId(chapterUrl, "book_id") ?: pickId(bookUrl, "bookId")
@@ -812,7 +672,7 @@ object LocalParagraphComment {
                 pickId(bookUrl, "bookId") ?: pickId(chapterUrl, "bookId")
             }
 
-        override fun extractChapterId(source: BookSource, chapterUrl: String): String? =
+        override fun extractChapterId(chapterUrl: String): String? =
             if (chapterUrl.contains("item_id=", ignoreCase = true)) {
                 pickId(chapterUrl, "item_id")
             } else {
@@ -927,12 +787,12 @@ object LocalParagraphComment {
                 source.bookSourceUrl.contains("pl.aadcn.cn", ignoreCase = true) ||
                 source.bookSourceUrl.contains("qd.aadcn.cn", ignoreCase = true)
 
-        override fun extractBookId(source: BookSource, bookUrl: String, chapterUrl: String): String? =
+        override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
             pickId(bookUrl, "novelId")
                 ?: pickId(bookUrl, "bookId")
                 ?: pickId(bookUrl, "book_id")
 
-        override fun extractChapterId(source: BookSource, chapterUrl: String): String? {
+        override fun extractChapterId(chapterUrl: String): String? {
             if (chapterUrl.startsWith("data:;base64,")) {
                 val b64 = chapterUrl.substringAfter(";base64,").substringBefore(",")
                 val decoded = runCatching {
@@ -1018,11 +878,11 @@ object LocalParagraphComment {
             source.bookSourceUrl.contains("sunianxincue.love", ignoreCase = true)
 
         /** book_id：玖玖详情/章节 URL 末尾数字 */
-        override fun extractBookId(source: BookSource, bookUrl: String, chapterUrl: String): String? =
+        override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
             trailingNumber(bookUrl) ?: pickId(chapterUrl, "book_id")
 
         /** item_id：玖玖章节 URL 末尾数字 */
-        override fun extractChapterId(source: BookSource, chapterUrl: String): String? =
+        override fun extractChapterId(chapterUrl: String): String? =
             pickId(chapterUrl, "item_id") ?: trailingNumber(chapterUrl)
 
         /** 从章节 URL /api/content/{sources}/... 提取站点标识，缺省 fanqie */
@@ -1035,27 +895,13 @@ object LocalParagraphComment {
         private fun trailingNumber(u: String): String? =
             Regex("""/(\d+)(?=[/?]|$)""").find(u)?.groupValues?.get(1)
 
-        /**
-         * 玖玖段评接口实际挂在镜像的第二个域名 api[1]（serene.sunianxincue.love），
-         * 书源自身域名（cumcuer.sunianxincue.love）只提供搜索/目录/正文，段评接口返回 404。
-         * 与 jsLib 中 `api = ["https://cumcuer...", "https://serene..."]`、取 api[1] 一致。
-         */
-        private fun commentHost(source: BookSource): String {
-            val base = source.bookSourceUrl.trimEnd('/')
-            return if (base.contains("cumcuer", ignoreCase = true)) {
-                "https://serene.sunianxincue.love"
-            } else {
-                base
-            }
-        }
-
         override suspend fun fetchSummaryCounts(
             source: BookSource,
             bookId: String,
             chapterId: String,
             chapterUrl: String?
         ): SummaryResult {
-            val url = commentHost(source) + COMMENTS_ROOT +
+            val url = source.bookSourceUrl.trimEnd('/') + COMMENTS_ROOT +
                 sources(chapterUrl) + "/$bookId/$chapterId"
             val body = fetchBody(source, url) ?: return SummaryResult()
             val counts = HashMap<Int, Int>()
@@ -1078,9 +924,9 @@ object LocalParagraphComment {
             pid: Int,
             chapterUrl: String?
         ): String {
-            val url = commentHost(source) + COMMENTS_ROOT +
+            val url = source.bookSourceUrl.trimEnd('/') + COMMENTS_ROOT +
                 "index.php/ui/" + sources(chapterUrl) + "/$bookId/$chapterId/${pid - 1}"
-            return "java.showBrowser('$url');"
+            return "java.openUrl('$url');"
         }
     }
 }
