@@ -11,7 +11,7 @@
 | `ConfigManageScaffold.kt` | Scaffold + TopAppBar 骨架，含返回行为、多选/普通模式 actions 插槽、多选底栏插槽。 |
 | `DayNightPager.kt` | 日/夜分页管理器，封装 Tab + Pager 双向联动、摘要文本、空状态，以及通用 `ConfigList`。 |
 | `ConfigMultiSelectBar.kt` | 可配置操作项的多选底栏，各管理页按需传入不同的批量操作列表。 |
-| `SegmentedTabRow.kt` | 泛型胶囊分段按钮 Tab 行，单选分段控件，选中色跟随应用主色调。 |
+| `SegmentedTabRow.kt` | 泛型胶囊分段 Tab 行（滑动指示器版），视觉态由连续 `progress: Float` 驱动，滑块随 Slider 逐帧跟随滑动，文字/图标激活色过半切换，选中色跟随应用主色调。 |
 
 ## 架构模式
 

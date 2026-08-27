@@ -1,9 +1,12 @@
 package io.legado.app.data.entities
 
+import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+// 无可变集合字段，标注 @Immutable 让 Compose 跳过重组判断（纯编译期/运行时提示，不影响 Room）
+@Immutable
 @Entity(
     tableName = "source_recycle_bin",
     indices = [

@@ -22,6 +22,7 @@ import io.legado.app.base.VMBaseActivity
 import io.legado.app.data.entities.RssSource
 import io.legado.app.databinding.ActivityRssSourceEditBinding
 import io.legado.app.help.config.LocalConfig
+import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.accentColor
@@ -181,13 +182,43 @@ class RssSourceEditActivity :
                 putExtra("sourceType", "rssSource")
                 putExtra("sourceKey", getRssSource().sourceUrl)
                 putExtra("fieldKey", fieldKey)
-                putExtra("tabKey", "base")
+                putExtra("tabKey", getCurrentTabKey())
             }
             textEditLauncher.launch(intent)
         }
         else {
             toastOnUi(R.string.please_focus_cursor_on_textbox)
         }
+    }
+
+    /**
+     * 获取当前选中的Tab对应的key
+     * @return tabKey: "base", "start", "list", "webView"
+     */
+    private fun getCurrentTabKey(): String {
+        return when (binding.tabLayout.selectedTabPosition) {
+            1 -> "start"
+            2 -> "list"
+            3 -> "webView"
+            else -> "base"
+        }
+    }
+
+    /**
+     * 打开指定字段的全屏编辑器（供列表内截断预览字段点击时调用）。
+     * 传入 entity.value 全文，保存后通过 textEditLauncher 回传更新。
+     */
+    private fun openFullEdit(editEntity: EditEntity) {
+        val intent = Intent(this, CodeEditActivity::class.java).apply {
+            putExtra("text", editEntity.value ?: "")
+            putExtra("title", editEntity.hint)
+            putExtra("cursorPosition", 0)
+            putExtra("sourceType", "rssSource")
+            putExtra("sourceKey", getRssSource().sourceUrl)
+            putExtra("fieldKey", editEntity.key)
+            putExtra("tabKey", getCurrentTabKey())
+        }
+        textEditLauncher.launch(intent)
     }
 
     /**
@@ -218,7 +249,8 @@ class RssSourceEditActivity :
                     adapter.editEntities = entities
                 }
                 binding.recyclerView.post {
-                    adapter.notifyDataSetChanged()
+                    // P4: 用增量更新替代 notifyDataSetChanged
+                    adapter.notifyItemRangeChanged(0, adapter.editEntities.size)
                     scrollToFieldAndUpdate(entity, value, cursorPosition)
                 }
                 return
@@ -238,6 +270,11 @@ class RssSourceEditActivity :
             // 双层 post 确保布局完成后再获焦，避免 onBindViewHolder.clearFocus() 冲突
             binding.recyclerView.post {
                 binding.recyclerView.post {
+                    // 超长字段处于截断预览模式，只滚动定位，
+                    // 不能把全文灌回预览控件，也不能获焦（控件不可聚焦）
+                    if ((entity.value?.length ?: 0) > RssSourceEditAdapter.PREVIEW_MAX_CHARS) {
+                        return@post
+                    }
                     val viewHolder = binding.recyclerView.findViewHolderForAdapterPosition(position)
                     if (viewHolder is RssSourceEditAdapter.EditTextViewHolder) {
                         val editText = viewHolder.binding.editText
@@ -283,7 +320,8 @@ class RssSourceEditActivity :
             adapter.editEntities = entities
         }
         binding.recyclerView.post {
-            adapter.notifyDataSetChanged()
+            // P4: 用增量更新替代 notifyDataSetChanged
+            adapter.notifyItemRangeChanged(0, adapter.editEntities.size)
             scrollToFieldAndUpdate(entity, entity.value ?: "", -1)
         }
     }
@@ -346,13 +384,20 @@ class RssSourceEditActivity :
             text = "WEB_VIEW"
         })
         binding.recyclerView.setEdgeEffectColor(primaryColor)
+        // P3: RecyclerView 高度为 match_parent，不受内容数量影响
+        binding.recyclerView.setHasFixedSize(true)
+        binding.recyclerView.setItemViewCacheSize(15)
+        binding.recyclerView.recycledViewPool.setMaxRecycledViews(0, 15)
+        binding.recyclerView.recycledViewPool.setMaxRecycledViews(1, 10)
+        // 预览模式（超长文本截断显示）的字段被点击时打开全屏编辑
+        adapter.onRequestFullEdit = { entity -> openFullEdit(entity) }
         val createSpanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int = when (adapter.getItemViewType(position)) {
                 EditEntity.ViewType.checkBox -> 1 //CheckBox 占1个span
                 else -> 2 //占2个span（整行）
             }
         }
-        val gridLayoutManager = if (adapter.editEntityMaxLine < 999) {
+        val gridLayoutManager = if (AppConfig.sourceEditMaxLine < 999) {
             object : GridLayoutManager(this, 2) {
                 init {
                     spanSizeLookup = createSpanSizeLookup
@@ -397,11 +442,23 @@ class RssSourceEditActivity :
     }
 
     private fun setEditEntities(tabPosition: Int?) {
+        // P4: 用增量更新替代 notifyDataSetChanged
+        val oldSize = adapter.editEntities.size
         when (tabPosition) {
             1 -> adapter.editEntities = startEntities
             2 -> adapter.editEntities = listEntities
             3 -> adapter.editEntities = webViewEntities
             else -> adapter.editEntities = sourceEntities
+        }
+        val newSize = adapter.editEntities.size
+        if (newSize > oldSize) {
+            adapter.notifyItemRangeChanged(0, oldSize)
+            adapter.notifyItemRangeInserted(oldSize, newSize - oldSize)
+        } else if (newSize < oldSize) {
+            adapter.notifyItemRangeChanged(0, newSize)
+            adapter.notifyItemRangeRemoved(newSize, oldSize - newSize)
+        } else {
+            adapter.notifyItemRangeChanged(0, newSize)
         }
         binding.recyclerView.scrollToPosition(0)
         window.decorView.rootView.clearFocus()
@@ -654,7 +711,7 @@ class RssSourceEditActivity :
                     edit.replace(start, end, text)//光标所在位置插入文字
                 }
             }
-            if (adapter.editEntityMaxLine >= 999) {
+            if (AppConfig.sourceEditMaxLine >= 999) {
                 view.post {
                     val editTextLocation = IntArray(2)
                     view.getLocationOnScreen(editTextLocation)

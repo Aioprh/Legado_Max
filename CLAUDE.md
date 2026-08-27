@@ -133,6 +133,21 @@ Compose 规范拆分为 8 个文件，位于 `docs/project-rules/compose/`：
   - Fragments: `XxxFragment`
 - 日志使用统一的 tag 格式：`AppTag.xxx`
 
+## Comments
+> 注释优先表达**为什么这么做、特殊约束、业务背景**，代码本身负责表达“是什么、怎么做”。
+- **类注释**
+  - 核心/复杂类（单例、引擎、解析器、管理器等）必须补充完整 KDoc。
+  - 普通 `Activity` / `Adapter` / `ViewModel` 无需完整 KDoc，仅简短说明核心用途即可。
+- **函数注释**
+  - 对外公开 API、复杂业务逻辑、有特殊入参/返回值约束的函数，必须写 KDoc。
+  - 简单 getter / setter、工具内部私有简单函数，不额外加注释。
+- **变量注释**
+  - 优先靠命名表达语义，命名清晰则不加行内注释。
+  - 仅业务含义隐晦、存在特殊边界约定时才补充注释。
+- **注释原则**
+  - 写「为什么」，不重复复述代码已经能看出来的「是什么」。
+  - 不要把代码逻辑翻译成自然语言。
+
 ## Dependency Management
 
 - 所有依赖版本通过 `gradle/libs.versions.toml` 统一管理

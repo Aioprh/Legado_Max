@@ -422,6 +422,8 @@ class AnalyzeUrl(
         isTest: Boolean = false,
         skipRateLimit: Boolean = false
     ): StrResponse {
+        // Data URL 短路：解码后直接返回文本，不走 OkHttp / WebView
+        getDataUrlStrContent()?.let { return it }
         if (type != null) {
             return StrResponse(url, HexUtil.encodeHexStr(getByteArrayAwait()))
         }
@@ -431,6 +433,55 @@ class AnalyzeUrl(
         concurrentRateLimiter.withLimit {
             return executeStrRequest(jsStr, sourceRegex, useWebView, isTest)
         }
+    }
+
+    /**
+     * 解析 Data URL 并返回文本内容的 StrResponse。
+     *
+     * 支持两种格式：
+     * - `data:text/html;charset=utf-8;base64,<base64>` — base64 编码
+     * - `data:text/html;charset=utf-8,<raw>` — 非 base64 的原始文本（percent-decoded）
+     *
+     * @return 已解码的 StrResponse；如果当前 URL 不是 data URL 或解析失败则返回 null
+     */
+    private fun getDataUrlStrContent(): StrResponse? {
+        if (!urlNoQuery.startsWith("data:")) return null
+        val dataUriRegex = AppPattern.dataUriRegex
+        // 获取 data URL 声明的 charset，优先取选项中的 charset
+        val charsetName = charset ?: extractCharsetFromDataUrl(urlNoQuery) ?: "UTF-8"
+        val base64Match = dataUriRegex.find(urlNoQuery)
+        if (base64Match != null) {
+            val base64Data = base64Match.groupValues[1]
+            val bytes = Base64.decode(base64Data, Base64.DEFAULT)
+            return StrResponse(url, String(bytes, Charset.forName(charsetName)))
+        }
+        // 非 base64 的 data URL：data:[<mediatype>][;charset=xxx],<data>
+        val commaIdx = urlNoQuery.indexOf(',')
+        if (commaIdx != -1) {
+            val raw = urlNoQuery.substring(commaIdx + 1)
+            // data URL 非基础编码部分使用 percent-encoding
+            val decoded = java.net.URLDecoder.decode(raw, charsetName)
+            return StrResponse(url, decoded)
+        }
+        // 格式不合法的 data URL，返回空 body 避免崩溃
+        return StrResponse(url, "")
+    }
+
+    /**
+     * 从 data URL 的 media type 部分提取 charset 参数。
+     * 例: `data:text/html;charset=utf-8;base64,...` → `utf-8`
+     */
+    private fun extractCharsetFromDataUrl(dataUrl: String): String? {
+        val commaIdx = dataUrl.indexOf(',')
+        val header = if (commaIdx != -1) dataUrl.substring(0, commaIdx) else dataUrl
+        val charsetIdx = header.indexOf("charset=", ignoreCase = true)
+        if (charsetIdx != -1) {
+            val start = charsetIdx + "charset=".length
+            val end = header.indexOf(';', start)
+            val endIdx = if (end != -1) end else header.length
+            return header.substring(start, endIdx).takeIf { it.isNotBlank() }
+        }
+        return null
     }
 
     fun isSimpleGetRequest(): Boolean {

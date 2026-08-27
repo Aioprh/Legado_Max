@@ -1,0 +1,60 @@
+name: Unit Test
+
+on:
+  # 与 Build Debug APK 一致：推送到 test 分支，或提交 PR 到 test 分支时触发
+  # （testing.md §16.4：JVM 单测进 PR CI，红 = 不合，禁止降级为 warning）
+  push:
+    branches:
+      - test
+  pull_request:
+    branches:
+      - test
+
+# 同一个分支连续 push 时，取消旧任务，节省资源
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run JVM Unit Tests
+        run: |
+          chmod +x gradlew
+          # 只跑 appMax 变体的 JVM 单测；androidTest 不进 PR CI（§16.4）
+          ./gradlew :app:testAppMaxDebugUnitTest --parallel --daemon
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: |
+            app/build/reports/tests/testAppMaxDebugUnitTest
+            app/build/test-results/testAppMaxDebugUnitTest
+          retention-days: 7

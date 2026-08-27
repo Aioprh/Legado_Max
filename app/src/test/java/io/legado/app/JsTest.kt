@@ -7,6 +7,16 @@ import org.intellij.lang.annotations.Language
 import org.junit.Assert
 import org.junit.Test
 
+/**
+ * Rhino 引擎行为回归测试。
+ *
+ * 质量评估（2026-08-27）：
+ * - JS 引擎行为脆弱（绑定、类型转换、正则细节都可能随版本变），这组回归测试价值高，保留。
+ * - 已修正：多处 assertEquals 参数顺序写反（JUnit 约定 `assertEquals(expected, actual)`），
+ *   反序会导致失败信息把实际值当期望值显示，误导排查。
+ * - [testFor] 的期望值 "12012" 是引擎 eval 返回值的 toString（依赖循环内累加语义），
+ *   改动前先在本地 REPL 验证。
+ */
 class JsTest {
 
     @Language("js")
@@ -90,7 +100,7 @@ class JsTest {
             bindings["result"] = "筳彩涫第七百一十四章 人头树鮺舦綸"
             eval(js, bindings)
         }
-        Assert.assertEquals(x, "第七百一十四章 人头树")
+        Assert.assertEquals("第七百一十四章 人头树", x)
     }
 
 
@@ -102,7 +112,7 @@ class JsTest {
         @Language("js")
         val js = "chapter.title"
         val result = RhinoScriptEngine.eval(js, bindings)
-        Assert.assertEquals(result, "xxxyyy")
+        Assert.assertEquals("xxxyyy", result)
     }
 
     @Test
@@ -117,7 +127,7 @@ class JsTest {
             result
         """.trimIndent()
         val result = RhinoScriptEngine.eval(js, bindings)
-        Assert.assertEquals(result, 6.0)
+        Assert.assertEquals(6.0, result)
     }
 
     @Test
@@ -129,7 +139,7 @@ class JsTest {
             typeof s
         """.trimIndent()
         val result = RhinoScriptEngine.eval(js, bindings)
-        Assert.assertEquals(result, "string")
+        Assert.assertEquals("string", result)
     }
 
 }

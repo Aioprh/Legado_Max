@@ -1,5 +1,7 @@
 package io.legado.app.ui.book.storage
 
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,41 +14,32 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.legado.app.R
 import io.legado.app.ui.book.storage.components.CacheItemCard
 import io.legado.app.ui.book.storage.components.CacheSummaryCard
 import io.legado.app.ui.book.storage.components.ClearAllConfirmDialog
 import io.legado.app.ui.book.storage.components.ClearConfirmDialog
-import io.legado.app.ui.file.FileManageActivity
+import io.legado.app.ui.theme.PageDimens
 import io.legado.app.ui.theme.pageCardContainerColor
-import io.legado.app.ui.theme.pageTopBarContainerColor
-import io.legado.app.utils.startActivity
+import io.legado.app.ui.widget.components.AppPageTopBar
 
 // UI层
 // 4. StorageManageScreen.kt
@@ -56,88 +49,70 @@ import io.legado.app.utils.startActivity
 //   - TopAppBar 显示标题、刷新按钮、一键清理按钮
 //   - 根据 UI状态 显示不同内容（Loading、Clearing、Error、Idle）
 //   - LazyColumn 渲染缓存汇总卡片和缓存项列表
-//   - 管理清理确认对话框的显示
+//   - 管理清理确认对话框的显示（由 ViewModel 状态驱动，§4.5）
 
-data class ClearTarget(
-    val cacheType: CacheType,
-    val detailId: String?
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StorageManageScreen(
-    viewModel: StorageManageViewModel = viewModel(),
-    onBackClick: () -> Unit
+    viewModel: StorageManageViewModel,
+    onBackClick: () -> Unit,
+    onOpenPath: (String) -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val cacheItems by viewModel.cacheItems.collectAsState()
-    val totalSize by viewModel.totalSize.collectAsState()
-    val context = LocalContext.current
-    
-    var showClearDialog by remember { mutableStateOf<ClearTarget?>(null) }
-    var showClearAllDialog by remember { mutableStateOf(false) }
-    
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val cacheItems by viewModel.cacheItems.collectAsStateWithLifecycle()
+    val totalSize by viewModel.totalSize.collectAsStateWithLifecycle()
+    val dialog by viewModel.dialog.collectAsStateWithLifecycle()
+
     val containerColor = pageCardContainerColor()
-    val topBarColor = pageTopBarContainerColor()
-    
-    showClearDialog?.let { target ->
-        val targetName = target.detailId ?: viewModel.getCacheName(target.cacheType)
-        ClearConfirmDialog(
-            targetName = targetName,
-            onConfirm = {
-                viewModel.clearCache(target.cacheType, target.detailId)
-                showClearDialog = null
-            },
-            onDismiss = { showClearDialog = null }
-        )
+
+    // 返回键拦截：有 Dialog 时先关闭 Dialog，无则正常返回（§4.5）
+    val hasDialog = dialog != null
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    DisposableEffect(hasDialog, backDispatcher) {
+        val callback = object : OnBackPressedCallback(hasDialog) {
+            override fun handleOnBackPressed() = viewModel.dismissDialog()
+        }
+        backDispatcher?.addCallback(callback)
+        onDispose { callback.remove() }
     }
-    
-    if (showClearAllDialog) {
-        ClearAllConfirmDialog(
+
+    // 清理确认对话框（ViewModel 状态条件渲染，§4.5）
+    when (val state = dialog) {
+        is StorageDialogState.ClearConfirm -> {
+            val targetName = state.detailId ?: viewModel.getCacheName(state.cacheType)
+            ClearConfirmDialog(
+                targetName = targetName,
+                onConfirm = {
+                    viewModel.clearCache(state.cacheType, state.detailId)
+                    viewModel.dismissDialog()
+                },
+                onDismiss = { viewModel.dismissDialog() }
+            )
+        }
+        is StorageDialogState.ClearAll -> ClearAllConfirmDialog(
             onConfirm = {
                 viewModel.clearAllCache()
-                showClearAllDialog = false
+                viewModel.dismissDialog()
             },
-            onDismiss = { showClearAllDialog = false }
+            onDismiss = { viewModel.dismissDialog() }
         )
+        null -> Unit
     }
     
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = topBarColor,
-                    scrolledContainerColor = topBarColor,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSecondary,
-                    titleContentColor = MaterialTheme.colorScheme.onSecondary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSecondary
-                ),
-                title = {
-                    Column {
-                        Text(
-                            text = "存储管理",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontSize = 20.sp, 
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.loadCacheInfo() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                    }
-                    IconButton(onClick = { showClearAllDialog = true }) {
-                        Icon(Icons.Default.DeleteSweep, contentDescription = "一键清理")
-                    }
+            // 统一顶栏（theme-styles.md §14.2）
+            AppPageTopBar(
+                title = stringResource(R.string.storage_manage_title),
+                onBackClick = onBackClick
+            ) {
+                IconButton(onClick = { viewModel.loadCacheInfo() }) {
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.refresh))
                 }
-            )
+                IconButton(onClick = { viewModel.requestClearAll() }) {
+                    Icon(Icons.Default.DeleteSweep, contentDescription = stringResource(R.string.storage_clear_all))
+                }
+            }
         }
     ) { paddingValues ->
         when (val state = uiState) {
@@ -162,7 +137,7 @@ fun StorageManageScreen(
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "正在清理 ${state.target}...",
+                            text = stringResource(R.string.storage_clearing, state.target),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -191,7 +166,7 @@ fun StorageManageScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         IconButton(onClick = { viewModel.loadCacheInfo() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "重试")
+                            Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.retry))
                         }
                     }
                 }
@@ -199,8 +174,8 @@ fun StorageManageScreen(
             is StorageUiState.Idle -> {
                 LazyColumn(
                     modifier = Modifier.padding(paddingValues),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    contentPadding = PaddingValues(PageDimens.screenPadding),
+                    verticalArrangement = Arrangement.spacedBy(PageDimens.cardSpacing)
                 ) {
                     item {
                         CacheSummaryCard(
@@ -209,23 +184,19 @@ fun StorageManageScreen(
                         )
                     }
                     
-                    items(cacheItems) { item ->
+                    items(cacheItems, key = { it.id }) { item ->
                         CacheItemCard(
                             item = item,
                             onExpandClick = { 
                                 viewModel.toggleExpand(CacheType.valueOf(item.id))
                             },
-                            onClearClick = { 
-                                showClearDialog = ClearTarget(CacheType.valueOf(item.id), null)
+                            onClearClick = {
+                                viewModel.requestClear(CacheType.valueOf(item.id))
                             },
                             onDetailClearClick = { detailId ->
-                                showClearDialog = ClearTarget(CacheType.valueOf(item.id), detailId)
+                                viewModel.requestClear(CacheType.valueOf(item.id), detailId)
                             },
-                            onOpenPathClick = { path ->
-                                context.startActivity<FileManageActivity> {
-                                    putExtra(FileManageActivity.EXTRA_INITIAL_PATH, path)
-                                }
-                            }
+                            onOpenPathClick = onOpenPath
                         )
                     }
                     

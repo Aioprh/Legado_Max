@@ -71,10 +71,18 @@ fun DayNightPager(
         initialSyncComplete = true
     }
 
+    // 实时偏移量：胶囊视觉态完全由它驱动（不再读 state.tab）。
+    // 两个 snapshot state 在拖拽期间逐帧更新，滑块逐帧跟随，无落定延迟。
+    val progress = pagerState.currentPage + pagerState.currentPageOffsetFraction
+
+    // Pager → Tab 同步用 currentPage（实时取最靠近中心的页）而非 settledPage：
+    // settledPage 要等完全停稳才更新，若用户在点击触发的动画中途拖拽回退，
+    // 逻辑 tab 会与 Pager 实际页脱钩；currentPage 与滑块过半阈值同步切换，
+    // 保证胶囊文字激活态与 state.tab 始终一致。
     // 初始化完成前禁止旧 Pager 状态反向覆盖当前 Tab。
-    LaunchedEffect(pagerState.settledPage, initialSyncComplete) {
+    LaunchedEffect(pagerState.currentPage, initialSyncComplete) {
         if (!initialSyncComplete) return@LaunchedEffect
-        val newTab = if (pagerState.settledPage == 0) ConfigTab.DAY else ConfigTab.NIGHT
+        val newTab = if (pagerState.currentPage == 0) ConfigTab.DAY else ConfigTab.NIGHT
         if (state.tab != newTab) {
             state.tab = newTab
         }
@@ -92,7 +100,7 @@ fun DayNightPager(
         // Tab 行
         SegmentedTabRow(
             tabs = ConfigTab.entries,
-            selected = state.tab,
+            progress = progress,
             onTabClick = onTabChange,
             labelText = { tab ->
                 when (tab) {
