@@ -68,6 +68,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     // 排序模式：实时=接口原始顺序；最新=神评论置顶+按时间由新到旧；回复最多=按回复数降序
     private enum class SortMode { REALTIME, NEWEST, HOT }
     private var sortMode = SortMode.NEWEST
+    // 排序模式分页追加时临时抑制 onCurrentListChanged 触发的自动加载，
+    // 防止 DiffUtil 重排后可见项被推到列表末尾造成链式加载
+    private var suppressAutoLoad = false
 
     // 同一次会话内经 rawItems 持有的对象引用恒定，用 === 判断即等价于"同一评论"
     private val commentDiff = object : DiffUtil.ItemCallback<ParagraphCommentItem>() {
@@ -128,7 +131,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     maybeLoadMore()
                 }
             })
-            adapter.onListChanged = { maybeLoadMore() }
+            adapter.onListChanged = { if (!suppressAutoLoad) maybeLoadMore() }
             // 加载失败点击重试 / 加载更多点击翻页
             llFooter.setOnClickListener {
                 if (loading) return@setOnClickListener
@@ -320,14 +323,21 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     }
 
     /** 追加下一页：实时模式直接末尾追加；排序模式用 DiffUtil 全量重排已加载数据。
-     *  (旧实现按排序位置逐条插入，插到可视区上方的条目会抬高 count-4 阈值，
-     *   导致"加载更多"滚动触发永远不满足，看起来只加载了首批) */
+     *  排序模式重排后，新评论可能插到列表上方，把原有可见项推到列表末尾，
+     *  导致 findLastVisibleItemPosition() 仍在底部 → onCurrentListChanged → maybeLoadMore → 链式加载。
+     *  修复：重排期间临时抑制 onCurrentListChanged 触发的自动加载，延迟 300ms 后用真实滚动位置判断是否需要续接。 */
     private fun appendPageItems(newItems: List<ParagraphCommentItem>) {
         if (newItems.isEmpty()) return
         if (sortMode == SortMode.REALTIME) {
             adapter.addItems(newItems)
         } else {
+            suppressAutoLoad = true
             adapter.setItems(rawItems.sortedWith(sortComparator()), commentDiff)
+            // 等 DiffUtil 异步分发完成、RecyclerView 重排落定后，用真实位置判断是否需要续接
+            binding.recyclerView.postDelayed({
+                suppressAutoLoad = false
+                if (!isRemoving && !isDetached) maybeLoadMore()
+            }, 300)
         }
     }
 
