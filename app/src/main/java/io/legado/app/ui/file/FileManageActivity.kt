@@ -1,5 +1,6 @@
 package io.legado.app.ui.file
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -10,11 +11,14 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import io.legado.app.R
 import io.legado.app.constant.AppConst
 import io.legado.app.ui.theme.LegadoThemeWithBackground
 import io.legado.app.ui.theme.initLegadoComposeTheme
 import io.legado.app.ui.theme.setLegadoContent
 import io.legado.app.utils.openFileUri
+import io.legado.app.utils.printOnDebug
+import io.legado.app.utils.stackTraceStr
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.launch
 
@@ -47,10 +51,11 @@ class FileManageActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.events.collect { event ->
-                        when (event) {
-                            is FileManageEvent.OpenFile -> openFile(event)
-                            is FileManageEvent.Toast -> toastOnUi(event.message)
-                        }
+when (event) {
+                        is FileManageEvent.OpenFile -> openFile(event)
+                        is FileManageEvent.OpenWithChooser -> openWithChooser(event)
+                        is FileManageEvent.Toast -> toastOnUi(event.message)
+                    }
                     }
                 }
                 launch {
@@ -67,6 +72,23 @@ class FileManageActivity : AppCompatActivity() {
             openFileUri(uri)
         } catch (e: Exception) {
             toastOnUi(e.localizedMessage)
+        }
+    }
+
+    /** 用选择器打开目录，让用户选哪个应用/文件管理器打开（平台操作，§4.1） */
+    private fun openWithChooser(event: FileManageEvent.OpenWithChooser) {
+        val dir = event.dir ?: return
+        try {
+            val uri = FileProvider.getUriForFile(this, AppConst.authority, dir)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "resource/folder")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, getString(R.string.open_with)))
+        } catch (e: Exception) {
+            toastOnUi(e.stackTraceStr)
+            e.printOnDebug()
         }
     }
 

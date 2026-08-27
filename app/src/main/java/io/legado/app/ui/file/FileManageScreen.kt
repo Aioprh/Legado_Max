@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.OpenWith
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -21,10 +25,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.legado.app.R
 import io.legado.app.ui.file.components.FileList
-import io.legado.app.ui.file.components.FileSearchBar
 import io.legado.app.ui.file.components.PathBreadcrumb
 import io.legado.app.ui.theme.pageTopBarContainerColor
 import io.legado.app.ui.widget.components.AppPageTopBar
+import io.legado.app.ui.widget.components.AppSearchBar
 import io.legado.app.ui.widget.components.dialog.AppConfirmDialog
 
 /**
@@ -87,12 +91,21 @@ fun FileManageScreen(
                     title = stringResource(R.string.file_manage),
                     onBackClick = onBackClick,
                     containerColor = Color.Transparent
-                )
+                ) {
+                    // 用其他文件管理器打开当前路径
+                    IconButton(onClick = { viewModel.openWithChooser() }) {
+                        Icon(
+                            imageVector = Icons.Default.OpenWith,
+                            contentDescription = stringResource(R.string.open_with)
+                        )
+                    }
+                }
                 // 搜索栏
-                FileSearchBar(
+                AppSearchBar(
                     query = searchQuery,
                     onQueryChange = { viewModel.updateSearchQuery(it) },
-                    hint = "${stringResource(R.string.screen)} • ${stringResource(R.string.file_manage)}"
+                    hint = "${stringResource(R.string.screen)} • ${stringResource(R.string.file_manage)}",
+                    showClearButton = false
                 )
             }
         }

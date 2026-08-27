@@ -29,6 +29,7 @@ data class FileManageUiState(
  */
 sealed interface FileManageEvent {
     data class OpenFile(val file: File) : FileManageEvent
+    data class OpenWithChooser(val dir: File?) : FileManageEvent
     data class Toast(val message: String?) : FileManageEvent
 }
 
@@ -241,6 +242,14 @@ class FileManageViewModel(
      */
     fun openFile(file: File) {
         _events.trySend(FileManageEvent.OpenFile(file))
+    }
+
+    /**
+     * 用系统选择器打开当前目录，让用户选择用哪个应用/文件管理器打开
+     * 平台操作（FileProvider + Chooser）由 Activity 执行（§4.1）
+     */
+    fun openWithChooser() {
+        _events.trySend(FileManageEvent.OpenWithChooser(lastDir))
     }
 
     /**
