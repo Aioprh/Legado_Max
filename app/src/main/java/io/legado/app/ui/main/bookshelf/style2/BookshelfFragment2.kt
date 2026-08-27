@@ -271,9 +271,17 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                 enableRefresh = it.enableRefresh
                 onlyUpdateRead = it.onlyUpdateRead
             }
-            // 传 false 避免 initBooksData → loadTagBar → initBooksData 无限递归
-            loadTagBar(refreshBooks = false)
+            // 加载标签栏（标签栏完成后会自行刷新数据流，不会回调 initBooksData）
+            loadTagBar()
         }
+        restartBooksFlow()
+    }
+
+    /**
+     * 启动/重启书籍数据流。
+     * 根据当前 [groupId] 和 [tagFilter] 从数据库加载书籍并筛选。
+     */
+    private fun restartBooksFlow() {
         booksFlowJob?.cancel()
         booksFlowJob = viewLifecycleOwner.lifecycleScope.launch {
             // 方案A：使用轻量查询 flowShelfByGroup 替代 flowByGroup，
@@ -364,19 +372,17 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
     /**
      * 加载当前分组的二级标签栏数据。
      *
-     * @param refreshBooks 是否在操作完成后刷新书籍列表。
-     *   - 当由 [initBooksData] 调用时传 false，避免循环递归（initBooksData → loadTagBar → initBooksData）。
-     *   - 当由 [observeLiveBus] 的配置变更调用时传 true，需要刷新书籍以应用新的筛选状态。
+     * 标签栏关闭时清除筛选状态并刷新数据流；
+     * 标签栏开启时异步加载标签，完成后设置默认筛选（全部）并刷新数据流。
+     * 本方法不会回调 [initBooksData]，避免循环调用。
      */
-    private fun loadTagBar(refreshBooks: Boolean = true) {
+    private fun loadTagBar() {
         if (!AppConfig.showBookshelfTagBar) {
             tagBar?.visibility = View.GONE
             tagSelectedIndex = -1
             currentTagList = emptyList()
             tagFilter = null
-            if (refreshBooks) {
-                initBooksData()
-            }
+            // 不在此处 restartBooksFlow，由调用方 initBooksData 负责
             return
         }
         val currentGroupId = groupId
@@ -402,12 +408,17 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                 0
             )
             tagBar?.setSelectedIndex(0, false)
-            applyTagFilter()
+            // 标签栏加载完成后，默认选"全部"（tagFilter=null）。
+            // 仅在 tagFilter 有非空旧值时才需重启数据流，避免不必要的取消/重启导致列表闪烁。
+            if (tagFilter != null) {
+                tagFilter = null
+                restartBooksFlow()
+            }
         }
     }
 
     /**
-     * 应用当前选中的标签筛选。
+     * 应用当前选中的标签筛选，重新加载数据流。
      * “全部”标签（索引0）传 null 表示不筛选。
      */
     private fun applyTagFilter() {
@@ -417,7 +428,8 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
         } else {
             currentTagList[selectedIndex]
         }
-        initBooksData()
+        // 只重启数据流，不调用 initBooksData，避免 loadTagBar → initBooksData → loadTagBar 循环
+        restartBooksFlow()
     }
 
     override fun onItemLongClick(item: Any) {
@@ -472,7 +484,10 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
             upFastScrollerBar()
             // 刷新标签栏（开关状态可能变化）
             if (groupId != BookGroup.IdRoot) {
-                loadTagBar(refreshBooks = true)
+                loadTagBar()
+                // 标签栏从开变关时 loadTagBar 清除了 tagFilter，
+                // 需要重启数据流以应用无筛选状态
+                restartBooksFlow()
             }
         }
     }
