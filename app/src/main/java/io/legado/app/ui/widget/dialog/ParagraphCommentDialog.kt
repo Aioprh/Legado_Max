@@ -7,6 +7,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import android.widget.PopupMenu
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
@@ -61,10 +62,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     private var hasMore = true
     private var loading = false
     private var footerState = FooterState.NONE
-    // 排序模式：true=最新（神评论置顶+按时间由新到旧）；false=实时（接口原始顺序）
-    private var newestFirst = true
     // 接口原始顺序（跨页累积），供切换排序时恢复
     private val rawItems = mutableListOf<ParagraphCommentItem>()
+    // 排序模式：实时=接口原始顺序；最新=神评论置顶+按时间由新到旧；回复最多=按回复数降序
+    private enum class SortMode { REALTIME, NEWEST, HOT }
+    private var sortMode = SortMode.NEWEST
 
     private enum class FooterState { NONE, LOADING, NO_MORE, FAILED }
 
@@ -93,21 +95,10 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
         binding.run {
             toolBar.setBackgroundColor(primaryColor)
-            toolBar.title = getString(R.string.paragraph_comment_title)
+            tvTitle.text = getString(R.string.paragraph_comment_title)
             toolBar.setNavigationOnClickListener { dismiss() }
-            // 排序切换：最新（时间由新到旧）/ 实时（接口原始顺序）
-            tvSort.text = getString(
-                if (newestFirst) R.string.paragraph_comment_newest
-                else R.string.paragraph_comment_realtime
-            )
-            tvSort.setOnClickListener {
-                newestFirst = !newestFirst
-                tvSort.text = getString(
-                    if (newestFirst) R.string.paragraph_comment_newest
-                    else R.string.paragraph_comment_realtime
-                )
-                applySort()
-            }
+            // 排序切换：齿轮图标弹出菜单选择 实时评论 / 最新评论 / 回复最多
+            tvSort.setOnClickListener { view -> showSortMenu(view) }
             recyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = adapter
             recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
@@ -202,12 +193,16 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 if (nextPage == 1) {
                     rawItems.clear()
                     rawItems.addAll(items)
-                    adapter.setItems(if (newestFirst) rawItems.sortedWith(sortComparator()) else rawItems)
+                    adapter.setItems(
+                        if (sortMode != SortMode.REALTIME) rawItems.sortedWith(sortComparator())
+                        else rawItems
+                    )
                 } else {
                     rawItems.addAll(items)
                     appendPageItems(items)
                 }
                 if (newTotal >= 0) total = newTotal
+                updateTitle()
                 // 无更多判断：优先用接口返回的 hasNext 标志（pagination.hasNextPage/hasNext）。
                 // 部分站点（如神魔番茄）的 totalCount 不可靠、或每页返回条数不足 pageSize，
                 // 用"条数>=页大小 && 已加载<总数"推断会提前显示"没有更多了"，
@@ -234,22 +229,64 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     }
 
     /** 最新模式排序：神评论置顶，其余按时间由新到旧（time=0 的未知时间排最后） */
-    private fun sortComparator(): Comparator<ParagraphCommentItem> =
-        compareByDescending<ParagraphCommentItem> { it.isGod }.thenByDescending { it.time }
+    private fun sortComparator(): Comparator<ParagraphCommentItem> = when (sortMode) {
+        SortMode.NEWEST -> compareByDescending<ParagraphCommentItem> { it.isGod }
+            .thenByDescending { it.time }
+        SortMode.HOT -> compareByDescending<ParagraphCommentItem> { it.replyCount }
+            .thenByDescending { it.time }
+        SortMode.REALTIME -> Comparator { _, _ -> 0 }
+    }
+
+    /** 顶栏齿轮图标点击弹排序菜单：实时评论 / 最新评论 / 回复最多 */
+    private fun showSortMenu(anchor: View) {
+        val menu = PopupMenu(requireContext(), anchor)
+        menu.menu.add(0, 1, 0, R.string.paragraph_comment_sort_newest).apply {
+            isCheckable = true
+            isChecked = sortMode == SortMode.NEWEST
+        }
+        menu.menu.add(0, 2, 1, R.string.paragraph_comment_sort_realtime).apply {
+            isCheckable = true
+            isChecked = sortMode == SortMode.REALTIME
+        }
+        menu.menu.add(0, 3, 2, R.string.paragraph_comment_sort_hot).apply {
+            isCheckable = true
+            isChecked = sortMode == SortMode.HOT
+        }
+        menu.setOnMenuItemClickListener { item ->
+            sortMode = when (item.itemId) {
+                1 -> SortMode.NEWEST
+                2 -> SortMode.REALTIME
+                else -> SortMode.HOT
+            }
+            applySort()
+            true
+        }
+        menu.show()
+    }
+
+    /** 顶栏居中标题实时显示评论总数（总数未知时退化为已加载条数） */
+    private fun updateTitle() {
+        val count = if (total >= 0) total else adapter.getActualItemCount().toLong()
+        binding.tvTitle.text = if (count > 0) {
+            getString(R.string.paragraph_comment_total, count)
+        } else {
+            getString(R.string.paragraph_comment_title)
+        }
+    }
 
     /** 切换排序模式后整表重排（以接口原始顺序 rawItems 为基准） */
     private fun applySort() {
-        if (newestFirst) {
-            adapter.setItems(rawItems.sortedWith(sortComparator()))
-        } else {
+        if (sortMode == SortMode.REALTIME) {
             adapter.setItems(rawItems)
+        } else {
+            adapter.setItems(rawItems.sortedWith(sortComparator()))
         }
     }
 
     /** 追加下一页：实时模式直接末尾追加；最新模式按序插入，保持整体有序且不重置滚动位置 */
     private fun appendPageItems(newItems: List<ParagraphCommentItem>) {
         if (newItems.isEmpty()) return
-        if (!newestFirst) {
+        if (sortMode == SortMode.REALTIME) {
             adapter.addItems(newItems)
             return
         }

@@ -356,6 +356,15 @@ object LocalParagraphComment {
         }
     }
 
+    /** 构造气泡 option JSON：pclick 固定；count>99 时附加 displayText=99+，使气泡上限显示“99+” */
+    private fun bubbleOption(pclick: String, count: Int): String {
+        return buildString {
+            append("{\\\"pclick\\\":\\\"").append(pclick).append("\\\"")
+            if (count > 99) append(",\\\"displayText\\\":\\\"99+\\\"")
+            append(",\\\"status\\\":\\\"normal\\\"}")
+        }
+    }
+
     /** 按非空段落序号定位注入（起点等段落结构与远程基本一致的情况） */
     private fun injectByPosition(
         content: String,
@@ -379,7 +388,7 @@ object LocalParagraphComment {
             if (count > 0) {
                 val pclick = adapter.buildPclick(source, bookId, chapterId, pid, chapterUrl)
                 if (pclick.isNotBlank()) {
-                    val option = "{\\\"pclick\\\":\\\"$pclick\\\",\\\"status\\\":\\\"normal\\\"}"
+                    val option = bubbleOption(pclick, count)
                     out.add("$line<img src=\"dp:$count,$option\">")
                 } else {
                     out.add(line)
@@ -425,7 +434,7 @@ object LocalParagraphComment {
                 val apiPid = summary.apiPids[remotePara] ?: remotePara
                 val pclick = adapter.buildPclick(source, bookId, chapterId, apiPid, chapterUrl)
                 if (pclick.isNotBlank()) {
-                    val option = "{\\\"pclick\\\":\\\"$pclick\\\",\\\"status\\\":\\\"normal\\\"}"
+                    val option = bubbleOption(pclick, count)
                     val lineIndex = lineIndexOfPara[pi]
                     out[lineIndex] = "${out[lineIndex]}<img src=\"dp:$count,$option\">"
                 }

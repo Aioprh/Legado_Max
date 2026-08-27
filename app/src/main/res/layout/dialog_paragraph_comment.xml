@@ -12,22 +12,36 @@
         android:layout_height="wrap_content"
         android:theme="?attr/actionBarStyle"
         app:navigationIcon="@drawable/ic_arrow_back"
-        app:popupTheme="@style/AppTheme.PopupOverlay"
-        app:title="@string/paragraph_comment_title"
-        app:titleTextAppearance="@style/ToolbarTitle">
+        app:popupTheme="@style/AppTheme.PopupOverlay">
 
-        <!-- 排序切换：最新（时间由新到旧） / 实时（接口原始顺序） -->
+        <!-- 顶栏标题：居中显示“段评”，打开后实时更新为评论总数 -->
         <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginStart="56dp"
+            android:layout_marginEnd="56dp"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:singleLine="true"
+            android:text="@string/paragraph_comment_title"
+            android:textColor="@color/primaryText"
+            android:textSize="20sp" />
+
+        <!-- 排序切换：齿轮图标，点击弹出 实时评论/最新评论/回复最多 菜单 -->
+        <ImageButton
             android:id="@+id/tv_sort"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="end"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/paragraph_comment_sort"
             android:paddingStart="8dp"
             android:paddingEnd="16dp"
-            android:gravity="center"
-            android:text="@string/paragraph_comment_newest"
-            android:textColor="@color/black"
-            android:textSize="14sp" />
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_interface_setting"
+            app:tint="@color/primaryText" />
 
     </androidx.appcompat.widget.Toolbar>
 
