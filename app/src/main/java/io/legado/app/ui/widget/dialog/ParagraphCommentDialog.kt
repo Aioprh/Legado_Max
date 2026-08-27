@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.PopupMenu
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
@@ -67,6 +68,17 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     // 排序模式：实时=接口原始顺序；最新=神评论置顶+按时间由新到旧；回复最多=按回复数降序
     private enum class SortMode { REALTIME, NEWEST, HOT }
     private var sortMode = SortMode.NEWEST
+
+    // 同一次会话内经 rawItems 持有的对象引用恒定，用 === 判断即等价于"同一评论"
+    private val commentDiff = object : DiffUtil.ItemCallback<ParagraphCommentItem>() {
+        override fun areItemsTheSame(oldItem: ParagraphCommentItem, newItem: ParagraphCommentItem) =
+            oldItem === newItem
+
+        override fun areContentsTheSame(
+            oldItem: ParagraphCommentItem,
+            newItem: ParagraphCommentItem
+        ) = true
+    }
 
     private enum class FooterState { NONE, LOADING, NO_MORE, FAILED }
 
@@ -283,22 +295,15 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         }
     }
 
-    /** 追加下一页：实时模式直接末尾追加；最新模式按序插入，保持整体有序且不重置滚动位置 */
+    /** 追加下一页：实时模式直接末尾追加；排序模式用 DiffUtil 全量重排已加载数据。
+     *  (旧实现按排序位置逐条插入，插到可视区上方的条目会抬高 count-4 阈值，
+     *   导致"加载更多"滚动触发永远不满足，看起来只加载了首批) */
     private fun appendPageItems(newItems: List<ParagraphCommentItem>) {
         if (newItems.isEmpty()) return
         if (sortMode == SortMode.REALTIME) {
             adapter.addItems(newItems)
-            return
-        }
-        val comparator = sortComparator()
-        newItems.forEach { item ->
-            val items = adapter.getItems()
-            val idx = items.indexOfFirst { comparator.compare(it, item) < 0 }
-            if (idx < 0) {
-                adapter.addItem(item)
-            } else {
-                adapter.addItems(idx, listOf(item))
-            }
+        } else {
+            adapter.setItems(rawItems.sortedWith(sortComparator()), commentDiff)
         }
     }
 
