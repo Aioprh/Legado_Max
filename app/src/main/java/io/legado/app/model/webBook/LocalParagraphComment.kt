@@ -299,11 +299,15 @@ object LocalParagraphComment {
             val list = runCatching { rc.read<List<Any?>>("$.review_list") }.getOrNull()
                 ?: runCatching { rc.read<List<Any?>>("$.data.review_list") }.getOrNull()
                 ?: return@runCatching SummaryResult()
-            // 与书源 jsLib 一致：含 <p> 时按 <p> 分段，否则按 \n 分段
+            // 与书源 jsLib fqGetComments 一致：含 <p> 时按 <p> 分段，否则按 \n 分段。
+            // 注意必须先去掉首个 <p> 再 split，否则 "<p>a</p><p>b</p>".split("<p>") 会得到
+            // ["", "a</p>", "b</p>"] 前导空串，导致 paragraphId>=2 的段落号整体错位（评论数挂错段）。
             val rawParagraphs = if (content == null) {
                 emptyList()
             } else if (content.contains("<p>", ignoreCase = true)) {
-                content.replace("\r\n", "\n").replace("\r", "\n").split("<p>")
+                content.replace("\r\n", "\n").replace("\r", "\n")
+                    .replaceFirst("<p>", "", ignoreCase = true)
+                    .split(Regex("<p>", RegexOption.IGNORE_CASE))
             } else {
                 content.replace("\r\n", "\n").replace("\r", "\n").split("\n")
             }
