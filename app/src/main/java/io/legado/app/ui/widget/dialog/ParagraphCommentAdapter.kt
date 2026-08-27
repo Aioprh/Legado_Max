@@ -15,9 +15,7 @@ import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.constant.AppConst
 import io.legado.app.databinding.ItemParagraphCommentBinding
 import io.legado.app.databinding.ItemParagraphReplyBinding
-import com.bumptech.glide.request.RequestOptions
 import io.legado.app.help.glide.ImageLoader
-import io.legado.app.help.glide.OkHttpModelLoader
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.gone
 import io.legado.app.utils.visible
@@ -48,13 +46,6 @@ class ParagraphCommentAdapter(context: Context) :
     var audioListener: AudioListener? = null
     var imageListener: ImageListener? = null
 
-    /**
-     * 当前段评所属书源地址。
-     * 番茄图片经常需要书源的 Cookie / UA / 请求头才能访问，
-     * 通过 sourceOrigin 交给自定义 Glide OkHttp loader 后会自动走 AnalyzeUrl。
-     */
-    var sourceOrigin: String? = null
-
     /** 列表每次真正更新（含 DiffUtil 异步重排完成）后回调，供弹窗在末尾处自动继续加载下一页 */
     var onListChanged: (() -> Unit)? = null
 
@@ -74,7 +65,7 @@ class ParagraphCommentAdapter(context: Context) :
         payloads: MutableList<Any>
     ) {
         binding.apply {
-            loadImage(item.avatar)
+            ImageLoader.load(context, item.avatar)
                 .placeholder(R.drawable.image_cover_default)
                 .error(R.drawable.image_cover_default)
                 .circleCrop()
@@ -191,7 +182,7 @@ class ParagraphCommentAdapter(context: Context) :
             item.replies.forEach { reply ->
                 val replyBinding = ItemParagraphReplyBinding.inflate(inflater, container, false)
                 replyBinding.apply {
-                    loadImage(reply.avatar)
+                    ImageLoader.load(context, reply.avatar)
                         .placeholder(R.drawable.image_cover_default)
                         .error(R.drawable.image_cover_default)
                         .circleCrop()
@@ -246,16 +237,6 @@ class ParagraphCommentAdapter(context: Context) :
         }
     }
 
-    /**
-     * 段评图片统一使用书源请求环境。
-     * 这样番茄的 p3/p6 图片请求可以继承 Cookie、User-Agent、Referer 等书源请求头。
-     */
-    private fun loadImage(url: String?) = ImageLoader.load(context, url).apply {
-        sourceOrigin?.takeIf { it.isNotBlank() }?.let { origin ->
-            apply(RequestOptions().set(OkHttpModelLoader.sourceOriginOption, origin))
-        }
-    }
-
     /** 绑定评论/回复图片：单行最多 3 张，超过则只显示前 3 张；点击图片打开大图 */
     private fun bindImages(
         container: View,
@@ -272,7 +253,7 @@ class ParagraphCommentAdapter(context: Context) :
         container.visible()
         val views = listOf(img1, img2, img3)
         list.forEachIndexed { index, url ->
-            loadImage(url)
+            ImageLoader.load(context, url)
                 .placeholder(R.drawable.image_cover_default)
                 .error(R.drawable.image_cover_default)
                 .into(views[index])
