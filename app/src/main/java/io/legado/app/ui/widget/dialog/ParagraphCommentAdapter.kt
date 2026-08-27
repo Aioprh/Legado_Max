@@ -46,8 +46,16 @@ class ParagraphCommentAdapter(context: Context) :
     var audioListener: AudioListener? = null
     var imageListener: ImageListener? = null
 
+    /** 列表每次真正更新（含 DiffUtil 异步重排完成）后回调，供弹窗在末尾处自动继续加载下一页 */
+    var onListChanged: (() -> Unit)? = null
+
     override fun getViewBinding(parent: ViewGroup): ItemParagraphCommentBinding {
         return ItemParagraphCommentBinding.inflate(inflater, parent, false)
+    }
+
+    override fun onCurrentListChanged() {
+        // 同步调用，弹窗内部会再 post 一次，保证发生在本次数据提交完成、hasMore/页码更新之后
+        onListChanged?.invoke()
     }
 
     override fun convert(

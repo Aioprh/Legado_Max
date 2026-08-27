@@ -121,16 +121,14 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             tvSort.setOnClickListener { view -> showSortMenu(view) }
             recyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = adapter
+            // 滚动 + 每次列表更新（含异步 DiffUtil 重排完成）都检查是否已到末尾，自动续接下一页。
+            // 排序模式下分页数据会重排到可视区上方，滚动事件可能不触发，必须靠列表更新回调兜底
             recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
-                    val lm = rv.layoutManager as? LinearLayoutManager ?: return
-                    if (hasMore && !loading &&
-                        lm.findLastVisibleItemPosition() >= rawItems.size - 4
-                    ) {
-                        loadPage(page + 1)
-                    }
+                    maybeLoadMore()
                 }
             })
+            adapter.onListChanged = { maybeLoadMore() }
             // 加载失败点击重试 / 加载更多点击翻页
             llFooter.setOnClickListener {
                 if (loading) return@setOnClickListener
@@ -246,6 +244,24 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         return config.commentsUrl
             .replace("[page]", nextPage.toString())
             .replace("[pageSize]", config.pageSize.toString())
+    }
+
+    /**
+     * 当已滚动到（或列表更新后处于）列表末尾附近时，自动加载下一页。
+     * 用配置项 post 执行，确保发生在本次数据提交（hasMore/页码）完成之后，避免同帧内重复触发同一页。
+     */
+    private fun maybeLoadMore() {
+        val rv = binding.recyclerView
+        rv.post {
+            if (loading || !hasMore) return@post
+            if (isRemoving || isDetached) return@post
+            val lm = rv.layoutManager as? LinearLayoutManager ?: return@post
+            // 用真正渲染出来的条数（adapter 位置空间）判断是否到末尾；
+            // 与 findLastVisibleItemPosition 同属一个坐标，避免 pending DiffUtil 时 rawItems.size 失真
+            if (lm.findLastVisibleItemPosition() >= adapter.getActualItemCount() - 4) {
+                loadPage(page + 1)
+            }
+        }
     }
 
     /** 最新模式排序：神评论置顶，其余按时间由新到旧（time=0 的未知时间排最后） */
