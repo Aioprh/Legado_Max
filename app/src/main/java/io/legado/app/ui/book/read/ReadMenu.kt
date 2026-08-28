@@ -569,6 +569,10 @@ class ReadMenu @JvmOverloads constructor(
         fabNightTheme.setOnClickListener {
             AppConfig.isNightTheme = !AppConfig.isNightTheme
             ThemeConfig.applyDayNight(context)
+            // 主题切换后强制重新排版，使高亮规则的 themeScope 按新主题重新匹配
+            // applyDayNight 可能触发 Activity 重建，但 ReadBook 单例的 loadContent
+            // 协程会正常执行排版，Activity 重建后 loadOrUpContent 会用新数据刷新 UI
+            ReadBook.loadContent(resetPageOffset = false, forceReload = true)
         }
 
         //上一章
