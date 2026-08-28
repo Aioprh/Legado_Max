@@ -167,6 +167,24 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         }.apply {
             setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
+        binding.spThemeScope.adapter = object : ArrayAdapter<String>(
+            requireContext(),
+            R.layout.item_text_common,
+            listOf(getString(R.string.highlight_rule_theme_scope_all), getString(R.string.highlight_rule_theme_scope_light), getString(R.string.highlight_rule_theme_scope_dark))
+        ) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+            override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getDropDownView(position, convertView, parent)
+                if (view is android.widget.TextView) view.setTextColor(primaryTextColor)
+                return view
+            }
+        }.apply {
+            setDropDownViewResource(R.layout.item_spinner_dropdown)
+        }
 
         bindData()
         bindEvents()
@@ -302,6 +320,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etLayoutScope.setHintTextColor(secondaryTextColor)
         binding.etLayoutScope.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.spBgImageFit.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
+        binding.spThemeScope.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvWidthMinus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.tvWidthPlus.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
         binding.etUnderlineWidth.background = makeInputDrawable(inputBgColor, inputStrokeColor, 14f, density)
@@ -320,6 +339,7 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.spTarget.setPopupBackgroundDrawable(popupBg)
         binding.spUnderlineMode.setPopupBackgroundDrawable(popupBg)
         binding.spBgImageFit.setPopupBackgroundDrawable(popupBg)
+        binding.spThemeScope.setPopupBackgroundDrawable(popupBg)
 
         // 递归遍历三个卡片容器，将静态标签的文字颜色替换为动态主题色
         applyThemeToStaticLabels()
@@ -408,6 +428,13 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
         binding.etExcludeScope.setText(editingRule.excludeScope.orEmpty())
         // 排版作用范围显示
         updateLayoutScopeText()
+        // 主题作用范围绑定
+        val themePos = when (editingRule.themeScope) {
+            HighlightRule.THEME_LIGHT -> 1
+            HighlightRule.THEME_DARK -> 2
+            else -> 0
+        }
+        binding.spThemeScope.setSelection(themePos)
         
         updateColorPreview(binding.viewTextColorPreview, editingRule.textColor)
         updateColorPreview(binding.viewUnderlineColorPreview, editingRule.underlineColor)
@@ -611,6 +638,22 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
                 .show()
         }
         binding.etLayoutScope.setOnClickListener { openLayoutScopePicker() }
+        binding.spThemeScope.onItemSelectedListener =
+            object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: android.widget.AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    editingRule.themeScope = when (position) {
+                        1 -> HighlightRule.THEME_LIGHT
+                        2 -> HighlightRule.THEME_DARK
+                        else -> HighlightRule.THEME_ALL
+                    }
+                }
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+            }
     }
 
     private fun updateLayoutScopeText() {
@@ -767,6 +810,12 @@ class HighlightRuleEditDialog @JvmOverloads constructor(
             excludeScope = binding.etExcludeScope.text?.toString().orEmpty().takeIf { it.isNotBlank() },
             // 排版作用范围，"所有排版"时存为null
             layoutScope = editingRule.layoutScope?.takeIf { it.isNotBlank() },
+            // 主题作用范围
+            themeScope = when (binding.spThemeScope.selectedItemPosition) {
+                1 -> HighlightRule.THEME_LIGHT
+                2 -> HighlightRule.THEME_DARK
+                else -> HighlightRule.THEME_ALL
+            },
         )
         onSave(editingRule)
         dismissAllowingStateLoss()

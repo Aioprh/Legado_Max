@@ -28,6 +28,8 @@ data class HighlightRule(
     var excludeScope: String? = null,
     /** 作用的阅读排版名称，分号分隔，为空则对所有排版生效 */
     var layoutScope: String? = null,
+    /** 主题作用范围：位标志，1=亮色，2=暗色，3=全部（默认） */
+    var themeScope: Int = THEME_ALL,
 ) {
 
     fun styleSummary(): String {
@@ -41,6 +43,9 @@ data class HighlightRule(
         }
         if (!layoutScope.isNullOrBlank()) {
             parts.add("排版: ${layoutScope!!.replace(";", "; ").trim()}")
+        }
+        if (themeScope != THEME_ALL) {
+            parts.add(themeScopeLabel())
         }
         textColor?.let {
             parts.add("字色 ${it.toHexColor()}")
@@ -82,6 +87,14 @@ data class HighlightRule(
             TARGET_TITLE -> "作用于标题"
             TARGET_BODY -> "作用于正文"
             else -> "作用于全部"
+        }
+    }
+
+    fun themeScopeLabel(): String {
+        return when (themeScope) {
+            THEME_LIGHT -> "仅亮色"
+            THEME_DARK -> "仅暗色"
+            else -> "亮暗色"
         }
     }
 
@@ -150,10 +163,23 @@ data class HighlightRule(
         return layoutItems.any { item -> layoutName == item }
     }
 
+    /**
+     * 判断规则是否对当前主题生效
+     * - themeScope 包含对应主题位标志时生效
+     */
+    fun matchesTheme(isNightTheme: Boolean): Boolean {
+        val flag = if (isNightTheme) THEME_DARK else THEME_LIGHT
+        return (themeScope and flag) != 0
+    }
+
     companion object {
         const val TARGET_ALL = 0
         const val TARGET_TITLE = 1
         const val TARGET_BODY = 2
+
+        const val THEME_LIGHT = 1
+        const val THEME_DARK = 2
+        const val THEME_ALL = 3
 
         fun Int.toHexColor(): String = String.format("#%08X", this)
     }

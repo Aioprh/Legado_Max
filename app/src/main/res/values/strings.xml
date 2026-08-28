@@ -846,6 +846,10 @@
     <string name="highlight_rule_layout_scope">Reading layout scope</string>
     <string name="highlight_rule_layout_scope_all">All layouts</string>
     <string name="highlight_rule_layout_scope_count">%1$d layouts selected</string>
+    <string name="highlight_rule_theme_scope">Theme scope</string>
+    <string name="highlight_rule_theme_scope_all">Light &amp; Dark</string>
+    <string name="highlight_rule_theme_scope_light">Light only</string>
+    <string name="highlight_rule_theme_scope_dark">Dark only</string>
     <string name="action_menu">Actions</string>
     <string name="preview">Preview</string>
     <string name="text_menu_config">Expand Text Menu Config</string>

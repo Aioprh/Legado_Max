@@ -508,6 +508,10 @@ class HighlightRuleConfigDialog : BaseDialogFragment(R.layout.dialog_highlight_r
                     append(" / 排版: ")
                     append(item.layoutScope!!.replace(";", "; ").trim())
                 }
+                if (item.themeScope != HighlightRule.THEME_ALL) {
+                    append(" / ")
+                    append(item.themeScopeLabel())
+                }
             }
             binding.tvPreview.text = HighlightRulePreview.build(item)
 

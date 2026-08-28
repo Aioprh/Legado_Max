@@ -102,6 +102,7 @@ object HighlightRuleStore {
             scope = rule.scope?.trim()?.takeIf { it.isNotBlank() },
             excludeScope = rule.excludeScope?.trim()?.takeIf { it.isNotBlank() },
             layoutScope = rule.layoutScope?.trim()?.takeIf { it.isNotBlank() },
+            themeScope = rule.themeScope.coerceIn(1, 3),
         )
     }
 

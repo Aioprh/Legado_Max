@@ -843,6 +843,10 @@
     <string name="highlight_rule_layout_scope">作用排版</string>
     <string name="highlight_rule_layout_scope_all">所有排版</string>
     <string name="highlight_rule_layout_scope_count">已选 %1$d 个排版</string>
+    <string name="highlight_rule_theme_scope">作用主题</string>
+    <string name="highlight_rule_theme_scope_all">亮色和暗色</string>
+    <string name="highlight_rule_theme_scope_light">仅亮色</string>
+    <string name="highlight_rule_theme_scope_dark">仅暗色</string>
     <string name="action_menu">功能</string>
     <string name="preview">预览</string>
     <string name="text_menu_config">展开文本菜单配置</string>
