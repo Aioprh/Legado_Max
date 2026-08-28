@@ -58,6 +58,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.legado.app.ui.theme.LegadoTheme
@@ -331,6 +332,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         if (showBlockProgress && blockedCount > 0) {
             if (blockProgressComposeView == null) {
                 blockProgressComposeView = ComposeView(this).also { composeView ->
+                    composeView.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                     composeView.setContent {
                         LegadoTheme {
                             Surface(
@@ -374,6 +376,7 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
         if (showBookSheet) {
             if (bookSheetComposeView == null) {
                 bookSheetComposeView = ComposeView(this).also { composeView ->
+                    composeView.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                     composeView.setContent {
                         LegadoTheme {
                             BookBottomSheet(
@@ -876,6 +879,22 @@ class ExploreShowActivity : VMBaseActivity<ActivityExploreShowBinding, ExploreSh
     }
 
     override fun onDestroy() {
+        // 清理动态添加的 ComposeView，避免 Activity 销毁后 ComposeView 仍被
+        // AccessibilityInteractionController.mTempArrayList 持有导致内存泄漏
+        bookSheetComposeView?.let { view ->
+            try {
+                (view.parent as? ViewGroup)?.removeView(view)
+            } catch (_: Exception) {
+            }
+        }
+        bookSheetComposeView = null
+        blockProgressComposeView?.let { view ->
+            try {
+                (view.parent as? ViewGroup)?.removeView(view)
+            } catch (_: Exception) {
+            }
+        }
+        blockProgressComposeView = null
         super.onDestroy()
         // 清除所有缓存，避免内存泄漏
         scrollPositionCache.clear()

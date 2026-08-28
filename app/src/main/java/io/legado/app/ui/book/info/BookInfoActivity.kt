@@ -132,6 +132,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -1311,6 +1312,15 @@ class BookInfoActivity :
     override fun onDestroy() {
         readRecordJob?.cancel()
         destroyWeb()
+        // 清理动态添加的 ComposeView，避免 Activity 销毁后 ComposeView 仍被
+        // AccessibilityInteractionController.mTempArrayList 持有导致内存泄漏
+        bookSheetComposeView?.let { view ->
+            try {
+                (view.parent as? ViewGroup)?.removeView(view)
+            } catch (_: Exception) {
+            }
+        }
+        bookSheetComposeView = null
         super.onDestroy()
         if (initGetter) {
             glideImageGetter.clear()
@@ -1415,6 +1425,7 @@ class BookInfoActivity :
         if (showBookSheet) {
             if (bookSheetComposeView == null) {
                 bookSheetComposeView = ComposeView(this).also { composeView ->
+                    composeView.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                     composeView.setContent {
                         LegadoTheme {
                             BookBottomSheet(

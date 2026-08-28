@@ -8,6 +8,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View.GONE
 import android.view.View.VISIBLE
+import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.LinearLayout
@@ -47,6 +48,7 @@ import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.ui.widget.components.BookBottomSheet
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -127,6 +129,19 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         initOtherView()
         initData()
         receiptIntent(intent)
+    }
+
+    override fun onDestroy() {
+        // 清理动态添加的 ComposeView，避免 Activity 销毁后 ComposeView 仍被
+        // AccessibilityInteractionController.mTempArrayList 持有导致内存泄漏
+        bookSheetComposeView?.let { view ->
+            try {
+                (view.parent as? ViewGroup)?.removeView(view)
+            } catch (_: Exception) {
+            }
+        }
+        bookSheetComposeView = null
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -726,6 +741,7 @@ class SearchActivity : VMBaseActivity<ActivityBookSearchBinding, SearchViewModel
         if (showBookSheet) {
             if (bookSheetComposeView == null) {
                 bookSheetComposeView = ComposeView(this).also { composeView ->
+                    composeView.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
                     composeView.setContent {
                         LegadoTheme {
                             BookBottomSheet(

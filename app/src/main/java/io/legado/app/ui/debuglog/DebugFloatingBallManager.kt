@@ -147,24 +147,40 @@ object DebugFloatingBallManager {
         if (!isShowing && !isAttaching) {
             return
         }
-        
+
         showToken++
         isAttaching = false
-        
+
+        // Activity 已在销毁流程中时，立即同步移除视图，避免 postDelayed
+        // 在 Activity 被 destroyed 后无法执行或延迟执行导致 ComposeView 泄漏。
+        // AccessibilityInteractionController.mTempArrayList 会持有已分离的 ComposeView，
+        // 仅靠 postDelayed 移除可能因 Activity destroyed 而不执行。
+        val activity = currentActivity
+        val isActivityDestroyed = activity?.isDestroyed == true || activity?.isFinishing == true
         floatingBallView?.let { view ->
-            view.postDelayed(50) {
+            if (isActivityDestroyed) {
+                // Activity 正在销毁，同步移除
                 try {
                     val parent = view.parent as? ViewGroup
                     parent?.removeView(view)
-                } catch (e: Exception) {
-                    if (!hasLoggedHide) {
-                        AppLog.putReaderDebug("DebugFloatingBall: hide() exception - ${e.message}")
-                        hasLoggedHide = true
+                } catch (_: Exception) {
+                }
+            } else {
+                // Activity 仍然存活，使用 postDelayed 延迟移除以避免动画闪烁
+                view.postDelayed(50) {
+                    try {
+                        val parent = view.parent as? ViewGroup
+                        parent?.removeView(view)
+                    } catch (e: Exception) {
+                        if (!hasLoggedHide) {
+                            AppLog.putReaderDebug("DebugFloatingBall: hide() exception - ${e.message}")
+                            hasLoggedHide = true
+                        }
                     }
                 }
             }
         }
-        
+
         floatingBallView = null
         isShowing = false
     }
@@ -187,8 +203,24 @@ object DebugFloatingBallManager {
     fun onActivityDestroyed(activity: Activity) {
         if (currentActivity == activity) {
             showToken++
+            // Activity 正在销毁，hide() 内部会检测到 destroyed 状态并同步移除视图
             hide()
             currentActivity = null
+        } else {
+            // 即使 currentActivity 不匹配，也要检查 floatingBallView 是否引用了该 Activity
+            floatingBallView?.let { view ->
+                if (view.context === activity) {
+                    try {
+                        val parent = view.parent as? ViewGroup
+                        parent?.removeView(view)
+                    } catch (_: Exception) {
+                    }
+                    floatingBallView = null
+                    isShowing = false
+                    isAttaching = false
+                    showToken++
+                }
+            }
         }
     }
     
