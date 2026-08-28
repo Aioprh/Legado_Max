@@ -12,12 +12,10 @@ import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.TopBarConfig
-import io.legado.app.lib.theme.UiCorner
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.lib.theme.uiTypeface
-import io.legado.app.utils.ColorUtils
 
 /**
  * 书架分组标签导航条，在分组样式为标签时显示于分组栏下方。
@@ -78,7 +76,7 @@ class RoundedTagBarView @JvmOverloads constructor(
     }
 
     /**
-     * 应用 TopBarConfig 配置样式。
+     * 应用二级标签栏样式：始终透明背景，选中标签用主题强调色，无圆角。
      *
      * @param force 是否强制刷新，用于首次初始化或样式变化时
      */
@@ -86,41 +84,16 @@ class RoundedTagBarView @JvmOverloads constructor(
         val signature = "${TopBarConfig.currentSignature(AppConfig.isNightTheme)}|$displayMode|$backgroundOverrideColor"
         if (!force && styleSignature == signature) return
         styleSignature = signature
-        val config = TopBarConfig.currentConfig(context, AppConfig.isNightTheme)
-        val tagBarColor = config.tagBarColor ?: context.primaryColor
-        val selectedColor = config.tagSelectedColor ?: context.primaryColor
-        background = when (displayMode) {
-            DisplayMode.TEXT -> null
-            else -> UiCorner.opaqueRounded(
-                backgroundOverrideColor ?: TopBarConfig.withOpacity(tagBarColor, config.tagBarAlpha),
-                UiCorner.panelRadius(context)
-            )
-        }
+        // 始终透明背景，不使用 TopBarConfig 的颜色/透明度作为栏背景
+        background = null
         val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_horizontal)
         val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_vertical)
-        setPadding(
-            if (displayMode == DisplayMode.TEXT) 0 else horizontalPadding,
-            if (displayMode == DisplayMode.TEXT) 0 else verticalPadding,
-            if (displayMode == DisplayMode.TEXT) 0 else horizontalPadding,
-            if (displayMode == DisplayMode.TEXT) 0 else verticalPadding
-        )
-        adapter.selectedBackgroundColor = TopBarConfig.withOpacity(selectedColor, config.tagSelectedAlpha)
-        adapter.selectedTextColor = readableTagTextColor(context.accentColor, adapter.selectedBackgroundColor)
+        setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+        // 选中标签无背景色，仅文字用强调色高亮
+        adapter.selectedBackgroundColor = Color.TRANSPARENT
+        adapter.selectedTextColor = context.accentColor
         adapter.normalTextColor = context.primaryTextColor
         adapter.notifyDataSetChanged()
-    }
-
-    private fun readableTagTextColor(preferredColor: Int, backgroundColor: Int): Int {
-        if (Color.alpha(backgroundColor) < 40) return preferredColor
-        val preferredIsLight = ColorUtils.isColorLight(preferredColor)
-        val backgroundIsLight = ColorUtils.isColorLight(backgroundColor)
-        return if (preferredIsLight != backgroundIsLight) {
-            preferredColor
-        } else if (backgroundIsLight) {
-            Color.BLACK
-        } else {
-            Color.WHITE
-        }
     }
 
     fun setDisplayMode(mode: DisplayMode) {
@@ -231,11 +204,8 @@ class RoundedTagBarView @JvmOverloads constructor(
         override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): TagViewHolder {
             val textView = LayoutInflater.from(parent.context)
                 .inflate(R.layout.item_bookshelf_group_tag, parent, false) as TextView
-            textView.background = UiCorner.actionSelector(
-                android.graphics.Color.TRANSPARENT,
-                selectedBackgroundColor,
-                UiCorner.actionRadius(parent.context)
-            )
+            // 无圆角、无选中背景，仅靠文字颜色区分选中状态
+            textView.background = null
             textView.setTextColor(
                 ColorStateList(
                     arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf()),
@@ -247,17 +217,9 @@ class RoundedTagBarView @JvmOverloads constructor(
 
         override fun onBindViewHolder(holder: TagViewHolder, position: Int) {
             val item = items[position]
-            holder.textView.background = UiCorner.actionSelector(
-                android.graphics.Color.TRANSPARENT,
-                when {
-                    !selectedBackgroundVisible -> android.graphics.Color.TRANSPARENT
-                    displayMode == DisplayMode.TEXT -> android.graphics.Color.TRANSPARENT
-                    else -> selectedBackgroundColor
-                },
-                UiCorner.actionRadius(holder.textView.context)
-            )
-            val verticalPadding = if (displayMode == DisplayMode.TEXT) 0 else resources.getDimensionPixelSize(R.dimen.bookshelf_tag_recycler_padding_vertical)
-            val horizontalPadding = if (displayMode == DisplayMode.TEXT) 8.dp else resources.getDimensionPixelSize(R.dimen.bookshelf_tag_item_padding_horizontal)
+            holder.textView.background = null
+            val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_recycler_padding_vertical)
+            val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_item_padding_horizontal)
             holder.textView.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
             holder.textView.setTextColor(
                 ColorStateList(
