@@ -17,6 +17,17 @@
 * [Github分支GEd520](https://github.com/GEd520/legados)
 * [Github分支Suml-1](https://github.com/Suml-1/Legado_Max)
 
+**2026/8/28
+- refactor(书架): 二级标签栏改为透明背景+强调色选中+无圆角样式
+- fix(内存泄漏): 修复 ComposeView 被 AccessibilityInteractionController 持有导致的 Activity 泄漏
+- feat(书架): 标签管理支持重命名和长按拖拽排序
+- feat(阅读页): 下划线颜色默认跟随文字颜色并支持日夜间分离,默认粗细度改为0.5
+- feat(阅读页): 新建布局样式时基于当前选中项复制参数
+- fix(书架): 修复下拉选择分组模式下点击分组名旁区域也弹出菜单
+- feat(高亮规则): 添加亮色/暗色主题作用范围选择
+- refactor(阅读记录): 重构 累计阅读成就组件 
+
+
 **2026/8/27
 - feat(书源调试)： 修复 Data URL 在调试界面无法使用 ++/-- 前缀调试目录页和正文页的问题
 - feat(文件管理界面)：增加长按删除功能，右上角增加打开其他应用功能
