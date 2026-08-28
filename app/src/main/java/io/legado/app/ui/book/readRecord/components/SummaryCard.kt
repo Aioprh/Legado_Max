@@ -75,6 +75,11 @@ fun SummaryCard(
                 append(remainingHours)
                 append(hourStr)
             }
+            if (minutes > 0) {
+                append(" ")
+                append(minutes)
+                append(minuteStr)
+            }
         } else if (totalHours > 0) {
             append(totalHours)
             append(totalHourStr)
