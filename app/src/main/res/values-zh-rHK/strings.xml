@@ -616,6 +616,10 @@
     <string name="bookshelf_tag_clear_results">清空結果</string>
     <string name="bookshelf_tag_no_matching_books">目前篩選條件下沒有書籍</string>
     <string name="bookshelf_tag_save">儲存</string>
+    <string name="bookshelf_tag_rename">重命名</string>
+    <string name="bookshelf_tag_rename_title">重命名標籤</string>
+    <string name="bookshelf_tag_rename_group">在「%1$s」中重命名標籤</string>
+    <string name="bookshelf_tag_rename_label">標籤名</string>
     <string name="bookshelf_tag_all">全部</string>
     <string name="show_bookshelf_tag_bar">顯示標籤欄</string>
     <string name="group_edit">編輯分組</string>

@@ -411,6 +411,59 @@ internal fun BookTagAssignmentDialog(
     }
 }
 
+/**
+ * 重命名标签对话框。
+ */
+@Composable
+internal fun BookTagRenameDialog(
+    groupId: Long,
+    groupName: String,
+    oldTag: String,
+    onDismiss: () -> Unit,
+    onRename: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var newName by rememberSaveable(groupId, oldTag) { mutableStateOf(oldTag) }
+    val canRename = newName.trim().isNotBlank() &&
+        !newName.trim().equals(oldTag, ignoreCase = true)
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = modifier,
+        title = { Text(stringResource(R.string.bookshelf_tag_rename_title)) },
+        text = {
+            Column {
+                Text(
+                    text = stringResource(R.string.bookshelf_tag_rename_group, groupName),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.bookshelf_tag_rename_label)) },
+                    isError = newName.trim().isBlank()
+                )
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                onClick = { if (canRename) onRename(newName.trim()) },
+                enabled = canRename
+            ) {
+                Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
 @Composable
 private fun FilterChip(
     text: String,

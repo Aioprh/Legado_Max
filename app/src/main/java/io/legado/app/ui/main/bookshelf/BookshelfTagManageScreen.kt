@@ -44,7 +44,10 @@ internal data class BookshelfTagManageCallbacks(
     val onRequestDelete: (BookshelfTagGroupUi, String) -> Unit,
     val onConfirmDelete: (Long, String, String, List<BookTagInfo>) -> Unit,
     val onDismissDialog: () -> Unit,
-    val onSaveAssignment: (BookTagAssignmentUi, Set<String>) -> Unit
+    val onSaveAssignment: (BookTagAssignmentUi, Set<String>) -> Unit,
+    val onRequestRename: (BookshelfTagGroupUi, String) -> Unit,
+    val onRenameTag: (Long, String, String, String) -> Unit,
+    val onReorderTags: (Long, List<String>) -> Unit
 )
 
 /**
@@ -124,7 +127,9 @@ internal fun BookshelfTagManageScreen(
                         callbacks.onTagVisibilityChange(selectedGroup.groupId, tag, visible)
                     },
                     onManageBooks = { tag -> callbacks.onManageBooks(selectedGroup, tag) },
-                    onDeleteTag = { tag -> callbacks.onRequestDelete(selectedGroup, tag) }
+                    onDeleteTag = { tag -> callbacks.onRequestDelete(selectedGroup, tag) },
+                    onRenameTag = { tag -> callbacks.onRequestRename(selectedGroup, tag) },
+                    onReorderTags = { newOrder -> callbacks.onReorderTags(selectedGroup.groupId, newOrder) }
                 )
             }
         }
@@ -198,6 +203,18 @@ internal fun BookshelfTagManageScreen(
                     TextButton(onClick = callbacks.onDismissDialog) {
                         Text(stringResource(R.string.cancel))
                     }
+                }
+            )
+        }
+        is BookshelfTagDialogState.RenameTag -> {
+            BookTagRenameDialog(
+                groupId = dialog.groupId,
+                groupName = dialog.groupName,
+                oldTag = dialog.oldTag,
+                onDismiss = callbacks.onDismissDialog,
+                onRename = { newTag ->
+                    callbacks.onDismissDialog()
+                    callbacks.onRenameTag(dialog.groupId, dialog.groupName, dialog.oldTag, newTag)
                 }
             )
         }

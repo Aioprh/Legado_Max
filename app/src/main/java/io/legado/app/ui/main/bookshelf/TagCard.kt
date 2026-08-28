@@ -31,6 +31,7 @@ internal fun TagCard(
     onVisibilityChange: (Boolean) -> Unit,
     onManageBooks: () -> Unit,
     onDelete: () -> Unit,
+    onRename: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -83,6 +84,12 @@ internal fun TagCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(stringResource(R.string.bookshelf_tag_manage_books))
+                }
+                OutlinedButton(
+                    onClick = onRename,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.bookshelf_tag_rename))
                 }
                 OutlinedButton(
                     onClick = onDelete,

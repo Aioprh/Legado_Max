@@ -48,6 +48,11 @@ sealed interface BookshelfTagDialogState {
         val tag: String,
         val books: List<BookTagInfo>
     ) : BookshelfTagDialogState
+    data class RenameTag(
+        val groupId: Long,
+        val groupName: String,
+        val oldTag: String
+    ) : BookshelfTagDialogState
 }
 
 /**

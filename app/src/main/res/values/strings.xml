@@ -663,6 +663,10 @@
     <string name="bookshelf_tag_clear_results">Clear results</string>
     <string name="bookshelf_tag_no_matching_books">No books match the current filter</string>
     <string name="bookshelf_tag_save">Save</string>
+    <string name="bookshelf_tag_rename">Rename</string>
+    <string name="bookshelf_tag_rename_title">Rename tag</string>
+    <string name="bookshelf_tag_rename_group">Rename tag in "%1$s"</string>
+    <string name="bookshelf_tag_rename_label">Tag name</string>
     <string name="bookshelf_tag_all">All</string>
     <string name="show_bookshelf_tag_bar">Show tag bar</string>
     <string name="group_edit">Group editing</string>

@@ -37,7 +37,10 @@ class BookshelfTagManageActivity : BaseActivity<ActivityBookshelfTagManageBindin
                         onRequestDelete = viewModel::confirmDeleteTag,
                         onConfirmDelete = viewModel::executeDeleteTag,
                         onDismissDialog = viewModel::dismissDialog,
-                        onSaveAssignment = viewModel::saveAssignment
+                        onSaveAssignment = viewModel::saveAssignment,
+                        onRequestRename = viewModel::confirmRenameTag,
+                        onRenameTag = viewModel::executeRenameTag,
+                        onReorderTags = viewModel::reorderTags
                     )
                 )
             }
