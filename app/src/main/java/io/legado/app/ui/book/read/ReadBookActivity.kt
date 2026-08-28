@@ -1910,7 +1910,7 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
 
             UNDERLINE_COLOR -> {
-                ReadBookConfig.durConfig.underlineColor = "#${color.hexString}"
+                setCurUnderlineColor(color)
                 postEvent(EventBus.UP_CONFIG, arrayListOf(6, 9, 11))
             }
 

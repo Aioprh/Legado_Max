@@ -655,8 +655,9 @@ object ReadBookConfig {
         var titleBottomSpacing: Int = 0,
         var paragraphIndent: String = "　　",//段落缩进
         var underlineMode: Int = 0, //下划线
-        var underlineWidth: Float = 2f, //下划线粗细(dp)
-        var underlineColor: String = "#FF63C37D", //下划线颜色
+        var underlineWidth: Float = 0.5f, //下划线粗细(dp)
+        private var underlineColor: String = "", //白天下划线颜色，空=跟随文字颜色
+        private var underlineColorNight: String = "", //夜间下划线颜色，空=跟随文字颜色
         var underlineOffset: Float = 2f, //下划线距离(dp)
         var paddingBottom: Int = 6,
         var paddingLeft: Int = 16,
@@ -784,6 +785,27 @@ object ReadBookConfig {
                 AppConfig.isNightTheme -> textAccentColorIntNight
                 else -> textAccentColorInt
             }
+        }
+
+        fun setCurUnderlineColor(color: Int) {
+            val hex = "#${color.hexString}"
+            when {
+                AppConfig.isEInkMode -> underlineColor = hex
+                AppConfig.isNightTheme -> underlineColorNight = hex
+                else -> underlineColor = hex
+            }
+        }
+
+        /**
+         * 返回当前模式下划线颜色；为空时回退到当前文字颜色。
+         */
+        fun curUnderlineColor(): Int {
+            val hex = when {
+                AppConfig.isEInkMode -> underlineColor
+                AppConfig.isNightTheme -> underlineColorNight
+                else -> underlineColor
+            }
+            return if (hex.isBlank()) curTextColor() else hex.toColorInt()
         }
 
         fun setCurStatusIconDark(isDark: Boolean) {
@@ -954,6 +976,7 @@ object ReadBookConfig {
             "underlineMode" to underlineMode,
             "underlineWidth" to underlineWidth,
             "underlineColor" to underlineColor,
+            "underlineColorNight" to underlineColorNight,
             "underlineOffset" to underlineOffset,
             "paddingBottom" to paddingBottom,
             "paddingLeft" to paddingLeft,

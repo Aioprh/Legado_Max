@@ -286,7 +286,7 @@ data class TextLine(
      */
     private fun drawUnderline(canvas: Canvas, underlineMode: Int) {
         val underlineWidth = ReadBookConfig.durConfig.underlineWidth
-        val underlineColor = ReadBookConfig.durConfig.underlineColor.toColorInt()
+        val underlineColor = ReadBookConfig.durConfig.curUnderlineColor()
         val paint = PaintPool.obtain()
         paint.set(ChapterProvider.contentPaint)
         paint.color = underlineColor

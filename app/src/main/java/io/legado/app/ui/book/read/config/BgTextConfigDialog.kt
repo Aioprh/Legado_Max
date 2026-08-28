@@ -272,7 +272,7 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
         }
         binding.tvUnderlineColor.setOnClickListener {
             ColorPickerDialog.newBuilder()
-                .setColor(ReadBookConfig.durConfig.underlineColor.toColorInt())
+                .setColor(ReadBookConfig.durConfig.curUnderlineColor())
                 .setShowAlphaSlider(false)
                 .setDialogType(ColorPickerDialog.TYPE_CUSTOM)
                 .setDialogId(UNDERLINE_COLOR)
@@ -441,7 +441,7 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
     }
 
     private fun updateUnderlineColorPreview() {
-        val color = ReadBookConfig.durConfig.underlineColor.toColorInt()
+        val color = ReadBookConfig.durConfig.curUnderlineColor()
         binding.tvUnderlineColor.setBackgroundColor(color)
         binding.tvUnderlineColor.setTextColor(if (ColorUtils.isColorLight(color)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt())
         binding.tvUnderlineColor.text = "A"
