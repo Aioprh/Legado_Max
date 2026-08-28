@@ -540,10 +540,16 @@ private suspend fun loadReadRecordCoverBitmap(context: android.content.Context, 
     // 若在 invokeOnCancellation 里调用 Glide.with(context)，页面可能已 destroy，
     // Glide 会抛 "You cannot start a load for a destroyed activity" 导致整个应用崩溃
     val requestManager = com.bumptech.glide.Glide.with(context)
-    return suspendCancellableCoroutine { cont ->
+    return suspendCancellableCoroutine<Bitmap?> { cont ->
+        // Glide 不保证回调顺序，onResourceReady 和 onLoadFailed 可能被先后调用
+        // （Activity 从后台恢复时 Glide 会重新调度资源），
+        // 用 AtomicBoolean 保证 resume 只执行一次，避免 "Already resumed" 崩溃
+        val resumed = java.util.concurrent.atomic.AtomicBoolean(false)
         val target = object : CustomTarget<Bitmap>() {
             override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
-                cont.resume(resource)
+                if (resumed.compareAndSet(false, true) && cont.isActive) {
+                    cont.resume(resource)
+                }
             }
 
             override fun onLoadCleared(placeholder: Drawable?) {
@@ -551,7 +557,9 @@ private suspend fun loadReadRecordCoverBitmap(context: android.content.Context, 
             }
 
             override fun onLoadFailed(errorDrawable: Drawable?) {
-                cont.resume(null)
+                if (resumed.compareAndSet(false, true) && cont.isActive) {
+                    cont.resume(null)
+                }
             }
         }
         cont.invokeOnCancellation {
