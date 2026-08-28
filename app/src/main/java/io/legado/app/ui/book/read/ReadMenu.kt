@@ -60,7 +60,9 @@ import splitties.views.onClick
 import splitties.views.onLongClick
 import androidx.core.graphics.toColorInt
 import io.legado.app.constant.BookType
+import io.legado.app.constant.EventBus
 import io.legado.app.utils.buildMainHandler
+import io.legado.app.utils.postEvent
 
 /**
  * 阅读界面菜单
@@ -569,6 +571,8 @@ class ReadMenu @JvmOverloads constructor(
         fabNightTheme.setOnClickListener {
             AppConfig.isNightTheme = !AppConfig.isNightTheme
             ThemeConfig.applyDayNight(context)
+            // 主题切换后强制重新排版，使高亮规则按新主题重新匹配
+            postEvent(EventBus.UP_CONFIG, arrayListOf(2, 5))
         }
 
         //上一章
