@@ -105,7 +105,7 @@ class ImportBookViewModel(application: Application) : BaseViewModel(application)
             context.toastOnUi("添加书架成功")
             // 自动从已启用的书源搜索封面并替换,书架列表立即生效
             books.forEach { book ->
-                execute(context = Dispatchers.IO) {
+                execute(context = IO) {
                     autoSearchCover(book)
                 }
             }
