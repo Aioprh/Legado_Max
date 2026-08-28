@@ -93,7 +93,8 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
                 ivStyle.borderColor = textColor
                 ivStyle.setImageResource(R.drawable.ic_add)
                 root.setOnClickListener {
-                    ReadBookConfig.configList.add(ReadBookConfig.Config())
+                    val newConfig = ReadBookConfig.durConfig.copy(name = "")
+                    ReadBookConfig.configList.add(newConfig)
                     showBgTextConfig(ReadBookConfig.configList.lastIndex)
                 }
             }
