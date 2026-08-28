@@ -278,6 +278,10 @@ class ReadBookActivity : BaseReadBookActivity(),
     private var syncDialog: AlertDialog? = null
     private var needSyncReadAloudOnResume: Boolean = false
     private var readAloudBackPressedOnce: Boolean = false // 朗读返回键计数
+    /** 记录上次 onResume 时的夜间模式状态，用于检测主题切换后重新加载高亮规则 */
+    private var lastNightTheme: Boolean = false
+    /** 标记是否已通过 onResume 检测到主题变化，避免首次进入重复加载 */
+    private var nightThemeTracked: Boolean = false
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -408,6 +412,16 @@ class ReadBookActivity : BaseReadBookActivity(),
                 ReadBook.syncProgress({ progress -> sureNewProgress(progress) })
             }
         }
+        // 主题切换后强制重新排版，使高亮规则按新主题重新匹配
+        // applyDayNight 可能触发 Activity 重建或 onConfigurationChanged，
+        // 无法依赖 UP_CONFIG 事件（可能在 Activity 重建时丢失），
+        // 改为在 onResume 中检测主题变化并直接重新加载内容
+        val currentNight = AppConfig.isNightTheme
+        if (nightThemeTracked && lastNightTheme != currentNight && isInitFinish) {
+            ReadBook.loadContent(resetPageOffset = false, forceReload = true)
+        }
+        lastNightTheme = currentNight
+        nightThemeTracked = true
     }
 
     override fun onPause() {
