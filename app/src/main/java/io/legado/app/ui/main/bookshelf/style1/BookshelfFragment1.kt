@@ -118,6 +118,8 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         }
         // 根据"下拉选择分组"开关动态添加布局到 TitleBar
         if (AppConfig.dropdownSelectGroup) {
+            // 下拉选择模式：清除 toolbar 默认标题，避免与分组名同时显示
+            binding.titleBar.title = ""
             // 下拉选择模式：添加 view_group_selector 布局
             val groupSelectorView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.view_group_selector, binding.titleBar.toolbar, false)
