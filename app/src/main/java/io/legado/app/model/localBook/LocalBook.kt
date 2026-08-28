@@ -35,6 +35,7 @@ import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.webdav.WebDav
 import io.legado.app.lib.webdav.WebDavException
+import io.legado.app.model.BookCover
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.ArchiveUtils
 import io.legado.app.utils.FileDoc
@@ -49,6 +50,8 @@ import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.isDataUrl
 import io.legado.app.utils.printOnDebug
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.runBlocking
 import org.apache.commons.text.StringEscapeUtils
 import splitties.init.appCtx
@@ -268,7 +271,27 @@ object LocalBook {
             //已有书籍说明是更新,删除原有目录
             appDb.bookChapterDao.delByBook(bookUrl)
         }
+        // 无论哪种入口导入的本地书,后台自动从已启用的书源搜索封面(已有封面则跳过)
+        autoSearchCover(book)
         return book
+    }
+
+    /**
+     * 本地书籍导入后,自动从已启用的书源搜索同书名的封面并保存。
+     * 已有封面(书源封面/自定义封面)时不重复搜索。
+     */
+    private fun autoSearchCover(book: Book) {
+        if (!book.coverUrl.isNullOrBlank() || !book.customCoverUrl.isNullOrBlank()) {
+            return
+        }
+        GlobalScope.launch(Dispatchers.IO) {
+            runCatching {
+                BookCover.searchCoverByEnabledSource(book)
+            }.getOrNull()?.takeIf { it.isNotBlank() }?.let { coverUrl ->
+                book.customCoverUrl = coverUrl
+                book.save()
+            }
+        }
     }
 
     fun upBookInfo(book: Book) {
