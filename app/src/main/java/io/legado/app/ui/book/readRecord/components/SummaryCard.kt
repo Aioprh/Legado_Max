@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -31,6 +32,8 @@ fun SummaryCard(
     todayReadTime: Long,
     monthReadTime: Long,
     activeDays: Int,
+    currentStreak: Int,
+    longestStreak: Int,
     bookCount: Int
 ) {
     val shape = RoundedCornerShape(16.dp)
@@ -46,7 +49,6 @@ fun SummaryCard(
     }
     val border = readRecordCardBorder()
     val secondaryTextColor = readRecordSecondaryTextColor()
-    val primaryColor = MaterialTheme.colorScheme.primary
 
     Surface(
         modifier = Modifier
@@ -71,25 +73,7 @@ fun SummaryCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 两列统计网格
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                StatItem(
-                    label = stringResource(R.string.rr_today_read_time),
-                    value = formatDurationShort(todayReadTime),
-                    modifier = Modifier.weight(1f)
-                )
-                StatItem(
-                    label = stringResource(R.string.rr_month_read_time),
-                    value = formatDurationShort(monthReadTime),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
+            // ===== 上半部分：3 列 =====
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -108,14 +92,6 @@ fun SummaryCard(
                     ),
                     modifier = Modifier.weight(1f)
                 )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
                 StatItem(
                     label = stringResource(R.string.rr_books_read),
                     value = stringResource(
@@ -125,8 +101,58 @@ fun SummaryCard(
                     ),
                     modifier = Modifier.weight(1f)
                 )
-                // 最后一列留空保持对齐
-                Spacer(modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ===== 分隔线 =====
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ===== 下半部分：2 列 =====
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                StatItem(
+                    label = stringResource(R.string.rr_current_streak),
+                    value = stringResource(
+                        if (currentStreak == 1) R.string.rr_streak_value_single
+                        else R.string.rr_streak_value,
+                        currentStreak
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+                StatItem(
+                    label = stringResource(R.string.rr_longest_streak),
+                    value = stringResource(
+                        if (longestStreak == 1) R.string.rr_streak_value_single
+                        else R.string.rr_streak_value,
+                        longestStreak
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                StatItem(
+                    label = stringResource(R.string.rr_today_read_time),
+                    value = formatDurationShort(todayReadTime),
+                    modifier = Modifier.weight(1f)
+                )
+                StatItem(
+                    label = stringResource(R.string.rr_month_read_time),
+                    value = formatDurationShort(monthReadTime),
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -161,7 +187,7 @@ private fun StatItem(
 }
 
 /**
- * 短格式时长：用于今日、本月等较短时间。
+ * 短格式时长：不含天，用于今日、本月等较短时间。
  * 格式：x小时x分钟 / x分钟 / x秒
  */
 private fun formatDurationShort(mss: Long): String {

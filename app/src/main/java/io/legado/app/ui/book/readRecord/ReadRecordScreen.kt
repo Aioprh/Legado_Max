@@ -424,6 +424,8 @@ fun ReadRecordScreen(
                             todayReadTime = state.todayReadTime,
                             monthReadTime = state.monthReadTime,
                             activeDays = state.activeDays,
+                            currentStreak = state.currentStreak,
+                            longestStreak = state.longestStreak,
                             bookCount = state.latestRecords.size
                         )
                     }

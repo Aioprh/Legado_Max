@@ -1923,6 +1923,10 @@
     <string name="rr_active_days_value">%d days</string>
     <string name="rr_book_count_value_single">1 book</string>
     <string name="rr_book_count_value">%d books</string>
+    <string name="rr_current_streak">Current Streak</string>
+    <string name="rr_longest_streak">Longest Streak</string>
+    <string name="rr_streak_value_single">1 day</string>
+    <string name="rr_streak_value">%d days</string>
     <string name="rr_day">day</string>
     <string name="rr_days">days</string>
     <string name="rr_hour">hour</string>

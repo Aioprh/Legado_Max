@@ -49,6 +49,8 @@ data class ReadRecordUiState(
     val todayReadTime: Long = 0,
     val monthReadTime: Long = 0,
     val activeDays: Int = 0,
+    val currentStreak: Int = 0,
+    val longestStreak: Int = 0,
     val todayBookCount: Int = 0,
     val groupedRecords: Map<String, List<ReadRecordDetail>> = emptyMap(),
     val timelineRecords: Map<String, List<ReadRecordSession>> = emptyMap(),
@@ -337,12 +339,19 @@ class ReadRecordViewModel : ViewModel() {
             .filter { it.key >= currentMonth }
             .sumOf { it.value }
 
+        // 连续阅读天数：从有阅读记录的日期集合中计算
+        val activeDates = dailyReadCounts.keys.sorted()
+        val currentStreak = calcCurrentStreak(activeDates)
+        val longestStreak = calcLongestStreak(activeDates)
+
         ReadRecordUiState(
             isLoading = false,
             totalReadTime = stats.totalReadTime,
             todayReadTime = stats.todayReadTime,
             monthReadTime = monthReadTime,
             activeDays = activeDays,
+            currentStreak = currentStreak,
+            longestStreak = longestStreak,
             todayBookCount = stats.todayBookCount,
             groupedRecords = groupedRecords,
             timelineRecords = extra.timelineRecords,
@@ -610,4 +619,44 @@ class ReadRecordViewModel : ViewModel() {
 
 private fun recordIdentity(deviceId: String, bookName: String, bookAuthor: String): RecordIdentity {
     return Triple(deviceId, bookName, bookAuthor)
+}
+
+/**
+ * 当前连续阅读天数：从今天（或昨天）开始往前数，连续有阅读记录的最大天数。
+ */
+private fun calcCurrentStreak(activeDates: List<LocalDate>): Int {
+    if (activeDates.isEmpty()) return 0
+    val today = LocalDate.now()
+    val yesterday = today.minusDays(1)
+    // 今天有记录则从今天开始；今天没有但昨天有则从昨天开始
+    val start = when {
+        today in activeDates -> today
+        yesterday in activeDates -> yesterday
+        else -> return 0
+    }
+    var streak = 0
+    var cursor = start
+    while (cursor in activeDates) {
+        streak++
+        cursor = cursor.minusDays(1)
+    }
+    return streak
+}
+
+/**
+ * 历史最长连续阅读天数：遍历所有活跃日期，找出最长连续区间。
+ */
+private fun calcLongestStreak(activeDates: List<LocalDate>): Int {
+    if (activeDates.isEmpty()) return 0
+    var longest = 1
+    var current = 1
+    for (i in 1 until activeDates.size) {
+        if (activeDates[i] == activeDates[i - 1].plusDays(1)) {
+            current++
+            if (current > longest) longest = current
+        } else {
+            current = 1
+        }
+    }
+    return longest
 }
