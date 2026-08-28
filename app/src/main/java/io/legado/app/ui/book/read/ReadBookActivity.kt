@@ -395,6 +395,11 @@ class ReadBookActivity : BaseReadBookActivity(),
                 ReadBook.setProgress(it)
                 ReadBook.webBookProgress = null
             }
+            // 从其他界面（如设置）切换主题后回到阅读页，Activity 未重建但主题已变，
+            // 需要清除旧排版使高亮规则按新主题重新匹配。
+            if (ReadBook.clearTextChapterIfThemeChanged()) {
+                ReadBook.loadOrUpContent()
+            }
         }
         upSystemUiVisibility()
         registerReceiver(timeBatteryReceiver, timeBatteryReceiver.filter)

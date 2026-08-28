@@ -81,6 +81,13 @@ object ReadBook : CoroutineScope by MainScope() {
     var msg: String? = null
     private var suppressReadAloudRestartChapterIndex: Int? = null
     private val loadingChapters = arrayListOf<Int>()
+
+    /**
+     * 记录已排版章节对应的夜间主题状态。
+     * Activity 重建后 upData 据此判断主题是否切换，若切换则清除已排版章节，
+     * 确保高亮规则的 themeScope 按新主题重新匹配。
+     */
+    private var lastLayoutNightTheme: Boolean = false
     private val readRecord = ReadRecord()
     private var sessionStartTime = 0L
     private val chapterLoadingJobs = ConcurrentHashMap<Int, Coroutine<*>>()
@@ -132,6 +139,7 @@ object ReadBook : CoroutineScope by MainScope() {
         durChapterPos = book.durChapterPos
         isLocalBook = book.isLocal
         clearTextChapter()
+        lastLayoutNightTheme = AppConfig.isNightTheme
         callBack?.upContent()
         callBack?.upMenuView()
         callBack?.upPageAnim()
@@ -158,6 +166,12 @@ object ReadBook : CoroutineScope by MainScope() {
             book.simulatedTotalChapterNum()
         } else {
             chapterSize
+        }
+        // 主题切换后高亮规则的 themeScope 需要按新主题重新匹配，
+        // 因此检测到主题变化时必须清除已排版章节，使后续 loadOrUpContent 走重新排版路径。
+        if (lastLayoutNightTheme != AppConfig.isNightTheme) {
+            clearTextChapter()
+            lastLayoutNightTheme = AppConfig.isNightTheme
         }
         if (durChapterIndex != book.durChapterIndex) {
             durChapterIndex = book.durChapterIndex
@@ -270,6 +284,21 @@ object ReadBook : CoroutineScope by MainScope() {
         prevTextChapter = null
         curTextChapter = null
         nextTextChapter = null
+    }
+
+    /**
+     * 检测主题是否与已排版章节的主题不同。
+     * 若不同，清除已排版章节并更新记录，返回 true 表示需要重新排版。
+     * 用于 Activity 从后台恢复（未重建）但主题已切换的场景。
+     */
+    fun clearTextChapterIfThemeChanged(): Boolean {
+        return if (lastLayoutNightTheme != AppConfig.isNightTheme) {
+            clearTextChapter()
+            lastLayoutNightTheme = AppConfig.isNightTheme
+            true
+        } else {
+            false
+        }
     }
 
     /**
