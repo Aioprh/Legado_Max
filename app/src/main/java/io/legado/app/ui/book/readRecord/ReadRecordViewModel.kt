@@ -340,9 +340,10 @@ class ReadRecordViewModel : ViewModel() {
             .sumOf { it.value }
 
         // 连续阅读天数：从有阅读记录的日期集合中计算
-        val activeDates = dailyReadCounts.keys.sorted()
-        val currentStreak = calcCurrentStreak(activeDates)
-        val longestStreak = calcLongestStreak(activeDates)
+        val sortedActiveDates = dailyReadCounts.keys.sorted()
+        val activeDateSet = dailyReadCounts.keys
+        val currentStreak = calcCurrentStreak(activeDateSet)
+        val longestStreak = calcLongestStreak(sortedActiveDates)
 
         ReadRecordUiState(
             isLoading = false,
@@ -623,8 +624,9 @@ private fun recordIdentity(deviceId: String, bookName: String, bookAuthor: Strin
 
 /**
  * 当前连续阅读天数：从今天（或昨天）开始往前数，连续有阅读记录的最大天数。
+ * 参数为 Set 以保证 `in` 操作 O(1) 查找。
  */
-private fun calcCurrentStreak(activeDates: List<LocalDate>): Int {
+private fun calcCurrentStreak(activeDates: Set<LocalDate>): Int {
     if (activeDates.isEmpty()) return 0
     val today = LocalDate.now()
     val yesterday = today.minusDays(1)
