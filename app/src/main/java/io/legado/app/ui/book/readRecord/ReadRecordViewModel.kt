@@ -47,6 +47,8 @@ data class ReadRecordUiState(
     val isLoading: Boolean = true,
     val totalReadTime: Long = 0,
     val todayReadTime: Long = 0,
+    val monthReadTime: Long = 0,
+    val activeDays: Int = 0,
     val todayBookCount: Int = 0,
     val groupedRecords: Map<String, List<ReadRecordDetail>> = emptyMap(),
     val timelineRecords: Map<String, List<ReadRecordSession>> = emptyMap(),
@@ -326,10 +328,21 @@ class ReadRecordViewModel : ViewModel() {
             LocalDate.parse(it.date, DateTimeFormatter.ISO_LOCAL_DATE) to it.totalReadTime
         }
 
+        // 活跃日 = 有阅读记录的天数
+        val activeDays = dailyReadCounts.size
+
+        // 本月阅读时长 = 当月各天阅读时长之和
+        val currentMonth = LocalDate.now().withDayOfMonth(1)
+        val monthReadTime = dailyReadTimes.entries
+            .filter { it.key >= currentMonth }
+            .sumOf { it.value }
+
         ReadRecordUiState(
             isLoading = false,
             totalReadTime = stats.totalReadTime,
             todayReadTime = stats.todayReadTime,
+            monthReadTime = monthReadTime,
+            activeDays = activeDays,
             todayBookCount = stats.todayBookCount,
             groupedRecords = groupedRecords,
             timelineRecords = extra.timelineRecords,

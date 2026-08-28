@@ -1,98 +1,38 @@
 package io.legado.app.ui.book.readRecord.components
 
-import android.graphics.Bitmap
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Book
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import io.legado.app.R
-import io.legado.app.data.entities.readRecord.ReadRecord
-import io.legado.app.help.config.AppConfig
-import io.legado.app.help.glide.ImageLoader
-import io.legado.app.ui.book.readRecord.ReadRecordViewModel
-import io.legado.app.ui.book.readRecord.readRecordBookStackSurfaceColor
 import io.legado.app.ui.book.readRecord.readRecordCardBorder
-import io.legado.app.ui.book.readRecord.readRecordMutedIconTint
 import io.legado.app.ui.book.readRecord.readRecordSecondaryTextColor
 import io.legado.app.ui.book.readRecord.readRecordSummaryCardContainerColor
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Composable
 fun SummaryCard(
     totalReadTime: Long,
-    bookCount: Int,
-    latestRecords: List<ReadRecord>,
-    viewModel: ReadRecordViewModel
+    todayReadTime: Long,
+    monthReadTime: Long,
+    activeDays: Int,
+    bookCount: Int
 ) {
-    val totalHours = totalReadTime / (1000 * 60 * 60)
-    val days = totalHours / 24
-    val remainingHours = totalHours % 24
-    val minutes = (totalReadTime / (1000 * 60)) % 60
-    val dayStr = stringResource(if (days == 1L) R.string.rr_day else R.string.rr_days)
-    val hourStr = stringResource(if (remainingHours == 1L) R.string.rr_hour else R.string.rr_hours)
-    val totalHourStr = stringResource(if (totalHours == 1L) R.string.rr_hour else R.string.rr_hours)
-    val minuteStr = stringResource(if (minutes == 1L) R.string.rr_minute else R.string.rr_minutes)
-    val timeString = buildString {
-        if (days > 0) {
-            append(days)
-            append(dayStr)
-            if (remainingHours > 0) {
-                append(" ")
-                append(remainingHours)
-                append(hourStr)
-            }
-            if (minutes > 0) {
-                append(" ")
-                append(minutes)
-                append(minuteStr)
-            }
-        } else if (totalHours > 0) {
-            append(totalHours)
-            append(totalHourStr)
-            if (minutes > 0) {
-                append(" ")
-                append(minutes)
-                append(minuteStr)
-            }
-        } else {
-            append(minutes)
-            append(minuteStr)
-        }
-    }
     val shape = RoundedCornerShape(16.dp)
     val isDarkBackground = MaterialTheme.colorScheme.background.luminance() < 0.18f
     val cardColor = if (isDarkBackground) {
@@ -106,6 +46,7 @@ fun SummaryCard(
     }
     val border = readRecordCardBorder()
     val secondaryTextColor = readRecordSecondaryTextColor()
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     Surface(
         modifier = Modifier
@@ -116,140 +57,139 @@ fun SummaryCard(
         color = cardColor,
         border = border
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
         ) {
-            Column {
-                Text(
-                    text = stringResource(R.string.rr_total_read_achievement),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = secondaryTextColor,
-                    fontWeight = FontWeight.Medium
+            Text(
+                text = stringResource(R.string.rr_total_read_achievement),
+                style = MaterialTheme.typography.labelSmall,
+                color = secondaryTextColor,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 两列统计网格
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                StatItem(
+                    label = stringResource(R.string.rr_today_read_time),
+                    value = formatDurationShort(todayReadTime),
+                    modifier = Modifier.weight(1f)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = stringResource(R.string.rr_books_read),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = " $bookCount ",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = stringResource(R.string.rr_book_unit),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = stringResource(R.string.rr_total_read_time, timeString),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = secondaryTextColor
+                StatItem(
+                    label = stringResource(R.string.rr_month_read_time),
+                    value = formatDurationShort(monthReadTime),
+                    modifier = Modifier.weight(1f)
                 )
             }
 
-            if (latestRecords.isNotEmpty()) {
-                BookStackView(
-                    records = latestRecords.take(3),
-                    viewModel = viewModel
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                StatItem(
+                    label = stringResource(R.string.rr_total_read_time_label),
+                    value = formatDurationLong(totalReadTime),
+                    modifier = Modifier.weight(1f)
                 )
+                StatItem(
+                    label = stringResource(R.string.rr_active_days),
+                    value = stringResource(
+                        if (activeDays == 1) R.string.rr_active_days_value_single
+                        else R.string.rr_active_days_value,
+                        activeDays
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                StatItem(
+                    label = stringResource(R.string.rr_books_read),
+                    value = stringResource(
+                        if (bookCount == 1) R.string.rr_book_count_value_single
+                        else R.string.rr_book_count_value,
+                        bookCount
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+                // 最后一列留空保持对齐
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun BookStackView(
-    records: List<ReadRecord>,
-    viewModel: ReadRecordViewModel
+private fun StatItem(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val xOffsetStep = 12.dp
-    val stackWidth = 48.dp + (xOffsetStep * (records.size - 1).coerceAtLeast(0))
-    val stackSurfaceColor = readRecordBookStackSurfaceColor()
-    val iconTint = readRecordMutedIconTint()
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryTextColor = readRecordSecondaryTextColor()
 
-    val coverBitmaps = remember { mutableStateOf<Map<Int, Bitmap?>>(emptyMap()) }
-
-    LaunchedEffect(records.map { "${it.bookName}|${it.bookAuthor}" }) {
-        withContext(Dispatchers.IO) {
-            val bitmaps = mutableMapOf<Int, Bitmap?>()
-            records.forEachIndexed { index, record ->
-                val coverPath = viewModel.getBookCover(record.bookName, record.bookAuthor)
-                bitmaps[index] = loadSummaryCoverBitmap(context, coverPath)
-                    ?: loadSummaryCoverBitmap(context, viewModel.getConfiguredDefaultCover())
-            }
-            coverBitmaps.value = bitmaps
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .width(stackWidth)
-            .height(72.dp),
-        contentAlignment = Alignment.CenterStart
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.Start
     ) {
-        records.forEachIndexed { index, _ ->
-            Box(
-                modifier = Modifier
-                    .padding(start = xOffsetStep * index)
-                    .zIndex(index.toFloat())
-                    .rotate(if (index % 2 == 0) 3f else -3f)
-            ) {
-                Surface(
-                    shadowElevation = if (AppConfig.bookCoverShadow) 4.dp else 0.dp,
-                    shape = RoundedCornerShape(4.dp),
-                    color = if (AppConfig.bookCoverShadow) stackSurfaceColor else androidx.compose.ui.graphics.Color.Transparent
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(48.dp)
-                            .height(72.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val bitmap = coverBitmaps.value[index]
-                        if (bitmap != null) {
-                            Image(
-                                bitmap = bitmap.asImageBitmap(),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Book,
-                                contentDescription = null,
-                                tint = iconTint,
-                                modifier = Modifier.width(24.dp).height(24.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = secondaryTextColor
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            color = primaryColor,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
-private fun loadSummaryCoverBitmap(
-    context: android.content.Context,
-    coverPath: String?
-): Bitmap? {
-    if (coverPath.isNullOrBlank()) return null
-    return runCatching {
-        ImageLoader.loadBitmap(context, coverPath)
-            .submit()
-            .get()
-    }.getOrNull()
+/**
+ * 短格式时长：用于今日、本月等较短时间。
+ * 格式：x小时x分钟 / x分钟 / x秒
+ */
+private fun formatDurationShort(mss: Long): String {
+    val totalSeconds = mss / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return when {
+        hours > 0 -> "${hours}小时${minutes}分钟"
+        minutes > 0 -> "${minutes}分钟"
+        else -> "${seconds}秒"
+    }
+}
+
+/**
+ * 长格式时长：用于累计阅读时间。
+ * 格式：x天x小时x分钟 / x小时x分钟 / x分钟 / x秒
+ */
+private fun formatDurationLong(mss: Long): String {
+    val totalSeconds = mss / 1000
+    val days = totalSeconds / 86400
+    val hours = (totalSeconds % 86400) / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return when {
+        days > 0 -> "${days}天${hours}小时${minutes}分钟"
+        hours > 0 -> "${hours}小时${minutes}分钟"
+        minutes > 0 -> "${minutes}分钟"
+        else -> "${seconds}秒"
+    }
 }

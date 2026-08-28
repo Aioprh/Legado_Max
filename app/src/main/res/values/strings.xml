@@ -1915,6 +1915,14 @@
     <string name="rr_books_read">Books Read</string>
     <string name="rr_book_unit">books</string>
     <string name="rr_total_read_time">Total read time %s</string>
+    <string name="rr_today_read_time">Today</string>
+    <string name="rr_month_read_time">This Month</string>
+    <string name="rr_total_read_time_label">Total Time</string>
+    <string name="rr_active_days">Active Days</string>
+    <string name="rr_active_days_value_single">1 day</string>
+    <string name="rr_active_days_value">%d days</string>
+    <string name="rr_book_count_value_single">1 book</string>
+    <string name="rr_book_count_value">%d books</string>
     <string name="rr_day">day</string>
     <string name="rr_days">days</string>
     <string name="rr_hour">hour</string>

@@ -1824,6 +1824,14 @@
     <string name="rr_books_read">已读</string>
     <string name="rr_book_unit">本书</string>
     <string name="rr_total_read_time">共阅读 %s</string>
+    <string name="rr_today_read_time">今日时长</string>
+    <string name="rr_month_read_time">本月时长</string>
+    <string name="rr_total_read_time_label">累计时长</string>
+    <string name="rr_active_days">活跃日</string>
+    <string name="rr_active_days_value_single">1天</string>
+    <string name="rr_active_days_value">%d天</string>
+    <string name="rr_book_count_value_single">1本</string>
+    <string name="rr_book_count_value">%d本</string>
     <string name="rr_day">天</string>
     <string name="rr_days">天</string>
     <string name="rr_hour">小时</string>
