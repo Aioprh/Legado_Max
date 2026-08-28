@@ -50,15 +50,11 @@ import io.legado.app.ui.login.SourceLoginJsExtensions
 import io.legado.app.utils.ArchiveUtils
 import io.legado.app.utils.UrlUtil
 import io.legado.app.utils.isContentScheme
-import io.legado.app.utils.mapParallelSafe
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withTimeout
 import io.legado.app.domain.model.BookShelfState
 
@@ -188,7 +184,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         execute {
             if (book.coverUrl.isNullOrBlank() && book.customCoverUrl.isNullOrBlank()) {
                 // 优先使用本机已启用的书源搜索同书封面
-                var coverUrl = searchSourceCover(book)
+                var coverUrl = BookCover.searchCoverByEnabledSource(book)
                 // 书源未匹配到时，回退到默认封面规则
                 if (coverUrl.isNullOrBlank()) {
                     coverUrl = BookCover.searchCover(book)
@@ -202,36 +198,6 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                     saveBook(book)
                 }
             }
-        }
-    }
-
-    /**
-     * 遍历本机已启用的书源，查找与当前书籍同名的封面。
-     * 首个命中且封面地址非空的源即作为结果返回。
-     */
-    private suspend fun searchSourceCover(book: Book): String? {
-        val name = book.name
-        val author = book.author
-        return try {
-            appDb.bookSourceDao.allEnabledPart
-                .asFlow()
-                .mapParallelSafe(AppConfig.threadCount) { part ->
-                    val source = part.getBookSource() ?: return@mapParallelSafe null
-                    if (source.getSearchRule().coverUrl.isNullOrBlank()) {
-                        return@mapParallelSafe null
-                    }
-                    withTimeout(15000L) {
-                        WebBook.searchBookAwait(source, name, shouldBreak = { it > 0 })
-                    }.firstOrNull()?.takeIf { searchBook ->
-                        searchBook.name == name && !searchBook.coverUrl.isNullOrEmpty() &&
-                            (author.isBlank() ||
-                                searchBook.author.contains(author) ||
-                                author.contains(searchBook.author))
-                    }?.coverUrl
-                }
-                .firstOrNull { !it.isNullOrEmpty() }
-        } catch (_: Throwable) {
-            null
         }
     }
 

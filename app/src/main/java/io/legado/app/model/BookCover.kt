@@ -19,6 +19,7 @@ import com.bumptech.glide.request.target.Target
 import com.bumptech.glide.request.target.Target.SIZE_ORIGINAL
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
+import io.legado.app.data.appDb
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.SearchBook
@@ -33,12 +34,17 @@ import io.legado.app.help.glide.OkHttpModelLoader
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeUrl
+import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.BitmapUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefString
+import io.legado.app.utils.mapParallelSafe
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.withTimeout
 import splitties.init.appCtx
 import java.io.File
 import androidx.core.graphics.drawable.toDrawable
@@ -337,6 +343,40 @@ object BookCover {
         analyzeRule.setContent(res.body)
         analyzeRule.setRedirectUrl(res.url)
         return analyzeRule.getString(config.coverRule, isUrl = true)
+    }
+
+    /**
+     * 遍历本机已启用的书源，查找与当前书籍同名的封面，并返回搜索到的封面URL。
+     *
+     * 首个命中且封面地址非空的源即作为结果返回（应用于本地书籍导入/详情页自动换封面）。
+     *
+     * @param book 书籍信息
+     * @return 封面URL，搜索失败或无结果时返回null
+     */
+    suspend fun searchCoverByEnabledSource(book: Book): String? {
+        val name = book.name
+        val author = book.author
+        return try {
+            appDb.bookSourceDao.allEnabledPart
+                .asFlow()
+                .mapParallelSafe(AppConfig.threadCount) { part ->
+                    val source = part.getBookSource() ?: return@mapParallelSafe null
+                    if (source.getSearchRule().coverUrl.isNullOrBlank()) {
+                        return@mapParallelSafe null
+                    }
+                    withTimeout(15000L) {
+                        WebBook.searchBookAwait(source, name, shouldBreak = { it > 0 })
+                    }.firstOrNull()?.takeIf { searchBook ->
+                        searchBook.name == name && !searchBook.coverUrl.isNullOrEmpty() &&
+                            (author.isBlank() ||
+                                searchBook.author.contains(author) ||
+                                author.contains(searchBook.author))
+                    }?.coverUrl
+                }
+                .firstOrNull { !it.isNullOrEmpty() }
+        } catch (_: Throwable) {
+            null
+        }
     }
 
     /**

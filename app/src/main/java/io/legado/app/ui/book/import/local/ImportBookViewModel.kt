@@ -6,6 +6,8 @@ import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern.archiveFileRegex
 import io.legado.app.constant.AppPattern.bookFileRegex
 import io.legado.app.constant.PreferKey
+import io.legado.app.data.entities.Book
+import io.legado.app.model.BookCover
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.utils.AlphanumComparator
 import io.legado.app.utils.FileDoc
@@ -99,11 +101,32 @@ class ImportBookViewModel(application: Application) : BaseViewModel(application)
         }.onError {
             context.toastOnUi("添加书架失败，请尝试重新选择文件夹")
             AppLog.put("添加书架失败\n${it.localizedMessage}", it)
-        }.onSuccess {
+        }.onSuccess { books ->
             context.toastOnUi("添加书架成功")
+            // 自动从已启用的书源搜索封面并替换,书架列表立即生效
+            books.forEach { book ->
+                execute(context = Dispatchers.IO) {
+                    autoSearchCover(book)
+                }
+            }
         }.onFinally {
             finally.invoke()
         }
+    }
+
+    /**
+     * 为本地书籍搜索封面并保存。已有封面或未匹配到时跳过。
+     */
+    private suspend fun autoSearchCover(book: Book) {
+        if (!book.coverUrl.isNullOrBlank() || !book.customCoverUrl.isNullOrBlank()) {
+            return
+        }
+        val coverUrl = BookCover.searchCoverByEnabledSource(book)
+        if (coverUrl.isNullOrBlank()) {
+            return
+        }
+        book.customCoverUrl = coverUrl
+        book.save()
     }
 
     fun deleteDoc(bookList: HashSet<ImportBook>, finally: () -> Unit) {
