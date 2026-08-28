@@ -401,13 +401,19 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         fragmentMap[groupId]?.gotoTop()
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    override fun observeLiveBus() {
-        super.observeLiveBus()
-        observeEvent<String>(EventBus.BOOKSHELF_REFRESH) {
-            loadTagBar()
+@SuppressLint("NotifyDataSetChanged")
+override fun observeLiveBus() {
+    super.observeLiveBus()
+    observeEvent<String>(EventBus.BOOKSHELF_REFRESH) {
+        loadTagBar()
+    }
+    // 顶栏配置变更时，同步刷新二级标签栏样式
+    observeEvent<Boolean>(EventBus.TOP_BAR_CHANGED) { isNightMode ->
+        if (isNightMode == AppConfig.isNightTheme) {
+            tagBar?.applyTopBarStyle(force = true)
         }
     }
+}
 
     override fun updateMainBottomPadding(bottomPadding: Int) {
         if (view == null) return

@@ -533,5 +533,11 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
                 restartBooksFlow()
             }
         }
+        // 顶栏配置变更时，同步刷新二级标签栏样式
+        observeEvent<Boolean>(EventBus.TOP_BAR_CHANGED) { isNightMode ->
+            if (isNightMode == AppConfig.isNightTheme) {
+                tagBar?.applyTopBarStyle(force = true)
+            }
+        }
     }
 }
