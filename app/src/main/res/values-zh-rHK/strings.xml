@@ -1963,6 +1963,13 @@
     <string name="rr_minute">分鐘</string>
     <string name="rr_hours">小時</string>
     <string name="rr_minutes">分鐘</string>
+    <string name="rr_second">秒</string>
+    <string name="rr_seconds">秒</string>
+    <string name="rr_read_suffix">閲讀</string>
+    <string name="rr_times_suffix">次</string>
+    <string name="rr_days_suffix">天</string>
+    <string name="rr_more">更多</string>
+    <string name="book_read_time_label">閲讀時長：%s</string>
 
     <!-- Heatmap Calendar -->
     <string name="rr_heatmap_title">閲讀日曆</string>

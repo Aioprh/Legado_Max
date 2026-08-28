@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,7 @@ fun SummaryCard(
     }
     val border = readRecordCardBorder()
     val secondaryTextColor = readRecordSecondaryTextColor()
+    val context = LocalContext.current
 
     Surface(
         modifier = Modifier
@@ -80,7 +82,7 @@ fun SummaryCard(
             ) {
                 StatItem(
                     label = stringResource(R.string.rr_total_read_time_label),
-                    value = formatDurationLong(totalReadTime),
+                    value = formatDurationLong(context, totalReadTime),
                     modifier = Modifier.weight(1f)
                 )
                 StatItem(
@@ -145,12 +147,12 @@ fun SummaryCard(
             ) {
                 StatItem(
                     label = stringResource(R.string.rr_today_read_time),
-                    value = formatDurationShort(todayReadTime),
+                    value = formatDurationShort(context, todayReadTime),
                     modifier = Modifier.weight(1f)
                 )
                 StatItem(
                     label = stringResource(R.string.rr_month_read_time),
-                    value = formatDurationShort(monthReadTime),
+                    value = formatDurationShort(context, monthReadTime),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -190,15 +192,25 @@ private fun StatItem(
  * 短格式时长：不含天，用于今日、本月等较短时间。
  * 格式：x小时x分钟 / x分钟 / x秒
  */
-private fun formatDurationShort(mss: Long): String {
+private fun formatDurationShort(context: android.content.Context, mss: Long): String {
     val totalSeconds = mss / 1000
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
     return when {
-        hours > 0 -> "${hours}小时${minutes}分钟"
-        minutes > 0 -> "${minutes}分钟"
-        else -> "${seconds}秒"
+        hours > 0 -> {
+            val hourStr = context.getString(if (hours == 1L) R.string.rr_hour else R.string.rr_hours)
+            val minStr = context.getString(if (minutes == 1L) R.string.rr_minute else R.string.rr_minutes)
+            "$hours$hourStr$minutes$minStr"
+        }
+        minutes > 0 -> {
+            val minStr = context.getString(if (minutes == 1L) R.string.rr_minute else R.string.rr_minutes)
+            "$minutes$minStr"
+        }
+        else -> {
+            val secStr = context.getString(if (seconds == 1L) R.string.rr_second else R.string.rr_seconds)
+            "$seconds$secStr"
+        }
     }
 }
 
@@ -206,16 +218,31 @@ private fun formatDurationShort(mss: Long): String {
  * 长格式时长：用于累计阅读时间。
  * 格式：x天x小时x分钟 / x小时x分钟 / x分钟 / x秒
  */
-private fun formatDurationLong(mss: Long): String {
+private fun formatDurationLong(context: android.content.Context, mss: Long): String {
     val totalSeconds = mss / 1000
     val days = totalSeconds / 86400
     val hours = (totalSeconds % 86400) / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
     return when {
-        days > 0 -> "${days}天${hours}小时${minutes}分钟"
-        hours > 0 -> "${hours}小时${minutes}分钟"
-        minutes > 0 -> "${minutes}分钟"
-        else -> "${seconds}秒"
+        days > 0 -> {
+            val dayStr = context.getString(if (days == 1L) R.string.rr_day else R.string.rr_days)
+            val hourStr = context.getString(if (hours == 1L) R.string.rr_hour else R.string.rr_hours)
+            val minStr = context.getString(if (minutes == 1L) R.string.rr_minute else R.string.rr_minutes)
+            "$days$dayStr$hours$hourStr$minutes$minStr"
+        }
+        hours > 0 -> {
+            val hourStr = context.getString(if (hours == 1L) R.string.rr_hour else R.string.rr_hours)
+            val minStr = context.getString(if (minutes == 1L) R.string.rr_minute else R.string.rr_minutes)
+            "$hours$hourStr$minutes$minStr"
+        }
+        minutes > 0 -> {
+            val minStr = context.getString(if (minutes == 1L) R.string.rr_minute else R.string.rr_minutes)
+            "$minutes$minStr"
+        }
+        else -> {
+            val secStr = context.getString(if (seconds == 1L) R.string.rr_second else R.string.rr_seconds)
+            "$seconds$secStr"
+        }
     }
 }

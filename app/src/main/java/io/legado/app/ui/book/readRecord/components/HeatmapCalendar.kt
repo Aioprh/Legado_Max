@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.legado.app.R
+import androidx.compose.ui.platform.LocalContext
 import io.legado.app.utils.formatReadDuration
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -85,6 +86,7 @@ fun HeatmapCalendarSection(
     selectedDate: LocalDate?,
     onDateSelected: (LocalDate?) -> Unit
 ) {
+    val context = LocalContext.current
     val today = LocalDate.now()
     var currentYearMonth by remember { mutableStateOf(YearMonth.now()) }
     val timesStr = stringResource(R.string.rr_heatmap_times)
@@ -172,7 +174,7 @@ fun HeatmapCalendarSection(
                     )
                     MonthStatPill(
                         label = stringResource(R.string.rr_heatmap_duration),
-                        value = formatReadDuration(monthReadTime),
+                        value = formatReadDuration(context, monthReadTime),
                         modifier = Modifier.weight(1f)
                     )
                     MonthStatPill(
@@ -470,6 +472,7 @@ private fun SelectedDateSummary(
     readTime: Long,
     onClearDate: () -> Unit
 ) {
+    val context = LocalContext.current
     val timesStr = stringResource(R.string.rr_heatmap_times)
     val dateFormatStr = stringResource(R.string.rr_heatmap_date_format)
     Surface(
@@ -493,7 +496,7 @@ private fun SelectedDateSummary(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "${readCount}$timesStr · ${formatReadDuration(readTime)}",
+                    text = "${readCount}$timesStr · ${formatReadDuration(context, readTime)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

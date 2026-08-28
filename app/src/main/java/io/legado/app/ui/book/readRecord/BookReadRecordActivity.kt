@@ -60,6 +60,9 @@ import io.legado.app.base.BaseComposeActivity
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.readRecord.ReadRecordSession
 import io.legado.app.data.repository.ReadRecordRepository
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import io.legado.app.R
 import io.legado.app.utils.formatReadDuration
 import kotlinx.coroutines.flow.emptyFlow
 import java.text.SimpleDateFormat
@@ -156,7 +159,7 @@ fun BookReadRecordScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "暂无阅读记录",
+                            text = stringResource(R.string.rr_no_records),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -224,6 +227,7 @@ private fun SummaryHeader(
     dayCount: Int,
     sessionCount: Int
 ) {
+    val context = LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -232,16 +236,16 @@ private fun SummaryHeader(
     ) {
         StatChip(
             icon = Icons.Filled.Timer,
-            label = formatReadDuration(totalReadTime),
-            suffix = "阅读"
+            label = formatReadDuration(context, totalReadTime),
+            suffix = stringResource(R.string.rr_read_suffix)
         )
         StatChip(
             label = sessionCount.toString(),
-            suffix = "次"
+            suffix = stringResource(R.string.rr_times_suffix)
         )
         StatChip(
             label = dayCount.toString(),
-            suffix = "天"
+            suffix = stringResource(R.string.rr_days_suffix)
         )
     }
 }
@@ -286,6 +290,7 @@ private fun DaySection(
     bookAuthor: String,
     repository: ReadRecordRepository
 ) {
+    val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
@@ -317,13 +322,13 @@ private fun DaySection(
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "${sessionCount}次",
+                    text = "${sessionCount}" + stringResource(R.string.rr_times_suffix),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = formatReadDuration(totalDuration),
+                    text = formatReadDuration(context, totalDuration),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
@@ -358,6 +363,7 @@ private fun DaySection(
 
 @Composable
 private fun SessionRow(session: ReadRecordSession, timeFormat: SimpleDateFormat, duration: Long) {
+    val context = LocalContext.current
     val start = remember(session.startTime) { Date(session.startTime) }
 
     Row(
@@ -376,7 +382,7 @@ private fun SessionRow(session: ReadRecordSession, timeFormat: SimpleDateFormat,
         )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = formatReadDuration(duration),
+            text = formatReadDuration(context, duration),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Medium

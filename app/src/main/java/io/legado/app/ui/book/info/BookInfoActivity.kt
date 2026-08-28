@@ -1033,8 +1033,8 @@ class BookInfoActivity :
                     val summary = if (totalReadTime <= 0L) {
                         getString(R.string.no_read_record)
                     } else {
-                        val totalStr = io.legado.app.utils.formatReadDuration(totalReadTime)
-                        "阅读时长：$totalStr"
+                        val totalStr = io.legado.app.utils.formatReadDuration(this@BookInfoActivity, totalReadTime)
+                        getString(R.string.book_read_time_label, totalStr)
                     }
                     binding.tvReadRecord.text = summary
                 }

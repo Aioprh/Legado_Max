@@ -719,6 +719,7 @@ private fun readTimeRecordKey(record: ReadRecord): String {
 
 @Composable
 private fun DateHeader(date: String, totalDuration: Long) {
+    val context = LocalContext.current
     val headerColor = readRecordHeaderContainerColor()
     val secondaryTextColor = readRecordSecondaryTextColor()
     val todayStr = stringResource(R.string.rr_today)
@@ -743,7 +744,7 @@ private fun DateHeader(date: String, totalDuration: Long) {
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = formatReadDuration(totalDuration),
+                text = formatReadDuration(context,totalDuration),
                 style = MaterialTheme.typography.bodySmall,
                 color = secondaryTextColor
             )
@@ -753,6 +754,7 @@ private fun DateHeader(date: String, totalDuration: Long) {
 
 @Composable
 private fun TimelineDateHeader(date: String, totalDuration: Long) {
+    val context = LocalContext.current
     val headerColor = readRecordHeaderContainerColor()
     val secondaryTextColor = readRecordSecondaryTextColor()
     val todayStr = stringResource(R.string.rr_today)
@@ -777,7 +779,7 @@ private fun TimelineDateHeader(date: String, totalDuration: Long) {
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = formatReadDuration(totalDuration),
+                text = formatReadDuration(context,totalDuration),
                 style = MaterialTheme.typography.bodySmall,
                 color = secondaryTextColor
             )
@@ -797,6 +799,7 @@ private fun TimelineSessionView(
     onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     val startTime = timeFormat.format(Date(session.startTime))
     val timelineAccentColor = readRecordTimelineAccentColor()
@@ -980,7 +983,7 @@ private fun TimelineSessionView(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = session.bookAuthor.ifBlank { "未知作者" },
+                            text = session.bookAuthor.ifBlank { context.getString(R.string.rr_unknown_author) },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1011,6 +1014,7 @@ private fun RecordDetailItem(
     onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     val deleteAction = rememberSwipeDeleteAction(onDelete)
     var chapterTitle by remember { mutableStateOf<String?>(null) }
     val containerColor = readRecordCardContainerColor()
@@ -1080,7 +1084,7 @@ private fun RecordDetailItem(
                 }
                 
                 Text(
-                    text = formatReadDuration(detail.readTime),
+                    text = formatReadDuration(context,detail.readTime),
                     style = MaterialTheme.typography.bodySmall,
                     color = secondaryTextColor
                 )
@@ -1129,7 +1133,7 @@ private fun RecordDetailItem(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = detail.bookAuthor.ifBlank { "未知作者" },
+                            text = detail.bookAuthor.ifBlank { context.getString(R.string.rr_unknown_author) },
                             style = MaterialTheme.typography.bodySmall,
                             color = secondaryTextColor
                         )
@@ -1145,7 +1149,7 @@ private fun RecordDetailItem(
                     }
                     
                     Text(
-                        text = formatReadDuration(detail.readTime),
+                        text = formatReadDuration(context,detail.readTime),
                         style = MaterialTheme.typography.bodySmall,
                         color = secondaryTextColor
                     )
@@ -1167,6 +1171,7 @@ private fun LatestRecordItem(
     onDelete: () -> Unit,
     onMerge: () -> Unit
 ) {
+    val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     var chapterTitle by remember { mutableStateOf<String?>(null) }
     val containerColor = readRecordCardContainerColor()
@@ -1239,7 +1244,7 @@ private fun LatestRecordItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = formatReadDuration(record.readTime),
+                        text = formatReadDuration(context,record.readTime),
                         style = MaterialTheme.typography.bodySmall,
                         color = secondaryTextColor
                     )
@@ -1258,7 +1263,7 @@ private fun LatestRecordItem(
             if (!isSelectionMode) {
                 Box {
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "更多", tint = readRecordMutedIconTint())
+                        Icon(Icons.Default.MoreVert, contentDescription = context.getString(R.string.rr_more), tint = readRecordMutedIconTint())
                     }
                     DropdownMenu(
                         expanded = showMenu,
@@ -1303,6 +1308,7 @@ private fun ReadTimeRecordItem(
     onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val context = LocalContext.current
     var chapterTitle by remember { mutableStateOf<String?>(null) }
     val containerColor = readRecordCardContainerColor()
     val border = readRecordCardBorder()
@@ -1357,7 +1363,7 @@ private fun ReadTimeRecordItem(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = record.bookAuthor.ifBlank { "未知作者" },
+                        text = record.bookAuthor.ifBlank { context.getString(R.string.rr_unknown_author) },
                         style = MaterialTheme.typography.bodySmall,
                         color = secondaryTextColor
                     )
@@ -1373,7 +1379,7 @@ private fun ReadTimeRecordItem(
                 }
 
                 Text(
-                    text = formatReadDuration(record.readTime),
+                    text = formatReadDuration(context,record.readTime),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -1423,7 +1429,7 @@ private fun ReadTimeRecordItem(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = record.bookAuthor.ifBlank { "未知作者" },
+                            text = record.bookAuthor.ifBlank { context.getString(R.string.rr_unknown_author) },
                             style = MaterialTheme.typography.bodySmall,
                             color = secondaryTextColor
                         )
@@ -1439,7 +1445,7 @@ private fun ReadTimeRecordItem(
                     }
 
                     Text(
-                        text = formatReadDuration(record.readTime),
+                        text = formatReadDuration(context,record.readTime),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
