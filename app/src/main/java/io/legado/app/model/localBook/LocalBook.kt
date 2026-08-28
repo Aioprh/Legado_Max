@@ -52,6 +52,7 @@ import io.legado.app.utils.isDataUrl
 import io.legado.app.utils.printOnDebug
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.commons.text.StringEscapeUtils
 import splitties.init.appCtx
