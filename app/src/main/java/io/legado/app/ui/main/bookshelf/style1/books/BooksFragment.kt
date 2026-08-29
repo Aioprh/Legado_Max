@@ -24,6 +24,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.FragmentBooksBinding
+import io.legado.app.help.book.BookTagHelper
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
@@ -80,6 +81,8 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     private var onlyUpdateRead = false
     private val bookshelfMargin by lazy { AppConfig.bookshelfMargin }
     private var itemCount = 0
+    /** 当前选中的标签，null 表示不按标签过滤 */
+    private var currentTag: String? = null
 
     private fun createBooksAdapter(): BaseBooksAdapter<*> {
         return when (AppConfig.bookLayout) {
@@ -228,6 +231,16 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     }
 
     /**
+     * 设置标签过滤，null 表示显示全部分组书籍。
+     * 触发书架数据重新加载。
+     */
+    fun filterBooksByTag(tag: String?) {
+        if (currentTag == tag) return
+        currentTag = tag
+        upRecyclerData()
+    }
+
+    /**
      * 更新书籍列表信息
      * 方案A：使用 flowShelfByGroup 轻量查询替代 flowByGroup，
      * SQL 层面已过滤 notShelf 并按 durChapterTime DESC 排序，
@@ -237,25 +250,29 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         booksFlowJob?.cancel()
         booksFlowJob = viewLifecycleOwner.lifecycleScope.launch {
             appDb.bookDao.flowShelfByGroup(groupId).map { list ->
+                // 按标签过滤
+                val filtered = currentTag?.let { tag ->
+                    list.filter { BookTagHelper.has(it.customTag, tag) }
+                } ?: list
                 //排序
                 when (bookSort) {
-                    1 -> list.sortedByDescending { it.latestChapterTime }
-                    2 -> list.sortedWith { o1, o2 ->
+                    1 -> filtered.sortedByDescending { it.latestChapterTime }
+                    2 -> filtered.sortedWith { o1, o2 ->
                         o1.name.cnCompare(o2.name)
                     }
 
-                    3 -> list.sortedBy { it.order }
+                    3 -> filtered.sortedBy { it.order }
 
                     // 综合排序 issue #3192
-                    4 -> list.sortedByDescending {
+                    4 -> filtered.sortedByDescending {
                         max(it.latestChapterTime, it.durChapterTime)
                     }
                     // 按作者排序
-                    5 -> list.sortedWith { o1, o2 ->
+                    5 -> filtered.sortedWith { o1, o2 ->
                         o1.author.cnCompare(o2.author)
                     }
 
-                    else -> list // SQL 已按 durChapterTime DESC 排序，无需再排
+                    else -> filtered // SQL 已按 durChapterTime DESC 排序，无需再排
                 }
             }.flowWithLifecycleAndDatabaseChangeFirst(
                 viewLifecycleOwner.lifecycle,

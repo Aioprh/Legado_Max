@@ -15,13 +15,17 @@ import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentStatePagerAdapter
+import androidx.lifecycle.lifecycleScope
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.tabs.TabLayout
 import io.legado.app.R
+import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.FragmentBookshelf1Binding
+import io.legado.app.help.book.BookTagHelper
+import io.legado.app.help.book.BookTagManagement
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
@@ -29,13 +33,22 @@ import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.book.group.GroupEditDialog
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
+import io.legado.app.ui.main.bookshelf.BookshelfTagManageActivity
 import io.legado.app.ui.main.bookshelf.style1.books.BooksFragment
+import io.legado.app.ui.widget.RoundedTagBarView
 import io.legado.app.utils.isCreated
+import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlin.collections.set
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 书架界面
@@ -64,6 +77,11 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
     private val bookGroups = mutableListOf<BookGroup>()
     private val fragmentMap = hashMapOf<Long, BooksFragment>()
     private var currentPosition = 0
+    // 标签栏相关
+    private var tagBar: RoundedTagBarView? = null
+    private val tagItems = mutableListOf<RoundedTagBarView.Item>()
+    private val selectedTagByGroup = hashMapOf<Long, String>()
+    private var tagsJob: Job? = null
     override val groupId: Long get() = selectedGroup?.groupId ?: 0
 
     override val books: List<Book>
@@ -94,6 +112,17 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         binding.viewPagerBookshelf.setEdgeEffectColor(primaryColor)
         binding.viewPagerBookshelf.offscreenPageLimit = 2
         binding.viewPagerBookshelf.adapter = adapter
+        // 监听 ViewPager 页面切换，更新当前分组名称与标签栏
+        binding.viewPagerBookshelf.addOnPageChangeListener(object : ViewPager.OnPageChangeListener {
+            override fun onPageSelected(position: Int) {
+                currentPosition = position
+                AppConfig.saveTabPosition = position
+                tvGroupName?.text = bookGroups.getOrNull(position)?.groupName ?: ""
+                upTagBar()
+            }
+            override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
+            override fun onPageScrollStateChanged(state: Int) {}
+        })
         // 根据"下拉选择分组"开关动态添加布局到 TitleBar
         if (AppConfig.dropdownSelectGroup) {
             // 下拉选择模式：添加 view_group_selector 布局
@@ -103,16 +132,6 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             titleSelect = groupSelectorView.findViewById(R.id.title_select)
             tvGroupName = groupSelectorView.findViewById(R.id.tv_group_name)
             ivArrow = groupSelectorView.findViewById(R.id.iv_arrow)
-            // 监听 ViewPager 页面切换，更新当前分组名称显示
-            binding.viewPagerBookshelf.addOnPageChangeListener(object : ViewPager.OnPageChangeListener {
-                override fun onPageSelected(position: Int) {
-                    currentPosition = position
-                    AppConfig.saveTabPosition = position
-                    tvGroupName?.text = bookGroups.getOrNull(position)?.groupName ?: ""
-                }
-                override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
-                override fun onPageScrollStateChanged(state: Int) {}
-            })
             initTitleSelect()
             updateTitleColor()
         } else {
@@ -127,6 +146,89 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
                 tab.setSelectedTabIndicatorColor(requireContext().accentColor)
                 tab.setupWithViewPager(binding.viewPagerBookshelf)
             }
+        }
+        initTagBar()
+    }
+
+    /**
+     * 初始化标签栏：绑定点击与长按事件。
+     * 点击标签过滤书籍；长按打开标签管理。
+     */
+    private fun initTagBar() {
+        tagBar = binding.tagBar
+        tagBar?.setOnTagClickListener { position ->
+            val item = tagItems.getOrNull(position) ?: return@setOnTagClickListener
+            val currentGroupId = groupId
+            val tag = item.text.toString()
+            if (tag.equals(getString(R.string.all), ignoreCase = true)) {
+                // 点击"全部"：清除过滤
+                selectedTagByGroup.remove(currentGroupId)
+                tagBar?.setSelectedIndex(0)
+                fragmentMap[currentGroupId]?.filterBooksByTag(null)
+            } else {
+                // 点击标签：按标签过滤
+                selectedTagByGroup[currentGroupId] = tag
+                tagBar?.setSelectedIndex(position)
+                fragmentMap[currentGroupId]?.filterBooksByTag(tag)
+            }
+        }
+        tagBar?.setOnTagLongClickListener {
+            startActivity<BookshelfTagManageActivity> {
+                putExtra("groupId", groupId)
+            }
+            true
+        }
+    }
+
+    /**
+     * 加载并显示当前分组标签栏。
+     * 标签 = 配置标签 ∪ 当前分组书架书籍实际使用的标签，排除隐藏标签。
+     */
+    private fun upTagBar() {
+        val tagBar = tagBar ?: return
+        val currentGroupId = groupId
+        tagsJob?.cancel()
+        if (!AppConfig.showBookshelfTagBar) {
+            tagBar.visibility = View.GONE
+            return
+        }
+        tagsJob = lifecycleScope.launch {
+            val configured = AppConfig.bookshelfGroupTags[currentGroupId].orEmpty()
+            val hidden = AppConfig.bookshelfHiddenTags[currentGroupId].orEmpty()
+            val existing = withContext(Dispatchers.Default) {
+                appDb.bookDao.flowShelfByGroup(currentGroupId).first()
+                    .asSequence()
+                    .flatMap { BookTagHelper.parse(it.customTag).asSequence() }
+                    .toList()
+            }
+            val visible = BookTagManagement.mergeTags(configured, existing)
+                .filterNot { tag -> hidden.any { it.equals(tag, ignoreCase = true) } }
+            if (visible.isEmpty()) {
+                tagBar.visibility = View.GONE
+                return@launch
+            }
+            val items = buildList {
+                add(RoundedTagBarView.Item(getString(R.string.all)))
+                visible.forEach { add(RoundedTagBarView.Item(it)) }
+            }
+            tagItems.clear()
+            tagItems.addAll(items)
+            // 之前选中的标签若已不存在，重置为"全部"并清除过滤
+            val savedTag = selectedTagByGroup[currentGroupId]
+            val savedIndex = if (savedTag == null) {
+                0
+            } else {
+                val idx = tagItems.indexOfFirst { it.text.toString().equals(savedTag, ignoreCase = true) }
+                if (idx < 0) {
+                    selectedTagByGroup.remove(currentGroupId)
+                    fragmentMap[currentGroupId]?.filterBooksByTag(null)
+                    0
+                } else {
+                    idx
+                }
+            }
+            tagBar.visibility = View.VISIBLE
+            tagBar.submitItems(tagItems.toList(), savedIndex)
         }
     }
 
@@ -201,6 +303,7 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
     @Synchronized
     override fun upGroup(data: List<BookGroup>) {
         if (data.isEmpty()) {
+            tagBar?.visibility = View.GONE
             appDb.bookGroupDao.enableGroup(BookGroup.IdAll)
         } else {
             if (data != bookGroups) {
@@ -231,12 +334,21 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
                         }
                     }
                 }
+                upTagBar()
             }
         }
     }
 
     override fun upSort() {
         adapter.notifyDataSetChanged()
+    }
+
+    override fun observeLiveBus() {
+        super.observeLiveBus()
+        // 标签管理修改标签后刷新标签栏
+        observeEvent<String>(EventBus.BOOKSHELF_REFRESH) {
+            upTagBar()
+        }
     }
 
     private fun updateTitleSelect() {
@@ -263,6 +375,7 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
     override fun onTabSelected(tab: TabLayout.Tab) {
         currentPosition = tab.position
         AppConfig.saveTabPosition = tab.position
+        upTagBar()
     }
 
     // TabLayout 模式：Tab 未选中回调

@@ -12,6 +12,12 @@
         app:attachToActivity="false"
         app:title="@string/bookshelf" />
 
+    <io.legado.app.ui.widget.RoundedTagBarView
+        android:id="@+id/tag_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
     <androidx.viewpager.widget.ViewPager
         android:id="@+id/view_pager_bookshelf"
         android:layout_width="match_parent"

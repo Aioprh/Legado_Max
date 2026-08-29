@@ -337,6 +337,13 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.showTagsInList, value)
         }
 
+    // 书架标签栏开关（默认开启）
+    var showBookshelfTagBar: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.showBookshelfTagBar, true)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.showBookshelfTagBar, value)
+        }
+
     // 书籍外边框开关（默认关闭，仅在列表/紧凑列表视图时生效）
     var showBookBorder: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.showBookBorder, false)
