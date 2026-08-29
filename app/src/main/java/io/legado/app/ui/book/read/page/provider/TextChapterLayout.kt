@@ -547,14 +547,18 @@ class TextChapterLayout(
                 val imgText = if (titleImg.isNullOrEmpty()) {
                     null
                 } else {
-                    val urlMatcher = paramPattern.matcher(titleImg)
-                    var click: String? = null
-                    var style: String? = if (ParagraphBubbleRenderer.isBubbleSrc(titleImg)) "TEXT" else null
-                    var imgSize = ImageProvider.getImageSize(book, titleImg, ReadBook.bookSource)
-                    val isAnimated = ImageProvider.isGif(book, titleImg, ReadBook.bookSource)
+                    // 与正文段落一致：先把任何形式的段评入口（bubble://、dp:、站点原生 data:svg/type/click 等）
+                    // 统一解析成 bubble://paragraph，否则标题图上的泡评会因未走强制转换而不显示
+                    val bubbleResult = tryParseForcedBubbleSrcWithClick(titleImg)
+                    val titleImgResolved = bubbleResult.renderSrc
+                    val urlMatcher = paramPattern.matcher(titleImgResolved)
+                    var click: String? = bubbleResult.click
+                    var style: String? = if (ParagraphBubbleRenderer.isBubbleSrc(titleImgResolved)) "TEXT" else null
+                    var imgSize = ImageProvider.getImageSize(book, titleImgResolved, ReadBook.bookSource)
+                    val isAnimated = ImageProvider.isGif(book, titleImgResolved, ReadBook.bookSource)
                     if (urlMatcher.find()) {
                         var width: String? = null
-                        val urlOptionStr = titleImg.substring(urlMatcher.end())
+                        val urlOptionStr = titleImgResolved.substring(urlMatcher.end())
                         GSON.fromJsonObject<Map<String, String>>(urlOptionStr).getOrNull()
                             ?.let { map ->
                                 map.forEach { (key, value) ->
@@ -589,19 +593,19 @@ class TextChapterLayout(
                     }
                     when (style) {
                         "text" -> {
-                            srcList.add(titleImg)
+                            srcList.add(titleImgResolved)
                             clickList.add(click)
                             srcReplaceChar
                         }
                         "TEXT" -> {
-                            srcList.add(titleImg)
+                            srcList.add(titleImgResolved)
                             clickList.add(click)
                             reviewChar
                         }
                         else -> {
                             setTypeImage(
                                 book,
-                                titleImg,
+                                titleImgResolved,
                                 contentPaintTextHeight,
                                 style,
                                 imgSize,
