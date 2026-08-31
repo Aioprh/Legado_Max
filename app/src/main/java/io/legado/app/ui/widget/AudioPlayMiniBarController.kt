@@ -1,11 +1,13 @@
 package io.legado.app.ui.widget
 
+import android.animation.ObjectAnimator
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
-import android.view.ViewGroup
 import android.view.View
+import android.view.ViewGroup
+import android.view.animation.LinearInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils as AndroidXColorUtils
 import androidx.core.view.updateLayoutParams
@@ -14,7 +16,7 @@ import io.legado.app.R
 import io.legado.app.constant.Status
 import io.legado.app.databinding.ViewAudioPlayMiniBarBinding
 import io.legado.app.help.glide.ImageLoader
-import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.model.AudioPlay
 import io.legado.app.model.BookCover
 import io.legado.app.service.AudioPlayService
@@ -29,8 +31,6 @@ import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.animation.ObjectAnimator
-import android.view.animation.LinearInterpolator
 
 /**
  * 音频书音乐风格迷你播放栏。
@@ -155,7 +155,7 @@ class AudioPlayMiniBarController(
         }
     }
 
-    private fun applyTheme(color: Int = bottomBackground) {
+    private fun applyTheme(color: Int = ThemeStore.bottomBackground(activity)) {
         binding.run {
             val base = AndroidXColorUtils.blendARGB(color, 0xFFFFFFFF.toInt(), 0.12f)
             val surface = if (ColorUtils.isColorLight(base)) {
@@ -215,7 +215,7 @@ class AudioPlayMiniBarController(
                 count++
             }
         }
-        if (count == 0L) return bottomBackground
+        if (count == 0L) return ThemeStore.bottomBackground(activity)
         return Color.rgb(
             (red / count).toInt(),
             (green / count).toInt(),
