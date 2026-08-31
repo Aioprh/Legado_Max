@@ -30,6 +30,7 @@ import io.legado.app.model.ReadBook
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.config.ReadAloudActivity
+import io.legado.app.ui.widget.AudioPlayMiniBarController
 import io.legado.app.ui.widget.ReadAloudMiniBarController
 import io.legado.app.ui.widget.ReadAloudMiniBarHost
 import io.legado.app.ui.widget.TitleBar
@@ -62,6 +63,7 @@ abstract class BaseActivity<VB : ViewBinding>(
 
     protected abstract val binding: VB
     private var readAloudMiniBarController: ReadAloudMiniBarController? = null
+    private var audioPlayMiniBarController: AudioPlayMiniBarController? = null
 
     val isInMultiWindow: Boolean
         @SuppressLint("ObsoleteSdkInt")
@@ -98,6 +100,7 @@ abstract class BaseActivity<VB : ViewBinding>(
         setContentView(binding.root)
         findViewById<ViewGroup>(android.R.id.content)?.let {
             readAloudMiniBarController = ReadAloudMiniBarController(this, this, it)
+            audioPlayMiniBarController = AudioPlayMiniBarController(this, it)
         }
         upBackgroundImage()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -107,11 +110,16 @@ abstract class BaseActivity<VB : ViewBinding>(
         onBackPressedDispatcher.addCallback(this) {
             finish()
         }
-        observeLiveBus()    // 模板方法：子类覆写 observeLiveBus() 注册事件订阅，自动在 onCreate 中调用
+        observeLiveBus()
         observeEvent<Int>(EventBus.ALOUD_STATE) {
             refreshReadAloudMiniBar()
         }
-        // 顶栏配置变更时，重新应用顶栏配置到当前 Activity 的 TitleBar
+        observeEvent<Int>(EventBus.AUDIO_STATE) {
+            audioPlayMiniBarController?.refresh()
+        }
+        observeEvent<String>(EventBus.AUDIO_SUB_TITLE) {
+            audioPlayMiniBarController?.refresh()
+        }
         observeEvent<Boolean>(EventBus.TOP_BAR_CHANGED) { isNightMode ->
             if (isNightMode == AppConfig.isNightTheme) {
                 findViewById<TitleBar>(R.id.title_bar)?.applyTopBarConfig()
@@ -124,6 +132,7 @@ abstract class BaseActivity<VB : ViewBinding>(
         super.onResume()
         DebugFloatingBallManager.onActivityResumed(this)
         refreshReadAloudMiniBar()
+        audioPlayMiniBarController?.refresh()
     }
 
     override fun onPause() {
@@ -133,6 +142,7 @@ abstract class BaseActivity<VB : ViewBinding>(
     }
 
     override fun onDestroy() {
+        audioPlayMiniBarController?.hide()
         super.onDestroy()
         DebugFloatingBallManager.onActivityDestroyed(this)
         DebugLogPanelDialog.onActivityDestroyed(this)
@@ -183,12 +193,12 @@ abstract class BaseActivity<VB : ViewBinding>(
             Theme.Transparent -> setTheme(R.style.AppTheme_Transparent)
             Theme.Dark -> {
                 setTheme(R.style.AppTheme_Dark)
-               window.decorView.applyBackgroundTint(backgroundColor)
+                window.decorView.applyBackgroundTint(backgroundColor)
             }
 
             Theme.Light -> {
                 setTheme(R.style.AppTheme_Light)
-               window.decorView.applyBackgroundTint(backgroundColor)
+                window.decorView.applyBackgroundTint(backgroundColor)
             }
 
             else -> {
@@ -197,7 +207,7 @@ abstract class BaseActivity<VB : ViewBinding>(
                 } else {
                     setTheme(R.style.AppTheme_Dark)
                 }
-               window.decorView.applyBackgroundTint(backgroundColor)
+                window.decorView.applyBackgroundTint(backgroundColor)
             }
         }
     }
@@ -206,7 +216,7 @@ abstract class BaseActivity<VB : ViewBinding>(
         if (imageBg) {
             try {
                 ThemeConfig.getBgImage(this, windowManager.windowSize)?.let { drawable ->
-                   window.decorView.background = drawable
+                    window.decorView.background = drawable
                 }
             } catch (_: OutOfMemoryError) {
                 toastOnUi("背景图片太大,内存溢出")
@@ -246,11 +256,6 @@ abstract class BaseActivity<VB : ViewBinding>(
      * 子类覆写此方法，调用 observeEvent() / observeEventSticky() 注册感兴趣的事件。
      * 由 BaseActivity.onCreate() 自动调用，无需手动触发。
      * 观察者与 Activity 生命周期绑定，销毁时自动移除，无需手动注销。
-     *
-     * 示例：
-     *   override fun observeLiveBus() {
-     *       observeEvent<String>(EventBus.BOOKSHELF_REFRESH) { refreshBookshelf() }
-     *   }
      */
     open fun observeLiveBus() {
     }
