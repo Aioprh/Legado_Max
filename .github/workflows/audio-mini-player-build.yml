@@ -1,0 +1,35 @@
+name: Audio Mini Player Build
+
+on:
+  push:
+    branches:
+      - feature/audio-mini-player
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audio-mini-player-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build debug APK
+        run: ./gradlew assembleAppMaxDebug --no-daemon --stacktrace
