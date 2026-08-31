@@ -16,7 +16,7 @@ import io.legado.app.R
 import io.legado.app.constant.Status
 import io.legado.app.databinding.ViewAudioPlayMiniBarBinding
 import io.legado.app.help.glide.ImageLoader
-import io.legado.app.lib.theme.ThemeStore
+import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.model.AudioPlay
 import io.legado.app.model.BookCover
 import io.legado.app.service.AudioPlayService
@@ -155,7 +155,7 @@ class AudioPlayMiniBarController(
         }
     }
 
-    private fun applyTheme(color: Int = ThemeStore.bottomBackground(activity)) {
+    private fun applyTheme(color: Int = activity.bottomBackground) {
         binding.run {
             val base = AndroidXColorUtils.blendARGB(color, 0xFFFFFFFF.toInt(), 0.12f)
             val surface = if (ColorUtils.isColorLight(base)) {
@@ -215,7 +215,7 @@ class AudioPlayMiniBarController(
                 count++
             }
         }
-        if (count == 0L) return ThemeStore.bottomBackground(activity)
+        if (count == 0L) return activity.bottomBackground
         return Color.rgb(
             (red / count).toInt(),
             (green / count).toInt(),
