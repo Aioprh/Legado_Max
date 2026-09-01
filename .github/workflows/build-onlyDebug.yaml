@@ -1,15 +1,14 @@
 name: Build Debug APK
 
 on:
-  # 只有当代码推送到 test 分支，或者提交 PR 到 test 分支时才会触发
   push:
     branches:
       - test
+      - feature/audio-mini-player
   pull_request:
     branches:
       - test
 
-# 同一个分支连续 push 时，取消旧任务，节省资源
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -45,13 +44,11 @@ jobs:
       - name: Build Debug APK
         run: |
           chmod +x gradlew
-          # 在 Linux 环境下执行，精准打包 AppMaxDebug 变体，并跳过 Google Services 检查
           ./gradlew assembleAppMaxDebug -x processAppSDebugGoogleServices --parallel --daemon
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk
-          # 指定打包后的 APK 路径，如果你的输出路径不同请自行修改
           path: app/build/outputs/apk/appMax/debug/*.apk
-          retention-days: 7 # 保留 7 天，过期自动清理
+          retention-days: 7
