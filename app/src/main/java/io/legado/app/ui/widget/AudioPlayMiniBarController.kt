@@ -33,16 +33,19 @@ import kotlinx.coroutines.withContext
 /** 音频书音乐风格迷你播放栏：轻薄、半透明、液态玻璃质感。仅在实际播放时出现。 */
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
-    parent: ViewGroup
+    private val parent: ViewGroup
 ) {
     private val binding = ViewAudioPlayMiniBarBinding.inflate(LayoutInflater.from(activity), parent, false)
     private var coverJob: Job? = null
     private var coverAnimator: ObjectAnimator? = null
     private var lastBookUrl: String? = null
     private var initialized = false
+    private var bottomNavigation: View? = null
+    private var bottomNavigationLayoutListener: View.OnLayoutChangeListener? = null
 
     init {
         parent.addView(binding.root)
+        bindBottomNavigationAnchor()
         updateBottomMargin()
         bindEvents()
     }
@@ -105,7 +108,6 @@ class AudioPlayMiniBarController(
                     AudioPlay.pause(activity)
                 }
             }
-            // 右侧列表按钮直接进入章节列表，而不是只打开播放器主页。
             ivAudioMiniPlaylist.setOnClickListener { openChapterList() }
         }
     }
@@ -140,9 +142,34 @@ class AudioPlayMiniBarController(
         else -> false
     }
 
+    /**
+     * MainActivity 的底部导航栏与 Mini Player 都位于 content 的同一坐标系。
+     * 将 Mini Player 的底边锚定到底部导航栏顶部，避免播放器覆盖导航栏。
+     * 其他页面没有 bottom_navigation_glass 时保留极小的系统底部安全间距。
+     */
+    private fun bindBottomNavigationAnchor() {
+        val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass) ?: return
+        bottomNavigation = navigation
+        bottomNavigationLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateBottomMargin()
+        }
+        navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
+        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateBottomMargin() }
+    }
+
     private fun updateBottomMargin() {
+        val navigation = bottomNavigation?.takeIf { it.isShown && it.height > 0 }
+        val margin = if (navigation != null) {
+            val parentLocation = IntArray(2)
+            val navigationLocation = IntArray(2)
+            parent.getLocationOnScreen(parentLocation)
+            navigation.getLocationOnScreen(navigationLocation)
+            (parent.height - (navigationLocation[1] - parentLocation[1])).coerceAtLeast(0)
+        } else {
+            2.dpToPx()
+        }
         binding.root.updateLayoutParams<android.widget.FrameLayout.LayoutParams> {
-            bottomMargin = 2.dpToPx()
+            bottomMargin = margin
         }
     }
 
