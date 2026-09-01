@@ -17,7 +17,6 @@ import io.legado.app.databinding.ViewAudioPlayMiniBarBinding
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.model.AudioPlay
-import io.legado.app.model.BookCover
 import io.legado.app.service.AudioPlayService
 import io.legado.app.ui.book.audio.AudioPlayActivity
 import io.legado.app.utils.ColorUtils
@@ -79,7 +78,7 @@ class AudioPlayMiniBarController(
             if (!initialized) {
                 initialized = true
                 applyTheme()
-                val cover = book?.let { BookCover.getDisplayCover(it) }
+                val cover = book?.let { io.legado.app.model.BookCover.getDisplayCover(it) }
                 if (cover != null) {
                     ImageLoader.load(activity, cover).circleCrop().into(ivAudioMiniCover)
                     coverJob = activity.lifecycleScope.launch(IO) {
@@ -100,7 +99,7 @@ class AudioPlayMiniBarController(
             ivAudioMiniPlay.setOnClickListener {
                 if (AudioPlayService.pause) {
                     AudioPlay.resume(activity)
-                    post { refresh() }
+                    audioPlayMiniBar.post { refresh() }
                 } else {
                     hideInternal()
                     AudioPlay.pause(activity)
@@ -142,7 +141,6 @@ class AudioPlayMiniBarController(
 
     private fun applyTheme(color: Int = activity.bottomBackground) {
         binding.run {
-            // 液态玻璃：低不透明度基底 + 细亮边 + 柔和的主题色高光。
             val lightMode = ColorUtils.isColorLight(color)
             val tint = if (lightMode) 0xFFFFFFFF.toInt() else 0xFFEEF4FF.toInt()
             val glassBase = if (lightMode) {
@@ -158,15 +156,11 @@ class AudioPlayMiniBarController(
             val glassEnd = AndroidXColorUtils.blendARGB(glassBase, color, 0.16f)
             val textColor = if (lightMode) 0xFF181A20.toInt() else 0xFFF7F9FF.toInt()
             val secondaryColor = AndroidXColorUtils.setAlphaComponent(textColor, 145)
-            val borderColor = AndroidXColorUtils.setAlphaComponent(
-                if (lightMode) Color.WHITE else Color.WHITE,
-                if (lightMode) 150 else 105
-            )
+            val borderColor = AndroidXColorUtils.setAlphaComponent(Color.WHITE, if (lightMode) 150 else 105)
             val glowColor = AndroidXColorUtils.setAlphaComponent(
                 AndroidXColorUtils.blendARGB(color, tint, 0.65f),
                 75
             )
-
             audioPlayMiniBar.background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 intArrayOf(glassStart, glassBase, glassEnd)
@@ -178,9 +172,7 @@ class AudioPlayMiniBarController(
             audioMiniCoverShell.background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 intArrayOf(glowColor, AndroidXColorUtils.setAlphaComponent(textColor, 18))
-            ).apply {
-                shape = GradientDrawable.OVAL
-            }
+            ).apply { shape = GradientDrawable.OVAL }
             tvAudioMiniTitle.setTextColor(textColor)
             tvAudioMiniSubtitle.setTextColor(secondaryColor)
             ivAudioMiniPlay.setColorFilter(textColor)
