@@ -101,11 +101,11 @@ abstract class BaseActivity<VB : ViewBinding>(
         observeLiveBus()
         observeEvent<Int>(EventBus.ALOUD_STATE) { refreshReadAloudMiniBar() }
         observeEvent<Int>(EventBus.AUDIO_STATE) { state ->
-            // 不依赖 AudioPlay.status 的同步时序，收到暂停/停止事件后立即隐藏。
-            if (state == io.legado.app.constant.Status.PLAY) {
-                audioPlayMiniBarController?.refresh()
-            } else {
+            // 音频迷你播放栏在播放和暂停状态都保持显示；只有真正停止时才隐藏。
+            if (state == io.legado.app.constant.Status.STOP) {
                 audioPlayMiniBarController?.hide()
+            } else {
+                audioPlayMiniBarController?.refresh()
             }
         }
         observeEvent<String>(EventBus.AUDIO_SUB_TITLE) { audioPlayMiniBarController?.refresh() }
