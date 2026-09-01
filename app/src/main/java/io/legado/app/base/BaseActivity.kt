@@ -68,23 +68,14 @@ abstract class BaseActivity<VB : ViewBinding>(
     val isInMultiWindow: Boolean
         @SuppressLint("ObsoleteSdkInt")
         get() {
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                isInMultiWindowMode
-            } else {
-                false
-            }
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) isInMultiWindowMode else false
         }
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppContextWrapper.wrap(newBase))
     }
 
-    override fun onCreateView(
-        parent: View?,
-        name: String,
-        context: Context,
-        attrs: AttributeSet
-    ): View? {
+    override fun onCreateView(parent: View?, name: String, context: Context, attrs: AttributeSet): View? {
         if (AppConst.menuViewNames.contains(name) && parent?.parent is FrameLayout) {
             (parent.parent as View).setBackgroundColor(backgroundColor)
         }
@@ -104,22 +95,20 @@ abstract class BaseActivity<VB : ViewBinding>(
         }
         upBackgroundImage()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            findViewById<TitleBar>(R.id.title_bar)
-                ?.onMultiWindowModeChanged(isInMultiWindowMode, fullScreen)
+            findViewById<TitleBar>(R.id.title_bar)?.onMultiWindowModeChanged(isInMultiWindowMode, fullScreen)
         }
-        onBackPressedDispatcher.addCallback(this) {
-            finish()
-        }
+        onBackPressedDispatcher.addCallback(this) { finish() }
         observeLiveBus()
-        observeEvent<Int>(EventBus.ALOUD_STATE) {
-            refreshReadAloudMiniBar()
+        observeEvent<Int>(EventBus.ALOUD_STATE) { refreshReadAloudMiniBar() }
+        observeEvent<Int>(EventBus.AUDIO_STATE) { state ->
+            // 不依赖 AudioPlay.status 的同步时序，收到暂停/停止事件后立即隐藏。
+            if (state == io.legado.app.constant.Status.PLAY) {
+                audioPlayMiniBarController?.refresh()
+            } else {
+                audioPlayMiniBarController?.hide()
+            }
         }
-        observeEvent<Int>(EventBus.AUDIO_STATE) {
-            audioPlayMiniBarController?.refresh()
-        }
-        observeEvent<String>(EventBus.AUDIO_SUB_TITLE) {
-            audioPlayMiniBarController?.refresh()
-        }
+        observeEvent<String>(EventBus.AUDIO_SUB_TITLE) { audioPlayMiniBarController?.refresh() }
         observeEvent<Boolean>(EventBus.TOP_BAR_CHANGED) { isNightMode ->
             if (isNightMode == AppConfig.isNightTheme) {
                 findViewById<TitleBar>(R.id.title_bar)?.applyTopBarConfig()
@@ -151,15 +140,13 @@ abstract class BaseActivity<VB : ViewBinding>(
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onMultiWindowModeChanged(isInMultiWindowMode: Boolean, newConfig: Configuration) {
         super.onMultiWindowModeChanged(isInMultiWindowMode, newConfig)
-        findViewById<TitleBar>(R.id.title_bar)
-            ?.onMultiWindowModeChanged(isInMultiWindowMode, fullScreen)
+        findViewById<TitleBar>(R.id.title_bar)?.onMultiWindowModeChanged(isInMultiWindowMode, fullScreen)
         setupSystemBar()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        findViewById<TitleBar>(R.id.title_bar)
-            ?.onMultiWindowModeChanged(isInMultiWindow, fullScreen)
+        findViewById<TitleBar>(R.id.title_bar)?.onMultiWindowModeChanged(isInMultiWindow, fullScreen)
         setupSystemBar()
     }
 
@@ -191,22 +178,10 @@ abstract class BaseActivity<VB : ViewBinding>(
     open fun initTheme() {
         when (theme) {
             Theme.Transparent -> setTheme(R.style.AppTheme_Transparent)
-            Theme.Dark -> {
-                setTheme(R.style.AppTheme_Dark)
-                window.decorView.applyBackgroundTint(backgroundColor)
-            }
-
-            Theme.Light -> {
-                setTheme(R.style.AppTheme_Light)
-                window.decorView.applyBackgroundTint(backgroundColor)
-            }
-
+            Theme.Dark -> { setTheme(R.style.AppTheme_Dark); window.decorView.applyBackgroundTint(backgroundColor) }
+            Theme.Light -> { setTheme(R.style.AppTheme_Light); window.decorView.applyBackgroundTint(backgroundColor) }
             else -> {
-                if (ColorUtils.isColorLight(primaryColor)) {
-                    setTheme(R.style.AppTheme_Light)
-                } else {
-                    setTheme(R.style.AppTheme_Dark)
-                }
+                if (ColorUtils.isColorLight(primaryColor)) setTheme(R.style.AppTheme_Light) else setTheme(R.style.AppTheme_Dark)
                 window.decorView.applyBackgroundTint(backgroundColor)
             }
         }
@@ -215,89 +190,46 @@ abstract class BaseActivity<VB : ViewBinding>(
     open fun upBackgroundImage() {
         if (imageBg) {
             try {
-                ThemeConfig.getBgImage(this, windowManager.windowSize)?.let { drawable ->
-                    window.decorView.background = drawable
-                }
-            } catch (_: OutOfMemoryError) {
-                toastOnUi("背景图片太大,内存溢出")
-            } catch (e: Exception) {
-                AppLog.put("加载背景出错\n${e.localizedMessage}", e)
-            }
+                ThemeConfig.getBgImage(this, windowManager.windowSize)?.let { drawable -> window.decorView.background = drawable }
+            } catch (_: OutOfMemoryError) { toastOnUi("背景图片太大,内存溢出") }
+            catch (e: Exception) { AppLog.put("加载背景出错\n${e.localizedMessage}", e) }
         }
     }
 
     open fun setupSystemBar() {
-        if (fullScreen && !isInMultiWindow) {
-            fullScreen()
-        }
+        if (fullScreen && !isInMultiWindow) fullScreen()
         val isTransparentStatusBar = AppConfig.isTransparentStatusBar
         val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
         setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, fullScreen)
-        if (toolBarTheme == Theme.Dark) {
-            setLightStatusBar(false)
-        } else if (toolBarTheme == Theme.Light) {
-            setLightStatusBar(true)
-        }
+        if (toolBarTheme == Theme.Dark) setLightStatusBar(false)
+        else if (toolBarTheme == Theme.Light) setLightStatusBar(true)
         upNavigationBarColor()
     }
 
     open fun upNavigationBarColor() {
         val nbColor = ThemeStore.navigationBarColor(this)
-        if (AppConfig.immNavigationBar) {
-            setNavigationBarColorAuto(nbColor, transparent = true)
-        } else {
-            setNavigationBarColorAuto(ColorUtils.darkenColor(nbColor))
-        }
+        if (AppConfig.immNavigationBar) setNavigationBarColorAuto(nbColor, transparent = true)
+        else setNavigationBarColorAuto(ColorUtils.darkenColor(nbColor))
     }
 
-    /**
-     * 事件订阅入口（模板方法）
-     *
-     * 子类覆写此方法，调用 observeEvent() / observeEventSticky() 注册感兴趣的事件。
-     * 由 BaseActivity.onCreate() 自动调用，无需手动触发。
-     * 观察者与 Activity 生命周期绑定，销毁时自动移除，无需手动注销。
-     */
-    open fun observeLiveBus() {
-    }
-
-    protected fun refreshReadAloudMiniBar() {
-        readAloudMiniBarController?.refresh()
-    }
-
-    protected fun hideReadAloudMiniBar() {
-        readAloudMiniBarController?.hide()
-    }
-
+    open fun observeLiveBus() {}
+    protected fun refreshReadAloudMiniBar() { readAloudMiniBarController?.refresh() }
+    protected fun hideReadAloudMiniBar() { readAloudMiniBarController?.hide() }
     open override fun showReadAloudMiniBar(): Boolean = AppConfig.readAloudFloatingUi
-
     open override fun lockReadAloudMiniBarPosition(): Boolean = false
-
     open override fun readAloudMiniBarBottomMarginDp(): Int = 76
-
     open override fun defaultReadAloudMiniBarColor(): Int = 0xFF665185.toInt()
 
     open override fun onReadAloudMiniBarClick() {
-        BaseReadAloudService.activeBookUrl?.let { bookUrl ->
-            startActivity<ReadBookActivity> {
-                putExtra("bookUrl", bookUrl)
-            }
-        } ?: ReadBook.book?.let { book ->
-            startActivity<ReadBookActivity> {
-                putExtra("bookUrl", book.bookUrl)
-            }
-        } ?: startActivity<ReadAloudActivity>()
+        BaseReadAloudService.activeBookUrl?.let { bookUrl -> startActivity<ReadBookActivity> { putExtra("bookUrl", bookUrl) } }
+            ?: ReadBook.book?.let { book -> startActivity<ReadBookActivity> { putExtra("bookUrl", book.bookUrl) } }
+            ?: startActivity<ReadAloudActivity>()
     }
 
     open override fun onReadAloudMiniBarLongClick(): Boolean = false
 
-    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        return try {
-            super.dispatchTouchEvent(ev)
-        } catch (e: IllegalArgumentException) {
-            e.printStackTrace()
-            false
-        }
-    }
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean = try { super.dispatchTouchEvent(ev) }
+    catch (e: IllegalArgumentException) { e.printStackTrace(); false }
 
     override fun finish() {
         currentFocus?.hideSoftInput()
