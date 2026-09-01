@@ -30,7 +30,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** 音频书音乐风格迷你播放栏：轻薄、半透明、液态玻璃质感。播放或暂停时保留。 */
+/** 音频书音乐风格迷你播放栏：播放或暂停时均保留，只有停止/无音频时隐藏。 */
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
     private val parent: ViewGroup
@@ -42,6 +42,7 @@ class AudioPlayMiniBarController(
     private var initialized = false
     private var bottomNavigation: View? = null
     private var bottomNavigationLayoutListener: View.OnLayoutChangeListener? = null
+    private var userHidden = false
 
     init {
         parent.addView(binding.root)
@@ -52,10 +53,12 @@ class AudioPlayMiniBarController(
 
     fun refresh() {
         binding.run {
-            if (isExcludedScreen() || !AudioPlayService.isRun || AudioPlay.book == null || AudioPlay.status == io.legado.app.constant.Status.STOP) {
+            val hasAudio = AudioPlay.book != null && AudioPlay.status != io.legado.app.constant.Status.STOP
+            if (isExcludedScreen() || !hasAudio) {
                 hideInternal()
                 return
             }
+            userHidden = false
             updateBottomMargin()
             val book = AudioPlay.book
             val chapter = AudioPlay.durChapter
@@ -68,13 +71,8 @@ class AudioPlayMiniBarController(
                 book?.name?.takeIf { it.isNotBlank() },
                 book?.author?.takeIf { it.isNotBlank() }
             ).joinToString(" · ")
-            ivAudioMiniPlay.setImageResource(
-                if (AudioPlay.status == io.legado.app.constant.Status.PLAY && !AudioPlayService.pause) {
-                    R.drawable.ic_pause_24dp
-                } else {
-                    R.drawable.ic_play_24dp
-                }
-            )
+            val playing = AudioPlay.status == io.legado.app.constant.Status.PLAY && !AudioPlayService.pause
+            ivAudioMiniPlay.setImageResource(if (playing) R.drawable.ic_pause_24dp else R.drawable.ic_play_24dp)
             audioPlayMiniBar.visible()
             if (lastBookUrl != bookUrl) {
                 lastBookUrl = bookUrl
@@ -96,11 +94,7 @@ class AudioPlayMiniBarController(
                     }
                 }
             }
-            if (AudioPlay.status == io.legado.app.constant.Status.PLAY && !AudioPlayService.pause) {
-                startCoverAnimation()
-            } else {
-                coverAnimator?.pause()
-            }
+            if (playing) startCoverAnimation() else coverAnimator?.pause()
         }
     }
 
@@ -110,12 +104,12 @@ class AudioPlayMiniBarController(
         binding.run {
             audioPlayMiniBar.setOnClickListener { openAudioPlayer() }
             ivAudioMiniPlay.setOnClickListener {
-                if (AudioPlayService.pause) {
-                    AudioPlay.resume(activity)
-                } else {
-                    AudioPlay.pause(activity)
-                }
-                audioPlayMiniBar.post { refresh() }
+                if (AudioPlayService.pause) AudioPlay.resume(activity) else AudioPlay.pause(activity)
+                // pause/resume 会异步更新状态；无论暂停还是播放，Mini Player 都保持可见。
+                audioPlayMiniBar.postDelayed({
+                    val hasAudio = AudioPlay.book != null && AudioPlay.status != io.legado.app.constant.Status.STOP
+                    if (hasAudio && !isExcludedScreen()) refresh() else hideInternal()
+                }, 80L)
             }
             ivAudioMiniPlaylist.setOnClickListener { openChapterList() }
         }
@@ -130,6 +124,7 @@ class AudioPlayMiniBarController(
     }
 
     private fun hideInternal() {
+        userHidden = true
         coverJob?.cancel()
         coverAnimator?.cancel()
         coverAnimator = null
@@ -154,11 +149,11 @@ class AudioPlayMiniBarController(
     private fun bindBottomNavigationAnchor() {
         val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass) ?: return
         bottomNavigation = navigation
-        bottomNavigationLayoutListener = View.OnLayoutChangeListener { view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+        bottomNavigationLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             updateBottomMargin()
         }
         navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
-        parent.addOnLayoutChangeListener { view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom -> updateBottomMargin() }
+        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateBottomMargin() }
     }
 
     private fun updateBottomMargin() {
@@ -169,48 +164,29 @@ class AudioPlayMiniBarController(
             parent.getLocationOnScreen(parentLocation)
             navigation.getLocationOnScreen(navigationLocation)
             (parent.height - (navigationLocation[1] - parentLocation[1])).coerceAtLeast(0)
-        } else {
-            2.dpToPx()
-        }
-        binding.root.updateLayoutParams<android.widget.FrameLayout.LayoutParams> {
-            bottomMargin = margin
-        }
+        } else 2.dpToPx()
+        binding.root.updateLayoutParams<android.widget.FrameLayout.LayoutParams> { bottomMargin = margin }
     }
 
     private fun applyTheme(color: Int = activity.bottomBackground) {
         binding.run {
             val lightMode = ColorUtils.isColorLight(color)
             val tint = if (lightMode) 0xFFFFFFFF.toInt() else 0xFFEEF4FF.toInt()
-            val glassBase = if (lightMode) {
-                AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 190)
-            } else {
-                AndroidXColorUtils.setAlphaComponent(0xFF15171D.toInt(), 178)
-            }
-            val highlight = AndroidXColorUtils.setAlphaComponent(
-                AndroidXColorUtils.blendARGB(color, tint, 0.45f),
-                if (lightMode) 72 else 58
-            )
+            val glassBase = if (lightMode) AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 190)
+            else AndroidXColorUtils.setAlphaComponent(0xFF15171D.toInt(), 178)
+            val highlight = AndroidXColorUtils.setAlphaComponent(AndroidXColorUtils.blendARGB(color, tint, 0.45f), if (lightMode) 72 else 58)
             val glassStart = AndroidXColorUtils.blendARGB(glassBase, highlight, 0.38f)
             val glassEnd = AndroidXColorUtils.blendARGB(glassBase, color, 0.16f)
             val textColor = if (lightMode) 0xFF181A20.toInt() else 0xFFF7F9FF.toInt()
             val secondaryColor = AndroidXColorUtils.setAlphaComponent(textColor, 145)
             val borderColor = AndroidXColorUtils.setAlphaComponent(Color.WHITE, if (lightMode) 150 else 105)
-            val glowColor = AndroidXColorUtils.setAlphaComponent(
-                AndroidXColorUtils.blendARGB(color, tint, 0.65f),
-                75
-            )
-            audioPlayMiniBar.background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(glassStart, glassBase, glassEnd)
-            ).apply {
+            val glowColor = AndroidXColorUtils.setAlphaComponent(AndroidXColorUtils.blendARGB(color, tint, 0.65f), 75)
+            audioPlayMiniBar.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(glassStart, glassBase, glassEnd)).apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 27.dpToPx().toFloat()
                 setStroke(1.dpToPx(), borderColor)
             }
-            audioMiniCoverShell.background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(glowColor, AndroidXColorUtils.setAlphaComponent(textColor, 18))
-            ).apply { shape = GradientDrawable.OVAL }
+            audioMiniCoverShell.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(glowColor, AndroidXColorUtils.setAlphaComponent(textColor, 18))).apply { shape = GradientDrawable.OVAL }
             tvAudioMiniTitle.setTextColor(textColor)
             tvAudioMiniSubtitle.setTextColor(secondaryColor)
             ivAudioMiniPlay.setColorFilter(textColor)
