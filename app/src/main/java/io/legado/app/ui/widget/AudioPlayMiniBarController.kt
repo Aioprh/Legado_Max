@@ -72,7 +72,7 @@ class AudioPlayMiniBarController(
                 if (AudioPlay.status == io.legado.app.constant.Status.PLAY && !AudioPlayService.pause) {
                     R.drawable.ic_pause_24dp
                 } else {
-                    R.drawable.ic_play_arrow_24dp
+                    R.drawable.ic_play_24dp
                 }
             )
             audioPlayMiniBar.visible()
