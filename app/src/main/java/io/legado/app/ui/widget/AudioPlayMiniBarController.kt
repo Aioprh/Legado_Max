@@ -102,7 +102,6 @@ class AudioPlayMiniBarController(
                     AudioPlay.resume(activity)
                     post { refresh() }
                 } else {
-                    // 先隐藏，再发送暂停命令，避免事件总线/Service 状态更新存在时序差导致残留。
                     hideInternal()
                     AudioPlay.pause(activity)
                 }
@@ -137,7 +136,7 @@ class AudioPlayMiniBarController(
 
     private fun updateBottomMargin() {
         binding.root.updateLayoutParams<android.widget.FrameLayout.LayoutParams> {
-            bottomMargin = 82.dpToPx()
+            bottomMargin = 10.dpToPx()
         }
     }
 
@@ -153,7 +152,7 @@ class AudioPlayMiniBarController(
             val secondaryColor = AndroidXColorUtils.setAlphaComponent(textColor, 150)
             audioPlayMiniBar.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 28.dpToPx().toFloat()
+                cornerRadius = 27.dpToPx().toFloat()
                 setColor(surface)
                 setStroke(1.dpToPx(), AndroidXColorUtils.setAlphaComponent(textColor, 20))
             }
