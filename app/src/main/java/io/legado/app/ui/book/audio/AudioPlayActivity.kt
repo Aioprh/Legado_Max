@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import android.widget.SeekBar
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -29,6 +28,7 @@ import io.legado.app.model.AudioPlay
 import io.legado.app.model.BookCover
 import io.legado.app.service.AudioPlayService
 import io.legado.app.ui.about.AppLogDialog
+import io.legado.app.ui.book.audio.config.AudioSkipCredits
 import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
 import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
@@ -37,6 +37,7 @@ import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
 import io.legado.app.utils.StartActivityContract
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.dpToPx
+import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.observeEventSticky
@@ -52,13 +53,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import splitties.views.onLongClick
 import java.util.Locale
-import io.legado.app.ui.book.audio.config.AudioSkipCredits
 import com.dirror.lyricviewx.OnPlayClickListener
 import io.legado.app.lib.theme.ThemeStore.Companion.accentColor
+import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.book.audio.SliderPopup.Companion.SPEED
 import io.legado.app.ui.book.audio.SliderPopup.Companion.TIMER
-import io.legado.app.model.SourceCallBack
-import io.legado.app.utils.gone
 
 @SuppressLint("ObsoleteSdkInt")
 class AudioPlayActivity :
@@ -103,9 +102,7 @@ class AudioPlayActivity :
         viewModel.initData(intent) {
             initListener()
             if (intent.getBooleanExtra(EXTRA_OPEN_CHAPTER_LIST, false)) {
-                binding.root.postDelayed({
-                    AudioPlay.book?.bookUrl?.let { tocActivityResult.launch(it) }
-                }, 120L)
+                binding.root.postDelayed({ AudioPlay.book?.bookUrl?.let(tocActivityResult::launch) }, 120L)
             }
         }
         initView()
@@ -145,7 +142,7 @@ class AudioPlayActivity :
             R.id.menu_wake_lock -> AppConfig.audioPlayUseWakeLock = !AppConfig.audioPlayUseWakeLock
             R.id.menu_copy_audio_url -> AudioPlay.book?.let { book ->
                 val url = AudioPlayService.url
-                SourceCallBack.callBackBtn(SourceCallBack.CLICK_COPY_PLAY_URL, AudioPlay.bookSource, book, AudioPlay.durChapter, BookType.audio, url) { sendToClip(url) }
+                SourceCallBack.callBackBtn(this, SourceCallBack.CLICK_COPY_PLAY_URL, AudioPlay.bookSource, book, AudioPlay.durChapter, BookType.audio, url) { sendToClip(url) }
             }
             R.id.menu_edit_source -> AudioPlay.bookSource?.let { sourceEditResult.launch { putExtra("sourceUrl", it.bookSourceUrl) } }
             R.id.menu_skip_credits -> AudioPlay.book?.let { showDialogFragment(AudioSkipCredits.newInstance(it)) }
