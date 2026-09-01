@@ -66,6 +66,10 @@ class AudioPlayActivity :
     ChangeBookSourceDialog.CallBack,
     AudioPlay.CallBack {
 
+    companion object {
+        const val EXTRA_OPEN_CHAPTER_LIST = "open_chapter_list"
+    }
+
     override val binding by viewBinding(ActivityAudioPlayBinding::inflate)
     override val viewModel by viewModels<AudioPlayViewModel>()
     private val timerSliderPopup by lazy { SliderPopup(this, TIMER) }
@@ -96,7 +100,14 @@ class AudioPlayActivity :
         }
         viewModel.coverData.observe(this) { upCover(it) }
         viewModel.customBtnListData.observe(this) { menuCustomBtn?.isVisible = it }
-        viewModel.initData(intent) { initListener() }
+        viewModel.initData(intent) {
+            initListener()
+            if (intent.getBooleanExtra(EXTRA_OPEN_CHAPTER_LIST, false)) {
+                binding.root.postDelayed({
+                    AudioPlay.book?.bookUrl?.let { tocActivityResult.launch(it) }
+                }, 120L)
+            }
+        }
         initView()
         animatePlayerEntrance()
     }
@@ -107,11 +118,11 @@ class AudioPlayActivity :
         binding.coverContainer.scaleY = 0.96f
         binding.llPlayerProgress.alpha = 0f
         binding.llPlayMenu.alpha = 0f
-        binding.llPlayerProgress.translationY = 18.dpToPx().toFloat()
-        binding.llPlayMenu.translationY = 28.dpToPx().toFloat()
+        binding.llPlayerProgress.translationY = 14.dpToPx().toFloat()
+        binding.llPlayMenu.translationY = 22.dpToPx().toFloat()
         binding.coverContainer.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(420).start()
-        binding.llPlayerProgress.animate().alpha(1f).translationY(0f).setStartDelay(120).setDuration(360).start()
-        binding.llPlayMenu.animate().alpha(1f).translationY(0f).setStartDelay(190).setDuration(400).start()
+        binding.llPlayerProgress.animate().alpha(1f).translationY(0f).setStartDelay(100).setDuration(340).start()
+        binding.llPlayMenu.animate().alpha(1f).translationY(0f).setStartDelay(150).setDuration(360).start()
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
@@ -134,7 +145,7 @@ class AudioPlayActivity :
             R.id.menu_wake_lock -> AppConfig.audioPlayUseWakeLock = !AppConfig.audioPlayUseWakeLock
             R.id.menu_copy_audio_url -> AudioPlay.book?.let { book ->
                 val url = AudioPlayService.url
-                SourceCallBack.callBackBtn(this, SourceCallBack.CLICK_COPY_PLAY_URL, AudioPlay.bookSource, book, AudioPlay.durChapter, BookType.audio, url) { sendToClip(url) }
+                SourceCallBack.callBackBtn(SourceCallBack.CLICK_COPY_PLAY_URL, AudioPlay.bookSource, book, AudioPlay.durChapter, BookType.audio, url) { sendToClip(url) }
             }
             R.id.menu_edit_source -> AudioPlay.bookSource?.let { sourceEditResult.launch { putExtra("sourceUrl", it.bookSourceUrl) } }
             R.id.menu_skip_credits -> AudioPlay.book?.let { showDialogFragment(AudioSkipCredits.newInstance(it)) }
@@ -192,8 +203,8 @@ class AudioPlayActivity :
             if (lyricOn) upLyricP(AudioPlay.durChapterPos) else {
                 lyricOn = true
                 lyricViewX.apply {
-                    setNormalTextSize(48F)
-                    setCurrentTextSize(58F)
+                    setNormalTextSize(46F)
+                    setCurrentTextSize(56F)
                     setTimelineTextColor(accentColor)
                     setDraggable(true, object : OnPlayClickListener {
                         override fun onPlayClick(time: Long): Boolean { AudioPlay.adjustProgress(time.toInt()); playButton(false); return true }
