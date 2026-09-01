@@ -154,11 +154,11 @@ class AudioPlayMiniBarController(
     private fun bindBottomNavigationAnchor() {
         val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass) ?: return
         bottomNavigation = navigation
-        bottomNavigationLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+        bottomNavigationLayoutListener = View.OnLayoutChangeListener { view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
             updateBottomMargin()
         }
         navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
-        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _ -> updateBottomMargin() }
+        parent.addOnLayoutChangeListener { view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom -> updateBottomMargin() }
     }
 
     private fun updateBottomMargin() {
