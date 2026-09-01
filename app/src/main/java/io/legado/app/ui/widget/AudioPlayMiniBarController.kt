@@ -30,7 +30,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** 音频书音乐风格迷你播放栏：轻薄、半透明、液态玻璃质感。仅在实际播放时出现。 */
+/** 音频书音乐风格迷你播放栏：轻薄、半透明、液态玻璃质感。播放或暂停时保留。 */
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
     private val parent: ViewGroup
@@ -52,7 +52,7 @@ class AudioPlayMiniBarController(
 
     fun refresh() {
         binding.run {
-            if (isExcludedScreen() || !AudioPlayService.isRun || AudioPlay.status != io.legado.app.constant.Status.PLAY) {
+            if (isExcludedScreen() || !AudioPlayService.isRun || AudioPlay.book == null || AudioPlay.status == io.legado.app.constant.Status.STOP) {
                 hideInternal()
                 return
             }
@@ -68,7 +68,13 @@ class AudioPlayMiniBarController(
                 book?.name?.takeIf { it.isNotBlank() },
                 book?.author?.takeIf { it.isNotBlank() }
             ).joinToString(" · ")
-            ivAudioMiniPlay.setImageResource(R.drawable.ic_pause_24dp)
+            ivAudioMiniPlay.setImageResource(
+                if (AudioPlay.status == io.legado.app.constant.Status.PLAY && !AudioPlayService.pause) {
+                    R.drawable.ic_pause_24dp
+                } else {
+                    R.drawable.ic_play_arrow_24dp
+                }
+            )
             audioPlayMiniBar.visible()
             if (lastBookUrl != bookUrl) {
                 lastBookUrl = bookUrl
@@ -90,7 +96,11 @@ class AudioPlayMiniBarController(
                     }
                 }
             }
-            startCoverAnimation()
+            if (AudioPlay.status == io.legado.app.constant.Status.PLAY && !AudioPlayService.pause) {
+                startCoverAnimation()
+            } else {
+                coverAnimator?.pause()
+            }
         }
     }
 
@@ -102,11 +112,10 @@ class AudioPlayMiniBarController(
             ivAudioMiniPlay.setOnClickListener {
                 if (AudioPlayService.pause) {
                     AudioPlay.resume(activity)
-                    audioPlayMiniBar.post { refresh() }
                 } else {
-                    hideInternal()
                     AudioPlay.pause(activity)
                 }
+                audioPlayMiniBar.post { refresh() }
             }
             ivAudioMiniPlaylist.setOnClickListener { openChapterList() }
         }
@@ -142,11 +151,6 @@ class AudioPlayMiniBarController(
         else -> false
     }
 
-    /**
-     * MainActivity 的底部导航栏与 Mini Player 都位于 content 的同一坐标系。
-     * 将 Mini Player 的底边锚定到底部导航栏顶部，避免播放器覆盖导航栏。
-     * 其他页面没有 bottom_navigation_glass 时保留极小的系统底部安全间距。
-     */
     private fun bindBottomNavigationAnchor() {
         val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass) ?: return
         bottomNavigation = navigation
@@ -154,7 +158,7 @@ class AudioPlayMiniBarController(
             updateBottomMargin()
         }
         navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
-        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateBottomMargin() }
+        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _ -> updateBottomMargin() }
     }
 
     private fun updateBottomMargin() {
