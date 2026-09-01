@@ -31,7 +31,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** 音频书音乐风格迷你播放栏。仅在实际播放时出现。 */
+/** 音频书音乐风格迷你播放栏：轻薄、半透明、液态玻璃质感。仅在实际播放时出现。 */
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
     parent: ViewGroup
@@ -142,28 +142,50 @@ class AudioPlayMiniBarController(
 
     private fun applyTheme(color: Int = activity.bottomBackground) {
         binding.run {
-            val base = AndroidXColorUtils.blendARGB(color, 0xFFFFFFFF.toInt(), 0.10f)
-            val surface = if (ColorUtils.isColorLight(base)) {
-                AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 248)
+            // 液态玻璃：低不透明度基底 + 细亮边 + 柔和的主题色高光。
+            val lightMode = ColorUtils.isColorLight(color)
+            val tint = if (lightMode) 0xFFFFFFFF.toInt() else 0xFFEEF4FF.toInt()
+            val glassBase = if (lightMode) {
+                AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 190)
             } else {
-                AndroidXColorUtils.setAlphaComponent(0xFF17181C.toInt(), 248)
+                AndroidXColorUtils.setAlphaComponent(0xFF15171D.toInt(), 178)
             }
-            val textColor = if (ColorUtils.isColorLight(surface)) 0xFF202126.toInt() else 0xFFF7F7F8.toInt()
-            val secondaryColor = AndroidXColorUtils.setAlphaComponent(textColor, 150)
-            audioPlayMiniBar.background = GradientDrawable().apply {
+            val highlight = AndroidXColorUtils.setAlphaComponent(
+                AndroidXColorUtils.blendARGB(color, tint, 0.45f),
+                if (lightMode) 72 else 58
+            )
+            val glassStart = AndroidXColorUtils.blendARGB(glassBase, highlight, 0.38f)
+            val glassEnd = AndroidXColorUtils.blendARGB(glassBase, color, 0.16f)
+            val textColor = if (lightMode) 0xFF181A20.toInt() else 0xFFF7F9FF.toInt()
+            val secondaryColor = AndroidXColorUtils.setAlphaComponent(textColor, 145)
+            val borderColor = AndroidXColorUtils.setAlphaComponent(
+                if (lightMode) Color.WHITE else Color.WHITE,
+                if (lightMode) 150 else 105
+            )
+            val glowColor = AndroidXColorUtils.setAlphaComponent(
+                AndroidXColorUtils.blendARGB(color, tint, 0.65f),
+                75
+            )
+
+            audioPlayMiniBar.background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(glassStart, glassBase, glassEnd)
+            ).apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 27.dpToPx().toFloat()
-                setColor(surface)
-                setStroke(1.dpToPx(), AndroidXColorUtils.setAlphaComponent(textColor, 20))
+                setStroke(1.dpToPx(), borderColor)
             }
-            audioMiniCoverShell.background = GradientDrawable().apply {
+            audioMiniCoverShell.background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(glowColor, AndroidXColorUtils.setAlphaComponent(textColor, 18))
+            ).apply {
                 shape = GradientDrawable.OVAL
-                setColor(AndroidXColorUtils.setAlphaComponent(textColor, 10))
             }
             tvAudioMiniTitle.setTextColor(textColor)
             tvAudioMiniSubtitle.setTextColor(secondaryColor)
             ivAudioMiniPlay.setColorFilter(textColor)
             ivAudioMiniPlaylist.setColorFilter(textColor)
+            audioPlayMiniBar.elevation = 20.dpToPx().toFloat()
         }
     }
 
