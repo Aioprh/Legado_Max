@@ -56,19 +56,28 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/title_bar" />
 
-    <io.legado.app.ui.widget.image.CircleImageView
-        android:id="@+id/iv_cover"
+    <FrameLayout
+        android:id="@+id/cover_container"
         android:layout_width="260dp"
         android:layout_height="260dp"
-        android:contentDescription="@string/img_cover"
-        android:scaleType="centerCrop"
-        app:civ_border_color="@color/accent"
-        app:civ_border_width="2dp"
+        android:background="@drawable/bg_audio_glass_panel"
+        android:elevation="10dp"
+        android:padding="10dp"
         app:layout_constraintBottom_toTopOf="@+id/ll_player_progress"
         app:layout_constraintEnd_toStartOf="@+id/lyricViewX"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/title_bar"
-        tools:src="@drawable/image_rss_article" />
+        app:layout_constraintTop_toBottomOf="@+id/title_bar">
+
+        <io.legado.app.ui.widget.image.CircleImageView
+            android:id="@+id/iv_cover"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/img_cover"
+            android:scaleType="centerCrop"
+            app:civ_border_color="@color/accent"
+            app:civ_border_width="2dp"
+            tools:src="@drawable/image_rss_article" />
+    </FrameLayout>
 
     <com.dirror.lyricviewx.LyricViewX
         android:id="@+id/lyricViewX"
@@ -77,7 +86,7 @@
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/tv_sub_title"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/iv_cover"
+        app:layout_constraintStart_toEndOf="@+id/cover_container"
         app:layout_constraintTop_toTopOf="@+id/iv_bg"
         app:lrcCurrentTextColor="@color/md_white_1000"
         app:lrcPadding="16dp"
