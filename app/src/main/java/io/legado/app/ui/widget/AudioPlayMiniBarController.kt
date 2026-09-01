@@ -105,11 +105,18 @@ class AudioPlayMiniBarController(
                     AudioPlay.pause(activity)
                 }
             }
-            ivAudioMiniPlaylist.setOnClickListener { openAudioPlayer() }
+            // 右侧列表按钮直接进入章节列表，而不是只打开播放器主页。
+            ivAudioMiniPlaylist.setOnClickListener { openChapterList() }
         }
     }
 
     private fun openAudioPlayer() = activity.startActivity<AudioPlayActivity>()
+
+    private fun openChapterList() {
+        activity.startActivity<AudioPlayActivity> {
+            putExtra(AudioPlayActivity.EXTRA_OPEN_CHAPTER_LIST, true)
+        }
+    }
 
     private fun hideInternal() {
         coverJob?.cancel()
@@ -135,7 +142,7 @@ class AudioPlayMiniBarController(
 
     private fun updateBottomMargin() {
         binding.root.updateLayoutParams<android.widget.FrameLayout.LayoutParams> {
-            bottomMargin = 10.dpToPx()
+            bottomMargin = 2.dpToPx()
         }
     }
 
