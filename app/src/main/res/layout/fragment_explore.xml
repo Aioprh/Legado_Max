@@ -35,7 +35,7 @@
         android:paddingTop="4dp"
         android:scrollbars="vertical"
         android:scrollbarStyle="outsideOverlay"
-        app:layout_constraintTop_toBottomOf="@+id/tv_explore_hint"
+        app:layout_constraintTop_toBottomOf="@id/tv_explore_hint"
         app:layout_constraintBottom_toBottomOf="parent"
         tools:listitem="@layout/item_find_book" />
 
@@ -46,13 +46,13 @@
         android:layout_margin="24dp"
         android:gravity="center"
         android:visibility="gone"
-        android:text="@string/explore_empty"
+        android:text="暂无发现内容"
         android:textColor="@color/secondaryText"
         android:textSize="14sp"
-        app:layout_constraintTop_toBottomOf="@+id/title_bar"
+        app:layout_constraintTop_toBottomOf="@id/title_bar"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         tools:text="暂无发现内容" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
