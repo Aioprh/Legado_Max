@@ -214,7 +214,7 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
             val cached = callback.isLocalBook || item.isVolume || cacheFileNames.contains(item.getFileName())
             val isCurrentVol = item.isVolume && isCurrentVolume(item.index)
 
-            // 当前章节只保留细边框 + 左侧指示条，避免整块主题色抢占视觉。
+            // 目录采用“列表优先”的层级：当前章节强调，普通章节保持安静，卷标题独立成组。
             viewCurrentIndicator.visible(isDur)
             tvChapterItem.background = when {
                 isDur -> ContextCompat.getDrawable(context, R.drawable.bg_toc_item_current_chapter)
@@ -222,6 +222,7 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                 item.isVolume -> ContextCompat.getDrawable(context, R.drawable.bg_toc_volume)
                 else -> ContextCompat.getDrawable(context, R.drawable.bg_toc_item)
             }
+            viewDivider.visible(!item.isVolume)
 
             if (payloads.isEmpty()) {
                 val textColor = if (isDur || isCurrentVol) context.accentColor else {
