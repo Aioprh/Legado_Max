@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import io.legado.app.R
 import io.legado.app.base.adapter.DiffRecyclerAdapter
@@ -15,7 +16,6 @@ import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.theme.accentColor
-import io.legado.app.utils.getCompatColor
 import io.legado.app.utils.gone
 import io.legado.app.utils.longToastOnUi
 import io.legado.app.utils.visible
@@ -37,7 +37,6 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
 
     override val diffItemCallback: DiffUtil.ItemCallback<BookChapter>
         get() = object : DiffUtil.ItemCallback<BookChapter>() {
-
             override fun areItemsTheSame(oldItem: BookChapter, newItem: BookChapter): Boolean {
                 return oldItem.index == newItem.index
             }
@@ -215,20 +214,18 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
             val cached = callback.isLocalBook || item.isVolume || cacheFileNames.contains(item.getFileName())
             val isCurrentVol = item.isVolume && isCurrentVolume(item.index)
 
-            viewCurrentIndicator.visible(isDur || isCurrentVol)
-            if (isDur || isCurrentVol) {
-                tvChapterItem.background = context.getCompatColor(R.color.background_card_surface).let {
-                    androidx.core.content.ContextCompat.getDrawable(context, R.drawable.bg_toc_item_current)
-                }
-            } else {
-                tvChapterItem.background = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.bg_toc_item)
+            // 当前章节只保留细边框 + 左侧指示条，避免整块主题色抢占视觉。
+            viewCurrentIndicator.visible(isDur)
+            tvChapterItem.background = when {
+                isDur -> ContextCompat.getDrawable(context, R.drawable.bg_toc_item_current_chapter)
+                item.isVolume && isCurrentVol -> ContextCompat.getDrawable(context, R.drawable.bg_toc_volume_current)
+                item.isVolume -> ContextCompat.getDrawable(context, R.drawable.bg_toc_volume)
+                else -> ContextCompat.getDrawable(context, R.drawable.bg_toc_item)
             }
 
             if (payloads.isEmpty()) {
-                val textColor = if (isDur || isCurrentVol) {
-                    context.accentColor
-                } else {
-                    context.getCompatColor(R.color.primaryText)
+                val textColor = if (isDur || isCurrentVol) context.accentColor else {
+                    context.getColor(R.color.primaryText)
                 }
                 tvChapterName.setTextColor(textColor)
                 tvChapterName.text = getDisplayTitle(item)
