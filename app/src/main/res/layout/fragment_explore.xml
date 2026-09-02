@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:layout_height="match_parent">
 
     <io.legado.app.ui.widget.TitleBar
         android:id="@+id/title_bar"
@@ -15,13 +14,28 @@
         app:layout_constraintTop_toTopOf="parent"
         app:title="@string/discovery" />
 
+    <TextView
+        android:id="@+id/tv_explore_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="4dp"
+        android:text="发现书源 · 浏览、搜索并管理可用内容"
+        android:textColor="@color/secondaryText"
+        android:textSize="13sp"
+        app:layout_constraintTop_toBottomOf="@id/title_bar" />
+
     <io.legado.app.ui.widget.recycler.RecyclerViewAtPager2
         android:id="@+id/rv_find"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:paddingTop="4dp"
         android:scrollbars="vertical"
         android:scrollbarStyle="outsideOverlay"
-        app:layout_constraintTop_toBottomOf="@+id/title_bar"
+        app:layout_constraintTop_toBottomOf="@+id/tv_explore_hint"
         app:layout_constraintBottom_toBottomOf="parent"
         tools:listitem="@layout/item_find_book" />
 
@@ -29,14 +43,16 @@
         android:id="@+id/tv_empty_msg"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
+        android:layout_margin="24dp"
         android:gravity="center"
         android:visibility="gone"
         android:text="@string/explore_empty"
+        android:textColor="@color/secondaryText"
+        android:textSize="14sp"
         app:layout_constraintTop_toBottomOf="@+id/title_bar"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        tools:text="TextView" />
+        tools:text="暂无发现内容" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
