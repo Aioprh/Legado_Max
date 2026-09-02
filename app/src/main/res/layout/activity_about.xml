@@ -5,6 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
     tools:context="io.legado.app.ui.about.AboutActivity">
 
     <io.legado.app.ui.widget.TitleBar
@@ -17,16 +19,20 @@
             android:id="@+id/ll_about"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/shape_card_view"
-            android:orientation="vertical"
             android:layout_margin="6dp"
-            android:padding="10dp">
+            android:background="@drawable/bg_my_section"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="14dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:text="@string/app_name_sigma"
+                android:textColor="@color/primaryText"
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
@@ -34,7 +40,12 @@
                 android:id="@+id/tv_app_summary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/about_description_sigma" />
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:lineSpacingExtra="2dp"
+                android:text="@string/about_description_sigma"
+                android:textColor="@color/secondaryText"
+                android:textSize="13sp" />
         </LinearLayout>
 
     </io.legado.app.ui.widget.TitleBar>
@@ -42,6 +53,7 @@
     <FrameLayout
         android:id="@+id/fl_fragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
 </LinearLayout>
