@@ -14,7 +14,6 @@ import io.legado.app.databinding.ItemChapterListBinding
 import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
-import io.legado.app.lib.theme.ThemeUtils
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.utils.getCompatColor
 import io.legado.app.utils.gone
@@ -39,17 +38,11 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
     override val diffItemCallback: DiffUtil.ItemCallback<BookChapter>
         get() = object : DiffUtil.ItemCallback<BookChapter>() {
 
-            override fun areItemsTheSame(
-                oldItem: BookChapter,
-                newItem: BookChapter
-            ): Boolean {
+            override fun areItemsTheSame(oldItem: BookChapter, newItem: BookChapter): Boolean {
                 return oldItem.index == newItem.index
             }
 
-            override fun areContentsTheSame(
-                oldItem: BookChapter,
-                newItem: BookChapter
-            ): Boolean {
+            override fun areContentsTheSame(oldItem: BookChapter, newItem: BookChapter): Boolean {
                 return oldItem.bookUrl == newItem.bookUrl
                         && oldItem.url == newItem.url
                         && oldItem.isVip == newItem.isVip
@@ -59,7 +52,6 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                         && oldItem.wordCount == newItem.wordCount
                         && oldItem.isVolume == newItem.isVolume
             }
-
         }
 
     private var upDisplayTileJob: Coroutine<*>? = null
@@ -69,9 +61,7 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
         pendingVolumeToggleIndex?.let { volumeIndex ->
             handler.post {
                 val index = getItems().indexOfFirst { it.index == volumeIndex }
-                if (index >= 0) {
-                    notifyItemChanged(index)
-                }
+                if (index >= 0) notifyItemChanged(index)
             }
             pendingVolumeToggleIndex = null
         }
@@ -102,16 +92,10 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
     private fun autoExpandVolumeForChapter(chapterIndex: Int) {
         var volumeIndex = -1
         for (item in fullItems) {
-            if (item.isVolume) {
-                volumeIndex = item.index
-            }
-            if (item.index == chapterIndex) {
-                break
-            }
+            if (item.isVolume) volumeIndex = item.index
+            if (item.index == chapterIndex) break
         }
-        if (volumeIndex >= 0) {
-            collapsedVolumes.remove(volumeIndex)
-        }
+        if (volumeIndex >= 0) collapsedVolumes.remove(volumeIndex)
     }
 
     private fun applyFilter() {
@@ -133,18 +117,13 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
     }
 
     fun toggleVolume(volumeIndex: Int) {
-        if (volumeIndex in collapsedVolumes) {
-            collapsedVolumes.remove(volumeIndex)
-        } else {
-            collapsedVolumes.add(volumeIndex)
-        }
+        if (volumeIndex in collapsedVolumes) collapsedVolumes.remove(volumeIndex)
+        else collapsedVolumes.add(volumeIndex)
         pendingVolumeToggleIndex = volumeIndex
         applyFilter()
     }
 
-    fun isVolumeCollapsed(volumeIndex: Int): Boolean {
-        return volumeIndex in collapsedVolumes
-    }
+    fun isVolumeCollapsed(volumeIndex: Int): Boolean = volumeIndex in collapsedVolumes
 
     private fun volumeHasChapters(volumeIndex: Int): Boolean {
         var found = false
@@ -165,21 +144,15 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
         val durChapterIndex = callback.durChapterIndex()
         var inVolume = false
         for (item in fullItems) {
-            if (item.isVolume) {
-                inVolume = item.index == volumeIndex
-            }
-            if (item.index == durChapterIndex) {
-                return inVolume
-            }
+            if (item.isVolume) inVolume = item.index == volumeIndex
+            if (item.index == durChapterIndex) return inVolume
         }
         return false
     }
 
     fun notifyChapterChanged(chapterIndex: Int) {
         getItems().forEachIndexed { index, bookChapter ->
-            if (bookChapter.index == chapterIndex) {
-                notifyItemChanged(index, true)
-            }
+            if (bookChapter.index == chapterIndex) notifyItemChanged(index, true)
         }
     }
 
@@ -204,9 +177,7 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                         val displayTitle = item.getDisplayTitle(replaceRules, useReplace, replaceBook = replaceBook)
                         ensureActive()
                         displayTitleMap[item.title] = displayTitle
-                        handler.post {
-                            notifyItemChanged(i, true)
-                        }
+                        handler.post { notifyItemChanged(i, true) }
                     }
                 }
             }
@@ -218,9 +189,7 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                         val displayTitle = item.getDisplayTitle(replaceRules, useReplace, replaceBook = replaceBook)
                         ensureActive()
                         displayTitleMap[item.title] = displayTitle
-                        handler.post {
-                            notifyItemChanged(i, true)
-                        }
+                        handler.post { notifyItemChanged(i, true) }
                     }
                 }
             }
@@ -243,12 +212,20 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
     ) {
         binding.run {
             val isDur = callback.durChapterIndex() == item.index
-            val cached = callback.isLocalBook
-                    || item.isVolume
-                    || cacheFileNames.contains(item.getFileName())
+            val cached = callback.isLocalBook || item.isVolume || cacheFileNames.contains(item.getFileName())
+            val isCurrentVol = item.isVolume && isCurrentVolume(item.index)
+
+            viewCurrentIndicator.visible(isDur || isCurrentVol)
+            if (isDur || isCurrentVol) {
+                tvChapterItem.background = context.getCompatColor(R.color.background_card_surface).let {
+                    androidx.core.content.ContextCompat.getDrawable(context, R.drawable.bg_toc_item_current)
+                }
+            } else {
+                tvChapterItem.background = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.bg_toc_item)
+            }
+
             if (payloads.isEmpty()) {
-                val isCurrentVol = isCurrentVolume(item.index)
-                val textColor = if (isDur || (item.isVolume && isCurrentVol)) {
+                val textColor = if (isDur || isCurrentVol) {
                     context.accentColor
                 } else {
                     context.getCompatColor(R.color.primaryText)
@@ -256,24 +233,16 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                 tvChapterName.setTextColor(textColor)
                 tvChapterName.text = getDisplayTitle(item)
                 tvChapterName.isSingleLine = !AppConfig.tocShowFullChapterName
+
                 if (item.isVolume) {
-                    if (isCurrentVol) {
-                        tvChapterItem.setBackgroundColor(context.getCompatColor(R.color.btn_bg_press))
-                    } else {
-                        tvChapterItem.background =
-                            ThemeUtils.resolveDrawable(context, android.R.attr.selectableItemBackground)
-                    }
                     if (volumeHasChapters(item.index)) {
                         ivVolumeIndicator.visible()
-                        ivVolumeIndicator.rotation =
-                            if (isVolumeCollapsed(item.index)) 0f else 90f
+                        ivVolumeIndicator.rotation = if (isVolumeCollapsed(item.index)) 0f else 90f
                         ivVolumeIndicator.setColorFilter(textColor)
                     } else {
                         ivVolumeIndicator.gone()
                     }
                 } else {
-                    tvChapterItem.background =
-                        ThemeUtils.resolveDrawable(context, android.R.attr.selectableItemBackground)
                     ivVolumeIndicator.gone()
                 }
 
@@ -289,13 +258,7 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
                 } else {
                     tvWordCount.gone()
                 }
-
-                if (item.isVip && !item.isPay) {
-                    ivLocked.visible()
-                } else {
-                    ivLocked.gone()
-                }
-
+                if (item.isVip && !item.isPay) ivLocked.visible() else ivLocked.gone()
                 upHasCache(binding, isDur, cached)
             } else {
                 tvChapterName.text = getDisplayTitle(item)
@@ -308,30 +271,23 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
     override fun registerListener(holder: ItemViewHolder, binding: ItemChapterListBinding) {
         holder.itemView.setOnClickListener {
             getItem(holder.layoutPosition)?.let {
-                if (it.isVolume) {
-                    toggleVolume(it.index)
-                } else {
-                    callback.openChapter(it)
-                }
+                if (it.isVolume) toggleVolume(it.index) else callback.openChapter(it)
             }
         }
         holder.itemView.setOnLongClickListener {
-            getItem(holder.layoutPosition)?.let { item ->
-                context.longToastOnUi(getDisplayTitle(item))
-            }
+            getItem(holder.layoutPosition)?.let { item -> context.longToastOnUi(getDisplayTitle(item)) }
             true
         }
     }
 
-    private fun upHasCache(binding: ItemChapterListBinding, isDur: Boolean, cached: Boolean) =
-        binding.apply {
-            ivChecked.setImageResource(R.drawable.ic_outline_cloud_24)
-            ivChecked.visible(!cached)
-            if (isDur) {
-                ivChecked.setImageResource(R.drawable.ic_check)
-                ivChecked.visible()
-            }
+    private fun upHasCache(binding: ItemChapterListBinding, isDur: Boolean, cached: Boolean) = binding.apply {
+        ivChecked.setImageResource(R.drawable.ic_outline_cloud_24)
+        ivChecked.visible(!cached)
+        if (isDur) {
+            ivChecked.setImageResource(R.drawable.ic_check)
+            ivChecked.visible()
         }
+    }
 
     interface Callback {
         val scope: CoroutineScope
@@ -341,5 +297,4 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
         fun durChapterIndex(): Int
         fun onListChanged()
     }
-
 }
