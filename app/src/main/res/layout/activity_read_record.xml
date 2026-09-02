@@ -16,16 +16,21 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingLeft="10dp"
-        android:paddingRight="10dp">
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="12dp"
+        android:padding="14dp"
+        android:background="@drawable/bg_my_list_item">
 
         <TextView
             android:id="@+id/tv_book_name"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:padding="6dp"
+            android:padding="0dp"
             android:singleLine="true"
             android:textColor="@color/primaryText"
+            android:textSize="16sp"
+            android:textStyle="bold"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toLeftOf="@+id/tv_remove"
             app:layout_constraintTop_toTopOf="parent"
@@ -36,9 +41,11 @@
             android:id="@+id/tv_reading_time"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:padding="6dp"
+            android:layout_marginTop="6dp"
+            android:padding="0dp"
             android:singleLine="true"
             android:textColor="@color/secondaryText"
+            android:textSize="13sp"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toLeftOf="@+id/tv_remove"
             app:layout_constraintTop_toBottomOf="@id/tv_book_name"
@@ -47,11 +54,15 @@
         <TextView
             android:id="@+id/tv_remove"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
-            android:padding="6dp"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:minWidth="56dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
             android:text="@string/clear"
             android:textColor="@color/primaryText"
+            android:textSize="13sp"
+            android:background="?attr/selectableItemBackgroundBorderless"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -61,8 +72,13 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:clipToPadding="false"
+        android:paddingStart="8dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="16dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
 </LinearLayout>
