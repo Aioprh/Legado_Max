@@ -5,21 +5,17 @@
     android:id="@+id/tv_chapter_item"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginStart="12dp"
-    android:layout_marginEnd="12dp"
-    android:layout_marginTop="1dp"
-    android:layout_marginBottom="1dp"
     android:background="@drawable/bg_toc_item"
-    android:minHeight="54dp"
-    android:paddingStart="8dp"
+    android:minHeight="56dp"
+    android:paddingStart="16dp"
     android:paddingTop="8dp"
-    android:paddingEnd="8dp"
+    android:paddingEnd="14dp"
     android:paddingBottom="8dp">
 
     <View
         android:id="@+id/view_current_indicator"
         android:layout_width="3dp"
-        android:layout_height="26dp"
+        android:layout_height="30dp"
         android:background="@drawable/bg_toc_item_current"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -28,11 +24,12 @@
 
     <ImageView
         android:id="@+id/iv_volume_indicator"
-        android:layout_width="22dp"
-        android:layout_height="22dp"
-        android:layout_marginStart="3dp"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="-2dp"
         android:layout_marginEnd="4dp"
         android:contentDescription="expand/collapse"
+        android:padding="3dp"
         android:src="@drawable/ic_arrow_right_fill"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -43,9 +40,9 @@
 
     <ImageView
         android:id="@+id/iv_locked"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:layout_marginEnd="7dp"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_marginEnd="6dp"
         android:contentDescription="vip"
         android:padding="2dp"
         android:src="@drawable/ic_lock_outline"
@@ -63,26 +60,26 @@
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:includeFontPadding="false"
-        android:lineSpacingExtra="2dp"
+        android:lineSpacingExtra="1dp"
         android:maxLines="2"
-        android:textSize="15sp"
+        android:textSize="16sp"
         app:layout_constraintBottom_toTopOf="@id/barrier"
         app:layout_constraintEnd_toStartOf="@id/iv_checked"
         app:layout_constraintStart_toEndOf="@id/iv_locked"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="第一章 一个很长的章节标题" />
+        tools:text="第1章 永夜" />
 
     <TextView
         android:id="@+id/tv_tag"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
+        android:layout_marginTop="5dp"
         android:background="@drawable/bg_toc_tag"
         android:ellipsize="end"
-        android:maxWidth="160dp"
-        android:paddingStart="5dp"
+        android:maxWidth="170dp"
+        android:paddingStart="6dp"
         android:paddingTop="2dp"
-        android:paddingEnd="5dp"
+        android:paddingEnd="6dp"
         android:paddingBottom="2dp"
         android:singleLine="true"
         android:textColor="@color/secondaryText"
@@ -93,14 +90,14 @@
         app:layout_constraintHorizontal_bias="0"
         app:layout_constraintStart_toEndOf="@id/iv_locked"
         app:layout_constraintTop_toBottomOf="@id/barrier"
-        tools:text="更新时间"
+        tools:text="2024-09-06 09:47"
         tools:visibility="visible" />
 
     <TextView
         android:id="@+id/tv_word_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="7dp"
+        android:layout_marginStart="8dp"
         android:singleLine="true"
         android:textColor="@color/secondaryText"
         android:textSize="11sp"
@@ -109,7 +106,7 @@
         app:layout_constraintEnd_toStartOf="@id/iv_checked"
         app:layout_constraintStart_toEndOf="@id/tv_tag"
         app:layout_constraintTop_toBottomOf="@id/barrier"
-        tools:text="10字"
+        tools:text="2507字"
         tools:visibility="visible" />
 
     <androidx.constraintlayout.widget.Barrier
@@ -121,8 +118,8 @@
 
     <ImageView
         android:id="@+id/iv_checked"
-        android:layout_width="26dp"
-        android:layout_height="26dp"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
         android:contentDescription="@string/success"
         android:padding="5dp"
         android:src="@drawable/ic_check"
@@ -132,5 +129,14 @@
         app:layout_constraintTop_toTopOf="parent"
         app:tint="@color/secondaryText"
         tools:visibility="visible" />
+
+    <View
+        android:id="@+id/view_divider"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:background="@color/divider"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
