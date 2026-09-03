@@ -29,7 +29,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/title_bar" />
 
-    <androidx.recyclerview.widget.RecyclerView
+    <io.legado.app.ui.widget.recycler.RecyclerViewAtPager2
         android:id="@+id/recycler_view"
         android:layout_width="0dp"
         android:layout_height="0dp"
