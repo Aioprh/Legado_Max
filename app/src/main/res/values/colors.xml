@@ -101,7 +101,7 @@
     <color name="background_card_surface">#0F000000</color>
     <color name="border_card_surface">#1A000000</color>
 
-    <!-- 目录专用：当前章节只做轻量强调，不使用整块主题色填充 -->
-    <color name="toc_current_bg">#16FF4081</color>
-    <color name="toc_current_border">#80FF4081</color>
+    <!-- 目录专用：当前章节使用中性浅灰，不使用粉色主题强调 -->
+    <color name="toc_current_bg">#FFECECEC</color>
+    <color name="toc_current_border">#FFD2D2D2</color>
 </resources>
