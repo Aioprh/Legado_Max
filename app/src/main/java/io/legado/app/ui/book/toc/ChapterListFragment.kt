@@ -7,12 +7,15 @@ import android.graphics.PorterDuff
 import android.os.Bundle
 import android.view.View
 import android.view.ViewConfiguration
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.base.VMBaseFragment
 import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
+import io.legado.app.constant.Status
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
@@ -25,10 +28,12 @@ import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.model.AudioPlay
 import io.legado.app.ui.widget.recycler.UpLinearLayoutManager
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyNavigationBarPadding
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.gone
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.observeEventSticky
@@ -52,6 +57,7 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
     private var durChapterIndex = 0
     private var shouldAutoScrollToCurrent = false
     private val viewScope get() = viewLifecycleOwner.lifecycleScope
+    private var baseRecyclerPaddingBottom = 0
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) = binding.run {
         viewModel.chapterListCallBack = this@ChapterListFragment
@@ -63,6 +69,7 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
         ivChapterBottom.setColorFilter(btc, PorterDuff.Mode.SRC_IN)
         initRecyclerView()
         initView()
+        updateAudioBottomPadding()
         viewModel.bookData.observe(this@ChapterListFragment) {
             initBook(it)
         }
@@ -75,6 +82,24 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
         binding.recyclerView.setHideScrollbar(false)
         binding.recyclerView.addItemDecoration(VerticalDivider(requireContext()))
         binding.recyclerView.adapter = adapter
+        baseRecyclerPaddingBottom = binding.recyclerView.paddingBottom
+    }
+
+    /** 为悬浮音频栏预留可滚动空间，保证最后一章可以完整滚到播放栏上方。 */
+    private fun updateAudioBottomPadding() {
+        if (!isAdded) return
+        val hasAudio = AudioPlay.book != null && AudioPlay.status != Status.STOP
+        val imeVisible = ViewCompat.getRootWindowInsets(binding.root)
+            ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+        val extra = if (hasAudio && !imeVisible) 64.dpToPx() else 0
+        val recycler = binding.recyclerView
+        if (recycler.paddingBottom == baseRecyclerPaddingBottom + extra) return
+        recycler.setPadding(
+            recycler.paddingLeft,
+            recycler.paddingTop,
+            recycler.paddingRight,
+            baseRecyclerPaddingBottom + extra
+        )
     }
 
     private fun initView() = binding.run {
@@ -100,7 +125,6 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             durChapterIndex = book.durChapterIndex
             upChapterList(null)
             AppLog.putReaderDebug("[TOC-Frag] initBook after upChapterList: adapter.itemCount=${adapter.itemCount}")
-            // 如果数据库为空且不是本地书，可能正在渐进加载中，延迟重试
             if (adapter.itemCount == 0 && !book.isLocal) {
                 delay(2000)
                 AppLog.putReaderDebug("[TOC-Frag] 延迟重试: adapter.itemCount=${adapter.itemCount}")
@@ -171,6 +195,9 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 }
             }
         }
+        observeEvent<Int>(EventBus.AUDIO_STATE) {
+            binding.root.post { updateAudioBottomPadding() }
+        }
         observeEventSticky<String>(EventBus.TOC_PARTIAL_LOADED) { bookUrl ->
             AppLog.putReaderDebug("[TOC-Frag] 收到TOC_PARTIAL_LOADED事件: bookUrl=$bookUrl")
             if (viewModel.bookUrl == bookUrl) {
@@ -211,7 +238,6 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 adapter.setChapterItems(it, applyCollapse = searchKey.isNullOrBlank())
                 if (searchKey.isNullOrBlank()) {
                     book?.let(::updateCurrentChapterInfo)
-                    // 全量刷新时重新扫描缓存文件, 确保缓存状态图标与实际文件同步
                     book?.let(::initCacheFileNames)
                 } else {
                     upCurrentChapterInfo(it)
