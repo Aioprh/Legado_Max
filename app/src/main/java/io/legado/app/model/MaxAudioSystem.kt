@@ -10,19 +10,13 @@ import io.legado.app.utils.postEvent
 /**
  * Max Audio System
  *
- * 音频播放的统一控制层。底层仍复用 Legado 现有 AudioPlay/AudioPlayService，
- * 这里负责把播放状态、队列、播放模式和用户操作收敛到一个稳定入口，避免 UI
- * 直接依赖 Service 的内部状态。
+ * 统一音频会话控制层。底层继续复用 AudioPlay / AudioPlayService / ExoPlayer，
+ * 逐步把队列、状态、播放控制和 UI 解耦，方便后续接入 Mini Player、通知栏和完整播放器。
  */
 object MaxAudioSystem {
 
     enum class PlaybackState {
-        IDLE,
-        LOADING,
-        PLAYING,
-        PAUSED,
-        STOPPED,
-        ERROR
+        IDLE, LOADING, PLAYING, PAUSED, STOPPED, ERROR
     }
 
     data class QueueItem(
@@ -38,10 +32,11 @@ object MaxAudioSystem {
         val chapterTitle: String,
         val position: Int,
         val duration: Int,
-        val bufferedPosition: Int,
         val speed: Float,
         val playMode: AudioPlay.PlayMode,
-        val sleepTimerMinutes: Int
+        val sleepTimerMinutes: Int,
+        val queueSize: Int,
+        val lastError: String?
     )
 
     private val queue = ArrayList<QueueItem>()
@@ -51,6 +46,7 @@ object MaxAudioSystem {
 
     fun snapshot(): Snapshot {
         val state = when {
+            lastError != null && AudioPlay.status == Status.STOP -> PlaybackState.ERROR
             AudioPlay.status == Status.PLAY -> PlaybackState.PLAYING
             AudioPlay.status == Status.PAUSE -> PlaybackState.PAUSED
             AudioPlay.status == Status.STOP && AudioPlayService.isRun -> PlaybackState.STOPPED
@@ -63,19 +59,21 @@ object MaxAudioSystem {
             chapterTitle = AudioPlay.durChapter?.title.orEmpty(),
             position = AudioPlay.durChapterPos,
             duration = AudioPlay.durAudioSize,
-            bufferedPosition = 0,
             speed = AudioPlayService.playSpeed,
             playMode = AudioPlay.playMode,
-            sleepTimerMinutes = AudioPlayService.timeMinute
+            sleepTimerMinutes = AudioPlayService.timeMinute,
+            queueSize = synchronized(queue) { queue.size },
+            lastError = lastError
         )
     }
 
     fun setQueue(items: List<QueueItem>) {
         synchronized(queue) {
             queue.clear()
-            queue.addAll(items)
+            queue.addAll(items.distinctBy { it.bookUrl })
         }
-        postEvent(EventBus.AUDIO_QUEUE_CHANGED, queue.toList())
+        clearError()
+        notifyQueueChanged()
     }
 
     fun queue(): List<QueueItem> = synchronized(queue) { queue.toList() }
@@ -84,20 +82,31 @@ object MaxAudioSystem {
         synchronized(queue) {
             if (queue.none { it.bookUrl == item.bookUrl }) queue.add(item)
         }
-        postEvent(EventBus.AUDIO_QUEUE_CHANGED, queue.toList())
+        notifyQueueChanged()
+    }
+
+    fun addAllToQueue(items: List<QueueItem>) {
+        synchronized(queue) {
+            items.forEach { item ->
+                if (queue.none { it.bookUrl == item.bookUrl }) queue.add(item)
+            }
+        }
+        notifyQueueChanged()
     }
 
     fun removeFromQueue(bookUrl: String) {
         synchronized(queue) { queue.removeAll { it.bookUrl == bookUrl } }
-        postEvent(EventBus.AUDIO_QUEUE_CHANGED, queue.toList())
+        notifyQueueChanged()
     }
 
     fun clearQueue() {
         synchronized(queue) { queue.clear() }
-        postEvent(EventBus.AUDIO_QUEUE_CHANGED, emptyList<QueueItem>())
+        notifyQueueChanged()
     }
 
+    /** 播放当前音频。暂停状态优先恢复，避免重新加载 URL。 */
     fun play(context: Context) {
+        clearError()
         if (AudioPlay.status == Status.PAUSE && AudioPlayService.isRun) {
             AudioPlay.resume(context)
         } else {
@@ -118,10 +127,12 @@ object MaxAudioSystem {
     }
 
     fun next() {
+        clearError()
         AudioPlay.next()
     }
 
     fun previous() {
+        clearError()
         AudioPlay.prev()
     }
 
@@ -130,7 +141,7 @@ object MaxAudioSystem {
     }
 
     fun setSpeed(speed: Float) {
-        AudioPlay.setSpeed(speed)
+        AudioPlay.setSpeed(speed.coerceIn(0.25f, 4f))
     }
 
     fun setSleepTimer(minutes: Int) {
@@ -146,9 +157,21 @@ object MaxAudioSystem {
     }
 
     fun setError(message: String?) {
-        lastError = message
-        postEvent(EventBus.AUDIO_ERROR, message.orEmpty())
+        lastError = message?.takeIf { it.isNotBlank() }
+        postEvent(EventBus.AUDIO_ERROR, lastError.orEmpty())
+        postEvent(EventBus.AUDIO_STATE, Status.STOP)
+    }
+
+    fun clearError() {
+        if (lastError != null) {
+            lastError = null
+            postEvent(EventBus.AUDIO_ERROR, "")
+        }
     }
 
     fun lastError(): String? = lastError
+
+    private fun notifyQueueChanged() {
+        postEvent(EventBus.AUDIO_QUEUE_CHANGED, queue())
+    }
 }
