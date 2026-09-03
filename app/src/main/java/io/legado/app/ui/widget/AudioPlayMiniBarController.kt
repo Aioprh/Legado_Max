@@ -39,8 +39,9 @@ import kotlinx.coroutines.withContext
  * 设计原则：
  * 1. 播放/暂停时保留，真正停止才隐藏；
  * 2. 输入法弹出时自动隐藏，避免挡住搜索/输入区域；
- * 3. 目录页把播放栏放在目录底部操作条之上，并由目录列表预留滚动空间，避免遮挡最后一章；
- * 4. 主界面底部跟随底部导航栏，不覆盖导航按钮。
+ * 3. 搜索页、阅读页和完整音频播放器不显示，避免遮挡核心内容；
+ * 4. 目录页把播放栏放在目录底部操作条之上，并由目录列表预留滚动空间；
+ * 5. 主界面底部跟随底部导航栏，不覆盖导航按钮。
  */
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
@@ -150,8 +151,12 @@ class AudioPlayMiniBarController(
             .start()
     }
 
+    /**
+     * Mini Player 只在适合持续播放的页面显示。
+     * SearchActivity 必须明确排除，否则搜索页仍会在 onResume() 中 refresh 后重新出现。
+     */
     private fun isExcludedScreen(): Boolean = when (activity.javaClass.simpleName) {
-        "ReadBookActivity", "AudioPlayActivity" -> true
+        "ReadBookActivity", "AudioPlayActivity", "SearchActivity" -> true
         else -> false
     }
 
@@ -162,7 +167,7 @@ class AudioPlayMiniBarController(
             updateBottomMargin()
         }
         navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
-        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateBottomMargin() }
+        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _ -> updateBottomMargin() }
     }
 
     private fun bindImeVisibility() {
