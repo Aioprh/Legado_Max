@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/audio_play_mini_bar"
     android:layout_width="match_parent"
-    android:layout_height="54dp"
+    android:layout_height="58dp"
     android:layout_gravity="bottom|center_horizontal"
     android:layout_marginStart="12dp"
     android:layout_marginEnd="12dp"
@@ -10,15 +10,15 @@
     android:elevation="20dp"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="5dp"
-    android:paddingEnd="3dp"
+    android:paddingStart="6dp"
+    android:paddingEnd="4dp"
     android:visibility="gone"
     android:clipToPadding="false">
 
     <FrameLayout
         android:id="@+id/audio_mini_cover_shell"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
+        android:layout_width="46dp"
+        android:layout_height="46dp"
         android:padding="2dp">
 
         <androidx.appcompat.widget.AppCompatImageView
@@ -33,7 +33,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="9dp"
-        android:layout_marginEnd="1dp"
+        android:layout_marginEnd="2dp"
         android:layout_weight="1"
         android:gravity="center_vertical"
         android:orientation="vertical">
@@ -43,35 +43,37 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
+            android:includeFontPadding="false"
             android:maxLines="1"
-            android:textSize="13sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tv_audio_mini_subtitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
+            android:layout_marginTop="2dp"
             android:ellipsize="end"
+            android:includeFontPadding="false"
             android:maxLines="1"
-            android:textSize="10sp" />
+            android:textSize="11sp" />
     </LinearLayout>
 
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/iv_audio_mini_play"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
         android:background="@android:color/transparent"
         android:contentDescription="@string/audio_play"
-        android:padding="8dp"
+        android:padding="9dp"
         android:src="@drawable/ic_pause_24dp" />
 
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/iv_audio_mini_playlist"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
         android:background="@android:color/transparent"
         android:contentDescription="播放列表"
-        android:padding="8dp"
+        android:padding="9dp"
         android:src="@drawable/ic_audio_mini_playlist" />
 </LinearLayout>
