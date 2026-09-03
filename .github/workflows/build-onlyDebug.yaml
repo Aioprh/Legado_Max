@@ -5,8 +5,10 @@ on:
     branches:
       - test
       - feature/audio-mini-player
+      - feature/max-audio-system
   pull_request:
     branches:
+      - main
       - test
 
 concurrency:
@@ -26,7 +28,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: '17'
 
       - name: Cache Gradle Dependencies
         uses: actions/cache@v4
