@@ -28,6 +28,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="HardcodedText"
         tools:visibility="visible" />
 
     <ImageView
@@ -42,6 +43,7 @@
         app:layout_constraintStart_toEndOf="@id/iv_volume_indicator"
         app:layout_constraintTop_toTopOf="parent"
         app:tint="@color/secondaryText"
+        tools:ignore="HardcodedText,RtlSymmetry"
         tools:visibility="visible" />
 
     <TextView
@@ -55,53 +57,50 @@
         android:maxLines="2"
         android:textSize="16sp"
         android:textStyle="normal"
-        app:layout_constraintBottom_toTopOf="@id/chapter_meta"
+        app:layout_constraintBottom_toTopOf="@id/tv_tag"
         app:layout_constraintEnd_toStartOf="@id/iv_checked"
         app:layout_constraintStart_toEndOf="@id/iv_locked"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="第1章 永夜" />
 
-    <LinearLayout
-        android:id="@+id/chapter_meta"
+    <TextView
+        android:id="@+id/tv_tag"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
+        android:background="@drawable/bg_toc_tag"
+        android:ellipsize="end"
+        android:maxWidth="180dp"
+        android:paddingStart="7dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="7dp"
+        android:paddingBottom="2dp"
+        android:singleLine="true"
+        android:textColor="@color/secondaryText"
+        android:textSize="11sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/tv_word_count"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintStart_toEndOf="@id/iv_locked"
+        app:layout_constraintTop_toBottomOf="@id/tv_chapter_name"
+        tools:text="2024-09-06 09:47"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/tv_word_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:singleLine="true"
+        android:textColor="@color/secondaryText"
+        android:textSize="11sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/iv_checked"
-        app:layout_constraintStart_toEndOf="@id/iv_locked"
-        app:layout_constraintTop_toBottomOf="@id/tv_chapter_name">
-
-        <TextView
-            android:id="@+id/tv_tag"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_toc_tag"
-            android:ellipsize="end"
-            android:maxWidth="180dp"
-            android:paddingStart="7dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="7dp"
-            android:paddingBottom="2dp"
-            android:singleLine="true"
-            android:textColor="@color/secondaryText"
-            android:textSize="11sp"
-            android:visibility="gone"
-            tools:text="2024-09-06 09:47"
-            tools:visibility="visible" />
-
-        <TextView
-            android:id="@+id/tv_word_count"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:singleLine="true"
-            android:textColor="@color/secondaryText"
-            android:textSize="11sp"
-            tools:text="2507字"
-            tools:visibility="visible" />
-    </LinearLayout>
+        app:layout_constraintStart_toEndOf="@id/tv_tag"
+        app:layout_constraintTop_toTopOf="@id/tv_tag"
+        tools:text="2507字"
+        tools:visibility="visible" />
 
     <ImageView
         android:id="@+id/iv_checked"
