@@ -16,16 +16,6 @@
     android:paddingEnd="12dp"
     android:paddingBottom="10dp">
 
-    <View
-        android:id="@+id/view_current_indicator"
-        android:layout_width="4dp"
-        android:layout_height="32dp"
-        android:background="@color/accent"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <ImageView
         android:id="@+id/iv_volume_indicator"
         android:layout_width="24dp"
