@@ -266,6 +266,7 @@
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:background="@color/background_card"
+            android:backgroundTint="@color/background_card"
             android:elevation="8dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
