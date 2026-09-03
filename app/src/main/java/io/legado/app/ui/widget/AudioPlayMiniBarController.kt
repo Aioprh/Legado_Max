@@ -7,9 +7,12 @@ import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils as AndroidXColorUtils
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
@@ -30,7 +33,15 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** 音频书音乐风格迷你播放栏：播放或暂停时均保留，只有停止/无音频时隐藏。 */
+/**
+ * 音频书音乐风格迷你播放栏。
+ *
+ * 设计原则：
+ * 1. 播放/暂停时保留，真正停止才隐藏；
+ * 2. 输入法弹出时自动隐藏，避免挡住搜索/输入区域；
+ * 3. 目录页把播放栏放在目录底部操作条之上，并由目录列表预留滚动空间，避免遮挡最后一章；
+ * 4. 主界面底部跟随底部导航栏，不覆盖导航按钮。
+ */
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
     private val parent: ViewGroup
@@ -42,11 +53,13 @@ class AudioPlayMiniBarController(
     private var initialized = false
     private var bottomNavigation: View? = null
     private var bottomNavigationLayoutListener: View.OnLayoutChangeListener? = null
-    private var userHidden = false
+    private var imeVisible = false
+    private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
 
     init {
         parent.addView(binding.root)
         bindBottomNavigationAnchor()
+        bindImeVisibility()
         updateBottomMargin()
         bindEvents()
     }
@@ -54,11 +67,10 @@ class AudioPlayMiniBarController(
     fun refresh() {
         binding.run {
             val hasAudio = AudioPlay.book != null && AudioPlay.status != io.legado.app.constant.Status.STOP
-            if (isExcludedScreen() || !hasAudio) {
+            if (isExcludedScreen() || !hasAudio || isImeVisible()) {
                 hideInternal()
                 return
             }
-            userHidden = false
             updateBottomMargin()
             val book = AudioPlay.book
             val chapter = AudioPlay.durChapter
@@ -105,11 +117,7 @@ class AudioPlayMiniBarController(
             audioPlayMiniBar.setOnClickListener { openAudioPlayer() }
             ivAudioMiniPlay.setOnClickListener {
                 if (AudioPlayService.pause) AudioPlay.resume(activity) else AudioPlay.pause(activity)
-                // pause/resume 会异步更新状态；无论暂停还是播放，Mini Player 都保持可见。
-                audioPlayMiniBar.postDelayed({
-                    val hasAudio = AudioPlay.book != null && AudioPlay.status != io.legado.app.constant.Status.STOP
-                    if (hasAudio && !isExcludedScreen()) refresh() else hideInternal()
-                }, 80L)
+                audioPlayMiniBar.postDelayed({ refresh() }, 100L)
             }
             ivAudioMiniPlaylist.setOnClickListener { openChapterList() }
         }
@@ -124,10 +132,11 @@ class AudioPlayMiniBarController(
     }
 
     private fun hideInternal() {
-        userHidden = true
         coverJob?.cancel()
         coverAnimator?.cancel()
         coverAnimator = null
+        if (!binding.audioPlayMiniBar.isShown) return
+        binding.audioPlayMiniBar.animate().cancel()
         binding.audioPlayMiniBar.animate()
             .alpha(0f)
             .translationY(12.dpToPx().toFloat())
@@ -153,18 +162,38 @@ class AudioPlayMiniBarController(
             updateBottomMargin()
         }
         navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
-        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateBottomMargin() }
+        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _ -> updateBottomMargin() }
+    }
+
+    private fun bindImeVisibility() {
+        globalLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+            val visible = isImeVisible()
+            if (visible != imeVisible) {
+                imeVisible = visible
+                if (visible) hideInternal() else refresh()
+            }
+        }
+        parent.viewTreeObserver.addOnGlobalLayoutListener(globalLayoutListener)
+    }
+
+    private fun isImeVisible(): Boolean {
+        return ViewCompat.getRootWindowInsets(activity.window.decorView)
+            ?.isVisible(WindowInsetsCompat.Type.ime()) == true
     }
 
     private fun updateBottomMargin() {
         val navigation = bottomNavigation?.takeIf { it.isShown && it.height > 0 }
-        val margin = if (navigation != null) {
-            val parentLocation = IntArray(2)
-            val navigationLocation = IntArray(2)
-            parent.getLocationOnScreen(parentLocation)
-            navigation.getLocationOnScreen(navigationLocation)
-            (parent.height - (navigationLocation[1] - parentLocation[1])).coerceAtLeast(0)
-        } else 2.dpToPx()
+        val margin = when {
+            navigation != null -> {
+                val parentLocation = IntArray(2)
+                val navigationLocation = IntArray(2)
+                parent.getLocationOnScreen(parentLocation)
+                navigation.getLocationOnScreen(navigationLocation)
+                (parent.height - (navigationLocation[1] - parentLocation[1])).coerceAtLeast(0)
+            }
+            activity.javaClass.simpleName == "TocActivity" -> 66.dpToPx()
+            else -> 10.dpToPx()
+        }
         binding.root.updateLayoutParams<android.widget.FrameLayout.LayoutParams> { bottomMargin = margin }
     }
 
