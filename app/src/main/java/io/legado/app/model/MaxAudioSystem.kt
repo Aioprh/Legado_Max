@@ -10,23 +10,13 @@ import io.legado.app.utils.postEvent
 /** Unified audio session facade for Max. */
 object MaxAudioSystem {
     enum class PlaybackState { IDLE, LOADING, PLAYING, PAUSED, STOPPED, ERROR }
-
     data class QueueItem(val bookUrl: String, val title: String, val author: String = "")
-
     data class Snapshot(
-        val state: PlaybackState,
-        val book: Book?,
-        val chapterIndex: Int,
-        val chapterTitle: String,
-        val position: Int,
-        val duration: Int,
-        val bufferedPosition: Int,
-        val speed: Float,
-        val playMode: AudioPlay.PlayMode,
-        val sleepTimerMinutes: Int,
-        val queueSize: Int,
-        val queueIndex: Int,
-        val lastError: String?
+        val state: PlaybackState, val book: Book?, val chapterIndex: Int,
+        val chapterTitle: String, val position: Int, val duration: Int,
+        val bufferedPosition: Int, val speed: Float,
+        val playMode: AudioPlay.PlayMode, val sleepTimerMinutes: Int,
+        val queueSize: Int, val queueIndex: Int, val lastError: String?
     )
 
     private val queue = ArrayList<QueueItem>()
@@ -42,22 +32,19 @@ object MaxAudioSystem {
             else -> PlaybackState.IDLE
         }
         return Snapshot(
-            state, AudioPlay.book, AudioPlay.durChapterIndex,
-            AudioPlay.durChapter?.title.orEmpty(), AudioPlay.durChapterPos,
-            AudioPlay.durAudioSize, AudioPlayService.bufferedPosition,
-            AudioPlayService.playSpeed, AudioPlay.playMode,
-            AudioPlayService.timeMinute, queueSize(), queueIndex, lastError
+            state, AudioPlay.book, AudioPlay.durChapterIndex, AudioPlay.durChapter?.title.orEmpty(),
+            AudioPlay.durChapterPos, AudioPlay.durAudioSize, 0,
+            AudioPlayService.playSpeed, AudioPlay.playMode, AudioPlayService.timeMinute,
+            queueSize(), queueIndex, lastError
         )
     }
 
     fun setQueue(items: List<QueueItem>) {
         synchronized(queue) {
-            queue.clear()
-            queue.addAll(items.distinctBy { it.bookUrl })
+            queue.clear(); queue.addAll(items.distinctBy { it.bookUrl })
             queueIndex = queueIndex.coerceIn(-1, queue.lastIndex)
         }
-        clearError()
-        notifyQueueChanged()
+        clearError(); notifyQueueChanged()
     }
 
     fun queue(): List<QueueItem> = synchronized(queue) { queue.toList() }
@@ -70,11 +57,8 @@ object MaxAudioSystem {
     }
 
     fun addToQueue(item: QueueItem) = addAllToQueue(listOf(item))
-
     fun addAllToQueue(items: List<QueueItem>) {
-        synchronized(queue) {
-            items.forEach { if (queue.none { it.bookUrl == item.bookUrl }) queue.add(item) }
-        }
+        synchronized(queue) { items.forEach { item -> if (queue.none { it.bookUrl == item.bookUrl }) queue.add(item) } }
         notifyQueueChanged()
     }
 
@@ -88,22 +72,17 @@ object MaxAudioSystem {
         notifyQueueChanged()
     }
 
-    fun clearQueue() {
-        synchronized(queue) { queue.clear(); queueIndex = -1 }
-        notifyQueueChanged()
-    }
+    fun clearQueue() { synchronized(queue) { queue.clear(); queueIndex = -1 }; notifyQueueChanged() }
 
     fun moveInQueue(from: Int, to: Int): Boolean {
         synchronized(queue) {
             if (from !in queue.indices || to !in queue.indices || from == to) return false
-            val item = queue.removeAt(from)
-            queue.add(to, item)
+            val item = queue.removeAt(from); queue.add(to, item)
             if (queueIndex == from) queueIndex = to
             else if (from < queueIndex && to >= queueIndex) queueIndex--
             else if (from > queueIndex && to <= queueIndex) queueIndex++
         }
-        notifyQueueChanged()
-        return true
+        notifyQueueChanged(); return true
     }
 
     fun play(context: Context) {
@@ -111,7 +90,6 @@ object MaxAudioSystem {
         if (AudioPlay.status == Status.PAUSE && AudioPlayService.isRun) AudioPlay.resume(context)
         else AudioPlay.loadOrUpPlayUrl()
     }
-
     fun pause(context: Context) = AudioPlay.pause(context)
     fun toggle(context: Context) { if (AudioPlay.status == Status.PLAY) pause(context) else play(context) }
     fun stop() = AudioPlay.stop()
@@ -127,15 +105,7 @@ object MaxAudioSystem {
         lastError = message?.takeIf { it.isNotBlank() }
         postEvent(EventBus.AUDIO_ERROR, lastError.orEmpty())
     }
-
-    fun clearError() {
-        if (lastError != null) {
-            lastError = null
-            postEvent(EventBus.AUDIO_ERROR, "")
-        }
-    }
-
+    fun clearError() { if (lastError != null) { lastError = null; postEvent(EventBus.AUDIO_ERROR, "") } }
     fun lastError(): String? = lastError
-
     private fun notifyQueueChanged() = postEvent(EventBus.AUDIO_QUEUE_CHANGED, queue())
 }
