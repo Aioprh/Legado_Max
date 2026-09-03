@@ -12,28 +12,6 @@
         app:attachToActivity="false"
         app:title="@string/my" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginTop="6dp"
-        android:layout_marginBottom="4dp"
-        android:text="本地阅读中心"
-        android:textColor="@color/primaryText"
-        android:textSize="20sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="10dp"
-        android:text="管理书源、阅读记录、书签以及应用设置"
-        android:textColor="@color/secondaryText"
-        android:textSize="13sp" />
-
     <LinearLayout
         android:id="@+id/pre_fragment"
         android:layout_width="match_parent"
