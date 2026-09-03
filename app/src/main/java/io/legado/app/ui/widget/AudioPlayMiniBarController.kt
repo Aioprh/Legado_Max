@@ -162,7 +162,7 @@ class AudioPlayMiniBarController(
             updateBottomMargin()
         }
         navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
-        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _ -> updateBottomMargin() }
+        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateBottomMargin() }
     }
 
     private fun bindImeVisibility() {
