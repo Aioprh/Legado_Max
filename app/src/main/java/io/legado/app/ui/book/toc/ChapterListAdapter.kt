@@ -166,7 +166,6 @@ class ChapterListAdapter(context: Context, val callback: Callback) :
             val isDur = callback.durChapterIndex() == item.index
             val cached = callback.isLocalBook || item.isVolume || cacheFileNames.contains(item.getFileName())
             val isCurrentVol = item.isVolume && isCurrentVolume(item.index)
-            viewCurrentIndicator.visible(isDur)
             tvChapterItem.background = when {
                 isDur -> ContextCompat.getDrawable(context, R.drawable.bg_toc_item_current_chapter)
                 item.isVolume && isCurrentVol -> ContextCompat.getDrawable(context, R.drawable.bg_toc_volume_current)
