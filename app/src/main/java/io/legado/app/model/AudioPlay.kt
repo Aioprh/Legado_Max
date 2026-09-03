@@ -12,7 +12,6 @@ import io.legado.app.constant.Status
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
-import io.legado.app.constant.AppConst
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.readRecord.ReadRecord
 import io.legado.app.data.entities.readRecord.ReadRecordSession
@@ -37,27 +36,20 @@ import kotlinx.coroutines.cancelChildren
 import splitties.init.appCtx
 import kotlin.text.trim
 
-
 @SuppressLint("StaticFieldLeak")
 @Suppress("unused")
 object AudioPlay : CoroutineScope by MainScope() {
     private const val PROGRESS_SAVE_INTERVAL = 15_000L
-    /**
-     * 播放模式枚举
-     */
     enum class PlayMode(val iconRes: Int) {
         LIST_END_STOP(R.drawable.ic_play_mode_list_end_stop),
         SINGLE_LOOP(R.drawable.ic_play_mode_single_loop),
         RANDOM(R.drawable.ic_play_mode_random),
         LIST_LOOP(R.drawable.ic_play_mode_list_loop);
-
-        fun next(): PlayMode {
-            return when (this) {
-                LIST_END_STOP -> SINGLE_LOOP
-                SINGLE_LOOP -> RANDOM
-                RANDOM -> LIST_LOOP
-                LIST_LOOP -> LIST_END_STOP
-            }
+        fun next(): PlayMode = when (this) {
+            LIST_END_STOP -> SINGLE_LOOP
+            SINGLE_LOOP -> RANDOM
+            RANDOM -> LIST_LOOP
+            LIST_LOOP -> LIST_END_STOP
         }
     }
 
@@ -79,557 +71,177 @@ object AudioPlay : CoroutineScope by MainScope() {
     var inBookshelf = false
     var bookSource: BookSource? = null
     val loadingChapters = arrayListOf<Int>()
+    private val preloadedUrls = HashMap<String, String>()
     private val readRecord = ReadRecord()
     private var sessionStartTime = 0L
     var readStartTime: Long = System.currentTimeMillis()
     private var lastProgressSaveTime = 0L
     val executor = globalExecutor
 
-    /**
-     * 切换播放模式
-     */
     fun changePlayMode() {
         playMode = playMode.next()
         book?.setPlayMode(playMode.ordinal)
         postEvent(EventBus.PLAY_MODE_CHANGED, playMode)
     }
 
-    /**
-     * 更新数据
-     * @param book 书籍
-     */
     fun upData(book: Book) {
         AudioPlay.book = book
         chapterSize = appDb.bookChapterDao.getChapterCount(book.bookUrl)
-        simulatedChapterSize = if (book.readSimulating()) {
-            book.simulatedTotalChapterNum()
-        } else {
-            chapterSize
-        }
+        simulatedChapterSize = if (book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize
         if (durChapterIndex != book.durChapterIndex) {
-            stopPlay()
-            durChapterIndex = book.durChapterIndex
-            durChapterPos = book.durChapterPos
-            durPlayUrl = ""
-            durLyric = null
-            durAudioSize = 0
+            stopPlay(); durChapterIndex = book.durChapterIndex; durChapterPos = book.durChapterPos
+            durPlayUrl = ""; durLyric = null; durAudioSize = 0
         }
         upDurChapter()
+        MaxAudioSystem.syncCurrentBook(book)
     }
 
-    /**
-     * 重置数据
-     * @param book 书籍
-     */
     fun resetData(book: Book) {
         stop()
         AudioPlay.book = book
-        readRecord.bookName = book.name
-        readRecord.bookAuthor = book.author
+        readRecord.bookName = book.name; readRecord.bookAuthor = book.author
         readRecord.deviceId = AppConst.androidId
-        readRecord.lastRead = System.currentTimeMillis()
-        sessionStartTime = System.currentTimeMillis()
-        readStartTime = System.currentTimeMillis()
-        lastProgressSaveTime = 0L
+        readRecord.lastRead = System.currentTimeMillis(); sessionStartTime = System.currentTimeMillis()
+        readStartTime = System.currentTimeMillis(); lastProgressSaveTime = 0L
         chapterSize = appDb.bookChapterDao.getChapterCount(book.bookUrl)
-        simulatedChapterSize = if (book.readSimulating()) {
-            book.simulatedTotalChapterNum()
-        } else {
-            chapterSize
-        }
-        bookSource = book.getBookSource()
-        durChapterIndex = book.durChapterIndex
-        durChapterPos = book.durChapterPos
-        PlayMode.entries.getOrNull(book.getPlayMode())?.let{
-            playMode = it
-            postEvent(EventBus.PLAY_MODE_CHANGED, it)
-        }
-        val playSpeed = book.getPlaySpeed()
-        AudioPlayService.playSpeed = playSpeed
-        postEvent(EventBus.AUDIO_SPEED, playSpeed)
-        durPlayUrl = ""
-        durLyric = null
-        durAudioSize = 0
-        upDurChapter()
-        SourceCallBack.callBackBook(SourceCallBack.START_READ, bookSource, book, durChapter)
-        postEvent(EventBus.AUDIO_BUFFER_PROGRESS, 0)
+        simulatedChapterSize = if (book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize
+        bookSource = book.getBookSource(); durChapterIndex = book.durChapterIndex; durChapterPos = book.durChapterPos
+        PlayMode.entries.getOrNull(book.getPlayMode())?.let { playMode = it; postEvent(EventBus.PLAY_MODE_CHANGED, it) }
+        val playSpeed = book.getPlaySpeed(); AudioPlayService.playSpeed = playSpeed; postEvent(EventBus.AUDIO_SPEED, playSpeed)
+        durPlayUrl = ""; durLyric = null; durAudioSize = 0
+        synchronized(preloadedUrls) { preloadedUrls.clear() }
+        upDurChapter(); SourceCallBack.callBackBook(SourceCallBack.START_READ, bookSource, book, durChapter)
+        postEvent(EventBus.AUDIO_BUFFER_PROGRESS, 0); MaxAudioSystem.syncCurrentBook(book)
+        preloadNextChapters(2)
     }
 
-    /**
-     * 更新阅读时间
-     */
     fun upReadTime() {
-        if (!AppConfig.enableReadRecord) {
-            return
-        }
+        if (!AppConfig.enableReadRecord) return
         executor.execute {
-            val now = System.currentTimeMillis()
-            
-            readRecord.readTime = readRecord.readTime + now - readStartTime
-            readStartTime = now
-            readRecord.lastRead = now
-            readRecord.durChapterTitle = book?.durChapterTitle.orEmpty()
-
-            val session = ReadRecordSession(
-                deviceId = readRecord.deviceId,
-                bookName = readRecord.bookName,
-                bookAuthor = readRecord.bookAuthor,
-                startTime = sessionStartTime,
-                endTime = now,
-                words = 0,
-                durChapterTitle = readRecord.durChapterTitle
-            )
-            
+            val now = System.currentTimeMillis(); readRecord.readTime += now - readStartTime; readStartTime = now
+            readRecord.lastRead = now; readRecord.durChapterTitle = book?.durChapterTitle.orEmpty()
+            val session = ReadRecordSession(readRecord.deviceId, readRecord.bookName, readRecord.bookAuthor, sessionStartTime, now, 0, readRecord.durChapterTitle)
             val repository = ReadRecordRepository(appDb.readRecordDao)
-            try {
-                kotlinx.coroutines.runBlocking {
-                    repository.saveReadSession(session)
-                }
-            } catch (e: Exception) {
-                kotlinx.coroutines.runBlocking {
-                    appDb.readRecordDao.insert(readRecord)
-                }
-            }
-            
+            try { kotlinx.coroutines.runBlocking { repository.saveReadSession(session) } }
+            catch (_: Exception) { kotlinx.coroutines.runBlocking { appDb.readRecordDao.insert(readRecord) } }
             sessionStartTime = now
         }
     }
 
-    fun markReadStart() {
-        if (!AppConfig.enableReadRecord) {
-            return
-        }
-        val now = System.currentTimeMillis()
-        sessionStartTime = now
-        readStartTime = now
-        readRecord.lastRead = now
-    }
+    fun markReadStart() { if (!AppConfig.enableReadRecord) return; val now = System.currentTimeMillis(); sessionStartTime = now; readStartTime = now; readRecord.lastRead = now }
 
-    /**
-     * 添加加载中的章节
-     * @param index 章节索引
-     * @return 是否添加成功
-     */
-    private fun addLoading(index: Int): Boolean {
-        synchronized(this) {
-            if (loadingChapters.contains(index)) return false
-            loadingChapters.add(index)
-            return true
-        }
-    }
+    private fun addLoading(index: Int): Boolean = synchronized(this) { if (loadingChapters.contains(index)) false else { loadingChapters.add(index); true } }
+    private fun removeLoading(index: Int) { synchronized(this) { loadingChapters.remove(index) } }
 
-    /**
-     * 移除加载中的章节
-     * @param index 章节索引
-     */
-    private fun removeLoading(index: Int) {
-        synchronized(this) {
-            loadingChapters.remove(index)
-        }
-    }
+    fun loadOrUpPlayUrl() { if (durPlayUrl.isEmpty()) loadPlayUrl() else upPlayUrl() }
 
-    /**
-     * 加载或更新播放URL
-     */
-    fun loadOrUpPlayUrl() {
-        if (durPlayUrl.isEmpty()) {
-            loadPlayUrl()
-        } else {
-            upPlayUrl()
-        }
-    }
-
-    /**
-     * 加载播放URL
-     */
     private fun loadPlayUrl() {
         val index = durChapterIndex
-        if (addLoading(index)) {
-            val book = book
-            val bookSource = bookSource
-            if (book != null && bookSource != null) {
-                upDurChapter()
-                val chapter = durChapter
-                if (chapter == null) {
-                    removeLoading(index)
-                    return
-                }
-                if (chapter.isVolume) {
-                    skipTo(index + 1)
-                    removeLoading(index)
-                    return
-                }
-                upLoading(true)
-                WebBook.getContent(this, bookSource, book, chapter)
-                    .onSuccess { content ->
-                        val content = content.trim()
-                        if (content.isEmpty()) {
-                            appCtx.toastOnUi("未获取到资源链接")
-                        } else {
-                            contentLoadFinish(chapter, content)
-                        }
-                    }.onError {
-                        AppLog.put("获取资源链接出错\n$it", it, true)
-                        upLoading(false)
-                    }.onCancel {
-                        removeLoading(index)
-                    }.onFinally {
-                        callback?.upLyric(durLyric)
-                        removeLoading(index)
-                    }
-            } else {
-                removeLoading(index)
-                appCtx.toastOnUi("book or source is null")
-            }
+        val cacheKey = "${book?.bookUrl}#$index"
+        synchronized(preloadedUrls) { preloadedUrls.remove(cacheKey) }?.let { cached ->
+            durPlayUrl = cached
+            durLyric = durChapter?.getVariable("lyric")
+            upPlayUrl(); preloadNextChapters(2); return
         }
+        if (!addLoading(index)) return
+        val currentBook = book; val currentSource = bookSource
+        if (currentBook != null && currentSource != null) {
+            upDurChapter(); val chapter = durChapter
+            if (chapter == null) { removeLoading(index); return }
+            if (chapter.isVolume) { skipTo(index + 1); removeLoading(index); return }
+            upLoading(true)
+            WebBook.getContent(this, currentSource, currentBook, chapter)
+                .onSuccess { content ->
+                    val value = content.trim()
+                    if (value.isEmpty()) appCtx.toastOnUi("未获取到资源链接")
+                    else contentLoadFinish(chapter, value)
+                }.onError { AppLog.put("获取资源链接出错\n$it", it, true); upLoading(false) }
+                .onCancel { removeLoading(index) }
+                .onFinally { callback?.upLyric(durLyric); removeLoading(index) }
+        } else { removeLoading(index); appCtx.toastOnUi("book or source is null") }
     }
 
-    /**
-     * 加载完成
-     */
+    /** 预加载后续章节资源链接，不改变当前播放章节。 */
+    fun preloadNextChapters(count: Int = 2) {
+        val currentBook = book ?: return; val source = bookSource ?: return
+        val start = durChapterIndex + 1; val end = (start + count).coerceAtMost(simulatedChapterSize)
+        for (index in start until end) preloadChapter(currentBook, source, index)
+    }
+
+    private fun preloadChapter(currentBook: Book, source: BookSource, index: Int) {
+        val key = "${currentBook.bookUrl}#$index"
+        synchronized(preloadedUrls) { if (preloadedUrls.containsKey(key)) return }
+        if (!addLoading(index)) return
+        val chapter = appDb.bookChapterDao.getChapter(currentBook.bookUrl, index)
+        if (chapter == null || chapter.isVolume) { removeLoading(index); return }
+        WebBook.getContent(this, source, currentBook, chapter)
+            .onSuccess { content -> content.trim().takeIf { it.isNotEmpty() }?.let { value -> synchronized(preloadedUrls) { preloadedUrls[key] = value } } }
+            .onFinally { removeLoading(index); postEvent(EventBus.AUDIO_QUEUE_CHANGED, queueSnapshot()) }
+    }
+
+    private fun queueSnapshot(): List<MaxAudioSystem.QueueItem> = listOfNotNull(book?.let { MaxAudioSystem.QueueItem(it.bookUrl, it.name, it.author) })
+
     private fun contentLoadFinish(chapter: BookChapter, content: String) {
-        if (chapter.index == book?.durChapterIndex) {
-            durPlayUrl = content
-            durLyric = chapter.getVariable("lyric")
-            upPlayUrl()
-        }
+        if (chapter.index == book?.durChapterIndex) { durPlayUrl = content; durLyric = chapter.getVariable("lyric"); upPlayUrl(); preloadNextChapters(2) }
     }
 
-    /**
-     * 更新播放URL
-     */
-    private fun upPlayUrl() {
-        if (isPlayToEnd()) {
-            playNew()
-        } else {
-            play()
-        }
-    }
+    private fun upPlayUrl() { if (isPlayToEnd()) playNew() else play() }
+    fun play() { context.startService<AudioPlayService> { action = IntentAction.play } }
+    private fun playNew() { context.startService<AudioPlayService> { action = IntentAction.playNew } }
 
-    /**
-     * 播放当前章节
-     */
-    fun play() {
-        context.startService<AudioPlayService> {
-            action = IntentAction.play
-        }
-    }
-
-    /**
-     * 从头播放新章节
-     */
-    private fun playNew() {
-        context.startService<AudioPlayService> {
-            action = IntentAction.playNew
-        }
-    }
-
-    /**
-     * 更新当前章节
-     */
     fun upDurChapter() {
-        val book = book ?: return
-        durChapter = appDb.bookChapterDao.getChapter(book.bookUrl, durChapterIndex)
+        val currentBook = book ?: return; durChapter = appDb.bookChapterDao.getChapter(currentBook.bookUrl, durChapterIndex)
         durAudioSize = durChapter?.end?.toInt() ?: 0
         val title = durChapter?.title ?: appCtx.getString(R.string.data_loading)
-        postEvent(EventBus.AUDIO_SUB_TITLE, title)
-        postEvent(EventBus.AUDIO_SIZE, durAudioSize)
-        postEvent(EventBus.AUDIO_PROGRESS, durChapterPos)
+        postEvent(EventBus.AUDIO_SUB_TITLE, title); postEvent(EventBus.AUDIO_SIZE, durAudioSize); postEvent(EventBus.AUDIO_PROGRESS, durChapterPos)
     }
 
-    /**
-     * 暂停播放
-     * @param context 上下文
-     */
-    fun pause(context: Context) {
-        if (AudioPlayService.isRun) {
-            readStartTime = System.currentTimeMillis()
-            context.startService<AudioPlayService> {
-                action = IntentAction.pause
-            }
-        }
-    }
+    fun pause(context: Context) { if (AudioPlayService.isRun) { readStartTime = System.currentTimeMillis(); context.startService<AudioPlayService> { action = IntentAction.pause } } }
+    fun resume(context: Context) { if (AudioPlayService.isRun) context.startService<AudioPlayService> { action = IntentAction.resume } }
+    fun stop() { if (AudioPlayService.isRun) context.startService<AudioPlayService> { action = IntentAction.stop } }
+    fun setSpeed(speed: Float) { if (AudioPlayService.isRun) { book?.setPlaySpeed(speed); val clampedSpeed = speed.coerceIn(ReadConstants.MIN_PLAY_SPEED, ReadConstants.MAX_PLAY_SPEED); context.startService<AudioPlayService> { action = IntentAction.setSpeed; putExtra("speed", clampedSpeed) } } }
+    fun adjustProgress(position: Int) { durChapterPos = position; saveRead(); if (AudioPlayService.isRun) context.startService<AudioPlayService> { action = IntentAction.adjustProgress; putExtra("position", position) } }
 
-    /**
-     * 恢复播放
-     * @param context 上下文
-     */
-    fun resume(context: Context) {
-        if (AudioPlayService.isRun) {
-            context.startService<AudioPlayService> {
-                action = IntentAction.resume
-            }
-        }
-    }
-
-    /**
-     * 停止播放
-     */
-    fun stop() {
-        if (AudioPlayService.isRun) {
-            context.startService<AudioPlayService> {
-                action = IntentAction.stop
-            }
-        }
-    }
-
-    /**
-     * 设置播放速度
-     * @param speed 播放速度
-     */
-    fun setSpeed(speed: Float) {
-        if (AudioPlayService.isRun) {
-            book?.setPlaySpeed(speed)
-            val clampedSpeed = speed.coerceIn(ReadConstants.MIN_PLAY_SPEED, ReadConstants.MAX_PLAY_SPEED)
-            context.startService<AudioPlayService> {
-                action = IntentAction.setSpeed
-                putExtra("speed", clampedSpeed)
-            }
-        }
-    }
-
-    /**
-     * 调整播放进度
-     * @param position 播放位置
-     */
-    fun adjustProgress(position: Int) {
-        durChapterPos = position
-        saveRead()
-        if (AudioPlayService.isRun) {
-            context.startService<AudioPlayService> {
-                action = IntentAction.adjustProgress
-                putExtra("position", position)
-            }
-        }
-    }
-
-    /**
-     * 跳转到指定章节
-     * @param index 章节索引
-     */
     fun skipTo(index: Int) {
-        Coroutine.async {
-            stopPlay()
-            if (index in 0..<simulatedChapterSize) {
-                durChapterIndex = index
-                durChapterPos = 0
-                durPlayUrl = ""
-                durLyric = null
-                saveRead()
-                loadPlayUrl()
-            }
-        }
+        Coroutine.async { stopPlay(); if (index in 0..<simulatedChapterSize) { durChapterIndex=index; durChapterPos=0; durPlayUrl=""; durLyric=null; saveRead(); loadPlayUrl(); MaxAudioSystem.syncCurrentBook(book); } }
     }
 
-    /**
-     * 播放上一章
-     */
-    fun prev() {
-        Coroutine.async {
-            stopPlay()
-            if (durChapterIndex > 0) {
-                durChapterIndex -= 1
-                durChapterPos = 0
-                durPlayUrl = ""
-                durLyric = null
-                saveRead()
-                loadPlayUrl()
-            }
-        }
-    }
+    fun prev() { Coroutine.async { stopPlay(); if (durChapterIndex > 0) { durChapterIndex--; durChapterPos=0; durPlayUrl=""; durLyric=null; saveRead(); loadPlayUrl(); MaxAudioSystem.syncCurrentBook(book); } } }
 
-    /**
-     * 播放下一章
-     */
     fun next() {
-        stopPlay()
-        upReadTime()
+        stopPlay(); upReadTime()
         when (playMode) {
-            PlayMode.LIST_END_STOP -> {
-                if (durChapterIndex + 1 < simulatedChapterSize) {
-                    durChapterIndex += 1
-                    durChapterPos = 0
-                    durPlayUrl = ""
-                    durLyric = null
-                    saveRead()
-                    loadPlayUrl()
-                }
-            }
-
-            PlayMode.SINGLE_LOOP -> {
-                durChapterPos = 0
-                durPlayUrl = ""
-                durLyric = null
-                saveRead()
-                loadPlayUrl()
-            }
-
-            PlayMode.RANDOM -> {
-                durChapterIndex = (0 until simulatedChapterSize).random()
-                durChapterPos = 0
-                durPlayUrl = ""
-                durLyric = null
-                saveRead()
-                loadPlayUrl()
-            }
-
-            PlayMode.LIST_LOOP -> {
-                durChapterIndex = (durChapterIndex + 1) % simulatedChapterSize
-                durChapterPos = 0
-                durPlayUrl = ""
-                durLyric = null
-                saveRead()
-                loadPlayUrl()
-            }
+            PlayMode.LIST_END_STOP -> if (durChapterIndex + 1 < simulatedChapterSize) { durChapterIndex++; durChapterPos=0; durPlayUrl=""; durLyric=null; saveRead(); loadPlayUrl() }
+            PlayMode.SINGLE_LOOP -> { durChapterPos=0; durPlayUrl=""; durLyric=null; saveRead(); loadPlayUrl() }
+            PlayMode.RANDOM -> { durChapterIndex=(0 until simulatedChapterSize).random(); durChapterPos=0; durPlayUrl=""; durLyric=null; saveRead(); loadPlayUrl() }
+            PlayMode.LIST_LOOP -> { if (simulatedChapterSize > 0) { durChapterIndex=(durChapterIndex+1)%simulatedChapterSize; durChapterPos=0; durPlayUrl=""; durLyric=null; saveRead(); loadPlayUrl() } }
         }
+        MaxAudioSystem.syncCurrentBook(book)
     }
 
-    /**
-     * 设置定时器
-     * @param minute 分钟数
-     */
-    fun setTimer(minute: Int) {
-        if (AudioPlayService.isRun) {
-            val intent = Intent(context, AudioPlayService::class.java)
-            intent.action = IntentAction.setTimer
-            intent.putExtra("minute", minute)
-            context.startService(intent)
-        } else {
-            AudioPlayService.timeMinute = minute
-            postEvent(EventBus.AUDIO_DS, minute)
-        }
-    }
+    fun setTimer(minute: Int) { if (AudioPlayService.isRun) context.startService<AudioPlayService> { action=IntentAction.setTimer; putExtra("minute", minute) } else { AudioPlayService.timeMinute=minute; postEvent(EventBus.AUDIO_DS, minute) } }
+    fun addTimer() { context.startService<AudioPlayService> { action=IntentAction.addTimer } }
+    fun stopPlay() { if (AudioPlayService.isRun) context.startService<AudioPlayService> { action=IntentAction.stopPlay } }
 
-    /**
-     * 增加定时器时间
-     */
-    fun addTimer() {
-        val intent = Intent(context, AudioPlayService::class.java)
-        intent.action = IntentAction.addTimer
-        context.startService(intent)
-    }
-
-    /**
-     * 停止播放
-     */
-    fun stopPlay() {
-        if (AudioPlayService.isRun) {
-            context.startService<AudioPlayService> {
-                action = IntentAction.stopPlay
-            }
-        }
-    }
-
-    /**
-     * 保存阅读进度
-     * @param first 是否首次保存
-     */
     fun saveRead(first: Boolean = false) {
-        val book = book ?: return
+        val currentBook = book ?: return
         Coroutine.async {
-            book.lastCheckCount = 0
-            val durTime = System.currentTimeMillis()
-            book.durChapterTime = durTime
-            val chapterChanged = book.durChapterIndex != durChapterIndex
-            book.durChapterIndex = durChapterIndex
-            book.durChapterPos = durChapterPos
-            if (first || chapterChanged) {
-                appDb.bookChapterDao.getChapter(book.bookUrl, book.durChapterIndex)?.let {
-                    book.durChapterTitle = it.getDisplayTitle(
-                        ContentProcessor.get(book.name, book.origin).getTitleReplaceRules(),
-                        book.getUseReplaceRule(),
-                        replaceBook = book.toReplaceBook()
-                    )
-                    SourceCallBack.callBackBook(SourceCallBack.SAVE_READ, bookSource, book, it,durTime.toString())
-                }
+            currentBook.lastCheckCount=0; val durTime=System.currentTimeMillis(); currentBook.durChapterTime=durTime
+            val chapterChanged=currentBook.durChapterIndex != durChapterIndex; currentBook.durChapterIndex=durChapterIndex; currentBook.durChapterPos=durChapterPos
+            if (first || chapterChanged) appDb.bookChapterDao.getChapter(currentBook.bookUrl, currentBook.durChapterIndex)?.let {
+                currentBook.durChapterTitle=it.getDisplayTitle(ContentProcessor.get(currentBook.name,currentBook.origin).getTitleReplaceRules(),currentBook.getUseReplaceRule(),replaceBook=currentBook.toReplaceBook())
+                SourceCallBack.callBackBook(SourceCallBack.SAVE_READ, bookSource, currentBook, it,durTime.toString())
             }
-            book.update()
+            currentBook.update()
         }
     }
-
-    /**
-     * 保存章节长度
-     */
-    fun saveDurChapter(audioSize: Long) {
-        val chapter = durChapter ?: return
-        Coroutine.async {
-            durAudioSize = audioSize.toInt()
-            chapter.end = audioSize
-            chapter.update()
-        }
-    }
-
-    /**
-     * 播放位置变化
-     * @param position 播放位置
-     */
-    fun playPositionChanged(position: Int) {
-        durChapterPos = position
-        val now = System.currentTimeMillis()
-        if (now - lastProgressSaveTime >= PROGRESS_SAVE_INTERVAL) {
-            lastProgressSaveTime = now
-            saveRead()
-        }
-    }
-
-    /**
-     * 更新加载状态
-     * @param loading 是否正在加载
-     */
-    fun upLoading(loading: Boolean) {
-        callback?.upLoading(loading)
-    }
-
-    /**
-     * 判断是否播放到结尾
-     * @return 是否播放到结尾
-     */
-    private fun isPlayToEnd(): Boolean {
-        return durChapterIndex + 1 == simulatedChapterSize
-                && durChapterPos == durAudioSize
-    }
-
-    /**
-     * 注册回调
-     * @param context 上下文
-     */
-    fun register(context: Context) {
-        activityContext = context
-        callback = context as CallBack
-    }
-
-    /**
-     * 取消注册回调
-     * @param context 上下文
-     */
-    fun unregister(context: Context) {
-        if (activityContext === context) {
-            activityContext = null
-            callback = null
-        }
-        coroutineContext.cancelChildren()
-    }
-
-    /**
-     * 注册服务回调
-     * @param context 上下文
-     */
-    fun registerService(context: Context) {
-        serviceContext = context
-    }
-
-    /**
-     * 取消注册服务回调
-     */
-    fun unregisterService() {
-        serviceContext = null
-    }
-
-    interface CallBack {
-
-        fun upLoading(loading: Boolean)
-        fun upLyric(lyric: String?)
-        fun upLyricP(position: Int)
-    }
-
+    fun saveDurChapter(audioSize: Long) { val chapter=durChapter ?: return; Coroutine.async { durAudioSize=audioSize.toInt(); chapter.end=audioSize; chapter.update() } }
+    fun playPositionChanged(position: Int) { durChapterPos=position; val now=System.currentTimeMillis(); if (now-lastProgressSaveTime>=PROGRESS_SAVE_INTERVAL) { lastProgressSaveTime=now; saveRead() } }
+    fun upLoading(loading: Boolean) { callback?.upLoading(loading) }
+    private fun isPlayToEnd(): Boolean = durChapterIndex + 1 == simulatedChapterSize && durChapterPos == durAudioSize
+    fun register(context: Context) { activityContext=context; callback=context as CallBack }
+    fun unregister(context: Context) { if (activityContext === context) { activityContext=null; callback=null }; coroutineContext.cancelChildren() }
+    fun registerService(context: Context) { serviceContext=context }
+    fun unregisterService() { serviceContext=null }
+    interface CallBack { fun upLoading(loading:Boolean); fun upLyric(lyric:String?); fun upLyricP(position:Int) }
 }
