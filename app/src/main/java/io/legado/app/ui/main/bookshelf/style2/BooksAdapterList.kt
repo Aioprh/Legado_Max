@@ -8,7 +8,6 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.flexbox.FlexboxLayout
 import io.legado.app.R
-import io.legado.app.constant.Status
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.ItemBookshelfGridGroupBinding
@@ -69,13 +68,14 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
         button.visible()
         button.isEnabled = true
         val isCurrent = AudioPlay.book?.bookUrl == item.bookUrl
-        val isPlaying = isCurrent && AudioPlay.status == Status.PLAY && !AudioPlayService.pause
+        val isPlaying = isCurrent && AudioPlayService.isRun && !AudioPlayService.pause
         button.setImageResource(if (isPlaying) R.drawable.ic_pause_24dp else R.drawable.ic_play_24dp)
         button.contentDescription = if (isPlaying) "暂停" else "播放"
         button.setOnClickListener {
             when {
-                AudioPlay.book?.bookUrl == item.bookUrl && AudioPlay.status == Status.PLAY -> AudioPlay.pause(context)
-                AudioPlay.book?.bookUrl == item.bookUrl && AudioPlay.status == Status.PAUSE -> AudioPlay.resume(context)
+                AudioPlay.book?.bookUrl == item.bookUrl && AudioPlayService.isRun -> {
+                    if (AudioPlayService.pause) AudioPlay.resume(context) else AudioPlay.pause(context)
+                }
                 else -> {
                     AudioPlay.resetData(item)
                     button.setImageResource(R.drawable.ic_pause_24dp)
@@ -90,11 +90,9 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
 
     private fun refreshAudioButtonLater(button: android.widget.ImageButton, delay: Long) {
         button.postDelayed({
-            val parentView = button.parent ?: return@postDelayed
-            val itemView = parentView.parent as? RecyclerView.ViewHolder
-            if (itemView != null) return@postDelayed
-            val recyclerView = parentView.parent as? RecyclerView ?: return@postDelayed
-            val position = recyclerView.getChildAdapterPosition(parentView)
+            val itemView = button.parent ?: return@postDelayed
+            val recyclerView = itemView.parent as? RecyclerView ?: return@postDelayed
+            val position = recyclerView.getChildAdapterPosition(itemView)
             if (position != RecyclerView.NO_POSITION) notifyItemChanged(position)
         }, delay)
     }
