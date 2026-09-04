@@ -18,11 +18,9 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.NavigationBarConfig
 import io.legado.app.help.config.TopBarConfig
 import io.legado.app.lib.theme.ThemeStore
-import io.legado.app.ui.main.MainActivity
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.DevicePerformanceUtils
 import io.legado.app.utils.defaultSharedPreferences
-import io.legado.app.utils.dpToPx
 import java.io.File
 
 /**
@@ -30,7 +28,6 @@ import java.io.File
  *
  * 顶栏导航与底栏共用同一套导航配置，并且共用底栏的材质体系：
  * 实色 / 磨砂 / 液态玻璃、透明度、边框颜色以及自定义图标。
- * 这样切换导航位置后，视觉效果不会出现“底栏有玻璃、顶栏只有一块普通色块”的割裂感。
  */
 class TopNavigationView @JvmOverloads constructor(
     context: Context,
@@ -58,7 +55,6 @@ class TopNavigationView @JvmOverloads constructor(
         elevation = dp(3).toFloat()
 
         glassView.apply {
-            id = R.id.top_navigation_glass_view
             visibility = View.GONE
             isClickable = false
             isFocusable = false
@@ -68,7 +64,6 @@ class TopNavigationView @JvmOverloads constructor(
         addView(glassView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
 
         shellOverlay.apply {
-            id = R.id.top_navigation_shell_overlay
             isClickable = false
             isFocusable = false
         }
@@ -194,10 +189,7 @@ class TopNavigationView @JvmOverloads constructor(
         }
     }
 
-    /**
-     * 直接复用底栏的效果模式和参数思路。
-     * 液态玻璃：实时采样 + 折射；磨砂：更强模糊 + 更低色散；实色：静态背景。
-     */
+    /** 顶栏复用底栏的实色/磨砂/液态玻璃材质。 */
     private fun applyMaterial(config: TopBarConfig.Config) {
         val navConfig = NavigationBarConfig.activeConfig(context, config.isNightMode)
         val baseColor = resolveBaseColor(navConfig)
