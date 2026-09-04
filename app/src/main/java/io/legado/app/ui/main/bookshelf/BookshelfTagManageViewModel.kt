@@ -73,11 +73,12 @@ class BookshelfTagManageViewModel(application: Application) : AndroidViewModel(a
                 }
                 if (configuredChanged) AppConfig.bookshelfGroupTags = configuredMap
 
-                val smartTagItems = SmartTag.ruleInfos.map { rule ->
+                // 管理页直接使用引擎中的完整规则列表，包含持久化自定义规则。
+                val smartTagItems = SmartTag.allRuleInfos(getApplication()).map { rule ->
                     BookshelfTagItemUi(
                         name = rule.name,
                         assignedCount = allBooks.count {
-                            SmartTag.names(it, SmartTag.ruleInfos.size).contains(rule.name)
+                            SmartTag.names(it, getApplication(), Int.MAX_VALUE).contains(rule.name)
                         },
                         visible = SmartTagConfig.isRuleVisible(getApplication(), rule.name)
                     )
