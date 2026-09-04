@@ -57,9 +57,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
-/** 书架界面。 */
 class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.CallBack {
-
     constructor(position: Int, group: BookGroup) : this() {
         val bundle = Bundle()
         bundle.putInt("position", position)
@@ -86,17 +84,14 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     private var onlyUpdateRead = false
     private val bookshelfMargin by lazy { AppConfig.bookshelfMargin }
     private var itemCount = 0
-    /** 当前选中的标签，null 表示不按标签过滤。 */
     private var currentTag: String? = null
     private var smartTagFilterScroll: HorizontalScrollView? = null
     private var smartTagChipGroup: ChipGroup? = null
 
-    private fun createBooksAdapter(): BaseBooksAdapter<*> {
-        return when (AppConfig.bookLayout) {
-            0 -> BooksAdapterList(requireContext(), this, this, viewLifecycleOwner.lifecycle)
-            1 -> BooksAdapterList2(requireContext(), this, this, viewLifecycleOwner.lifecycle)
-            else -> BooksAdapterGrid(requireContext(), this)
-        }
+    private fun createBooksAdapter(): BaseBooksAdapter<*> = when (AppConfig.bookLayout) {
+        0 -> BooksAdapterList(requireContext(), this, this, viewLifecycleOwner.lifecycle)
+        1 -> BooksAdapterList2(requireContext(), this, this, viewLifecycleOwner.lifecycle)
+        else -> BooksAdapterGrid(requireContext(), this)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
@@ -124,23 +119,18 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             isHorizontalScrollBarEnabled = false
             isFillViewport = true
             elevation = 4.dpToPx().toFloat()
-            setBackgroundColor(androidx.core.content.ContextCompat.getColor(context, R.color.background_color))
-            addView(
-                smartTagChipGroup,
-                HorizontalScrollView.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            )
+            setBackgroundColor(androidx.core.content.ContextCompat.getColor(context, R.color.background))
+            addView(smartTagChipGroup, HorizontalScrollView.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ))
         }
         binding.root.addView(
             smartTagFilterScroll,
             android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                gravity = Gravity.TOP
-            }
+            ).apply { gravity = Gravity.TOP }
         )
         smartTagFilterScroll?.visibility = View.GONE
     }
@@ -153,38 +143,32 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             binding.rvBookshelf.updatePadding(top = 0)
             return
         }
-
         val counts = linkedMapOf<String, Int>()
         items.forEach { item ->
             SmartTag.names(item.toMinimalBook(), SmartTag.ruleInfos.size).forEach { tag ->
-                if (SmartTagConfig.isRuleVisible(requireContext(), tag)) {
-                    counts[tag] = (counts[tag] ?: 0) + 1
-                }
+                if (SmartTagConfig.isRuleVisible(requireContext(), tag)) counts[tag] = (counts[tag] ?: 0) + 1
             }
         }
         val tags = counts.entries.sortedWith(
             compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }
         ).take(12)
-
         chipGroup.removeAllViews()
         if (tags.isEmpty()) {
             scroll.visibility = View.GONE
             binding.rvBookshelf.updatePadding(top = 0)
             return
         }
-
-        val allChip = Chip(requireContext()).apply {
+        chipGroup.addView(Chip(requireContext()).apply {
             text = "全部 ${items.size}"
             isCheckable = true
             isChecked = currentTag == null
             setOnClickListener { filterBooksByTag(null) }
-        }
-        chipGroup.addView(allChip)
+        })
         tags.forEach { entry ->
             chipGroup.addView(Chip(requireContext()).apply {
                 text = "${entry.key} ${entry.value}"
                 isCheckable = true
-                isChecked = currentTag.equals(entry.key)
+                isChecked = currentTag == entry.key
                 setOnClickListener { filterBooksByTag(entry.key) }
             })
         }
@@ -236,9 +220,8 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
                         else -> outRect.set(bookshelfMargin, bookshelfMargin, bookshelfMargin, bookshelfMargin)
                     }
                 } else {
-                    if (position == 0 && position == itemCount - 1) {
-                        outRect.set(0, marginFirst, 0, marginFirst)
-                    } else when (position) {
+                    if (position == 0 && position == itemCount - 1) outRect.set(0, marginFirst, 0, marginFirst)
+                    else when (position) {
                         0 -> outRect.set(0, marginFirst, 0, marginNormal)
                         itemCount - 1 -> outRect.set(0, marginNormal, 0, marginFirst)
                         else -> outRect.set(0, marginNormal, 0, marginNormal)
