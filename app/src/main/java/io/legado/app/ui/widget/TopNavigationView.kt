@@ -1,19 +1,17 @@
 package io.legado.app.ui.widget
 
 import android.content.Context
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import io.legado.app.R
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.NavigationBarConfig
 import io.legado.app.help.config.TopBarConfig
 import io.legado.app.lib.theme.ThemeStore
@@ -21,10 +19,10 @@ import io.legado.app.utils.defaultSharedPreferences
 import java.io.File
 
 /**
- * 将底栏的导航能力适配到顶部。
+ * 将底栏导航能力适配到顶栏。
  *
- * 顶栏配置启用 navigationEnabled 后，本控件接管首页/书架/发现/RSS/我的导航，
- * 复用底栏的菜单 ID、页面切换逻辑以及图标资源，同时允许顶栏配置覆盖图标。
+ * 顶栏导航采用底栏相同的五个导航项和图标配置，但使用紧凑的
+ * 图标按钮布局，避免文字与状态栏发生裁切或挤压。
  */
 class TopNavigationView @JvmOverloads constructor(
     context: Context,
@@ -33,9 +31,8 @@ class TopNavigationView @JvmOverloads constructor(
 
     private val density = resources.displayMetrics.density
     private val prefs = context.defaultSharedPreferences
-    private var baseTopPadding = 0
+    private var basePaddingTop = 0
     private var contentBasePaddingTop = 0
-    private var insetsTop = 0
     private var attached = false
 
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
@@ -46,11 +43,14 @@ class TopNavigationView @JvmOverloads constructor(
         orientation = HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(dp(8), 0, dp(8), 0)
-        elevation = dp(2).toFloat()
+        elevation = dp(3).toFloat()
+        clipChildren = false
+        clipToPadding = false
         visibility = View.GONE
+
         ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
-            insetsTop = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            setPadding(dp(8), baseTopPadding + insetsTop, dp(8), 0)
+            val statusBarTop = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            setPadding(dp(8), basePaddingTop + statusBarTop, dp(8), 0)
             post { adjustContentPadding() }
             insets
         }
@@ -59,7 +59,7 @@ class TopNavigationView @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         attached = true
-        baseTopPadding = paddingTop
+        basePaddingTop = paddingTop
         contentBasePaddingTop = findContentContainer()?.paddingTop ?: 0
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
         post { refresh() }
@@ -72,15 +72,16 @@ class TopNavigationView @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
-    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
-        super.onWindowFocusChanged(hasWindowFocus)
-        if (hasWindowFocus && attached) post { refresh() }
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (h != oldh) post { adjustContentPadding() }
     }
 
     private fun refresh() {
-        val night = isNightMode()
+        val night = AppConfig.isNightTheme
         val entry = TopBarConfig.currentEntry(context, night)
         val config = entry.config
+
         if (!config.navigationEnabled) {
             visibility = View.GONE
             restoreMainNavigation()
@@ -96,6 +97,7 @@ class TopNavigationView @JvmOverloads constructor(
 
     private fun buildItems(entry: TopBarConfig.Entry) {
         removeAllViews()
+
         val config = entry.config
         val bottomConfig = NavigationBarConfig.activeConfig(context, config.isNightMode)
         val mergedIcons = bottomConfig.icons.toMutableMap()
@@ -105,7 +107,8 @@ class TopNavigationView @JvmOverloads constructor(
             else File(entry.localDir ?: File("."), path).absolutePath
         }
         val previewConfig = bottomConfig.copy(icons = mergedIcons)
-        val selectedId = findBottomNavigation()?.selectedItemId ?: NavigationBarConfig.items.first().menuId
+        val selectedId = findBottomNavigation()?.selectedItemId
+            ?: NavigationBarConfig.items.first().menuId
 
         NavigationBarConfig.items.forEach { item ->
             addView(createItem(previewConfig, item, item.menuId == selectedId))
@@ -118,57 +121,64 @@ class TopNavigationView @JvmOverloads constructor(
         item: NavigationBarConfig.NavItem,
         selected: Boolean
     ): View {
-        val cell = LinearLayout(context).apply {
-            orientation = VERTICAL
-            gravity = Gravity.CENTER
+        return FrameItem(context).apply {
+            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
             isClickable = true
             isFocusable = true
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
+            foreground = null
             background = if (selected) selectedBackground() else null
+
+            val icon = ImageView(context).apply {
+                layoutParams = LayoutParams(dp(30), dp(30))
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+                setImageDrawable(
+                    NavigationBarConfig.previewDrawable(
+                        context,
+                        config,
+                        item,
+                        selected
+                    )
+                )
+                contentDescription = context.getString(item.titleRes)
+            }
+            addView(icon)
+
             setOnClickListener {
                 findBottomNavigation()?.selectedItemId = item.menuId
                 post { refresh() }
             }
         }
-        val icon = ImageView(context).apply {
-            layoutParams = LayoutParams(dp(26), dp(26))
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-            setImageDrawable(NavigationBarConfig.previewDrawable(context, config, item, selected))
-            contentDescription = context.getString(item.titleRes)
-        }
-        val title = TextView(context).apply {
-            layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT).apply {
-                topMargin = dp(1)
-            }
-            text = context.getString(item.titleRes)
-            textSize = 10f
+    }
+
+    private class FrameItem(context: Context) : androidx.appcompat.widget.AppCompatFrameLayout(context) {
+        init {
             gravity = Gravity.CENTER
-            setTextColor(
-                if (selected) ThemeStore.accentColor(context)
-                else ContextCompat.getColor(context, R.color.secondaryText)
-            )
-            maxLines = 1
+            setPadding(6, 0, 6, 0)
         }
-        cell.addView(icon)
-        cell.addView(title)
-        return cell
     }
 
     private fun createBackground(config: TopBarConfig.Config): GradientDrawable {
         val base = TopBarConfig.resolveBackgroundColor(config)
-        val alpha = if (config.style == TopBarConfig.STYLE_REGULAR) config.tagBarAlpha else 92
+        val alpha = if (config.style == TopBarConfig.STYLE_REGULAR) {
+            config.tagBarAlpha.coerceIn(0, 100)
+        } else {
+            92
+        }
         return GradientDrawable().apply {
             setColor(TopBarConfig.withOpacity(base, alpha))
-            cornerRadius = dp(14).toFloat() * TopBarConfig.resolveCornerScale(config).coerceAtLeast(0.5f)
+            cornerRadius = dp(16).toFloat() * TopBarConfig.resolveCornerScale(config).coerceIn(0.5f, 3f)
         }
     }
 
     private fun selectedBackground(): GradientDrawable {
         return GradientDrawable().apply {
-            setColor(ThemeStore.accentColor(context) and 0x20FFFFFF)
-            cornerRadius = dp(12).toFloat()
+            setColor(withAlpha(ThemeStore.accentColor(context), 32))
+            cornerRadius = dp(14).toFloat()
         }
+    }
+
+    private fun withAlpha(color: Int, alpha: Int): Int {
+        return (color and 0x00FFFFFF) or ((alpha.coerceIn(0, 255)) shl 24)
     }
 
     private fun hideBottomNavigation() {
@@ -190,8 +200,15 @@ class TopNavigationView @JvmOverloads constructor(
     private fun adjustContentPadding() {
         if (visibility != View.VISIBLE) return
         val container = findContentContainer() ?: return
-        val top = contentBasePaddingTop + height
-        container.setPadding(container.paddingLeft, top, container.paddingRight, container.paddingBottom)
+        val requiredTop = contentBasePaddingTop + height
+        if (container.paddingTop != requiredTop) {
+            container.setPadding(
+                container.paddingLeft,
+                requiredTop,
+                container.paddingRight,
+                container.paddingBottom
+            )
+        }
     }
 
     private fun findBottomNavigation(): com.google.android.material.bottomnavigation.BottomNavigationView? {
@@ -205,11 +222,6 @@ class TopNavigationView @JvmOverloads constructor(
     private fun findContentContainer(): ViewGroup? {
         return rootView.findViewById(R.id.content_container)
     }
-
-    private fun isNightMode(): Boolean =
-        runCatching { io.legado.app.help.config.AppConfig.isNightTheme }.getOrDefault(false)
-
-    private fun selectedBackgroundColor(): Int = Color.argb(32, 255, 255, 255)
 
     private fun dp(value: Int): Int = (value * density).toInt()
 }

@@ -55,7 +55,7 @@
     <io.legado.app.ui.widget.TopNavigationView
         android:id="@+id/top_navigation_view"
         android:layout_width="match_parent"
-        android:layout_height="64dp"
+        android:layout_height="72dp"
         android:layout_gravity="top"
         android:clipChildren="false"
         android:clipToPadding="false"
