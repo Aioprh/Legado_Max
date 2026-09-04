@@ -1,6 +1,7 @@
 package io.legado.app.ui.widget
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
@@ -22,12 +23,9 @@ class GlassTabBarView @JvmOverloads constructor(
     private var submitSelecting = false
 
     init {
-        background = GradientDrawable().apply {
-            cornerRadius = 24.dpToPx().toFloat()
-            setColor(Color.argb(34, 255, 255, 255))
-            setStroke(1.dpToPx(), Color.argb(46, 255, 255, 255))
-        }
+        background = createGlassSurface()
         elevation = 3.dpToPx().toFloat()
+        translationZ = 1.dpToPx().toFloat()
         tabRippleColor = android.content.res.ColorStateList.valueOf(Color.TRANSPARENT)
         tabMode = MODE_SCROLLABLE
         isTabIndicatorFullWidth = false
@@ -61,7 +59,6 @@ class GlassTabBarView @JvmOverloads constructor(
         names.forEachIndexed { index, name ->
             val tab = newTab().setText(name)
             addTab(tab)
-            // TabLayout 自带点击选中，这里只补充长按回调
             tab.view?.setOnLongClickListener { onTabLongClick?.invoke(index) ?: false }
         }
         post { styleTabs() }
@@ -77,12 +74,32 @@ class GlassTabBarView @JvmOverloads constructor(
         setMeasuredDimension(measuredWidth, measuredHeight.coerceAtLeast(44.dpToPx()))
     }
 
+    private fun createGlassSurface(): GradientDrawable {
+        val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        return GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            if (isNight) {
+                intArrayOf(Color.argb(52, 255, 255, 255), Color.argb(30, 255, 255, 255))
+            } else {
+                intArrayOf(Color.argb(128, 255, 255, 255), Color.argb(78, 255, 255, 255))
+            }
+        ).apply {
+            cornerRadius = 22.dpToPx().toFloat()
+            setStroke(1.dpToPx(), if (isNight) Color.argb(70, 255, 255, 255) else Color.argb(105, 255, 255, 255))
+        }
+    }
+
     private fun createGlassIndicator(): GradientDrawable {
         val accent = ThemeStore.accentColor(context)
-        return GradientDrawable().apply {
+        return GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                Color.argb(92, accent.red(), accent.green(), accent.blue()),
+                Color.argb(62, accent.red(), accent.green(), accent.blue())
+            )
+        ).apply {
             cornerRadius = 20.dpToPx().toFloat()
-            setColor(Color.argb(70, accent.red(), accent.green(), accent.blue()))
-            setStroke(1.dpToPx(), Color.argb(105, 255, 255, 255))
+            setStroke(1.dpToPx(), Color.argb(125, 255, 255, 255))
         }
     }
 
@@ -91,7 +108,7 @@ class GlassTabBarView @JvmOverloads constructor(
             getTabAt(i)?.view?.let { view ->
                 view.minimumHeight = 38.dpToPx()
                 view.setPadding(15.dpToPx(), 0, 15.dpToPx(), 0)
-                view.alpha = if (view.isSelected) 1f else 0.72f
+                view.alpha = if (view.isSelected) 1f else 0.70f
                 view.elevation = if (view.isSelected) 2.dpToPx().toFloat() else 0f
             }
         }
