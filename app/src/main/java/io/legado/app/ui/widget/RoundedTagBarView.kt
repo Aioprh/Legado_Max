@@ -22,9 +22,7 @@ import io.legado.app.lib.theme.uiTypeface
 
 /**
  * 书架分组标签导航条，在分组样式为标签时显示于分组栏下方。
- *
- * 展示当前分组下的二级标签列表，支持选中高亮、点击切换、长按操作。
- * 视觉采用轻量液态玻璃材质：半透明底、细高光描边、胶囊标签和轻微悬浮阴影。
+ * 视觉与顶部 Tab 共用液态玻璃体系：半透明渐变、细高光描边、胶囊标签和轻微悬浮层次。
  */
 class RoundedTagBarView @JvmOverloads constructor(
     context: Context,
@@ -33,10 +31,7 @@ class RoundedTagBarView @JvmOverloads constructor(
 
     enum class DisplayMode { CHIP, LIGHT, TEXT }
 
-    data class Item(
-        val text: CharSequence,
-        val alpha: Float = 1f
-    )
+    data class Item(val text: CharSequence, val alpha: Float = 1f)
 
     private val layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false)
     private val adapter = TagAdapter()
@@ -69,10 +64,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_horizontal)
         val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_vertical)
         setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
-        addView(
-            recyclerView,
-            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-        )
+        addView(recyclerView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
     override fun onAttachedToWindow() {
@@ -82,7 +74,7 @@ class RoundedTagBarView @JvmOverloads constructor(
 
     /**
      * 应用二级标签栏液态玻璃样式。
-     * 采用静态磨砂模拟，避免额外的实时模糊采样影响书架滚动性能。
+     * 与顶部 Tab 使用同一套透明度、渐变和描边语言，避免两个玻璃层出现明显色块断层。
      */
     fun applyTopBarStyle(force: Boolean = false) {
         val signature = "${TopBarConfig.currentSignature(AppConfig.isNightTheme)}|$displayMode|$backgroundOverrideColor"
@@ -91,19 +83,26 @@ class RoundedTagBarView @JvmOverloads constructor(
 
         val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val baseSurface = backgroundOverrideColor ?: if (isNight) 0x661B1B1D else 0xB8FFFFFF.toInt()
-        val glassSurface = ColorUtilsCompat.withAlpha(baseSurface, if (isNight) 0.92f else 0.86f)
-        val glassStroke = if (isNight) 0x55FFFFFF else 0x99FFFFFF.toInt()
+        val glassSurface = ColorUtilsCompat.withAlpha(baseSurface, if (isNight) 0.88f else 0.82f)
+        val glassStroke = if (isNight) 0x4DFFFFFF else 0x80FFFFFF.toInt()
 
-        background = GradientDrawable().apply {
+        background = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            if (isNight) {
+                intArrayOf(Color.argb(48, 255, 255, 255), Color.argb(28, 255, 255, 255))
+            } else {
+                intArrayOf(Color.argb(108, 255, 255, 255), Color.argb(66, 255, 255, 255))
+            }
+        ).apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 20.dp.toFloat()
+            // 轻微混入主题底色，保证深浅主题下不会像一块独立白板。
             setColor(glassSurface)
             setStroke(1.dp, glassStroke)
         }
         elevation = 3.dp.toFloat()
         translationZ = 1.dp.toFloat()
 
-        // 玻璃栏内部留出空间，让胶囊标签看起来像漂浮在材质表面。
         val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_horizontal)
         val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_vertical)
         setPadding(horizontalPadding, maxOf(verticalPadding, 4.dp), horizontalPadding, maxOf(verticalPadding, 4.dp))
@@ -111,10 +110,10 @@ class RoundedTagBarView @JvmOverloads constructor(
         adapter.normalTextColor = if (isNight) Color.argb(225, 255, 255, 255) else context.primaryTextColor
         adapter.selectedTextColor = Color.WHITE
         adapter.selectedBackgroundColor = context.accentColor
-        adapter.glassNormalFill = if (isNight) 0x331F1F22 else 0x70FFFFFF
-        adapter.glassNormalStroke = if (isNight) 0x55FFFFFF else 0x8CFFFFFF.toInt()
-        adapter.glassSelectedFill = ColorUtilsCompat.withAlpha(context.accentColor, 0.82f)
-        adapter.glassSelectedStroke = 0x99FFFFFF.toInt()
+        adapter.glassNormalFill = if (isNight) 0x2EFFFFFF else 0x58FFFFFF
+        adapter.glassNormalStroke = if (isNight) 0x4DFFFFFF else 0x75FFFFFF
+        adapter.glassSelectedFill = ColorUtilsCompat.withAlpha(context.accentColor, 0.80f)
+        adapter.glassSelectedStroke = 0xA6FFFFFF.toInt()
         adapter.notifyDataSetChanged()
     }
 
@@ -147,17 +146,13 @@ class RoundedTagBarView @JvmOverloads constructor(
         this.items = items.toList()
         this.selectedIndex = normalizeIndex(selectedIndex)
         adapter.notifyDataSetChanged()
-        if (this.selectedIndex != RecyclerView.NO_POSITION) {
-            scrollToIndex(this.selectedIndex, smooth = false)
-        }
+        if (this.selectedIndex != RecyclerView.NO_POSITION) scrollToIndex(this.selectedIndex, smooth = false)
     }
 
     fun setSelectedIndex(index: Int, smooth: Boolean = true) {
         val newIndex = normalizeIndex(index)
         if (selectedIndex == newIndex) {
-            if (newIndex != RecyclerView.NO_POSITION) {
-                scrollToIndex(newIndex, smooth)
-            }
+            if (newIndex != RecyclerView.NO_POSITION) scrollToIndex(newIndex, smooth)
             return
         }
         val oldIndex = selectedIndex
@@ -171,16 +166,11 @@ class RoundedTagBarView @JvmOverloads constructor(
 
     fun getSelectedIndex(): Int = selectedIndex
 
-    fun setOnTagClickListener(listener: ((Int) -> Unit)?) {
-        onTagClick = listener
-    }
+    fun setOnTagClickListener(listener: ((Int) -> Unit)?) { onTagClick = listener }
 
-    fun setOnTagLongClickListener(listener: ((Int) -> Boolean)?) {
-        onTagLongClick = listener
-    }
+    fun setOnTagLongClickListener(listener: ((Int) -> Boolean)?) { onTagLongClick = listener }
 
-    private fun normalizeIndex(index: Int): Int =
-        if (index in items.indices) index else RecyclerView.NO_POSITION
+    private fun normalizeIndex(index: Int): Int = if (index in items.indices) index else RecyclerView.NO_POSITION
 
     private fun scrollToIndex(index: Int, smooth: Boolean) {
         recyclerView.post {
@@ -216,8 +206,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         var glassSelectedStroke: Int = 0xAAFFFFFF.toInt()
 
         override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): TagViewHolder {
-            val textView = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_bookshelf_group_tag, parent, false) as TextView
+            val textView = LayoutInflater.from(parent.context).inflate(R.layout.item_bookshelf_group_tag, parent, false) as TextView
             textView.gravity = Gravity.CENTER
             textView.includeFontPadding = false
             textView.minHeight = 32.dp
@@ -229,19 +218,26 @@ class RoundedTagBarView @JvmOverloads constructor(
             val textView = holder.textView
             val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_item_padding_horizontal)
             textView.setPadding(horizontalPadding + 2.dp, 0, horizontalPadding + 2.dp, 0)
-            textView.setTextColor(
-                ColorStateList.valueOf(if (position == selectedIndex) selectedTextColor else normalTextColor)
-            )
+            textView.setTextColor(ColorStateList.valueOf(if (position == selectedIndex) selectedTextColor else normalTextColor))
             textView.text = item.text
             textView.typeface = textView.context.uiTypeface()
             textView.alpha = item.alpha
             textView.isSelected = position == selectedIndex
 
             val selected = position == selectedIndex && selectedBackgroundVisible
-            textView.background = GradientDrawable().apply {
+            textView.background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                if (selected) {
+                    intArrayOf(
+                        ColorUtilsCompat.withAlpha(glassSelectedFill, 0.96f),
+                        ColorUtilsCompat.withAlpha(glassSelectedFill, 0.72f)
+                    )
+                } else {
+                    intArrayOf(glassNormalFill, ColorUtilsCompat.withAlpha(glassNormalFill, 0.62f))
+                }
+            ).apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 16.dp.toFloat()
-                setColor(if (selected) glassSelectedFill else glassNormalFill)
                 setStroke(1.dp, if (selected) glassSelectedStroke else glassNormalStroke)
             }
             textView.elevation = if (selected) 2.dp.toFloat() else 0f
@@ -252,8 +248,7 @@ class RoundedTagBarView @JvmOverloads constructor(
             }
             textView.setOnLongClickListener {
                 val bindingPosition = holder.bindingAdapterPosition
-                if (bindingPosition == RecyclerView.NO_POSITION) false
-                else onTagLongClick?.invoke(bindingPosition) ?: false
+                if (bindingPosition == RecyclerView.NO_POSITION) false else onTagLongClick?.invoke(bindingPosition) ?: false
             }
         }
 
