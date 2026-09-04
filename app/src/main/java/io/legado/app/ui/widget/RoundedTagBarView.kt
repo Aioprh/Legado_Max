@@ -1,13 +1,21 @@
 package io.legado.app.ui.widget
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,7 +30,7 @@ import io.legado.app.lib.theme.uiTypeface
 
 /**
  * 书架分组标签导航条，在分组样式为标签时显示于分组栏下方。
- * 视觉与顶部 Tab 共用液态玻璃体系：半透明渐变、细高光描边、胶囊标签和轻微悬浮层次。
+ * 视觉与顶部 Tab 共用液态玻璃体系，并在选中标签切换时显示流动高光折射。
  */
 class RoundedTagBarView @JvmOverloads constructor(
     context: Context,
@@ -30,7 +38,6 @@ class RoundedTagBarView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs) {
 
     enum class DisplayMode { CHIP, LIGHT, TEXT }
-
     data class Item(val text: CharSequence, val alpha: Float = 1f)
 
     private val layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false)
@@ -57,6 +64,9 @@ class RoundedTagBarView @JvmOverloads constructor(
     private var selectedBackgroundVisible = true
     private var displayMode = DisplayMode.CHIP
     private var backgroundOverrideColor: Int? = null
+    private var highlightProgress = -0.35f
+    private var highlightAnimator: ValueAnimator? = null
+    private val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     init {
         clipToOutline = true
@@ -72,10 +82,17 @@ class RoundedTagBarView @JvmOverloads constructor(
         applyTopBarStyle()
     }
 
-    /**
-     * 应用二级标签栏液态玻璃样式。
-     * 与顶部 Tab 使用同一套透明度、渐变和描边语言，避免两个玻璃层出现明显色块断层。
-     */
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+        drawGlassHighlight(canvas)
+    }
+
+    override fun onDetachedFromWindow() {
+        highlightAnimator?.cancel()
+        highlightAnimator = null
+        super.onDetachedFromWindow()
+    }
+
     fun applyTopBarStyle(force: Boolean = false) {
         val signature = "${TopBarConfig.currentSignature(AppConfig.isNightTheme)}|$displayMode|$backgroundOverrideColor"
         if (!force && styleSignature == signature) return
@@ -85,11 +102,8 @@ class RoundedTagBarView @JvmOverloads constructor(
         val glassStroke = if (isNight) 0x4DFFFFFF else 0x80FFFFFF.toInt()
         background = GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
-            if (isNight) {
-                intArrayOf(Color.argb(48, 255, 255, 255), Color.argb(28, 255, 255, 255))
-            } else {
-                intArrayOf(Color.argb(108, 255, 255, 255), Color.argb(66, 255, 255, 255))
-            }
+            if (isNight) intArrayOf(Color.argb(48, 255, 255, 255), Color.argb(28, 255, 255, 255, 255))
+            else intArrayOf(Color.argb(108, 255, 255, 255), Color.argb(66, 255, 255, 255))
         ).apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 20.dp.toFloat()
@@ -156,6 +170,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         if (newIndex != RecyclerView.NO_POSITION) {
             adapter.notifyItemChanged(newIndex)
             scrollToIndex(newIndex, smooth)
+            animateGlassHighlight()
         }
     }
 
@@ -189,6 +204,45 @@ class RoundedTagBarView @JvmOverloads constructor(
         if (smooth) recyclerView.smoothScrollBy(dx, 0) else recyclerView.scrollBy(dx, 0)
     }
 
+    private fun animateGlassHighlight() {
+        highlightAnimator?.cancel()
+        highlightProgress = -0.35f
+        highlightAnimator = ValueAnimator.ofFloat(-0.35f, 1.35f).apply {
+            duration = 520L
+            interpolator = DecelerateInterpolator(1.6f)
+            addUpdateListener {
+                highlightProgress = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    private fun drawGlassHighlight(canvas: Canvas) {
+        val selectedView = recyclerView.findViewHolderForAdapterPosition(selectedIndex)?.itemView ?: return
+        if (selectedView.width <= 0 || selectedView.height <= 0) return
+        val location = IntArray(2)
+        selectedView.getLocationInWindow(location)
+        val own = IntArray(2)
+        getLocationInWindow(own)
+        val left = (location[0] - own[0]).toFloat()
+        val top = (location[1] - own[1]).toFloat()
+        val right = left + selectedView.width
+        val bottom = top + selectedView.height
+        val center = left + (right - left) * highlightProgress
+        val spread = (right - left).coerceAtLeast(1f) * 0.38f
+        highlightPaint.shader = LinearGradient(
+            center - spread, 0f, center + spread, 0f,
+            intArrayOf(Color.TRANSPARENT, Color.argb(78, 255, 255, 255), Color.TRANSPARENT),
+            floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP
+        )
+        canvas.save()
+        canvas.clipRect(left, top, right, bottom)
+        canvas.drawRoundRect(left + 1.dp, top + 1.dp, right - 1.dp, bottom - 1.dp, 15.dp.toFloat(), 15.dp.toFloat(), highlightPaint)
+        canvas.restore()
+        highlightPaint.shader = null
+    }
+
     private inner class TagAdapter : RecyclerView.Adapter<TagViewHolder>() {
         var selectedBackgroundColor: Int = context.primaryColor
         var selectedTextColor: Int = context.accentColor
@@ -198,7 +252,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         var glassSelectedFill: Int = context.accentColor
         var glassSelectedStroke: Int = 0xAAFFFFFF.toInt()
 
-        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): TagViewHolder {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TagViewHolder {
             val textView = LayoutInflater.from(parent.context).inflate(R.layout.item_bookshelf_group_tag, parent, false) as TextView
             textView.gravity = Gravity.CENTER
             textView.includeFontPadding = false
@@ -216,28 +270,23 @@ class RoundedTagBarView @JvmOverloads constructor(
             textView.typeface = textView.context.uiTypeface()
             textView.alpha = item.alpha
             textView.isSelected = position == selectedIndex
-
             val selected = position == selectedIndex && selectedBackgroundVisible
             textView.background = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                if (selected) {
-                    intArrayOf(
-                        ColorUtilsCompat.withAlpha(glassSelectedFill, 0.96f),
-                        ColorUtilsCompat.withAlpha(glassSelectedFill, 0.72f)
-                    )
-                } else {
-                    intArrayOf(glassNormalFill, ColorUtilsCompat.withAlpha(glassNormalFill, 0.62f))
-                }
+                if (selected) intArrayOf(ColorUtilsCompat.withAlpha(glassSelectedFill, 0.96f), ColorUtilsCompat.withAlpha(glassSelectedFill, 0.72f))
+                else intArrayOf(glassNormalFill, ColorUtilsCompat.withAlpha(glassNormalFill, 0.62f))
             ).apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 16.dp.toFloat()
                 setStroke(1.dp, if (selected) glassSelectedStroke else glassNormalStroke)
             }
             textView.elevation = if (selected) 2.dp.toFloat() else 0f
-
             textView.setOnClickListener {
                 val bindingPosition = holder.bindingAdapterPosition
-                if (bindingPosition != RecyclerView.NO_POSITION) onTagClick?.invoke(bindingPosition)
+                if (bindingPosition != RecyclerView.NO_POSITION) {
+                    onTagClick?.invoke(bindingPosition)
+                    setSelectedIndex(bindingPosition, smooth = true)
+                }
             }
             textView.setOnLongClickListener {
                 val bindingPosition = holder.bindingAdapterPosition
@@ -252,7 +301,6 @@ class RoundedTagBarView @JvmOverloads constructor(
     private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
 
     private object ColorUtilsCompat {
-        fun withAlpha(color: Int, alpha: Float): Int =
-            Color.argb((Color.alpha(color) * alpha).toInt().coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
+        fun withAlpha(color: Int, alpha: Float): Int = Color.argb((Color.alpha(color) * alpha).toInt().coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
     }
 }
