@@ -58,18 +58,10 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
     }
 
     private val diffItemCallback = object : DiffUtil.ItemCallback<Any>() {
-
         override fun areItemsTheSame(oldItem: Any, newItem: Any): Boolean {
             return when {
-                oldItem is Book && newItem is Book -> {
-                    oldItem.name == newItem.name
-                            && oldItem.author == newItem.author
-                }
-
-                oldItem is BookGroup && newItem is BookGroup -> {
-                    oldItem.groupId == newItem.groupId
-                }
-
+                oldItem is Book && newItem is Book -> oldItem.name == newItem.name && oldItem.author == newItem.author
+                oldItem is BookGroup && newItem is BookGroup -> oldItem.groupId == newItem.groupId
                 else -> false
             }
         }
@@ -89,14 +81,12 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
                             oldItem.durChapterIndex == newItem.durChapterIndex &&
                             oldItem.readConfig == newItem.readConfig
                 }
-
                 oldItem is BookGroup && newItem is BookGroup -> {
                     oldItem.groupName == newItem.groupName &&
                             oldItem.cover == newItem.cover &&
                             oldItem.enableRefresh == newItem.enableRefresh &&
                             oldItem.onlyUpdateRead == newItem.onlyUpdateRead
                 }
-
                 else -> false
             }
         }
@@ -119,7 +109,6 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
                         || oldItem.readConfig != newItem.readConfig
                     ) bundle.putBoolean("refresh", true)
                 }
-
                 oldItem is BookGroup && newItem is BookGroup -> {
                     if (oldItem.groupName != newItem.groupName) bundle.putString("groupName", newItem.groupName)
                     if (oldItem.cover != newItem.cover) bundle.putString("cover", newItem.cover)
@@ -145,9 +134,7 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
     }
 
     fun updateItems(groupId: Long) {
-        currentGroupId?.let {
-            layoutStates[it] = layoutManager?.onSaveInstanceState()
-        }
+        currentGroupId?.let { layoutStates[it] = layoutManager?.onSaveInstanceState() }
         currentGroupId = groupId
         asyncListDiffer.submitList(callBack.getItems())
     }
@@ -164,9 +151,7 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
     }
 
     fun getItems() = asyncListDiffer.currentList
-
     fun getItem(position: Int) = getItems().getOrNull(position)
-
     override fun getItemCount(): Int = getItems().size
 
     override fun getItemViewType(position: Int): Int {
@@ -176,22 +161,19 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
 
     final override fun onBindViewHolder(holder: VH, position: Int) {}
 
-    /**
-     * 为音频书架项安装独立的播放/暂停按钮。
-     * 按钮位于卡片右侧中部，不影响整行点击打开书籍的行为。
-     */
+    /** 音频书架项右侧的播放/暂停按钮。 */
     private fun bindAudioPlayButton(view: View, position: Int) {
         val book = getItem(position) as? Book
         val isAudioBook = book != null && (book.type and BookType.audio) != 0
         val root = view as? ViewGroup ?: return
-        val button = root.findViewWithTag<AppCompatImageButton>(AUDIO_BUTTON_TAG)
+        val existing = root.findViewWithTag<AppCompatImageButton>(AUDIO_BUTTON_TAG)
 
-        if (!isAudioBook) {
-            button?.visibility = View.GONE
+        if (!isAudioBook || book == null) {
+            existing?.visibility = View.GONE
             return
         }
 
-        val playButton = button ?: AppCompatImageButton(context).apply {
+        val playButton = existing ?: AppCompatImageButton(context).apply {
             tag = AUDIO_BUTTON_TAG
             contentDescription = "播放或暂停音频"
             isClickable = true
@@ -202,23 +184,23 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
             context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, selectable, true)
             if (selectable.resourceId != 0) setBackgroundResource(selectable.resourceId)
             root.addView(this, createAudioButtonLayoutParams(root))
-            setOnClickListener {
-                val current = AudioPlay.book?.bookUrl == book?.bookUrl
-                if (book == null) return@setOnClickListener
-                if (current && AudioPlayService.isRun) {
-                    if (AudioPlayService.pause || AudioPlay.status != Status.PLAY) {
-                        AudioPlay.resume(context)
-                    } else {
-                        AudioPlay.pause(context)
-                    }
-                } else {
-                    AudioPlay.resetData(book)
-                    AudioPlay.loadOrUpPlayUrl()
-                }
-                postDelayed({ refreshVisibleAudioButtons(root.parent as? RecyclerView) }, 220L)
-            }
         }
 
+        // 每次绑定都重新设置监听器，避免 RecyclerView 回收复用后仍然操作旧书籍。
+        playButton.setOnClickListener {
+            val current = AudioPlay.book?.bookUrl == book.bookUrl
+            if (current && AudioPlayService.isRun) {
+                if (AudioPlayService.pause || AudioPlay.status != Status.PLAY) {
+                    AudioPlay.resume(context)
+                } else {
+                    AudioPlay.pause(context)
+                }
+            } else {
+                AudioPlay.resetData(book)
+                AudioPlay.loadOrUpPlayUrl()
+            }
+            playButton.postDelayed({ refreshVisibleAudioButtons(root.parent as? RecyclerView) }, 220L)
+        }
         playButton.visibility = View.VISIBLE
         updateAudioPlayButtonIcon(playButton, book)
     }
@@ -240,7 +222,7 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
                 AudioPlay.status == Status.PLAY &&
                 !AudioPlayService.pause
         button.setImageResource(if (playing) R.drawable.ic_pause_24dp else R.drawable.ic_play_24dp)
-        ContextCompat.getColor(context, R.color.tv_text_summary).let { button.setColorFilter(it) }
+        button.setColorFilter(ContextCompat.getColor(context, R.color.tv_text_summary))
     }
 
     private fun refreshVisibleAudioButtons(recyclerView: RecyclerView?) {
@@ -258,13 +240,9 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
         }
     }
 
-    /**
-     * 方案E：回收 ViewHolder 时取消封面图片加载
-     */
     override fun onViewRecycled(holder: VH) {
         super.onViewRecycled(holder)
-        holder.itemView.findViewById<io.legado.app.ui.widget.image.CoverImageView?>(R.id.iv_cover)
-            ?.cancelLoad()
+        holder.itemView.findViewById<io.legado.app.ui.widget.image.CoverImageView?>(R.id.iv_cover)?.cancelLoad()
     }
 
     interface CallBack {
