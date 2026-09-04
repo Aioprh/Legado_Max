@@ -51,8 +51,8 @@ class GlassCoverImageView @JvmOverloads constructor(
         }
     }
 
-    override fun dispatchDraw(canvas: Canvas) {
-        super.dispatchDraw(canvas)
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
         if (reflectionAnimator?.isRunning == true || isPressed || isFocused) {
             drawReflection(canvas)
         }
