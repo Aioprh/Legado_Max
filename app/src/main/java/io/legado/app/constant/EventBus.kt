@@ -49,7 +49,7 @@ object EventBus {
     const val AUDIO_ERROR = "audioError"
 
     const val VIDEO_SUB_TITLE = "VideoSubTitle"
-    const val UP_VIDEO_INFO = "UP_VIDEO_INFO"
+    const val UP_VIDEO_INFO = "upVideoInfo"
     const val VIDEO_CONFIG_CHANGED = "videoConfigChanged"
     const val BATTERY_CHANGED = "batteryChanged"
     const val TIME_CHANGED = "timeChanged"
@@ -57,9 +57,9 @@ object EventBus {
     const val UP_DOWNLOAD_STATE = "upDownloadState"
     const val SAVE_CONTENT = "saveContent"
     const val EXPORT_BOOK = "exportBook"
-    const val CHECK_SOURCE = "checkSource"
-    const val CHECK_SOURCE_RESULT = "checkSourceResult"
-    const val CHECK_SOURCE_DONE = "checkSourceDone"
-    const val SEARCH_RESULT = "searchResult"
+    const val CHECK_SOURCE = "CHECK_SOURCE"
+    const val CHECK_SOURCE_RESULT = "CHECK_SOURCE_RESULT"
+    const val CHECK_SOURCE_DONE = "CHECK_SOURCE_DONE"
+    const val SEARCH_RESULT = "SEARCH_RESULT"
     const val COVER_HTML_TEMPLATE_CHANGED = "coverHtmlTemplateChanged"
 }
