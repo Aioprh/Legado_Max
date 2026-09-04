@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<io.legado.app.ui.widget.GlassBookCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/cv_content"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="4dp"
-    android:background="@drawable/card_border_background"
     android:clickable="true"
     android:focusable="true"
     android:padding="8dp"
@@ -25,7 +24,6 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="UnusedAttribute" />
 
-    <!-- 音频书籍专用播放/暂停按钮；普通书籍保持隐藏 -->
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/iv_audio_play"
         android:layout_width="42dp"
@@ -49,7 +47,6 @@
         app:layout_constraintBottom_toBottomOf="@+id/tv_name"
         app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
         app:layout_constraintTop_toTopOf="@+id/tv_name">
-
         <io.legado.app.ui.widget.text.BadgeView
             android:id="@+id/bv_unread"
             android:layout_width="wrap_content"
@@ -59,7 +56,6 @@
             android:includeFontPadding="false"
             android:scrollbars="none"
             tools:ignore="RtlHardcoded" />
-
         <io.legado.app.ui.widget.anima.RotateLoading
             android:id="@+id/rl_loading"
             android:layout_width="26dp"
@@ -86,7 +82,7 @@
         app:layout_constraintRight_toLeftOf="@id/fl_has_new"
         app:layout_constraintTop_toTopOf="@+id/iv_cover"
         tools:ignore="RtlHardcoded,RtlSymmetry"
-        tools:text="@string/book_name"/>
+        tools:text="@string/book_name" />
 
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/iv_author"
@@ -137,7 +133,7 @@
         app:layout_constraintBaseline_toBaselineOf="@+id/tv_author"
         app:layout_constraintBottom_toTopOf="@+id/tv_read"
         app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintLeft_toRightOf="@+id/tv_author"
+        app:layout_constraintLeft_toRightOf="@id/tv_author"
         app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
         app:layout_constraintTop_toBottomOf="@+id/tv_name"
         tools:ignore="RtlSymmetry,TextContrastCheck" />
@@ -245,4 +241,4 @@
         app:layout_constraintVertical_bias="0.0"
         tools:layout_editor_absoluteX="0dp" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</io.legado.app.ui.widget.GlassBookCardView>
