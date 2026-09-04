@@ -26,6 +26,7 @@ import io.legado.app.databinding.FragmentBookshelf1Binding
 import io.legado.app.help.book.BookTagHelper
 import io.legado.app.help.book.BookTagManagement
 import io.legado.app.help.config.AppConfig
+import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.book.group.GroupEditDialog
@@ -117,6 +118,12 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
 
             override fun onPageScrollStateChanged(state: Int) = Unit
         })
+
+        binding.refreshLayoutBookshelf.setColorSchemeColors(accentColor)
+        binding.refreshLayoutBookshelf.setOnRefreshListener {
+            binding.refreshLayoutBookshelf.isRefreshing = false
+            fragmentMap.values.forEach { it.performRefresh() }
+        }
 
         if (AppConfig.dropdownSelectGroup) {
             val groupSelectorView = LayoutInflater.from(requireContext())

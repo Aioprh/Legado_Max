@@ -84,7 +84,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     var bookSort = 0
         private set
     private var upLastUpdateTimeJob: Job? = null
-    private var enableRefresh = true
     private var onlyUpdateRead = false
     private val bookshelfMargin by lazy { AppConfig.bookshelfMargin }
     private var itemCount = 0
@@ -103,13 +102,20 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             position = it.getInt("position", 0)
             groupId = it.getLong("groupId", -1)
             bookSort = it.getInt("bookSort", 0)
-            enableRefresh = it.getBoolean("enableRefresh", true)
             onlyUpdateRead = it.getBoolean("onlyUpdateRead", false)
-            binding.refreshLayout.isEnabled = enableRefresh
+            // 刷新由书架顶层下拉刷新统一触发，这里禁用内层刷新避免手势冲突
+            binding.refreshLayout.isEnabled = false
         }
         initRecyclerView()
         initSmartTagFilterBar()
         upRecyclerData()
+    }
+
+    /**
+     * 触发本分组的目录刷新，由书架顶层下拉刷新调用。
+     */
+    fun performRefresh() {
+        activityViewModel.upToc(booksAdapter.getItems().map { it.toMinimalBook() }, onlyUpdateRead)
     }
 
     private fun initSmartTagFilterBar() {
@@ -240,11 +246,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         binding.rvBookshelf.setHasFixedSize(true)
         binding.rvBookshelf.setEdgeEffectColor(primaryColor)
         upFastScrollerBar()
-        binding.refreshLayout.setColorSchemeColors(accentColor)
-        binding.refreshLayout.setOnRefreshListener {
-            binding.refreshLayout.isRefreshing = false
-            activityViewModel.upToc(booksAdapter.getItems().map { it.toMinimalBook() }, onlyUpdateRead)
-        }
+        // 内层下拉刷新已禁用，刷新统一由书架顶层触发
         if (bookLayout >= 2) {
             binding.rvBookshelf.layoutManager = GridLayoutManager(context, bookLayout)
             binding.rvBookshelf.setRecycledViewPool(activityViewModel.booksGridRecycledViewPool)
@@ -311,8 +313,8 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     }
 
     fun setEnableRefresh(enable: Boolean) {
-        enableRefresh = enable
-        binding.refreshLayout.isEnabled = enable
+        // 内层下拉刷新已禁用，刷新由书架顶层统一触发
+        binding.refreshLayout.isEnabled = false
     }
 
     fun filterBooksByTag(tag: String?) {
@@ -355,7 +357,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
                 .collect { list ->
                     itemCount = list.size
                     binding.tvEmptyMsg.isGone = itemCount > 0
-                    binding.refreshLayout.isEnabled = enableRefresh && itemCount > 0
+                    // 内层下拉刷新已禁用，刷新由书架顶层统一触发
                     booksAdapter.setItems(list)
                     updateSmartTagFilterBar(list)
                 }
