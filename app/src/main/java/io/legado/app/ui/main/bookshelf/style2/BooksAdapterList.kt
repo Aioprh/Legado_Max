@@ -3,6 +3,7 @@ package io.legado.app.ui.main.bookshelf.style2
 import android.content.Context
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -90,7 +91,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
 
     private fun refreshAudioButtonLater(button: android.widget.ImageButton, delay: Long) {
         button.postDelayed({
-            val itemView = button.parent ?: return@postDelayed
+            val itemView = button.parent as? View ?: return@postDelayed
             val recyclerView = itemView.parent as? RecyclerView ?: return@postDelayed
             val position = recyclerView.getChildAdapterPosition(itemView)
             if (position != RecyclerView.NO_POSITION) notifyItemChanged(position)
