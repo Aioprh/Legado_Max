@@ -1,13 +1,16 @@
 package io.legado.app.ui.widget
 
 import android.content.Context
+import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.Drawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import io.legado.app.R
@@ -15,19 +18,21 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.NavigationBarConfig
 import io.legado.app.help.config.TopBarConfig
 import io.legado.app.lib.theme.ThemeStore
+import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.DevicePerformanceUtils
 import io.legado.app.utils.defaultSharedPreferences
 import java.io.File
 
 /**
- * 将底栏导航能力适配到顶栏。
+ * 顶栏导航。
  *
- * 顶栏导航采用底栏相同的五个导航项和图标配置，但使用紧凑的
- * 图标按钮布局，避免文字与状态栏发生裁切或挤压。
+ * 顶栏导航与底栏共用同一套导航配置，并且共用底栏的材质体系：
+ * 实色 / 磨砂 / 液态玻璃、透明度、边框颜色以及自定义图标。
  */
 class TopNavigationView @JvmOverloads constructor(
     context: Context,
     attrs: android.util.AttributeSet? = null
-) : LinearLayout(context, attrs) {
+) : FrameLayout(context, attrs) {
 
     private val density = resources.displayMetrics.density
     private val prefs = context.defaultSharedPreferences
@@ -35,25 +40,51 @@ class TopNavigationView @JvmOverloads constructor(
     private var contentBasePaddingTop = 0
     private var attached = false
 
+    private val glassView = StableLiquidGlassView(context)
+    private val shellOverlay = View(context)
+    private val navigationRow = LinearLayout(context)
+
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
         if (attached) post { refresh() }
     }
 
     init {
-        orientation = HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(8), 0, dp(8), 0)
-        elevation = dp(3).toFloat()
         clipChildren = false
         clipToPadding = false
-        visibility = View.GONE
+        setWillNotDraw(false)
+        elevation = dp(3).toFloat()
+
+        glassView.apply {
+            visibility = View.GONE
+            isClickable = false
+            isFocusable = false
+            clipChildren = false
+            clipToPadding = false
+        }
+        addView(glassView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
+
+        shellOverlay.apply {
+            isClickable = false
+            isFocusable = false
+        }
+        addView(shellOverlay, LayoutParams(MATCH_PARENT, MATCH_PARENT))
+
+        navigationRow.apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(8), 0, dp(8), 0)
+            clipChildren = false
+            clipToPadding = false
+        }
+        addView(navigationRow, LayoutParams(MATCH_PARENT, MATCH_PARENT))
 
         ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
             val statusBarTop = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            setPadding(dp(8), basePaddingTop + statusBarTop, dp(8), 0)
+            setPadding(0, basePaddingTop + statusBarTop, 0, 0)
             post { adjustContentPadding() }
             insets
         }
+        visibility = View.GONE
     }
 
     override fun onAttachedToWindow() {
@@ -68,6 +99,7 @@ class TopNavigationView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         attached = false
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
+        glassView.release()
         restoreMainNavigation()
         super.onDetachedFromWindow()
     }
@@ -84,6 +116,7 @@ class TopNavigationView @JvmOverloads constructor(
 
         if (!config.navigationEnabled) {
             visibility = View.GONE
+            glassView.release()
             restoreMainNavigation()
             return
         }
@@ -91,12 +124,13 @@ class TopNavigationView @JvmOverloads constructor(
         visibility = View.VISIBLE
         bringToFront()
         buildItems(entry)
+        applyMaterial(config)
         hideBottomNavigation()
         adjustContentPadding()
     }
 
     private fun buildItems(entry: TopBarConfig.Entry) {
-        removeAllViews()
+        navigationRow.removeAllViews()
 
         val config = entry.config
         val bottomConfig = NavigationBarConfig.activeConfig(context, config.isNightMode)
@@ -111,9 +145,8 @@ class TopNavigationView @JvmOverloads constructor(
             ?: NavigationBarConfig.items.first().menuId
 
         NavigationBarConfig.items.forEach { item ->
-            addView(createItem(previewConfig, item, item.menuId == selectedId))
+            navigationRow.addView(createItem(previewConfig, item, item.menuId == selectedId))
         }
-        background = createBackground(config)
     }
 
     private fun createItem(
@@ -122,10 +155,9 @@ class TopNavigationView @JvmOverloads constructor(
         selected: Boolean
     ): View {
         return FrameItem(context).apply {
-            layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
+            layoutParams = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
             isClickable = true
             isFocusable = true
-            foreground = null
             background = if (selected) selectedBackground() else null
 
             val icon = ImageView(context).apply {
@@ -157,22 +189,92 @@ class TopNavigationView @JvmOverloads constructor(
         }
     }
 
-    private fun createBackground(config: TopBarConfig.Config): GradientDrawable {
-        val base = TopBarConfig.resolveBackgroundColor(config)
-        val alpha = if (config.style == TopBarConfig.STYLE_REGULAR) {
-            config.tagBarAlpha.coerceIn(0, 100)
+    /** 顶栏复用底栏的实色/磨砂/液态玻璃材质。 */
+    private fun applyMaterial(config: TopBarConfig.Config) {
+        val navConfig = NavigationBarConfig.activeConfig(context, config.isNightMode)
+        val baseColor = resolveBaseColor(navConfig)
+        val opacity = navConfig.opacity.coerceIn(0, 100) / 100f
+        val standard = navConfig.layoutMode == NavigationBarConfig.LAYOUT_STANDARD
+        val wantsLiquid = !standard && navConfig.effectMode != NavigationBarConfig.EFFECT_SOLID
+        val liquid = wantsLiquid && DevicePerformanceUtils.supportsRealtimeGlass
+
+        val shellRadius = dp(22)
+        background = Color.TRANSPARENT.toDrawable()
+        clipChildren = false
+
+        if (liquid) {
+            glassView.visibility = View.VISIBLE
+            glassView.bind(findContentContainer())
+            glassView.beginBatchUpdate()
+            glassView.setCornerRadius(shellRadius.toFloat())
+            val frosted = navConfig.effectMode == NavigationBarConfig.EFFECT_FROSTED
+            glassView.setRefractionHeight(if (frosted) dp(10).toFloat() else dp(14 + (opacity * 10).toInt()).toFloat())
+            glassView.setRefractionOffset(if (frosted) dp(30).toFloat() else dp(42 + (opacity * 18).toInt()).toFloat())
+            glassView.setBlurRadius(if (frosted) 22f + opacity * 20f else 8f + opacity * 14f)
+            glassView.setDispersion(if (frosted) 0.06f else 0.24f + opacity * 0.24f)
+            glassView.setTintAlpha(if (frosted) 0.012f + opacity * 0.268f else 0.004f + opacity * 0.156f)
+            glassView.setTintColorRed(Color.red(baseColor) / 255f)
+            glassView.setTintColorGreen(Color.green(baseColor) / 255f)
+            glassView.setTintColorBlue(Color.blue(baseColor) / 255f)
+            glassView.endBatchUpdate()
+            shellOverlay.background = createGlassOverlay(navConfig, baseColor, shellRadius)
         } else {
-            92
+            glassView.release()
+            glassView.visibility = View.GONE
+            shellOverlay.background = createStaticBackground(navConfig, baseColor, shellRadius)
         }
+
+        elevation = if (opacity <= 0f) 0f else dp(8).toFloat()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            val shadowAlpha = (opacity * 255).toInt().coerceIn(0, 255)
+            outlineSpotShadowColor = Color.argb(shadowAlpha, 0, 0, 0)
+            outlineAmbientShadowColor = Color.argb(shadowAlpha, 0, 0, 0)
+        }
+    }
+
+    private fun resolveBaseColor(config: NavigationBarConfig): Int {
+        return if (config.isBuiltin) {
+            io.legado.app.lib.theme.bottomBackground
+        } else if (AppConfig.isNightTheme) {
+            io.legado.app.utils.getPrefInt(
+                io.legado.app.constant.PreferKey.cNBBackground,
+                io.legado.app.utils.getCompatColor(R.color.default_night_bottom_background)
+            )
+        } else {
+            io.legado.app.utils.getPrefInt(
+                io.legado.app.constant.PreferKey.cBBackground,
+                io.legado.app.utils.getCompatColor(R.color.default_bottom_background)
+            )
+        }
+    }
+
+    private fun createGlassOverlay(config: NavigationBarConfig, baseColor: Int, radius: Int): Drawable {
+        val alpha = (config.opacity.coerceIn(0, 100) * 0.22f).toInt().coerceIn(0, 255)
         return GradientDrawable().apply {
-            setColor(TopBarConfig.withOpacity(base, alpha))
-            cornerRadius = dp(16).toFloat() * TopBarConfig.resolveCornerScale(config).coerceIn(0.5f, 3f)
+            setColor(ColorUtils.withAlpha(baseColor, alpha))
+            cornerRadius = radius.toFloat()
+            config.borderColor?.let { border ->
+                val borderAlpha = (Color.alpha(border) * config.borderAlpha.coerceIn(0, 100) / 100f).toInt()
+                if (borderAlpha > 0) setStroke(dp(1), ColorUtils.withAlpha(border, borderAlpha))
+            }
+        }
+    }
+
+    private fun createStaticBackground(config: NavigationBarConfig, baseColor: Int, radius: Int): Drawable {
+        val alpha = (config.opacity.coerceIn(0, 100) * 0.92f).toInt().coerceIn(0, 255)
+        return GradientDrawable().apply {
+            setColor(ColorUtils.withAlpha(baseColor, alpha))
+            cornerRadius = radius.toFloat()
+            config.borderColor?.let { border ->
+                val borderAlpha = (Color.alpha(border) * config.borderAlpha.coerceIn(0, 100) / 100f).toInt()
+                if (borderAlpha > 0) setStroke(dp(1), ColorUtils.withAlpha(border, borderAlpha))
+            }
         }
     }
 
     private fun selectedBackground(): GradientDrawable {
         return GradientDrawable().apply {
-            setColor(withAlpha(ThemeStore.accentColor(context), 32))
+            setColor(withAlpha(ThemeStore.accentColor(context), 40))
             cornerRadius = dp(14).toFloat()
         }
     }
