@@ -5,7 +5,6 @@ import android.content.Context
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.View
 import android.view.ViewConfiguration
@@ -157,12 +156,12 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 18.dpToPx().toFloat()
-                setColor(if (checked) accentColor else ContextCompat.getColor(context, R.color.surface_variant))
+                setColor(if (checked) accentColor else ContextCompat.getColor(context, R.color.background_card))
                 if (!checked) {
-                    setStroke(1.dpToPx(), ContextCompat.getColor(context, R.color.outline))
+                    setStroke(1.dpToPx(), ContextCompat.getColor(context, R.color.divider))
                 }
             }
-            setTextColor(if (checked) ContextCompat.getColor(context, R.color.on_primary) else ContextCompat.getColor(context, R.color.on_surface_variant))
+            setTextColor(if (checked) ContextCompat.getColor(context, R.color.white) else ContextCompat.getColor(context, R.color.secondaryText))
             contentDescription = text
             elevation = if (checked) 1.5f.dpToPx().toFloat() else 0f
         }
