@@ -6,6 +6,8 @@ package io.legado.app.constant
  * 基于 LiveEventBus 的事件标签定义，每个常量对应一个独立的事件通道。
  */
 object EventBus {
+
+    // ── 通用 ──
     const val RECREATE = "RECREATE"
     const val NOTIFY_MAIN = "notifyMain"
     const val WEB_SERVICE = "webService"
@@ -13,6 +15,7 @@ object EventBus {
     const val TOP_BAR_CHANGED = "topBarChanged"
     const val DEBUG_MODE_CHANGED = "debugModeChanged"
 
+    // ── 书架 ──
     const val UP_BOOKSHELF = "upBookToc"
     const val BOOKSHELF_REFRESH = "bookshelfRefresh"
     const val SMART_TAG_FILTER = "smartTagFilter"
@@ -24,6 +27,7 @@ object EventBus {
     const val TOC_PARTIAL_LOADED = "tocPartialLoaded"
     const val TOC_LOAD_COMPLETE = "tocLoadComplete"
 
+    // ── 阅读 ──
     const val UP_CONFIG = "upConfig"
     const val UPDATE_READ_ACTION_BAR = "updateReadActionBar"
     const val UP_SEEK_BAR = "upSeekBar"
@@ -31,12 +35,14 @@ object EventBus {
     const val UP_MANGA_CONFIG = "upMangaConfig"
     const val MEDIA_BUTTON = "mediaButton"
 
+    // ── 朗读 / TTS ──
     const val ALOUD_STATE = "aloud_state"
     const val TTS_PROGRESS = "ttsStart"
     const val READ_ALOUD_DS = "readAloudDs"
     const val READ_ALOUD_PLAY = "readAloudPlay"
     const val SHOW_READ_MENU = "showReadMenu"
 
+    // ── 音频播放 ──
     const val AUDIO_DS = "audioDs"
     const val AUDIO_STATE = "audioState"
     const val AUDIO_SUB_TITLE = "audioSubTitle"
@@ -48,18 +54,29 @@ object EventBus {
     const val AUDIO_QUEUE_CHANGED = "audioQueueChanged"
     const val AUDIO_ERROR = "audioError"
 
+    // ── 视频播放 ──
     const val VIDEO_SUB_TITLE = "VideoSubTitle"
     const val UP_VIDEO_INFO = "upVideoInfo"
     const val VIDEO_CONFIG_CHANGED = "videoConfigChanged"
+
+    // ── 系统 ──
     const val BATTERY_CHANGED = "batteryChanged"
     const val TIME_CHANGED = "timeChanged"
+
+    // ── 下载 / 导出 ──
     const val UP_DOWNLOAD = "upDownload"
     const val UP_DOWNLOAD_STATE = "upDownloadState"
     const val SAVE_CONTENT = "saveContent"
     const val EXPORT_BOOK = "exportBook"
-    const val CHECK_SOURCE = "CHECK_SOURCE"
-    const val CHECK_SOURCE_RESULT = "CHECK_SOURCE_RESULT"
-    const val CHECK_SOURCE_DONE = "CHECK_SOURCE_DONE"
-    const val SEARCH_RESULT = "SEARCH_RESULT"
+
+    // ── 校源 ──
+    const val CHECK_SOURCE = "checkSource"
+    const val CHECK_SOURCE_RESULT = "checkSourceResult"
+    const val CHECK_SOURCE_DONE = "checkSourceDone"
+
+    // ── 搜索 ──
+    const val SEARCH_RESULT = "searchResult"
+
+    // ── 封面模板 ──
     const val COVER_HTML_TEMPLATE_CHANGED = "coverHtmlTemplateChanged"
 }
