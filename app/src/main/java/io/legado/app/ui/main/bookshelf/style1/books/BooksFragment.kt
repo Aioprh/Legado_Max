@@ -7,7 +7,6 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.HorizontalScrollView
-import android.widget.LinearLayout
 import androidx.core.view.isGone
 import androidx.core.view.updatePadding
 import androidx.fragment.app.activityViewModels
@@ -120,10 +119,13 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             isFillViewport = true
             elevation = 4.dpToPx().toFloat()
             setBackgroundColor(androidx.core.content.ContextCompat.getColor(context, R.color.background))
-            addView(smartTagChipGroup, HorizontalScrollView.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ))
+            addView(
+                smartTagChipGroup,
+                android.widget.HorizontalScrollView.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            )
         }
         binding.root.addView(
             smartTagFilterScroll,

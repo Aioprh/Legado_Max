@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -89,7 +90,11 @@ internal fun BookshelfTagManageScreen(
                 val reusableTags = remember(group.tags, allTags) {
                     BookTagManagement.reusableTags(current = group.tags.map { it.name }, all = allTags)
                 }
-                BookTagAddDialog(group, reusableTags, callbacks.onDismissDialog) { tags ->
+                BookTagAddDialog(
+                    group = group,
+                    reusableTags = reusableTags,
+                    onDismiss = callbacks.onDismissDialog
+                ) { tags ->
                     callbacks.onDismissDialog()
                     callbacks.onAddTags(group.groupId, tags)
                 }
@@ -125,6 +130,7 @@ internal fun BookshelfTagManageScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScaffoldWithSmartTags(
     state: BookshelfTagManageUiState,
