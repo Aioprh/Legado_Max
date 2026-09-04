@@ -93,11 +93,12 @@ internal fun BookshelfTagManageScreen(
                 BookTagAddDialog(
                     group = group,
                     reusableTags = reusableTags,
-                    onDismiss = callbacks.onDismissDialog
-                ) { tags ->
-                    callbacks.onDismissDialog()
-                    callbacks.onAddTags(group.groupId, tags)
-                }
+                    onDismiss = callbacks.onDismissDialog,
+                    onAdd = { tags ->
+                        callbacks.onDismissDialog()
+                        callbacks.onAddTags(group.groupId, tags)
+                    }
+                )
             }
         }
         is BookshelfTagDialogState.ManageBooks -> BookTagAssignmentDialog(

@@ -121,9 +121,9 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             setBackgroundColor(androidx.core.content.ContextCompat.getColor(context, R.color.background))
             addView(
                 smartTagChipGroup,
-                android.widget.HorizontalScrollView.LayoutParams(
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                android.widget.FrameLayout.LayoutParams(
+                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
                 )
             )
         }
