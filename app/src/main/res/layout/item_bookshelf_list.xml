@@ -13,7 +13,6 @@
     android:scrollbars="none"
     tools:ignore="UnusedAttribute">
 
-    <!-- 封面固定在顶部，不随底部内容扩展而居中 -->
     <io.legado.app.ui.widget.image.CoverImageView
         android:id="@+id/iv_cover"
         android:layout_width="66dp"
@@ -26,13 +25,29 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="UnusedAttribute" />
 
+    <!-- 音频书籍专用播放/暂停按钮；普通书籍保持隐藏 -->
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/iv_audio_play"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:layout_marginEnd="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="播放"
+        android:padding="8dp"
+        android:src="@drawable/ic_play_24dp"
+        android:tint="@color/tv_text_summary"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <FrameLayout
         android:id="@+id/fl_has_new"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
+        android:layout_marginEnd="4dp"
         app:layout_constraintBottom_toBottomOf="@+id/tv_name"
-        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
         app:layout_constraintTop_toTopOf="@+id/tv_name">
 
         <io.legado.app.ui.widget.text.BadgeView
@@ -55,7 +70,6 @@
             tools:ignore="RtlHardcoded" />
     </FrameLayout>
 
-    <!-- 书名与封面顶部对齐 -->
     <TextView
         android:id="@+id/tv_name"
         android:layout_width="0dp"
@@ -124,7 +138,7 @@
         app:layout_constraintBottom_toTopOf="@+id/tv_read"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintLeft_toRightOf="@+id/tv_author"
-        app:layout_constraintRight_toRightOf="@id/fl_has_new"
+        app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
         app:layout_constraintTop_toBottomOf="@+id/tv_name"
         tools:ignore="RtlSymmetry,TextContrastCheck" />
 
@@ -156,7 +170,7 @@
         android:textSize="13sp"
         app:layout_constraintBottom_toTopOf="@id/tv_last"
         app:layout_constraintLeft_toRightOf="@+id/iv_read"
-        app:layout_constraintRight_toRightOf="@+id/fl_has_new"
+        app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
         app:layout_constraintTop_toBottomOf="@+id/tv_author"
         tools:ignore="TextContrastCheck" />
 
@@ -186,11 +200,10 @@
         android:textColor="@color/tv_text_summary"
         android:textSize="13sp"
         app:layout_constraintLeft_toRightOf="@+id/iv_last"
-        app:layout_constraintRight_toRightOf="@id/fl_has_new"
+        app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
         app:layout_constraintTop_toBottomOf="@+id/tv_read"
         tools:ignore="TextContrastCheck" />
 
-    <!-- 标签容器（使用 FlexboxLayout 实现多标签显示，每个标签有外框） -->
     <com.google.android.flexbox.FlexboxLayout
         android:id="@+id/flexbox_tags"
         android:layout_width="0dp"
@@ -202,9 +215,8 @@
         app:alignContent="flex_start"
         app:layout_constraintTop_toBottomOf="@+id/tv_last"
         app:layout_constraintLeft_toLeftOf="@+id/tv_name"
-        app:layout_constraintRight_toRightOf="@id/fl_has_new" />
+        app:layout_constraintRight_toLeftOf="@id/iv_audio_play" />
 
-    <!-- 简介（可选显示，仅在列表视图启用"显示更多信息"时显示） -->
     <TextView
         android:id="@+id/tv_intro"
         android:layout_width="0dp"
@@ -218,7 +230,7 @@
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@+id/flexbox_tags"
         app:layout_constraintLeft_toLeftOf="@+id/tv_name"
-        app:layout_constraintRight_toRightOf="@id/fl_has_new"
+        app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
         app:layout_constraintBottom_toBottomOf="parent"
         tools:ignore="TextContrastCheck" />
 
