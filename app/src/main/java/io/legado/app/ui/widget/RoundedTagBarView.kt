@@ -82,10 +82,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         styleSignature = signature
 
         val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        val baseSurface = backgroundOverrideColor ?: if (isNight) 0x661B1B1D else 0xB8FFFFFF.toInt()
-        val glassSurface = ColorUtilsCompat.withAlpha(baseSurface, if (isNight) 0.88f else 0.82f)
         val glassStroke = if (isNight) 0x4DFFFFFF else 0x80FFFFFF.toInt()
-
         background = GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
             if (isNight) {
@@ -96,8 +93,6 @@ class RoundedTagBarView @JvmOverloads constructor(
         ).apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 20.dp.toFloat()
-            // 轻微混入主题底色，保证深浅主题下不会像一块独立白板。
-            setColor(glassSurface)
             setStroke(1.dp, glassStroke)
         }
         elevation = 3.dp.toFloat()
@@ -165,9 +160,7 @@ class RoundedTagBarView @JvmOverloads constructor(
     }
 
     fun getSelectedIndex(): Int = selectedIndex
-
     fun setOnTagClickListener(listener: ((Int) -> Unit)?) { onTagClick = listener }
-
     fun setOnTagLongClickListener(listener: ((Int) -> Boolean)?) { onTagLongClick = listener }
 
     private fun normalizeIndex(index: Int): Int = if (index in items.indices) index else RecyclerView.NO_POSITION
@@ -256,7 +249,6 @@ class RoundedTagBarView @JvmOverloads constructor(
     }
 
     private class TagViewHolder(val textView: TextView) : RecyclerView.ViewHolder(textView)
-
     private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
 
     private object ColorUtilsCompat {
