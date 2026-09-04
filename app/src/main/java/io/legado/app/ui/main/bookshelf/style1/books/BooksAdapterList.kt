@@ -2,29 +2,31 @@ package io.legado.app.ui.main.bookshelf.style1.books
 
 import android.content.Context
 import android.os.Bundle
-import android.view.View
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.flexbox.FlexboxLayout
-import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.R
+import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.dao.BookShelfDisplay
 import io.legado.app.databinding.ItemBookshelfListBinding
+import io.legado.app.help.book.SmartTag
+import io.legado.app.help.book.SmartTagConfig
 import io.legado.app.help.book.isAudio
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.bookBorderBackground
 import io.legado.app.model.AudioPlay
 import io.legado.app.service.AudioPlayService
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.splitNotBlank
 import io.legado.app.utils.toTimeAgo
 import io.legado.app.utils.visible
-import io.legado.app.utils.dpToPx
 import splitties.views.onLongClick
 
 class BooksAdapterList(
@@ -34,13 +36,9 @@ class BooksAdapterList(
     private val lifecycle: Lifecycle
 ) : BaseBooksAdapter<ItemBookshelfListBinding>(context) {
 
-    override fun getViewBinding(parent: ViewGroup): ItemBookshelfListBinding {
-        return ItemBookshelfListBinding.inflate(inflater, parent, false)
-    }
+    override fun getViewBinding(parent: ViewGroup): ItemBookshelfListBinding =
+        ItemBookshelfListBinding.inflate(inflater, parent, false)
 
-    /**
-     * 方案E：取消封面图片加载
-     */
     override fun cancelCoverLoad(binding: ItemBookshelfListBinding) {
         binding.ivCover.cancelLoad()
     }
@@ -52,7 +50,6 @@ class BooksAdapterList(
         payloads: MutableList<Any>
     ) = binding.run {
         if (payloads.isEmpty()) {
-            // 根据配置控制书籍外边框显示和间距
             if (AppConfig.showBookBorder) {
                 root.background = context.bookBorderBackground
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
@@ -69,7 +66,6 @@ class BooksAdapterList(
             ivCover.load(item, false)
             upRefresh(binding, item)
             upLastUpdateTime(binding, item)
-            // 显示简介和标签（仅在列表视图启用"显示更多信息"时）
             upMoreInfo(binding, item)
             bindAudioPlayButton(holder, binding, item)
         } else {
@@ -101,110 +97,70 @@ class BooksAdapterList(
             if (AppConfig.showUnread) {
                 binding.bvUnread.setHighlight(item.lastCheckCount > 0)
                 binding.bvUnread.setBadgeCount(item.getUnreadChapterNum())
-            } else {
-                binding.bvUnread.invisible()
-            }
+            } else binding.bvUnread.invisible()
         }
     }
 
     private fun upLastUpdateTime(binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
         if (AppConfig.showLastUpdateTime && !item.isLocal) {
             val time = item.latestChapterTime.toTimeAgo()
-            if (binding.tvLastUpdateTime.text != time) {
-                binding.tvLastUpdateTime.text = time
-            }
-        } else {
-            binding.tvLastUpdateTime.text = ""
-        }
+            if (binding.tvLastUpdateTime.text != time) binding.tvLastUpdateTime.text = time
+        } else binding.tvLastUpdateTime.text = ""
     }
 
-    /** 更新简介和标签的显示状态 */
     private fun upMoreInfo(binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
-        // 显示标签（使用 FlexboxLayout，每个标签有外框）
         if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
             binding.flexboxTags.visible()
             updateTagViews(binding.flexboxTags, item)
-        } else {
-            binding.flexboxTags.gone()
-        }
-        // 显示简介（使用配置的行数）
+        } else binding.flexboxTags.gone()
+
         if (AppConfig.showMoreInfoInList && AppConfig.showIntroInList) {
             binding.tvIntro.visible()
             binding.tvIntro.text = item.getDisplayIntroPlainText()
-            // 根据配置设置简介的最大行数
             binding.tvIntro.maxLines = AppConfig.introLinesInList
-        } else {
-            binding.tvIntro.gone()
-        }
+        } else binding.tvIntro.gone()
     }
 
-    /** 更新 FlexboxLayout 中的标签视图（先显示字数后显示分类） */
     private fun updateTagViews(flexboxLayout: FlexboxLayout, item: BookShelfDisplay) {
         flexboxLayout.removeAllViews()
+        item.wordCount?.takeIf { it.isNotBlank() }?.let { flexboxLayout.addView(createTagView(it)) }
 
-        // 先显示字数标签
-        if (item.wordCount?.isNotBlank() == true) {
-            val wordCountTag = createTagView(item.wordCount!!)
-            flexboxLayout.addView(wordCountTag)
-        }
+        val manualTags = (item.customTag ?: item.kind ?: "").splitNotBlank(",", "\n")
+        manualTags.forEach { flexboxLayout.addView(createTagView(it)) }
 
-        // 后显示分类标签
-        val tagsText = item.customTag ?: item.kind ?: ""
-        if (tagsText.isNotBlank()) {
-            val tags = tagsText.splitNotBlank(",", "\n")
-            for (tag in tags) {
-                val tagView = createTagView(tag)
-                flexboxLayout.addView(tagView)
-            }
+        if (SmartTagConfig.isEnabled(context)) {
+            SmartTag.names(item.toMinimalBook(), SmartTag.ruleInfos.size)
+                .filter { SmartTagConfig.isRuleVisible(context, it) }
+                .take(4)
+                .forEach { flexboxLayout.addView(createSmartTagView(it)) }
         }
     }
 
-    /** 创建单个标签视图（带外框样式） */
-    private fun createTagView(tag: String): TextView {
-        return TextView(context).apply {
-            text = tag
-            textSize = 11f
-            gravity = Gravity.CENTER
-            setTextColor(context.resources.getColor(io.legado.app.R.color.tv_text_summary, null))
-            // 根据书籍外边框状态同步标签外框：有边框时使用带描边的标签背景，无边框时仅显示纯文本
-            if (AppConfig.showBookBorder) {
-                setBackgroundResource(io.legado.app.R.drawable.bg_tag)
-            }
-            // 设置内边距
-            setPadding(8, 4, 8, 4)
-            // 设置 FlexboxLayout.LayoutParams
-            layoutParams = FlexboxLayout.LayoutParams(
-                FlexboxLayout.LayoutParams.WRAP_CONTENT,
-                FlexboxLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                // 标签之间的间距
-                setMargins(4, 2, 4, 2)
-            }
-        }
+    private fun createTagView(tag: String): TextView = TextView(context).apply {
+        text = tag
+        textSize = 11f
+        gravity = Gravity.CENTER
+        setTextColor(context.resources.getColor(R.color.tv_text_summary, null))
+        if (AppConfig.showBookBorder) setBackgroundResource(R.drawable.bg_tag)
+        setPadding(8, 4, 8, 4)
+        layoutParams = FlexboxLayout.LayoutParams(
+            FlexboxLayout.LayoutParams.WRAP_CONTENT,
+            FlexboxLayout.LayoutParams.WRAP_CONTENT
+        ).apply { setMargins(4, 2, 4, 2) }
+    }
+
+    private fun createSmartTagView(tag: String): TextView = createTagView("✦ $tag").apply {
+        alpha = 0.9f
     }
 
     override fun registerListener(holder: ItemViewHolder, binding: ItemBookshelfListBinding) {
         holder.itemView.apply {
-            setOnClickListener {
-                getItem(holder.layoutPosition)?.let {
-                    callBack.open(it.toMinimalBook())
-                }
-            }
-
-            onLongClick {
-                getItem(holder.layoutPosition)?.let {
-                    callBack.openBookInfo(it.toMinimalBook())
-                }
-            }
+            setOnClickListener { getItem(holder.layoutPosition)?.let { callBack.open(it.toMinimalBook()) } }
+            onLongClick { getItem(holder.layoutPosition)?.let { callBack.openBookInfo(it.toMinimalBook()) } }
         }
     }
 
-    /** 音频书籍专用的书架内联播放/暂停控制。 */
-    private fun bindAudioPlayButton(
-        holder: ItemViewHolder,
-        binding: ItemBookshelfListBinding,
-        item: BookShelfDisplay
-    ) {
+    private fun bindAudioPlayButton(holder: ItemViewHolder, binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
         val button = binding.ivAudioPlay
         if (!item.isAudio) {
             button.gone()
