@@ -1,16 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<io.legado.app.ui.widget.GlassBookCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/cv_content"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_item_focused_on_tv"
     android:clickable="true"
     android:focusable="true"
     android:scrollbars="none"
     tools:ignore="UnusedAttribute">
-
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -64,7 +62,6 @@
                 app:loading_width="2dp"
                 tools:ignore="RtlHardcoded" />
 
-            <!-- 音频书籍专用播放/暂停按钮；普通书籍保持隐藏 -->
             <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/iv_audio_play"
                 android:layout_width="38dp"
@@ -110,7 +107,4 @@
         app:layout_constraintVertical_bias="0.0"
         tools:layout_editor_absoluteX="0dp" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
-
-
-
+</io.legado.app.ui.widget.GlassBookCardView>
