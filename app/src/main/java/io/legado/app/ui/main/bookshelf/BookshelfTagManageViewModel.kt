@@ -19,11 +19,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class BookshelfTagManageViewModel(application: Application) : AndroidViewModel(application) {
-
     private var focusGroupId: Long = BookGroup.IdAll
     private val _uiState = MutableStateFlow(BookshelfTagManageUiState())
     val uiState: StateFlow<BookshelfTagManageUiState> = _uiState.asStateFlow()
@@ -38,7 +38,7 @@ class BookshelfTagManageViewModel(application: Application) : AndroidViewModel(a
         viewModelScope.launch {
             val data = withContext(Dispatchers.IO) {
                 val books = appDb.bookDao.allTagInfos
-                val allBooks = appDb.bookDao.all
+                val allBooks = appDb.bookDao.flowAll().first()
                 val groups = appDb.bookGroupDao.all
                     .filter { it.groupId != BookGroup.IdRoot }
                     .sortedBy { it.order }
@@ -48,7 +48,7 @@ class BookshelfTagManageViewModel(application: Application) : AndroidViewModel(a
                 val configuredMap = AppConfig.bookshelfGroupTags.toMutableMap()
                 var configuredChanged = false
                 val hiddenMap = AppConfig.bookshelfHiddenTags
-                val result = groups.mapNotNull { group ->
+                val result = groups.map { group ->
                     val groupBooks = booksInGroup(group, books, userGroupMask)
                     val existingTags = groupBooks.flatMap { BookTagHelper.parse(it.customTag) }
                     val configuredTags = configuredMap[group.groupId].orEmpty()
@@ -76,7 +76,9 @@ class BookshelfTagManageViewModel(application: Application) : AndroidViewModel(a
                 val smartTagItems = SmartTag.ruleInfos.map { rule ->
                     BookshelfTagItemUi(
                         name = rule.name,
-                        assignedCount = allBooks.count { SmartTag.names(it, SmartTag.ruleInfos.size).contains(rule.name) },
+                        assignedCount = allBooks.count {
+                            SmartTag.names(it, SmartTag.ruleInfos.size).contains(rule.name)
+                        },
                         visible = SmartTagConfig.isRuleVisible(getApplication(), rule.name)
                     )
                 }
@@ -129,14 +131,11 @@ class BookshelfTagManageViewModel(application: Application) : AndroidViewModel(a
         if (!visible) tags.add(tag)
         if (tags.isEmpty()) map.remove(groupId) else map[groupId] = tags
         AppConfig.bookshelfHiddenTags = map
-        val groups = _uiState.value.groups.map { group ->
-            if (group.groupId != groupId) group else group.copy(
-                tags = group.tags.map { item ->
-                    if (item.name.equals(tag, ignoreCase = true)) item.copy(visible = visible) else item
-                }
-            )
-        }
-        _uiState.value = _uiState.value.copy(groups = groups)
+        _uiState.value = _uiState.value.copy(groups = _uiState.value.groups.map { group ->
+            if (group.groupId != groupId) group else group.copy(tags = group.tags.map { item ->
+                if (item.name.equals(tag, ignoreCase = true)) item.copy(visible = visible) else item
+            })
+        })
         postEvent(EventBus.BOOKSHELF_REFRESH, "")
     }
 
@@ -174,9 +173,9 @@ class BookshelfTagManageViewModel(application: Application) : AndroidViewModel(a
             withContext(Dispatchers.IO) {
                 appDb.withTransaction {
                     assignment.books.forEach { book ->
-                        val shouldHaveTag = book.bookUrl in selectedUrls
-                        val write = BookTagManagement.updateTag(book.customTag, assignment.tag, shouldHaveTag)
-                            ?: return@forEach
+                        val write = BookTagManagement.updateTag(
+                            book.customTag, assignment.tag, book.bookUrl in selectedUrls
+                        ) ?: return@forEach
                         appDb.bookDao.updateCustomTag(book.bookUrl, write.customTag)
                     }
                 }
@@ -256,13 +255,12 @@ class BookshelfTagManageViewModel(application: Application) : AndroidViewModel(a
         val remaining = currentTags.filterNot { tag -> newOrder.any { it.equals(tag, true) } }
         tagMap[groupId] = newOrder + remaining
         AppConfig.bookshelfGroupTags = tagMap
-        val groups = _uiState.value.groups.map { group ->
+        _uiState.value = _uiState.value.copy(groups = _uiState.value.groups.map { group ->
             if (group.groupId != groupId) group else group.copy(
                 tags = newOrder.mapNotNull { tag -> group.tags.firstOrNull { it.name.equals(tag, true) } } +
                     group.tags.filterNot { item -> newOrder.any { it.equals(item.name, true) } }
             )
-        }
-        _uiState.value = _uiState.value.copy(groups = groups)
+        })
         postEvent(EventBus.BOOKSHELF_REFRESH, "")
     }
 
@@ -274,22 +272,20 @@ class BookshelfTagManageViewModel(application: Application) : AndroidViewModel(a
         return booksInGroup(group, books, userGroupMask)
     }
 
-    private fun booksInGroup(group: BookGroup, books: List<BookTagInfo>, userGroupMask: Long): List<BookTagInfo> {
-        return when (group.groupId) {
-            BookGroup.IdAll -> books
-            BookGroup.IdLocal -> books.filter { it.type and BookType.local > 0 }
-            BookGroup.IdAudio -> books.filter { it.type and BookType.audio > 0 }
-            BookGroup.IdVideo -> books.filter { it.type and BookType.video > 0 }
-            BookGroup.IdError -> books.filter { it.type and BookType.updateError > 0 }
-            BookGroup.IdNetNone -> books.filter {
-                it.type and BookType.audio == 0 && it.type and BookType.video == 0 &&
-                    it.type and BookType.local == 0 && (it.group and userGroupMask) == 0L
-            }
-            BookGroup.IdLocalNone -> books.filter {
-                it.type and BookType.audio == 0 && it.type and BookType.video == 0 &&
-                    it.type and BookType.local > 0 && (it.group and userGroupMask) == 0L
-            }
-            else -> if (group.groupId > 0) books.filter { it.group and group.groupId > 0 } else emptyList()
+    private fun booksInGroup(group: BookGroup, books: List<BookTagInfo>, userGroupMask: Long): List<BookTagInfo> = when (group.groupId) {
+        BookGroup.IdAll -> books
+        BookGroup.IdLocal -> books.filter { it.type and BookType.local > 0 }
+        BookGroup.IdAudio -> books.filter { it.type and BookType.audio > 0 }
+        BookGroup.IdVideo -> books.filter { it.type and BookType.video > 0 }
+        BookGroup.IdError -> books.filter { it.type and BookType.updateError > 0 }
+        BookGroup.IdNetNone -> books.filter {
+            it.type and BookType.audio == 0 && it.type and BookType.video == 0 &&
+                it.type and BookType.local == 0 && (it.group and userGroupMask) == 0L
         }
+        BookGroup.IdLocalNone -> books.filter {
+            it.type and BookType.audio == 0 && it.type and BookType.video == 0 &&
+                it.type and BookType.local > 0 && (it.group and userGroupMask) == 0L
+        }
+        else -> if (group.groupId > 0) books.filter { it.group and group.groupId > 0 } else emptyList()
     }
 }
