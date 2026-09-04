@@ -5,7 +5,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import com.google.android.material.tabs.TabLayout
-import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.utils.dpToPx
 
 /**
@@ -78,7 +78,7 @@ class GlassTabBarView @JvmOverloads constructor(
     }
 
     private fun createGlassIndicator(): GradientDrawable {
-        val accent = accentColor
+        val accent = ThemeStore.accentColor(context)
         return GradientDrawable().apply {
             cornerRadius = 20.dpToPx().toFloat()
             setColor(Color.argb(70, accent.red(), accent.green(), accent.blue()))
