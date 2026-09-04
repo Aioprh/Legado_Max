@@ -109,15 +109,11 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
                 currentPosition = position
                 AppConfig.saveTabPosition = position
                 tvGroupName?.text = bookGroups.getOrNull(position)?.groupName ?: ""
-                glassTabBar?.selectTab(position, true)
+                glassTabBar?.getTabAt(position)?.select()
                 upTagBar()
             }
 
-            override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {
-                if (!AppConfig.dropdownSelectGroup) {
-                    glassTabBar?.onPageScrolled(position, positionOffset)
-                }
-            }
+            override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) = Unit
 
             override fun onPageScrollStateChanged(state: Int) = Unit
         })

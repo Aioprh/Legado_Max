@@ -17,6 +17,10 @@ class GlassTabBarView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : TabLayout(context, attrs) {
 
+    private var onTabClick: ((Int) -> Unit)? = null
+    private var onTabLongClick: ((Int) -> Boolean)? = null
+    private var submitSelecting = false
+
     init {
         background = GradientDrawable().apply {
             cornerRadius = 24.dpToPx().toFloat()
@@ -29,10 +33,13 @@ class GlassTabBarView @JvmOverloads constructor(
         isTabIndicatorFullWidth = false
         setSelectedTabIndicator(createGlassIndicator())
         setSelectedTabIndicatorGravity(INDICATOR_GRAVITY_STRETCH)
-        setTabIndicatorAnimationMode(INDICATOR_ANIMATION_MODE_ELASTIC)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            setTabIndicatorAnimationMode(INDICATOR_ANIMATION_MODE_ELASTIC)
+        }
         addOnTabSelectedListener(object : OnTabSelectedListener {
             override fun onTabSelected(tab: Tab) {
                 styleTabs()
+                if (!submitSelecting) onTabClick?.invoke(tab.position)
                 post { centerTab(tab.position, true) }
             }
             override fun onTabUnselected(tab: Tab) { styleTabs() }
@@ -41,15 +48,42 @@ class GlassTabBarView @JvmOverloads constructor(
         post { styleTabs() }
     }
 
+    fun setOnTabClickListener(listener: (Int) -> Unit) {
+        onTabClick = listener
+    }
+
+    fun setOnTabLongClickListener(listener: (Int) -> Boolean) {
+        onTabLongClick = listener
+    }
+
+    fun submitTabs(names: List<String>, selectedIndex: Int) {
+        removeAllTabs()
+        names.forEachIndexed { index, name ->
+            val tab = newTab().setText(name)
+            addTab(tab)
+            // TabLayout 自带点击选中，这里只补充长按回调
+            tab.view?.setOnLongClickListener { onTabLongClick?.invoke(index) ?: false }
+        }
+        post { styleTabs() }
+        val idx = selectedIndex.coerceIn(0, tabCount - 1)
+        submitSelecting = true
+        getTabAt(idx)?.select()
+        submitSelecting = false
+        post { centerTab(idx, false) }
+    }
+
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         setMeasuredDimension(measuredWidth, measuredHeight.coerceAtLeast(44.dpToPx()))
     }
 
-    private fun createGlassIndicator(): GradientDrawable = GradientDrawable().apply {
-        cornerRadius = 20.dpToPx().toFloat()
-        setColor(Color.argb(70, accentColor.red(), accentColor.green(), accentColor.blue()))
-        setStroke(1.dpToPx(), Color.argb(105, 255, 255, 255))
+    private fun createGlassIndicator(): GradientDrawable {
+        val accent = accentColor
+        return GradientDrawable().apply {
+            cornerRadius = 20.dpToPx().toFloat()
+            setColor(Color.argb(70, accent.red(), accent.green(), accent.blue()))
+            setStroke(1.dpToPx(), Color.argb(105, 255, 255, 255))
+        }
     }
 
     private fun styleTabs() {
