@@ -4,10 +4,8 @@ import io.legado.app.constant.BookType
 import io.legado.app.data.entities.Book
 
 /**
- * Max 智能标签第一阶段：基于书籍已有元数据生成虚拟标签。
- *
+ * Max 智能标签引擎：基于书籍已有元数据生成虚拟标签。
  * 标签不会写入 books 表，因此无需数据库迁移，也不会覆盖用户手动设置的 customTag。
- * 生成结果只依赖当前 Book 状态，书籍更新后重新计算即可。
  */
 object SmartTag {
 
@@ -15,6 +13,12 @@ object SmartTag {
         val name: String,
         val score: Int = 0,
         val reason: String? = null
+    )
+
+    data class RuleInfo(
+        val name: String,
+        val score: Int,
+        val reason: String
     )
 
     private data class Rule(
@@ -46,16 +50,17 @@ object SmartTag {
         Rule("长篇", 70, "章节数达到 500 章以上") { it.totalChapterNum in 500..999 },
         Rule("中长篇", 60, "章节数达到 200 章以上") { it.totalChapterNum in 200..499 },
         Rule("短篇", 50, "章节数少于 50 章") { it.totalChapterNum in 1..49 },
-        Rule("有更新", 85, "最近一次检查发现了新章节") { it.lastCheckCount > 0 },
+        Rule("有更新", 85, "最近一次检查发现新章节") { it.lastCheckCount > 0 },
         Rule("不可更新", 75, "已关闭自动更新") { !it.canUpdate },
         Rule("有封面", 30, "存在可显示封面") { !it.getDisplayCover().isNullOrBlank() },
         Rule("有简介", 30, "存在可显示简介") { !it.getDisplayIntro().isNullOrBlank() }
     )
 
-    /** 计算一组稳定、可展示的智能标签。 */
+    val ruleInfos: List<RuleInfo>
+        get() = rules.map { RuleInfo(it.name, it.score, it.reason) }
+
     fun evaluate(book: Book, maxTags: Int = 6): List<Result> {
         if (maxTags <= 0) return emptyList()
-
         return rules.asSequence()
             .filter { it.match(book) }
             .map { Result(it.name, it.score, it.reason) }
@@ -65,9 +70,7 @@ object SmartTag {
             .toList()
     }
 
-    fun names(book: Book, maxTags: Int = 6): List<String> =
-        evaluate(book, maxTags).map { it.name }
+    fun names(book: Book, maxTags: Int = 6): List<String> = evaluate(book, maxTags).map { it.name }
 }
 
-/** 方便书架、搜索结果、书籍详情等 UI 直接取得智能标签。 */
 fun Book.getSmartTags(maxTags: Int = 6): List<String> = SmartTag.names(this, maxTags)
