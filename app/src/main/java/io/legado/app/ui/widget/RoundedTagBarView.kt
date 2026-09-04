@@ -102,7 +102,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         val glassStroke = if (isNight) 0x4DFFFFFF else 0x80FFFFFF.toInt()
         background = GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
-            if (isNight) intArrayOf(Color.argb(48, 255, 255, 255), Color.argb(28, 255, 255, 255, 255))
+            if (isNight) intArrayOf(Color.argb(48, 255, 255, 255), Color.argb(28, 255, 255, 255))
             else intArrayOf(Color.argb(108, 255, 255, 255), Color.argb(66, 255, 255, 255))
         ).apply {
             shape = GradientDrawable.RECTANGLE
