@@ -1,8 +1,8 @@
 package io.legado.app.help.book
 
 import android.content.Context
-import io.legado.app.utils.GSON
-import io.legado.app.utils.fromJsonArray
+import org.json.JSONArray
+import org.json.JSONObject
 
 /** 智能标签 2.0 的本地配置。 */
 object SmartTagConfig {
@@ -34,7 +34,7 @@ object SmartTagConfig {
 
     fun setRuleVisible(context: Context, name: String, visible: Boolean) {
         val current = prefs(context).getStringSet(KEY_VISIBLE, null)?.toMutableSet()
-            ?: SmartTag.ruleInfos.map { it.name }.toMutableSet()
+            ?: allRuleNames(context).toMutableSet()
         if (visible) current.add(name) else current.remove(name)
         prefs(context).edit().putStringSet(KEY_VISIBLE, current).apply()
     }
@@ -45,15 +45,39 @@ object SmartTagConfig {
         prefs(context).edit().putInt(KEY_MAX, value.coerceIn(1, 12)).apply()
     }
 
-    fun customRules(context: Context): List<CustomRule> =
-        prefs(context).getString(KEY_CUSTOM_RULES, null)?.let { json ->
-            runCatching { GSON.fromJsonArray<CustomRule>(json) }.getOrNull()
-        }?.orEmpty()
+    fun customRules(context: Context): List<CustomRule> {
+        val raw = prefs(context).getString(KEY_CUSTOM_RULES, null) ?: return emptyList()
+        return runCatching {
+            val array = JSONArray(raw)
+            buildList(array.length()) {
+                for (i in 0 until array.length()) {
+                    val o = array.getJSONObject(i)
+                    add(CustomRule(
+                        id = o.optString("id"),
+                        name = o.optString("name"),
+                        field = o.optString("field"),
+                        operator = o.optString("operator"),
+                        value = o.optString("value"),
+                        enabled = o.optBoolean("enabled", true)
+                    ))
+                }
+            }.filter { it.id.isNotBlank() && it.name.isNotBlank() }
+        }.getOrDefault(emptyList())
+    }
 
     fun saveCustomRules(context: Context, rules: List<CustomRule>) {
-        prefs(context).edit()
-            .putString(KEY_CUSTOM_RULES, GSON.toJson(rules))
-            .apply()
+        val array = JSONArray()
+        rules.forEach { rule ->
+            array.put(JSONObject().apply {
+                put("id", rule.id)
+                put("name", rule.name)
+                put("field", rule.field)
+                put("operator", rule.operator)
+                put("value", rule.value)
+                put("enabled", rule.enabled)
+            })
+        }
+        prefs(context).edit().putString(KEY_CUSTOM_RULES, array.toString()).apply()
     }
 
     fun upsertCustomRule(context: Context, rule: CustomRule) {
