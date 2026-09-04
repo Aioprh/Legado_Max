@@ -3,12 +3,16 @@ package io.legado.app.ui.main.bookshelf.style1.books
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Rect
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.view.doOnLayout
 import androidx.core.view.isGone
 import androidx.core.view.updatePadding
@@ -20,8 +24,6 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.Adapter.StateRestorationPolicy
-import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipGroup
 import io.legado.app.R
 import io.legado.app.base.BaseFragment
 import io.legado.app.constant.AppLog
@@ -88,7 +90,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     private var itemCount = 0
     private var currentTag: String? = null
     private var smartTagFilterScroll: HorizontalScrollView? = null
-    private var smartTagChipGroup: ChipGroup? = null
+    private var smartTagChipGroup: LinearLayout? = null
 
     private fun createBooksAdapter(): BaseBooksAdapter<*> = when (AppConfig.bookLayout) {
         0 -> BooksAdapterList(requireContext(), this, this, viewLifecycleOwner.lifecycle)
@@ -113,20 +115,16 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     private fun initSmartTagFilterBar() {
         if (smartTagFilterScroll != null) return
         val context = requireContext()
-        // 项目主题不是 MaterialComponents，Chip/ChipGroup 使用独立主题上下文，避免初始化崩溃。
-        val chipContext: Context = ContextThemeWrapper(
-            context.applicationContext,
-            com.google.android.material.R.style.Theme_MaterialComponents_DayNight_DarkActionBar
-        )
-        smartTagChipGroup = ChipGroup(chipContext).apply {
-            isSingleLine = true
-            setPadding(8.dpToPx(), 3.dpToPx(), 8.dpToPx(), 3.dpToPx())
+        smartTagChipGroup = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(12.dpToPx(), 6.dpToPx(), 12.dpToPx(), 6.dpToPx())
         }
         smartTagFilterScroll = HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
             isFillViewport = false
-            elevation = 4.dpToPx().toFloat()
-            setBackgroundColor(androidx.core.content.ContextCompat.getColor(context, R.color.background))
+            elevation = 3.dpToPx().toFloat()
+            setBackgroundColor(ContextCompat.getColor(context, R.color.background))
             addView(
                 smartTagChipGroup,
                 android.widget.FrameLayout.LayoutParams(
@@ -145,14 +143,28 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         smartTagFilterScroll?.visibility = View.GONE
     }
 
-    private fun createSmartTagChip(text: String, checked: Boolean, onClick: () -> Unit): Chip =
-        Chip(smartTagChipGroup?.context ?: requireContext()).apply {
+    private fun createSmartTagChip(text: String, checked: Boolean, onClick: () -> Unit): TextView =
+        TextView(smartTagChipGroup?.context ?: requireContext()).apply {
             this.text = text
-            isCheckable = true
-            isChecked = checked
-            setEnsureMinTouchTargetSize(false)
+            textSize = 13f
+            gravity = Gravity.CENTER
+            includeFontPadding = false
+            minHeight = 34.dpToPx()
+            setPadding(14.dpToPx(), 0, 14.dpToPx(), 0)
+            isClickable = true
+            isFocusable = true
             setOnClickListener { onClick() }
-            setTextSize(14f)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 18.dpToPx().toFloat()
+                setColor(if (checked) accentColor else ContextCompat.getColor(context, R.color.surface_variant))
+                if (!checked) {
+                    setStroke(1.dpToPx(), ContextCompat.getColor(context, R.color.outline))
+                }
+            }
+            setTextColor(if (checked) ContextCompat.getColor(context, R.color.on_primary) else ContextCompat.getColor(context, R.color.on_surface_variant))
+            contentDescription = text
+            elevation = if (checked) 1.5f.dpToPx().toFloat() else 0f
         }
 
     private fun updateSmartTagFilterBar(items: List<io.legado.app.data.dao.BookShelfDisplay>) {
@@ -183,19 +195,23 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             return
         }
 
-        chipGroup.addView(createSmartTagChip("全部 ${items.size}", currentTag == null) {
+        chipGroup.addView(createSmartTagChip("全部  ${items.size}", currentTag == null) {
             filterBooksByTag(null)
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            marginEnd = 6.dpToPx()
         })
         tags.forEach { entry ->
-            chipGroup.addView(createSmartTagChip("${entry.key} ${entry.value}", currentTag == entry.key) {
+            chipGroup.addView(createSmartTagChip("${entry.key}  ${entry.value}", currentTag == entry.key) {
                 filterBooksByTag(entry.key)
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                marginEnd = 6.dpToPx()
             })
         }
 
         scroll.visibility = View.VISIBLE
-        // 不再用 post + 当前 height 猜测布局高度，避免首个书籍卡片被标签栏遮挡。
+        // 让列表为标签栏预留真实高度，避免第一张书籍卡片被覆盖。
         scroll.doOnLayout {
-            binding.rvBookshelf.updatePadding(top = it.height + 4.dpToPx())
+            binding.rvBookshelf.updatePadding(top = it.height + 6.dpToPx())
         }
     }
 
