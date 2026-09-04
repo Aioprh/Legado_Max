@@ -7,14 +7,18 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.flexbox.FlexboxLayout
+import io.legado.app.R
+import io.legado.app.constant.Status
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.ItemBookshelfGridGroupBinding
 import io.legado.app.databinding.ItemBookshelfList2Binding
 import io.legado.app.databinding.ItemBookshelfListBinding
 import io.legado.app.databinding.ItemBookshelfListGroupBinding
+import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.isLocal
-import io.legado.app.help.config.AppConfig
+import io.legado.app.model.AudioPlay
+import io.legado.app.service.AudioPlayService
 import io.legado.app.lib.theme.bookBorderBackground
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
@@ -31,7 +35,6 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
             1 -> {
-                // 根据folderLayout选择文件夹布局
                 if (AppConfig.folderLayout >= 2) {
                     GroupGridViewHolder(ItemBookshelfGridGroupBinding.inflate(inflater, parent, false))
                 } else {
@@ -74,11 +77,53 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
         }
     }
 
+    /**
+     * 音频书籍使用书架内联播放控制，不打开完整播放器即可播放/暂停。
+     * 仅对 BookType.audio 生效，普通文本/漫画/本地书籍不会出现按钮。
+     */
+    private fun bindAudioPlayButton(button: android.widget.ImageButton, item: Book) {
+        if (!item.isAudio) {
+            button.gone()
+            button.setOnClickListener(null)
+            button.isEnabled = false
+            return
+        }
+
+        button.visible()
+        button.isEnabled = true
+        val isCurrent = AudioPlay.book?.bookUrl == item.bookUrl
+        val isPlaying = isCurrent && AudioPlay.status == Status.PLAY && !AudioPlayService.pause
+        button.setImageResource(if (isPlaying) R.drawable.ic_pause_24dp else R.drawable.ic_play_24dp)
+        button.contentDescription = if (isPlaying) "暂停" else "播放"
+
+        button.setOnClickListener {
+            val current = AudioPlay.book
+            when {
+                current?.bookUrl == item.bookUrl && AudioPlay.status == Status.PLAY -> {
+                    AudioPlay.pause(context)
+                }
+                current?.bookUrl == item.bookUrl && AudioPlay.status == Status.PAUSE -> {
+                    AudioPlay.resume(context)
+                }
+                else -> {
+                    // 切换到新的音频书：复用现有 AudioPlay 播放链路，不复制播放器逻辑。
+                    AudioPlay.resetData(item)
+                    button.setImageResource(R.drawable.ic_pause_24dp)
+                    button.contentDescription = "暂停"
+                    button.postDelayed({ AudioPlay.loadOrUpPlayUrl() }, 120L)
+                }
+            }
+            // AudioPlayService 通过 EventBus 更新全局播放状态，这里延迟刷新一次，
+            // 让当前 RecyclerView item 立即跟随播放/暂停状态切换。
+            button.postDelayed({ notifyItemChanged(bindingAdapterPosition.coerceAtLeast(0)) }, 220L)
+            button.postDelayed({ notifyItemChanged(bindingAdapterPosition.coerceAtLeast(0)) }, 650L)
+        }
+    }
+
     inner class BookViewHolder(val binding: ItemBookshelfListBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun onBind(item: Book, position: Int) = binding.run {
-            // 根据配置控制书籍外边框显示和间距
             if (AppConfig.showBookBorder) {
                 root.background = context.bookBorderBackground
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
@@ -99,8 +144,8 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             ivRead.visible()
             upRefresh(this, item)
             upLastUpdateTime(binding, item)
-            // 显示简介和标签（仅在列表视图启用"显示更多信息"时）
             upMoreInfo(binding, item)
+            bindAudioPlayButton(ivAudioPlay, item)
         }
 
         fun onBind(item: Book, position: Int, payloads: MutableList<Any>) = binding.run {
@@ -115,27 +160,20 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                             "author" -> tvAuthor.text = item.author
                             "dur" -> tvRead.text = item.durChapterTitle
                             "last" -> tvLast.text = item.latestChapterTitle
-                            "cover" -> ivCover.load(
-                                item,
-                                false
-                            )
-
+                            "cover" -> ivCover.load(item, false)
                             "refresh" -> upRefresh(this, item)
                             "lastUpdateTime" -> upLastUpdateTime(binding, item)
                             "moreInfo" -> upMoreInfo(binding, item)
                         }
                     }
                 }
+                bindAudioPlayButton(ivAudioPlay, item)
             }
         }
 
         fun registerListener(item: Any) {
-            binding.root.setOnClickListener {
-                callBack.onItemClick(item)
-            }
-            binding.root.onLongClick {
-                callBack.onItemLongClick(item)
-            }
+            binding.root.setOnClickListener { callBack.onItemClick(item) }
+            binding.root.onLongClick { callBack.onItemLongClick(item) }
         }
 
         private fun upRefresh(binding: ItemBookshelfListBinding, item: Book) {
@@ -153,92 +191,64 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             }
         }
 
-        /** 更新简介和标签的显示状态 */
         private fun upMoreInfo(binding: ItemBookshelfListBinding, item: Book) {
-            // 显示标签（使用 FlexboxLayout，每个标签有外框）
             if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
                 binding.flexboxTags.visible()
                 updateTagViews(binding.flexboxTags, item)
             } else {
                 binding.flexboxTags.gone()
             }
-            // 显示简介（使用配置的行数）
             if (AppConfig.showMoreInfoInList && AppConfig.showIntroInList) {
                 binding.tvIntro.visible()
                 binding.tvIntro.text = item.getDisplayIntroPlainText()
-                // 根据配置设置简介的最大行数
                 binding.tvIntro.maxLines = AppConfig.introLinesInList
             } else {
                 binding.tvIntro.gone()
             }
         }
 
-        /** 更新 FlexboxLayout 中的标签视图（先显示字数后显示分类） */
         private fun updateTagViews(flexboxLayout: FlexboxLayout, item: Book) {
             flexboxLayout.removeAllViews()
-
-            // 先显示字数标签
             if (item.wordCount?.isNotBlank() == true) {
-                val wordCountTag = createTagView(item.wordCount!!)
-                flexboxLayout.addView(wordCountTag)
+                flexboxLayout.addView(createTagView(item.wordCount!!))
             }
-
-            // 后显示分类标签
             val tagsText = item.customTag ?: item.kind ?: ""
             if (tagsText.isNotBlank()) {
-                val tags = tagsText.splitNotBlank(",", "\n")
-                for (tag in tags) {
-                    val tagView = createTagView(tag)
-                    flexboxLayout.addView(tagView)
+                for (tag in tagsText.splitNotBlank(",", "\n")) {
+                    flexboxLayout.addView(createTagView(tag))
                 }
             }
         }
 
-        /** 创建单个标签视图（带外框样式） */
         private fun createTagView(tag: String): TextView {
             return TextView(context).apply {
                 text = tag
                 textSize = 11f
                 gravity = Gravity.CENTER
-                setTextColor(context.resources.getColor(io.legado.app.R.color.tv_text_summary, null))
-                // 根据书籍外边框状态同步标签外框：有边框时使用带描边的标签背景，无边框时仅显示纯文本
-                if (AppConfig.showBookBorder) {
-                    setBackgroundResource(io.legado.app.R.drawable.bg_tag)
-                }
-                // 设置内边距
+                setTextColor(context.resources.getColor(R.color.tv_text_summary, null))
+                if (AppConfig.showBookBorder) setBackgroundResource(R.drawable.bg_tag)
                 setPadding(8, 4, 8, 4)
-                // 设置 FlexboxLayout.LayoutParams
                 layoutParams = FlexboxLayout.LayoutParams(
                     FlexboxLayout.LayoutParams.WRAP_CONTENT,
                     FlexboxLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    // 标签之间的间距
-                    setMargins(4, 2, 4, 2)
-                }
+                ).apply { setMargins(4, 2, 4, 2) }
             }
         }
 
         private fun upLastUpdateTime(binding: ItemBookshelfListBinding, item: Book) {
             if (AppConfig.showLastUpdateTime && !item.isLocal) {
                 val time = item.latestChapterTime.toTimeAgo()
-                if (binding.tvLastUpdateTime.text != time) {
-                    binding.tvLastUpdateTime.text = time
-                }
+                if (binding.tvLastUpdateTime.text != time) binding.tvLastUpdateTime.text = time
             } else {
                 binding.tvLastUpdateTime.text = ""
             }
         }
-
     }
 
-    /**
-    紧凑列表布局
-     */
     inner class BookViewHolder2(val binding: ItemBookshelfList2Binding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun onBind(item: Book, position: Int) = binding.run {
-            // 根据配置控制书籍外边框显示和间距
             if (AppConfig.showBookBorder) {
                 root.background = context.bookBorderBackground
                 (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
@@ -258,6 +268,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             ivLast.visible()
             upRefresh(this, item)
             upLastUpdateTime(binding, item)
+            bindAudioPlayButton(ivAudioPlay, item)
         }
 
         fun onBind(item: Book, position: Int, payloads: MutableList<Any>) = binding.run {
@@ -272,26 +283,19 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                             "author" -> tvAuthor.text = item.author
                             "dur" -> tvRead.text = item.durChapterTitle
                             "last" -> tvLast.text = item.latestChapterTitle
-                            "cover" -> ivCover.load(
-                                item,
-                                false
-                            )
-
+                            "cover" -> ivCover.load(item, false)
                             "refresh" -> upRefresh(this, item)
                             "lastUpdateTime" -> upLastUpdateTime(binding, item)
                         }
                     }
                 }
+                bindAudioPlayButton(ivAudioPlay, item)
             }
         }
 
         fun registerListener(item: Any) {
-            binding.root.setOnClickListener {
-                callBack.onItemClick(item)
-            }
-            binding.root.onLongClick {
-                callBack.onItemLongClick(item)
-            }
+            binding.root.setOnClickListener { callBack.onItemClick(item) }
+            binding.root.onLongClick { callBack.onItemLongClick(item) }
         }
 
         private fun upRefresh(binding: ItemBookshelfList2Binding, item: Book) {
@@ -312,19 +316,14 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
         private fun upLastUpdateTime(binding: ItemBookshelfList2Binding, item: Book) {
             if (AppConfig.showLastUpdateTime && !item.isLocal) {
                 val time = item.latestChapterTime.toTimeAgo()
-                if (binding.tvLastUpdateTime.text != time) {
-                    binding.tvLastUpdateTime.text = time
-                }
+                if (binding.tvLastUpdateTime.text != time) binding.tvLastUpdateTime.text = time
             } else {
                 binding.tvLastUpdateTime.text = ""
             }
         }
-
     }
 
-    inner class GroupViewHolder(val binding: ItemBookshelfListGroupBinding) :
-        RecyclerView.ViewHolder(binding.root) {
-
+    inner class GroupViewHolder(val binding: ItemBookshelfListGroupBinding) : RecyclerView.ViewHolder(binding.root) {
         fun onBind(item: BookGroup, position: Int) = binding.run {
             tvName.text = item.groupName
             ivCover.load(item)
@@ -336,11 +335,8 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             tvLast.gone()
             tvRead.gone()
         }
-
         fun onBind(item: BookGroup, position: Int, payloads: MutableList<Any>) = binding.run {
-            if (payloads.isEmpty()) {
-                onBind(item, position)
-            } else {
+            if (payloads.isEmpty()) onBind(item, position) else {
                 for (i in payloads.indices) {
                     val bundle = payloads[i] as Bundle
                     bundle.keySet().forEach {
@@ -352,30 +348,19 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                 }
             }
         }
-
         fun registerListener(item: Any) {
-            binding.root.setOnClickListener {
-                callBack.onItemClick(item)
-            }
-            binding.root.onLongClick {
-                callBack.onItemLongClick(item)
-            }
+            binding.root.setOnClickListener { callBack.onItemClick(item) }
+            binding.root.onLongClick { callBack.onItemLongClick(item) }
         }
-
     }
 
-    inner class GroupGridViewHolder(val binding: ItemBookshelfGridGroupBinding) :
-        RecyclerView.ViewHolder(binding.root) {
-
+    inner class GroupGridViewHolder(val binding: ItemBookshelfGridGroupBinding) : RecyclerView.ViewHolder(binding.root) {
         fun onBind(item: BookGroup, position: Int) = binding.run {
             tvName.text = item.groupName
             ivCover.load(item)
         }
-
         fun onBind(item: BookGroup, position: Int, payloads: MutableList<Any>) = binding.run {
-            if (payloads.isEmpty()) {
-                onBind(item, position)
-            } else {
+            if (payloads.isEmpty()) onBind(item, position) else {
                 for (i in payloads.indices) {
                     val bundle = payloads[i] as Bundle
                     bundle.keySet().forEach {
@@ -387,16 +372,9 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                 }
             }
         }
-
         fun registerListener(item: Any) {
-            binding.root.setOnClickListener {
-                callBack.onItemClick(item)
-            }
-            binding.root.onLongClick {
-                callBack.onItemLongClick(item)
-            }
+            binding.root.setOnClickListener { callBack.onItemClick(item) }
+            binding.root.onLongClick { callBack.onItemLongClick(item) }
         }
-
     }
-
 }
