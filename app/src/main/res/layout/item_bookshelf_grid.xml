@@ -26,7 +26,7 @@
             android:layout_height="wrap_content"
             android:scrollbars="none">
 
-            <io.legado.app.ui.widget.image.CoverImageView
+            <io.legado.app.ui.widget.image.GlassCoverImageView
                 android:id="@+id/iv_cover"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
