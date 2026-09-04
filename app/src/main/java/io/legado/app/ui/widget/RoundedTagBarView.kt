@@ -2,8 +2,11 @@ package io.legado.app.ui.widget
 
 import android.content.Context
 import android.content.res.ColorStateList
+import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -21,6 +24,7 @@ import io.legado.app.lib.theme.uiTypeface
  * 书架分组标签导航条，在分组样式为标签时显示于分组栏下方。
  *
  * 展示当前分组下的二级标签列表，支持选中高亮、点击切换、长按操作。
+ * 视觉采用轻量液态玻璃材质：半透明底、细高光描边、胶囊标签和轻微悬浮阴影。
  */
 class RoundedTagBarView @JvmOverloads constructor(
     context: Context,
@@ -48,6 +52,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         setFadingEdgeLength(0)
         val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_recycler_padding_vertical)
         setPadding(0, verticalPadding, 0, verticalPadding)
+        setBackgroundColor(Color.TRANSPARENT)
     }
     private var items = emptyList<Item>()
     private var selectedIndex = RecyclerView.NO_POSITION
@@ -76,23 +81,40 @@ class RoundedTagBarView @JvmOverloads constructor(
     }
 
     /**
-     * 应用二级标签栏样式：始终透明背景，选中标签用主题强调色，无圆角。
-     *
-     * @param force 是否强制刷新，用于首次初始化或样式变化时
+     * 应用二级标签栏液态玻璃样式。
+     * 采用静态磨砂模拟，避免额外的实时模糊采样影响书架滚动性能。
      */
     fun applyTopBarStyle(force: Boolean = false) {
         val signature = "${TopBarConfig.currentSignature(AppConfig.isNightTheme)}|$displayMode|$backgroundOverrideColor"
         if (!force && styleSignature == signature) return
         styleSignature = signature
-        // 始终透明背景，不使用 TopBarConfig 的颜色/透明度作为栏背景
-        background = null
+
+        val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val baseSurface = backgroundOverrideColor ?: if (isNight) 0x661B1B1D else 0xB8FFFFFF.toInt()
+        val glassSurface = ColorUtilsCompat.withAlpha(baseSurface, if (isNight) 0.92f else 0.86f)
+        val glassStroke = if (isNight) 0x55FFFFFF else 0x99FFFFFF.toInt()
+
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 20.dp.toFloat()
+            setColor(glassSurface)
+            setStroke(1.dp, glassStroke)
+        }
+        elevation = 3.dp.toFloat()
+        translationZ = 1.dp.toFloat()
+
+        // 玻璃栏内部留出空间，让胶囊标签看起来像漂浮在材质表面。
         val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_horizontal)
         val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_vertical)
-        setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
-        // 选中标签无背景色，仅文字用强调色高亮
-        adapter.selectedBackgroundColor = Color.TRANSPARENT
-        adapter.selectedTextColor = context.accentColor
-        adapter.normalTextColor = context.primaryTextColor
+        setPadding(horizontalPadding, maxOf(verticalPadding, 4.dp), horizontalPadding, maxOf(verticalPadding, 4.dp))
+
+        adapter.normalTextColor = if (isNight) Color.argb(225, 255, 255, 255) else context.primaryTextColor
+        adapter.selectedTextColor = Color.WHITE
+        adapter.selectedBackgroundColor = context.accentColor
+        adapter.glassNormalFill = if (isNight) 0x331F1F22 else 0x70FFFFFF
+        adapter.glassNormalStroke = if (isNight) 0x55FFFFFF else 0x8CFFFFFF.toInt()
+        adapter.glassSelectedFill = ColorUtilsCompat.withAlpha(context.accentColor, 0.82f)
+        adapter.glassSelectedStroke = 0x99FFFFFF.toInt()
         adapter.notifyDataSetChanged()
     }
 
@@ -140,9 +162,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         }
         val oldIndex = selectedIndex
         selectedIndex = newIndex
-        if (oldIndex in items.indices) {
-            adapter.notifyItemChanged(oldIndex)
-        }
+        if (oldIndex in items.indices) adapter.notifyItemChanged(oldIndex)
         if (newIndex != RecyclerView.NO_POSITION) {
             adapter.notifyItemChanged(newIndex)
             scrollToIndex(newIndex, smooth)
@@ -159,20 +179,15 @@ class RoundedTagBarView @JvmOverloads constructor(
         onTagLongClick = listener
     }
 
-    private fun normalizeIndex(index: Int): Int {
-        return if (index in items.indices) index else RecyclerView.NO_POSITION
-    }
+    private fun normalizeIndex(index: Int): Int =
+        if (index in items.indices) index else RecyclerView.NO_POSITION
 
     private fun scrollToIndex(index: Int, smooth: Boolean) {
         recyclerView.post {
             if (index !in items.indices) return@post
             val child = layoutManager.findViewByPosition(index)
             if (child == null) {
-                if (smooth) {
-                    recyclerView.smoothScrollToPosition(index)
-                } else {
-                    recyclerView.scrollToPosition(index)
-                }
+                if (smooth) recyclerView.smoothScrollToPosition(index) else recyclerView.scrollToPosition(index)
                 recyclerView.post { centerVisibleChild(index, false) }
                 return@post
             }
@@ -188,62 +203,57 @@ class RoundedTagBarView @JvmOverloads constructor(
     private fun centerChild(childLeft: Int, childWidth: Int, smooth: Boolean) {
         val dx = childLeft - (recyclerView.width - childWidth) / 2
         if (dx == 0) return
-        if (smooth) {
-            recyclerView.smoothScrollBy(dx, 0)
-        } else {
-            recyclerView.scrollBy(dx, 0)
-        }
+        if (smooth) recyclerView.smoothScrollBy(dx, 0) else recyclerView.scrollBy(dx, 0)
     }
 
     private inner class TagAdapter : RecyclerView.Adapter<TagViewHolder>() {
-
         var selectedBackgroundColor: Int = context.primaryColor
         var selectedTextColor: Int = context.accentColor
         var normalTextColor: Int = context.primaryTextColor
+        var glassNormalFill: Int = 0x55FFFFFF
+        var glassNormalStroke: Int = 0x88FFFFFF.toInt()
+        var glassSelectedFill: Int = context.accentColor
+        var glassSelectedStroke: Int = 0xAAFFFFFF.toInt()
 
         override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): TagViewHolder {
             val textView = LayoutInflater.from(parent.context)
                 .inflate(R.layout.item_bookshelf_group_tag, parent, false) as TextView
-            // 无圆角、无选中背景，仅靠文字颜色区分选中状态
-            textView.background = null
-            textView.setTextColor(
-                ColorStateList(
-                    arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf()),
-                    intArrayOf(selectedTextColor, normalTextColor)
-                )
-            )
+            textView.gravity = Gravity.CENTER
+            textView.includeFontPadding = false
+            textView.minHeight = 32.dp
             return TagViewHolder(textView)
         }
 
         override fun onBindViewHolder(holder: TagViewHolder, position: Int) {
             val item = items[position]
-            holder.textView.background = null
-            val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_recycler_padding_vertical)
+            val textView = holder.textView
             val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_item_padding_horizontal)
-            holder.textView.setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
-            holder.textView.setTextColor(
-                ColorStateList(
-                    arrayOf(intArrayOf(android.R.attr.state_selected), intArrayOf()),
-                    intArrayOf(selectedTextColor, normalTextColor)
-                )
+            textView.setPadding(horizontalPadding + 2.dp, 0, horizontalPadding + 2.dp, 0)
+            textView.setTextColor(
+                ColorStateList.valueOf(if (position == selectedIndex) selectedTextColor else normalTextColor)
             )
-            holder.textView.text = item.text
-            holder.textView.typeface = holder.textView.context.uiTypeface()
-            holder.textView.alpha = item.alpha
-            holder.textView.isSelected = position == selectedIndex
-            holder.textView.setOnClickListener {
-                val bindingPosition = holder.bindingAdapterPosition
-                if (bindingPosition != RecyclerView.NO_POSITION) {
-                    onTagClick?.invoke(bindingPosition)
-                }
+            textView.text = item.text
+            textView.typeface = textView.context.uiTypeface()
+            textView.alpha = item.alpha
+            textView.isSelected = position == selectedIndex
+
+            val selected = position == selectedIndex && selectedBackgroundVisible
+            textView.background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 16.dp.toFloat()
+                setColor(if (selected) glassSelectedFill else glassNormalFill)
+                setStroke(1.dp, if (selected) glassSelectedStroke else glassNormalStroke)
             }
-            holder.textView.setOnLongClickListener {
+            textView.elevation = if (selected) 2.dp.toFloat() else 0f
+
+            textView.setOnClickListener {
                 val bindingPosition = holder.bindingAdapterPosition
-                if (bindingPosition == RecyclerView.NO_POSITION) {
-                    false
-                } else {
-                    onTagLongClick?.invoke(bindingPosition) ?: false
-                }
+                if (bindingPosition != RecyclerView.NO_POSITION) onTagClick?.invoke(bindingPosition)
+            }
+            textView.setOnLongClickListener {
+                val bindingPosition = holder.bindingAdapterPosition
+                if (bindingPosition == RecyclerView.NO_POSITION) false
+                else onTagLongClick?.invoke(bindingPosition) ?: false
             }
         }
 
@@ -253,4 +263,9 @@ class RoundedTagBarView @JvmOverloads constructor(
     private class TagViewHolder(val textView: TextView) : RecyclerView.ViewHolder(textView)
 
     private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
+
+    private object ColorUtilsCompat {
+        fun withAlpha(color: Int, alpha: Float): Int =
+            Color.argb((Color.alpha(color) * alpha).toInt().coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
+    }
 }
