@@ -1,4 +1,4 @@
-package io.legado.app.ui.widget
+package io.legado.app.ui.widget.image
 
 import android.animation.ValueAnimator
 import android.content.Context
@@ -8,10 +8,8 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
 import android.util.AttributeSet
-import android.view.View
 import android.view.animation.DecelerateInterpolator
 import io.legado.app.lib.theme.ThemeStore
-import io.legado.app.ui.widget.image.CoverImageView
 import io.legado.app.utils.dpToPx
 
 /**
