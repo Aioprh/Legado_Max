@@ -66,7 +66,7 @@ import splitties.init.appCtx
  * - Canvas绘制书名作者（无封面时的兜底方案）
  */
 @Suppress("unused")
-class CoverImageView @JvmOverloads constructor(
+open class CoverImageView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : AppCompatImageView(context, attrs) {
