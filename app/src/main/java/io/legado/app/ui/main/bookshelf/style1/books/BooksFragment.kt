@@ -2,6 +2,7 @@ package io.legado.app.ui.main.bookshelf.style1.books
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -114,16 +115,26 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     private fun initSmartTagFilterBar() {
         if (smartTagFilterScroll != null) return
         val context = requireContext()
+        val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val glassSurface = if (isNight) 0x661A1A1A else 0xB8FFFFFF.toInt()
+        val glassStroke = if (isNight) 0x52FFFFFF else 0x66FFFFFF
+
         smartTagChipGroup = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(12.dpToPx(), 6.dpToPx(), 12.dpToPx(), 6.dpToPx())
+            setPadding(12.dpToPx(), 7.dpToPx(), 12.dpToPx(), 7.dpToPx())
         }
         smartTagFilterScroll = HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
             isFillViewport = false
-            elevation = 3.dpToPx().toFloat()
-            setBackgroundColor(ContextCompat.getColor(context, R.color.background))
+            clipToPadding = false
+            elevation = 6.dpToPx().toFloat()
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 22.dpToPx().toFloat()
+                setColor(glassSurface)
+                setStroke(1.dpToPx(), glassStroke)
+            }
             addView(
                 smartTagChipGroup,
                 android.widget.FrameLayout.LayoutParams(
@@ -137,13 +148,24 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
-            ).apply { gravity = Gravity.TOP }
+            ).apply {
+                gravity = Gravity.TOP
+                leftMargin = 8.dpToPx()
+                rightMargin = 8.dpToPx()
+                topMargin = 4.dpToPx()
+            }
         )
         smartTagFilterScroll?.visibility = View.GONE
     }
 
     private fun createSmartTagChip(text: String, checked: Boolean, onClick: () -> Unit): TextView =
         TextView(smartTagChipGroup?.context ?: requireContext()).apply {
+            val context = this.context
+            val isNight = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            val normalSurface = if (isNight) 0x421A1A1A else 0x78FFFFFF
+            val normalStroke = if (isNight) 0x4AFFFFFF else 0x66FFFFFF
+            val selectedSurface = (accentColor and 0x00FFFFFF) or 0xC0000000.toInt()
+
             this.text = text
             textSize = 13f
             gravity = Gravity.CENTER
@@ -156,14 +178,12 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 18.dpToPx().toFloat()
-                setColor(if (checked) accentColor else ContextCompat.getColor(context, R.color.background_card))
-                if (!checked) {
-                    setStroke(1.dpToPx(), ContextCompat.getColor(context, R.color.divider))
-                }
+                setColor(if (checked) selectedSurface else normalSurface)
+                setStroke(1.dpToPx(), if (checked) 0x55FFFFFF else normalStroke)
             }
             setTextColor(if (checked) ContextCompat.getColor(context, R.color.white) else ContextCompat.getColor(context, R.color.secondaryText))
             contentDescription = text
-            elevation = if (checked) 1.5f.dpToPx().toFloat() else 0f
+            elevation = if (checked) 3.dpToPx().toFloat() else 1.dpToPx().toFloat()
         }
 
     private fun updateSmartTagFilterBar(items: List<io.legado.app.data.dao.BookShelfDisplay>) {
