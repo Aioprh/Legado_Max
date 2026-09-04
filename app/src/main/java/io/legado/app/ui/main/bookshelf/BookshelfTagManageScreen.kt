@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -194,40 +195,62 @@ private fun SmartTagManageCard(
     onTagVisibilityChange: (String, Boolean) -> Unit
 ) {
     Card(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(horizontal = 10.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("智能标签", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(
                         "根据书籍类型、阅读进度、章节数量和更新状态自动生成",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 Switch(checked = enabled, onCheckedChange = onEnabledChange)
             }
             if (enabled) {
-                tags.forEach { tag ->
+                tags.chunked(2).forEach { rowTags ->
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(tag.name, style = MaterialTheme.typography.bodyMedium)
-                            Text(
-                                "${tag.assignedCount} 本 · ${SmartTagDescription.description(tag.name)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        rowTags.forEach { tag ->
+                            SmartTagSettingItem(
+                                tag = tag,
+                                onCheckedChange = { onTagVisibilityChange(tag.name, it) },
+                                modifier = Modifier.weight(1f)
                             )
                         }
-                        Switch(
-                            checked = tag.visible,
-                            onCheckedChange = { onTagVisibilityChange(tag.name, it) }
-                        )
+                        if (rowTags.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SmartTagSettingItem(
+    tag: BookshelfTagItemUi,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.padding(horizontal = 3.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(tag.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                "${tag.assignedCount} 本 · ${SmartTagDescription.description(tag.name)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Switch(checked = tag.visible, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -237,9 +260,9 @@ private object SmartTagDescription {
         "网络书" to "网络书源", "更新异常" to "更新失败", "已读完" to "阅读完成", "在读" to "正在阅读",
         "未开始" to "尚未开始", "超长篇" to "1000章以上", "长篇" to "500章以上",
         "中长篇" to "200章以上", "短篇" to "少于50章", "有更新" to "检测到新章节",
-        "不可更新" to "关闭自动更新", "有封面" to "存在封面", "有简介" to "存在简介"
+        "不可更新" to "关闭自动更新"
     )
-    fun description(name: String) = descriptions[name] ?: "自动识别"
+    fun description(name: String) = descriptions[name] ?: "自定义规则"
 }
 
 @Composable
