@@ -2,25 +2,12 @@ package io.legado.app.ui.main.bookshelf.style2
 
 import android.content.Context
 import android.os.Parcelable
-import android.util.TypedValue
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import androidx.appcompat.widget.AppCompatImageButton
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.content.ContextCompat
-import androidx.core.os.bundleOf
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import io.legado.app.R
-import io.legado.app.constant.BookType
-import io.legado.app.constant.Status
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
-import io.legado.app.model.AudioPlay
-import io.legado.app.service.AudioPlayService
-import io.legado.app.utils.dpToPx
+import io.legado.app.utils.bundleOf
 
 abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
     val context: Context,
@@ -29,33 +16,7 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
     private val layoutStates = mutableMapOf<Long, Parcelable?>()
     private var currentGroupId: Long? = null
     private var layoutManager: RecyclerView.LayoutManager? = null
-    protected val inflater: LayoutInflater = LayoutInflater.from(context)
-    private var audioChildAttachListener: RecyclerView.OnChildAttachStateChangeListener? = null
-
-    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
-        super.onAttachedToRecyclerView(recyclerView)
-        layoutManager = recyclerView.layoutManager
-        audioChildAttachListener = object : RecyclerView.OnChildAttachStateChangeListener {
-            override fun onChildViewAttachedToWindow(view: View) {
-                val position = recyclerView.getChildAdapterPosition(view)
-                if (position != RecyclerView.NO_POSITION) bindAudioPlayButton(view, position)
-            }
-
-            override fun onChildViewDetachedFromWindow(view: View) = Unit
-        }.also { recyclerView.addOnChildAttachStateChangeListener(it) }
-        for (i in 0 until recyclerView.childCount) {
-            val child = recyclerView.getChildAt(i)
-            val position = recyclerView.getChildAdapterPosition(child)
-            if (position != RecyclerView.NO_POSITION) bindAudioPlayButton(child, position)
-        }
-    }
-
-    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
-        audioChildAttachListener?.let { recyclerView.removeOnChildAttachStateChangeListener(it) }
-        audioChildAttachListener = null
-        layoutManager = null
-        super.onDetachedFromRecyclerView(recyclerView)
-    }
+    protected val inflater = android.view.LayoutInflater.from(context)
 
     private val diffItemCallback = object : DiffUtil.ItemCallback<Any>() {
         override fun areItemsTheSame(oldItem: Any, newItem: Any): Boolean {
@@ -161,98 +122,10 @@ abstract class BaseBooksAdapter<VH : RecyclerView.ViewHolder>(
 
     final override fun onBindViewHolder(holder: VH, position: Int) {}
 
-    /** 音频书架项右侧的播放/暂停按钮。 */
-    private fun bindAudioPlayButton(view: View, position: Int) {
-        val book = getItem(position) as? Book
-        val isAudioBook = book != null && (book.type and BookType.audio) != 0
-        val root = view as? ViewGroup ?: return
-        val existing = root.findViewWithTag<AppCompatImageButton>(AUDIO_BUTTON_TAG)
-
-        if (!isAudioBook || book == null) {
-            existing?.visibility = View.GONE
-            return
-        }
-
-        val playButton = existing ?: AppCompatImageButton(context).apply {
-            tag = AUDIO_BUTTON_TAG
-            contentDescription = "播放或暂停音频"
-            isClickable = true
-            isFocusable = true
-            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
-            setPadding(9.dpToPx(), 9.dpToPx(), 9.dpToPx(), 9.dpToPx())
-            val selectable = TypedValue()
-            context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, selectable, true)
-            if (selectable.resourceId != 0) setBackgroundResource(selectable.resourceId)
-            root.addView(this, createAudioButtonLayoutParams(root))
-        }
-
-        // 每次绑定都重新设置监听器，避免 RecyclerView 回收复用后仍然操作旧书籍。
-        playButton.setOnClickListener {
-            val current = AudioPlay.book?.bookUrl == book.bookUrl
-            if (current && AudioPlayService.isRun) {
-                if (AudioPlayService.pause || AudioPlay.status != Status.PLAY) {
-                    AudioPlay.resume(context)
-                } else {
-                    AudioPlay.pause(context)
-                }
-            } else {
-                AudioPlay.resetData(book)
-                AudioPlay.loadOrUpPlayUrl()
-            }
-            playButton.postDelayed({ refreshVisibleAudioButtons(root.parent as? RecyclerView) }, 220L)
-        }
-        playButton.visibility = View.VISIBLE
-        updateAudioPlayButtonIcon(playButton, book)
-    }
-
-    private fun createAudioButtonLayoutParams(root: ViewGroup): ViewGroup.LayoutParams {
-        if (root is ConstraintLayout) {
-            return ConstraintLayout.LayoutParams(44.dpToPx(), 44.dpToPx()).apply {
-                endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-                topToTop = ConstraintLayout.LayoutParams.PARENT_ID
-                bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-                marginEnd = 6.dpToPx()
-            }
-        }
-        return androidx.recyclerview.widget.RecyclerView.LayoutParams(44.dpToPx(), 44.dpToPx())
-    }
-
-    private fun updateAudioPlayButtonIcon(button: AppCompatImageButton, book: Book) {
-        val playing = AudioPlay.book?.bookUrl == book.bookUrl &&
-                AudioPlay.status == Status.PLAY &&
-                !AudioPlayService.pause
-        button.setImageResource(if (playing) R.drawable.ic_pause_24dp else R.drawable.ic_play_24dp)
-        button.setColorFilter(ContextCompat.getColor(context, R.color.tv_text_summary))
-    }
-
-    private fun refreshVisibleAudioButtons(recyclerView: RecyclerView?) {
-        if (recyclerView == null) return
-        for (i in 0 until recyclerView.childCount) {
-            val child = recyclerView.getChildAt(i)
-            val position = recyclerView.getChildAdapterPosition(child)
-            if (position == RecyclerView.NO_POSITION) continue
-            val book = getItem(position) as? Book ?: continue
-            val button = child.findViewWithTag<AppCompatImageButton>(AUDIO_BUTTON_TAG)
-            if ((book.type and BookType.audio) != 0 && button != null) {
-                button.visibility = View.VISIBLE
-                updateAudioPlayButtonIcon(button, book)
-            }
-        }
-    }
-
-    override fun onViewRecycled(holder: VH) {
-        super.onViewRecycled(holder)
-        holder.itemView.findViewById<io.legado.app.ui.widget.image.CoverImageView?>(R.id.iv_cover)?.cancelLoad()
-    }
-
     interface CallBack {
         fun onItemClick(item: Any)
         fun onItemLongClick(item: Any)
         fun isUpdate(bookUrl: String): Boolean
         fun getItems(): List<Any>
-    }
-
-    companion object {
-        private const val AUDIO_BUTTON_TAG = "legado_audio_play_button"
     }
 }
