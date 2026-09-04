@@ -31,9 +31,7 @@ object SmartTag {
         Rule("中长篇", 60, "章节数达到 200 章以上") { it.totalChapterNum in 200..499 },
         Rule("短篇", 50, "章节数少于 50 章") { it.totalChapterNum in 1..49 },
         Rule("有更新", 85, "最近一次检查发现新章节") { it.lastCheckCount > 0 },
-        Rule("不可更新", 75, "已关闭自动更新") { !it.canUpdate },
-        Rule("有封面", 30, "存在可显示封面") { !it.getDisplayCover().isNullOrBlank() },
-        Rule("有简介", 30, "存在可显示简介") { !it.getDisplayIntro().isNullOrBlank() }
+        Rule("不可更新", 75, "已关闭自动更新") { !it.canUpdate }
     )
 
     val ruleInfos: List<RuleInfo>
