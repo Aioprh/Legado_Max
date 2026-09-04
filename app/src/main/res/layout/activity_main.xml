@@ -51,4 +51,14 @@
             app:menu="@menu/main_bnv" />
 
     </FrameLayout>
+
+    <io.legado.app.ui.widget.TopNavigationView
+        android:id="@+id/top_navigation_view"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_gravity="top"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:elevation="4dp"
+        android:visibility="gone" />
 </FrameLayout>

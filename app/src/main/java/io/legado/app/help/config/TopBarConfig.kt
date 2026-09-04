@@ -23,19 +23,15 @@ import java.io.File
  * 顶栏配置管理器。
  *
  * 管理顶栏（TitleBar）的外观配置包，包括标签栏颜色、选中色、
- * 壁纸、圆角等。配置以文件系统目录形式存储，每个包为一个
- * 目录，包含 top_bar.json 配置文件和可选的壁纸图片。
+ * 壁纸、圆角以及可选的顶部导航项目。配置以文件系统目录形式存储，
+ * 每个包为一个目录，包含 top_bar.json 配置文件和可选资源。
  *
  * 支持日间/夜间模式独立配置，以及 zip 导入导出功能。
- * 内部维护了一个 "_active" 快照目录，用于加速当前配置的读取。
  */
 object TopBarConfig {
 
-    /** 默认配置目录名 */
     const val DEFAULT_DIR_NAME = "default"
-    /** 样式：默认（跟随主题） */
     const val STYLE_DEFAULT = "default"
-    /** 样式：常规（独立背景/圆角） */
     const val STYLE_REGULAR = "regular"
 
     private const val packageFileName = "top_bar.json"
@@ -44,7 +40,6 @@ object TopBarConfig {
     private const val legacyActiveDayKey = "activeDayTopBarId"
     private const val legacyActiveNightKey = "activeNightTopBarId"
     private const val legacyMigratedKey = "topBarLegacyMigrated"
-
     private const val activeDayKey = PreferKey.topBarPackageDay
     private const val activeNightKey = PreferKey.topBarPackageNight
 
@@ -54,23 +49,6 @@ object TopBarConfig {
     private val tempDir: File
         get() = appCtx.externalFiles.getFile("topBarTemp").apply { mkdirs() }
 
-    /**
-     * 顶栏配置数据类。
-     *
-     * @property name 配置名称
-     * @property isNightMode 是否为夜间模式
-     * @property style 样式类型：[STYLE_DEFAULT] 或 [STYLE_REGULAR]
-     * @property tagBarColor 标签栏背景色，null 表示跟随主题
-     * @property tagBarAlpha 标签栏透明度（0-100）
-     * @property tagSelectedColor 选中标签颜色，null 表示跟随主题
-     * @property tagSelectedAlpha 选中标签透明度（0-100）
-     * @property wallpaperPath 壁纸图片路径（相对于包目录的相对路径）
-     * @property wallpaperAlpha 壁纸透明度（0-100）
-     * @property backgroundColor 常规样式下的背景色
-     * @property cornerScale 圆角缩放系数（0-3）
-     * @property expandFiltersByDefault 默认是否展开筛选标签
-     * @property updatedAt 最后更新时间戳
-     */
     @Keep
     data class Config(
         var name: String,
@@ -85,12 +63,15 @@ object TopBarConfig {
         var backgroundColor: Int? = null,
         var cornerScale: Float? = null,
         var expandFiltersByDefault: Boolean = false,
+        /** 是否启用顶部导航，启用后主导航从底栏切换到顶栏。 */
+        var navigationEnabled: Boolean = false,
+        /** 顶部导航图标映射，key 格式为 "{itemKey}_{normal|selected}"。 */
+        var navigationIcons: Map<String, String> = emptyMap(),
         var updatedAt: Long = System.currentTimeMillis()
     ) {
         fun toJson(): String = GSON.toJson(this)
     }
 
-    /** 配置条目：包含配置数据和来源信息（内置/本地），用于列表展示 */
     data class Entry(
         val config: Config,
         val source: Source,
@@ -98,10 +79,8 @@ object TopBarConfig {
         val localDir: File? = null
     )
 
-    /** 配置来源类型：内置（默认）或本地（用户自定义） */
     enum class Source { BUILTIN, LOCAL }
 
-    /** 旧版配置数据类，用于从 SharedPreferences 迁移到文件系统存储 */
     @Keep
     private data class LegacyConfig(
         var id: String = "",
@@ -121,7 +100,6 @@ object TopBarConfig {
         var updatedAt: Long = System.currentTimeMillis()
     )
 
-    /** 创建默认配置 */
     fun defaultConfig(context: Context, isNight: Boolean): Config {
         return Config(
             name = defaultName(isNight),
@@ -134,19 +112,16 @@ object TopBarConfig {
         )
     }
 
-    /** 获取当前激活的配置 */
     fun currentConfig(context: Context, isNight: Boolean = AppConfig.isNightTheme): Config {
         return currentEntry(context, isNight).config
     }
 
-    /** 获取当前激活的配置包目录名 */
     fun activeDirName(isNight: Boolean): String {
         return appCtx.getPrefString(if (isNight) activeNightKey else activeDayKey, DEFAULT_DIR_NAME)
             ?.ifBlank { DEFAULT_DIR_NAME }
             ?: DEFAULT_DIR_NAME
     }
 
-    /** 生成当前配置签名，用于缓存失效判断 */
     fun currentSignature(isNight: Boolean): String {
         val dirName = activeDirName(isNight)
         if (dirName == DEFAULT_DIR_NAME) return "$isNight|$DEFAULT_DIR_NAME"
@@ -156,11 +131,6 @@ object TopBarConfig {
         return "$isNight|$dirName|${configFile.lastModified()}"
     }
 
-    /**
-     * 获取当前配置条目。
-     * 若激活的是本地配置，会优先读取 _active 快照目录；
-     * 若快照不存在则从源目录复制一份。
-     */
     fun currentEntry(context: Context, isNight: Boolean): Entry {
         migrateLegacyIfNeeded(context)
         val dirName = activeDirName(isNight)
@@ -173,7 +143,6 @@ object TopBarConfig {
         return readEntry(activeLocalDir(isNight))?.copy(dirName = dirName) ?: entry
     }
 
-    /** 获取当前壁纸文件，不存在时返回 null */
     fun currentWallpaperFile(context: Context, isNight: Boolean): File? {
         val entry = currentEntry(context, isNight)
         val path = entry.config.wallpaperPath?.takeIf { it.isNotBlank() } ?: return null
@@ -186,7 +155,6 @@ object TopBarConfig {
         return resolved.takeIf { it.exists() && it.isFile }
     }
 
-    /** 加载所有配置条目（内置 + 本地），按更新时间排序 */
     fun loadEntries(context: Context, isNight: Boolean): List<Entry> {
         migrateLegacyIfNeeded(context)
         return buildList {
@@ -200,10 +168,6 @@ object TopBarConfig {
         )
     }
 
-    /**
-     * 新增或更新配置。若 [oldEntry] 不为空且为本地配置，则更新原目录；
-     * 否则创建新目录。名称重名时抛出异常。
-     */
     fun addOrUpdate(config: Config, oldEntry: Entry? = null): Entry {
         val normalized = normalizeConfig(config)
         val name = normalized.name.trim().ifBlank { defaultName(normalized.isNightMode) }
@@ -222,13 +186,13 @@ object TopBarConfig {
         val next = normalized.copy(
             name = name,
             wallpaperPath = normalizeWallpaperPath(normalized.wallpaperPath, dir),
+            navigationIcons = normalizeNavigationIcons(normalized.navigationIcons, dir),
             updatedAt = System.currentTimeMillis()
         )
         File(dir, packageFileName).writeText(GSON.toJson(next))
         return Entry(next, Source.LOCAL, dirName, localDir = dir)
     }
 
-    /** 应用指定配置：若为默认配置则清除快照，否则写入快照并设置激活目录 */
     fun apply(entry: Entry) {
         if (entry.dirName == DEFAULT_DIR_NAME) {
             FileUtils.delete(activeLocalDir(entry.config.isNightMode), deleteRootDir = true)
@@ -245,14 +209,12 @@ object TopBarConfig {
         )
     }
 
-    /** 删除本地配置目录，若删除的是当前激活配置则重置为默认 */
     fun deleteLocal(entry: Entry) {
         if (entry.dirName == DEFAULT_DIR_NAME) return
         FileUtils.delete(entry.localDir ?: localDir(entry.config.isNightMode, entry.dirName), deleteRootDir = true)
         resetActiveIfNeeded(entry)
     }
 
-    /** 将配置包导出为 zip 文件 */
     fun exportZip(entry: Entry): File {
         val dir = entry.localDir ?: localDir(entry.config.isNightMode, entry.dirName)
         val zipFile = tempDir.getFile("${entry.dirName}.zip")
@@ -261,7 +223,6 @@ object TopBarConfig {
         return zipFile
     }
 
-    /** 从 zip 文件导入配置包，自动生成唯一目录名 */
     fun importZip(zipFile: File): Entry {
         val unzipDir = tempDir.getFile("import_${System.currentTimeMillis()}").apply {
             if (exists()) FileUtils.delete(this, deleteRootDir = true)
@@ -280,7 +241,10 @@ object TopBarConfig {
             val targetDir = localDir(config.isNightMode, dirName)
             targetDir.mkdirs()
             packageFile.parentFile?.copyRecursively(targetDir, overwrite = true)
-            val finalConfig = config.copy(wallpaperPath = normalizeWallpaperPath(config.wallpaperPath, targetDir))
+            val finalConfig = config.copy(
+                wallpaperPath = normalizeWallpaperPath(config.wallpaperPath, targetDir),
+                navigationIcons = normalizeNavigationIcons(config.navigationIcons, targetDir)
+            )
             File(targetDir, packageFileName).writeText(GSON.toJson(finalConfig))
             Entry(finalConfig, Source.LOCAL, dirName, localDir = targetDir)
         } finally {
@@ -288,7 +252,6 @@ object TopBarConfig {
         }
     }
 
-    /** 从 JSON 字符串导入配置，兼容旧版格式 */
     fun importJson(json: String, isNight: Boolean): Entry {
         val config = GSON.fromJsonObject<Config>(json).getOrNull()
             ?: GSON.fromJsonObject<LegacyConfig>(json).getOrThrow().toConfig()
@@ -296,28 +259,22 @@ object TopBarConfig {
         return addOrUpdate(config)
     }
 
-    /** 透明度百分比（0-100）转 Alpha 值（0-255） */
     fun opacityToAlpha(opacity: Int): Int {
         return opacity.coerceIn(0, 100) * 255 / 100
     }
 
-    /** 给颜色叠加指定透明度（百分比 0-100） */
     fun withOpacity(color: Int, opacity: Int): Int {
         val alpha = opacityToAlpha(opacity)
         return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
     }
 
-    fun defaultBackgroundColor(isNight: Boolean): Int {
-        return if (isNight) Color.BLACK else Color.WHITE
-    }
+    fun defaultBackgroundColor(isNight: Boolean): Int = if (isNight) Color.BLACK else Color.WHITE
 
     fun resolveBackgroundColor(config: Config): Int {
         return config.backgroundColor ?: defaultBackgroundColor(config.isNightMode)
     }
 
-    fun resolveCornerScale(config: Config): Float {
-        return config.cornerScale ?: 1f
-    }
+    fun resolveCornerScale(config: Config): Float = config.cornerScale ?: 1f
 
     private fun defaultEntry(context: Context, isNight: Boolean): Entry {
         return Entry(defaultConfig(context, isNight), Source.BUILTIN, DEFAULT_DIR_NAME)
@@ -349,6 +306,7 @@ object TopBarConfig {
         config.wallpaperAlpha = config.wallpaperAlpha.coerceIn(0, 100)
         config.wallpaperPath = config.wallpaperPath?.takeIf { it.isNotBlank() }
         config.cornerScale = config.cornerScale?.coerceIn(0f, 3f)
+        config.navigationIcons = config.navigationIcons.filterKeys { it.isNotBlank() }.toMap()
         return config
     }
 
@@ -362,10 +320,29 @@ object TopBarConfig {
             ?.forEach { it.delete() }
         val suffix = source.extension.takeIf { it.isNotBlank() } ?: "jpg"
         val target = File(dir, "top_bar_wallpaper.$suffix")
-        if (source.absolutePath != target.absolutePath) {
-            source.copyTo(target, overwrite = true)
-        }
+        if (source.absolutePath != target.absolutePath) source.copyTo(target, overwrite = true)
         return target.name
+    }
+
+    private fun normalizeNavigationIcons(paths: Map<String, String>, dir: File): Map<String, String> {
+        if (paths.isEmpty()) return emptyMap()
+        val result = linkedMapOf<String, String>()
+        paths.forEach { (key, value) ->
+            if (value.isBlank()) return@forEach
+            val source = File(value)
+            if (!source.isAbsolute) {
+                val local = File(dir, value)
+                if (local.exists() && local.isFile) result[key] = value
+                return@forEach
+            }
+            if (!source.exists() || !source.isFile) return@forEach
+            val safeKey = key.replace(Regex("[^A-Za-z0-9_-]"), "_")
+            val suffix = source.extension.takeIf { it.isNotBlank() } ?: "png"
+            val target = File(dir, "top_nav_${safeKey}.$suffix")
+            if (source.absolutePath != target.absolutePath) source.copyTo(target, overwrite = true)
+            result[key] = target.name
+        }
+        return result
     }
 
     private fun resetActiveIfNeeded(entry: Entry) {
@@ -381,15 +358,12 @@ object TopBarConfig {
     private fun writeActiveSnapshot(entry: Entry) {
         val sourceDir = entry.localDir ?: localDir(entry.config.isNightMode, entry.dirName)
         val targetDir = activeLocalDir(entry.config.isNightMode)
-        if (targetDir.exists()) {
-            FileUtils.delete(targetDir, deleteRootDir = true)
-        }
+        if (targetDir.exists()) FileUtils.delete(targetDir, deleteRootDir = true)
         sourceDir.copyRecursively(targetDir, overwrite = true)
     }
 
     private fun activeLocalDir(isNight: Boolean): File {
-        return rootDir.getFile(activeSnapshotDirName)
-            .getFile(if (isNight) "night" else "day")
+        return rootDir.getFile(activeSnapshotDirName).getFile(if (isNight) "night" else "day")
     }
 
     private fun localDir(isNight: Boolean, dirName: String): File = typeDir(isNight).getFile(dirName)
@@ -410,12 +384,9 @@ object TopBarConfig {
     }
 
     private fun defaultName(isNight: Boolean): String {
-        return appCtx.getString(
-            if (isNight) R.string.top_bar_night_default_name else R.string.top_bar_day_default_name
-        )
+        return appCtx.getString(if (isNight) R.string.top_bar_night_default_name else R.string.top_bar_day_default_name)
     }
 
-    /** 从旧版 SharedPreferences 格式迁移到文件系统存储（仅执行一次） */
     private fun migrateLegacyIfNeeded(context: Context) {
         if (appCtx.getPrefString(legacyMigratedKey, "").orEmpty().isNotBlank()) return
         val legacyJsons = context.getPrefString(legacyConfigsKey)

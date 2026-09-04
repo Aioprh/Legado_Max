@@ -8,6 +8,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
@@ -25,6 +26,7 @@ import io.legado.app.constant.EventBus
 import io.legado.app.databinding.ActivityTopBarManageBinding
 import io.legado.app.databinding.ItemTopBarConfigBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.NavigationBarConfig
 import io.legado.app.help.config.TopBarConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
@@ -57,10 +59,8 @@ import java.util.Locale
 /**
  * 顶栏管理 Activity。
  *
- * 管理顶栏（TitleBar）配置包，支持日间/夜间模式切换。
- * 每个配置包可设置样式（默认/常规）、圆角缩放、背景色、壁纸、
- * 标签栏颜色/透明度、选中标签颜色/透明度、默认展开筛选等。
- * 支持 zip 导入导出、JSON 剪贴板导入、壁纸裁剪选择。
+ * 除了顶栏外观配置，还支持把底栏的首页/书架/发现/RSS/我的导航能力
+ * 适配到顶部，并分别配置常规/选中图标。
  */
 class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorPickerDialogListener {
 
@@ -73,6 +73,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
     private var pendingConfig: TopBarConfig.Config? = null
     private var editingDialog: LinearLayout? = null
     private var pendingWallpaperCropRequest: ImageCropHelper.Request? = null
+    private var pendingNavigationIconKey: String? = null
 
     private val dateFormat by lazy { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
@@ -86,6 +87,10 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
 
     private val selectWallpaper = registerForActivityResult(HandleFileContract()) {
         it.uri?.let(::startWallpaperCrop)
+    }
+
+    private val selectNavigationIcon = registerForActivityResult(HandleFileContract()) {
+        it.uri?.let(::importNavigationIcon)
     }
 
     private val cropWallpaper = registerForActivityResult(ImageCropContract()) { result ->
@@ -150,15 +155,11 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
             tvTabDay.setTextColor(if (!isNightMode) activeColor else primaryTextColor)
             tabDay.background = if (!isNightMode) {
                 ContextCompat.getDrawable(this@TopBarManageActivity, R.drawable.bg_theme_tab_selected)
-            } else {
-                null
-            }
+            } else null
             tvTabNight.setTextColor(if (isNightMode) activeColor else primaryTextColor)
             tabNight.background = if (isNightMode) {
                 ContextCompat.getDrawable(this@TopBarManageActivity, R.drawable.bg_theme_tab_selected)
-            } else {
-                null
-            }
+            } else null
         }
     }
 
@@ -215,14 +216,12 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
             dirName = ""
         )
         editingEntry = base
-        pendingConfig = base.config.copy()
+        pendingConfig = base.config.copy(navigationIcons = base.config.navigationIcons.toMap())
         val root = buildEditView()
         editingDialog = root
         alert(if (entry == null) R.string.add else R.string.edit) {
             customView {
-                ScrollView(this@TopBarManageActivity).apply {
-                    addView(root)
-                }
+                ScrollView(this@TopBarManageActivity).apply { addView(root) }
             }
             okButton { saveEditingPackage() }
             cancelButton()
@@ -239,10 +238,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                 hint = getString(R.string.top_bar_name)
                 setText(config.name)
                 setSingleLine(true)
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    48.dp
-                )
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 48.dp)
             })
             addView(optionRow(getString(R.string.top_bar_style), styleLabel(config.style)) {
                 selector(
@@ -261,9 +257,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
             })
             if (config.style == TopBarConfig.STYLE_REGULAR) {
                 addView(optionRow(getString(R.string.corner_scale), cornerScaleLabel(config.cornerScale)) {
-                    showCornerScalePicker(config.cornerScale ?: 1f) {
-                        config.cornerScale = it
-                    }
+                    showCornerScalePicker(config.cornerScale ?: 1f) { config.cornerScale = it }
                 })
                 val backgroundColor = config.backgroundColor ?: TopBarConfig.defaultBackgroundColor(config.isNightMode)
                 addView(optionRow(getString(R.string.top_bar_background_color), colorLabel(config.backgroundColor), backgroundColor) {
@@ -273,17 +267,12 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                     showWallpaperSelector()
                 })
                 addView(optionRow(getString(R.string.top_bar_wallpaper_alpha), "${config.wallpaperAlpha}%") {
-                    showSliderPicker(getString(R.string.top_bar_wallpaper_alpha), config.wallpaperAlpha) {
-                        config.wallpaperAlpha = it
-                    }
+                    showSliderPicker(getString(R.string.top_bar_wallpaper_alpha), config.wallpaperAlpha) { config.wallpaperAlpha = it }
                 })
                 addView(optionRow(getString(R.string.top_bar_filter_default), filterDefaultLabel(config.expandFiltersByDefault)) {
                     selector(
                         getString(R.string.top_bar_filter_default),
-                        listOf(
-                            getString(R.string.top_bar_filter_default_collapsed),
-                            getString(R.string.top_bar_filter_default_expanded)
-                        )
+                        listOf(getString(R.string.top_bar_filter_default_collapsed), getString(R.string.top_bar_filter_default_expanded))
                     ) { _, index ->
                         config.expandFiltersByDefault = index == 1
                         refreshEditDialog()
@@ -295,25 +284,140 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                 showColorOptions(COLOR_TAG_BAR, tagBarColor)
             })
             addView(optionRow(getString(R.string.tag_bar_opacity), "${config.tagBarAlpha}%") {
-                showSliderPicker(getString(R.string.tag_bar_opacity), config.tagBarAlpha) {
-                    config.tagBarAlpha = it
-                }
+                showSliderPicker(getString(R.string.tag_bar_opacity), config.tagBarAlpha) { config.tagBarAlpha = it }
             })
             val selectedColor = config.tagSelectedColor ?: defaultSelectedColor()
             addView(optionRow(getString(R.string.top_bar_tag_selected_color), colorLabel(config.tagSelectedColor), selectedColor) {
                 showColorOptions(COLOR_TAG_SELECTED, selectedColor)
             })
             addView(optionRow(getString(R.string.tag_selected_opacity), "${config.tagSelectedAlpha}%") {
-                showSliderPicker(getString(R.string.tag_selected_opacity), config.tagSelectedAlpha) {
-                    config.tagSelectedAlpha = it
+                showSliderPicker(getString(R.string.tag_selected_opacity), config.tagSelectedAlpha) { config.tagSelectedAlpha = it }
+            })
+
+            addView(optionRow("顶栏导航", if (config.navigationEnabled) "启用" else "关闭") {
+                selector("顶栏导航", listOf("关闭", "启用")) { _, index ->
+                    config.navigationEnabled = index == 1
+                    refreshEditDialog()
                 }
             })
+            if (config.navigationEnabled) {
+                NavigationBarConfig.items.forEach { item ->
+                    addView(navigationIconRow(item))
+                }
+            }
         }
     }
 
-    private fun optionRow(title: String, value: String, onClick: () -> Unit): View {
-        return optionRow(title, value, null, onClick)
+    private fun navigationIconRow(item: NavigationBarConfig.NavItem): View {
+        val config = pendingConfig!!
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(14.dp, 5.dp, 8.dp, 5.dp)
+            background = ContextCompat.getDrawable(context, R.drawable.bg_config_card)
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 64.dp).apply { topMargin = 8.dp }
+            addView(TextView(context).apply {
+                text = getString(item.titleRes)
+                textSize = 15f
+                setTextColor(ContextCompat.getColor(context, R.color.primaryText))
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            addView(navigationIconButton(item, NavigationBarConfig.STATE_NORMAL, "常规"))
+            addView(navigationIconButton(item, NavigationBarConfig.STATE_SELECTED, "选中"))
+        }
     }
+
+    private fun navigationIconButton(item: NavigationBarConfig.NavItem, state: String, label: String): View {
+        val wrapper = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(52.dp, ViewGroup.LayoutParams.MATCH_PARENT).apply { marginStart = 4.dp }
+        }
+        val icon = ImageView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(34.dp, 34.dp)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(4.dp, 4.dp, 4.dp, 4.dp)
+            background = ContextCompat.getDrawable(context, R.drawable.bg_config_card)
+            setImageDrawable(resolveNavigationPreview(item, state))
+            contentDescription = label
+            setOnClickListener { showNavigationIconSelector(item, state) }
+        }
+        wrapper.addView(icon)
+        wrapper.addView(TextView(this).apply {
+            text = label
+            textSize = 9f
+            gravity = Gravity.CENTER
+            setTextColor(ContextCompat.getColor(context, R.color.secondaryText))
+        })
+        wrapper.setOnClickListener { showNavigationIconSelector(item, state) }
+        return wrapper
+    }
+
+    private fun resolveNavigationPreview(item: NavigationBarConfig.NavItem, state: String): android.graphics.drawable.Drawable? {
+        val config = pendingConfig ?: return null
+        val base = NavigationBarConfig.activeConfig(this, config.isNightMode)
+        val merged = base.icons.toMutableMap()
+        config.navigationIcons.forEach { (key, path) ->
+            val file = File(path)
+            merged[key] = if (file.isAbsolute) file.absolutePath
+            else File(editingEntry?.localDir ?: File("."), path).absolutePath
+        }
+        return NavigationBarConfig.previewDrawable(
+            this,
+            base.copy(icons = merged),
+            item,
+            state == NavigationBarConfig.STATE_SELECTED
+        )
+    }
+
+    private fun showNavigationIconSelector(item: NavigationBarConfig.NavItem, state: String) {
+        val key = NavigationBarConfig.iconKey(item.key, state)
+        selector("${getString(item.titleRes)} · ${if (state == NavigationBarConfig.STATE_SELECTED) "选中" else "常规"}", listOf("选择图标", "恢复默认")) { _, index ->
+            if (index == 0) {
+                pendingNavigationIconKey = key
+                selectNavigationIcon.launch {
+                    mode = HandleFileContract.FILE
+                    title = "选择图标"
+                    allowExtensions = arrayOf("png", "jpg", "jpeg", "webp", "svg")
+                }
+            } else {
+                pendingConfig?.navigationIcons = pendingConfig?.navigationIcons.orEmpty().toMutableMap().apply { remove(key) }
+                refreshEditDialog()
+            }
+        }
+    }
+
+    private fun importNavigationIcon(uri: Uri) {
+        val key = pendingNavigationIconKey ?: return
+        lifecycleScope.launch {
+            kotlin.runCatching {
+                withContext(Dispatchers.IO) {
+                    val mime = contentResolver.getType(uri).orEmpty()
+                    val extension = when {
+                        mime.contains("svg", ignoreCase = true) -> "svg"
+                        mime.contains("webp", ignoreCase = true) -> "webp"
+                        mime.contains("jpeg", ignoreCase = true) -> "jpg"
+                        else -> "png"
+                    }
+                    val file = externalFiles.getFile("topBarTempIcons", "${System.currentTimeMillis()}_${key}.$extension")
+                    file.parentFile?.mkdirs()
+                    contentResolver.openInputStream(uri)?.use { input ->
+                        FileOutputStream(file).use { output -> input.copyTo(output) }
+                    } ?: throw IllegalArgumentException(getString(R.string.file_not_exist))
+                    file.absolutePath
+                }
+            }.onSuccess { path ->
+                pendingConfig?.navigationIcons = pendingConfig?.navigationIcons.orEmpty().toMutableMap().apply { put(key, path) }
+                pendingNavigationIconKey = null
+                refreshEditDialog()
+            }.onFailure {
+                pendingNavigationIconKey = null
+                toastOnUi(it.localizedMessage)
+            }
+        }
+    }
+
+    private fun optionRow(title: String, value: String, onClick: () -> Unit): View = optionRow(title, value, null, onClick)
 
     private fun optionRow(title: String, value: String, colorPreview: Int?, onClick: () -> Unit): View {
         return LinearLayout(this).apply {
@@ -321,10 +425,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
             gravity = Gravity.CENTER_VERTICAL
             setPadding(14.dp, 0, 14.dp, 0)
             background = ContextCompat.getDrawable(context, R.drawable.bg_config_card)
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                46.dp
-            ).apply { topMargin = 8.dp }
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 46.dp).apply { topMargin = 8.dp }
             addView(TextView(context).apply {
                 text = title
                 textSize = 15f
@@ -346,9 +447,6 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
         }
     }
 
-    /**
-     * 弹出滑块对话框调整百分比值，左右有减号加号按钮方便微调。
-     */
     private fun showSliderPicker(title: String, value: Int, apply: (Int) -> Unit) {
         var currentValue = value.coerceIn(0, 100)
         val percentText = TextView(this).apply {
@@ -365,8 +463,8 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                     currentValue = progress
                     percentText.text = "$progress%"
                 }
-                override fun onStartTrackingTouch(sb: SeekBar?) {}
-                override fun onStopTrackingTouch(sb: SeekBar?) {}
+                override fun onStartTrackingTouch(sb: SeekBar?) = Unit
+                override fun onStopTrackingTouch(sb: SeekBar?) = Unit
             })
         }
         val sliderLayout = LinearLayout(this).apply {
@@ -385,9 +483,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                     setPadding(14.dp, 0, 14.dp, 0)
                     setOnClickListener { seekBar.progress = (seekBar.progress - 1).coerceAtLeast(0) }
                 })
-                addView(seekBar.apply {
-                    layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-                })
+                addView(seekBar.apply { layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f) })
                 addView(TextView(this@TopBarManageActivity).apply {
                     text = "+"
                     textSize = 22f
@@ -400,21 +496,14 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
         }
         alert(title) {
             customView { sliderLayout }
-            okButton {
-                apply(currentValue)
-                refreshEditDialog()
-            }
+            okButton { apply(currentValue); refreshEditDialog() }
             cancelButton()
         }
     }
 
     private fun refreshEditDialog() {
         val root = editingDialog ?: return
-        root.findViewWithTag<EditText>("name")
-            ?.text
-            ?.toString()
-            ?.trim()
-            ?.let { pendingConfig?.name = it }
+        root.findViewWithTag<EditText>("name")?.text?.toString()?.trim()?.let { pendingConfig?.name = it }
         root.removeAllViews()
         val rebuilt = buildEditView()
         while (rebuilt.childCount > 0) {
@@ -542,9 +631,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
         val oldEntry = editingEntry
         lifecycleScope.launch {
             kotlin.runCatching {
-                withContext(Dispatchers.IO) {
-                    TopBarConfig.addOrUpdate(config.copy(name = name), oldEntry)
-                }
+                withContext(Dispatchers.IO) { TopBarConfig.addOrUpdate(config.copy(name = name), oldEntry) }
             }.onSuccess {
                 if (oldEntry?.dirName == TopBarConfig.activeDirName(it.config.isNightMode)) {
                     TopBarConfig.apply(it)
@@ -552,9 +639,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                 }
                 toastOnUi(R.string.success)
                 loadPackages()
-            }.onFailure {
-                toastOnUi(it.localizedMessage)
-            }
+            }.onFailure { toastOnUi(it.localizedMessage) }
         }
     }
 
@@ -575,9 +660,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                     title = getString(R.string.export_str)
                     fileData = HandleFileContract.FileData(zip.name, zip, "application/zip")
                 }
-            }.onFailure {
-                toastOnUi(it.localizedMessage)
-            }
+            }.onFailure { toastOnUi(it.localizedMessage) }
         }
     }
 
@@ -593,9 +676,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
             }.onSuccess {
                 toastOnUi(R.string.import_success)
                 loadPackages()
-            }.onFailure {
-                toastOnUi(it.localizedMessage)
-            }
+            }.onFailure { toastOnUi(it.localizedMessage) }
         }
     }
 
@@ -611,9 +692,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
             }.onSuccess {
                 toastOnUi(R.string.import_success)
                 loadPackages()
-            }.onFailure {
-                toastOnUi(R.string.import_failed)
-            }
+            }.onFailure { toastOnUi(R.string.import_failed) }
         }
     }
 
@@ -637,9 +716,7 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                 add(Action.EDIT)
                 add(Action.EXPORT)
                 add(Action.SHARE_JSON)
-                if (entry.dirName != TopBarConfig.activeDirName(entry.config.isNightMode)) {
-                    add(Action.DELETE)
-                }
+                if (entry.dirName != TopBarConfig.activeDirName(entry.config.isNightMode)) add(Action.DELETE)
             } else {
                 add(Action.IMPORT_CLIPBOARD)
             }
@@ -665,36 +742,24 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
         }
     }
 
-    private fun cornerScaleLabel(value: Float?): String {
-        return String.format(Locale.ROOT, "%.1f", (value ?: 1f).coerceIn(0f, 3f))
-    }
+    private fun cornerScaleLabel(value: Float?): String = String.format(Locale.ROOT, "%.1f", (value ?: 1f).coerceIn(0f, 3f))
 
-    private fun filterDefaultLabel(expanded: Boolean): String {
-        return getString(
-            if (expanded) R.string.top_bar_filter_default_expanded
-            else R.string.top_bar_filter_default_collapsed
-        )
-    }
+    private fun filterDefaultLabel(expanded: Boolean): String = getString(
+        if (expanded) R.string.top_bar_filter_default_expanded else R.string.top_bar_filter_default_collapsed
+    )
 
-    private fun wallpaperLabel(path: String?): String {
-        return if (path.isNullOrBlank()) {
-            getString(R.string.top_bar_wallpaper_unselected)
-        } else {
-            getString(R.string.top_bar_wallpaper_selected)
+    private fun wallpaperLabel(path: String?): String = if (path.isNullOrBlank()) {
+        getString(R.string.top_bar_wallpaper_unselected)
+    } else getString(R.string.top_bar_wallpaper_selected)
+
+    private fun styleLabel(style: String): String = getString(
+        when (style) {
+            TopBarConfig.STYLE_REGULAR -> R.string.regular_top_bar
+            else -> R.string.default_top_bar
         }
-    }
-
-    private fun styleLabel(style: String): String {
-        return getString(
-            when (style) {
-                TopBarConfig.STYLE_REGULAR -> R.string.regular_top_bar
-                else -> R.string.default_top_bar
-            }
-        )
-    }
+    )
 
     private fun defaultTagBarColor(): Int = ContextCompat.getColor(this, R.color.background_menu)
-
     private fun defaultSelectedColor(): Int = primaryColor
 
     private fun nextPackageName(): String {
@@ -719,12 +784,8 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
         IMPORT_CLIPBOARD(R.string.top_bar_import_clipboard)
     }
 
-    inner class Adapter(context: Context) :
-        RecyclerAdapter<TopBarConfig.Entry, ItemTopBarConfigBinding>(context) {
-
-        override fun getViewBinding(parent: ViewGroup): ItemTopBarConfigBinding {
-            return ItemTopBarConfigBinding.inflate(inflater, parent, false)
-        }
+    inner class Adapter(context: Context) : RecyclerAdapter<TopBarConfig.Entry, ItemTopBarConfigBinding>(context) {
+        override fun getViewBinding(parent: ViewGroup): ItemTopBarConfigBinding = ItemTopBarConfigBinding.inflate(inflater, parent, false)
 
         override fun convert(
             holder: ItemViewHolder,
@@ -738,27 +799,17 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                 val isActive = item.dirName == TopBarConfig.activeDirName(item.config.isNightMode)
                 tvInfo.text = buildInfoText(item, isActive)
                 tvApply.text = if (isActive) getString(R.string.applied) else getString(R.string.apply)
-                tvApply.setTextColor(
-                    if (isActive) accentColor else ContextCompat.getColor(context, R.color.primaryText)
-                )
+                tvApply.setTextColor(if (isActive) accentColor else ContextCompat.getColor(context, R.color.primaryText))
                 tvEdit.visibility = if (item.dirName == TopBarConfig.DEFAULT_DIR_NAME) View.GONE else View.VISIBLE
             }
         }
 
         override fun registerListener(holder: ItemViewHolder, binding: ItemTopBarConfigBinding) {
             binding.apply {
-                tvApply.setOnClickListener {
-                    entries.getOrNull(holder.layoutPosition)?.let(::applyPackage)
-                }
-                tvEdit.setOnClickListener {
-                    entries.getOrNull(holder.layoutPosition)?.let(::showEditDialog)
-                }
-                tvMore.setOnClickListener {
-                    entries.getOrNull(holder.layoutPosition)?.let(::showActions)
-                }
-                root.setOnClickListener {
-                    entries.getOrNull(holder.layoutPosition)?.let(::showActions)
-                }
+                tvApply.setOnClickListener { entries.getOrNull(holder.layoutPosition)?.let(::applyPackage) }
+                tvEdit.setOnClickListener { entries.getOrNull(holder.layoutPosition)?.let(::showEditDialog) }
+                tvMore.setOnClickListener { entries.getOrNull(holder.layoutPosition)?.let(::showActions) }
+                root.setOnClickListener { entries.getOrNull(holder.layoutPosition)?.let(::showActions) }
             }
         }
     }
@@ -779,6 +830,9 @@ class TopBarManageActivity : BaseActivity<ActivityTopBarManageBinding>(), ColorP
                     append(" · ")
                     append(getString(R.string.wallpaper))
                 }
+            }
+            if (entry.config.navigationEnabled) {
+                append(" · 顶部导航")
             }
             append(" · ")
             append(getString(R.string.tag_bar_opacity))
