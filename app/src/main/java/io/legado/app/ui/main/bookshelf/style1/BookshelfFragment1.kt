@@ -17,7 +17,6 @@ import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentStatePagerAdapter
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager.widget.ViewPager
-import com.google.android.material.tabs.TabLayout
 import io.legado.app.R
 import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
@@ -27,7 +26,6 @@ import io.legado.app.databinding.FragmentBookshelf1Binding
 import io.legado.app.help.book.BookTagHelper
 import io.legado.app.help.book.BookTagManagement
 import io.legado.app.help.config.AppConfig
-import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.book.group.GroupEditDialog
@@ -35,6 +33,7 @@ import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.BookshelfTagManageActivity
 import io.legado.app.ui.main.bookshelf.style1.books.BooksFragment
+import io.legado.app.ui.widget.GlassTabBarView
 import io.legado.app.ui.widget.RoundedTagBarView
 import io.legado.app.utils.isCreated
 import io.legado.app.utils.observeEvent
@@ -53,11 +52,10 @@ import kotlinx.coroutines.withContext
 /**
  * 书架界面
  * 支持两种分组切换模式：
- * 1. TabLayout 模式（下拉选择分组开关未勾选）：显示所有分组标签，可滑动点击切换
- * 2. 下拉选择模式（下拉选择分组开关勾选）：点击标题栏弹出下拉选择分组菜单
+ * 1. 液态玻璃 Tab 模式：显示所有分组，可滑动点击切换
+ * 2. 下拉选择模式：点击标题栏弹出下拉选择分组菜单
  */
 class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1),
-    TabLayout.OnTabSelectedListener,
     SearchView.OnQueryTextListener {
 
     constructor(position: Int) : this() {
@@ -68,16 +66,13 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
 
     private val binding by viewBinding(FragmentBookshelf1Binding::bind)
     private val adapter by lazy { TabFragmentPageAdapter(childFragmentManager) }
-    // 下拉选择模式相关控件
     private var titleSelect: LinearLayout? = null
     private var tvGroupName: TextView? = null
     private var ivArrow: ImageView? = null
-    // TabLayout 模式相关控件
-    private var tabLayout: TabLayout? = null
+    private var glassTabBar: GlassTabBarView? = null
     private val bookGroups = mutableListOf<BookGroup>()
     private val fragmentMap = hashMapOf<Long, BooksFragment>()
     private var currentPosition = 0
-    // 标签栏相关
     private var tagBar: RoundedTagBarView? = null
     private val tagItems = mutableListOf<RoundedTagBarView.Item>()
     private val selectedTagByGroup = hashMapOf<Long, String>()
@@ -85,14 +80,11 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
     override val groupId: Long get() = selectedGroup?.groupId ?: 0
 
     override val books: List<Book>
-        get() {
-            val fragment = fragmentMap[groupId]
-            return fragment?.getBooks() ?: emptyList()
-        }
+        get() = fragmentMap[groupId]?.getBooks() ?: emptyList()
 
     override var onlyUpdateRead = false
+
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        // 清理已销毁子页面的引用，避免 fragmentMap 持有导致内存泄漏
         childFragmentManager.registerFragmentLifecycleCallbacks(
             object : FragmentManager.FragmentLifecycleCallbacks() {
                 override fun onFragmentDestroyed(fm: FragmentManager, fragment: Fragment) {
@@ -112,20 +104,25 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         binding.viewPagerBookshelf.setEdgeEffectColor(primaryColor)
         binding.viewPagerBookshelf.offscreenPageLimit = 2
         binding.viewPagerBookshelf.adapter = adapter
-        // 监听 ViewPager 页面切换，更新当前分组名称与标签栏
         binding.viewPagerBookshelf.addOnPageChangeListener(object : ViewPager.OnPageChangeListener {
             override fun onPageSelected(position: Int) {
                 currentPosition = position
                 AppConfig.saveTabPosition = position
                 tvGroupName?.text = bookGroups.getOrNull(position)?.groupName ?: ""
+                glassTabBar?.selectTab(position, true)
                 upTagBar()
             }
-            override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
-            override fun onPageScrollStateChanged(state: Int) {}
+
+            override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {
+                if (!AppConfig.dropdownSelectGroup) {
+                    glassTabBar?.onPageScrolled(position, positionOffset)
+                }
+            }
+
+            override fun onPageScrollStateChanged(state: Int) = Unit
         })
-        // 根据"下拉选择分组"开关动态添加布局到 TitleBar
+
         if (AppConfig.dropdownSelectGroup) {
-            // 下拉选择模式：添加 view_group_selector 布局
             val groupSelectorView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.view_group_selector, binding.titleBar.toolbar, false)
             binding.titleBar.toolbar.addView(groupSelectorView)
@@ -135,25 +132,33 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             initTitleSelect()
             updateTitleColor()
         } else {
-            // TabLayout 模式：添加 view_tab_layout_min 布局
-            val tabLayoutView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.view_tab_layout_min, binding.titleBar.toolbar, false)
-            binding.titleBar.toolbar.addView(tabLayoutView)
-            tabLayout = tabLayoutView.findViewById(R.id.tab_layout)
-            tabLayout?.let { tab ->
-                tab.isTabIndicatorFullWidth = false
-                tab.tabMode = TabLayout.MODE_SCROLLABLE
-                tab.setSelectedTabIndicatorColor(requireContext().accentColor)
-                tab.setupWithViewPager(binding.viewPagerBookshelf)
+            val glass = GlassTabBarView(requireContext()).apply {
+                setOnTabClickListener { position ->
+                    if (position in bookGroups.indices) {
+                        currentPosition = position
+                        AppConfig.saveTabPosition = position
+                        binding.viewPagerBookshelf.setCurrentItem(position, true)
+                    }
+                }
+                setOnTabLongClickListener { position ->
+                    if (position !in bookGroups.indices) return@setOnTabLongClickListener false
+                    showDialogFragment(GroupEditDialog(bookGroups[position]))
+                    true
+                }
             }
+            glassTabBar = glass
+            binding.titleBar.toolbar.addView(glass, LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            ).apply {
+                marginStart = 6
+                marginEnd = 6
+            })
         }
         initTagBar()
     }
 
-    /**
-     * 初始化标签栏：绑定点击与长按事件。
-     * 点击标签过滤书籍；长按打开标签管理。
-     */
     private fun initTagBar() {
         tagBar = binding.tagBar
         tagBar?.setOnTagClickListener { position ->
@@ -161,12 +166,10 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             val currentGroupId = groupId
             val tag = item.text.toString()
             if (tag.equals(getString(R.string.all), ignoreCase = true)) {
-                // 点击"全部"：清除过滤
                 selectedTagByGroup.remove(currentGroupId)
                 tagBar?.setSelectedIndex(0)
                 fragmentMap[currentGroupId]?.filterBooksByTag(null)
             } else {
-                // 点击标签：按标签过滤
                 selectedTagByGroup[currentGroupId] = tag
                 tagBar?.setSelectedIndex(position)
                 fragmentMap[currentGroupId]?.filterBooksByTag(tag)
@@ -180,10 +183,6 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         }
     }
 
-    /**
-     * 加载并显示当前分组标签栏。
-     * 标签 = 配置标签 ∪ 当前分组书架书籍实际使用的标签，排除隐藏标签。
-     */
     private fun upTagBar() {
         val tagBar = tagBar ?: return
         val currentGroupId = groupId
@@ -213,7 +212,6 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             }
             tagItems.clear()
             tagItems.addAll(items)
-            // 之前选中的标签若已不存在，重置为"全部"并清除过滤
             val savedTag = selectedTagByGroup[currentGroupId]
             val savedIndex = if (savedTag == null) {
                 0
@@ -223,9 +221,7 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
                     selectedTagByGroup.remove(currentGroupId)
                     fragmentMap[currentGroupId]?.filterBooksByTag(null)
                     0
-                } else {
-                    idx
-                }
+                } else idx
             }
             tagBar.visibility = View.VISIBLE
             tagBar.submitItems(tagItems.toList(), savedIndex)
@@ -233,17 +229,14 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
     }
 
     private fun initTitleSelect() {
-        // 下拉选择模式：点击标题栏弹出下拉选择分组菜单
         titleSelect?.setOnClickListener {
             if (bookGroups.isEmpty()) return@setOnClickListener
             val groupNames = bookGroups.map { it.groupName }
             val popup = ListPopupWindow(requireContext())
             popup.anchorView = titleSelect
-            // 使用自定义适配器显示勾号
             popup.setAdapter(GroupSelectorAdapter(requireContext(), groupNames, currentPosition))
-            // 手动测量最宽分组名的宽度
             val maxWidth = measureMaxTextWidth(groupNames)
-            popup.width = maxWidth + 72 // 加上padding和勾号宽度
+            popup.width = maxWidth + 72
             popup.setOnItemClickListener { _, _, position, _ ->
                 currentPosition = position
                 AppConfig.saveTabPosition = position
@@ -258,28 +251,21 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
     private fun measureMaxTextWidth(items: List<String>): Int {
         val paint = tvGroupName?.paint ?: return 0
         var maxWidth = 0
-        for (item in items) {
-            val width = paint.measureText(item).toInt()
-            if (width > maxWidth) maxWidth = width
-        }
+        for (item in items) maxWidth = maxOf(maxWidth, paint.measureText(item).toInt())
         return maxWidth
     }
 
-    // 自定义适配器，显示勾号
     private class GroupSelectorAdapter(
         context: android.content.Context,
         items: List<String>,
         private val selectedPosition: Int
     ) : ArrayAdapter<String>(context, android.R.layout.simple_spinner_dropdown_item, items) {
-        
         override fun getView(position: Int, convertView: android.view.View?, parent: android.view.ViewGroup): android.view.View {
             val view = super.getView(position, convertView, parent)
             if (view is TextView) {
-                if (position == selectedPosition) {
-                    view.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_check, 0, 0, 0)
-                } else {
-                    view.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
-                }
+                view.setCompoundDrawablesWithIntrinsicBounds(
+                    if (position == selectedPosition) R.drawable.ic_check else 0, 0, 0, 0
+                )
             }
             return view
         }
@@ -296,47 +282,29 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
         return false
     }
 
-    override fun onQueryTextChange(newText: String?): Boolean {
-        return false
-    }
+    override fun onQueryTextChange(newText: String?): Boolean = false
 
     @Synchronized
     override fun upGroup(data: List<BookGroup>) {
         if (data.isEmpty()) {
             tagBar?.visibility = View.GONE
             appDb.bookGroupDao.enableGroup(BookGroup.IdAll)
-        } else {
-            if (data != bookGroups) {
-                bookGroups.clear()
-                bookGroups.addAll(data)
-                val lastPosition = AppConfig.saveTabPosition
-                    .coerceIn(0, bookGroups.size - 1)
-                // 先设置 currentPosition，这样 onPageSelected / onTabSelected
-                // 回调能正确使用目标位置，避免回调将位置覆盖为 0
-                currentPosition = lastPosition
-                // 先调用 notifyDataSetChanged 让 ViewPager 知道新的数据量，
-                // 然后立即设置 currentItem 到目标位置（无动画），
-                // 这样 ViewPager 不会先显示 position 0 再切换，避免闪烁
-                adapter.notifyDataSetChanged()
-                // notifyDataSetChanged 之后 ViewPager 已知道新的 item count，
-                // 此时 setCurrentItem 不会崩溃，且能在同一帧内完成位置切换
-                binding.viewPagerBookshelf.setCurrentItem(lastPosition, false)
-                if (AppConfig.dropdownSelectGroup) {
-                    AppConfig.saveTabPosition = lastPosition
-                    updateTitleSelect()
-                } else {
-                    selectLastTab(lastPosition)
-                    // 设置长按分组标签编辑分组
-                    for (i in 0 until adapter.count) {
-                        tabLayout?.getTabAt(i)?.view?.setOnLongClickListener {
-                            showDialogFragment(GroupEditDialog(bookGroups[i]))
-                            true
-                        }
-                    }
-                }
-                upTagBar()
-            }
+            return
         }
+        if (data == bookGroups) return
+        bookGroups.clear()
+        bookGroups.addAll(data)
+        val lastPosition = AppConfig.saveTabPosition.coerceIn(0, bookGroups.size - 1)
+        currentPosition = lastPosition
+        adapter.notifyDataSetChanged()
+        binding.viewPagerBookshelf.setCurrentItem(lastPosition, false)
+        if (AppConfig.dropdownSelectGroup) {
+            AppConfig.saveTabPosition = lastPosition
+            updateTitleSelect()
+        } else {
+            glassTabBar?.submitTabs(bookGroups.map { it.groupName }, lastPosition)
+        }
+        upTagBar()
     }
 
     override fun upSort() {
@@ -345,48 +313,13 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
 
     override fun observeLiveBus() {
         super.observeLiveBus()
-        // 标签管理修改标签后刷新标签栏
-        observeEvent<String>(EventBus.BOOKSHELF_REFRESH) {
-            upTagBar()
-        }
+        observeEvent<String>(EventBus.BOOKSHELF_REFRESH) { upTagBar() }
     }
 
     private fun updateTitleSelect() {
         if (bookGroups.isNotEmpty()) {
             val position = currentPosition.coerceIn(0, bookGroups.size - 1)
             tvGroupName?.text = bookGroups[position].groupName
-        }
-    }
-
-    // TabLayout 模式：选择上次保存的分组
-    // ViewPager 的 currentItem 已在 upGroup 中通过 setCurrentItem 同步设置，
-    // TabLayout 通过 setupWithViewPager 自动跟随 ViewPager 的位置，
-    // 但 TabLayout 的视觉选中可能不同步，需要显式 select。
-    private fun selectLastTab(lastPosition: Int) {
-        val position = lastPosition.coerceIn(0, bookGroups.size - 1)
-        AppConfig.saveTabPosition = position
-        // 移除监听器避免 select 触发 onTabSelected 覆盖已设置的位置
-        tabLayout?.removeOnTabSelectedListener(this)
-        tabLayout?.getTabAt(position)?.select()
-        tabLayout?.addOnTabSelectedListener(this)
-    }
-
-    // TabLayout 模式：Tab 选中回调
-    override fun onTabSelected(tab: TabLayout.Tab) {
-        currentPosition = tab.position
-        AppConfig.saveTabPosition = tab.position
-        upTagBar()
-    }
-
-    // TabLayout 模式：Tab 未选中回调
-    override fun onTabUnselected(tab: TabLayout.Tab) = Unit
-
-    // TabLayout 模式：Tab 再次选中回调（显示分组书籍数量）
-    override fun onTabReselected(tab: TabLayout.Tab) {
-        selectedGroup?.let { group ->
-            fragmentMap[group.groupId]?.let {
-                toastOnUi("${group.groupName}(${it.getBooksCount()})")
-            }
         }
     }
 
@@ -397,31 +330,27 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
     override fun updateMainBottomPadding(bottomPadding: Int) {
         if (view == null) return
         fragmentMap.values.forEach {
-            if (it.view != null) {
-                it.updateMainBottomPadding(bottomPadding)
-            }
+            if (it.view != null) it.updateMainBottomPadding(bottomPadding)
+        }
+    }
+
+    private fun onGroupTabReselected(position: Int) {
+        selectedGroup?.let { group ->
+            fragmentMap[group.groupId]?.let { toastOnUi("${group.groupName}(${it.getBooksCount()})") }
         }
     }
 
     private inner class TabFragmentPageAdapter(fm: FragmentManager) :
         FragmentStatePagerAdapter(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT) {
 
-        /**
-         * 确定视图位置是否更改时调用
-         * @return POSITION_NONE 已更改,刷新视图. POSITION_UNCHANGED 未更改,不刷新视图
-         */
         override fun getItemPosition(any: Any): Int {
             val fragment = any as BooksFragment
             val position = fragment.position
             val group = bookGroups.getOrNull(position)
-            if (fragment.groupId != group?.groupId) {
-                return POSITION_NONE
-            }
+            if (fragment.groupId != group?.groupId) return POSITION_NONE
             val bookSort = group.getRealBookSort()
             fragment.setEnableRefresh(group.enableRefresh)
-            if (fragment.bookSort != bookSort) {
-                fragment.upBookSort(bookSort)
-            }
+            if (fragment.bookSort != bookSort) fragment.upBookSort(bookSort)
             return POSITION_UNCHANGED
         }
 
@@ -431,21 +360,13 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             return BooksFragment(position, group)
         }
 
-        override fun getCount(): Int {
-            return bookGroups.size
-        }
+        override fun getCount(): Int = bookGroups.size
 
-        // TabLayout 模式：返回分组名称作为 Tab 标题
-        override fun getPageTitle(position: Int): CharSequence {
-            return bookGroups[position].groupName
-        }
+        override fun getPageTitle(position: Int): CharSequence = bookGroups[position].groupName
 
         override fun instantiateItem(container: ViewGroup, position: Int): Any {
             var fragment = super.instantiateItem(container, position) as BooksFragment
             val group = bookGroups[position]
-            /**
-             * Activity recreate 会复用之前的 Fragment，不正确的需要重新创建
-             */
             if (fragment.isCreated && getItemPosition(fragment) == POSITION_NONE) {
                 destroyItem(container, position, fragment)
                 fragment = super.instantiateItem(container, position) as BooksFragment
@@ -453,6 +374,5 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             fragmentMap[group.groupId] = fragment
             return fragment
         }
-
     }
 }
