@@ -9,6 +9,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.HorizontalScrollView
+import androidx.core.view.doOnLayout
 import androidx.core.view.isGone
 import androidx.core.view.updatePadding
 import androidx.fragment.app.activityViewModels
@@ -112,19 +113,18 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     private fun initSmartTagFilterBar() {
         if (smartTagFilterScroll != null) return
         val context = requireContext()
-        // 项目主题不是 MaterialComponents，而 Chip/ChipGroup 初始化要求该主题，
-        // 否则会抛 "The style on this component requires your app theme to be Theme.MaterialComponents"
+        // 项目主题不是 MaterialComponents，Chip/ChipGroup 使用独立主题上下文，避免初始化崩溃。
         val chipContext: Context = ContextThemeWrapper(
             context.applicationContext,
             com.google.android.material.R.style.Theme_MaterialComponents_DayNight_DarkActionBar
         )
         smartTagChipGroup = ChipGroup(chipContext).apply {
             isSingleLine = true
-            setPadding(8.dpToPx(), 4.dpToPx(), 8.dpToPx(), 4.dpToPx())
+            setPadding(8.dpToPx(), 3.dpToPx(), 8.dpToPx(), 3.dpToPx())
         }
         smartTagFilterScroll = HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
-            isFillViewport = true
+            isFillViewport = false
             elevation = 4.dpToPx().toFloat()
             setBackgroundColor(androidx.core.content.ContextCompat.getColor(context, R.color.background))
             addView(
@@ -145,47 +145,57 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         smartTagFilterScroll?.visibility = View.GONE
     }
 
+    private fun createSmartTagChip(text: String, checked: Boolean, onClick: () -> Unit): Chip =
+        Chip(smartTagChipGroup?.context ?: requireContext()).apply {
+            this.text = text
+            isCheckable = true
+            isChecked = checked
+            setEnsureMinTouchTargetSize(false)
+            setOnClickListener { onClick() }
+            setTextSize(14f)
+        }
+
     private fun updateSmartTagFilterBar(items: List<io.legado.app.data.dao.BookShelfDisplay>) {
         val scroll = smartTagFilterScroll ?: return
         val chipGroup = smartTagChipGroup ?: return
-        if (!SmartTagConfig.isEnabled(requireContext())) {
+        val context = context ?: return
+        if (!SmartTagConfig.isEnabled(context)) {
             scroll.visibility = View.GONE
             binding.rvBookshelf.updatePadding(top = 0)
             return
         }
+
+        // 过滤栏必须使用与管理页相同的完整规则集合，并包含自定义智能标签。
         val counts = linkedMapOf<String, Int>()
         items.forEach { item ->
-            SmartTag.names(item.toMinimalBook(), SmartTag.ruleInfos.size).forEach { tag ->
-                if (SmartTagConfig.isRuleVisible(requireContext(), tag)) counts[tag] = (counts[tag] ?: 0) + 1
+            SmartTag.names(item.toMinimalBook(), context, Int.MAX_VALUE).forEach { tag ->
+                if (SmartTagConfig.isRuleVisible(context, tag)) counts[tag] = (counts[tag] ?: 0) + 1
             }
         }
         val tags = counts.entries.sortedWith(
             compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }
         ).take(12)
+
         chipGroup.removeAllViews()
         if (tags.isEmpty()) {
             scroll.visibility = View.GONE
             binding.rvBookshelf.updatePadding(top = 0)
             return
         }
-        chipGroup.addView(Chip(chipGroup.context).apply {
-            text = "全部 ${items.size}"
-            isCheckable = true
-            isChecked = currentTag == null
-            setOnClickListener { filterBooksByTag(null) }
+
+        chipGroup.addView(createSmartTagChip("全部 ${items.size}", currentTag == null) {
+            filterBooksByTag(null)
         })
         tags.forEach { entry ->
-            chipGroup.addView(Chip(chipGroup.context).apply {
-                text = "${entry.key} ${entry.value}"
-                isCheckable = true
-                isChecked = currentTag == entry.key
-                setOnClickListener { filterBooksByTag(entry.key) }
+            chipGroup.addView(createSmartTagChip("${entry.key} ${entry.value}", currentTag == entry.key) {
+                filterBooksByTag(entry.key)
             })
         }
+
         scroll.visibility = View.VISIBLE
-        scroll.post {
-            val height = scroll.height
-            if (height > 0) binding.rvBookshelf.updatePadding(top = height + 4.dpToPx())
+        // 不再用 post + 当前 height 猜测布局高度，避免首个书籍卡片被标签栏遮挡。
+        scroll.doOnLayout {
+            binding.rvBookshelf.updatePadding(top = it.height + 4.dpToPx())
         }
     }
 
@@ -281,13 +291,14 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
 
     private fun upRecyclerData() {
         booksFlowJob?.cancel()
+        val context = requireContext()
         booksFlowJob = viewLifecycleOwner.lifecycleScope.launch {
             appDb.bookDao.flowShelfByGroup(groupId).map { list ->
                 val filtered = currentTag?.let { tag ->
                     list.filter { item ->
-                        val smartMatch = SmartTagConfig.isEnabled(requireContext()) &&
-                            SmartTagConfig.isRuleVisible(requireContext(), tag) &&
-                            SmartTag.names(item.toMinimalBook(), SmartTag.ruleInfos.size).contains(tag)
+                        val smartMatch = SmartTagConfig.isEnabled(context) &&
+                            SmartTagConfig.isRuleVisible(context, tag) &&
+                            SmartTag.names(item.toMinimalBook(), context, Int.MAX_VALUE).contains(tag)
                         smartMatch || BookTagHelper.has(item.customTag, tag)
                     }
                 } ?: list
