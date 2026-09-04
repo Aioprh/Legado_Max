@@ -4,19 +4,13 @@ import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.legado.app.R
 import io.legado.app.base.BaseActivity
 import io.legado.app.databinding.ActivityBookshelfTagManageBinding
 import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 
-/**
- * 书架标签管理宿主 Activity。
- *
- * 传入 `groupId`（LongExtra）指定要聚焦的分组。
- */
+/** 书架标签管理宿主 Activity。 */
 class BookshelfTagManageActivity : BaseActivity<ActivityBookshelfTagManageBinding>() {
-
     override val binding by viewBinding(ActivityBookshelfTagManageBinding::inflate)
     private val viewModel: BookshelfTagManageViewModel by viewModels()
 
@@ -40,7 +34,9 @@ class BookshelfTagManageActivity : BaseActivity<ActivityBookshelfTagManageBindin
                         onSaveAssignment = viewModel::saveAssignment,
                         onRequestRename = viewModel::confirmRenameTag,
                         onRenameTag = viewModel::executeRenameTag,
-                        onReorderTags = viewModel::reorderTags
+                        onReorderTags = viewModel::reorderTags,
+                        onSmartTagsEnabledChange = viewModel::setSmartTagsEnabled,
+                        onSmartTagVisibilityChange = viewModel::setSmartTagVisible
                     )
                 )
             }
