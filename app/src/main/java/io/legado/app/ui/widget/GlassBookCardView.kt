@@ -18,6 +18,7 @@ import io.legado.app.utils.dpToPx
 /**
  * 书架书籍卡片液态玻璃容器。
  * 不改变卡片内部布局，仅负责材质、边缘高光以及点击/聚焦时的折射光带。
+ * 动画只在进入窗口和交互时运行，避免滚动时持续占用 UI 线程。
  */
 class GlassBookCardView @JvmOverloads constructor(
     context: Context,
@@ -27,18 +28,30 @@ class GlassBookCardView @JvmOverloads constructor(
     private var highlightProgress = -0.35f
     private var highlightAnimator: ValueAnimator? = null
     private val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var entryPlayed = false
 
     init {
         isClickable = true
         isFocusable = true
         background = createGlassBackground()
         elevation = 2.dpToPx().toFloat()
+        clipToOutline = true
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (!entryPlayed) {
+            entryPlayed = true
+            postDelayed({
+                if (isAttachedToWindow) animateHighlight(520L)
+            }, 70L)
+        }
     }
 
     override fun drawableStateChanged() {
         super.drawableStateChanged()
         if (isPressed || isFocused) {
-            animateHighlight()
+            animateHighlight(360L)
             elevation = 4.dpToPx().toFloat()
         } else {
             elevation = 2.dpToPx().toFloat()
@@ -47,7 +60,7 @@ class GlassBookCardView @JvmOverloads constructor(
 
     override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
-        if (isPressed || isFocused || highlightAnimator?.isRunning == true) {
+        if (highlightAnimator?.isRunning == true || isPressed || isFocused) {
             drawHighlight(canvas)
         }
     }
@@ -74,11 +87,11 @@ class GlassBookCardView @JvmOverloads constructor(
         }
     }
 
-    private fun animateHighlight() {
+    private fun animateHighlight(duration: Long) {
         highlightAnimator?.cancel()
         highlightProgress = -0.35f
         highlightAnimator = ValueAnimator.ofFloat(-0.35f, 1.35f).apply {
-            duration = 420L
+            this.duration = duration
             interpolator = DecelerateInterpolator(1.5f)
             addUpdateListener {
                 highlightProgress = it.animatedValue as Float
@@ -96,8 +109,8 @@ class GlassBookCardView @JvmOverloads constructor(
             center - spread, 0f, center + spread, 0f,
             intArrayOf(
                 Color.TRANSPARENT,
-                Color.argb(42, 255, 255, 255),
-                Color.argb(22, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                Color.argb(48, 255, 255, 255),
+                Color.argb(24, Color.red(accent), Color.green(accent), Color.blue(accent)),
                 Color.TRANSPARENT
             ),
             floatArrayOf(0f, 0.44f, 0.58f, 1f),
