@@ -1,13 +1,25 @@
 package io.legado.app.help.book
 
 import android.content.Context
+import io.legado.app.utils.GSON
+import io.legado.app.utils.fromJsonArray
 
-/** 智能标签 2.0 的本地配置。规则本身仍由 SmartTag 提供，用户只控制启用状态。 */
+/** 智能标签 2.0 的本地配置。 */
 object SmartTagConfig {
     private const val PREFS = "smart_tag_v2"
     private const val KEY_ENABLED = "enabled"
     private const val KEY_VISIBLE = "visible"
     private const val KEY_MAX = "max_tags"
+    private const val KEY_CUSTOM_RULES = "custom_rules"
+
+    data class CustomRule(
+        val id: String,
+        val name: String,
+        val field: String,
+        val operator: String,
+        val value: String,
+        val enabled: Boolean = true
+    )
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -33,6 +45,28 @@ object SmartTagConfig {
         prefs(context).edit().putInt(KEY_MAX, value.coerceIn(1, 12)).apply()
     }
 
+    fun customRules(context: Context): List<CustomRule> =
+        prefs(context).getString(KEY_CUSTOM_RULES, null)?.let { json ->
+            runCatching { GSON.fromJsonArray<CustomRule>(json) }.getOrNull()
+        }?.orEmpty()
+
+    fun saveCustomRules(context: Context, rules: List<CustomRule>) {
+        prefs(context).edit()
+            .putString(KEY_CUSTOM_RULES, GSON.toJson(rules))
+            .apply()
+    }
+
+    fun upsertCustomRule(context: Context, rule: CustomRule) {
+        saveCustomRules(context, customRules(context).filterNot { it.id == rule.id } + rule)
+    }
+
+    fun deleteCustomRule(context: Context, id: String) {
+        saveCustomRules(context, customRules(context).filterNot { it.id == id })
+    }
+
+    fun allRuleNames(context: Context): List<String> =
+        SmartTag.ruleInfos.map { it.name } + customRules(context).filter { it.enabled }.map { it.name }
+
     fun enabledRuleNames(context: Context): Set<String> =
-        SmartTag.ruleInfos.map { it.name }.filter { isRuleVisible(context, it) }.toSet()
+        allRuleNames(context).filter { isRuleVisible(context, it) }.toSet()
 }
