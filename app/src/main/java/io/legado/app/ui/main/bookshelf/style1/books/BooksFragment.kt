@@ -3,8 +3,11 @@ package io.legado.app.ui.main.bookshelf.style1.books
 import android.annotation.SuppressLint
 import android.graphics.Rect
 import android.os.Bundle
+import android.view.Gravity
 import android.view.View
 import android.view.ViewConfiguration
+import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
 import androidx.core.view.isGone
 import androidx.core.view.updatePadding
 import androidx.fragment.app.activityViewModels
@@ -15,6 +18,8 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.Adapter.StateRestorationPolicy
+import com.google.android.material.chip.Chip
+import com.google.android.material.chip.ChipGroup
 import io.legado.app.R
 import io.legado.app.base.BaseFragment
 import io.legado.app.constant.AppLog
@@ -25,6 +30,8 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.FragmentBooksBinding
 import io.legado.app.help.book.BookTagHelper
+import io.legado.app.help.book.SmartTag
+import io.legado.app.help.book.SmartTagConfig
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.primaryColor
@@ -32,6 +39,7 @@ import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.main.MainViewModel
 import io.legado.app.utils.cnCompare
+import io.legado.app.utils.dpToPx
 import io.legado.app.utils.flowWithLifecycleAndDatabaseChangeFirst
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setEdgeEffectColor
@@ -49,11 +57,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
-/**
- * 书架界面
- */
-class BooksFragment() : BaseFragment(R.layout.fragment_books),
-    BaseBooksAdapter.CallBack {
+/** 书架界面。 */
+class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.CallBack {
 
     constructor(position: Int, group: BookGroup) : this() {
         val bundle = Bundle()
@@ -81,8 +86,10 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     private var onlyUpdateRead = false
     private val bookshelfMargin by lazy { AppConfig.bookshelfMargin }
     private var itemCount = 0
-    /** 当前选中的标签，null 表示不按标签过滤 */
+    /** 当前选中的标签，null 表示不按标签过滤。 */
     private var currentTag: String? = null
+    private var smartTagFilterScroll: HorizontalScrollView? = null
+    private var smartTagChipGroup: ChipGroup? = null
 
     private fun createBooksAdapter(): BaseBooksAdapter<*> {
         return when (AppConfig.bookLayout) {
@@ -102,14 +109,94 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
             binding.refreshLayout.isEnabled = enableRefresh
         }
         initRecyclerView()
+        initSmartTagFilterBar()
         upRecyclerData()
     }
 
-    private fun initRecyclerView() {
-        // 初始化适配器
-        if (!this::booksAdapter.isInitialized) {
-            booksAdapter = createBooksAdapter()
+    private fun initSmartTagFilterBar() {
+        if (smartTagFilterScroll != null) return
+        val context = requireContext()
+        smartTagChipGroup = ChipGroup(context).apply {
+            isSingleLine = true
+            setPadding(8.dpToPx(), 4.dpToPx(), 8.dpToPx(), 4.dpToPx())
         }
+        smartTagFilterScroll = HorizontalScrollView(context).apply {
+            isHorizontalScrollBarEnabled = false
+            isFillViewport = true
+            elevation = 4.dpToPx().toFloat()
+            setBackgroundColor(androidx.core.content.ContextCompat.getColor(context, R.color.background_color))
+            addView(
+                smartTagChipGroup,
+                HorizontalScrollView.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            )
+        }
+        binding.root.addView(
+            smartTagFilterScroll,
+            android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.TOP
+            }
+        )
+        smartTagFilterScroll?.visibility = View.GONE
+    }
+
+    private fun updateSmartTagFilterBar(items: List<io.legado.app.data.dao.BookShelfDisplay>) {
+        val scroll = smartTagFilterScroll ?: return
+        val chipGroup = smartTagChipGroup ?: return
+        if (!SmartTagConfig.isEnabled(requireContext())) {
+            scroll.visibility = View.GONE
+            binding.rvBookshelf.updatePadding(top = 0)
+            return
+        }
+
+        val counts = linkedMapOf<String, Int>()
+        items.forEach { item ->
+            SmartTag.names(item.toMinimalBook(), SmartTag.ruleInfos.size).forEach { tag ->
+                if (SmartTagConfig.isRuleVisible(requireContext(), tag)) {
+                    counts[tag] = (counts[tag] ?: 0) + 1
+                }
+            }
+        }
+        val tags = counts.entries.sortedWith(
+            compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }
+        ).take(12)
+
+        chipGroup.removeAllViews()
+        if (tags.isEmpty()) {
+            scroll.visibility = View.GONE
+            binding.rvBookshelf.updatePadding(top = 0)
+            return
+        }
+
+        val allChip = Chip(requireContext()).apply {
+            text = "全部 ${items.size}"
+            isCheckable = true
+            isChecked = currentTag == null
+            setOnClickListener { filterBooksByTag(null) }
+        }
+        chipGroup.addView(allChip)
+        tags.forEach { entry ->
+            chipGroup.addView(Chip(requireContext()).apply {
+                text = "${entry.key} ${entry.value}"
+                isCheckable = true
+                isChecked = currentTag.equals(entry.key)
+                setOnClickListener { filterBooksByTag(entry.key) }
+            })
+        }
+        scroll.visibility = View.VISIBLE
+        scroll.post {
+            val height = scroll.height
+            if (height > 0) binding.rvBookshelf.updatePadding(top = height + 4.dpToPx())
+        }
+    }
+
+    private fun initRecyclerView() {
+        if (!this::booksAdapter.isInitialized) booksAdapter = createBooksAdapter()
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
         binding.rvBookshelf.setHasFixedSize(true)
         binding.rvBookshelf.setEdgeEffectColor(primaryColor)
@@ -123,7 +210,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
             binding.rvBookshelf.layoutManager = GridLayoutManager(context, bookLayout)
             binding.rvBookshelf.setRecycledViewPool(activityViewModel.booksGridRecycledViewPool)
         } else if (bookLayout == 1) {
-            // 紧凑列表使用独立的 RecycledViewPool，避免与标准列表布局混淆
             binding.rvBookshelf.layoutManager = LinearLayoutManager(context)
             binding.rvBookshelf.setRecycledViewPool(activityViewModel.booksList2RecycledViewPool)
         } else {
@@ -132,51 +218,16 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         }
         booksAdapter.stateRestorationPolicy = StateRestorationPolicy.PREVENT_WHEN_EMPTY
         binding.rvBookshelf.adapter = booksAdapter
-        /**
-         * 应该是当初没有使用override val keepScrollPosition = true 加的代码
-         * 最近阅读插入顶部时会造成滚动
-         * 但是采用keepScrollPosition = true复原滚动后,代码就多余了
-         * 采用下面代码反而会向上多滚动一个行
-         * 再加上2025/12/19代码,因为下面的代码会出现很奇怪的自动滚动到顶部现象,没理出原因,注释掉下面代码
-         * **/
-//        booksAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
-//            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-//                val layoutManager = binding.rvBookshelf.layoutManager
-//                if (positionStart == 0 && itemCount == 1 && layoutManager is LinearLayoutManager) {
-//                    val scrollTo = layoutManager.findFirstVisibleItemPosition() - itemCount
-//                    binding.rvBookshelf.scrollToPosition(max(0, scrollTo))
-//                }
-//            }
-//
-//            override fun onItemRangeMoved(fromPosition: Int, toPosition: Int, itemCount: Int) {
-//                val layoutManager = binding.rvBookshelf.layoutManager
-//                if (toPosition == 0 && itemCount == 1 && layoutManager is LinearLayoutManager) {
-//                    val scrollTo = layoutManager.findFirstVisibleItemPosition() - itemCount
-//                    binding.rvBookshelf.scrollToPosition(max(0, scrollTo))
-//                }
-//            }
-//        })
-        // 清除旧的ItemDecoration，避免累积
-        while (binding.rvBookshelf.itemDecorationCount > 0) {
-            binding.rvBookshelf.removeItemDecorationAt(0)
-        }
+        while (binding.rvBookshelf.itemDecorationCount > 0) binding.rvBookshelf.removeItemDecorationAt(0)
         binding.rvBookshelf.addItemDecoration(object : RecyclerView.ItemDecoration() {
             private val marginFirst = bookshelfMargin + 24
             private val marginNormal = bookshelfMargin
-            
-            override fun getItemOffsets(
-                outRect: Rect,
-                view: View,
-                parent: RecyclerView,
-                state: RecyclerView.State
-            ) {
+            override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
                 val position = parent.getChildAdapterPosition(view)
                 if (position == RecyclerView.NO_POSITION) return
-                
                 if (bookLayout >= 2) {
                     val rowIndex = position / bookLayout
                     val lastRowIndex = if (itemCount > 0) (itemCount - 1) / bookLayout else 0
-                    // 处理单行情况：既是第一行也是最后一行
                     if (rowIndex == 0 && rowIndex == lastRowIndex) {
                         outRect.set(bookshelfMargin, marginFirst, bookshelfMargin, marginFirst)
                     } else when (rowIndex) {
@@ -185,7 +236,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
                         else -> outRect.set(bookshelfMargin, bookshelfMargin, bookshelfMargin, bookshelfMargin)
                     }
                 } else {
-                    // 处理单行情况：既是第一行也是最后一行
                     if (position == 0 && position == itemCount - 1) {
                         outRect.set(0, marginFirst, 0, marginFirst)
                     } else when (position) {
@@ -203,10 +253,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         val showFastScroller = AppConfig.showBookshelfFastScroller
         binding.rvBookshelf.setFastScrollEnabled(showFastScroller)
         binding.rvBookshelf.isVerticalScrollBarEnabled = !showFastScroller
-        if (!showFastScroller) {
-            binding.rvBookshelf.scrollBarSize =
-                ViewConfiguration.get(requireContext()).scaledScrollBarSize
-        }
+        if (!showFastScroller) binding.rvBookshelf.scrollBarSize = ViewConfiguration.get(requireContext()).scaledScrollBarSize
     }
 
     fun updateMainBottomPadding(bottomPadding: Int) {
@@ -230,70 +277,55 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         binding.refreshLayout.isEnabled = enable
     }
 
-    /**
-     * 设置标签过滤，null 表示显示全部分组书籍。
-     * 触发书架数据重新加载。
-     */
     fun filterBooksByTag(tag: String?) {
-        if (currentTag == tag) return
+        if (currentTag == tag) {
+            updateSmartTagFilterBar(booksAdapter.getItems())
+            return
+        }
         currentTag = tag
         upRecyclerData()
     }
 
-    /**
-     * 更新书籍列表信息
-     * 方案A：使用 flowShelfByGroup 轻量查询替代 flowByGroup，
-     * SQL 层面已过滤 notShelf 并按 durChapterTime DESC 排序，
-     * 仅在内存中做用户选择的排序方式切换。
-     */
     private fun upRecyclerData() {
         booksFlowJob?.cancel()
         booksFlowJob = viewLifecycleOwner.lifecycleScope.launch {
             appDb.bookDao.flowShelfByGroup(groupId).map { list ->
-                // 按标签过滤
                 val filtered = currentTag?.let { tag ->
-                    list.filter { BookTagHelper.has(it.customTag, tag) }
+                    list.filter { item ->
+                        val smartMatch = SmartTagConfig.isEnabled(requireContext()) &&
+                            SmartTagConfig.isRuleVisible(requireContext(), tag) &&
+                            SmartTag.names(item.toMinimalBook(), SmartTag.ruleInfos.size).contains(tag)
+                        smartMatch || BookTagHelper.has(item.customTag, tag)
+                    }
                 } ?: list
-                //排序
                 when (bookSort) {
                     1 -> filtered.sortedByDescending { it.latestChapterTime }
-                    2 -> filtered.sortedWith { o1, o2 ->
-                        o1.name.cnCompare(o2.name)
-                    }
-
+                    2 -> filtered.sortedWith { o1, o2 -> o1.name.cnCompare(o2.name) }
                     3 -> filtered.sortedBy { it.order }
-
-                    // 综合排序 issue #3192
-                    4 -> filtered.sortedByDescending {
-                        max(it.latestChapterTime, it.durChapterTime)
-                    }
-                    // 按作者排序
-                    5 -> filtered.sortedWith { o1, o2 ->
-                        o1.author.cnCompare(o2.author)
-                    }
-
-                    else -> filtered // SQL 已按 durChapterTime DESC 排序，无需再排
+                    4 -> filtered.sortedByDescending { max(it.latestChapterTime, it.durChapterTime) }
+                    5 -> filtered.sortedWith { o1, o2 -> o1.author.cnCompare(o2.author) }
+                    else -> filtered
                 }
             }.flowWithLifecycleAndDatabaseChangeFirst(
                 viewLifecycleOwner.lifecycle,
                 Lifecycle.State.STARTED,
                 AppDatabase.BOOK_TABLE_NAME
-            ).catch {
-                AppLog.put("书架更新出错", it)
-            }.conflate().flowOn(Dispatchers.Default).collect { list ->
-                itemCount = list.size
-                binding.tvEmptyMsg.isGone = itemCount > 0
-                binding.refreshLayout.isEnabled = enableRefresh && itemCount > 0
-                booksAdapter.setItems(list)
-            }
+            ).catch { AppLog.put("书架更新出错", it) }
+                .conflate()
+                .flowOn(Dispatchers.Default)
+                .collect { list ->
+                    itemCount = list.size
+                    binding.tvEmptyMsg.isGone = itemCount > 0
+                    binding.refreshLayout.isEnabled = enableRefresh && itemCount > 0
+                    booksAdapter.setItems(list)
+                    updateSmartTagFilterBar(list)
+                }
         }
     }
 
     private fun startLastUpdateTimeJob() {
         upLastUpdateTimeJob?.cancel()
-        if (!AppConfig.showLastUpdateTime || bookLayout >= 2) {
-            return
-        }
+        if (!AppConfig.showLastUpdateTime || bookLayout >= 2) return
         upLastUpdateTimeJob = viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 while (isActive) {
@@ -304,34 +336,24 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         }
     }
 
-    fun getBooks(): List<Book> {
-        return booksAdapter.getItems().map { it.toMinimalBook() }
-    }
+    fun getBooks(): List<Book> = booksAdapter.getItems().map { it.toMinimalBook() }
 
     fun gotoTop() {
-        if (AppConfig.isEInkMode) {
-            binding.rvBookshelf.scrollToPosition(0)
-        } else {
-            binding.rvBookshelf.smoothScrollToPosition(0)
-        }
+        if (AppConfig.isEInkMode) binding.rvBookshelf.scrollToPosition(0)
+        else binding.rvBookshelf.smoothScrollToPosition(0)
     }
 
-    fun getBooksCount(): Int {
-        return booksAdapter.itemCount
-    }
+    fun getBooksCount(): Int = booksAdapter.itemCount
 
     override fun onDestroyView() {
+        smartTagFilterScroll = null
+        smartTagChipGroup = null
         super.onDestroyView()
-        /**
-         * 将 RecyclerView 中的视图全部回收到 RecycledViewPool 中
-         */
         binding.rvBookshelf.setItemViewCacheSize(0)
         binding.rvBookshelf.adapter = null
     }
 
-    override fun open(book: Book) {
-        startActivityForBook(book)
-    }
+    override fun open(book: Book) = startActivityForBook(book)
 
     override fun openBookInfo(book: Book) {
         startActivity<BookInfoActivity> {
@@ -340,32 +362,25 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
         }
     }
 
-    override fun isUpdate(bookUrl: String): Boolean {
-        return activityViewModel.isUpdate(bookUrl)
-    }
+    override fun isUpdate(bookUrl: String): Boolean = activityViewModel.isUpdate(bookUrl)
 
     @SuppressLint("NotifyDataSetChanged")
     override fun observeLiveBus() {
         super.observeLiveBus()
-        observeEvent<String>(EventBus.UP_BOOKSHELF) {
-            booksAdapter.notification(it)
-        }
+        observeEvent<String>(EventBus.UP_BOOKSHELF) { booksAdapter.notification(it) }
         observeEvent<String>(EventBus.BOOKSHELF_REFRESH) {
-            // 更新布局配置
             bookLayout = AppConfig.bookLayout
-            // 获取旧适配器的数据
             val oldItems = booksAdapter.getItems()
-            // 如果布局类型改变，重新创建适配器并设置数据
             val newAdapter = createBooksAdapter()
             if (newAdapter::class != booksAdapter::class) {
                 booksAdapter = newAdapter
                 booksAdapter.setItems(oldItems)
             }
-            // 重新初始化RecyclerView以应用新的布局
             initRecyclerView()
             booksAdapter.notifyDataSetChanged()
             startLastUpdateTimeJob()
             upFastScrollerBar()
+            updateSmartTagFilterBar(booksAdapter.getItems())
         }
     }
 }
