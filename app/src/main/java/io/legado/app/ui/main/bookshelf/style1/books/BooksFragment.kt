@@ -1,8 +1,10 @@
 package io.legado.app.ui.main.bookshelf.style1.books
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Rect
 import android.os.Bundle
+import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.View
 import android.view.ViewConfiguration
@@ -110,7 +112,13 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     private fun initSmartTagFilterBar() {
         if (smartTagFilterScroll != null) return
         val context = requireContext()
-        smartTagChipGroup = ChipGroup(context).apply {
+        // 项目主题不是 MaterialComponents，而 Chip/ChipGroup 初始化要求该主题，
+        // 否则会抛 "The style on this component requires your app theme to be Theme.MaterialComponents"
+        val chipContext: Context = ContextThemeWrapper(
+            context.applicationContext,
+            com.google.android.material.R.style.Theme_MaterialComponents_DayNight_DarkActionBar
+        )
+        smartTagChipGroup = ChipGroup(chipContext).apply {
             isSingleLine = true
             setPadding(8.dpToPx(), 4.dpToPx(), 8.dpToPx(), 4.dpToPx())
         }
@@ -160,14 +168,14 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             binding.rvBookshelf.updatePadding(top = 0)
             return
         }
-        chipGroup.addView(Chip(requireContext()).apply {
+        chipGroup.addView(Chip(chipGroup.context).apply {
             text = "全部 ${items.size}"
             isCheckable = true
             isChecked = currentTag == null
             setOnClickListener { filterBooksByTag(null) }
         })
         tags.forEach { entry ->
-            chipGroup.addView(Chip(requireContext()).apply {
+            chipGroup.addView(Chip(chipGroup.context).apply {
                 text = "${entry.key} ${entry.value}"
                 isCheckable = true
                 isChecked = currentTag == entry.key
