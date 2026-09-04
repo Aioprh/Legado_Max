@@ -8,9 +8,6 @@ import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -21,9 +18,7 @@ import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.utils.dpToPx
 import kotlin.math.max
 
-/**
- * 书架顶部液态玻璃 Tab：选中项为悬浮玻璃胶囊，并支持跟随 ViewPager 滑动的指示动画。
- */
+/** 书架顶部液态玻璃 Tab：选中项为悬浮玻璃胶囊，并支持跟随 ViewPager 滑动。 */
 class GlassTabBarView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -34,11 +29,12 @@ class GlassTabBarView @JvmOverloads constructor(
         gravity = Gravity.CENTER_VERTICAL
         setPadding(8.dpToPx(), 5.dpToPx(), 8.dpToPx(), 5.dpToPx())
     }
-    private val indicatorPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val indicatorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accentColor }
     private val indicatorRect = RectF()
     private var selectedIndex = 0
-    private var targetIndex = 0
-    private var pageOffset = 0f
+    private var indicatorFrom = 0
+    private var indicatorTo = 0
+    private var indicatorProgress = 0f
     private var tabClick: ((Int) -> Unit)? = null
     private var tabLongClick: ((Int) -> Boolean)? = null
     private var indicatorAnimator: ValueAnimator? = null
@@ -54,46 +50,61 @@ class GlassTabBarView @JvmOverloads constructor(
         })
         elevation = 3.dpToPx().toFloat()
         addView(tabs, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
-        indicatorPaint.color = accentColor
     }
 
-    fun setOnTabClickListener(listener: (Int) -> Unit) {
-        tabClick = listener
-    }
-
-    fun setOnTabLongClickListener(listener: (Int) -> Boolean) {
-        tabLongClick = listener
-    }
+    fun setOnTabClickListener(listener: (Int) -> Unit) { tabClick = listener }
+    fun setOnTabLongClickListener(listener: (Int) -> Boolean) { tabLongClick = listener }
 
     fun submitTabs(labels: List<String>, selected: Int = 0) {
         indicatorAnimator?.cancel()
         tabs.removeAllViews()
-        labels.forEachIndexed { index, label ->
-            tabs.addView(createTab(label, index))
-        }
+        labels.forEachIndexed { index, label -> tabs.addView(createTab(label, index)) }
         selectedIndex = selected.coerceIn(0, max(0, labels.lastIndex))
-        targetIndex = selectedIndex
-        pageOffset = 0f
+        indicatorFrom = selectedIndex
+        indicatorTo = selectedIndex
+        indicatorProgress = 0f
         updateTabStyles()
-        post { updateIndicator(false) }
+        post { invalidate() }
     }
 
     fun selectTab(index: Int, animate: Boolean = true) {
         if (tabs.childCount == 0) return
         val target = index.coerceIn(0, tabs.childCount - 1)
+        if (target == selectedIndex) {
+            scrollToSelected()
+            return
+        }
+        indicatorAnimator?.cancel()
+        indicatorFrom = selectedIndex
+        indicatorTo = target
         selectedIndex = target
-        targetIndex = target
-        pageOffset = 0f
         updateTabStyles()
-        updateIndicator(animate)
+        if (!animate) {
+            indicatorProgress = 1f
+            invalidate()
+        } else {
+            indicatorProgress = 0f
+            indicatorAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 240L
+                addUpdateListener {
+                    indicatorProgress = it.animatedValue as Float
+                    invalidate()
+                }
+                start()
+            }
+        }
         scrollToSelected()
     }
 
-    /** 在 ViewPager.onPageScrolled 中调用，指示胶囊会随手指平滑移动。 */
+    /** ViewPager 手势滑动时让玻璃胶囊跟手移动。 */
     fun onPageScrolled(position: Int, positionOffset: Float) {
         if (tabs.childCount == 0) return
-        targetIndex = position.coerceIn(0, tabs.childCount - 1)
-        pageOffset = positionOffset.coerceIn(0f, 1f)
+        indicatorAnimator?.cancel()
+        val from = position.coerceIn(0, tabs.childCount - 1)
+        val to = if (positionOffset > 0f) (from + 1).coerceAtMost(tabs.childCount - 1) else from
+        indicatorFrom = from
+        indicatorTo = to
+        indicatorProgress = positionOffset.coerceIn(0f, 1f)
         invalidate()
     }
 
@@ -108,9 +119,7 @@ class GlassTabBarView @JvmOverloads constructor(
         setTextColor(primaryTextColor)
         isClickable = true
         isFocusable = true
-        setOnClickListener {
-            if (index != selectedIndex) tabClick?.invoke(index)
-        }
+        setOnClickListener { if (index != selectedIndex) tabClick?.invoke(index) }
         setOnLongClickListener { tabLongClick?.invoke(index) ?: false }
         background = null
     }
@@ -130,36 +139,23 @@ class GlassTabBarView @JvmOverloads constructor(
     }
 
     private fun drawIndicator(canvas: Canvas) {
-        val from = tabs.getChildAt(selectedIndex) ?: return
-        val toIndex = targetIndex.coerceIn(0, max(0, tabs.childCount - 1))
-        val to = tabs.getChildAt(toIndex) ?: return
-        val t = if (selectedIndex == toIndex) 0f else pageOffset
+        val from = tabs.getChildAt(indicatorFrom) ?: return
+        val to = tabs.getChildAt(indicatorTo) ?: return
+        val t = indicatorProgress
         val left = from.left + (to.left - from.left) * t
         val right = from.right + (to.right - from.right) * t
         val top = from.top + 3.dpToPx()
         val bottom = from.bottom - 3.dpToPx()
         indicatorRect.set(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
-        indicatorPaint.alpha = 62
+        indicatorPaint.alpha = 54
         canvas.drawRoundRect(indicatorRect, 19.dpToPx().toFloat(), 19.dpToPx().toFloat(), indicatorPaint)
+        indicatorPaint.alpha = 30
+        canvas.drawRoundRect(
+            left.toFloat() + 1.dpToPx(), top.toFloat() + 1.dpToPx(),
+            right.toFloat() - 1.dpToPx(), bottom.toFloat() - 1.dpToPx(),
+            18.dpToPx().toFloat(), 18.dpToPx().toFloat(), indicatorPaint
+        )
         indicatorPaint.alpha = 255
-    }
-
-    private fun updateIndicator(animate: Boolean) {
-        if (!animate) {
-            invalidate()
-            return
-        }
-        indicatorAnimator?.cancel()
-        val start = selectedIndex
-        val end = targetIndex
-        indicatorAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
-            duration = 220L
-            addUpdateListener {
-                pageOffset = it.animatedValue as Float
-                invalidate()
-            }
-            start()
-        }
     }
 
     private fun scrollToSelected() {
