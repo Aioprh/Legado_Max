@@ -2,17 +2,22 @@ package io.legado.app.ui.main.bookshelf.style1.books
 
 import android.content.Context
 import android.os.Bundle
+import android.view.View
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.flexbox.FlexboxLayout
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.dao.BookShelfDisplay
 import io.legado.app.databinding.ItemBookshelfListBinding
+import io.legado.app.help.book.isAudio
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.bookBorderBackground
+import io.legado.app.model.AudioPlay
+import io.legado.app.service.AudioPlayService
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.splitNotBlank
@@ -65,6 +70,7 @@ class BooksAdapterList(
             upLastUpdateTime(binding, item)
             // 显示简介和标签（仅在列表视图启用"显示更多信息"时）
             upMoreInfo(binding, item)
+            bindAudioPlayButton(holder, binding, item)
         } else {
             for (i in payloads.indices) {
                 val bundle = payloads[i] as Bundle
@@ -81,6 +87,7 @@ class BooksAdapterList(
                     }
                 }
             }
+            bindAudioPlayButton(holder, binding, item)
         }
     }
 
@@ -189,5 +196,49 @@ class BooksAdapterList(
                 }
             }
         }
+    }
+
+    /** 音频书籍专用的书架内联播放/暂停控制。 */
+    private fun bindAudioPlayButton(
+        holder: ItemViewHolder,
+        binding: ItemBookshelfListBinding,
+        item: BookShelfDisplay
+    ) {
+        val button = binding.ivAudioPlay
+        if (!item.isAudio) {
+            button.gone()
+            button.setOnClickListener(null)
+            button.isEnabled = false
+            return
+        }
+        button.visible()
+        button.isEnabled = true
+        val isCurrent = AudioPlay.book?.bookUrl == item.bookUrl
+        val isPlaying = isCurrent && AudioPlayService.isRun && !AudioPlayService.pause
+        button.setImageResource(if (isPlaying) R.drawable.ic_pause_24dp else R.drawable.ic_play_24dp)
+        button.contentDescription = if (isPlaying) "暂停" else "播放"
+        button.setOnClickListener {
+            when {
+                AudioPlay.book?.bookUrl == item.bookUrl && AudioPlayService.isRun -> {
+                    if (AudioPlayService.pause) AudioPlay.resume(context) else AudioPlay.pause(context)
+                }
+                else -> {
+                    AudioPlay.resetData(item.toMinimalBook())
+                    button.setImageResource(R.drawable.ic_pause_24dp)
+                    button.contentDescription = "暂停"
+                    button.postDelayed({ AudioPlay.loadOrUpPlayUrl() }, 120L)
+                }
+            }
+            refreshAudioButtonLater(holder, button)
+        }
+    }
+
+    private fun refreshAudioButtonLater(holder: ItemViewHolder, button: androidx.appcompat.widget.AppCompatImageButton) {
+        button.postDelayed({
+            val itemView = button.parent as? View ?: return@postDelayed
+            val recyclerView = itemView.parent as? RecyclerView ?: return@postDelayed
+            val position = recyclerView.getChildAdapterPosition(holder.itemView)
+            if (position != RecyclerView.NO_POSITION) notifyItemChanged(position)
+        }, 300L)
     }
 }
