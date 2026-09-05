@@ -46,6 +46,7 @@ import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlin.collections.set
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -121,8 +122,14 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
 
         binding.refreshLayoutBookshelf.setColorSchemeColors(accentColor)
         binding.refreshLayoutBookshelf.setOnRefreshListener {
-            binding.refreshLayoutBookshelf.isRefreshing = false
-            fragmentMap.values.forEach { it.performRefresh() }
+            // SwipeRefreshLayout 触发时已自动显示刷新圈。
+            // 这里不要立即置 false，否则刷新圈瞬间消失，看起来像"没实现"。
+            lifecycleScope.launch {
+                fragmentMap.values.forEach { it.performRefresh() }
+                // 让刷新圈至少展示一小段时间，再收起，保证下拉刷新有明确视觉反馈
+                delay(600)
+                binding.refreshLayoutBookshelf.isRefreshing = false
+            }
         }
 
         if (AppConfig.dropdownSelectGroup) {
