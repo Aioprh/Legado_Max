@@ -84,7 +84,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     var bookSort = 0
         private set
     private var upLastUpdateTimeJob: Job? = null
-    private var onlyUpdateRead = false
     private val bookshelfMargin by lazy { AppConfig.bookshelfMargin }
     private var itemCount = 0
     private var currentTag: String? = null
@@ -102,7 +101,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             position = it.getInt("position", 0)
             groupId = it.getLong("groupId", -1)
             bookSort = it.getInt("bookSort", 0)
-            onlyUpdateRead = it.getBoolean("onlyUpdateRead", false)
             // 刷新由书架顶层下拉刷新统一触发，这里禁用内层刷新避免手势冲突
             binding.refreshLayout.isEnabled = false
         }
@@ -115,7 +113,9 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
      * 触发本分组的目录刷新，由书架顶层下拉刷新调用。
      */
     fun performRefresh() {
-        activityViewModel.upToc(booksAdapter.getItems().map { it.toMinimalBook() }, onlyUpdateRead)
+        // 手动下拉刷新是显式"强制刷新"操作，不受分组的"只更新已读"被动过滤影响，
+        // 否则开启了"只更新已读"后，正在阅读/未读完的书都会被过滤掉。
+        activityViewModel.upToc(booksAdapter.getItems().map { it.toMinimalBook() }, false)
     }
 
     private fun initSmartTagFilterBar() {
