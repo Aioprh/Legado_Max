@@ -4,10 +4,13 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Outline
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -45,14 +48,28 @@ class RoundedTagBarView @JvmOverloads constructor(
         adapter = this@RoundedTagBarView.adapter
         overScrollMode = OVER_SCROLL_NEVER
         itemAnimator = null
-        clipToPadding = false
+        // 标签只能在“大胶囊”的内容区域内移动，禁止滑动内容从左右边缘穿出去。
+        clipChildren = true
+        clipToPadding = true
         isHorizontalScrollBarEnabled = false
         isHorizontalFadingEdgeEnabled = false
         isVerticalFadingEdgeEnabled = false
         setFadingEdgeLength(0)
         val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_recycler_padding_vertical)
-        setPadding(0, verticalPadding, 0, verticalPadding)
+        setPadding(2.dp, verticalPadding, 2.dp, verticalPadding)
         setBackgroundColor(Color.TRANSPARENT)
+        clipToOutline = true
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(
+                    0,
+                    0,
+                    view.width,
+                    view.height,
+                    16.dp.toFloat()
+                )
+            }
+        }
     }
     private var items = emptyList<Item>()
     private var selectedIndex = RecyclerView.NO_POSITION
@@ -64,6 +81,9 @@ class RoundedTagBarView @JvmOverloads constructor(
     private var backgroundOverrideColor: Int? = null
 
     init {
+        // 同时约束 FrameLayout 自身及内部 RecyclerView，确保快速左右滑动时胶囊不会越过外层玻璃边界。
+        clipChildren = true
+        clipToPadding = true
         clipToOutline = true
         applyTopBarStyle(force = true)
         val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_horizontal)
