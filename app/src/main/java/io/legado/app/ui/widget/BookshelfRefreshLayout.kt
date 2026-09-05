@@ -1,6 +1,7 @@
 package io.legado.app.ui.widget
 
 import android.content.Context
+import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.View
 import android.view.ViewGroup
@@ -31,7 +32,11 @@ class BookshelfRefreshLayout @JvmOverloads constructor(
         if (view.canScrollVertically(-1)) return true
         if (view is ViewGroup) {
             for (i in 0 until view.childCount) {
-                if (descendantCanScrollUp(view.getChildAt(i))) return true
+                val child = view.getChildAt(i)
+                // 只考虑当前可见页的子树：ViewPager 会预加载当前页之外的离屏分组，
+                // 若任一离屏分组的列表不在顶部，会把整页下拉刷新误拦。
+                if (!child.getGlobalVisibleRect(Rect())) continue
+                if (descendantCanScrollUp(child)) return true
             }
         }
         return false

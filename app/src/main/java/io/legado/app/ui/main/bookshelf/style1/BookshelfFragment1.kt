@@ -122,6 +122,8 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
 
         binding.refreshLayoutBookshelf.setColorSchemeColors(accentColor)
         binding.refreshLayoutBookshelf.setOnRefreshListener {
+            // 诊断用：确认下拉手势是否真的触发了 onRefresh（测试后可移除）
+            toastOnUi("下拉刷新已触发")
             // SwipeRefreshLayout 触发时已自动显示刷新圈。
             // 这里不要立即置 false，否则刷新圈瞬间消失，看起来像"没实现"。
             lifecycleScope.launch {
