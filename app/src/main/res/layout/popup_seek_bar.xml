@@ -7,6 +7,34 @@
     android:orientation="vertical"
     android:gravity="center_horizontal">
 
+    <LinearLayout
+        android:id="@+id/timer_mode"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:layout_marginBottom="4dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_timer_by_time"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/set_timer_by_time"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tv_timer_by_chapter"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/set_timer_by_chapter"
+            android:textSize="13sp" />
+    </LinearLayout>
+
     <TextView
         android:id="@+id/tv_seek_value"
         android:layout_width="wrap_content"
