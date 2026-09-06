@@ -1,6 +1,7 @@
 package io.legado.app.ui.widget
 
 import android.animation.ObjectAnimator
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -22,7 +23,6 @@ import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.model.AudioPlay
 import io.legado.app.service.AudioPlayService
 import io.legado.app.ui.book.audio.AudioPlayActivity
-import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.invisible
 import io.legado.app.utils.startActivity
@@ -34,14 +34,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * 音频书音乐风格迷你播放栏。
+ * 音频书迷你播放栏。
  *
  * 设计原则：
  * 1. 播放/暂停时保留，真正停止才隐藏；
- * 2. 输入法弹出时自动隐藏，避免挡住搜索/输入区域；
- * 3. 搜索页、阅读页和完整音频播放器不显示，避免遮挡核心内容；
- * 4. 目录页把播放栏放在目录底部操作条之上，并由目录列表预留滚动空间；
- * 5. 主界面底部跟随底部导航栏，不覆盖导航按钮。
+ * 2. 输入法弹出时自动隐藏；
+ * 3. 搜索页、阅读页和完整音频播放器不显示；
+ * 4. 主界面跟随底部导航栏，并保持独立间距；
+ * 5. 采用统一的 Liquid Glass 视觉，不使用底部导航栏的深色背景作为播放条底色。
  */
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
@@ -151,10 +151,6 @@ class AudioPlayMiniBarController(
             .start()
     }
 
-    /**
-     * Mini Player 只在适合持续播放的页面显示。
-     * SearchActivity 必须明确排除，否则搜索页仍会在 onResume() 中 refresh 后重新出现。
-     */
     private fun isExcludedScreen(): Boolean = when (activity.javaClass.simpleName) {
         "ReadBookActivity", "AudioPlayActivity", "SearchActivity" -> true
         else -> false
@@ -167,7 +163,7 @@ class AudioPlayMiniBarController(
             updateBottomMargin()
         }
         navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
-        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateBottomMargin() }
+        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _ -> updateBottomMargin() }
     }
 
     private fun bindImeVisibility() {
@@ -194,33 +190,45 @@ class AudioPlayMiniBarController(
                 val navigationLocation = IntArray(2)
                 parent.getLocationOnScreen(parentLocation)
                 navigation.getLocationOnScreen(navigationLocation)
-                (parent.height - (navigationLocation[1] - parentLocation[1])).coerceAtLeast(0)
+                val navigationTop = navigationLocation[1] - parentLocation[1]
+                (parent.height - navigationTop + 8.dpToPx()).coerceAtLeast(8.dpToPx())
             }
-            activity.javaClass.simpleName == "TocActivity" -> 66.dpToPx()
-            else -> 10.dpToPx()
+            activity.javaClass.simpleName == "TocActivity" -> 74.dpToPx()
+            else -> 18.dpToPx()
         }
         binding.root.updateLayoutParams<android.widget.FrameLayout.LayoutParams> { bottomMargin = margin }
     }
 
     private fun applyTheme(color: Int = activity.bottomBackground) {
         binding.run {
-            val lightMode = ColorUtils.isColorLight(color)
-            val tint = if (lightMode) 0xFFFFFFFF.toInt() else 0xFFEEF4FF.toInt()
-            val glassBase = if (lightMode) AndroidXColorUtils.setAlphaComponent(0xFFFFFFFF.toInt(), 190)
-            else AndroidXColorUtils.setAlphaComponent(0xFF15171D.toInt(), 178)
-            val highlight = AndroidXColorUtils.setAlphaComponent(AndroidXColorUtils.blendARGB(color, tint, 0.45f), if (lightMode) 72 else 58)
-            val glassStart = AndroidXColorUtils.blendARGB(glassBase, highlight, 0.38f)
-            val glassEnd = AndroidXColorUtils.blendARGB(glassBase, color, 0.16f)
-            val textColor = if (lightMode) 0xFF181A20.toInt() else 0xFFF7F9FF.toInt()
+            val nightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            val tint = if (nightMode) 0xFFEAF1FF.toInt() else 0xFF1B2633.toInt()
+            val glassBase = if (nightMode) {
+                AndroidXColorUtils.setAlphaComponent(0xFF16191F.toInt(), 214)
+            } else {
+                AndroidXColorUtils.setAlphaComponent(Color.WHITE, 218)
+            }
+            val accent = AndroidXColorUtils.blendARGB(color, tint, if (nightMode) 0.62f else 0.35f)
+            val highlight = AndroidXColorUtils.setAlphaComponent(accent, if (nightMode) 62 else 46)
+            val glassStart = AndroidXColorUtils.blendARGB(glassBase, highlight, 0.55f)
+            val glassEnd = AndroidXColorUtils.blendARGB(glassBase, accent, 0.10f)
+            val textColor = if (nightMode) 0xFFF7F9FF.toInt() else 0xFF1D232B.toInt()
             val secondaryColor = AndroidXColorUtils.setAlphaComponent(textColor, 145)
-            val borderColor = AndroidXColorUtils.setAlphaComponent(Color.WHITE, if (lightMode) 150 else 105)
-            val glowColor = AndroidXColorUtils.setAlphaComponent(AndroidXColorUtils.blendARGB(color, tint, 0.65f), 75)
-            audioPlayMiniBar.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(glassStart, glassBase, glassEnd)).apply {
+            val borderColor = AndroidXColorUtils.setAlphaComponent(Color.WHITE, if (nightMode) 105 else 180)
+            val glowColor = AndroidXColorUtils.setAlphaComponent(accent, if (nightMode) 80 else 60)
+
+            audioPlayMiniBar.background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(glassStart, glassBase, glassEnd)
+            ).apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 27.dpToPx().toFloat()
+                cornerRadius = 31.dpToPx().toFloat()
                 setStroke(1.dpToPx(), borderColor)
             }
-            audioMiniCoverShell.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(glowColor, AndroidXColorUtils.setAlphaComponent(textColor, 18))).apply { shape = GradientDrawable.OVAL }
+            audioMiniCoverShell.background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(glowColor, AndroidXColorUtils.setAlphaComponent(textColor, 18))
+            ).apply { shape = GradientDrawable.OVAL }
             tvAudioMiniTitle.setTextColor(textColor)
             tvAudioMiniSubtitle.setTextColor(secondaryColor)
             ivAudioMiniPlay.setColorFilter(textColor)
