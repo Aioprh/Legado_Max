@@ -41,7 +41,8 @@ import kotlinx.coroutines.withContext
  * 2. 输入法弹出时自动隐藏；
  * 3. 搜索页、阅读页、完整播放页和书籍详情页不显示；
  * 4. 主界面跟随底部导航栏，并保持独立间距；
- * 5. 采用统一的 Liquid Glass 视觉。
+ * 5. 采用统一的 Liquid Glass 视觉；
+ * 6. 显示时为页面内容预留底部安全区域，避免列表最后内容被悬浮栏遮挡。
  */
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
@@ -56,9 +57,15 @@ class AudioPlayMiniBarController(
     private var bottomNavigationLayoutListener: View.OnLayoutChangeListener? = null
     private var imeVisible = false
     private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
+    private var contentContainer: ViewGroup? = null
+    private var contentPaddingLeft = 0
+    private var contentPaddingTop = 0
+    private var contentPaddingRight = 0
+    private var contentPaddingBottom = 0
 
     init {
         parent.addView(binding.root)
+        bindContentSafeArea()
         bindBottomNavigationAnchor()
         bindImeVisibility()
         updateBottomMargin()
@@ -87,6 +94,7 @@ class AudioPlayMiniBarController(
             val playing = AudioPlay.status == io.legado.app.constant.Status.PLAY && !AudioPlayService.pause
             ivAudioMiniPlay.setImageResource(if (playing) R.drawable.ic_pause_24dp else R.drawable.ic_play_24dp)
             audioPlayMiniBar.visible()
+            updateContentSafeArea()
             if (lastBookUrl != bookUrl) {
                 lastBookUrl = bookUrl
                 initialized = false
@@ -136,7 +144,10 @@ class AudioPlayMiniBarController(
         coverJob?.cancel()
         coverAnimator?.cancel()
         coverAnimator = null
-        if (!binding.audioPlayMiniBar.isShown) return
+        if (!binding.audioPlayMiniBar.isShown) {
+            updateContentSafeArea()
+            return
+        }
         binding.audioPlayMiniBar.animate().cancel()
         binding.audioPlayMiniBar.animate()
             .alpha(0f)
@@ -147,6 +158,7 @@ class AudioPlayMiniBarController(
                 binding.audioPlayMiniBar.invisible()
                 binding.audioPlayMiniBar.alpha = 1f
                 binding.audioPlayMiniBar.translationY = 0f
+                updateContentSafeArea()
             }
             .start()
     }
@@ -156,20 +168,45 @@ class AudioPlayMiniBarController(
         else -> false
     }
 
-    private fun bindBottomNavigationAnchor() {
-        val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass) ?: return
-        bottomNavigation = navigation
-        bottomNavigationLayoutListener = object : View.OnLayoutChangeListener {
-            override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
-                updateBottomMargin()
-            }
+    private fun bindContentSafeArea() {
+        contentContainer = activity.findViewById<ViewGroup>(R.id.content_container)?.also { container ->
+            contentPaddingLeft = container.paddingLeft
+            contentPaddingTop = container.paddingTop
+            contentPaddingRight = container.paddingRight
+            contentPaddingBottom = container.paddingBottom
         }
-        navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
-        parent.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
-            override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
-                updateBottomMargin()
-            }
-        })
+    }
+
+    /**
+     * 迷你播放栏是覆盖在页面内容之上的浮层。
+     * 当它显示时，把 content_container 的底部 padding 推到悬浮栏顶部，
+     * 让书架、发现、我的等列表最后一项仍然可以完整滚到悬浮栏上方。
+     */
+    private fun updateContentSafeArea() {
+        val container = contentContainer ?: return
+        if (!binding.audioPlayMiniBar.isShown || binding.audioPlayMiniBar.height <= 0) {
+            container.setPadding(
+                contentPaddingLeft,
+                contentPaddingTop,
+                contentPaddingRight,
+                contentPaddingBottom
+            )
+            return
+        }
+
+        val containerLocation = IntArray(2)
+        val miniLocation = IntArray(2)
+        container.getLocationOnScreen(containerLocation)
+        binding.audioPlayMiniBar.getLocationOnScreen(miniLocation)
+        val miniTop = (miniLocation[1] - containerLocation[1]).coerceAtLeast(0)
+        val safeBottom = (container.height - miniTop + 10.dpToPx()).coerceAtLeast(0)
+
+        container.setPadding(
+            contentPaddingLeft,
+            contentPaddingTop,
+            contentPaddingRight,
+            contentPaddingBottom + safeBottom
+        )
     }
 
     private fun bindImeVisibility() {
@@ -203,6 +240,23 @@ class AudioPlayMiniBarController(
             else -> 18.dpToPx()
         }
         binding.root.updateLayoutParams<android.widget.FrameLayout.LayoutParams> { bottomMargin = margin }
+        binding.root.post { updateContentSafeArea() }
+    }
+
+    private fun bindBottomNavigationAnchor() {
+        val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass) ?: return
+        bottomNavigation = navigation
+        bottomNavigationLayoutListener = object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+                updateBottomMargin()
+            }
+        }
+        navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
+        parent.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
+                updateBottomMargin()
+            }
+        })
     }
 
     private fun applyTheme(color: Int = activity.bottomBackground) {
