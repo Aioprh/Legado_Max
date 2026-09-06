@@ -7,24 +7,24 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.RecyclerView
-import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.R
+import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.dao.BookShelfDisplay
 import io.legado.app.databinding.ItemBookshelfList2Binding
 import io.legado.app.help.book.isAudio
 import io.legado.app.help.config.AppConfig
-import io.legado.app.lib.theme.bookBorderBackground
 import io.legado.app.model.AudioPlay
 import io.legado.app.service.AudioPlayService
-import io.legado.app.utils.invisible
-import io.legado.app.utils.toTimeAgo
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.gone
+import io.legado.app.utils.invisible
+import io.legado.app.utils.toTimeAgo
 import io.legado.app.utils.visible
 import splitties.views.onLongClick
 
 /**
- * 紧凑列表布局
+ * 紧凑列表布局。
+ * 卡片视觉由 item_bookshelf_list2.xml 统一控制，不受“显示书籍边框”开关影响。
  */
 class BooksAdapterList2(
     context: Context,
@@ -33,13 +33,9 @@ class BooksAdapterList2(
     private val lifecycle: Lifecycle
 ) : BaseBooksAdapter<ItemBookshelfList2Binding>(context) {
 
-    override fun getViewBinding(parent: ViewGroup): ItemBookshelfList2Binding {
-        return ItemBookshelfList2Binding.inflate(inflater, parent, false)
-    }
+    override fun getViewBinding(parent: ViewGroup): ItemBookshelfList2Binding =
+        ItemBookshelfList2Binding.inflate(inflater, parent, false)
 
-    /**
-     * 方案E：取消封面图片加载
-     */
     override fun cancelCoverLoad(binding: ItemBookshelfList2Binding) {
         binding.ivCover.cancelLoad()
     }
@@ -51,16 +47,10 @@ class BooksAdapterList2(
         payloads: MutableList<Any>
     ) = binding.run {
         if (payloads.isEmpty()) {
-            // 根据配置控制书籍外边框显示和间距
-            if (AppConfig.showBookBorder) {
-                root.background = context.bookBorderBackground
-                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
-                    4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()
-                )
-            } else {
-                root.background = null
-                (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 0, 0, 0)
-            }
+            // 列表卡片采用固定的参考图视觉，不再在绑定时清除 XML 背景。
+            (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
+                6.dpToPx(), 6.dpToPx(), 6.dpToPx(), 6.dpToPx()
+            )
             tvName.text = item.name
             tvAuthor.text = item.author
             tvRead.text = item.durChapterTitle
@@ -106,9 +96,7 @@ class BooksAdapterList2(
     private fun upLastUpdateTime(binding: ItemBookshelfList2Binding, item: BookShelfDisplay) {
         if (AppConfig.showLastUpdateTime && !item.isLocal) {
             val time = item.latestChapterTime.toTimeAgo()
-            if (binding.tvLastUpdateTime.text != time) {
-                binding.tvLastUpdateTime.text = time
-            }
+            if (binding.tvLastUpdateTime.text != time) binding.tvLastUpdateTime.text = time
         } else {
             binding.tvLastUpdateTime.text = ""
         }
@@ -117,15 +105,10 @@ class BooksAdapterList2(
     override fun registerListener(holder: ItemViewHolder, binding: ItemBookshelfList2Binding) {
         holder.itemView.apply {
             setOnClickListener {
-                getItem(holder.layoutPosition)?.let {
-                    callBack.open(it.toMinimalBook())
-                }
+                getItem(holder.layoutPosition)?.let { callBack.open(it.toMinimalBook()) }
             }
-
             onLongClick {
-                getItem(holder.layoutPosition)?.let {
-                    callBack.openBookInfo(it.toMinimalBook())
-                }
+                getItem(holder.layoutPosition)?.let { callBack.openBookInfo(it.toMinimalBook()) }
             }
         }
     }
