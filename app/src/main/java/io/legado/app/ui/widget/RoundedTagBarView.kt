@@ -3,13 +3,16 @@ package io.legado.app.ui.widget
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Outline
+import android.graphics.Path
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -43,34 +46,51 @@ class RoundedTagBarView @JvmOverloads constructor(
 
     private val layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false)
     private val adapter = TagAdapter()
-    private val recyclerView = RecyclerView(context).apply {
+    private val recyclerView = object : RecyclerView(context) {
+        private val clipPath = Path()
+
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            super.onSizeChanged(w, h, oldw, oldh)
+            clipPath.reset()
+            if (w > 0 && h > 0) {
+                val radius = 14.dp.toFloat().coerceAtMost(h / 2f)
+                clipPath.addRoundRect(
+                    0f,
+                    0f,
+                    w.toFloat(),
+                    h.toFloat(),
+                    radius,
+                    radius,
+                    Path.Direction.CW
+                )
+            }
+        }
+
+        override fun dispatchDraw(canvas: Canvas) {
+            if (width <= 0 || height <= 0) {
+                super.dispatchDraw(canvas)
+                return
+            }
+            canvas.save()
+            if (!clipPath.isEmpty) canvas.clipPath(clipPath)
+            super.dispatchDraw(canvas)
+            canvas.restore()
+        }
+    }.apply {
         layoutManager = this@RoundedTagBarView.layoutManager
         adapter = this@RoundedTagBarView.adapter
         overScrollMode = OVER_SCROLL_NEVER
         itemAnimator = null
-        // 标签只能在“大胶囊”的内容区域内移动，禁止滑动内容从左右边缘穿出去。
         clipChildren = true
         clipToPadding = true
         isHorizontalScrollBarEnabled = false
         isHorizontalFadingEdgeEnabled = false
         isVerticalFadingEdgeEnabled = false
         setFadingEdgeLength(0)
-        val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_recycler_padding_vertical)
-        setPadding(2.dp, verticalPadding, 2.dp, verticalPadding)
+        setPadding(0, 0, 0, 0)
         setBackgroundColor(Color.TRANSPARENT)
-        clipToOutline = true
-        outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: Outline) {
-                outline.setRoundRect(
-                    0,
-                    0,
-                    view.width,
-                    view.height,
-                    16.dp.toFloat()
-                )
-            }
-        }
     }
+    private val outerClipPath = Path()
     private var items = emptyList<Item>()
     private var selectedIndex = RecyclerView.NO_POSITION
     private var onTagClick: ((Int) -> Unit)? = null
@@ -81,23 +101,53 @@ class RoundedTagBarView @JvmOverloads constructor(
     private var backgroundOverrideColor: Int? = null
 
     init {
-        // 同时约束 FrameLayout 自身及内部 RecyclerView，确保快速左右滑动时胶囊不会越过外层玻璃边界。
         clipChildren = true
         clipToPadding = true
         clipToOutline = true
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, 20.dp.toFloat())
+            }
+        }
         applyTopBarStyle(force = true)
-        val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_horizontal)
-        val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_vertical)
-        setPadding(horizontalPadding, verticalPadding, horizontalPadding, verticalPadding)
+        setPadding(0, 0, 0, 0)
         addView(
             recyclerView,
-            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+            LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
+                leftMargin = 4.dp
+                rightMargin = 4.dp
+                topMargin = 3.dp
+                bottomMargin = 3.dp
+            }
         )
     }
 
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        applyTopBarStyle()
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        outerClipPath.reset()
+        if (w > 0 && h > 0) {
+            val radius = 20.dp.toFloat().coerceAtMost(h / 2f)
+            outerClipPath.addRoundRect(
+                0f,
+                0f,
+                w.toFloat(),
+                h.toFloat(),
+                radius,
+                radius,
+                Path.Direction.CW
+            )
+        }
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        if (width <= 0 || height <= 0) {
+            super.dispatchDraw(canvas)
+            return
+        }
+        canvas.save()
+        if (!outerClipPath.isEmpty) canvas.clipPath(outerClipPath)
+        super.dispatchDraw(canvas)
+        canvas.restore()
     }
 
     /**
@@ -122,11 +172,6 @@ class RoundedTagBarView @JvmOverloads constructor(
         }
         elevation = 3.dp.toFloat()
         translationZ = 1.dp.toFloat()
-
-        // 玻璃栏内部留出空间，让胶囊标签看起来像漂浮在材质表面。
-        val horizontalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_horizontal)
-        val verticalPadding = resources.getDimensionPixelSize(R.dimen.bookshelf_tag_bar_padding_vertical)
-        setPadding(horizontalPadding, maxOf(verticalPadding, 4.dp), horizontalPadding, maxOf(verticalPadding, 4.dp))
 
         adapter.normalTextColor = if (isNight) Color.argb(225, 255, 255, 255) else context.primaryTextColor
         adapter.selectedTextColor = Color.WHITE
@@ -235,7 +280,7 @@ class RoundedTagBarView @JvmOverloads constructor(
         var glassSelectedFill: Int = context.accentColor
         var glassSelectedStroke: Int = 0xAAFFFFFF.toInt()
 
-        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): TagViewHolder {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TagViewHolder {
             val textView = LayoutInflater.from(parent.context)
                 .inflate(R.layout.item_bookshelf_group_tag, parent, false) as TextView
             textView.gravity = Gravity.CENTER
@@ -264,7 +309,8 @@ class RoundedTagBarView @JvmOverloads constructor(
                 setColor(if (selected) glassSelectedFill else glassNormalFill)
                 setStroke(1.dp, if (selected) glassSelectedStroke else glassNormalStroke)
             }
-            textView.elevation = if (selected) 2.dp.toFloat() else 0f
+            // 不给标签单独加 elevation，避免阴影越过大胶囊裁剪边界。
+            textView.elevation = 0f
 
             textView.setOnClickListener {
                 val bindingPosition = holder.bindingAdapterPosition
