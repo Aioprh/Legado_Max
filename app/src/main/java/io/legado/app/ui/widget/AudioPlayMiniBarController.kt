@@ -39,9 +39,9 @@ import kotlinx.coroutines.withContext
  * 设计原则：
  * 1. 播放/暂停时保留，真正停止才隐藏；
  * 2. 输入法弹出时自动隐藏；
- * 3. 搜索页、阅读页和完整音频播放器不显示；
+ * 3. 搜索页、阅读页、完整播放页和书籍详情页不显示；
  * 4. 主界面跟随底部导航栏，并保持独立间距；
- * 5. 采用统一的 Liquid Glass 视觉，不使用底部导航栏的深色背景作为播放条底色。
+ * 5. 采用统一的 Liquid Glass 视觉。
  */
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
@@ -152,7 +152,7 @@ class AudioPlayMiniBarController(
     }
 
     private fun isExcludedScreen(): Boolean = when (activity.javaClass.simpleName) {
-        "ReadBookActivity", "AudioPlayActivity", "SearchActivity" -> true
+        "ReadBookActivity", "AudioPlayActivity", "SearchActivity", "BookInfoActivity" -> true
         else -> false
     }
 
@@ -160,33 +160,13 @@ class AudioPlayMiniBarController(
         val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass) ?: return
         bottomNavigation = navigation
         bottomNavigationLayoutListener = object : View.OnLayoutChangeListener {
-            override fun onLayoutChange(
-                v: View,
-                left: Int,
-                top: Int,
-                right: Int,
-                bottom: Int,
-                oldLeft: Int,
-                oldTop: Int,
-                oldRight: Int,
-                oldBottom: Int
-            ) {
+            override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
                 updateBottomMargin()
             }
         }
         navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
         parent.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
-            override fun onLayoutChange(
-                v: View,
-                left: Int,
-                top: Int,
-                right: Int,
-                bottom: Int,
-                oldLeft: Int,
-                oldTop: Int,
-                oldRight: Int,
-                oldBottom: Int
-            ) {
+            override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
                 updateBottomMargin()
             }
         })
@@ -242,19 +222,12 @@ class AudioPlayMiniBarController(
             val secondaryColor = AndroidXColorUtils.setAlphaComponent(textColor, 145)
             val borderColor = AndroidXColorUtils.setAlphaComponent(Color.WHITE, if (nightMode) 105 else 180)
             val glowColor = AndroidXColorUtils.setAlphaComponent(accent, if (nightMode) 80 else 60)
-
-            audioPlayMiniBar.background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(glassStart, glassBase, glassEnd)
-            ).apply {
+            audioPlayMiniBar.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(glassStart, glassBase, glassEnd)).apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 31.dpToPx().toFloat()
                 setStroke(1.dpToPx(), borderColor)
             }
-            audioMiniCoverShell.background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(glowColor, AndroidXColorUtils.setAlphaComponent(textColor, 18))
-            ).apply { shape = GradientDrawable.OVAL }
+            audioMiniCoverShell.background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(glowColor, AndroidXColorUtils.setAlphaComponent(textColor, 18))).apply { shape = GradientDrawable.OVAL }
             tvAudioMiniTitle.setTextColor(textColor)
             tvAudioMiniSubtitle.setTextColor(secondaryColor)
             ivAudioMiniPlay.setColorFilter(textColor)
