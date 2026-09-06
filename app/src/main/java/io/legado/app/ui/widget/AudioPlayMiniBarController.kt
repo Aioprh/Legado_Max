@@ -16,6 +16,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.databinding.ViewAudioPlayMiniBarBinding
 import io.legado.app.help.glide.ImageLoader
@@ -33,17 +34,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * 音频书迷你播放栏。
- *
- * 设计原则：
- * 1. 播放/暂停时保留，真正停止才隐藏；
- * 2. 输入法弹出时自动隐藏；
- * 3. 搜索页、阅读页、完整播放页和书籍详情页不显示；
- * 4. 主界面跟随底部导航栏，并保持独立间距；
- * 5. 采用统一的 Liquid Glass 视觉；
- * 6. 显示时为页面内容预留底部安全区域，避免列表最后内容被悬浮栏遮挡。
- */
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
     private val parent: ViewGroup
@@ -62,6 +52,7 @@ class AudioPlayMiniBarController(
     private var contentPaddingTop = 0
     private var contentPaddingRight = 0
     private var contentPaddingBottom = 0
+    private val originalRecyclerPaddingBottom = java.util.WeakHashMap<RecyclerView, Int>()
 
     init {
         parent.addView(binding.root)
@@ -177,20 +168,12 @@ class AudioPlayMiniBarController(
         }
     }
 
-    /**
-     * 迷你播放栏是覆盖在页面内容之上的浮层。
-     * 当它显示时，把 content_container 的底部 padding 推到悬浮栏顶部，
-     * 让书架、发现、我的等列表最后一项仍然可以完整滚到悬浮栏上方。
-     */
+    /** 迷你播放栏覆盖在内容之上时，同时给内容容器和内部 RecyclerView 预留空间。 */
     private fun updateContentSafeArea() {
         val container = contentContainer ?: return
         if (!binding.audioPlayMiniBar.isShown || binding.audioPlayMiniBar.height <= 0) {
-            container.setPadding(
-                contentPaddingLeft,
-                contentPaddingTop,
-                contentPaddingRight,
-                contentPaddingBottom
-            )
+            container.setPadding(contentPaddingLeft, contentPaddingTop, contentPaddingRight, contentPaddingBottom)
+            restoreRecyclerViewPadding(container)
             return
         }
 
@@ -201,12 +184,36 @@ class AudioPlayMiniBarController(
         val miniTop = (miniLocation[1] - containerLocation[1]).coerceAtLeast(0)
         val safeBottom = (container.height - miniTop + 10.dpToPx()).coerceAtLeast(0)
 
-        container.setPadding(
-            contentPaddingLeft,
-            contentPaddingTop,
-            contentPaddingRight,
-            contentPaddingBottom + safeBottom
-        )
+        container.setPadding(contentPaddingLeft, contentPaddingTop, contentPaddingRight, contentPaddingBottom + safeBottom)
+        applyRecyclerViewSafeArea(container, safeBottom)
+    }
+
+    private fun applyRecyclerViewSafeArea(view: View, safeBottom: Int) {
+        if (view is RecyclerView) {
+            val original = originalRecyclerPaddingBottom.getOrPut(view) { view.paddingBottom }
+            view.clipToPadding = false
+            view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original + safeBottom)
+            return
+        }
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                applyRecyclerViewSafeArea(view.getChildAt(index), safeBottom)
+            }
+        }
+    }
+
+    private fun restoreRecyclerViewPadding(view: View) {
+        if (view is RecyclerView) {
+            originalRecyclerPaddingBottom.remove(view)?.let { original ->
+                view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original)
+            }
+            return
+        }
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                restoreRecyclerViewPadding(view.getChildAt(index))
+            }
+        }
     }
 
     private fun bindImeVisibility() {
