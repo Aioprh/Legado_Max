@@ -13,7 +13,7 @@ object EventBus {
     const val WEB_SERVICE = "webService"
     const val NAVIGATION_BAR_CHANGED = "navigationBarChanged"
     const val TOP_BAR_CHANGED = "topBarChanged"
-    const val DEBUG_MODE_CHANGED = "debugModeChanged"
+    const val DEBUG_MODE_CHANGED = "DEBUG_MODE_CHANGED"
 
     // ── 书架 ──
     const val UP_BOOKSHELF = "upBookToc"
@@ -57,18 +57,18 @@ object EventBus {
 
     // ── 视频播放 ──
     const val VIDEO_SUB_TITLE = "VideoSubTitle"
-    const val UP_VIDEO_INFO = "upVideoInfo"
+    const val UP_VIDEO_INFO = "UP_VIDEO_INFO"
     const val VIDEO_CONFIG_CHANGED = "VIDEO_CONFIG_CHANGED"
 
     // ── 系统 ──
     const val BATTERY_CHANGED = "batteryChanged"
-    const val TIME_CHANGED = "timeChanged"
+    const val TIME_CHANGED = "TIME_CHANGED"
 
     // ── 下载 / 导出 ──
-    const val UP_DOWNLOAD = "upDownload"
-    const val UP_DOWNLOAD_STATE = "upDownloadState"
-    const val SAVE_CONTENT = "saveContent"
-    const val EXPORT_BOOK = "exportBook"
+    const val UP_DOWNLOAD = "UP_DOWNLOAD"
+    const val UP_DOWNLOAD_STATE = "UP_DOWNLOAD_STATE"
+    const val SAVE_CONTENT = "SAVE_CONTENT"
+    const val EXPORT_BOOK = "EXPORT_BOOK"
 
     // ── 校源 ──
     const val CHECK_SOURCE = "CHECK_SOURCE"
