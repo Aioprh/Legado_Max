@@ -61,7 +61,7 @@ object EventBus {
     const val VIDEO_CONFIG_CHANGED = "VIDEO_CONFIG_CHANGED"
 
     // ── 系统 ──
-    const val BATTERY_CHANGED = "batteryChanged"
+    const val BATTERY_CHANGED = "BATTERY_CHANGED"
     const val TIME_CHANGED = "TIME_CHANGED"
 
     // ── 下载 / 导出 ──
