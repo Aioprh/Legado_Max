@@ -67,6 +67,7 @@ object MaxAudioSystem {
     fun onPlaybackEnded(): Boolean {
         ensureRestored()
         if(AudioPlay.book==null)return false
+        if(AudioPlay.consumeChapterTimerOnEnd())return true
         if(AudioPlay.durChapterIndex+1<AudioPlay.simulatedChapterSize){AudioPlay.next();return true}
         val next=synchronized(queue){when{queue.isEmpty()->-1;AudioPlay.playMode==AudioPlay.PlayMode.RANDOM->queue.indices.filter{it!=queueIndex}.randomOrNull()?:-1;queueIndex+1<queue.size->queueIndex+1;AudioPlay.playMode==AudioPlay.PlayMode.LIST_LOOP->0;else->-1}}
         return if(next>=0)playQueueIndex(next)else{persist();false}
