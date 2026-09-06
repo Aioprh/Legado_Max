@@ -199,7 +199,7 @@ class AudioPlayMiniBarController(
                 val navigationTop = navigationLocation[1] - parentLocation[1]
                 (parent.height - navigationTop + 8.dpToPx()).coerceAtLeast(8.dpToPx())
             }
-            activity.javaClass.simpleName == "TocActivity" -> 74.dpToPx()
+            activity.javaClass.simpleName == "TocActivity" -> 62.dpToPx()
             else -> 18.dpToPx()
         }
         binding.root.updateLayoutParams<android.widget.FrameLayout.LayoutParams> { bottomMargin = margin }
