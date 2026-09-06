@@ -16,7 +16,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.databinding.ViewAudioPlayMiniBarBinding
 import io.legado.app.help.glide.ImageLoader
@@ -52,7 +51,11 @@ class AudioPlayMiniBarController(
     private var contentPaddingTop = 0
     private var contentPaddingRight = 0
     private var contentPaddingBottom = 0
-    private val originalRecyclerPaddingBottom = java.util.WeakHashMap<RecyclerView, Int>()
+    private var mainViewPager: ViewGroup? = null
+    private var mainViewPagerPaddingLeft = 0
+    private var mainViewPagerPaddingTop = 0
+    private var mainViewPagerPaddingRight = 0
+    private var mainViewPagerPaddingBottom = 0
 
     init {
         parent.addView(binding.root)
@@ -166,54 +169,66 @@ class AudioPlayMiniBarController(
             contentPaddingRight = container.paddingRight
             contentPaddingBottom = container.paddingBottom
         }
+        mainViewPager = activity.findViewById<ViewGroup>(R.id.view_pager_main)?.also { viewPager ->
+            mainViewPagerPaddingLeft = viewPager.paddingLeft
+            mainViewPagerPaddingTop = viewPager.paddingTop
+            mainViewPagerPaddingRight = viewPager.paddingRight
+            mainViewPagerPaddingBottom = viewPager.paddingBottom
+        }
     }
 
-    /** 迷你播放栏覆盖在内容之上时，同时给内容容器和内部 RecyclerView 预留空间。 */
+    /**
+     * 迷你播放栏覆盖在内容之上时，为主界面的 ViewPager 本身预留底部安全区。
+     *
+     * 直接调整 ViewPager 的可用内容区域，比遍历 Fragment 内部 RecyclerView 更可靠：
+     * 书架、发现、首页等页面的列表可能动态创建/替换，统一在 ViewPager 层处理可以避免
+     * 新建列表没有及时拿到安全内边距，也避免 content_container 与 RecyclerView 双重留白。
+     */
     private fun updateContentSafeArea() {
-        val container = contentContainer ?: return
+        val container = contentContainer
+        val viewPager = mainViewPager
+
         if (!binding.audioPlayMiniBar.isShown || binding.audioPlayMiniBar.height <= 0) {
-            container.setPadding(contentPaddingLeft, contentPaddingTop, contentPaddingRight, contentPaddingBottom)
-            restoreRecyclerViewPadding(container)
+            container?.setPadding(contentPaddingLeft, contentPaddingTop, contentPaddingRight, contentPaddingBottom)
+            viewPager?.setPadding(
+                mainViewPagerPaddingLeft,
+                mainViewPagerPaddingTop,
+                mainViewPagerPaddingRight,
+                mainViewPagerPaddingBottom
+            )
             return
         }
 
-        val containerLocation = IntArray(2)
+        val safeBottom = calculateMiniBarSafeBottom(container ?: parent)
+
+        if (viewPager != null) {
+            // 主界面：只在 ViewPager 层预留空间，避免父容器 + 子列表重复增加空白。
+            container?.setPadding(contentPaddingLeft, contentPaddingTop, contentPaddingRight, contentPaddingBottom)
+            viewPager.clipToPadding = false
+            viewPager.setPadding(
+                mainViewPagerPaddingLeft,
+                mainViewPagerPaddingTop,
+                mainViewPagerPaddingRight,
+                mainViewPagerPaddingBottom + safeBottom
+            )
+        } else if (container != null) {
+            // 其他没有主界面 ViewPager 的页面继续使用通用内容安全区。
+            container.setPadding(
+                contentPaddingLeft,
+                contentPaddingTop,
+                contentPaddingRight,
+                contentPaddingBottom + safeBottom
+            )
+        }
+    }
+
+    private fun calculateMiniBarSafeBottom(reference: View): Int {
+        val referenceLocation = IntArray(2)
         val miniLocation = IntArray(2)
-        container.getLocationOnScreen(containerLocation)
+        reference.getLocationOnScreen(referenceLocation)
         binding.audioPlayMiniBar.getLocationOnScreen(miniLocation)
-        val miniTop = (miniLocation[1] - containerLocation[1]).coerceAtLeast(0)
-        val safeBottom = (container.height - miniTop + 10.dpToPx()).coerceAtLeast(0)
-
-        container.setPadding(contentPaddingLeft, contentPaddingTop, contentPaddingRight, contentPaddingBottom + safeBottom)
-        applyRecyclerViewSafeArea(container, safeBottom)
-    }
-
-    private fun applyRecyclerViewSafeArea(view: View, safeBottom: Int) {
-        if (view is RecyclerView) {
-            val original = originalRecyclerPaddingBottom.getOrPut(view) { view.paddingBottom }
-            view.clipToPadding = false
-            view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original + safeBottom)
-            return
-        }
-        if (view is ViewGroup) {
-            for (index in 0 until view.childCount) {
-                applyRecyclerViewSafeArea(view.getChildAt(index), safeBottom)
-            }
-        }
-    }
-
-    private fun restoreRecyclerViewPadding(view: View) {
-        if (view is RecyclerView) {
-            originalRecyclerPaddingBottom.remove(view)?.let { original ->
-                view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original)
-            }
-            return
-        }
-        if (view is ViewGroup) {
-            for (index in 0 until view.childCount) {
-                restoreRecyclerViewPadding(view.getChildAt(index))
-            }
-        }
+        val miniTop = (miniLocation[1] - referenceLocation[1]).coerceAtLeast(0)
+        return (reference.height - miniTop + 10.dpToPx()).coerceAtLeast(0)
     }
 
     private fun bindImeVisibility() {
@@ -222,6 +237,9 @@ class AudioPlayMiniBarController(
             if (visible != imeVisible) {
                 imeVisible = visible
                 if (visible) hideInternal() else refresh()
+            } else if (binding.audioPlayMiniBar.isShown) {
+                // ViewPager/Fragment 切换或列表重新布局后，重新计算安全区。
+                updateContentSafeArea()
             }
         }
         parent.viewTreeObserver.addOnGlobalLayoutListener(globalLayoutListener)
