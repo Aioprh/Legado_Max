@@ -270,7 +270,8 @@ class AudioPlayActivity :
         observeEventSticky<Int>(EventBus.AUDIO_PROGRESS) { if (!adjustProgress) binding.playerProgress.progress = it; binding.tvDurTime.text = it.toDurationTime() }
         observeEventSticky<Int>(EventBus.AUDIO_BUFFER_PROGRESS) { binding.playerProgress.secondaryProgress = it }
         observeEventSticky<Float>(EventBus.AUDIO_SPEED) { if (it == 1f) binding.tvSpeed.invisible() else { binding.tvSpeed.text = String.format(Locale.ROOT, "%.1fX", it); binding.tvSpeed.visible() } }
-        observeEventSticky<Int>(EventBus.AUDIO_DS) { binding.tvTimer.text = "${it}m"; binding.tvTimer.visible(it > 0) }
+        observeEventSticky<Int>(EventBus.AUDIO_DS) { if (it > 0) { binding.tvTimer.text = "${it}m"; binding.tvTimer.visible() } else if (AudioPlay.chapterTimerCount == 0) binding.tvTimer.invisible() }
+        observeEventSticky<Int>(EventBus.AUDIO_CHAPTER_TIMER) { if (it > 0) { binding.tvTimer.text = getString(R.string.timer_chapter, it); binding.tvTimer.visible() } else if (AudioPlayService.timeMinute <= 0) binding.tvTimer.invisible() }
     }
 
     override fun upLoading(loading: Boolean) { runOnUiThread { binding.progressLoading.visible(loading) } }
