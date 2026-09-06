@@ -44,6 +44,7 @@ object EventBus {
 
     // ── 音频播放 ──
     const val AUDIO_DS = "audioDs"
+    const val AUDIO_CHAPTER_TIMER = "audioChapterTimer"
     const val AUDIO_STATE = "audioState"
     const val AUDIO_SUB_TITLE = "audioSubTitle"
     const val AUDIO_PROGRESS = "audioProgress"
@@ -57,7 +58,7 @@ object EventBus {
     // ── 视频播放 ──
     const val VIDEO_SUB_TITLE = "VideoSubTitle"
     const val UP_VIDEO_INFO = "upVideoInfo"
-    const val VIDEO_CONFIG_CHANGED = "videoConfigChanged"
+    const val VIDEO_CONFIG_CHANGED = "VIDEO_CONFIG_CHANGED"
 
     // ── 系统 ──
     const val BATTERY_CHANGED = "batteryChanged"
@@ -70,13 +71,13 @@ object EventBus {
     const val EXPORT_BOOK = "exportBook"
 
     // ── 校源 ──
-    const val CHECK_SOURCE = "checkSource"
-    const val CHECK_SOURCE_RESULT = "checkSourceResult"
-    const val CHECK_SOURCE_DONE = "checkSourceDone"
+    const val CHECK_SOURCE = "CHECK_SOURCE"
+    const val CHECK_SOURCE_RESULT = "CHECK_SOURCE_RESULT"
+    const val CHECK_SOURCE_DONE = "CHECK_SOURCE_DONE"
 
     // ── 搜索 ──
-    const val SEARCH_RESULT = "searchResult"
+    const val SEARCH_RESULT = "SEARCH_RESULT"
 
     // ── 封面模板 ──
-    const val COVER_HTML_TEMPLATE_CHANGED = "coverHtmlTemplateChanged"
+    const val COVER_HTML_TEMPLATE_CHANGED = "COVER_HTML_TEMPLATE_CHANGED"
 }
