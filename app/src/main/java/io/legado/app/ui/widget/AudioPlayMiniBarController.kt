@@ -159,11 +159,37 @@ class AudioPlayMiniBarController(
     private fun bindBottomNavigationAnchor() {
         val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass) ?: return
         bottomNavigation = navigation
-        bottomNavigationLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            updateBottomMargin()
+        bottomNavigationLayoutListener = object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View,
+                left: Int,
+                top: Int,
+                right: Int,
+                bottom: Int,
+                oldLeft: Int,
+                oldTop: Int,
+                oldRight: Int,
+                oldBottom: Int
+            ) {
+                updateBottomMargin()
+            }
         }
         navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
-        parent.addOnLayoutChangeListener { _, _, _, _, _, _, _, _ -> updateBottomMargin() }
+        parent.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View,
+                left: Int,
+                top: Int,
+                right: Int,
+                bottom: Int,
+                oldLeft: Int,
+                oldTop: Int,
+                oldRight: Int,
+                oldBottom: Int
+            ) {
+                updateBottomMargin()
+            }
+        })
     }
 
     private fun bindImeVisibility() {
@@ -201,7 +227,7 @@ class AudioPlayMiniBarController(
 
     private fun applyTheme(color: Int = activity.bottomBackground) {
         binding.run {
-            val nightMode = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+            val nightMode = (activity.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
             val tint = if (nightMode) 0xFFEAF1FF.toInt() else 0xFF1B2633.toInt()
             val glassBase = if (nightMode) {
                 AndroidXColorUtils.setAlphaComponent(0xFF16191F.toInt(), 214)
