@@ -83,7 +83,10 @@ object AudioPlay : CoroutineScope by MainScope() {
     fun changePlayMode() { playMode=playMode.next(); book?.setPlayMode(playMode.ordinal); postEvent(EventBus.PLAY_MODE_CHANGED, playMode) }
     fun upData(book: Book) { AudioPlay.book=book; chapterSize=appDb.bookChapterDao.getChapterCount(book.bookUrl); simulatedChapterSize=if(book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize; if(durChapterIndex!=book.durChapterIndex){ stopPlay(); durChapterIndex=book.durChapterIndex; durChapterPos=book.durChapterPos; durPlayUrl=""; durLyric=null; durAudioSize=0 }; upDurChapter(); MaxAudioSystem.syncCurrentBook(book) }
     fun resetData(book: Book) {
-        stop()
+        // Do not stopSelf() while switching books from the bookshelf. Keeping the
+        // existing service alive avoids a stop/destroy racing with the following
+        // play command, which could reset the new book back to chapter 0.
+        stopPlay()
         AudioPlay.book=book
         chapterTimerCount=0
         postEvent(EventBus.AUDIO_CHAPTER_TIMER,0)
@@ -106,8 +109,6 @@ object AudioPlay : CoroutineScope by MainScope() {
             durChapterIndex=book.durChapterIndex
             durChapterPos=book.durChapterPos
         }
-        // Keep the in-memory Book in sync immediately so chapter URL loading and
-        // notification updates cannot race the asynchronous database write.
         book.durChapterIndex=durChapterIndex
         book.durChapterPos=durChapterPos
         PlayMode.entries.getOrNull(book.getPlayMode())?.let{playMode=it; postEvent(EventBus.PLAY_MODE_CHANGED,it)}
@@ -133,8 +134,6 @@ object AudioPlay : CoroutineScope by MainScope() {
     fun preloadNextChapters(count:Int=2){val currentBook=book?:return;val source=bookSource?:return;val start=durChapterIndex+1;val end=(start+count).coerceAtMost(simulatedChapterSize);for(index in start until end)preloadChapter(currentBook,source,index)}
     private fun preloadChapter(currentBook:Book,source:BookSource,index:Int){val key="${currentBook.bookUrl}#$index";synchronized(preloadedUrls){if(preloadedUrls.containsKey(key))return};if(!addLoading(index))return;val chapter=appDb.bookChapterDao.getChapter(currentBook.bookUrl,index);if(chapter==null||chapter.isVolume){removeLoading(index);return};WebBook.getContent(this,source,currentBook,chapter).onSuccess{content->content.trim().takeIf{it.isNotEmpty()}?.let{value->synchronized(preloadedUrls){preloadedUrls[key]=value}}}.onFinally{removeLoading(index);postEvent(EventBus.AUDIO_QUEUE_CHANGED,MaxAudioSystem.queue())}}
     private fun contentLoadFinish(chapter:BookChapter,content:String){
-        // Compare with the live playback index, not Book.durChapterIndex, because
-        // the latter is persisted asynchronously and can still contain the old chapter.
         if(chapter.index==durChapterIndex){
             durPlayUrl=content
             durLyric=chapter.getVariable("lyric")
