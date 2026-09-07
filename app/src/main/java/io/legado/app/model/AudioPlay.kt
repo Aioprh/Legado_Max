@@ -97,9 +97,6 @@ object AudioPlay : CoroutineScope by MainScope() {
         chapterSize=appDb.bookChapterDao.getChapterCount(book.bookUrl)
         simulatedChapterSize=if(book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize
         bookSource=book.getBookSource()
-
-        // Restore the most recent audio position first. This survives process death/force-stop
-        // even when the periodic Book DB write has not happened yet.
         val saved=MaxAudioSession.restore()
         val restoreSession=saved.currentBookUrl==book.bookUrl && saved.currentIndex in 0 until simulatedChapterSize
         if(restoreSession){
@@ -109,7 +106,10 @@ object AudioPlay : CoroutineScope by MainScope() {
             durChapterIndex=book.durChapterIndex
             durChapterPos=book.durChapterPos
         }
-
+        // Keep the in-memory Book in sync immediately so chapter URL loading and
+        // notification updates cannot race the asynchronous database write.
+        book.durChapterIndex=durChapterIndex
+        book.durChapterPos=durChapterPos
         PlayMode.entries.getOrNull(book.getPlayMode())?.let{playMode=it; postEvent(EventBus.PLAY_MODE_CHANGED,it)}
         val speed=book.getPlaySpeed()
         AudioPlayService.playSpeed=if(restoreSession)saved.speed else speed
@@ -132,7 +132,20 @@ object AudioPlay : CoroutineScope by MainScope() {
     private fun loadPlayUrl(){val index=durChapterIndex;val key="${book?.bookUrl}#$index";synchronized(preloadedUrls){preloadedUrls.remove(key)}?.let{durPlayUrl=it;durLyric=durChapter?.getVariable("lyric");upPlayUrl();preloadNextChapters(2);return};if(!addLoading(index))return;val currentBook=book;val source=bookSource;if(currentBook!=null&&source!=null){upDurChapter();val chapter=durChapter;if(chapter==null){removeLoading(index);return};if(chapter.isVolume){skipTo(index+1);removeLoading(index);return};upLoading(true);WebBook.getContent(this,source,currentBook,chapter).onSuccess{content->val value=content.trim();if(value.isEmpty())appCtx.toastOnUi("未获取到资源链接")else contentLoadFinish(chapter,value)}.onError{AppLog.put("获取资源链接出错\n$it",it,true);upLoading(false)}.onCancel{removeLoading(index)}.onFinally{callback?.upLyric(durLyric);removeLoading(index)}}else{removeLoading(index);appCtx.toastOnUi("book or source is null")}}
     fun preloadNextChapters(count:Int=2){val currentBook=book?:return;val source=bookSource?:return;val start=durChapterIndex+1;val end=(start+count).coerceAtMost(simulatedChapterSize);for(index in start until end)preloadChapter(currentBook,source,index)}
     private fun preloadChapter(currentBook:Book,source:BookSource,index:Int){val key="${currentBook.bookUrl}#$index";synchronized(preloadedUrls){if(preloadedUrls.containsKey(key))return};if(!addLoading(index))return;val chapter=appDb.bookChapterDao.getChapter(currentBook.bookUrl,index);if(chapter==null||chapter.isVolume){removeLoading(index);return};WebBook.getContent(this,source,currentBook,chapter).onSuccess{content->content.trim().takeIf{it.isNotEmpty()}?.let{value->synchronized(preloadedUrls){preloadedUrls[key]=value}}}.onFinally{removeLoading(index);postEvent(EventBus.AUDIO_QUEUE_CHANGED,MaxAudioSystem.queue())}}
-    private fun contentLoadFinish(chapter:BookChapter,content:String){if(chapter.index==book?.durChapterIndex){durPlayUrl=content;durLyric=chapter.getVariable("lyric");upPlayUrl();preloadNextChapters(2)}}
+    private fun contentLoadFinish(chapter:BookChapter,content:String){
+        // Compare with the live playback index, not Book.durChapterIndex, because
+        // the latter is persisted asynchronously and can still contain the old chapter.
+        if(chapter.index==durChapterIndex){
+            durPlayUrl=content
+            durLyric=chapter.getVariable("lyric")
+            book?.durChapterIndex=durChapterIndex
+            book?.durChapterPos=durChapterPos
+            upDurChapter()
+            upPlayUrl()
+            preloadNextChapters(2)
+            MaxAudioSystem.savePlaybackState()
+        }
+    }
     private fun upPlayUrl(){if(isPlayToEnd())playNew()else play()}
     fun play(){context.startService<AudioPlayService>{action=IntentAction.play}}
     private fun playNew(){context.startService<AudioPlayService>{action=IntentAction.playNew}}
@@ -142,9 +155,9 @@ object AudioPlay : CoroutineScope by MainScope() {
     fun stop(){if(AudioPlayService.isRun)context.startService<AudioPlayService>{action=IntentAction.stop}}
     fun setSpeed(speed:Float){if(AudioPlayService.isRun){book?.setPlaySpeed(speed);val clamped=speed.coerceIn(ReadConstants.MIN_PLAY_SPEED,ReadConstants.MAX_PLAY_SPEED);context.startService<AudioPlayService>{action=IntentAction.setSpeed;putExtra("speed",clamped)}}}
     fun adjustProgress(position:Int){durChapterPos=position;saveRead();if(AudioPlayService.isRun)context.startService<AudioPlayService>{action=IntentAction.adjustProgress;putExtra("position",position)}}
-    fun skipTo(index:Int){Coroutine.async{stopPlay();if(index in 0..<simulatedChapterSize){durChapterIndex=index;durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl();MaxAudioSystem.syncCurrentBook(book)}}}
-    fun prev(){Coroutine.async{stopPlay();if(durChapterIndex>0){durChapterIndex--;durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl();MaxAudioSystem.syncCurrentBook(book)}}}
-    fun next(){stopPlay();upReadTime();when(playMode){PlayMode.LIST_END_STOP->if(durChapterIndex+1<simulatedChapterSize){durChapterIndex++;durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()};PlayMode.SINGLE_LOOP->{durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()};PlayMode.RANDOM->{if(simulatedChapterSize>0){durChapterIndex=(0 until simulatedChapterSize).random();durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()}};PlayMode.LIST_LOOP->{if(simulatedChapterSize>0){durChapterIndex=(durChapterIndex+1)%simulatedChapterSize;durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()}}};MaxAudioSystem.syncCurrentBook(book)}
+    fun skipTo(index:Int){Coroutine.async{stopPlay();if(index in 0..<simulatedChapterSize){durChapterIndex=index;durChapterPos=0;book?.durChapterIndex=index;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl();MaxAudioSystem.syncCurrentBook(book)}}}
+    fun prev(){Coroutine.async{stopPlay();if(durChapterIndex>0){durChapterIndex--;durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl();MaxAudioSystem.syncCurrentBook(book)}}}
+    fun next(){stopPlay();upReadTime();when(playMode){PlayMode.LIST_END_STOP->if(durChapterIndex+1<simulatedChapterSize){durChapterIndex++;durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()};PlayMode.SINGLE_LOOP->{durChapterPos=0;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()};PlayMode.RANDOM->{if(simulatedChapterSize>0){durChapterIndex=(0 until simulatedChapterSize).random();durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()}};PlayMode.LIST_LOOP->{if(simulatedChapterSize>0){durChapterIndex=(durChapterIndex+1)%simulatedChapterSize;durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()}}};MaxAudioSystem.syncCurrentBook(book)}
     fun setTimer(minute:Int){if(minute>0){chapterTimerCount=0;postEvent(EventBus.AUDIO_CHAPTER_TIMER,0)};if(AudioPlayService.isRun)context.startService<AudioPlayService>{action=IntentAction.setTimer;putExtra("minute",minute)}else{AudioPlayService.timeMinute=minute;postEvent(EventBus.AUDIO_DS,minute)}}
     fun setTimerByChapter(count:Int){chapterTimerCount=count.coerceIn(0,50);if(chapterTimerCount>0){AudioPlayService.timeMinute=0;postEvent(EventBus.AUDIO_DS,0)};postEvent(EventBus.AUDIO_CHAPTER_TIMER,chapterTimerCount)}
     fun consumeChapterTimerOnEnd():Boolean{if(chapterTimerCount<=0)return false;chapterTimerCount--;postEvent(EventBus.AUDIO_CHAPTER_TIMER,chapterTimerCount);if(chapterTimerCount==0){stop();return true};return false}
@@ -152,7 +165,7 @@ object AudioPlay : CoroutineScope by MainScope() {
     fun stopPlay(){if(AudioPlayService.isRun)context.startService<AudioPlayService>{action=IntentAction.stopPlay}}
     fun saveRead(first:Boolean=false){val currentBook=book?:return;Coroutine.async{currentBook.lastCheckCount=0;val durTime=System.currentTimeMillis();currentBook.durChapterTime=durTime;val chapterChanged=currentBook.durChapterIndex!=durChapterIndex;currentBook.durChapterIndex=durChapterIndex;currentBook.durChapterPos=durChapterPos;if(first||chapterChanged)appDb.bookChapterDao.getChapter(currentBook.bookUrl,currentBook.durChapterIndex)?.let{currentBook.durChapterTitle=it.getDisplayTitle(ContentProcessor.get(currentBook.name,currentBook.origin).getTitleReplaceRules(),currentBook.getUseReplaceRule(),replaceBook=currentBook.toReplaceBook());SourceCallBack.callBackBook(SourceCallBack.SAVE_READ,bookSource,currentBook,it,durTime.toString())};currentBook.update();MaxAudioSystem.savePlaybackState()}}
     fun saveDurChapter(audioSize:Long){val chapter=durChapter?:return;Coroutine.async{durAudioSize=audioSize.toInt();chapter.end=audioSize;chapter.update()}}
-    fun playPositionChanged(position:Int){durChapterPos=position;MaxAudioSystem.savePlaybackState();val now=System.currentTimeMillis();if(now-lastProgressSaveTime>=PROGRESS_SAVE_INTERVAL){lastProgressSaveTime=now;saveRead()}}
+    fun playPositionChanged(position:Int){durChapterPos=position;book?.durChapterPos=position;MaxAudioSystem.savePlaybackState();val now=System.currentTimeMillis();if(now-lastProgressSaveTime>=PROGRESS_SAVE_INTERVAL){lastProgressSaveTime=now;saveRead()}}
     fun upLoading(loading:Boolean){callback?.upLoading(loading)}
     private fun isPlayToEnd():Boolean=durChapterIndex+1==simulatedChapterSize&&durChapterPos==durAudioSize
     fun register(context:Context){activityContext=context;callback=context as CallBack}
