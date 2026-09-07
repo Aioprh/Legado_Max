@@ -65,21 +65,53 @@ object MaxAudioSystem {
 
     fun savePlaybackState() { ensureRestored(); persist() }
 
+    /** Called only by ExoPlayer when the current chapter really reached its end. */
     fun onPlaybackEnded(): Boolean {
         ensureRestored()
         if (AudioPlay.book == null) return false
         if (AudioPlay.consumeChapterTimerOnEnd()) return true
         if (AudioPlay.durChapterIndex + 1 < AudioPlay.simulatedChapterSize) { AudioPlay.next(); return true }
-        val next = synchronized(queue) {
+        val next = nextQueueIndex(naturalEnd = true)
+        return if (next >= 0) playQueueIndex(next) else { persist(); false }
+    }
+
+    /** Manual next from Dynamic Island/notification/UI. It must never consume a chapter timer. */
+    fun next() {
+        clearError()
+        if (AudioPlay.book == null) return
+        if (AudioPlay.durChapterIndex + 1 < AudioPlay.simulatedChapterSize) {
+            AudioPlay.next()
+            return
+        }
+        val next = nextQueueIndex(naturalEnd = false)
+        if (next >= 0) playQueueIndex(next) else AudioPlay.next()
+    }
+
+    /** Manual previous from Dynamic Island/notification/UI. */
+    fun previous() {
+        clearError()
+        if (AudioPlay.book == null) return
+        if (AudioPlay.durChapterIndex > 0) {
+            AudioPlay.prev()
+            return
+        }
+        val previous = synchronized(queue) {
             when {
-                queue.isEmpty() -> -1
-                AudioPlay.playMode == AudioPlay.PlayMode.RANDOM -> queue.indices.filter { it != queueIndex }.randomOrNull() ?: -1
-                queueIndex + 1 < queue.size -> queueIndex + 1
-                AudioPlay.playMode == AudioPlay.PlayMode.LIST_LOOP -> if (queue.isNotEmpty()) 0 else -1
+                queueIndex > 0 -> queueIndex - 1
                 else -> -1
             }
         }
-        return if (next >= 0) playQueueIndex(next) else { persist(); false }
+        if (previous >= 0) playQueueIndex(previous) else AudioPlay.prev()
+    }
+
+    private fun nextQueueIndex(naturalEnd: Boolean): Int = synchronized(queue) {
+        when {
+            queue.isEmpty() -> -1
+            AudioPlay.playMode == AudioPlay.PlayMode.RANDOM -> queue.indices.filter { it != queueIndex }.randomOrNull() ?: -1
+            queueIndex + 1 < queue.size -> queueIndex + 1
+            AudioPlay.playMode == AudioPlay.PlayMode.LIST_LOOP -> 0
+            else -> -1
+        }
     }
 
     fun playQueueIndex(index: Int): Boolean {
@@ -88,7 +120,7 @@ object MaxAudioSystem {
         val target = appDb.bookDao.getBook(item.bookUrl) ?: return false
         clearError()
         AudioPlay.resetData(target)
-        synchronized(queue) { queueIndex = queue.indexOfFirst { it.bookUrl == target.bookUrl }.coerceAtLeast(index) }
+        synchronized(queue) { queueIndex = queue.indexOfFirst { it.bookUrl == target.bookUrl } }
         AudioPlay.loadOrUpPlayUrl()
         persist(); notifyQueueChanged(); return true
     }
@@ -97,8 +129,6 @@ object MaxAudioSystem {
     fun pause(context: Context) = AudioPlay.pause(context)
     fun toggle(context: Context) { if (AudioPlay.status == Status.PLAY) pause(context) else play(context) }
     fun stop() = AudioPlay.stop()
-    fun next() { clearError(); if (!onPlaybackEnded()) AudioPlay.next() }
-    fun previous() { clearError(); AudioPlay.prev() }
     fun seekTo(position: Int) = AudioPlay.adjustProgress(position.coerceAtLeast(0))
     fun setSpeed(speed: Float) { AudioPlay.setSpeed(speed.coerceIn(0.25f, 4f)); persist() }
     fun setSleepTimer(minutes: Int) { AudioPlay.setTimer(minutes.coerceIn(0, 180)); persist() }
