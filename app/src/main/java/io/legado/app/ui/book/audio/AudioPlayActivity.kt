@@ -66,9 +66,7 @@ class AudioPlayActivity :
     ChangeBookSourceDialog.CallBack,
     AudioPlay.CallBack {
 
-    companion object {
-        const val EXTRA_OPEN_CHAPTER_LIST = "open_chapter_list"
-    }
+    companion object { const val EXTRA_OPEN_CHAPTER_LIST = "open_chapter_list" }
 
     override val binding by viewBinding(ActivityAudioPlayBinding::inflate)
     override val viewModel by viewModels<AudioPlayViewModel>()
@@ -82,9 +80,7 @@ class AudioPlayActivity :
     private var menuCustomBtn: MenuItem? = null
 
     private val tocActivityResult = registerForActivityResult(TocActivityResult()) {
-        it?.let { result ->
-            if (result[0] != AudioPlay.book?.durChapterIndex || result[1] == 0) AudioPlay.skipTo(result[0] as Int)
-        }
+        it?.let { result -> if (result[0] != AudioPlay.book?.durChapterIndex || result[1] == 0) AudioPlay.skipTo(result[0] as Int) }
     }
     private val sourceEditResult = registerForActivityResult(StartActivityContract(BookSourceEditActivity::class.java)) {
         if (it.resultCode == RESULT_OK) viewModel.upSource()
@@ -93,6 +89,10 @@ class AudioPlayActivity :
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.titleBar.setBackgroundResource(R.color.transparent)
         AudioPlay.register(this)
+        initView()
+        // 控件必须在异步书籍/目录加载完成之前完成绑定。
+        // 否则网络加载或书源异常时，界面已经显示出来但所有按钮没有 listener。
+        initListener()
         viewModel.titleData.observe(this) { name ->
             binding.titleBar.title = name
             val lyric = AudioPlay.durChapter?.getVariable("lyric")?.takeIf { it.isNotBlank() }
@@ -101,12 +101,10 @@ class AudioPlayActivity :
         viewModel.coverData.observe(this) { upCover(it) }
         viewModel.customBtnListData.observe(this) { menuCustomBtn?.isVisible = it }
         viewModel.initData(intent) {
-            initListener()
             if (intent.getBooleanExtra(EXTRA_OPEN_CHAPTER_LIST, false)) {
                 binding.root.postDelayed({ AudioPlay.book?.bookUrl?.let(tocActivityResult::launch) }, 120L)
             }
         }
-        initView()
         animatePlayerEntrance()
     }
 
@@ -178,13 +176,10 @@ class AudioPlayActivity :
 
     private fun upCover(path: String?) {
         binding.coverContainer.animate().cancel()
-        // CircleImageView 在异步资源尚未绑定时不会绘制任何内容，先设置一个确定存在的兜底封面，
-        // 避免播放详情页出现整块灰色占位区域。
         val fallback: Drawable = BookCover.defaultDrawable
         binding.ivCover.setImageDrawable(fallback)
         binding.ivBg.setImageDrawable(fallback)
-        val resolvedPath = path?.takeIf { it.isNotBlank() }
-            ?: AudioPlay.book?.let { BookCover.getDisplayCover(it) }
+        val resolvedPath = path?.takeIf { it.isNotBlank() } ?: AudioPlay.book?.let { BookCover.getDisplayCover(it) }
         binding.coverContainer.animate().alpha(0.72f).scaleX(0.985f).scaleY(0.985f).setDuration(110).withEndAction {
             BookCover.load(this, resolvedPath, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl) {
                 BookCover.loadBlur(this, resolvedPath, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl).into(binding.ivBg)
@@ -198,20 +193,12 @@ class AudioPlayActivity :
         oldLyric = lyric
         binding.lyricViewX.animate().cancel()
         binding.lyricViewX.animate().alpha(0f).translationY(10.dpToPx().toFloat()).setDuration(140).withEndAction {
-            if (lyric.isNullOrBlank()) {
-                binding.lyricViewX.gone()
-                return@withEndAction
-            }
-            lyricViewX.loadLyric(lyric)
-            binding.lyricViewX.visible()
-            binding.lyricViewX.animate().alpha(1f).translationY(0f).setDuration(280).start()
+            if (lyric.isNullOrBlank()) { binding.lyricViewX.gone(); return@withEndAction }
+            lyricViewX.loadLyric(lyric); binding.lyricViewX.visible(); binding.lyricViewX.animate().alpha(1f).translationY(0f).setDuration(280).start()
             if (lyricOn) upLyricP(AudioPlay.durChapterPos) else {
                 lyricOn = true
                 lyricViewX.apply {
-                    setNormalTextSize(46F)
-                    setCurrentTextSize(56F)
-                    setTimelineTextColor(accentColor)
-                    setDraggable(true, object : OnPlayClickListener {
+                    setNormalTextSize(46F); setCurrentTextSize(56F); setTimelineTextColor(accentColor); setDraggable(true, object : OnPlayClickListener {
                         override fun onPlayClick(time: Long): Boolean { AudioPlay.adjustProgress(time.toInt()); playButton(false); return true }
                     })
                 }
@@ -247,7 +234,7 @@ class AudioPlayActivity :
         if (AudioPlay.inBookshelf) { callBackBookEnd(); return super.finish() }
         if (!AppConfig.showAddToShelfAlert) { callBackBookEnd(); viewModel.removeFromBookshelf { super.finish() } } else {
             alert(title = getString(R.string.add_to_bookshelf)) {
-                setMessage(getString(R.string.check_add_bookshelf, book.name))
+                setMessage(getString(R.string.check_add_to_bookshelf, book.name))
                 okButton { AudioPlay.book?.removeType(BookType.notShelf); AudioPlay.book?.save(); SourceCallBack.callBackBook(SourceCallBack.ADD_BOOK_SHELF, AudioPlay.bookSource, AudioPlay.book); AudioPlay.inBookshelf = true; setResult(RESULT_OK) }
                 noButton { callBackBookEnd(); viewModel.removeFromBookshelf { super.finish() } }
             }
