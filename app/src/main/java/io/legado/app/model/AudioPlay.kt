@@ -66,6 +66,7 @@ object AudioPlay : CoroutineScope by MainScope() {
     private var sessionStartTime = 0L
     var readStartTime: Long = System.currentTimeMillis()
     private var lastProgressSaveTime = 0L
+    private var loadGeneration = 0L
     val executor = globalExecutor
 
     fun changePlayMode() { playMode = playMode.next(); book?.setPlayMode(playMode.ordinal); postEvent(EventBus.PLAY_MODE_CHANGED, playMode); MaxAudioSystem.savePlaybackState() }
@@ -76,6 +77,7 @@ object AudioPlay : CoroutineScope by MainScope() {
         chapterSize = appDb.bookChapterDao.getChapterCount(book.bookUrl)
         simulatedChapterSize = if (book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize
         if (changedBook || durChapterIndex != book.durChapterIndex) {
+            invalidateLoads()
             stopPlay()
             durChapterIndex = book.durChapterIndex.coerceIn(0, (simulatedChapterSize - 1).coerceAtLeast(0))
             durChapterPos = book.durChapterPos.coerceAtLeast(0)
@@ -90,7 +92,7 @@ object AudioPlay : CoroutineScope by MainScope() {
     }
 
     fun resetData(book: Book) {
-        stopPlay(); AudioPlay.book = book; chapterTimerCount = 0; postEvent(EventBus.AUDIO_CHAPTER_TIMER, 0)
+        invalidateLoads(); stopPlay(); AudioPlay.book = book; chapterTimerCount = 0; postEvent(EventBus.AUDIO_CHAPTER_TIMER, 0)
         readRecord.bookName = book.name; readRecord.bookAuthor = book.author; readRecord.deviceId = AppConst.androidId; readRecord.lastRead = System.currentTimeMillis()
         sessionStartTime = System.currentTimeMillis(); readStartTime = System.currentTimeMillis(); lastProgressSaveTime = 0L
         chapterSize = appDb.bookChapterDao.getChapterCount(book.bookUrl); simulatedChapterSize = if (book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize; bookSource = book.getBookSource()
@@ -106,12 +108,13 @@ object AudioPlay : CoroutineScope by MainScope() {
 
     fun upReadTime() { if (!AppConfig.enableReadRecord) return; executor.execute { val now = System.currentTimeMillis(); readRecord.readTime += now - readStartTime; readStartTime = now; readRecord.lastRead = now; readRecord.durChapterTitle = book?.durChapterTitle.orEmpty(); kotlinx.coroutines.runBlocking { appDb.readRecordDao.insert(readRecord) }; sessionStartTime = now } }
     fun markReadStart() { if (!AppConfig.enableReadRecord) return; val now = System.currentTimeMillis(); sessionStartTime = now; readStartTime = now; readRecord.lastRead = now }
+    private fun invalidateLoads() { loadGeneration++ }
     private fun addLoading(index: Int): Boolean = synchronized(this) { if (loadingChapters.contains(index)) false else { loadingChapters.add(index); true } }
     private fun removeLoading(index: Int) { synchronized(this) { loadingChapters.remove(index) } }
 
     fun loadOrUpPlayUrl() { if (durPlayUrl.isEmpty()) loadPlayUrl() else upPlayUrl() }
     private fun loadPlayUrl() {
-        val index = durChapterIndex; val key = "${book?.bookUrl}#$index"
+        val index = durChapterIndex; val key = "${book?.bookUrl}#$index"; val requestGeneration = ++loadGeneration
         synchronized(preloadedUrls) { preloadedUrls.remove(key) }?.let { durPlayUrl = it; durLyric = durChapter?.getVariable("lyric"); upPlayUrl(); preloadNextChapters(2); return }
         if (!addLoading(index)) return
         val currentBook = book; val source = bookSource
@@ -120,7 +123,7 @@ object AudioPlay : CoroutineScope by MainScope() {
             if (chapter == null) { removeLoading(index); return }
             if (chapter.isVolume) { skipTo(index + 1); removeLoading(index); return }
             upLoading(true)
-            WebBook.getContent(this, source, currentBook, chapter).onSuccess { content -> val value = content.trim(); if (value.isEmpty()) appCtx.toastOnUi("未获取到资源链接") else contentLoadFinish(chapter, value) }.onError { AppLog.put("获取资源链接出错\n$it", it, true); upLoading(false) }.onCancel { removeLoading(index) }.onFinally { callback?.upLyric(durLyric); removeLoading(index) }
+            WebBook.getContent(this, source, currentBook, chapter).onSuccess { content -> val value = content.trim(); if (value.isEmpty()) appCtx.toastOnUi("未获取到资源链接") else contentLoadFinish(chapter, value, requestGeneration) }.onError { AppLog.put("获取资源链接出错\n$it", it, true); upLoading(false) }.onCancel { removeLoading(index) }.onFinally { callback?.upLyric(durLyric); removeLoading(index) }
         } else { removeLoading(index); appCtx.toastOnUi("book or source is null") }
     }
 
@@ -131,8 +134,8 @@ object AudioPlay : CoroutineScope by MainScope() {
         WebBook.getContent(this, source, currentBook, chapter).onSuccess { content -> content.trim().takeIf { it.isNotEmpty() }?.let { value -> synchronized(preloadedUrls) { preloadedUrls[key] = value } } }.onFinally { removeLoading(index); postEvent(EventBus.AUDIO_QUEUE_CHANGED, MaxAudioSystem.queue()) }
     }
 
-    private fun contentLoadFinish(chapter: BookChapter, content: String) {
-        if (chapter.bookUrl != book?.bookUrl || chapter.index != durChapterIndex) return
+    private fun contentLoadFinish(chapter: BookChapter, content: String, requestGeneration: Long) {
+        if (requestGeneration != loadGeneration || chapter.bookUrl != book?.bookUrl || chapter.index != durChapterIndex) return
         durPlayUrl = content; durLyric = chapter.getVariable("lyric"); book?.durChapterIndex = durChapterIndex; book?.durChapterPos = durChapterPos; upDurChapter(); AudioPlayService.refreshMediaSession(); upPlayUrl(); preloadNextChapters(2); MaxAudioSystem.savePlaybackState()
     }
     private fun upPlayUrl() { if (isPlayToEnd()) playNew() else play() }
@@ -141,12 +144,12 @@ object AudioPlay : CoroutineScope by MainScope() {
     fun upDurChapter() { val currentBook = book ?: return; durChapter = appDb.bookChapterDao.getChapter(currentBook.bookUrl, durChapterIndex); durAudioSize = durChapter?.end?.toInt()?.coerceAtLeast(0) ?: 0; val title = durChapter?.title ?: appCtx.getString(R.string.data_loading); postEvent(EventBus.AUDIO_SUB_TITLE, title); postEvent(EventBus.AUDIO_SIZE, durAudioSize); postEvent(EventBus.AUDIO_PROGRESS, durChapterPos) }
     fun pause(context: Context) { if (AudioPlayService.isRun) { readStartTime = System.currentTimeMillis(); context.startService<AudioPlayService> { action = IntentAction.pause } } }
     fun resume(context: Context) { if (AudioPlayService.isRun) context.startService<AudioPlayService> { action = IntentAction.resume } }
-    fun stop() { if (AudioPlayService.isRun) context.startService<AudioPlayService> { action = IntentAction.stop } }
+    fun stop() { invalidateLoads(); if (AudioPlayService.isRun) context.startService<AudioPlayService> { action = IntentAction.stop } }
     fun setSpeed(speed: Float) { val clamped = speed.coerceIn(ReadConstants.MIN_PLAY_SPEED, ReadConstants.MAX_PLAY_SPEED); book?.setPlaySpeed(clamped); if (AudioPlayService.isRun) context.startService<AudioPlayService> { action = IntentAction.setSpeed; putExtra("speed", clamped) }; MaxAudioSystem.savePlaybackState() }
     fun adjustProgress(position: Int) { durChapterPos = position.coerceAtLeast(0); book?.durChapterPos = durChapterPos; if (AudioPlayService.isRun) context.startService<AudioPlayService> { action = IntentAction.adjustProgress; putExtra("position", durChapterPos) } else saveRead() }
-    fun skipTo(index: Int) { Coroutine.async { if (index !in 0 until simulatedChapterSize) return@async; stopPlay(); durChapterIndex = index; durChapterPos = 0; book?.durChapterIndex = index; book?.durChapterPos = 0; durPlayUrl = ""; durLyric = null; upDurChapter(); AudioPlayService.refreshMediaSession(); saveRead(); loadPlayUrl(); MaxAudioSystem.syncCurrentBook(book) } }
-    fun prev() { Coroutine.async { if (durChapterIndex <= 0) { durChapterPos = 0; book?.durChapterPos = 0; AudioPlayService.refreshMediaSession(); return@async }; stopPlay(); durChapterIndex--; durChapterPos = 0; book?.durChapterIndex = durChapterIndex; book?.durChapterPos = 0; durPlayUrl = ""; durLyric = null; upDurChapter(); AudioPlayService.refreshMediaSession(); saveRead(); loadPlayUrl(); MaxAudioSystem.syncCurrentBook(book) } }
-    fun next() { stopPlay(); upReadTime(); when (playMode) {
+    fun skipTo(index: Int) { Coroutine.async { if (index !in 0 until simulatedChapterSize) return@async; invalidateLoads(); stopPlay(); durChapterIndex = index; durChapterPos = 0; book?.durChapterIndex = index; book?.durChapterPos = 0; durPlayUrl = ""; durLyric = null; upDurChapter(); AudioPlayService.refreshMediaSession(); saveRead(); loadPlayUrl(); MaxAudioSystem.syncCurrentBook(book) } }
+    fun prev() { Coroutine.async { if (durChapterIndex <= 0) { invalidateLoads(); durChapterPos = 0; book?.durChapterPos = 0; AudioPlayService.refreshMediaSession(); return@async }; invalidateLoads(); stopPlay(); durChapterIndex--; durChapterPos = 0; book?.durChapterIndex = durChapterIndex; book?.durChapterPos = 0; durPlayUrl = ""; durLyric = null; upDurChapter(); AudioPlayService.refreshMediaSession(); saveRead(); loadPlayUrl(); MaxAudioSystem.syncCurrentBook(book) } }
+    fun next() { invalidateLoads(); stopPlay(); upReadTime(); when (playMode) {
         PlayMode.LIST_END_STOP -> if (durChapterIndex + 1 < simulatedChapterSize) { durChapterIndex++; durChapterPos = 0; book?.durChapterIndex = durChapterIndex; book?.durChapterPos = 0; durPlayUrl = ""; durLyric = null; upDurChapter(); AudioPlayService.refreshMediaSession(); saveRead(); loadPlayUrl() }
         PlayMode.SINGLE_LOOP -> { durChapterPos = 0; book?.durChapterPos = 0; durPlayUrl = ""; durLyric = null; upDurChapter(); AudioPlayService.refreshMediaSession(); saveRead(); loadPlayUrl() }
         PlayMode.RANDOM -> if (simulatedChapterSize > 0) { durChapterIndex = (0 until simulatedChapterSize).random(); durChapterPos = 0; book?.durChapterIndex = durChapterIndex; book?.durChapterPos = 0; durPlayUrl = ""; durLyric = null; upDurChapter(); AudioPlayService.refreshMediaSession(); saveRead(); loadPlayUrl() }
@@ -156,7 +159,7 @@ object AudioPlay : CoroutineScope by MainScope() {
     fun setTimerByChapter(count: Int) { chapterTimerCount = count.coerceIn(0, 50); if (chapterTimerCount > 0) { AudioPlayService.timeMinute = 0; postEvent(EventBus.AUDIO_DS, 0) }; postEvent(EventBus.AUDIO_CHAPTER_TIMER, chapterTimerCount) }
     fun consumeChapterTimerOnEnd(): Boolean { if (chapterTimerCount <= 0) return false; chapterTimerCount--; postEvent(EventBus.AUDIO_CHAPTER_TIMER, chapterTimerCount); if (chapterTimerCount == 0) { stop(); return true }; return false }
     fun addTimer() { context.startService<AudioPlayService> { action = IntentAction.addTimer } }
-    fun stopPlay() { if (AudioPlayService.isRun) context.startService<AudioPlayService> { action = IntentAction.stopPlay } }
+    fun stopPlay() { invalidateLoads(); if (AudioPlayService.isRun) context.startService<AudioPlayService> { action = IntentAction.stopPlay } }
     fun saveRead(first: Boolean = false) { val currentBook = book ?: return; Coroutine.async { currentBook.lastCheckCount = 0; val durTime = System.currentTimeMillis(); currentBook.durChapterTime = durTime; val chapterChanged = currentBook.durChapterIndex != durChapterIndex; currentBook.durChapterIndex = durChapterIndex; currentBook.durChapterPos = durChapterPos; if (first || chapterChanged) appDb.bookChapterDao.getChapter(currentBook.bookUrl, currentBook.durChapterIndex)?.let { currentBook.durChapterTitle = it.getDisplayTitle(ContentProcessor.get(currentBook.name, currentBook.origin).getTitleReplaceRules(), currentBook.getUseReplaceRule(), replaceBook = currentBook.toReplaceBook()); SourceCallBack.callBackBook(SourceCallBack.SAVE_READ, bookSource, currentBook, it, durTime.toString()) }; currentBook.update(); MaxAudioSystem.savePlaybackState() } }
     fun saveDurChapter(audioSize: Long) { val chapter = durChapter ?: return; Coroutine.async { durAudioSize = audioSize.toInt().coerceAtLeast(0); chapter.end = audioSize; chapter.update() } }
     fun playPositionChanged(position: Int) { durChapterPos = position.coerceAtLeast(0); book?.durChapterPos = durChapterPos; val now = System.currentTimeMillis(); if (now - lastProgressSaveTime >= PROGRESS_SAVE_INTERVAL) { lastProgressSaveTime = now; saveRead() } }
