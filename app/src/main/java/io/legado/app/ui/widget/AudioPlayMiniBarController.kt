@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.graphics.ColorUtils as AndroidXColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -49,6 +50,7 @@ class AudioPlayMiniBarController(
     private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
     private var contentContainer: ViewGroup? = null
     private var originalRecyclerPaddingBottom = java.util.WeakHashMap<RecyclerView, Int>()
+    private var originalComposePaddingBottom = java.util.WeakHashMap<ComposeView, Int>()
 
     init {
         parent.addView(binding.root)
@@ -160,15 +162,15 @@ class AudioPlayMiniBarController(
     }
 
     /**
-     * 迷你播放栏保持真正的悬浮层，不再改变 content_container / ViewPager 的尺寸。
-     * 只给底层 RecyclerView 增加滚动安全区，让最后一项可以完整滚到播放栏上方。
-     * 这样播放栏与底部导航之间透出真实页面背景，不再形成一整块“挡板”。
+     * 迷你播放栏保持真正的悬浮层，不改变页面布局高度。
+     * 对传统 RecyclerView 和首页/其他 ComposeView 分别增加底部滚动安全区，
+     * 让最后一项可以完整滚到播放栏上方，同时保持播放栏后面仍是原页面背景。
      */
     private fun updateContentSafeArea() {
         val container = contentContainer ?: return
         val miniBar = binding.audioPlayMiniBar
         if (!miniBar.isShown || miniBar.height <= 0) {
-            restoreRecyclerViewPadding(container)
+            restoreContentSafeArea(container)
             return
         }
 
@@ -178,33 +180,48 @@ class AudioPlayMiniBarController(
         miniBar.getLocationOnScreen(miniLocation)
         val miniTop = miniLocation[1] - containerLocation[1]
         val safeBottom = (container.height - miniTop + 10.dpToPx()).coerceAtLeast(0)
-        applyRecyclerViewSafeArea(container, safeBottom)
+        applyContentSafeArea(container, safeBottom)
     }
 
-    private fun applyRecyclerViewSafeArea(view: View, safeBottom: Int) {
-        if (view is RecyclerView) {
-            val original = originalRecyclerPaddingBottom.getOrPut(view) { view.paddingBottom }
-            view.clipToPadding = false
-            view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original + safeBottom)
-            return
+    private fun applyContentSafeArea(view: View, safeBottom: Int) {
+        when (view) {
+            is RecyclerView -> {
+                val original = originalRecyclerPaddingBottom.getOrPut(view) { view.paddingBottom }
+                view.clipToPadding = false
+                view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original + safeBottom)
+                return
+            }
+            is ComposeView -> {
+                val original = originalComposePaddingBottom.getOrPut(view) { view.paddingBottom }
+                view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original + safeBottom)
+                return
+            }
         }
         if (view is ViewGroup) {
             for (index in 0 until view.childCount) {
-                applyRecyclerViewSafeArea(view.getChildAt(index), safeBottom)
+                applyContentSafeArea(view.getChildAt(index), safeBottom)
             }
         }
     }
 
-    private fun restoreRecyclerViewPadding(view: View) {
-        if (view is RecyclerView) {
-            originalRecyclerPaddingBottom.remove(view)?.let { original ->
-                view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original)
+    private fun restoreContentSafeArea(view: View) {
+        when (view) {
+            is RecyclerView -> {
+                originalRecyclerPaddingBottom.remove(view)?.let { original ->
+                    view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original)
+                }
+                return
             }
-            return
+            is ComposeView -> {
+                originalComposePaddingBottom.remove(view)?.let { original ->
+                    view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original)
+                }
+                return
+            }
         }
         if (view is ViewGroup) {
             for (index in 0 until view.childCount) {
-                restoreRecyclerViewPadding(view.getChildAt(index))
+                restoreContentSafeArea(view.getChildAt(index))
             }
         }
     }
