@@ -30,39 +30,47 @@
         android:id="@+id/ll_right_actions"
         android:layout_width="48dp"
         android:layout_height="88dp"
+        android:layout_marginStart="4dp"
         android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:layout_marginStart="4dp"
         app:layout_constraintBottom_toBottomOf="@id/iv_cover"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/tv_name"
         app:layout_constraintTop_toTopOf="@id/iv_cover">
 
-        <FrameLayout
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/fl_has_new"
             android:layout_width="40dp"
-            android:layout_height="32dp"
-            android:gravity="center">
-            <io.legado.app.ui.widget.text.BadgeView
-                android:id="@+id/bv_unread"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:includeFontPadding="false" />
-            <io.legado.app.ui.widget.anima.RotateLoading
-                android:id="@+id/rl_loading"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:layout_gravity="center"
-                android:visibility="invisible"
-                app:loading_width="2dp" />
-        </FrameLayout>
+            android:layout_height="40dp"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/tv_text_summary">
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <io.legado.app.ui.widget.text.BadgeView
+                    android:id="@+id/bv_unread"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:includeFontPadding="false" />
+                <io.legado.app.ui.widget.anima.RotateLoading
+                    android:id="@+id/rl_loading"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:visibility="invisible"
+                    app:loading_width="2dp" />
+            </FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/iv_audio_play"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="4dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="播放"
             android:padding="10dp"
