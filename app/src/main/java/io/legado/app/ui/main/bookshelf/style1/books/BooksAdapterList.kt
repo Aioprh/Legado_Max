@@ -106,15 +106,24 @@ class BooksAdapterList(
     }
 
     private fun upRefresh(binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
-        if (!item.isLocal && callBack.isUpdate(item.bookUrl)) {
+        val isUpdating = !item.isLocal && callBack.isUpdate(item.bookUrl)
+        if (isUpdating) {
+            binding.flHasNew.visible()
             binding.bvUnread.invisible()
             binding.rlLoading.visible()
+            return
+        }
+
+        binding.rlLoading.gone()
+        val unreadCount = if (AppConfig.showUnread) item.getUnreadChapterNum() else 0
+        if (unreadCount > 0) {
+            binding.flHasNew.visible()
+            binding.bvUnread.visible()
+            binding.bvUnread.setHighlight(item.lastCheckCount > 0)
+            binding.bvUnread.setBadgeCount(unreadCount)
         } else {
-            binding.rlLoading.gone()
-            if (AppConfig.showUnread) {
-                binding.bvUnread.setHighlight(item.lastCheckCount > 0)
-                binding.bvUnread.setBadgeCount(item.getUnreadChapterNum())
-            } else binding.bvUnread.invisible()
+            binding.bvUnread.invisible()
+            binding.flHasNew.gone()
         }
     }
 
