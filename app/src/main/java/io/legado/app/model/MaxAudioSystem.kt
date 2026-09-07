@@ -64,6 +64,12 @@ object MaxAudioSystem {
         persist(); postEvent(EventBus.AUDIO_STATE,AudioPlay.status)
     }
 
+    /** Persist the live chapter/position so process death does not reset audio playback. */
+    fun savePlaybackState() {
+        ensureRestored()
+        persist()
+    }
+
     fun onPlaybackEnded(): Boolean {
         ensureRestored()
         if(AudioPlay.book==null)return false
