@@ -81,11 +81,8 @@ object AudioPlay : CoroutineScope by MainScope() {
     val executor = globalExecutor
 
     fun changePlayMode() { playMode=playMode.next(); book?.setPlayMode(playMode.ordinal); postEvent(EventBus.PLAY_MODE_CHANGED, playMode) }
-    fun upData(book: Book) { AudioPlay.book=book; chapterSize=appDb.bookChapterDao.getChapterCount(book.bookUrl); simulatedChapterSize=if(book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize; if(durChapterIndex!=book.durChapterIndex){ stopPlay(); durChapterIndex=book.durChapterIndex; durChapterPos=book.durChapterPos; durPlayUrl=""; durLyric=null; durAudioSize=0 }; upDurChapter(); MaxAudioSystem.syncCurrentBook(book) }
+    fun upData(book: Book) { AudioPlay.book=book; chapterSize=appDb.bookChapterDao.getChapterCount(book.bookUrl); simulatedChapterSize=if(book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize; if(durChapterIndex!=book.durChapterIndex){ stopPlay(); durChapterIndex=book.durChapterIndex; durChapterPos=book.durChapterPos; durPlayUrl=""; durLyric=null; durAudioSize=0 }; upDurChapter(); MaxAudioSystem.syncCurrentBook(book); AudioPlayService.refreshMediaSession() }
     fun resetData(book: Book) {
-        // Do not stopSelf() while switching books from the bookshelf. Keeping the
-        // existing service alive avoids a stop/destroy racing with the following
-        // play command, which could reset the new book back to chapter 0.
         stopPlay()
         AudioPlay.book=book
         chapterTimerCount=0
@@ -123,6 +120,7 @@ object AudioPlay : CoroutineScope by MainScope() {
         SourceCallBack.callBackBook(SourceCallBack.START_READ,bookSource,book,durChapter)
         postEvent(EventBus.AUDIO_BUFFER_PROGRESS,0)
         MaxAudioSystem.syncCurrentBook(book)
+        AudioPlayService.refreshMediaSession()
         preloadNextChapters(2)
     }
     fun upReadTime(){if(!AppConfig.enableReadRecord)return;executor.execute{val now=System.currentTimeMillis();readRecord.readTime+=now-readStartTime;readStartTime=now;readRecord.lastRead=now;readRecord.durChapterTitle=book?.durChapterTitle.orEmpty();kotlinx.coroutines.runBlocking{appDb.readRecordDao.insert(readRecord)};sessionStartTime=now}}
@@ -140,6 +138,7 @@ object AudioPlay : CoroutineScope by MainScope() {
             book?.durChapterIndex=durChapterIndex
             book?.durChapterPos=durChapterPos
             upDurChapter()
+            AudioPlayService.refreshMediaSession()
             upPlayUrl()
             preloadNextChapters(2)
             MaxAudioSystem.savePlaybackState()
@@ -154,9 +153,9 @@ object AudioPlay : CoroutineScope by MainScope() {
     fun stop(){if(AudioPlayService.isRun)context.startService<AudioPlayService>{action=IntentAction.stop}}
     fun setSpeed(speed:Float){if(AudioPlayService.isRun){book?.setPlaySpeed(speed);val clamped=speed.coerceIn(ReadConstants.MIN_PLAY_SPEED,ReadConstants.MAX_PLAY_SPEED);context.startService<AudioPlayService>{action=IntentAction.setSpeed;putExtra("speed",clamped)}}}
     fun adjustProgress(position:Int){durChapterPos=position;saveRead();if(AudioPlayService.isRun)context.startService<AudioPlayService>{action=IntentAction.adjustProgress;putExtra("position",position)}}
-    fun skipTo(index:Int){Coroutine.async{stopPlay();if(index in 0..<simulatedChapterSize){durChapterIndex=index;durChapterPos=0;book?.durChapterIndex=index;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl();MaxAudioSystem.syncCurrentBook(book)}}}
-    fun prev(){Coroutine.async{stopPlay();if(durChapterIndex>0){durChapterIndex--;durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl();MaxAudioSystem.syncCurrentBook(book)}}}
-    fun next(){stopPlay();upReadTime();when(playMode){PlayMode.LIST_END_STOP->if(durChapterIndex+1<simulatedChapterSize){durChapterIndex++;durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()};PlayMode.SINGLE_LOOP->{durChapterPos=0;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()};PlayMode.RANDOM->{if(simulatedChapterSize>0){durChapterIndex=(0 until simulatedChapterSize).random();durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()}};PlayMode.LIST_LOOP->{if(simulatedChapterSize>0){durChapterIndex=(durChapterIndex+1)%simulatedChapterSize;durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;saveRead();loadPlayUrl()}}};MaxAudioSystem.syncCurrentBook(book)}
+    fun skipTo(index:Int){Coroutine.async{stopPlay();if(index in 0..<simulatedChapterSize){durChapterIndex=index;durChapterPos=0;book?.durChapterIndex=index;book?.durChapterPos=0;durPlayUrl="";durLyric=null;upDurChapter();AudioPlayService.refreshMediaSession();saveRead();loadPlayUrl();MaxAudioSystem.syncCurrentBook(book)}}}
+    fun prev(){Coroutine.async{stopPlay();if(durChapterIndex>0){durChapterIndex--;durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;upDurChapter();AudioPlayService.refreshMediaSession();saveRead();loadPlayUrl();MaxAudioSystem.syncCurrentBook(book)}}}
+    fun next(){stopPlay();upReadTime();when(playMode){PlayMode.LIST_END_STOP->if(durChapterIndex+1<simulatedChapterSize){durChapterIndex++;durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;upDurChapter();AudioPlayService.refreshMediaSession();saveRead();loadPlayUrl()};PlayMode.SINGLE_LOOP->{durChapterPos=0;book?.durChapterPos=0;durPlayUrl="";durLyric=null;upDurChapter();AudioPlayService.refreshMediaSession();saveRead();loadPlayUrl()};PlayMode.RANDOM->{if(simulatedChapterSize>0){durChapterIndex=(0 until simulatedChapterSize).random();durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;upDurChapter();AudioPlayService.refreshMediaSession();saveRead();loadPlayUrl()}};PlayMode.LIST_LOOP->{if(simulatedChapterSize>0){durChapterIndex=(durChapterIndex+1)%simulatedChapterSize;durChapterPos=0;book?.durChapterIndex=durChapterIndex;book?.durChapterPos=0;durPlayUrl="";durLyric=null;upDurChapter();AudioPlayService.refreshMediaSession();saveRead();loadPlayUrl()}}};MaxAudioSystem.syncCurrentBook(book)}
     fun setTimer(minute:Int){if(minute>0){chapterTimerCount=0;postEvent(EventBus.AUDIO_CHAPTER_TIMER,0)};if(AudioPlayService.isRun)context.startService<AudioPlayService>{action=IntentAction.setTimer;putExtra("minute",minute)}else{AudioPlayService.timeMinute=minute;postEvent(EventBus.AUDIO_DS,minute)}}
     fun setTimerByChapter(count:Int){chapterTimerCount=count.coerceIn(0,50);if(chapterTimerCount>0){AudioPlayService.timeMinute=0;postEvent(EventBus.AUDIO_DS,0)};postEvent(EventBus.AUDIO_CHAPTER_TIMER,chapterTimerCount)}
     fun consumeChapterTimerOnEnd():Boolean{if(chapterTimerCount<=0)return false;chapterTimerCount--;postEvent(EventBus.AUDIO_CHAPTER_TIMER,chapterTimerCount);if(chapterTimerCount==0){stop();return true};return false}
