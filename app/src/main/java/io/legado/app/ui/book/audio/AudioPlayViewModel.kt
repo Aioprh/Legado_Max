@@ -18,6 +18,7 @@ import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.model.AudioPlay
 import io.legado.app.model.BookCover
 import io.legado.app.model.webBook.WebBook
+import io.legado.app.service.AudioPlayService
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
 
@@ -96,14 +97,22 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
     fun upSource() {
         execute {
             val book = AudioPlay.book ?: return@execute
-            AudioPlay.bookSource = book.getBookSource()?.also{
+            AudioPlay.bookSource = book.getBookSource()?.also {
                 customBtnListData.postValue(it.customButton)
             }
+            AudioPlay.durPlayUrl = ""
+            AudioPlay.durLyric = null
+            AudioPlay.upDurChapter()
+            AudioPlayService.refreshMediaSession()
         }
     }
 
     fun changeTo(source: BookSource, book: Book, toc: List<BookChapter>) {
         execute {
+            val wasPlaying = AudioPlay.status == io.legado.app.constant.Status.PLAY
+            AudioPlay.stop()
+            AudioPlay.durPlayUrl = ""
+            AudioPlay.durLyric = null
             AudioPlay.book?.migrateTo(book, toc)
             book.removeType(BookType.updateError)
             AudioPlay.book?.delete()
@@ -111,7 +120,13 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
             AudioPlay.book = book
             AudioPlay.bookSource = source
             appDb.bookChapterDao.insert(*toc.toTypedArray())
+            AudioPlay.chapterSize = toc.size
+            AudioPlay.simulatedChapterSize = book.simulatedTotalChapterNum()
+            AudioPlay.durChapterIndex = book.durChapterIndex.coerceIn(0, (AudioPlay.simulatedChapterSize - 1).coerceAtLeast(0))
+            AudioPlay.durChapterPos = book.durChapterPos.coerceAtLeast(0)
             AudioPlay.upDurChapter()
+            AudioPlayService.refreshMediaSession()
+            if (wasPlaying) AudioPlay.loadOrUpPlayUrl()
         }.onFinally {
             postEvent(EventBus.SOURCE_CHANGED, book.bookUrl)
         }
