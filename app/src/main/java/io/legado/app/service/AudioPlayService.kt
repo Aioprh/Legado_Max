@@ -31,7 +31,6 @@ import io.legado.app.constant.EventBus
 import io.legado.app.constant.IntentAction
 import io.legado.app.constant.NotificationId
 import io.legado.app.constant.Status
-import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.MediaHelp
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
@@ -70,9 +69,16 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
         @JvmStatic var playSpeed: Float = 1f
         @JvmStatic var bufferedPosition: Int = 0; private set
         var url: String = ""; private set
+        private var instance: AudioPlayService? = null
         private const val MEDIA_SESSION_ACTIONS = PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE or PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SEEK_TO or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
         private const val APP_ACTION_STOP = "Stop"
         private const val APP_ACTION_TIMER = "Timer"
+
+        /** Push the latest chapter metadata/state to Android's MediaSession immediately. */
+        @JvmStatic
+        fun refreshMediaSession() {
+            instance?.refreshCurrentMediaInfo()
+        }
     }
 
     private val useWakeLock = AppConfig.audioPlayUseWakeLock
@@ -94,6 +100,7 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         isRun = true
         bufferedPosition = 0
         lastNotificationChapter = -1
@@ -116,9 +123,7 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            IntentAction.play, IntentAction.playNew -> {
-                startPlayback(intent.action == IntentAction.playNew)
-            }
+            IntentAction.play, IntentAction.playNew -> startPlayback(intent.action == IntentAction.playNew)
             IntentAction.stopPlay -> {
                 invalidatePlayback()
                 AudioPlay.upReadTime()
@@ -193,6 +198,7 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
         mediaSessionCompat.release()
         broadcastReceiver?.let { runCatching { unregisterReceiver(it) } }
         isRun = false
+        instance = null
         bufferedPosition = 0
         AudioPlay.status = Status.STOP
         postEvent(EventBus.AUDIO_STATE, Status.STOP)
@@ -251,8 +257,6 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
         try {
             playGeneration++
             pause = true
-            // Always clear playWhenReady, including BUFFERING/IDLE. Calling pause()
-            // only when isPlaying is true leaves ExoPlayer armed to auto-start later.
             exoPlayer.playWhenReady = false
             position = exoPlayer.currentPosition.toInt().coerceAtLeast(0)
             AudioPlay.upReadTime()
@@ -325,7 +329,6 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
             Player.STATE_BUFFERING -> AudioPlay.upLoading(true)
             Player.STATE_READY -> {
                 AudioPlay.upLoading(false)
-                // The user's pause command wins over ExoPlayer's playWhenReady value.
                 if (pause) {
                     exoPlayer.playWhenReady = false
                     exoPlayer.pause()
@@ -356,14 +359,38 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
         upAudioPlayNotification()
     }
 
+    override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+        super.onMediaItemTransition(mediaItem, reason)
+        upMediaMetadata()
+        upMediaSessionPlaybackState(if (pause) PlaybackStateCompat.STATE_PAUSED else PlaybackStateCompat.STATE_BUFFERING)
+        upAudioPlayNotification()
+    }
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        super.onIsPlayingChanged(isPlaying)
+        if (pause) {
+            if (isPlaying) exoPlayer.playWhenReady = false
+            return
+        }
+        AudioPlay.status = if (isPlaying) Status.PLAY else Status.PAUSE
+        postEvent(EventBus.AUDIO_STATE, AudioPlay.status)
+        upMediaSessionPlaybackState(if (isPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED)
+        upAudioPlayNotification()
+    }
+
     private fun upMediaMetadata() {
+        val title = AudioPlay.durChapter?.title ?: "null"
+        val bookName = AudioPlay.book?.name ?: "null"
+        val author = AudioPlay.book?.author ?: "null"
         mediaSessionCompat.setMetadata(
             MediaMetadataCompat.Builder()
                 .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, cover)
-                .putText(MediaMetadataCompat.METADATA_KEY_TITLE, AudioPlay.durChapter?.title ?: "null")
-                .putText(MediaMetadataCompat.METADATA_KEY_ARTIST, AudioPlay.book?.name ?: "null")
-                .putText(MediaMetadataCompat.METADATA_KEY_ALBUM, AudioPlay.book?.author ?: "null")
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, exoPlayer.duration)
+                .putText(MediaMetadataCompat.METADATA_KEY_TITLE, title)
+                .putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
+                .putText(MediaMetadataCompat.METADATA_KEY_ARTIST, bookName)
+                .putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, bookName)
+                .putText(MediaMetadataCompat.METADATA_KEY_ALBUM, author)
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, exoPlayer.duration.coerceAtLeast(0L))
                 .build()
         )
     }
@@ -393,6 +420,7 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
                 if (lastNotificationChapter != AudioPlay.durChapterIndex) {
                     lastNotificationChapter = AudioPlay.durChapterIndex
                     upMediaMetadata()
+                    upMediaSessionPlaybackState(if (pause) PlaybackStateCompat.STATE_PAUSED else PlaybackStateCompat.STATE_PLAYING)
                     upAudioPlayNotification()
                     MaxAudioSystem.savePlaybackState()
                 }
@@ -414,8 +442,8 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
         mediaSessionCompat.setPlaybackState(
             PlaybackStateCompat.Builder()
                 .setActions(MEDIA_SESSION_ACTIONS)
-                .setState(state, exoPlayer.currentPosition, 1f)
-                .setBufferedPosition(exoPlayer.bufferedPosition)
+                .setState(state, exoPlayer.currentPosition.coerceAtLeast(0L), exoPlayer.playbackParameters.speed)
+                .setBufferedPosition(exoPlayer.bufferedPosition.coerceAtLeast(0L))
                 .addCustomAction(APP_ACTION_STOP, getString(R.string.stop), R.drawable.ic_stop_black_24dp)
                 .addCustomAction(APP_ACTION_TIMER, getString(R.string.set_timer), R.drawable.ic_time_add_24dp)
                 .build()
@@ -426,7 +454,7 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
     private fun initMediaSession() {
         mediaSessionCompat.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
         mediaSessionCompat.setCallback(object : MediaSessionCompat.Callback() {
-            override fun onSeekTo(pos: Long) { position = pos.toInt().coerceAtLeast(0); AudioPlay.playPositionChanged(position); exoPlayer.seekTo(pos) }
+            override fun onSeekTo(pos: Long) { position = pos.toInt().coerceAtLeast(0); AudioPlay.playPositionChanged(position); exoPlayer.seekTo(pos); upMediaSessionPlaybackState(if (pause) PlaybackStateCompat.STATE_PAUSED else PlaybackStateCompat.STATE_PLAYING) }
             override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean = MediaButtonReceiver.handleIntent(this@AudioPlayService, mediaButtonEvent)
             override fun onPlay() = resumePlayback()
             override fun onPause() = pausePlayback()
