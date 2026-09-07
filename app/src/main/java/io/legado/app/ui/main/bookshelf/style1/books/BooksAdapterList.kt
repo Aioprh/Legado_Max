@@ -80,10 +80,7 @@ class BooksAdapterList(
                         "dur" -> tvRead.text = item.durChapterTitle
                         "last" -> tvLast.text = item.latestChapterTitle
                         "cover" -> ivCover.load(item, false, fragment, lifecycle)
-                        "refresh" -> {
-                            upRefresh(binding, item)
-                            upReadProgress(binding, item)
-                        }
+                        "refresh" -> { upRefresh(binding, item); upReadProgress(binding, item) }
                         "lastUpdateTime" -> upLastUpdateTime(binding, item)
                         "moreInfo" -> upMoreInfo(binding, item)
                     }
@@ -100,9 +97,7 @@ class BooksAdapterList(
             val progress = (current + 1).coerceIn(0, total) * 100 / total
             binding.pbReadProgress.isVisible = true
             binding.pbReadProgress.setProgressCompat(progress, false)
-        } else {
-            binding.pbReadProgress.isVisible = false
-        }
+        } else binding.pbReadProgress.isVisible = false
     }
 
     private fun upRefresh(binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
@@ -113,7 +108,6 @@ class BooksAdapterList(
             binding.rlLoading.visible()
             return
         }
-
         binding.rlLoading.gone()
         val unreadCount = if (AppConfig.showUnread) item.getUnreadChapterNum() else 0
         if (unreadCount > 0) {
@@ -136,14 +130,10 @@ class BooksAdapterList(
 
     private fun upMoreInfo(binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
         if (AppConfig.showMoreInfoInList && AppConfig.showTagsInList) {
-            binding.flexboxTags.visible()
-            updateTagViews(binding.flexboxTags, item)
+            binding.flexboxTags.visible(); updateTagViews(binding.flexboxTags, item)
         } else binding.flexboxTags.gone()
-
         if (AppConfig.showMoreInfoInList && AppConfig.showIntroInList) {
-            binding.tvIntro.visible()
-            binding.tvIntro.text = item.getDisplayIntroPlainText()
-            binding.tvIntro.maxLines = AppConfig.introLinesInList
+            binding.tvIntro.visible(); binding.tvIntro.text = item.getDisplayIntroPlainText(); binding.tvIntro.maxLines = AppConfig.introLinesInList
         } else binding.tvIntro.gone()
     }
 
@@ -154,28 +144,20 @@ class BooksAdapterList(
         manualTags.forEach { flexboxLayout.addView(createTagView(it)) }
         if (SmartTagConfig.isEnabled(context)) {
             SmartTag.names(item.toMinimalBook(), SmartTag.ruleInfos.size)
-                .filter { SmartTagConfig.isRuleVisible(context, it) }
-                .take(4)
+                .filter { SmartTagConfig.isRuleVisible(context, it) }.take(4)
                 .forEach { flexboxLayout.addView(createSmartTagView(it)) }
         }
     }
 
     private fun createTagView(tag: String): TextView = TextView(context).apply {
-        text = tag
-        textSize = 11f
-        gravity = Gravity.CENTER
+        text = tag; textSize = 11f; gravity = Gravity.CENTER
         setTextColor(context.resources.getColor(R.color.tv_text_summary, null))
         if (AppConfig.showBookBorder) setBackgroundResource(R.drawable.bg_tag)
         setPadding(8, 4, 8, 4)
-        layoutParams = FlexboxLayout.LayoutParams(
-            FlexboxLayout.LayoutParams.WRAP_CONTENT,
-            FlexboxLayout.LayoutParams.WRAP_CONTENT
-        ).apply { setMargins(4, 2, 4, 2) }
+        layoutParams = FlexboxLayout.LayoutParams(FlexboxLayout.LayoutParams.WRAP_CONTENT, FlexboxLayout.LayoutParams.WRAP_CONTENT).apply { setMargins(4, 2, 4, 2) }
     }
 
-    private fun createSmartTagView(tag: String): TextView = createTagView("✦ $tag").apply {
-        alpha = 0.9f
-    }
+    private fun createSmartTagView(tag: String): TextView = createTagView("✦ $tag").apply { alpha = 0.9f }
 
     override fun registerListener(holder: ItemViewHolder, binding: ItemBookshelfListBinding) {
         holder.itemView.apply {
@@ -188,29 +170,34 @@ class BooksAdapterList(
         val button = binding.ivAudioPlay
         val container = binding.cvAudioPlay
         if (!item.isAudio) {
-            container.gone()
-            button.setOnClickListener(null)
-            button.isEnabled = false
+            container.gone(); button.setOnClickListener(null); button.isEnabled = false
             return
         }
-        container.visible()
-        button.visible()
-        button.isEnabled = true
+        container.visible(); button.visible(); button.isEnabled = true
         val isCurrent = AudioPlay.book?.bookUrl == item.bookUrl
         val isPlaying = isCurrent && AudioPlayService.isRun && !AudioPlayService.pause
         button.setImageResource(if (isPlaying) R.drawable.ic_pause_24dp else R.drawable.ic_play_24dp)
         button.contentDescription = if (isPlaying) "暂停" else "播放"
         button.setOnClickListener {
-            when {
-                AudioPlay.book?.bookUrl == item.bookUrl && AudioPlayService.isRun -> {
-                    if (AudioPlayService.pause) AudioPlay.resume(context) else AudioPlay.pause(context)
-                }
-                else -> {
-                    AudioPlay.resetData(item.toMinimalBook())
+            val current = AudioPlay.book?.bookUrl == item.bookUrl && AudioPlayService.isRun
+            if (current) {
+                if (AudioPlayService.pause) {
+                    // Update the UI immediately; the service will confirm the state shortly.
                     button.setImageResource(R.drawable.ic_pause_24dp)
                     button.contentDescription = "暂停"
-                    button.postDelayed({ AudioPlay.loadOrUpPlayUrl() }, 120L)
+                    AudioPlay.resume(context)
+                } else {
+                    button.setImageResource(R.drawable.ic_play_24dp)
+                    button.contentDescription = "播放"
+                    AudioPlay.pause(context)
                 }
+            } else {
+                // resetData() restores the last saved chapter/position for this book.
+                // Loading immediately avoids a delayed play racing the service teardown.
+                AudioPlay.resetData(item.toMinimalBook())
+                button.setImageResource(R.drawable.ic_pause_24dp)
+                button.contentDescription = "暂停"
+                AudioPlay.loadOrUpPlayUrl()
             }
             refreshAudioButtonLater(holder, button)
         }
