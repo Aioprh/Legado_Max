@@ -186,12 +186,14 @@ class BooksAdapterList(
 
     private fun bindAudioPlayButton(holder: ItemViewHolder, binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
         val button = binding.ivAudioPlay
+        val container = binding.cvAudioPlay
         if (!item.isAudio) {
-            button.gone()
+            container.gone()
             button.setOnClickListener(null)
             button.isEnabled = false
             return
         }
+        container.visible()
         button.visible()
         button.isEnabled = true
         val isCurrent = AudioPlay.book?.bookUrl == item.bookUrl
@@ -216,7 +218,7 @@ class BooksAdapterList(
 
     private fun refreshAudioButtonLater(holder: ItemViewHolder, button: androidx.appcompat.widget.AppCompatImageButton) {
         button.postDelayed({
-            val itemView = button.parent as? View ?: return@postDelayed
+            val itemView = button.parent?.parent as? View ?: return@postDelayed
             val recyclerView = itemView.parent as? RecyclerView ?: return@postDelayed
             val position = recyclerView.getChildAdapterPosition(holder.itemView)
             if (position != RecyclerView.NO_POSITION) notifyItemChanged(position)
