@@ -67,6 +67,7 @@ object AudioPlay : CoroutineScope by MainScope() {
     var readStartTime: Long = System.currentTimeMillis()
     private var lastProgressSaveTime = 0L
     private var loadGeneration = 0L
+    private var activeLoadIndex = -1
     val executor = globalExecutor
 
     fun changePlayMode() { playMode = playMode.next(); book?.setPlayMode(playMode.ordinal); postEvent(EventBus.PLAY_MODE_CHANGED, playMode); MaxAudioSystem.savePlaybackState() }
@@ -108,23 +109,25 @@ object AudioPlay : CoroutineScope by MainScope() {
 
     fun upReadTime() { if (!AppConfig.enableReadRecord) return; executor.execute { val now = System.currentTimeMillis(); readRecord.readTime += now - readStartTime; readStartTime = now; readRecord.lastRead = now; readRecord.durChapterTitle = book?.durChapterTitle.orEmpty(); kotlinx.coroutines.runBlocking { appDb.readRecordDao.insert(readRecord) }; sessionStartTime = now } }
     fun markReadStart() { if (!AppConfig.enableReadRecord) return; val now = System.currentTimeMillis(); sessionStartTime = now; readStartTime = now; readRecord.lastRead = now }
-    private fun invalidateLoads() { loadGeneration++ }
+    private fun invalidateLoads() { loadGeneration++; val index = activeLoadIndex; activeLoadIndex = -1; if (index >= 0) removeLoading(index) }
     private fun addLoading(index: Int): Boolean = synchronized(this) { if (loadingChapters.contains(index)) false else { loadingChapters.add(index); true } }
     private fun removeLoading(index: Int) { synchronized(this) { loadingChapters.remove(index) } }
 
     fun loadOrUpPlayUrl() { if (durPlayUrl.isEmpty()) loadPlayUrl() else upPlayUrl() }
     private fun loadPlayUrl() {
-        val index = durChapterIndex; val key = "${book?.bookUrl}#$index"; val requestGeneration = ++loadGeneration
-        synchronized(preloadedUrls) { preloadedUrls.remove(key) }?.let { durPlayUrl = it; durLyric = durChapter?.getVariable("lyric"); upPlayUrl(); preloadNextChapters(2); return }
+        val index = durChapterIndex; val key = "${book?.bookUrl}#$index"
+        synchronized(preloadedUrls) { preloadedUrls.remove(key) }?.let { value -> loadGeneration++; durPlayUrl = value; durLyric = durChapter?.getVariable("lyric"); upPlayUrl(); preloadNextChapters(2); return }
         if (!addLoading(index)) return
+        val requestGeneration = ++loadGeneration
+        activeLoadIndex = index
         val currentBook = book; val source = bookSource
         if (currentBook != null && source != null) {
             upDurChapter(); val chapter = durChapter
-            if (chapter == null) { removeLoading(index); return }
-            if (chapter.isVolume) { skipTo(index + 1); removeLoading(index); return }
+            if (chapter == null) { removeLoading(index); if (activeLoadIndex == index) activeLoadIndex = -1; return }
+            if (chapter.isVolume) { skipTo(index + 1); removeLoading(index); if (activeLoadIndex == index) activeLoadIndex = -1; return }
             upLoading(true)
-            WebBook.getContent(this, source, currentBook, chapter).onSuccess { content -> val value = content.trim(); if (value.isEmpty()) appCtx.toastOnUi("未获取到资源链接") else contentLoadFinish(chapter, value, requestGeneration) }.onError { AppLog.put("获取资源链接出错\n$it", it, true); upLoading(false) }.onCancel { removeLoading(index) }.onFinally { callback?.upLyric(durLyric); removeLoading(index) }
-        } else { removeLoading(index); appCtx.toastOnUi("book or source is null") }
+            WebBook.getContent(this, source, currentBook, chapter).onSuccess { content -> val value = content.trim(); if (value.isEmpty()) appCtx.toastOnUi("未获取到资源链接") else contentLoadFinish(chapter, value, requestGeneration) }.onError { if (requestGeneration == loadGeneration) { AppLog.put("获取资源链接出错\n$it", it, true); upLoading(false) } }.onCancel { removeLoading(index) }.onFinally { callback?.upLyric(durLyric); removeLoading(index); if (activeLoadIndex == index) activeLoadIndex = -1 }
+        } else { removeLoading(index); if (activeLoadIndex == index) activeLoadIndex = -1; appCtx.toastOnUi("book or source is null") }
     }
 
     fun preloadNextChapters(count: Int = 2) { val currentBook = book ?: return; val source = bookSource ?: return; val start = durChapterIndex + 1; val end = (start + count).coerceAtMost(simulatedChapterSize); for (index in start until end) preloadChapter(currentBook, source, index) }
