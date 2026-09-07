@@ -25,7 +25,6 @@ import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.globalExecutor
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.service.AudioPlayService
-import io.legado.app.model.SourceCallBack
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.startService
 import io.legado.app.utils.toastOnUi
@@ -38,7 +37,7 @@ import kotlin.text.trim
 @SuppressLint("StaticFieldLeak")
 @Suppress("unused")
 object AudioPlay : CoroutineScope by MainScope() {
-    private const val PROGRESS_SAVE_INTERVAL = 15_000L
+    private const val PROGRESS_SAVE_INTERVAL = 3_000L
 
     enum class PlayMode(val iconRes: Int) {
         LIST_END_STOP(R.drawable.ic_play_mode_list_end_stop),
@@ -83,8 +82,49 @@ object AudioPlay : CoroutineScope by MainScope() {
 
     fun changePlayMode() { playMode=playMode.next(); book?.setPlayMode(playMode.ordinal); postEvent(EventBus.PLAY_MODE_CHANGED, playMode) }
     fun upData(book: Book) { AudioPlay.book=book; chapterSize=appDb.bookChapterDao.getChapterCount(book.bookUrl); simulatedChapterSize=if(book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize; if(durChapterIndex!=book.durChapterIndex){ stopPlay(); durChapterIndex=book.durChapterIndex; durChapterPos=book.durChapterPos; durPlayUrl=""; durLyric=null; durAudioSize=0 }; upDurChapter(); MaxAudioSystem.syncCurrentBook(book) }
-    fun resetData(book: Book) { stop(); AudioPlay.book=book; chapterTimerCount=0; postEvent(EventBus.AUDIO_CHAPTER_TIMER,0); readRecord.bookName=book.name; readRecord.bookAuthor=book.author; readRecord.deviceId=AppConst.androidId; readRecord.lastRead=System.currentTimeMillis(); sessionStartTime=System.currentTimeMillis(); readStartTime=System.currentTimeMillis(); lastProgressSaveTime=0L; chapterSize=appDb.bookChapterDao.getChapterCount(book.bookUrl); simulatedChapterSize=if(book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize; bookSource=book.getBookSource(); durChapterIndex=book.durChapterIndex; durChapterPos=book.durChapterPos; PlayMode.entries.getOrNull(book.getPlayMode())?.let{playMode=it; postEvent(EventBus.PLAY_MODE_CHANGED,it)}; val speed=book.getPlaySpeed(); AudioPlayService.playSpeed=speed; postEvent(EventBus.AUDIO_SPEED,speed); durPlayUrl=""; durLyric=null; durAudioSize=0; synchronized(preloadedUrls){preloadedUrls.clear()}; upDurChapter(); SourceCallBack.callBackBook(SourceCallBack.START_READ,bookSource,book,durChapter); postEvent(EventBus.AUDIO_BUFFER_PROGRESS,0); MaxAudioSystem.syncCurrentBook(book); preloadNextChapters(2) }
-    fun upReadTime(){if(!AppConfig.enableReadRecord)return; executor.execute{val now=System.currentTimeMillis();readRecord.readTime+=now-readStartTime;readStartTime=now;readRecord.lastRead=now;readRecord.durChapterTitle=book?.durChapterTitle.orEmpty();kotlinx.coroutines.runBlocking{appDb.readRecordDao.insert(readRecord)};sessionStartTime=now}}
+    fun resetData(book: Book) {
+        stop()
+        AudioPlay.book=book
+        chapterTimerCount=0
+        postEvent(EventBus.AUDIO_CHAPTER_TIMER,0)
+        readRecord.bookName=book.name
+        readRecord.bookAuthor=book.author
+        readRecord.deviceId=AppConst.androidId
+        readRecord.lastRead=System.currentTimeMillis()
+        sessionStartTime=System.currentTimeMillis()
+        readStartTime=System.currentTimeMillis()
+        lastProgressSaveTime=0L
+        chapterSize=appDb.bookChapterDao.getChapterCount(book.bookUrl)
+        simulatedChapterSize=if(book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize
+        bookSource=book.getBookSource()
+
+        // Restore the most recent audio position first. This survives process death/force-stop
+        // even when the periodic Book DB write has not happened yet.
+        val saved=MaxAudioSession.restore()
+        val restoreSession=saved.currentBookUrl==book.bookUrl && saved.currentIndex in 0 until simulatedChapterSize
+        if(restoreSession){
+            durChapterIndex=saved.currentIndex
+            durChapterPos=saved.position.coerceAtLeast(0)
+        }else{
+            durChapterIndex=book.durChapterIndex
+            durChapterPos=book.durChapterPos
+        }
+
+        PlayMode.entries.getOrNull(book.getPlayMode())?.let{playMode=it; postEvent(EventBus.PLAY_MODE_CHANGED,it)}
+        val speed=book.getPlaySpeed()
+        AudioPlayService.playSpeed=if(restoreSession)saved.speed else speed
+        postEvent(EventBus.AUDIO_SPEED,AudioPlayService.playSpeed)
+        durPlayUrl=""
+        durLyric=null
+        durAudioSize=0
+        synchronized(preloadedUrls){preloadedUrls.clear()}
+        upDurChapter()
+        SourceCallBack.callBackBook(SourceCallBack.START_READ,bookSource,book,durChapter)
+        postEvent(EventBus.AUDIO_BUFFER_PROGRESS,0)
+        MaxAudioSystem.syncCurrentBook(book)
+        preloadNextChapters(2)
+    }
+    fun upReadTime(){if(!AppConfig.enableReadRecord)return;executor.execute{val now=System.currentTimeMillis();readRecord.readTime+=now-readStartTime;readStartTime=now;readRecord.lastRead=now;readRecord.durChapterTitle=book?.durChapterTitle.orEmpty();kotlinx.coroutines.runBlocking{appDb.readRecordDao.insert(readRecord)};sessionStartTime=now}}
     fun markReadStart(){if(!AppConfig.enableReadRecord)return;val now=System.currentTimeMillis();sessionStartTime=now;readStartTime=now;readRecord.lastRead=now}
     private fun addLoading(index:Int):Boolean=synchronized(this){if(loadingChapters.contains(index))false else{loadingChapters.add(index);true}}
     private fun removeLoading(index:Int){synchronized(this){loadingChapters.remove(index)}}
@@ -110,9 +150,9 @@ object AudioPlay : CoroutineScope by MainScope() {
     fun consumeChapterTimerOnEnd():Boolean{if(chapterTimerCount<=0)return false;chapterTimerCount--;postEvent(EventBus.AUDIO_CHAPTER_TIMER,chapterTimerCount);if(chapterTimerCount==0){stop();return true};return false}
     fun addTimer(){context.startService<AudioPlayService>{action=IntentAction.addTimer}}
     fun stopPlay(){if(AudioPlayService.isRun)context.startService<AudioPlayService>{action=IntentAction.stopPlay}}
-    fun saveRead(first:Boolean=false){val currentBook=book?:return;Coroutine.async{currentBook.lastCheckCount=0;val durTime=System.currentTimeMillis();currentBook.durChapterTime=durTime;val chapterChanged=currentBook.durChapterIndex!=durChapterIndex;currentBook.durChapterIndex=durChapterIndex;currentBook.durChapterPos=durChapterPos;if(first||chapterChanged)appDb.bookChapterDao.getChapter(currentBook.bookUrl,currentBook.durChapterIndex)?.let{currentBook.durChapterTitle=it.getDisplayTitle(ContentProcessor.get(currentBook.name,currentBook.origin).getTitleReplaceRules(),currentBook.getUseReplaceRule(),replaceBook=currentBook.toReplaceBook());SourceCallBack.callBackBook(SourceCallBack.SAVE_READ,bookSource,currentBook,it,durTime.toString())};currentBook.update()}}
+    fun saveRead(first:Boolean=false){val currentBook=book?:return;Coroutine.async{currentBook.lastCheckCount=0;val durTime=System.currentTimeMillis();currentBook.durChapterTime=durTime;val chapterChanged=currentBook.durChapterIndex!=durChapterIndex;currentBook.durChapterIndex=durChapterIndex;currentBook.durChapterPos=durChapterPos;if(first||chapterChanged)appDb.bookChapterDao.getChapter(currentBook.bookUrl,currentBook.durChapterIndex)?.let{currentBook.durChapterTitle=it.getDisplayTitle(ContentProcessor.get(currentBook.name,currentBook.origin).getTitleReplaceRules(),currentBook.getUseReplaceRule(),replaceBook=currentBook.toReplaceBook());SourceCallBack.callBackBook(SourceCallBack.SAVE_READ,bookSource,currentBook,it,durTime.toString())};currentBook.update();MaxAudioSystem.savePlaybackState()}}
     fun saveDurChapter(audioSize:Long){val chapter=durChapter?:return;Coroutine.async{durAudioSize=audioSize.toInt();chapter.end=audioSize;chapter.update()}}
-    fun playPositionChanged(position:Int){durChapterPos=position;val now=System.currentTimeMillis();if(now-lastProgressSaveTime>=PROGRESS_SAVE_INTERVAL){lastProgressSaveTime=now;saveRead()}}
+    fun playPositionChanged(position:Int){durChapterPos=position;MaxAudioSystem.savePlaybackState();val now=System.currentTimeMillis();if(now-lastProgressSaveTime>=PROGRESS_SAVE_INTERVAL){lastProgressSaveTime=now;saveRead()}}
     fun upLoading(loading:Boolean){callback?.upLoading(loading)}
     private fun isPlayToEnd():Boolean=durChapterIndex+1==simulatedChapterSize&&durChapterPos==durAudioSize
     fun register(context:Context){activityContext=context;callback=context as CallBack}
