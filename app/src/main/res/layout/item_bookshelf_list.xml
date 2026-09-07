@@ -206,7 +206,6 @@
         android:layout_height="3dp"
         android:layout_marginTop="5dp"
         android:visibility="gone"
-        app:indicatorCornerRadius="2dp"
         app:trackThickness="3dp"
         app:layout_constraintEnd_toStartOf="@id/ll_right_actions"
         app:layout_constraintStart_toStartOf="@id/tv_name"
