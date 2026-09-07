@@ -35,7 +35,6 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 import kotlin.math.min
 
-
 val Book.isAudio: Boolean
     get() = isType(BookType.audio)
 
@@ -88,8 +87,6 @@ val Book.isNotShelf: Boolean
 val Book.archiveName: String
     get() {
         if (!isArchive) throw NoStackTraceException("Book is not deCompressed from archive")
-        // local_book::archive.rar
-        // webDav::https://...../archive.rar
         return origin.substringAfter("::").substringAfterLast("/")
     }
 
@@ -122,17 +119,13 @@ fun Book.getLocalUri(): Uri {
     } else {
         Uri.fromFile(File(bookUrl))
     }
-    //先检测uri是否有效,这个比较快
     uri.inputStream(appCtx).getOrNull()?.use {
         localUriCache[bookUrl] = uri
     }?.let {
         return uri
     }
-    //不同的设备书籍保存路径可能不一样, uri无效时尝试寻找当前保存路径下的文件
     val defaultBookDir = AppConfig.defaultBookTreeUri
     val importBookDir = AppConfig.importBookPath
-
-    // 查找书籍保存目录
     if (!defaultBookDir.isNullOrBlank()) {
         val treeUri = defaultBookDir.toUri()
         val treeFileDoc = FileDoc.fromUri(treeUri, true)
@@ -142,15 +135,12 @@ fun Book.getLocalUri(): Uri {
             val fileDoc = treeFileDoc.find(originName, 5, 100)
             if (fileDoc != null) {
                 localUriCache[bookUrl] = fileDoc.uri
-                //更新bookUrl 重启不用再找一遍
                 bookUrl = fileDoc.toString()
                 save()
                 return fileDoc.uri
             }
         }
     }
-
-    // 查找添加本地选择的目录
     if (!importBookDir.isNullOrBlank() && defaultBookDir != importBookDir) {
         val treeUri = if (importBookDir.isUri()) {
             importBookDir.toUri()
@@ -166,11 +156,9 @@ fun Book.getLocalUri(): Uri {
             return fileDoc.uri
         }
     }
-
     localUriCache[bookUrl] = uri
     return uri
 }
-
 
 fun Book.getArchiveUri(): Uri? {
     val defaultBookDir = AppConfig.defaultBookTreeUri
@@ -238,8 +226,13 @@ fun Book.upType() {
     }
 }
 
+/**
+ * 同步书籍本地状态到当前对象。
+ * 书源详情/目录刷新产生的 Book 可能是旧快照，必须从数据库恢复用户侧状态，
+ * 尤其是 group（自定义分组位掩码），避免旧对象保存时覆盖用户刚刚修改的分组关系。
+ */
 fun Book.sync(oldBook: Book) {
-    val curBook = appDb.bookDao.getBook(oldBook.bookUrl)!!
+    val curBook = appDb.bookDao.getBook(oldBook.bookUrl) ?: return
     durChapterTime = curBook.durChapterTime
     durChapterPos = curBook.durChapterPos
     if (durChapterIndex != curBook.durChapterIndex) {
@@ -253,6 +246,11 @@ fun Book.sync(oldBook: Book) {
             )
         }
     }
+    group = curBook.group
+    order = curBook.order
+    customCoverUrl = curBook.customCoverUrl
+    customIntro = curBook.customIntro
+    customTag = curBook.customTag
     canUpdate = curBook.canUpdate
     readConfig = curBook.readConfig
 }
@@ -341,7 +339,6 @@ fun Book.getExportFileName(
     epubIndex: Int,
     jsStr: String? = AppConfig.episodeExportFileName
 ): String {
-    // 默认规则
     val default = "$name 作者：${getRealAuthor()} [${epubIndex}].$suffix"
     if (jsStr.isNullOrBlank()) {
         return default
@@ -358,12 +355,10 @@ fun Book.getExportFileName(
     }.getOrDefault(default).normalizeFileName()
 }
 
-// 根据当前日期计算章节总数
 fun Book.simulatedTotalChapterNum(): Int {
     return if (readSimulating()) {
         val currentDate = LocalDate.now()
         val daysPassed = between(config.startDate, currentDate).days + 1
-        // 计算当前应该解锁到哪一章
         val chaptersToUnlock =
             max(0, (config.startChapter ?: 0) + (daysPassed * config.dailyChapters))
         min(totalChapterNum, chaptersToUnlock)
