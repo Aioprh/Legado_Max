@@ -102,7 +102,7 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             IntentAction.play, IntentAction.playNew -> startPlayback(intent.action == IntentAction.playNew)
-            IntentAction.stopPlay -> stopPlayback(false)
+            IntentAction.stopPlay -> stopPlayback(false, savePosition = false)
             IntentAction.pause -> pausePlayback()
             IntentAction.resume -> resumePlayback()
             IntentAction.prev -> { MaxAudioSystem.previous(); refreshCurrentMediaInfo() }
@@ -118,8 +118,13 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
 
     private fun invalidatePlayback() { playGeneration++; pause = true; upPlayProgressJob?.cancel() }
 
-    private fun stopPlayback(destroy: Boolean) {
-        invalidatePlayback(); AudioPlay.upReadTime(); AudioPlay.playPositionChanged(exoPlayer.currentPosition.toInt()); exoPlayer.playWhenReady = false; exoPlayer.stop(); abandonFocus(); releaseLocks(); AudioPlay.status = Status.STOP; upMediaSessionPlaybackState(PlaybackStateCompat.STATE_STOPPED); postEvent(EventBus.AUDIO_STATE, Status.STOP); upAudioPlayNotification(); if (destroy) stopSelf()
+    private fun stopPlayback(destroy: Boolean, savePosition: Boolean = true) {
+        invalidatePlayback()
+        if (savePosition) {
+            AudioPlay.upReadTime()
+            AudioPlay.playPositionChanged(exoPlayer.currentPosition.toInt())
+        }
+        exoPlayer.playWhenReady = false; exoPlayer.stop(); abandonFocus(); releaseLocks(); AudioPlay.status = Status.STOP; upMediaSessionPlaybackState(PlaybackStateCompat.STATE_STOPPED); postEvent(EventBus.AUDIO_STATE, Status.STOP); upAudioPlayNotification(); if (destroy) stopSelf()
     }
 
     private fun releaseLocks() { if (useWakeLock) { runCatching { if (wakeLock.isHeld) wakeLock.release() }; runCatching { if (wifiLock?.isHeld == true) wifiLock?.release() } } }
@@ -225,34 +230,3 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
             }
         }
     }
-
-    private fun setTimer(minute: Int) { timeMinute = minute.coerceIn(0, 180); postEvent(EventBus.AUDIO_DS, timeMinute); doDs() }
-    private fun addTimer() { timeMinute = (timeMinute + 30).coerceAtMost(180); setTimer(timeMinute) }
-    private fun doDs() { dsJob?.cancel(); if (timeMinute <= 0) return; dsJob = lifecycleScope.launch { while (isActive && timeMinute > 0) { delay(60000); if (!pause) { timeMinute--; postEvent(EventBus.AUDIO_DS, timeMinute); upAudioPlayNotification(); if (timeMinute <= 0) AudioPlay.stop() } } } }
-
-    private fun upMediaSessionPlaybackState(state: Int) { mediaSessionCompat.setPlaybackState(PlaybackStateCompat.Builder().setActions(MEDIA_SESSION_ACTIONS).setState(state, exoPlayer.currentPosition.coerceAtLeast(0L), exoPlayer.playbackParameters.speed).setBufferedPosition(exoPlayer.bufferedPosition.coerceAtLeast(0L)).addCustomAction(APP_ACTION_STOP, getString(R.string.stop), R.drawable.ic_stop_black_24dp).addCustomAction(APP_ACTION_TIMER, getString(R.string.set_timer), R.drawable.ic_time_add_24dp).build()) }
-
-    @SuppressLint("UnspecifiedImmutableFlag")
-    private fun initMediaSession() {
-        mediaSessionCompat.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
-        mediaSessionCompat.setCallback(object : MediaSessionCompat.Callback() {
-            override fun onSeekTo(pos: Long) { adjustProgress(pos.toInt()) }
-            override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean = MediaButtonReceiver.handleIntent(this@AudioPlayService, mediaButtonEvent)
-            override fun onPlay() = resumePlayback()
-            override fun onPause() = pausePlayback()
-            override fun onCustomAction(action: String?, extras: Bundle?) { when (action) { APP_ACTION_STOP -> stopSelf(); APP_ACTION_TIMER -> addTimer() } }
-            override fun onSkipToPrevious() { MaxAudioSystem.previous(); refreshCurrentMediaInfo() }
-            override fun onSkipToNext() { MaxAudioSystem.next(); refreshCurrentMediaInfo() }
-        })
-        mediaSessionCompat.setMediaButtonReceiver(broadcastPendingIntent<MediaButtonReceiver>(Intent.ACTION_MEDIA_BUTTON)); mediaSessionCompat.isActive = true
-    }
-
-    private fun initBroadcastReceiver() { broadcastReceiver = object : BroadcastReceiver() { override fun onReceive(context: Context, intent: Intent) { if (AudioManager.ACTION_AUDIO_BECOMING_NOISY == intent.action) pausePlayback() } }; registerReceiver(broadcastReceiver, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)) }
-
-    override fun onAudioFocusChange(focusChange: Int) { if (AppConfig.ignoreAudioFocus) return; when (focusChange) { AudioManager.AUDIOFOCUS_GAIN -> if (needResumeOnAudioFocusGain) { needResumeOnAudioFocusGain = false; resumePlayback() }; AudioManager.AUDIOFOCUS_LOSS -> { needResumeOnAudioFocusGain = false; pausePlayback() }; AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> if (!pause) { needResumeOnAudioFocusGain = true; pausePlayback(false) }; AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> Unit } }
-    private fun createNotification(): NotificationCompat.Builder { val title = if (pause) getString(R.string.audio_pause) else getString(R.string.audio_play_t); val builder = NotificationCompat.Builder(this, AppConst.channelIdReadAloud).setSmallIcon(R.drawable.ic_volume_up).setSubText(getString(R.string.audio)).setOngoing(true).setOnlyAlertOnce(true).setContentTitle("$title: ${AudioPlay.book?.name}").setContentText(AudioPlay.durChapter?.title ?: getString(R.string.audio_play_s)).setContentIntent(activityPendingIntent<AudioPlayActivity>("activity") { AudioPlay.book?.let { putExtra("bookUrl", it.bookUrl) } }).setLargeIcon(cover); builder.addAction(R.drawable.ic_skip_previous, getString(R.string.previous), servicePendingIntent<AudioPlayService>(IntentAction.prev)); if (pause) builder.addAction(R.drawable.ic_play_24dp, getString(R.string.resume), servicePendingIntent<AudioPlayService>(IntentAction.resume)) else builder.addAction(R.drawable.ic_pause_24dp, getString(R.string.pause), servicePendingIntent<AudioPlayService>(IntentAction.pause)); builder.addAction(R.drawable.ic_skip_next, getString(R.string.next), servicePendingIntent<AudioPlayService>(IntentAction.next)); builder.addAction(R.drawable.ic_stop_black_24dp, getString(R.string.stop), servicePendingIntent<AudioPlayService>(IntentAction.stop)); builder.addAction(R.drawable.ic_time_add_24dp, getString(R.string.set_timer), servicePendingIntent<AudioPlayService>(IntentAction.addTimer)); builder.setStyle(androidx.media.app.NotificationCompat.MediaStyle().setShowActionsInCompactView(0,1,2).setMediaSession(mediaSessionCompat.sessionToken)); builder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC); return builder }
-    private fun upAudioPlayNotification() { upNotificationJob = execute { runCatching { notificationManager.notify(NotificationId.AudioPlayService, createNotification().build()) }.onFailure { AppLog.put("创建音频播放通知出错,${it.localizedMessage}", it, true) } } }
-    override fun startForegroundNotification() { execute { runCatching { startForeground(NotificationId.AudioPlayService, createNotification().build()) }.onFailure { AppLog.put("创建音频播放通知出错,${it.localizedMessage}", it, true); stopSelf() } } }
-    private fun requestFocus(): Boolean { if (AppConfig.ignoreAudioFocus) return true; return MediaHelp.requestFocus(mFocusRequest) }
-    private fun abandonFocus() { @Suppress("DEPRECATION") audioManager.abandonAudioFocus(this) }
-}
