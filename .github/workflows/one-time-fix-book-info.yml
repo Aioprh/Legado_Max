@@ -1,0 +1,24 @@
+name: One-time fix BookInfoActivity
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor == 'Aioprh'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fix AuthorOtherWorks state property
+        run: |
+          sed -i 's/updateAuthorOtherWorksDisplay(state\.books)/updateAuthorOtherWorksDisplay(state.items)/' app/src/main/java/io/legado/app/ui/book/info/BookInfoActivity.kt
+          rm .github/workflows/one-time-fix-book-info.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/java/io/legado/app/ui/book/info/BookInfoActivity.kt .github/workflows/one-time-fix-book-info.yml
+          git diff --cached --quiet || git commit -m "fix: correct author other works state property"
+          git push
