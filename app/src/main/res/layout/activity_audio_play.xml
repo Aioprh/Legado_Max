@@ -11,15 +11,22 @@
         android:id="@+id/iv_bg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerCrop"
         android:alpha="0.9"
+        android:clickable="false"
+        android:contentDescription="@null"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
         tools:ignore="ContentDescription,ImageContrastCheck" />
 
     <View
         android:id="@+id/vw_bg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_audio_scrim" />
+        android:background="@drawable/bg_audio_scrim"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no" />
 
     <io.legado.app.ui.widget.TitleBar
         android:id="@+id/title_bar"
@@ -267,6 +274,7 @@
             android:padding="8dp"
             android:src="@drawable/ic_chapter_list"
             app:tint="@color/md_white_1000" />
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
