@@ -5,11 +5,11 @@
     android:id="@+id/cv_content"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minHeight="112dp"
-    android:paddingStart="12dp"
-    android:paddingTop="8dp"
-    android:paddingEnd="4dp"
-    android:paddingBottom="8dp"
+    android:minHeight="104dp"
+    android:paddingStart="16dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="10dp"
     android:background="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true">
@@ -28,9 +28,8 @@
 
     <LinearLayout
         android:id="@+id/ll_right_actions"
-        android:layout_width="48dp"
+        android:layout_width="40dp"
         android:layout_height="88dp"
-        android:layout_marginStart="4dp"
         android:gravity="center_horizontal"
         android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="@id/iv_cover"
@@ -41,8 +40,7 @@
         <FrameLayout
             android:id="@+id/fl_has_new"
             android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/bg_bookshelf_action">
+            android:layout_height="40dp">
             <io.legado.app.ui.widget.text.BadgeView
                 android:id="@+id/bv_unread"
                 android:layout_width="wrap_content"
@@ -63,13 +61,12 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_marginTop="4dp"
-            android:background="@drawable/bg_bookshelf_action"
             android:visibility="gone">
             <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/iv_audio_play"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="@android:color/transparent"
+                android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="播放"
                 android:padding="8dp"
                 android:scaleType="centerInside"
