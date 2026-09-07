@@ -23,8 +23,8 @@ import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
 
 class AudioPlayViewModel(application: Application) : BaseViewModel(application) {
-    val titleData = MutableLiveData<String>()
-    val coverData = MutableLiveData<String>()
+    val titleData = MutableLiveData<String?>()
+    val coverData = MutableLiveData<String?>()
     val customBtnListData = MutableLiveData<Boolean>()
 
     fun initData(intent: Intent, success: (() -> Unit)) = AudioPlay.apply {
@@ -36,35 +36,30 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
                 book?.also { appDb.bookDao.insert(it) } ?: return@execute
             }
             initBook(targetBook)
-        }.onSuccess {
-            success.invoke()
-        }.onFinally {
-            saveRead(true)
-        }
+        }.onSuccess { success.invoke() }.onFinally { saveRead(true) }
     }
 
     private suspend fun initBook(book: Book) {
         val isSameBook = AudioPlay.book?.bookUrl == book.bookUrl
-        if (isSameBook) {
-            AudioPlay.upData(book)
-        } else {
-            AudioPlay.resetData(book)
-        }
+        if (isSameBook) AudioPlay.upData(book) else AudioPlay.resetData(book)
         customBtnListData.postValue(AudioPlay.bookSource?.customButton == true)
         titleData.postValue(book.name)
         coverData.postValue(BookCover.getDisplayCover(book))
-        if (book.tocUrl.isEmpty() && !loadBookInfo(book)) {
-            return
-        }
-        if (AudioPlay.chapterSize == 0 && !loadChapterList(book)) {
-            return
-        }
+        if (book.tocUrl.isEmpty() && !loadBookInfo(book)) return
+        // 书源元数据是异步取得的，封面可能在这里才出现，重新绑定展示封面。
+        titleData.postValue(book.name)
+        coverData.postValue(BookCover.getDisplayCover(book))
+        if (AudioPlay.chapterSize == 0 && !loadChapterList(book)) return
+        titleData.postValue(book.name)
+        coverData.postValue(BookCover.getDisplayCover(book))
     }
 
     private suspend fun loadBookInfo(book: Book): Boolean {
         val bookSource = AudioPlay.bookSource ?: return true
         try {
             WebBook.getBookInfoAwait(bookSource, book)
+            appDb.bookDao.update(book)
+            AudioPlay.book = book
             return true
         } catch (e: Exception) {
             AppLog.put("详情页出错: ${e.localizedMessage}", e, true)
@@ -77,16 +72,13 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
         try {
             val oldBook = book.copy()
             val cList = WebBook.getChapterListAwait(bookSource, book).getOrThrow()
-            if (oldBook.bookUrl == book.bookUrl) {
-                appDb.bookDao.update(book)
-            } else {
-                appDb.bookDao.replace(oldBook, book)
-            }
+            if (oldBook.bookUrl == book.bookUrl) appDb.bookDao.update(book) else appDb.bookDao.replace(oldBook, book)
             appDb.bookChapterDao.delByBook(book.bookUrl)
             appDb.bookChapterDao.insert(*cList.toTypedArray())
             AudioPlay.chapterSize = cList.size
             AudioPlay.simulatedChapterSize = book.simulatedTotalChapterNum()
             AudioPlay.upDurChapter()
+            AudioPlayService.refreshMediaSession()
             return true
         } catch (_: Exception) {
             context.toastOnUi(R.string.error_load_toc)
@@ -97,12 +89,12 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
     fun upSource() {
         execute {
             val book = AudioPlay.book ?: return@execute
-            AudioPlay.bookSource = book.getBookSource()?.also {
-                customBtnListData.postValue(it.customButton)
-            }
+            AudioPlay.bookSource = book.getBookSource()?.also { customBtnListData.postValue(it.customButton) }
             AudioPlay.durPlayUrl = ""
             AudioPlay.durLyric = null
             AudioPlay.upDurChapter()
+            titleData.postValue(book.name)
+            coverData.postValue(BookCover.getDisplayCover(book))
             AudioPlayService.refreshMediaSession()
         }
     }
@@ -125,21 +117,14 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
             AudioPlay.durChapterIndex = book.durChapterIndex.coerceIn(0, (AudioPlay.simulatedChapterSize - 1).coerceAtLeast(0))
             AudioPlay.durChapterPos = book.durChapterPos.coerceAtLeast(0)
             AudioPlay.upDurChapter()
+            titleData.postValue(book.name)
+            coverData.postValue(BookCover.getDisplayCover(book))
             AudioPlayService.refreshMediaSession()
             if (wasPlaying) AudioPlay.loadOrUpPlayUrl()
-        }.onFinally {
-            postEvent(EventBus.SOURCE_CHANGED, book.bookUrl)
-        }
+        }.onFinally { postEvent(EventBus.SOURCE_CHANGED, book.bookUrl) }
     }
 
     fun removeFromBookshelf(success: (() -> Unit)?) {
-        execute {
-            AudioPlay.book?.let {
-                appDb.bookDao.delete(it)
-            }
-        }.onSuccess {
-            success?.invoke()
-        }
+        execute { AudioPlay.book?.let { appDb.bookDao.delete(it) } }.onSuccess { success?.invoke() }
     }
-
 }
