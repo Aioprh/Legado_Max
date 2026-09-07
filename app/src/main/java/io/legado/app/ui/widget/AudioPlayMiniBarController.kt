@@ -163,8 +163,8 @@ class AudioPlayMiniBarController(
 
     /**
      * 迷你播放栏保持真正的悬浮层，不改变页面布局高度。
-     * 对传统 RecyclerView 和首页/其他 ComposeView 分别增加底部滚动安全区，
-     * 让最后一项可以完整滚到播放栏上方，同时保持播放栏后面仍是原页面背景。
+     * 传统 RecyclerView 与 ComposeView 都只增加“播放栏本身”所占的额外滚动空间，
+     * 底部导航已有的安全区不重复计算，避免出现多余大空白。
      */
     private fun updateContentSafeArea() {
         val container = contentContainer ?: return
@@ -179,7 +179,16 @@ class AudioPlayMiniBarController(
         container.getLocationOnScreen(containerLocation)
         miniBar.getLocationOnScreen(miniLocation)
         val miniTop = miniLocation[1] - containerLocation[1]
-        val safeBottom = (container.height - miniTop + 10.dpToPx()).coerceAtLeast(0)
+
+        val navigation = bottomNavigation?.takeIf { it.isShown && it.height > 0 }
+        val contentBottom = if (navigation != null) {
+            val navigationLocation = IntArray(2)
+            navigation.getLocationOnScreen(navigationLocation)
+            (navigationLocation[1] - containerLocation[1]).coerceAtMost(container.height)
+        } else {
+            container.height
+        }
+        val safeBottom = (contentBottom - miniTop + 10.dpToPx()).coerceAtLeast(0)
         applyContentSafeArea(container, safeBottom)
     }
 
