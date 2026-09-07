@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.audio
 
 import android.annotation.SuppressLint
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -177,9 +178,16 @@ class AudioPlayActivity :
 
     private fun upCover(path: String?) {
         binding.coverContainer.animate().cancel()
+        // CircleImageView 在异步资源尚未绑定时不会绘制任何内容，先设置一个确定存在的兜底封面，
+        // 避免播放详情页出现整块灰色占位区域。
+        val fallback: Drawable = BookCover.defaultDrawable
+        binding.ivCover.setImageDrawable(fallback)
+        binding.ivBg.setImageDrawable(fallback)
+        val resolvedPath = path?.takeIf { it.isNotBlank() }
+            ?: AudioPlay.book?.let { BookCover.getDisplayCover(it) }
         binding.coverContainer.animate().alpha(0.72f).scaleX(0.985f).scaleY(0.985f).setDuration(110).withEndAction {
-            BookCover.load(this, path, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl) {
-                BookCover.loadBlur(this, path, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl).into(binding.ivBg)
+            BookCover.load(this, resolvedPath, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl) {
+                BookCover.loadBlur(this, resolvedPath, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl).into(binding.ivBg)
             }.into(binding.ivCover)
             binding.coverContainer.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(280).start()
         }.start()
