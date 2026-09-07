@@ -259,8 +259,11 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
                 .onSuccess(IO) {
                     try {
                     AppLog.putReaderDebug("[TOC] loadBookInfo成功: bookUrl=${book.bookUrl}, isWebFile=${it.isWebFile}, tocUrl=${it.tocUrl}")
-                    val dbBook = appDb.bookDao.getBook(book.name, book.author)
-                    if (!inBookshelf && dbBook != null && !dbBook.isNotShelf && dbBook.origin == book.origin) {
+                    // 元数据刷新返回的是网络快照；书架中的本地状态必须以最新数据库记录为准。
+                    // 重新按 bookUrl 读取，避免名称/作者在刷新后变化导致查错记录。
+                    val dbBook = appDb.bookDao.getBook(it.bookUrl)
+                        ?: appDb.bookDao.getBook(book.name, book.author)
+                    if (dbBook != null && !dbBook.isNotShelf && dbBook.origin == it.origin) {
                         dbBook.updateTo(it)
                         inBookshelf = true
                     }
@@ -549,7 +552,7 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
             success?.invoke(book)
         }.onError {
             AppLog.put("importArchiveBook Error:\n${it.localizedMessage}", it)
-            context.toastOnUi("importArchiveBook Error:\n${it.localizedMessage}")
+            context.toastOnUi("importArchiveBook Error:\n${it.localizedMessage}", it)
         }
     }
 
@@ -864,9 +867,8 @@ class BookInfoViewModel(application: Application) : BaseViewModel(application) {
         object Idle : AuthorOtherWorksState()
         object Loading : AuthorOtherWorksState()
         object Empty : AuthorOtherWorksState()
-        data class Success(val books: List<SearchBook>) : AuthorOtherWorksState()
+        data class Success(val items: List<SearchBook>) : AuthorOtherWorksState()
         data class Error(val message: String) : AuthorOtherWorksState()
     }
 
 }
-
