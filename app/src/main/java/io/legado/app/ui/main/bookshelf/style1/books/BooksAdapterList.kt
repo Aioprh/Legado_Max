@@ -6,6 +6,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.RecyclerView
@@ -66,6 +67,7 @@ class BooksAdapterList(
             ivCover.load(item, false)
             upRefresh(binding, item)
             upLastUpdateTime(binding, item)
+            upReadProgress(binding, item)
             upMoreInfo(binding, item)
             bindAudioPlayButton(holder, binding, item)
         } else {
@@ -78,13 +80,28 @@ class BooksAdapterList(
                         "dur" -> tvRead.text = item.durChapterTitle
                         "last" -> tvLast.text = item.latestChapterTitle
                         "cover" -> ivCover.load(item, false, fragment, lifecycle)
-                        "refresh" -> upRefresh(binding, item)
+                        "refresh" -> {
+                            upRefresh(binding, item)
+                            upReadProgress(binding, item)
+                        }
                         "lastUpdateTime" -> upLastUpdateTime(binding, item)
                         "moreInfo" -> upMoreInfo(binding, item)
                     }
                 }
             }
             bindAudioPlayButton(holder, binding, item)
+        }
+    }
+
+    private fun upReadProgress(binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
+        val total = item.totalChapterNum
+        val current = item.durChapterIndex
+        if (total > 0 && current >= 0) {
+            val progress = (current + 1).coerceIn(0, total) * 100 / total
+            binding.pbReadProgress.isVisible = true
+            binding.pbReadProgress.setProgressCompat(progress, false)
+        } else {
+            binding.pbReadProgress.isVisible = false
         }
     }
 
@@ -124,10 +141,8 @@ class BooksAdapterList(
     private fun updateTagViews(flexboxLayout: FlexboxLayout, item: BookShelfDisplay) {
         flexboxLayout.removeAllViews()
         item.wordCount?.takeIf { it.isNotBlank() }?.let { flexboxLayout.addView(createTagView(it)) }
-
         val manualTags = (item.customTag ?: item.kind ?: "").splitNotBlank(",", "\n")
         manualTags.forEach { flexboxLayout.addView(createTagView(it)) }
-
         if (SmartTagConfig.isEnabled(context)) {
             SmartTag.names(item.toMinimalBook(), SmartTag.ruleInfos.size)
                 .filter { SmartTagConfig.isRuleVisible(context, it) }
