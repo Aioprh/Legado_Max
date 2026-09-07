@@ -1,1 +1,0 @@
-Build verification trigger for book group preservation fix.
