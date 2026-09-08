@@ -11,7 +11,8 @@ import splitties.init.appCtx
 object MaxAudioSession {
     private const val PREF = "max_audio_session"
     private const val KEY_QUEUE = "queue"
-    private const val KEY_INDEX = "index"
+    private const val KEY_QUEUE_INDEX = "queue_index"
+    private const val KEY_CHAPTER_INDEX = "chapter_index"
     private const val KEY_POSITION = "position"
     private const val KEY_SPEED = "speed"
     private const val KEY_MODE = "mode"
@@ -24,6 +25,7 @@ object MaxAudioSession {
     data class SavedState(
         val queue: List<MaxAudioSystem.QueueItem>,
         val currentIndex: Int,
+        val chapterIndex: Int,
         val position: Int,
         val speed: Float,
         val playMode: AudioPlay.PlayMode,
@@ -32,7 +34,8 @@ object MaxAudioSession {
 
     fun save(
         queue: List<MaxAudioSystem.QueueItem>,
-        currentIndex: Int,
+        queueIndex: Int,
+        chapterIndex: Int,
         position: Int,
         speed: Float,
         playMode: AudioPlay.PlayMode,
@@ -48,8 +51,9 @@ object MaxAudioSession {
         }
         prefs.edit()
             .putString(KEY_QUEUE, array.toString())
-            .putInt(KEY_INDEX, currentIndex)
-            .putInt(KEY_POSITION, position)
+            .putInt(KEY_QUEUE_INDEX, queueIndex)
+            .putInt(KEY_CHAPTER_INDEX, chapterIndex)
+            .putInt(KEY_POSITION, position.coerceAtLeast(0))
             .putFloat(KEY_SPEED, speed)
             .putInt(KEY_MODE, playMode.ordinal)
             .putString(KEY_BOOK, book?.bookUrl)
@@ -74,7 +78,8 @@ object MaxAudioSession {
             ?: AudioPlay.PlayMode.LIST_END_STOP
         return SavedState(
             queue = result,
-            currentIndex = prefs.getInt(KEY_INDEX, -1),
+            currentIndex = prefs.getInt(KEY_QUEUE_INDEX, -1),
+            chapterIndex = prefs.getInt(KEY_CHAPTER_INDEX, -1),
             position = prefs.getInt(KEY_POSITION, 0),
             speed = prefs.getFloat(KEY_SPEED, 1f),
             playMode = mode,
