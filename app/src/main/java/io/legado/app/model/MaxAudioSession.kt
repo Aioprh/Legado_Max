@@ -24,8 +24,10 @@ object MaxAudioSession {
 
     data class SavedState(
         val queue: List<MaxAudioSystem.QueueItem>,
+        /** Queue item index. */
+        val queueIndex: Int,
+        /** Current chapter index. Kept as currentIndex for AudioPlay compatibility. */
         val currentIndex: Int,
-        val chapterIndex: Int,
         val position: Int,
         val speed: Float,
         val playMode: AudioPlay.PlayMode,
@@ -78,8 +80,8 @@ object MaxAudioSession {
             ?: AudioPlay.PlayMode.LIST_END_STOP
         return SavedState(
             queue = result,
-            currentIndex = prefs.getInt(KEY_QUEUE_INDEX, -1),
-            chapterIndex = prefs.getInt(KEY_CHAPTER_INDEX, -1),
+            queueIndex = prefs.getInt(KEY_QUEUE_INDEX, -1),
+            currentIndex = prefs.getInt(KEY_CHAPTER_INDEX, -1),
             position = prefs.getInt(KEY_POSITION, 0),
             speed = prefs.getFloat(KEY_SPEED, 1f),
             playMode = mode,
