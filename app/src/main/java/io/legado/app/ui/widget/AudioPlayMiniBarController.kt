@@ -19,16 +19,18 @@ import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
-import io.legado.app.databinding.ViewAudioPlayMiniBarBinding
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.model.AudioPlay
 import io.legado.app.service.AudioPlayService
 import io.legado.app.ui.book.audio.AudioPlayActivity
+import io.legado.app.ui.main.MainActivity
+import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.invisible
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.visible
+import io.legado.app.databinding.ViewAudioPlayMiniBarBinding
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
@@ -163,13 +165,15 @@ class AudioPlayMiniBarController(
 
     /**
      * 迷你播放栏保持真正的悬浮层，不改变页面布局高度。
-     * 传统 RecyclerView 与 ComposeView 都只增加“播放栏本身”所占的额外滚动空间，
-     * 底部导航已有的安全区不重复计算，避免出现多余大空白。
+     * 主界面已有统一的 bottom padding 管理，这里直接把悬浮栏产生的额外遮挡
+     * 合并进 MainFragmentInterface，避免 My 页面等 Preference/RecyclerView
+     * 自己设置底部安全区时把悬浮栏安全间距覆盖掉。
      */
     private fun updateContentSafeArea() {
         val container = contentContainer ?: return
         val miniBar = binding.audioPlayMiniBar
         if (!miniBar.isShown || miniBar.height <= 0) {
+            updateMainActivitySafeArea(0)
             restoreContentSafeArea(container)
             return
         }
@@ -189,7 +193,29 @@ class AudioPlayMiniBarController(
             container.height
         }
         val safeBottom = (contentBottom - miniTop + 10.dpToPx()).coerceAtLeast(0)
+
+        if (updateMainActivitySafeArea(safeBottom)) {
+            // MainActivity 的各个 Fragment 自己负责应用统一 bottom padding，
+            // 不再递归修改其 RecyclerView/ComposeView，避免重复叠加安全间距。
+            return
+        }
+
         applyContentSafeArea(container, safeBottom)
+    }
+
+    /**
+     * MainActivity 已经存在一套用于底部导航栏的统一安全区。
+     * 将音频悬浮栏与该安全区合并，而不是单独给 RecyclerView 加 padding，
+     * 这样 MyPreferenceFragment 等页面后续刷新自己的 padding 时不会丢失悬浮栏间距。
+     */
+    private fun updateMainActivitySafeArea(extraBottom: Int): Boolean {
+        val mainActivity = activity as? MainActivity ?: return false
+        val baseBottom = mainActivity.mainContentBottomPadding()
+        val targetBottom = baseBottom + extraBottom
+        mainActivity.supportFragmentManager.fragments.forEach { fragment ->
+            (fragment as? MainFragmentInterface)?.updateMainBottomPadding(targetBottom)
+        }
+        return true
     }
 
     private fun applyContentSafeArea(view: View, safeBottom: Int) {
