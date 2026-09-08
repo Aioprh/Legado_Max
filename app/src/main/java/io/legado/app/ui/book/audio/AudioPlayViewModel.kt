@@ -102,7 +102,6 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
         try {
             val cover = BookCover.searchCoverByEnabledSource(book)?.takeIf { it.isNotBlank() }
                 ?: return
-            // 搜索结果必须落回 Book，后续 Activity/书架/MediaSession 都使用同一份封面数据。
             book.coverUrl = cover
             appDb.bookDao.update(book)
             AudioPlay.book = book
@@ -114,11 +113,16 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
 
     private suspend fun loadBookInfo(book: Book): Boolean {
         val bookSource = AudioPlay.bookSource ?: book.getBookSource() ?: return true
+        val existingCover = book.coverUrl
         try {
             WebBook.getBookInfoAwait(bookSource, book)
+            if (book.coverUrl.isNullOrBlank() && !existingCover.isNullOrBlank()) {
+                book.coverUrl = existingCover
+            }
             appDb.bookDao.update(book)
             AudioPlay.book = book
             AudioPlay.bookSource = bookSource
+            publishCover(book)
             return true
         } catch (e: Exception) {
             AppLog.put("详情页出错: ${e.localizedMessage}", e, true)
