@@ -137,6 +137,6 @@ object MaxAudioSystem {
     fun setError(message: String?) { lastError = message?.takeIf { it.isNotBlank() }; postEvent(EventBus.AUDIO_ERROR, lastError.orEmpty()) }
     fun clearError() { if (lastError != null) { lastError = null; postEvent(EventBus.AUDIO_ERROR, "") } }
     fun lastError(): String? = lastError
-    private fun persist() { ensureRestored(); MaxAudioSession.save(queue(), queueIndex, AudioPlay.durChapterPos, AudioPlayService.playSpeed, AudioPlay.playMode, AudioPlay.book) }
+    private fun persist() { ensureRestored(); MaxAudioSession.save(queue(), queueIndex, AudioPlay.durChapterIndex, AudioPlay.durChapterPos, AudioPlayService.playSpeed, AudioPlay.playMode, AudioPlay.book) }
     private fun notifyQueueChanged() = postEvent(EventBus.AUDIO_QUEUE_CHANGED, queue())
 }
