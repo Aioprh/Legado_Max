@@ -3,9 +3,12 @@ package io.legado.app.ui.widget
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Outline
 import android.graphics.Path
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
+import android.view.View
+import android.view.ViewOutlineProvider
 import com.google.android.material.tabs.TabLayout
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.utils.dpToPx
@@ -31,6 +34,14 @@ class GlassTabBarView @JvmOverloads constructor(
             setStroke(1.dpToPx(), Color.argb(46, 255, 255, 255))
         }
         elevation = 3.dpToPx().toFloat()
+        // 内容裁剪到大胶囊圆角内：硬件加速下 clipToOutline 依赖 outline 快照，
+        // 需在 onSizeChanged 里 invalidateOutline() 刷新，滑动再远也不画出圆角。
+        clipToOutline = true
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, 24.dpToPx().toFloat())
+            }
+        }
         tabRippleColor = android.content.res.ColorStateList.valueOf(Color.TRANSPARENT)
         tabMode = MODE_SCROLLABLE
         isTabIndicatorFullWidth = false
@@ -95,6 +106,8 @@ class GlassTabBarView @JvmOverloads constructor(
                 Path.Direction.CW
             )
         }
+        // 刷新 RenderNode outline 快照，clipToOutline 的圆角裁剪才生效
+        invalidateOutline()
     }
 
     override fun dispatchDraw(canvas: Canvas) {

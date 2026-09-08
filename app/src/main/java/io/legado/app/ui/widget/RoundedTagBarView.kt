@@ -137,6 +137,9 @@ class RoundedTagBarView @JvmOverloads constructor(
                 Path.Direction.CW
             )
         }
+        // clipToOutline 依赖 RenderNode 上的 outline 快照，尺寸变化后必须刷新，
+        // 否则硬件加速下圆角裁剪失效，小标签滑动时会画出大胶囊边界。
+        invalidateOutline()
     }
 
     override fun dispatchDraw(canvas: Canvas) {
