@@ -193,7 +193,6 @@
             android:id="@+id/iv_speed_control"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:layout_height="40dp"
             android:background="@drawable/bg_audio_glass_button"
             android:contentDescription="@string/speed_control"
             android:padding="8dp"
