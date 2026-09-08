@@ -11,22 +11,15 @@
         android:id="@+id/iv_bg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:alpha="0.9"
-        android:clickable="false"
-        android:contentDescription="@null"
-        android:focusable="false"
-        android:importantForAccessibility="no"
         android:scaleType="centerCrop"
+        android:alpha="0.9"
         tools:ignore="ContentDescription,ImageContrastCheck" />
 
     <View
         android:id="@+id/vw_bg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_audio_scrim"
-        android:clickable="false"
-        android:focusable="false"
-        android:importantForAccessibility="no" />
+        android:background="@drawable/bg_audio_scrim" />
 
     <io.legado.app.ui.widget.TitleBar
         android:id="@+id/title_bar"
@@ -84,12 +77,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/title_bar">
 
-        <androidx.appcompat.widget.AppCompatImageView
+        <io.legado.app.ui.widget.image.CircleImageView
             android:id="@+id/iv_cover"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:contentDescription="@string/img_cover"
             android:scaleType="centerCrop"
+            app:civ_border_color="@color/accent"
+            app:civ_border_width="1dp"
             tools:src="@drawable/image_rss_article" />
     </FrameLayout>
 
