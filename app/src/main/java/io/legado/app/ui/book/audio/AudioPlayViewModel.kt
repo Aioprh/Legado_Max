@@ -45,8 +45,7 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
         val isSameBook = AudioPlay.book?.bookUrl == book.bookUrl
         val keepActivePlayback = isSameBook && AudioPlayService.isRun
         if (keepActivePlayback) {
-            // 数据库里的书架记录可能还停留在旧章节；正在播放时以播放器的真实状态为准，
-            // 不能因为重新进入详情页/刷新书架而把当前章节回退到数据库旧值。
+            // 正在播放时以播放器真实章节/断点为准，避免详情页刷新把当前状态覆盖成旧书架记录。
             book.durChapterIndex = AudioPlay.durChapterIndex
             book.durChapterPos = AudioPlay.durChapterPos
             book.durChapterTitle = AudioPlay.durChapter?.title ?: book.durChapterTitle
@@ -64,21 +63,42 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
 
         customBtnListData.postValue(AudioPlay.bookSource?.customButton == true)
         titleData.postValue(book.name)
-        coverData.postValue(BookCover.getDisplayCover(book))
+        publishCover(book)
 
-        // 没有封面时，即使 tocUrl 已存在，也要重新请求一次书籍元数据；否则详情页只能永久显示默认灰色封面。
+        // 保留 9e9e7ff 的正常展示链路：先使用已有封面，再从当前书源补齐书籍详情。
         if (book.getDisplayCover().isNullOrBlank()) {
             loadBookInfo(book)
-            coverData.postValue(BookCover.getDisplayCover(book))
         } else if (book.tocUrl.isEmpty()) {
             if (!loadBookInfo(book)) return
-            titleData.postValue(book.name)
-            coverData.postValue(BookCover.getDisplayCover(book))
         }
+
+        // 当前书源仍没有封面时，使用项目原有的“启用书源搜索封面”机制补齐。
+        if (book.getDisplayCover().isNullOrBlank()) {
+            recoverCoverFromEnabledSources(book)
+        }
+        publishCover(book)
 
         if (AudioPlay.chapterSize == 0 && !loadChapterList(book)) return
         titleData.postValue(book.name)
+        publishCover(book)
+    }
+
+    private fun publishCover(book: Book) {
         coverData.postValue(BookCover.getDisplayCover(book))
+    }
+
+    private suspend fun recoverCoverFromEnabledSources(book: Book) {
+        try {
+            val cover = BookCover.searchCoverByEnabledSource(book)?.takeIf { it.isNotBlank() }
+                ?: return
+            // 搜索结果必须落回 Book，后续 Activity/书架/MediaSession 都使用同一份封面数据。
+            book.coverUrl = cover
+            appDb.bookDao.update(book)
+            AudioPlay.book = book
+            publishCover(book)
+        } catch (e: Exception) {
+            AppLog.put("音频封面搜索失败: ${e.localizedMessage}", e, false)
+        }
     }
 
     private suspend fun loadBookInfo(book: Book): Boolean {
@@ -130,7 +150,7 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
             AudioPlay.durLyric = null
             AudioPlay.upDurChapter()
             titleData.postValue(book.name)
-            coverData.postValue(BookCover.getDisplayCover(book))
+            publishCover(book)
             AudioPlayService.refreshMediaSession()
         }
     }
@@ -154,7 +174,7 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
             AudioPlay.durChapterPos = book.durChapterPos.coerceAtLeast(0)
             AudioPlay.upDurChapter()
             titleData.postValue(book.name)
-            coverData.postValue(BookCover.getDisplayCover(book))
+            publishCover(book)
             AudioPlayService.refreshMediaSession()
             if (wasPlaying) AudioPlay.loadOrUpPlayUrl()
         }.onFinally { postEvent(EventBus.SOURCE_CHANGED, book.bookUrl) }
