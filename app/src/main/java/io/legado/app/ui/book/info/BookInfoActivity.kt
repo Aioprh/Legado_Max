@@ -1431,7 +1431,7 @@ class BookInfoActivity :
             is BookInfoViewModel.AuthorOtherWorksState.Success -> {
                 tvAuthorOtherWorksState?.gone()
                 rvAuthorOtherWorks?.visible()
-                updateAuthorOtherWorksDisplay(state.items)
+                updateAuthorOtherWorksDisplay(state.books)
             }
 
             is BookInfoViewModel.AuthorOtherWorksState.Error -> {

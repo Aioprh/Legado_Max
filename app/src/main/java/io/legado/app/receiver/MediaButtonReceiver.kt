@@ -9,7 +9,6 @@ import io.legado.app.data.appDb
 import io.legado.app.help.LifecycleHelp
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.AudioPlay
-import io.legado.app.model.MaxAudioSystem
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
 import io.legado.app.service.AudioPlayService
@@ -19,6 +18,7 @@ import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.postEvent
+
 
 /**
  * Created by GKF on 2018/1/6.
@@ -46,14 +46,6 @@ class MediaButtonReceiver : BroadcastReceiver() {
                 val action: Int = keyEvent.action
                 if (action == KeyEvent.ACTION_DOWN) {
                     LogUtils.d(TAG, "Receive mediaButton event, keycode:$keycode")
-                    if (AudioPlayService.isRun) {
-                        when (keycode) {
-                            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> MaxAudioSystem.previous()
-                            KeyEvent.KEYCODE_MEDIA_NEXT -> MaxAudioSystem.next()
-                            else -> readAloud(context)
-                        }
-                        return true
-                    }
                     when (keycode) {
                         KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
                             if (context.getPrefBoolean("mediaButtonPerNext", false)) {
@@ -80,14 +72,6 @@ class MediaButtonReceiver : BroadcastReceiver() {
 
         fun readAloud(context: Context, isMediaKey: Boolean = true) {
             when {
-                AudioPlayService.isRun -> {
-                    if (AudioPlayService.pause) {
-                        AudioPlay.resume(context)
-                    } else {
-                        AudioPlay.pause(context)
-                    }
-                }
-
                 BaseReadAloudService.isRun -> {
                     if (BaseReadAloudService.isPlay()) {
                         ReadAloud.pause(context)
@@ -95,6 +79,14 @@ class MediaButtonReceiver : BroadcastReceiver() {
                     } else {
                         ReadAloud.resume(context)
                         AudioPlay.resume(context)
+                    }
+                }
+
+                AudioPlayService.isRun -> {
+                    if (AudioPlayService.pause) {
+                        AudioPlay.resume(context)
+                    } else {
+                        AudioPlay.pause(context)
                     }
                 }
 
@@ -125,4 +117,5 @@ class MediaButtonReceiver : BroadcastReceiver() {
             }
         }
     }
+
 }
