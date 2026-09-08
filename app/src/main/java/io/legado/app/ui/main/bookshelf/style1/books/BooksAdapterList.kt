@@ -180,7 +180,7 @@ class BooksAdapterList(
                     if (AudioPlayService.pause) AudioPlay.resume(context) else AudioPlay.pause(context)
                 }
                 else -> {
-                    AudioPlay.resetData(item.toMinimalBook())
+                    AudioPlay.resetFromShelf(item.toMinimalBook())
                     button.setImageResource(R.drawable.ic_pause_24dp)
                     button.contentDescription = "暂停"
                     button.postDelayed({ AudioPlay.loadOrUpPlayUrl() }, 120L)
