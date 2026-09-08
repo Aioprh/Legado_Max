@@ -208,7 +208,7 @@
         app:layout_constraintTop_toBottomOf="@id/tv_read"
         tools:ignore="TextContrastCheck" />
 
-    <ProgressBar
+    <io.legado.app.lib.theme.view.ThemeProgressBar
         android:id="@+id/pb_progress"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="0dp"

@@ -201,7 +201,7 @@
         app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
         app:layout_constraintTop_toBottomOf="@id/tv_read" />
 
-    <ProgressBar
+    <io.legado.app.lib.theme.view.ThemeProgressBar
         android:id="@+id/pb_progress"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="0dp"
