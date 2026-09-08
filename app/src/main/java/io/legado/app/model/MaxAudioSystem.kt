@@ -25,7 +25,7 @@ object MaxAudioSystem {
             if (restored) return
             val saved = MaxAudioSession.restore()
             queue.addAll(saved.queue.distinctBy { it.bookUrl })
-            queueIndex = saved.currentIndex.coerceIn(-1, queue.lastIndex)
+            queueIndex = saved.queueIndex.coerceIn(-1, queue.lastIndex)
             restored = true
         }
     }
@@ -55,6 +55,10 @@ object MaxAudioSystem {
 
     fun syncCurrentBook(book: Book?) {
         ensureRestored(); if (book == null) return
+        book.durChapterIndex = AudioPlay.durChapterIndex
+        book.durChapterPos = AudioPlay.durChapterPos.coerceAtLeast(0)
+        book.durChapterTitle = AudioPlay.durChapter?.title ?: book.durChapterTitle
+        appDb.bookDao.update(book)
         synchronized(queue) {
             val index = queue.indexOfFirst { it.bookUrl == book.bookUrl }
             if (index >= 0) { queue[index] = QueueItem(book.bookUrl, book.name, book.author); queueIndex = index }
