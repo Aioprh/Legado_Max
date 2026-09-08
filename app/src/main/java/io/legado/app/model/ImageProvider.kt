@@ -251,20 +251,34 @@ object ImageProvider {
         val inline = decodeInlineSvg(src) ?: return src
         val options = inline.options
         val marker = options["marker"].orEmpty()
+        val click = options["click"].orEmpty()
+        val script = options["js"].orEmpty()
         val isFqWrapper = marker.startsWith("fqWrapper:", ignoreCase = true)
-        val isFanqieShowComments = options["click"]?.contains("showCmt", ignoreCase = true) == true
-        if (!isFqWrapper && !isFanqieShowComments) return src
+        val isShowCmt = click.contains("showCmt", ignoreCase = true) || script.contains("showCmt", ignoreCase = true)
+        val isKnownTomatoBubbleShape = isParagraphBubbleSvg(inline.svg)
+        if (!isFqWrapper && !isShowCmt && !isKnownTomatoBubbleShape) return src
 
-        val count = Regex("<text\\b[^>]*>\\s*([^<]+?)\\s*</text>", RegexOption.IGNORE_CASE)
-            .find(inline.svg)?.groupValues?.getOrNull(1)?.trim()
-            ?.takeIf { it.isNotBlank() }
-            ?: return src
-
+        val count = extractSvgBubbleText(inline.svg) ?: return src
         return bubbleUrl(
             count,
             options["status"]?.takeIf { it.isNotBlank() } ?: "normal",
             options["displayColor"]
         )
+    }
+
+    private fun isParagraphBubbleSvg(svg: String): Boolean {
+        val normalized = svg.replace("\\\"", "\"").replace("'", "\"")
+        return normalized.contains("viewBox=\"5 14 45 36\"", ignoreCase = true)
+            || (normalized.contains("width=\"180\"", ignoreCase = true)
+                && normalized.contains("height=\"144\"", ignoreCase = true)
+                && normalized.contains("<text", ignoreCase = true)
+                && normalized.contains("<path", ignoreCase = true))
+    }
+
+    private fun extractSvgBubbleText(svg: String): String? {
+        return Regex("<text\\b[^>]*>\\s*([^<]+?)\\s*</text>", RegexOption.IGNORE_CASE)
+            .find(svg)?.groupValues?.getOrNull(1)?.trim()
+            ?.takeIf { it.isNotBlank() }
     }
 
     private fun bubbleUrl(text: String, status: String, color: String?): String {
