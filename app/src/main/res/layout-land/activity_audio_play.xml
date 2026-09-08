@@ -4,8 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
     android:orientation="vertical"
+    android:background="@color/background"
     tools:context=".ui.book.audio.AudioPlayActivity">
 
     <ImageView
@@ -68,14 +68,12 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/title_bar">
 
-        <io.legado.app.ui.widget.image.CircleImageView
+        <androidx.appcompat.widget.AppCompatImageView
             android:id="@+id/iv_cover"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:contentDescription="@string/img_cover"
             android:scaleType="centerCrop"
-            app:civ_border_color="@color/accent"
-            app:civ_border_width="2dp"
             tools:src="@drawable/image_rss_article" />
     </FrameLayout>
 
