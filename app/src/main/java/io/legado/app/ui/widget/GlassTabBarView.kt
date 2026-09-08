@@ -1,7 +1,9 @@
 package io.legado.app.ui.widget
 
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Path
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import com.google.android.material.tabs.TabLayout
@@ -20,6 +22,7 @@ class GlassTabBarView @JvmOverloads constructor(
     private var onTabClick: ((Int) -> Unit)? = null
     private var onTabLongClick: ((Int) -> Boolean)? = null
     private var submitSelecting = false
+    private val clipPath = Path()
 
     init {
         background = GradientDrawable().apply {
@@ -75,6 +78,34 @@ class GlassTabBarView @JvmOverloads constructor(
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         setMeasuredDimension(measuredWidth, measuredHeight.coerceAtLeast(44.dpToPx()))
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        clipPath.reset()
+        if (w > 0 && h > 0) {
+            val radius = 24.dpToPx().toFloat().coerceAtMost(h / 2f)
+            clipPath.addRoundRect(
+                0f,
+                0f,
+                w.toFloat(),
+                h.toFloat(),
+                radius,
+                radius,
+                Path.Direction.CW
+            )
+        }
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        if (width <= 0 || height <= 0) {
+            super.dispatchDraw(canvas)
+            return
+        }
+        canvas.save()
+        if (!clipPath.isEmpty) canvas.clipPath(clipPath)
+        super.dispatchDraw(canvas)
+        canvas.restore()
     }
 
     private fun createGlassIndicator(): GradientDrawable {
