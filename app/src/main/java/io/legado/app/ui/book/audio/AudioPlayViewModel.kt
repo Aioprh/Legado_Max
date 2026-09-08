@@ -52,7 +52,6 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
         }
 
         if (keepActivePlayback) {
-            // 正在播放时以播放器真实章节/断点为准，避免详情页刷新把当前状态覆盖成旧书架记录。
             book.durChapterIndex = AudioPlay.durChapterIndex
             book.durChapterPos = AudioPlay.durChapterPos
             book.durChapterTitle = AudioPlay.durChapter?.title ?: book.durChapterTitle
@@ -63,8 +62,7 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
             MaxAudioSystem.syncCurrentBook(book)
             AudioPlayService.refreshMediaSession()
         } else if (isSameBook) {
-            // Service 已退出时，静态播放器状态可能仍停留在旧的 0:00。
-            // 先把数据库中的章节和断点灌回 AudioPlay，再走原有 upData，避免打开详情页把断点覆盖成 0。
+            // Service 已退出时，以数据库中的章节和断点恢复 AudioPlay，避免重新打开详情页回到 0:00。
             AudioPlay.durChapterIndex = book.durChapterIndex
             AudioPlay.durChapterPos = book.durChapterPos.coerceAtLeast(0)
             AudioPlay.upData(book)
@@ -74,24 +72,30 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
 
         customBtnListData.postValue(AudioPlay.bookSource?.customButton == true)
         titleData.postValue(book.name)
+
+        // 先把本地已有封面立即交给 Activity，网络请求绝不能阻塞详情页打开。
         publishCover(book)
 
-        // 先使用已有封面；没有时再从当前书源补齐书籍详情。
-        if (book.getDisplayCover().isNullOrBlank()) {
-            loadBookInfo(book)
-        } else if (book.tocUrl.isEmpty()) {
-            if (!loadBookInfo(book)) return
+        // 书源详情、封面搜索、目录刷新全部放到后台。这样已有封面立即显示；没有封面时也不会卡住页面。
+        val needBookInfo = book.tocUrl.isEmpty() || book.getDisplayCover().isNullOrBlank()
+        val needChapterList = AudioPlay.chapterSize == 0
+        if (needBookInfo || needChapterList) {
+            execute {
+                var infoLoaded = true
+                if (needBookInfo) {
+                    infoLoaded = loadBookInfo(book)
+                    publishCover(book)
+                }
+                if (book.getDisplayCover().isNullOrBlank()) {
+                    recoverCoverFromEnabledSources(book)
+                    publishCover(book)
+                }
+                // 书源详情完成后再刷新目录；整个过程与详情页 UI 解耦。
+                if (needChapterList && infoLoaded) {
+                    loadChapterList(book)
+                }
+            }
         }
-
-        // 当前书源仍没有封面时，使用项目原有的“启用书源搜索封面”机制补齐。
-        if (book.getDisplayCover().isNullOrBlank()) {
-            recoverCoverFromEnabledSources(book)
-        }
-        publishCover(book)
-
-        if (AudioPlay.chapterSize == 0 && !loadChapterList(book)) return
-        titleData.postValue(book.name)
-        publishCover(book)
     }
 
     private fun publishCover(book: Book) {
