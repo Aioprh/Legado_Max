@@ -45,10 +45,6 @@ object ImageProvider {
 
     private val gifFileCache = ConcurrentHashMap<String, Boolean>()
 
-    /**
-     * 缓存bitmap LruCache实现
-     * filePath bitmap
-     */
     private const val M = 1024 * 1024
     val cacheSize: Int
         get() {
@@ -61,14 +57,10 @@ object ImageProvider {
     val bitmapLruCache = BitmapLruCache()
 
     class BitmapLruCache : LruCache<String, Bitmap>(cacheSize) {
-
         private var removeCount = 0
-
         val count get() = putCount() + createCount() - evictionCount() - removeCount
 
-        override fun sizeOf(key: String, value: Bitmap): Int {
-            return value.byteCount
-        }
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
 
         override fun entryRemoved(
             evicted: Boolean,
@@ -77,16 +69,10 @@ object ImageProvider {
             newValue: Bitmap?
         ) {
             if (!evicted) {
-                synchronized(this) {
-                    removeCount++
-                }
+                synchronized(this) { removeCount++ }
             }
-            //错误图片不能释放,占位用,防止一直重复获取图片
-            if (oldValue != errorBitmap) {
-                oldValue.recycle()
-            }
+            if (oldValue != errorBitmap) oldValue.recycle()
         }
-
     }
 
     fun put(key: String, bitmap: Bitmap) {
@@ -94,13 +80,9 @@ object ImageProvider {
         bitmapLruCache.put(key, bitmap)
     }
 
-    fun get(key: String): Bitmap? {
-        return bitmapLruCache[key]
-    }
+    fun get(key: String): Bitmap? = bitmapLruCache[key]
 
-    fun remove(key: String): Bitmap? {
-        return bitmapLruCache.remove(key)
-    }
+    fun remove(key: String): Bitmap? = bitmapLruCache.remove(key)
 
     private fun getNotRecycled(key: String): Bitmap? {
         val bitmap = bitmapLruCache[key] ?: return null
@@ -122,9 +104,7 @@ object ImageProvider {
         } else {
             lruMaxSize
         }
-        if (size > lruMaxSize) {
-            bitmapLruCache.resize(size)
-        }
+        if (size > lruMaxSize) bitmapLruCache.resize(size)
     }
 
     suspend fun cacheImage(
@@ -146,9 +126,7 @@ object ImageProvider {
                 }
                 inputStream?.use { input ->
                     val newFile = FileUtils.createFileIfNotExist(vFile.absolutePath)
-                    FileOutputStream(newFile).use { output ->
-                        input.copyTo(output)
-                    }
+                    FileOutputStream(newFile).use { output -> input.copyTo(output) }
                 }
             }
             return@withContext vFile
@@ -178,26 +156,19 @@ object ImageProvider {
         return Size(op.outWidth, op.outHeight)
     }
 
-    suspend fun isGif(
-        book: Book,
-        src: String,
-        bookSource: BookSource?
-    ): Boolean {
+    suspend fun isGif(book: Book, src: String, bookSource: BookSource?): Boolean {
         val file = cacheImage(book, src, bookSource)
         return isGifFile(file)
     }
 
     fun isGifFile(file: File): Boolean {
         return gifFileCache.getOrPut(file.absolutePath) {
-            if (!file.exists() || file.length() < 6) {
-                return@getOrPut false
-            }
+            if (!file.exists() || file.length() < 6) return@getOrPut false
             kotlin.runCatching {
                 FileInputStream(file).use { input ->
                     val header = ByteArray(6)
-                    if (input.read(header) != header.size) {
-                        false
-                    } else {
+                    if (input.read(header) != header.size) false
+                    else {
                         val signature = String(header, Charsets.US_ASCII)
                         signature == "GIF87a" || signature == "GIF89a"
                     }
@@ -214,24 +185,14 @@ object ImageProvider {
         bookSource: BookSource?
     ): GifDrawable? = withContext(IO) {
         val vFile = cacheImage(book, src, bookSource)
-        if (!isGifFile(vFile)) {
-            return@withContext null
-        }
+        if (!isGifFile(vFile)) return@withContext null
         kotlin.runCatching {
-            Glide.with(appCtx)
-                .asGif()
-                .load(vFile)
-                .submit(width.coerceAtLeast(1), height.coerceAtLeast(1))
-                .get()
+            Glide.with(appCtx).asGif().load(vFile)
+                .submit(width.coerceAtLeast(1), height.coerceAtLeast(1)).get()
         }.getOrNull()
     }
 
-    fun getImage(
-        book: Book,
-        src: String,
-        width: Int,
-        height: Int? = null
-    ): Bitmap {
+    fun getImage(book: Book, src: String, width: Int, height: Int? = null): Bitmap {
         val bubbleSrc = normalizeBubbleSrc(src)
         if (ParagraphBubbleRenderer.isBubbleSrc(bubbleSrc)) {
             val cacheKey = ParagraphBubbleRenderer.cacheKey(bubbleSrc, width, height)
@@ -239,15 +200,14 @@ object ImageProvider {
             return kotlin.runCatching {
                 ParagraphBubbleRenderer.render(bubbleSrc, width, height)
                     ?: throw NoStackTraceException(appCtx.getString(R.string.error_decode_bitmap))
-            }.onSuccess {
-                put(cacheKey, it)
-            }.onFailure {
-                put(cacheKey, errorBitmap)
-            }.getOrDefault(errorBitmap)
+            }.onSuccess { put(cacheKey, it) }
+                .onFailure { put(cacheKey, errorBitmap) }
+                .getOrDefault(errorBitmap)
         }
 
-        // 番茄四合一等书源会直接返回 data:image/svg+xml;base64,...,{options}。
-        // options 中的 click 仍由正文图片点击链路读取，这里只负责把内联 SVG 正确绘制出来。
+        // 番茄四合一、玖玖小说等书源会直接返回 data:image/svg+xml;base64,...,{options}。
+        // options 有两种常见写法：标准 JSON，以及 JS 对象使用的单引号写法。
+        // 这里仅负责绘制 SVG；原始 src 会继续交给正文点击链路，因此 showCmt(...) 不会丢失。
         inlineSvgBitmap(src, width, height)?.let { bitmap ->
             val cacheKey = "inline-svg:$src#$width#$height"
             getNotRecycled(cacheKey)?.let { return it }
@@ -261,33 +221,26 @@ object ImageProvider {
         }
         val vFile = BookHelp.getImage(book, src)
         if (!vFile.exists()) return errorBitmap
-        val cacheBitmap = getNotRecycled(vFile.absolutePath)
-        if (cacheBitmap != null) return cacheBitmap
+        getNotRecycled(vFile.absolutePath)?.let { return it }
         return kotlin.runCatching {
             val bitmap = BitmapUtils.decodeBitmap(vFile.absolutePath, width, height)
                 ?: SvgUtils.createBitmap(vFile.absolutePath, width, height)
                 ?: throw NoStackTraceException(appCtx.getString(R.string.error_decode_bitmap))
             put(vFile.absolutePath, bitmap)
             bitmap
-        }.onFailure {
-            put(vFile.absolutePath, errorBitmap)
-        }.getOrDefault(errorBitmap)
+        }.onFailure { put(vFile.absolutePath, errorBitmap) }.getOrDefault(errorBitmap)
     }
 
     /**
-     * 将 dp: 段评气泡协议，以及番茄四合一的 fqWrapper 内联气泡，统一归一化为
-     * bubble://paragraph。正文中的原始 data URI 不会被替换，因此其中携带的
-     * click JSON 仍可由 ReadBookActivity 的图片点击链路读取。
+     * 将 dp:、番茄四合一 fqWrapper、以及玖玖小说/番茄 ShowComments 产生的
+     * data-SVG 段评气泡统一归一化为 bubble://paragraph。
      */
     private fun normalizeBubbleSrc(src: String): String {
         if (src.startsWith("dp:", ignoreCase = true)) {
             val payload = src.substring(3).trim()
             val optionIndex = payload.indexOf(",{")
             val count = if (optionIndex >= 0) payload.substring(0, optionIndex) else payload
-            val option = if (optionIndex >= 0) {
-                GSON.fromJsonObject<Map<String, String>>(payload.substring(optionIndex + 1))
-                    .getOrNull().orEmpty()
-            } else emptyMap()
+            val option = if (optionIndex >= 0) parseInlineOptions(payload.substring(optionIndex + 1)) else emptyMap()
             return bubbleUrl(
                 option["displayText"]?.takeIf { it.isNotBlank() } ?: count.trim(),
                 option["status"]?.takeIf { it.isNotBlank() } ?: "normal",
@@ -298,14 +251,15 @@ object ImageProvider {
         val inline = decodeInlineSvg(src) ?: return src
         val options = inline.options
         val marker = options["marker"].orEmpty()
-        if (!marker.startsWith("fqWrapper:", ignoreCase = true)) return src
+        val isFqWrapper = marker.startsWith("fqWrapper:", ignoreCase = true)
+        val isFanqieShowComments = options["click"]?.contains("showCmt", ignoreCase = true) == true
+        if (!isFqWrapper && !isFanqieShowComments) return src
+
         val count = Regex("<text\\b[^>]*>\\s*([^<]+?)\\s*</text>", RegexOption.IGNORE_CASE)
-            .find(inline.svg)
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.trim()
+            .find(inline.svg)?.groupValues?.getOrNull(1)?.trim()
             ?.takeIf { it.isNotBlank() }
             ?: return src
+
         return bubbleUrl(
             count,
             options["status"]?.takeIf { it.isNotBlank() } ?: "normal",
@@ -314,7 +268,8 @@ object ImageProvider {
     }
 
     private fun bubbleUrl(text: String, status: String, color: String?): String {
-        val colorQuery = color?.takeIf { it.isNotBlank() }?.let { "&displayColor=${Uri.encode(it)}" }.orEmpty()
+        val colorQuery = color?.takeIf { it.isNotBlank() }
+            ?.let { "&displayColor=${Uri.encode(it)}" }.orEmpty()
         return buildString {
             append("bubble://paragraph")
             append("?displayText=").append(Uri.encode(text))
@@ -324,10 +279,7 @@ object ImageProvider {
         }
     }
 
-    private data class InlineSvg(
-        val svg: String,
-        val options: Map<String, String>
-    )
+    private data class InlineSvg(val svg: String, val options: Map<String, String>)
 
     private fun decodeInlineSvg(src: String): InlineSvg? {
         val prefix = "data:image/svg+xml;base64,"
@@ -338,12 +290,30 @@ object ImageProvider {
         if (encoded.isBlank()) return null
         return kotlin.runCatching {
             val svg = String(Base64.decode(encoded, Base64.DEFAULT), Charsets.UTF_8)
-            val options = if (separator >= 0) {
-                GSON.fromJsonObject<Map<String, String>>(payload.substring(separator + 1))
-                    .getOrNull().orEmpty()
-            } else emptyMap()
-            InlineSvg(svg, options)
+            val optionText = if (separator >= 0) payload.substring(separator + 1) else ""
+            InlineSvg(svg, parseInlineOptions(optionText))
         }.getOrNull()
+    }
+
+    /**
+     * 兼容标准 JSON 和书源 JS 常用的单引号对象：
+     * {'click':'showCmt(...)','marker':'fqWrapper:...'}。
+     * 这里不做通用 JS 求值，只提取段评渲染真正需要的字段。
+     */
+    private fun parseInlineOptions(raw: String): Map<String, String> {
+        if (raw.isBlank()) return emptyMap()
+        GSON.fromJsonObject<Map<String, String>>(raw).getOrNull()?.let { return it }
+        val result = LinkedHashMap<String, String>()
+        val pairRegex = Regex(
+            "['\\\"]([A-Za-z_][A-Za-z0-9_]*)['\\\"]\\s*:\\s*['\\\"]((?:\\\\.|(?!['\\\"]).)*?)['\\\"]",
+            RegexOption.DOT_MATCHES_ALL
+        )
+        pairRegex.findAll(raw).forEach { match ->
+            result[match.groupValues[1]] = match.groupValues[2]
+                .replace("\\'", "'")
+                .replace("\\\"", "\"")
+        }
+        return result
     }
 
     private fun inlineSvgSize(src: String): Size? {
@@ -355,8 +325,10 @@ object ImageProvider {
         if (width != null && height != null) {
             return Size(width.toInt().coerceAtLeast(1), height.toInt().coerceAtLeast(1))
         }
-        val viewBox = Regex("\\bviewBox\\s*=\\s*[\\\"']\\s*[-0-9.]+\\s+[-0-9.]+\\s+([0-9.]+)\\s+([0-9.]+)", RegexOption.IGNORE_CASE)
-            .find(inline.svg)
+        val viewBox = Regex(
+            "\\bviewBox\\s*=\\s*[\\\"']\\s*[-0-9.]+\\s+[-0-9.]+\\s+([0-9.]+)\\s+([0-9.]+)",
+            RegexOption.IGNORE_CASE
+        ).find(inline.svg)
         if (viewBox != null) {
             val w = viewBox.groupValues[1].toFloatOrNull()
             val h = viewBox.groupValues[2].toFloatOrNull()
@@ -379,5 +351,4 @@ object ImageProvider {
     fun clear() {
         bitmapLruCache.evictAll()
     }
-
 }
