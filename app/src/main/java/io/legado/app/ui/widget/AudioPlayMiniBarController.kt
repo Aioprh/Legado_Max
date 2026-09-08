@@ -10,27 +10,28 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.ListView
+import android.widget.ScrollView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.graphics.ColorUtils as AndroidXColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
+import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
+import io.legado.app.databinding.ViewAudioPlayMiniBarBinding
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.model.AudioPlay
 import io.legado.app.service.AudioPlayService
 import io.legado.app.ui.book.audio.AudioPlayActivity
-import io.legado.app.ui.main.MainActivity
-import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.invisible
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.visible
-import io.legado.app.databinding.ViewAudioPlayMiniBarBinding
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
@@ -46,13 +47,14 @@ class AudioPlayMiniBarController(
     private var coverAnimator: ObjectAnimator? = null
     private var lastBookUrl: String? = null
     private var initialized = false
-    private var bottomNavigation: View? = null
-    private var bottomNavigationLayoutListener: View.OnLayoutChangeListener? = null
+    private var bottomAnchor: View? = null
+    private var bottomAnchorLayoutListener: View.OnLayoutChangeListener? = null
     private var imeVisible = false
     private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
     private var contentContainer: ViewGroup? = null
     private var originalRecyclerPaddingBottom = java.util.WeakHashMap<RecyclerView, Int>()
     private var originalComposePaddingBottom = java.util.WeakHashMap<ComposeView, Int>()
+    private var originalScrollPaddingBottom = java.util.WeakHashMap<View, Int>()
 
     init {
         parent.addView(binding.root)
@@ -165,15 +167,15 @@ class AudioPlayMiniBarController(
 
     /**
      * 迷你播放栏保持真正的悬浮层，不改变页面布局高度。
-     * 主界面已有统一的 bottom padding 管理，这里直接把悬浮栏产生的额外遮挡
-     * 合并进 MainFragmentInterface，避免 My 页面等 Preference/RecyclerView
-     * 自己设置底部安全区时把悬浮栏安全间距覆盖掉。
+     * 只给滚动容器（RecyclerView/ComposeView/ScrollView 等）增加“播放栏本身”所占的
+     * 额外滚动空间，底部导航已有的安全区不重复计算，避免出现多余大空白。
+     * 主界面以 content_container 为根，其他页面一律从内容根视图递归，
+     * 保证各页面底部的按钮/选项都能滚动到播放悬浮栏上方。
      */
     private fun updateContentSafeArea() {
-        val container = contentContainer ?: return
+        val container = contentContainer ?: parent
         val miniBar = binding.audioPlayMiniBar
         if (!miniBar.isShown || miniBar.height <= 0) {
-            updateMainActivitySafeArea(0)
             restoreContentSafeArea(container)
             return
         }
@@ -184,7 +186,7 @@ class AudioPlayMiniBarController(
         miniBar.getLocationOnScreen(miniLocation)
         val miniTop = miniLocation[1] - containerLocation[1]
 
-        val navigation = bottomNavigation?.takeIf { it.isShown && it.height > 0 }
+        val navigation = bottomAnchor?.takeIf { it.isShown && it.height > 0 }
         val contentBottom = if (navigation != null) {
             val navigationLocation = IntArray(2)
             navigation.getLocationOnScreen(navigationLocation)
@@ -193,29 +195,7 @@ class AudioPlayMiniBarController(
             container.height
         }
         val safeBottom = (contentBottom - miniTop + 10.dpToPx()).coerceAtLeast(0)
-
-        if (updateMainActivitySafeArea(safeBottom)) {
-            // MainActivity 的各个 Fragment 自己负责应用统一 bottom padding，
-            // 不再递归修改其 RecyclerView/ComposeView，避免重复叠加安全间距。
-            return
-        }
-
         applyContentSafeArea(container, safeBottom)
-    }
-
-    /**
-     * MainActivity 已经存在一套用于底部导航栏的统一安全区。
-     * 将音频悬浮栏与该安全区合并，而不是单独给 RecyclerView 加 padding，
-     * 这样 MyPreferenceFragment 等页面后续刷新自己的 padding 时不会丢失悬浮栏间距。
-     */
-    private fun updateMainActivitySafeArea(extraBottom: Int): Boolean {
-        val mainActivity = activity as? MainActivity ?: return false
-        val baseBottom = mainActivity.mainContentBottomPadding()
-        val targetBottom = baseBottom + extraBottom
-        mainActivity.supportFragmentManager.fragments.forEach { fragment ->
-            (fragment as? MainFragmentInterface)?.updateMainBottomPadding(targetBottom)
-        }
-        return true
     }
 
     private fun applyContentSafeArea(view: View, safeBottom: Int) {
@@ -228,6 +208,11 @@ class AudioPlayMiniBarController(
             }
             is ComposeView -> {
                 val original = originalComposePaddingBottom.getOrPut(view) { view.paddingBottom }
+                view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original + safeBottom)
+                return
+            }
+            is NestedScrollView, is ScrollView, is ListView -> {
+                val original = originalScrollPaddingBottom.getOrPut(view) { view.paddingBottom }
                 view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original + safeBottom)
                 return
             }
@@ -249,6 +234,12 @@ class AudioPlayMiniBarController(
             }
             is ComposeView -> {
                 originalComposePaddingBottom.remove(view)?.let { original ->
+                    view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original)
+                }
+                return
+            }
+            is NestedScrollView, is ScrollView, is ListView -> {
+                originalScrollPaddingBottom.remove(view)?.let { original ->
                     view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, original)
                 }
                 return
@@ -280,7 +271,7 @@ class AudioPlayMiniBarController(
     }
 
     private fun updateBottomMargin() {
-        val navigation = bottomNavigation?.takeIf { it.isShown && it.height > 0 }
+        val navigation = bottomAnchor?.takeIf { it.isShown && it.height > 0 }
         val margin = when {
             navigation != null -> {
                 val parentLocation = IntArray(2)
@@ -297,15 +288,21 @@ class AudioPlayMiniBarController(
         binding.root.post { updateContentSafeArea() }
     }
 
+    /**
+     * 底部锚点：优先主界面底部导航，其次带 SelectActionBar 的管理页底部操作栏。
+     * 悬浮栏会浮在锚点上方，避免覆盖底部选项。
+     */
     private fun bindBottomNavigationAnchor() {
-        val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass) ?: return
-        bottomNavigation = navigation
-        bottomNavigationLayoutListener = object : View.OnLayoutChangeListener {
+        val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass)
+            ?: activity.findViewById<View>(R.id.select_action_bar)
+            ?: return
+        bottomAnchor = navigation
+        bottomAnchorLayoutListener = object : View.OnLayoutChangeListener {
             override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
                 updateBottomMargin()
             }
         }
-        navigation.addOnLayoutChangeListener(bottomNavigationLayoutListener)
+        navigation.addOnLayoutChangeListener(bottomAnchorLayoutListener)
         parent.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
             override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
                 updateBottomMargin()
