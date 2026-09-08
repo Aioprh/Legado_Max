@@ -66,7 +66,9 @@ class AudioPlayActivity :
     ChangeBookSourceDialog.CallBack,
     AudioPlay.CallBack {
 
-    companion object { const val EXTRA_OPEN_CHAPTER_LIST = "open_chapter_list" }
+    companion object {
+        const val EXTRA_OPEN_CHAPTER_LIST = "open_chapter_list"
+    }
 
     override val binding by viewBinding(ActivityAudioPlayBinding::inflate)
     override val viewModel by viewModels<AudioPlayViewModel>()
@@ -90,8 +92,6 @@ class AudioPlayActivity :
         binding.titleBar.setBackgroundResource(R.color.transparent)
         AudioPlay.register(this)
         initView()
-        // 控件必须在异步书籍/目录加载完成之前完成绑定。
-        // 否则网络加载或书源异常时，界面已经显示出来但所有按钮没有 listener。
         initListener()
         viewModel.titleData.observe(this) { name ->
             binding.titleBar.title = name
@@ -109,14 +109,13 @@ class AudioPlayActivity :
     }
 
     private fun animatePlayerEntrance() {
-        binding.coverContainer.alpha = 0f
-        binding.coverContainer.scaleX = 0.96f
-        binding.coverContainer.scaleY = 0.96f
+        binding.coverContainer.alpha = 1f
+        binding.coverContainer.scaleX = 1f
+        binding.coverContainer.scaleY = 1f
         binding.llPlayerProgress.alpha = 0f
         binding.llPlayMenu.alpha = 0f
         binding.llPlayerProgress.translationY = 14.dpToPx().toFloat()
         binding.llPlayMenu.translationY = 22.dpToPx().toFloat()
-        binding.coverContainer.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(420).start()
         binding.llPlayerProgress.animate().alpha(1f).translationY(0f).setStartDelay(100).setDuration(340).start()
         binding.llPlayMenu.animate().alpha(1f).translationY(0f).setStartDelay(150).setDuration(360).start()
     }
@@ -141,7 +140,7 @@ class AudioPlayActivity :
             R.id.menu_wake_lock -> AppConfig.audioPlayUseWakeLock = !AppConfig.audioPlayUseWakeLock
             R.id.menu_copy_audio_url -> AudioPlay.book?.let { book ->
                 val url = AudioPlayService.url
-                SourceCallBack.callBackBtn(this, SourceCallBack.CLICK_COPY_PLAY_URL, AudioPlay.bookSource, book, AudioPlay.durChapter, BookType.audio, url) { sendToClip(url) }
+                SourceCallBack.callBackBtn(SourceCallBack.CLICK_COPY_PLAY_URL, AudioPlay.bookSource, book, AudioPlay.durChapter, BookType.audio, url) { sendToClip(url) }
             }
             R.id.menu_edit_source -> AudioPlay.bookSource?.let { sourceEditResult.launch { putExtra("sourceUrl", it.bookSourceUrl) } }
             R.id.menu_skip_credits -> AudioPlay.book?.let { showDialogFragment(AudioSkipCredits.newInstance(it)) }
@@ -175,17 +174,20 @@ class AudioPlayActivity :
     private fun updatePlayModeIcon() { binding.ivPlayMode.setImageResource(playMode.iconRes) }
 
     private fun upCover(path: String?) {
-        binding.coverContainer.animate().cancel()
         val fallback: Drawable = BookCover.defaultDrawable
-        binding.ivCover.setImageDrawable(fallback)
-        binding.ivBg.setImageDrawable(fallback)
-        val resolvedPath = path?.takeIf { it.isNotBlank() } ?: AudioPlay.book?.let { BookCover.getDisplayCover(it) }
-        binding.coverContainer.animate().alpha(0.72f).scaleX(0.985f).scaleY(0.985f).setDuration(110).withEndAction {
-            BookCover.load(this, resolvedPath, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl) {
-                BookCover.loadBlur(this, resolvedPath, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl).into(binding.ivBg)
-            }.into(binding.ivCover)
-            binding.coverContainer.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(280).start()
-        }.start()
+        val resolvedPath = path?.takeIf { it.isNotBlank() }
+            ?: AudioPlay.book?.let { BookCover.getDisplayCover(it) }
+        binding.coverContainer.animate().cancel()
+        binding.coverContainer.alpha = 1f
+        binding.coverContainer.scaleX = 1f
+        binding.coverContainer.scaleY = 1f
+        BookCover.load(this, resolvedPath, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl) {
+            BookCover.loadBlur(this, resolvedPath, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl).into(binding.ivBg)
+        }.into(binding.ivCover)
+        if (resolvedPath.isNullOrBlank()) {
+            binding.ivCover.setImageDrawable(fallback)
+            binding.ivBg.setImageDrawable(fallback)
+        }
     }
 
     override fun upLyric(lyric: String?) {
@@ -193,12 +195,20 @@ class AudioPlayActivity :
         oldLyric = lyric
         binding.lyricViewX.animate().cancel()
         binding.lyricViewX.animate().alpha(0f).translationY(10.dpToPx().toFloat()).setDuration(140).withEndAction {
-            if (lyric.isNullOrBlank()) { binding.lyricViewX.gone(); return@withEndAction }
-            lyricViewX.loadLyric(lyric); binding.lyricViewX.visible(); binding.lyricViewX.animate().alpha(1f).translationY(0f).setDuration(280).start()
+            if (lyric.isNullOrBlank()) {
+                binding.lyricViewX.gone()
+                return@withEndAction
+            }
+            lyricViewX.loadLyric(lyric)
+            binding.lyricViewX.visible()
+            binding.lyricViewX.animate().alpha(1f).translationY(0f).setDuration(280).start()
             if (lyricOn) upLyricP(AudioPlay.durChapterPos) else {
                 lyricOn = true
                 lyricViewX.apply {
-                    setNormalTextSize(46F); setCurrentTextSize(56F); setTimelineTextColor(accentColor); setDraggable(true, object : OnPlayClickListener {
+                    setNormalTextSize(46F)
+                    setCurrentTextSize(56F)
+                    setTimelineTextColor(accentColor)
+                    setDraggable(true, object : OnPlayClickListener {
                         override fun onPlayClick(time: Long): Boolean { AudioPlay.adjustProgress(time.toInt()); playButton(false); return true }
                     })
                 }
@@ -234,7 +244,7 @@ class AudioPlayActivity :
         if (AudioPlay.inBookshelf) { callBackBookEnd(); return super.finish() }
         if (!AppConfig.showAddToShelfAlert) { callBackBookEnd(); viewModel.removeFromBookshelf { super.finish() } } else {
             alert(title = getString(R.string.add_to_bookshelf)) {
-                setMessage(getString(R.string.check_add_to_bookshelf, book.name))
+                setMessage(getString(R.string.check_add_bookshelf, book.name))
                 okButton { AudioPlay.book?.removeType(BookType.notShelf); AudioPlay.book?.save(); SourceCallBack.callBackBook(SourceCallBack.ADD_BOOK_SHELF, AudioPlay.bookSource, AudioPlay.book); AudioPlay.inBookshelf = true; setResult(RESULT_OK) }
                 noButton { callBackBookEnd(); viewModel.removeFromBookshelf { super.finish() } }
             }
