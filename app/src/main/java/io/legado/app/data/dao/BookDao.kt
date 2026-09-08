@@ -123,6 +123,13 @@ data class BookShelfDisplay(
         return max(simulatedTotalChapterNum() - durChapterIndex - 1, 0)
     }
 
+    /** 阅读进度百分比 (0f..1f)，总章节数未知时返回 -1f 表示不显示 */
+    val readProgressPercent: Float
+        get() {
+            val total = simulatedTotalChapterNum()
+            return if (total > 0) (durChapterIndex + 1).coerceAtMost(total) / total.toFloat() else -1f
+        }
+
     private fun simulatedTotalChapterNum(): Int {
         return if (readSimulating()) {
             val currentDate = LocalDate.now()

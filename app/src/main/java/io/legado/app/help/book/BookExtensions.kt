@@ -376,6 +376,12 @@ fun Book.readSimulating(): Boolean {
     return config.readSimulating
 }
 
+/** 阅读进度百分比 (0f..1f)，总章节数未知时返回 -1f 表示不显示 */
+fun Book.readProgressPercent(): Float {
+    val total = simulatedTotalChapterNum()
+    return if (total > 0) (durChapterIndex + 1).coerceAtMost(total) / total.toFloat() else -1f
+}
+
 fun tryParesExportFileName(jsStr: String): Boolean {
     val bindings = buildScriptBindings { bindings ->
         bindings["name"] = "name"

@@ -208,6 +208,21 @@
         app:layout_constraintTop_toBottomOf="@id/tv_read"
         tools:ignore="TextContrastCheck" />
 
+    <ProgressBar
+        android:id="@+id/pb_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:max="1000"
+        android:maxHeight="3dp"
+        android:minHeight="3dp"
+        android:progress="0"
+        android:visibility="gone"
+        app:layout_constraintLeft_toLeftOf="@id/tv_name"
+        app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
+        app:layout_constraintTop_toBottomOf="@id/tv_last" />
+
     <com.google.android.flexbox.FlexboxLayout
         android:id="@+id/flexbox_tags"
         android:layout_width="0dp"
@@ -219,7 +234,7 @@
         app:flexWrap="wrap"
         app:layout_constraintLeft_toLeftOf="@id/tv_name"
         app:layout_constraintRight_toLeftOf="@id/iv_audio_play"
-        app:layout_constraintTop_toBottomOf="@id/tv_last" />
+        app:layout_constraintTop_toBottomOf="@id/pb_progress" />
 
     <TextView
         android:id="@+id/tv_intro"

@@ -63,6 +63,7 @@ class BooksAdapterList(
             tvAuthor.text = item.author
             tvRead.text = item.durChapterTitle
             tvLast.text = item.latestChapterTitle
+            upReadProgress(binding, item)
             ivCover.load(item, false)
             upRefresh(binding, item)
             upLastUpdateTime(binding, item)
@@ -75,7 +76,10 @@ class BooksAdapterList(
                     when (it) {
                         "name" -> tvName.text = item.name
                         "author" -> tvAuthor.text = item.author
-                        "dur" -> tvRead.text = item.durChapterTitle
+                        "dur" -> {
+                            tvRead.text = item.durChapterTitle
+                            upReadProgress(binding, item)
+                        }
                         "last" -> tvLast.text = item.latestChapterTitle
                         "cover" -> ivCover.load(item, false, fragment, lifecycle)
                         "refresh" -> upRefresh(binding, item)
@@ -85,6 +89,16 @@ class BooksAdapterList(
                 }
             }
             bindAudioPlayButton(holder, binding, item)
+        }
+    }
+
+    private fun upReadProgress(binding: ItemBookshelfListBinding, item: BookShelfDisplay) {
+        val percent = item.readProgressPercent
+        if (percent >= 0f) {
+            binding.pbProgress.visible()
+            binding.pbProgress.progress = (percent * 1000).toInt()
+        } else {
+            binding.pbProgress.gone()
         }
     }
 

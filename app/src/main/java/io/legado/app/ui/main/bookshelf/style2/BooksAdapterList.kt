@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.flexbox.FlexboxLayout
@@ -17,6 +18,7 @@ import io.legado.app.databinding.ItemBookshelfListBinding
 import io.legado.app.databinding.ItemBookshelfListGroupBinding
 import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.isLocal
+import io.legado.app.help.book.readProgressPercent
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.AudioPlay
 import io.legado.app.service.AudioPlayService
@@ -98,6 +100,16 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
         }, delay)
     }
 
+    private fun upReadProgress(pb: ProgressBar, item: Book) {
+        val percent = item.readProgressPercent()
+        if (percent >= 0f) {
+            pb.visible()
+            pb.progress = (percent * 1000).toInt()
+        } else {
+            pb.gone()
+        }
+    }
+
     inner class BookViewHolder(val binding: ItemBookshelfListBinding) : RecyclerView.ViewHolder(binding.root) {
         fun onBind(item: Book, position: Int) = binding.run {
             if (AppConfig.showBookBorder) {
@@ -111,6 +123,7 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             tvAuthor.text = item.author
             tvRead.text = item.durChapterTitle
             tvLast.text = item.latestChapterTitle
+            upReadProgress(binding.pbProgress, item)
             ivCover.load(item, false)
             flHasNew.visible(); ivAuthor.visible(); ivLast.visible(); ivRead.visible()
             upRefresh(this, item); upLastUpdateTime(binding, item); upMoreInfo(binding, item)
@@ -124,7 +137,10 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
                         when (it) {
                             "name" -> tvName.text = item.name
                             "author" -> tvAuthor.text = item.author
-                            "dur" -> tvRead.text = item.durChapterTitle
+                            "dur" -> {
+                                tvRead.text = item.durChapterTitle
+                                upReadProgress(binding.pbProgress, item)
+                            }
                             "last" -> tvLast.text = item.latestChapterTitle
                             "cover" -> ivCover.load(item, false)
                             "refresh" -> upRefresh(this, item)
@@ -172,13 +188,16 @@ class BooksAdapterList(context: Context, callBack: CallBack) :
             if (AppConfig.showBookBorder) { root.background = context.bookBorderBackground; (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(4.dpToPx(), 4.dpToPx(), 4.dpToPx(), 4.dpToPx()) }
             else { root.background = null; (root.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(0, 0, 0, 0) }
             tvName.text = item.name; tvAuthor.text = item.author; tvRead.text = item.durChapterTitle; tvLast.text = item.latestChapterTitle
+            upReadProgress(binding.pbProgress, item)
             ivCover.load(item, false); flHasNew.visible(); ivAuthor.visible(); ivLast.visible(); upRefresh(this, item); upLastUpdateTime(binding, item)
             bindAudioPlayButton(ivAudioPlay, item)
         }
         fun onBind(item: Book, position: Int, payloads: MutableList<Any>) = binding.run {
             if (payloads.isEmpty()) onBind(item, position) else {
                 for (i in payloads.indices) { val bundle = payloads[i] as Bundle; bundle.keySet().forEach { when (it) {
-                    "name" -> tvName.text = item.name; "author" -> tvAuthor.text = item.author; "dur" -> tvRead.text = item.durChapterTitle; "last" -> tvLast.text = item.latestChapterTitle
+                    "name" -> tvName.text = item.name; "author" -> tvAuthor.text = item.author
+                    "dur" -> { tvRead.text = item.durChapterTitle; upReadProgress(binding.pbProgress, item) }
+                    "last" -> tvLast.text = item.latestChapterTitle
                     "cover" -> ivCover.load(item, false); "refresh" -> upRefresh(this, item); "lastUpdateTime" -> upLastUpdateTime(binding, item)
                 } } }
                 bindAudioPlayButton(ivAudioPlay, item)
