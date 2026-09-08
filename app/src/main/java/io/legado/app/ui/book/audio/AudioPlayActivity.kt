@@ -84,7 +84,10 @@ class AudioPlayActivity : VMBaseActivity<ActivityAudioPlayBinding, AudioPlayView
         viewModel.titleData.observe(this) { name -> binding.titleBar.title = name; val lyric = AudioPlay.durChapter?.getVariable("lyric")?.takeIf { it.isNotBlank() }; upLyric(lyric ?: AudioPlay.durLyric) }
         viewModel.coverData.observe(this) { upCover(it) }
         viewModel.customBtnListData.observe(this) { menuCustomBtn?.isVisible = it }
-        viewModel.initData(intent) { if (intent.getBooleanExtra(EXTRA_OPEN_CHAPTER_LIST, false)) binding.root.postDelayed({ AudioPlay.book?.bookUrl?.let(tocActivityResult::launch) }, 120L) }
+        viewModel.initData(intent) {
+            AudioPlay.book?.let { upCover(BookCover.getDisplayCover(it)) }
+            if (intent.getBooleanExtra(EXTRA_OPEN_CHAPTER_LIST, false)) binding.root.postDelayed({ AudioPlay.book?.bookUrl?.let(tocActivityResult::launch) }, 120L)
+        }
         animatePlayerEntrance()
     }
 
@@ -134,7 +137,7 @@ class AudioPlayActivity : VMBaseActivity<ActivityAudioPlayBinding, AudioPlayView
         binding.coverContainer.alpha = 1f
         binding.coverContainer.scaleX = 1f
         binding.coverContainer.scaleY = 1f
-        BookCover.load(this, resolvedPath, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl) { BookCover.loadBlur(this, resolvedPath, sourceOrigin = AudioPlay.bookSource?.bookSourceUrl).into(binding.ivBg) }.into(binding.ivCover)
+        BookCover.load(this, resolvedPath) { BookCover.loadBlur(this, resolvedPath).into(binding.ivBg) }.into(binding.ivCover)
         if (resolvedPath.isNullOrBlank()) { binding.ivCover.setImageDrawable(fallback); binding.ivBg.setImageDrawable(fallback) }
     }
 
