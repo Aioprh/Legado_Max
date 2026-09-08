@@ -52,7 +52,7 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
             book.durChapterTitle = AudioPlay.durChapter?.title ?: book.durChapterTitle
             AudioPlay.book = book
             AudioPlay.chapterSize = appDb.bookChapterDao.getChapterCount(book.bookUrl)
-            AudioPlay.simulatedChapterSize = if (book.readSimulating()) book.simulatedTotalChapterNum() else AudioPlay.chapterSize
+            AudioPlay.simulatedChapterSize = if (book.getReadSimulating()) book.simulatedTotalChapterNum() else AudioPlay.chapterSize
             AudioPlay.upDurChapter()
             MaxAudioSystem.syncCurrentBook(book)
             AudioPlayService.refreshMediaSession()
