@@ -42,8 +42,15 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
     }
 
     private suspend fun initBook(book: Book) {
-        val isSameBook = AudioPlay.book?.bookUrl == book.bookUrl
+        val activeBook = AudioPlay.book?.takeIf { it.bookUrl == book.bookUrl }
+        val isSameBook = activeBook != null
         val keepActivePlayback = isSameBook && AudioPlayService.isRun
+
+        // 详情页重新打开时，优先保留当前播放器已经拿到的封面，避免旧书架记录中的空 coverUrl 把它覆盖掉。
+        if (book.getDisplayCover().isNullOrBlank()) {
+            activeBook?.getDisplayCover()?.takeIf { it.isNotBlank() }?.let { book.coverUrl = it }
+        }
+
         if (keepActivePlayback) {
             // 正在播放时以播放器真实章节/断点为准，避免详情页刷新把当前状态覆盖成旧书架记录。
             book.durChapterIndex = AudioPlay.durChapterIndex
@@ -56,6 +63,10 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
             MaxAudioSystem.syncCurrentBook(book)
             AudioPlayService.refreshMediaSession()
         } else if (isSameBook) {
+            // Service 已退出时，静态播放器状态可能仍停留在旧的 0:00。
+            // 先把数据库中的章节和断点灌回 AudioPlay，再走原有 upData，避免打开详情页把断点覆盖成 0。
+            AudioPlay.durChapterIndex = book.durChapterIndex
+            AudioPlay.durChapterPos = book.durChapterPos.coerceAtLeast(0)
             AudioPlay.upData(book)
         } else {
             AudioPlay.resetData(book)
@@ -65,7 +76,7 @@ class AudioPlayViewModel(application: Application) : BaseViewModel(application) 
         titleData.postValue(book.name)
         publishCover(book)
 
-        // 保留 9e9e7ff 的正常展示链路：先使用已有封面，再从当前书源补齐书籍详情。
+        // 先使用已有封面；没有时再从当前书源补齐书籍详情。
         if (book.getDisplayCover().isNullOrBlank()) {
             loadBookInfo(book)
         } else if (book.tocUrl.isEmpty()) {
