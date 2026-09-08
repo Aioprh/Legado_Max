@@ -7,267 +7,35 @@
     android:background="@color/background"
     tools:context=".ui.book.audio.AudioPlayActivity">
 
-    <ImageView
-        android:id="@+id/iv_bg"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:alpha="0.9"
-        tools:ignore="ContentDescription,ImageContrastCheck" />
-
-    <View
-        android:id="@+id/vw_bg"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/bg_audio_scrim" />
-
-    <io.legado.app.ui.widget.TitleBar
-        android:id="@+id/title_bar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:elevation="4dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:themeMode="dark" />
-
-    <TextView
-        android:id="@+id/tv_timer"
-        android:layout_width="wrap_content"
-        android:layout_height="34dp"
-        android:layout_marginStart="18dp"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/bg_audio_glass_button"
-        android:gravity="center"
-        android:minWidth="60dp"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        android:textColor="@color/md_white_1000"
-        android:textSize="12sp"
-        android:visibility="invisible"
-        app:drawableLeftCompat="@drawable/ic_timer_black_24dp"
-        app:drawableTint="@color/md_white_1000"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/title_bar" />
-
-    <TextView
-        android:id="@+id/tv_speed"
-        android:layout_width="wrap_content"
-        android:layout_height="34dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginEnd="18dp"
-        android:background="@drawable/bg_audio_glass_button"
-        android:gravity="center"
-        android:minWidth="54dp"
-        android:paddingStart="11dp"
-        android:paddingEnd="11dp"
-        android:textColor="@color/md_white_1000"
-        android:textSize="12sp"
-        android:visibility="invisible"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/title_bar" />
-
-    <FrameLayout
-        android:id="@+id/cover_container"
-        android:layout_width="252dp"
-        android:layout_height="252dp"
-        android:layout_marginTop="18dp"
-        android:background="@drawable/bg_audio_glass_panel"
-        android:elevation="12dp"
-        android:padding="8dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/title_bar">
-
-        <io.legado.app.ui.widget.image.CircleImageView
-            android:id="@+id/iv_cover"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:contentDescription="@string/img_cover"
-            android:scaleType="centerCrop"
-            app:civ_border_color="@color/accent"
-            app:civ_border_width="1dp"
-            tools:src="@drawable/image_rss_article" />
+    <ImageView android:id="@+id/iv_bg" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="centerCrop" android:alpha="0.9" tools:ignore="ContentDescription,ImageContrastCheck" />
+    <View android:id="@+id/vw_bg" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_audio_scrim" />
+    <io.legado.app.ui.widget.TitleBar android:id="@+id/title_bar" android:layout_width="match_parent" android:layout_height="wrap_content" android:elevation="4dp" app:layout_constraintTop_toTopOf="parent" app:themeMode="dark" />
+    <TextView android:id="@+id/tv_timer" android:layout_width="wrap_content" android:layout_height="34dp" android:layout_marginStart="18dp" android:layout_marginTop="10dp" android:background="@drawable/bg_audio_glass_button" android:gravity="center" android:minWidth="60dp" android:paddingStart="10dp" android:paddingEnd="10dp" android:textColor="@color/md_white_1000" android:textSize="12sp" android:visibility="invisible" app:drawableLeftCompat="@drawable/ic_timer_black_24dp" app:drawableTint="@color/md_white_1000" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toBottomOf="@id/title_bar" />
+    <TextView android:id="@+id/tv_speed" android:layout_width="wrap_content" android:layout_height="34dp" android:layout_marginTop="10dp" android:layout_marginEnd="18dp" android:background="@drawable/bg_audio_glass_button" android:gravity="center" android:minWidth="54dp" android:paddingStart="11dp" android:paddingEnd="11dp" android:textColor="@color/md_white_1000" android:textSize="12sp" android:visibility="invisible" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintTop_toBottomOf="@id/title_bar" />
+    <FrameLayout android:id="@+id/cover_container" android:layout_width="252dp" android:layout_height="252dp" android:layout_marginTop="18dp" android:background="@drawable/bg_audio_glass_panel" android:elevation="12dp" android:padding="8dp" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toBottomOf="@id/title_bar">
+        <io.legado.app.ui.widget.image.CircleImageView android:id="@+id/iv_cover" android:layout_width="match_parent" android:layout_height="match_parent" android:contentDescription="@string/img_cover" android:scaleType="centerCrop" app:civ_border_color="@color/accent" app:civ_border_width="1dp" tools:src="@drawable/image_rss_article" />
     </FrameLayout>
-
-    <com.dirror.lyricviewx.LyricViewX
-        android:id="@+id/lyricViewX"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="4dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@+id/tv_sub_title"
-        app:layout_constraintTop_toBottomOf="@id/cover_container"
-        app:lrcCurrentTextColor="@color/md_white_1000"
-        app:lrcPadding="26dp"
-        tools:visibility="visible"
-        tools:lrcLabel="歌词文本区" />
-
-    <TextView
-        android:id="@+id/tv_sub_title"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="30dp"
-        android:layout_marginEnd="30dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:maxLines="2"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
-        android:textColor="@color/md_white_1000"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@+id/ll_player_progress" />
-
-    <LinearLayout
-        android:id="@+id/ll_player_progress"
-        android:layout_width="match_parent"
-        android:layout_height="38dp"
-        android:layout_marginStart="22dp"
-        android:layout_marginEnd="22dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
-        app:layout_constraintBottom_toTopOf="@+id/ll_play_menu">
-
-        <TextView
-            android:id="@+id/tv_dur_time"
-            android:layout_width="42dp"
-            android:layout_height="wrap_content"
-            android:gravity="start|center_vertical"
-            android:text="00:00"
-            android:textColor="#CCFFFFFF"
-            android:textSize="11sp"
-            tools:ignore="HardcodedText,RtlSymmetry,TextContrastCheck" />
-
-        <io.legado.app.lib.theme.view.ThemeSeekBar
-            android:id="@+id/player_progress"
-            android:layout_width="0dp"
-            android:layout_height="24dp"
-            android:layout_weight="1"
-            android:progressBackgroundTint="#45FFFFFF" />
-
-        <TextView
-            android:id="@+id/tv_all_time"
-            android:layout_width="42dp"
-            android:layout_height="wrap_content"
-            android:gravity="end|center_vertical"
-            android:text="00:00"
-            android:textColor="#CCFFFFFF"
-            android:textSize="11sp"
-            tools:ignore="HardcodedText,TextContrastCheck" />
+    <com.dirror.lyricviewx.LyricViewX android:id="@+id/lyricViewX" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="10dp" android:layout_marginBottom="4dp" android:visibility="gone" app:layout_constraintBottom_toTopOf="@+id/tv_sub_title" app:layout_constraintTop_toBottomOf="@id/cover_container" app:lrcCurrentTextColor="@color/md_white_1000" app:lrcPadding="26dp" tools:visibility="visible" tools:lrcLabel="歌词文本区" />
+    <TextView android:id="@+id/tv_sub_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="30dp" android:layout_marginEnd="30dp" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:paddingTop="4dp" android:paddingBottom="4dp" android:textColor="@color/md_white_1000" android:textSize="14sp" android:textStyle="bold" app:layout_constraintBottom_toTopOf="@+id/ll_player_progress" />
+    <LinearLayout android:id="@+id/ll_player_progress" android:layout_width="match_parent" android:layout_height="38dp" android:layout_marginStart="22dp" android:layout_marginEnd="22dp" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="4dp" android:paddingEnd="4dp" app:layout_constraintBottom_toTopOf="@+id/ll_play_menu">
+        <TextView android:id="@+id/tv_dur_time" android:layout_width="42dp" android:layout_height="wrap_content" android:gravity="start|center_vertical" android:text="00:00" android:textColor="#CCFFFFFF" android:textSize="11sp" tools:ignore="HardcodedText,RtlSymmetry,TextContrastCheck" />
+        <io.legado.app.lib.theme.view.ThemeSeekBar android:id="@+id/player_progress" android:layout_width="0dp" android:layout_height="24dp" android:layout_weight="1" android:progressBackgroundTint="#45FFFFFF" />
+        <TextView android:id="@+id/tv_all_time" android:layout_width="42dp" android:layout_height="wrap_content" android:gravity="end|center_vertical" android:text="00:00" android:textColor="#CCFFFFFF" android:textSize="11sp" tools:ignore="HardcodedText,TextContrastCheck" />
     </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/ll_play_menu"
-        android:layout_width="match_parent"
-        android:layout_height="68dp"
-        android:layout_marginStart="14dp"
-        android:layout_marginEnd="14dp"
-        android:layout_marginBottom="4dp"
-        android:background="@drawable/bg_audio_glass_panel"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="6dp"
-        android:paddingEnd="6dp"
-        app:layout_constraintBottom_toBottomOf="parent">
-
-        <io.legado.app.ui.widget.image.ImageButton
-            android:id="@+id/iv_timer"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/bg_audio_glass_button"
-            android:contentDescription="@string/set_timer"
-            android:padding="8dp"
-            android:src="@drawable/ic_timer_black_24dp"
-            app:tint="@color/md_white_1000" />
-
+    <LinearLayout android:id="@+id/ll_play_menu" android:layout_width="match_parent" android:layout_height="68dp" android:layout_marginStart="14dp" android:layout_marginEnd="14dp" android:layout_marginBottom="4dp" android:background="@drawable/bg_audio_glass_panel" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="6dp" android:paddingEnd="6dp" app:layout_constraintBottom_toBottomOf="parent">
+        <io.legado.app.ui.widget.image.ImageButton android:id="@+id/iv_timer" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_audio_glass_button" android:contentDescription="@string/set_timer" android:padding="8dp" android:src="@drawable/ic_timer_black_24dp" app:tint="@color/md_white_1000" />
         <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
-
-        <io.legado.app.ui.widget.image.ImageButton
-            android:id="@+id/iv_speed_control"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/bg_audio_glass_button"
-            android:contentDescription="@string/speed_control"
-            android:padding="8dp"
-            android:src="@drawable/ic_speed_control"
-            app:tint="@color/md_white_1000" />
-
+        <io.legado.app.ui.widget.image.ImageButton android:id="@+id/iv_speed_control" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_audio_glass_button" android:contentDescription="@string/speed_control" android:padding="8dp" android:src="@drawable/ic_speed_control" app:tint="@color/md_white_1000" />
         <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="0.4" />
-
-        <io.legado.app.ui.widget.image.ImageButton
-            android:id="@+id/iv_skip_previous"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/bg_audio_glass_button"
-            android:contentDescription="@string/skip_previous"
-            android:padding="8dp"
-            android:src="@drawable/ic_skip_previous"
-            app:tint="@color/md_white_1000" />
-
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="66dp"
-            android:layout_height="66dp">
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/fab_play_stop"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:contentDescription="@string/audio_play"
-                android:src="@drawable/ic_play_24dp"
-                android:tint="@color/md_black_1000"
-                app:backgroundTint="@color/md_white_1000"
-                app:elevation="8dp"
-                app:fabSize="normal"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-            <io.legado.app.lib.theme.view.ThemeProgressBar
-                android:id="@+id/progress_loading"
-                android:layout_width="0dp"
-                android:layout_height="0dp"
-                android:visibility="invisible"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+        <io.legado.app.ui.widget.image.ImageButton android:id="@+id/iv_skip_previous" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_audio_glass_button" android:contentDescription="@string/skip_previous" android:padding="8dp" android:src="@drawable/ic_skip_previous" app:tint="@color/md_white_1000" />
+        <androidx.constraintlayout.widget.ConstraintLayout android:layout_width="66dp" android:layout_height="66dp">
+            <com.google.android.material.floatingactionbutton.FloatingActionButton android:id="@+id/fab_play_stop" android:layout_width="56dp" android:layout_height="56dp" android:contentDescription="@string/audio_play" android:src="@drawable/ic_play_24dp" android:tint="@color/md_black_1000" app:backgroundTint="@color/md_white_1000" app:elevation="8dp" app:fabSize="normal" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
+            <io.legado.app.lib.theme.view.ThemeProgressBar android:id="@+id/progress_loading" android:layout_width="0dp" android:layout_height="0dp" android:visibility="invisible" app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintEnd_toEndOf="parent" app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent" />
         </androidx.constraintlayout.widget.ConstraintLayout>
-
-        <io.legado.app.ui.widget.image.ImageButton
-            android:id="@+id/iv_skip_next"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/bg_audio_glass_button"
-            android:contentDescription="@string/skip_next"
-            android:padding="8dp"
-            android:src="@drawable/ic_skip_next"
-            app:tint="@color/md_white_1000" />
-
+        <io.legado.app.ui.widget.image.ImageButton android:id="@+id/iv_skip_next" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_audio_glass_button" android:contentDescription="@string/skip_next" android:padding="8dp" android:src="@drawable/ic_skip_next" app:tint="@color/md_white_1000" />
         <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="0.4" />
-
-        <io.legado.app.ui.widget.image.ImageButton
-            android:id="@+id/iv_play_mode"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/bg_audio_glass_button"
-            android:contentDescription="@string/play_mode"
-            android:padding="8dp"
-            android:src="@drawable/ic_play_mode_list_end_stop"
-            app:tint="@color/md_white_1000" />
-
+        <io.legado.app.ui.widget.image.ImageButton android:id="@+id/iv_play_mode" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_audio_glass_button" android:contentDescription="@string/play_mode" android:padding="8dp" android:src="@drawable/ic_play_mode_list_end_stop" app:tint="@color/md_white_1000" />
         <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1" />
-
-        <io.legado.app.ui.widget.image.ImageButton
-            android:id="@+id/iv_chapter"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/bg_audio_glass_button"
-            android:contentDescription="@string/chapter_list"
-            android:padding="8dp"
-            android:src="@drawable/ic_chapter_list"
-            app:tint="@color/md_white_1000" />
-
+        <io.legado.app.ui.widget.image.ImageButton android:id="@+id/iv_chapter" android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_audio_glass_button" android:contentDescription="@string/chapter_list" android:padding="8dp" android:src="@drawable/ic_chapter_list" app:tint="@color/md_white_1000" />
     </LinearLayout>
-
 </androidx.constraintlayout.widget.ConstraintLayout>
