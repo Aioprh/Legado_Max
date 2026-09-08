@@ -15,8 +15,8 @@ import io.legado.app.help.http.addHeaders
 import io.legado.app.help.http.okHttpClient
 import io.legado.app.help.http.okHttpClientManga
 import io.legado.app.help.source.SourceHelp
+import io.legado.app.model.ReadBook
 import io.legado.app.model.ReadManga
-import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.ImageUtils
 import io.legado.app.utils.isWifiConnect
 import kotlinx.coroutines.CoroutineScope
@@ -66,6 +66,19 @@ class OkHttpStreamFetcher(
 
         options.get(OkHttpModelLoader.sourceOriginOption)?.let { sourceUrl ->
             source = SourceHelp.getSource(sourceUrl)
+        }
+
+        // 朗读播放页的封面调用路径没有显式传入 sourceOrigin。
+        // 如果当前图片就是当前正在阅读书籍的封面，则补上书源，
+        // 这样书源自定义请求头、鉴权及封面二次解密规则也能正常生效。
+        if (source == null && !manga) {
+            ReadBook.book?.let { book ->
+                val bookCover = book.getDisplayCover()
+                val requestedUrl = url.toStringUrl()
+                if (requestedUrl == bookCover || requestedUrl == book.cover) {
+                    source = SourceHelp.getSource(book.origin)
+                }
+            }
         }
 
         analyzedUrl = AnalyzeUrl(
