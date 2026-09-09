@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="download_audio">下载当前音频</string>
+    <string name="audio_download_started">开始下载：%1$s</string>
+    <string name="audio_download_success">音频已下载：%1$s</string>
+    <string name="audio_download_failed">音频下载失败</string>
+    <string name="audio_download_no_url">当前章节没有可下载的音频地址</string>
+</resources>
