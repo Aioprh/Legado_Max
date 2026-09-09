@@ -48,6 +48,16 @@
         app:spanCount="4"
         tools:listitem="@layout/item_rss" />
 
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/compose_rimchars_rss"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/title_bar"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
     <TextView
         android:id="@+id/tv_empty_msg"
         android:layout_width="wrap_content"
