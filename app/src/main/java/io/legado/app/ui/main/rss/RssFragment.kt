@@ -168,9 +168,9 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
 
     private fun showCachedArticleSearch(keyword: String) {
         viewLifecycleOwner.lifecycleScope.launch(IO) {
-            val articles = runCatching {
+            val articles: List<RssArticle> = runCatching {
                 appDb.rssArticleDao.search(keyword)
-            }.getOrDefault(emptyList())
+            }.getOrDefault(emptyList<RssArticle>())
             launch {
                 if (!isAdded) return@launch
                 if (articles.isEmpty()) {
@@ -180,7 +180,7 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                     }
                     return@launch
                 }
-                val items = articles.distinctBy { it.link }
+                val items = articles.distinctBy(RssArticle::link)
                     .take(50)
                     .map { article ->
                         SelectItem(article.title.ifBlank { article.link }, article)
@@ -232,9 +232,9 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
 
     private fun searchMergedArticles(origins: List<String>, keyword: String) {
         viewLifecycleOwner.lifecycleScope.launch(IO) {
-            val articles = runCatching {
+            val articles: List<RssArticle> = runCatching {
                 appDb.rssArticleDao.searchByOrigins(origins, keyword)
-            }.getOrDefault(emptyList())
+            }.getOrDefault(emptyList<RssArticle>())
             launch {
                 if (!isAdded) return@launch
                 if (articles.isEmpty()) {
@@ -244,7 +244,7 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                     }
                     return@launch
                 }
-                val items = articles.distinctBy { it.link }
+                val items = articles.distinctBy(RssArticle::link)
                     .take(100)
                     .map { article ->
                         val source = origins.indexOf(article.origin).let { index ->
