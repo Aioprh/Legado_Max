@@ -8,13 +8,13 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.repository.BookRepository
 import io.legado.app.help.audio.AudioDownloadManager
 import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.utils.sendValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.ensureActive
 import java.io.File
 import kotlin.collections.set
 
@@ -22,15 +22,11 @@ class CacheViewModel(application: Application) : BaseViewModel(application) {
     val upAdapterLiveData = MutableLiveData<String>()
 
     private var loadChapterCoroutine: Coroutine<Unit>? = null
-    // 缓存每本书已缓存的章节URL集合
     val cacheChapters = hashMapOf<String, HashSet<String>>()
-    // 缓存每本书的缓存文件大小
     val cacheSizes = hashMapOf<String, Long>()
     private val bookRepository = BookRepository()
 
-    // 用于检测是否是相同的书籍列表，避免重复加载
     private var lastLoadedBooksKey: String? = null
-    // 防止并发加载的标志
     private var isLoading = false
 
     /**
