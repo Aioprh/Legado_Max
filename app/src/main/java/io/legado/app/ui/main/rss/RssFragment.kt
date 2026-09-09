@@ -186,7 +186,8 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                         SelectItem(article.title.ifBlank { article.link }, article)
                     }
                 requireContext().selector(items) { _, _, article ->
-                    article?.link?.takeIf { it.startsWith("http", true) }?.let { url ->
+                    val selected = article as? RssArticle
+                    selected?.link?.takeIf { it.startsWith("http", true) }?.let { url ->
                         context?.openUrl(url)
                     }
                 }
@@ -253,7 +254,8 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                         SelectItem(article.title.ifBlank { article.link } + source, article)
                     }
                 requireContext().selector(items) { _, _, article ->
-                    article?.link?.takeIf { it.startsWith("http", true) }?.let { url ->
+                    val selected = article as? RssArticle
+                    selected?.link?.takeIf { it.startsWith("http", true) }?.let { url ->
                         context?.openUrl(url)
                     }
                 }
