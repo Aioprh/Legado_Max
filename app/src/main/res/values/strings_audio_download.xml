@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="download_audio">下载当前音频</string>
+    <string name="downloaded_audio">已下载</string>
+    <string name="downloaded_audio_count">已下载音频（%1$d）</string>
+    <string name="downloaded_audio_empty">暂无已下载的音频</string>
     <string name="audio_download_started">开始下载：%1$s</string>
     <string name="audio_download_success">音频已下载：%1$s</string>
     <string name="audio_download_failed">音频下载失败</string>
