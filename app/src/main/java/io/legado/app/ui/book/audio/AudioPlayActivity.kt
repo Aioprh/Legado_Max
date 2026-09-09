@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.audio
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -54,6 +55,7 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import splitties.views.onLongClick
+import java.io.File
 import java.util.Locale
 import com.dirror.lyricviewx.OnPlayClickListener
 import io.legado.app.lib.theme.ThemeStore.Companion.accentColor
@@ -119,6 +121,34 @@ class AudioPlayActivity :
         return super.onMenuOpened(featureId, menu)
     }
 
+    private fun showDownloadedAudioList() {
+        lifecycleScope.launch(IO) {
+            val items = AudioDownloadManager.listDownloaded()
+            val labels = items.map { item -> "${item.title}\n${formatFileSize(item.size)}" }.toTypedArray()
+            launch(kotlinx.coroutines.Dispatchers.Main) {
+                if (labels.isEmpty()) {
+                    AlertDialog.Builder(this@AudioPlayActivity)
+                        .setTitle(R.string.downloaded_audio)
+                        .setMessage(R.string.downloaded_audio_empty)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                    return@launch
+                }
+                AlertDialog.Builder(this@AudioPlayActivity)
+                    .setTitle(getString(R.string.downloaded_audio_count, labels.size))
+                    .setItems(labels, null)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+        }
+    }
+
+    private fun formatFileSize(size: Long): String = when {
+        size >= 1024L * 1024L -> String.format(Locale.ROOT, "%.1f MB", size / 1024f / 1024f)
+        size >= 1024L -> String.format(Locale.ROOT, "%.1f KB", size / 1024f)
+        else -> "$size B"
+    }
+
     override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_custom_btn -> AudioPlay.bookSource?.let { source -> AudioPlay.book?.let { book -> SourceCallBack.callBackBtn(this, SourceCallBack.CLICK_CUSTOM_BUTTON, source, book, AudioPlay.durChapter, BookType.audio) } }
@@ -135,6 +165,7 @@ class AudioPlayActivity :
                     }
                 }
             }
+            R.id.menu_downloaded_audio -> showDownloadedAudioList()
             R.id.menu_wake_lock -> AppConfig.audioPlayUseWakeLock = !AppConfig.audioPlayUseWakeLock
             R.id.menu_copy_audio_url -> AudioPlay.book?.let { book ->
                 val url = AudioPlayService.url
