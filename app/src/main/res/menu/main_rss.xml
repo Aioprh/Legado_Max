@@ -20,10 +20,14 @@
         android:title="@string/group"
         android:icon="@drawable/ic_groups"
         app:showAsAction="always">
-
         <menu />
-
     </item>
+
+    <item
+        android:id="@+id/menu_rss_direct_url"
+        android:title="直接 URL 订阅"
+        android:icon="@drawable/ic_link"
+        app:showAsAction="never" />
 
     <item
         android:id="@+id/menu_rss_config"
