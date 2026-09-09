@@ -3,38 +3,37 @@ package io.legado.app.ui.main.explore
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSourcePart
+import io.legado.app.data.entities.SearchBook
+import io.legado.app.model.webBook.WebBook
+import io.legado.app.ui.book.search.SearchActivity
+import io.legado.app.help.webView.WebViewPool
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.withContext
 
 @Composable
 fun RimcharsDiscoveryScreen(
@@ -44,118 +43,167 @@ fun RimcharsDiscoveryScreen(
     onSearchClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedGroup by remember { mutableStateOf<String?>(null) }
-    val filtered = remember(sources, selectedGroup) {
-        selectedGroup?.let { group ->
-            sources.filter { it.bookSourceGroup?.contains(group, true) == true }
-        } ?: sources
+    val context = LocalContext.current
+    var config by remember { mutableStateOf(DiscoverySuiteStore.load()) }
+    var selectedId by remember { mutableStateOf(DiscoverySuiteStore.selectedSuiteId()) }
+    var manage by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+
+    val sourceTargets = remember(sources) {
+        sources.mapNotNull { part ->
+            val source = part.getBookSource() ?: return@mapNotNull null
+            val url = source.exploreUrl?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            DiscoverySuiteWidgetTarget(part.bookSourceUrl, url, part.bookSourceName)
+        }
     }
-    val visibleGroups = remember(groups) { groups.filter { it.isNotBlank() }.distinct().take(24) }
+
+    LaunchedEffect(sourceTargets, config.suites) {
+        if (config.suites.isEmpty()) {
+            val suite = DiscoverySuiteStore.newSuite("默认发现")
+            val widget = DiscoverySuiteStore.newWidget("推荐")
+                .copy(targets = sourceTargets.take(20), displayLimit = 12)
+            val seeded = DiscoverySuiteConfig(listOf(suite.copy(widgets = listOf(widget))))
+            DiscoverySuiteStore.save(seeded)
+            DiscoverySuiteStore.setSelectedSuiteId(suite.id)
+            config = seeded
+            selectedId = suite.id
+        } else if (selectedId.isBlank() || config.suites.none { it.id == selectedId }) {
+            val id = config.suites.first().id
+            selectedId = id
+            DiscoverySuiteStore.setSelectedSuiteId(id)
+        }
+    }
+
+    val selectedSuite = config.suites.firstOrNull { it.id == selectedId } ?: config.suites.firstOrNull()
+    val booksByWidget = remember { mutableStateMapOf<String, List<SearchBook>>() }
+    var loading by remember { mutableStateOf(false) }
+
+    LaunchedEffect(selectedSuite?.cacheSignature(), sourceTargets) {
+        booksByWidget.clear()
+        val suite = selectedSuite ?: return@LaunchedEffect
+        loading = true
+        try {
+            val result = withContext(IO) {
+                suite.widgets.associate { widget ->
+                    widget.id to loadSuiteBooks(widget, sourceTargets)
+                }
+            }
+            booksByWidget.putAll(result)
+        } finally { loading = false }
+    }
+
+    val visibleSuites = config.suites.sortedBy { it.order }
+    val visibleWidgets = selectedSuite?.widgets.orEmpty()
+
+    if (manage) {
+        DiscoverySuiteManageDialog(
+            config = config,
+            selectedId = selectedId,
+            onDismiss = { manage = false },
+            onChange = { next ->
+                config = next
+                DiscoverySuiteStore.save(next)
+                selectedId = next.suites.firstOrNull()?.id.orEmpty()
+                if (selectedId.isNotBlank()) DiscoverySuiteStore.setSelectedSuiteId(selectedId)
+            }
+        )
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 28.dp)
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("发现", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        text = if (selectedGroup == null) "浏览全部发现源" else "正在浏览：$selectedGroup",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("发现", fontSize = 25.sp, fontWeight = FontWeight.SemiBold)
+                    Text("发现套件", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable(onClick = onSearchClick),
-                    contentAlignment = Alignment.Center
-                ) { Text("⌕", style = MaterialTheme.typography.titleLarge) }
+                Text("⌕", fontSize = 25.sp, modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = onSearchClick).padding(9.dp))
+                Text("⋮", fontSize = 25.sp, modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable { manage = true }.padding(9.dp))
             }
         }
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onSearchClick),
-                shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f))
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(50.dp).padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("⌕", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(10.dp))
-                    Text("搜索书源 / 分组 / URL", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .72f)), modifier = Modifier.fillMaxWidth().clickable(onClick = onSearchClick)) {
+                Row(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("⌕", fontSize = 20.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.width(9.dp)); Text("搜索发现内容", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-        if (visibleGroups.isNotEmpty()) {
+        if (visibleSuites.isNotEmpty()) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text("分组", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Row(
-                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        RimcharsChip("全部", selectedGroup == null) { selectedGroup = null }
-                        visibleGroups.forEach { group ->
-                            RimcharsChip(group, selectedGroup == group) { selectedGroup = group }
-                        }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(visibleSuites, key = { it.id }) { suite ->
+                        val selected = suite.id == selectedSuite?.id
+                        Text(suite.displayName, modifier = Modifier.clip(RoundedCornerShape(17.dp)).background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant).clickable {
+                            selectedId = suite.id; DiscoverySuiteStore.setSelectedSuiteId(suite.id)
+                        }.padding(horizontal = 15.dp, vertical = 9.dp), color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         }
-        item {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("发现源", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Text("${filtered.size} 个", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        if (filtered.isEmpty()) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
-                ) {
-                    Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("暂无发现源", fontWeight = FontWeight.Medium)
-                        Spacer(Modifier.height(5.dp))
-                        Text("请添加书源或调整分组筛选", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    }
+        if (loading) item { Text("正在加载发现内容…", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp)) }
+        if (selectedSuite == null) {
+            item { Text("暂无套件，点击右上角 ⋮ 创建。", modifier = Modifier.padding(28.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else {
+            visibleWidgets.forEach { widget ->
+                item(key = widget.id) {
+                    SuiteWidgetView(widget, booksByWidget[widget.id].orEmpty(), onSourceClick, sources, onRefresh = {
+                        booksByWidget[widget.id] = emptyList()
+                    })
                 }
             }
         }
-        items(filtered, key = { it.bookSourceUrl }) { source ->
-            Card(
-                modifier = Modifier.fillMaxWidth().clickable { onSourceClick(source) },
-                shape = RoundedCornerShape(20.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
-                            contentAlignment = Alignment.Center
-                        ) { Text(source.bookSourceName.take(1).uppercase(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer) }
-                        Spacer(Modifier.width(11.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(source.bookSourceName, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("发现源", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+private suspend fun loadSuiteBooks(widget: DiscoverySuiteWidget, fallback: List<DiscoverySuiteWidgetTarget>): List<SearchBook> {
+    val targets = widget.validTargets().ifEmpty { fallback }
+    val output = mutableListOf<SearchBook>()
+    for (target in targets.take(6)) {
+        val source = appDb.bookSourceDao.getBookSource(target.sourceUrl) ?: continue
+        val page = runCatching { WebBook.exploreBookAwait(source, target.tagUrl, 1, WebViewPool.Scope.DISCOVERY) }.getOrDefault(emptyList())
+        output += page
+        if (output.size >= widget.displayLimit) break
+    }
+    return output.distinctBy { "${it.name}|${it.author}|${it.originName}" }.take(widget.displayLimit)
+}
+
+@Composable
+private fun SuiteWidgetView(
+    widget: DiscoverySuiteWidget,
+    books: List<SearchBook>,
+    onSourceClick: (BookSourcePart) -> Unit,
+    sources: List<BookSourcePart>,
+    onRefresh: () -> Unit
+) {
+    val context = LocalContext.current
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(widget.title, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text("换一批", fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable(onClick = onRefresh).padding(7.dp))
+        }
+        Spacer(Modifier.height(7.dp))
+        when (widget.type) {
+            DiscoverySuiteWidgetType.TagBar.value -> LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(widget.validTargets(), key = { it.key() }) { target ->
+                    Text(target.title.ifBlank { "分类" }, modifier = Modifier.clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable {
+                        sources.firstOrNull { it.bookSourceUrl == target.sourceUrl }?.let(onSourceClick)
+                    }.padding(horizontal = 13.dp, vertical = 8.dp), fontSize = 14.sp)
+                }
+            }
+            else -> LazyRow(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                items(books, key = { "${it.name}|${it.originName}" }) { book ->
+                    Card(Modifier.width(if (widget.type == DiscoverySuiteWidgetType.WaterfallBooks.value) 145.dp else 105.dp).clickable {
+                        SearchActivity.start(context, key = book.name)
+                    }, shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f))) {
+                        Column(Modifier.padding(11.dp)) {
+                            Text(book.name, fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Spacer(Modifier.height(5.dp)); Text(book.author, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (book.originName.isNotBlank()) Text(book.originName, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-                        Text("›", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Text(source.bookSourceUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    source.bookSourceGroup?.takeIf { it.isNotBlank() }?.let {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) { RimcharsMetaChip(it) }
                     }
                 }
             }
@@ -164,28 +212,44 @@ fun RimcharsDiscoveryScreen(
 }
 
 @Composable
-private fun RimcharsChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    Text(
-        text = text,
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-        style = MaterialTheme.typography.labelLarge,
-        maxLines = 1
-    )
-}
-
-@Composable
-private fun RimcharsMetaChip(text: String) {
-    Text(
-        text = text,
-        modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)).padding(horizontal = 9.dp, vertical = 5.dp),
-        color = MaterialTheme.colorScheme.primary,
-        style = MaterialTheme.typography.labelSmall,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis
+private fun DiscoverySuiteManageDialog(
+    config: DiscoverySuiteConfig,
+    selectedId: String,
+    onDismiss: () -> Unit,
+    onChange: (DiscoverySuiteConfig) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var adding by remember { mutableStateOf(false) }
+    val selected = config.suites.firstOrNull { it.id == selectedId }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("发现套件管理") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                config.suites.forEach { suite ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(suite.displayName, Modifier.weight(1f))
+                        TextButton(onClick = { onChange(config.copy(suites = listOf(suite) + config.suites.filterNot { it.id == suite.id })); }) { Text("设为当前") }
+                        TextButton(onClick = { if (config.suites.size > 1) onChange(config.copy(suites = config.suites.filterNot { it.id == suite.id })) }) { Text("删除") }
+                    }
+                }
+                if (selected != null) {
+                    Text("当前：${selected.displayName}", color = MaterialTheme.colorScheme.primary)
+                    Text("控件：${selected.widgets.size} 个", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (adding) {
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("套件名称") }, singleLine = true)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (adding) {
+                    val suite = DiscoverySuiteStore.newSuite(name)
+                    onChange(config.copy(suites = config.suites + suite)); name = ""; adding = false
+                } else adding = true
+            }) { Text(if (adding) "创建" else "新建套件") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
     )
 }
