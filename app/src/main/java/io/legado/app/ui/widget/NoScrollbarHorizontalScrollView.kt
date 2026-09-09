@@ -6,8 +6,10 @@ import android.util.AttributeSet
 import android.widget.HorizontalScrollView
 
 /**
- * HorizontalScrollView with platform scroll indicators and foreground effects disabled.
- * Used by the bookshelf smart-tag filter bar.
+ * HorizontalScrollView used by the bookshelf smart-tag filter bar.
+ *
+ * The tag bar is an overlay surface. It must keep horizontal scrolling while
+ * drawing no platform scroll indicators, fading effects, or elevation shadow.
  */
 class NoScrollbarHorizontalScrollView @JvmOverloads constructor(
     context: Context,
@@ -24,11 +26,25 @@ class NoScrollbarHorizontalScrollView @JvmOverloads constructor(
         overScrollMode = OVER_SCROLL_NEVER
         scrollBarStyle = SCROLLBARS_INSIDE_OVERLAY
         scrollBarSize = 0
+        stateListAnimator = null
+        translationZ = 0f
+    }
+
+    /**
+     * Do not allow the bookshelf tag bar to acquire a Material/platform shadow.
+     * A translucent rounded surface plus an elevation shadow can appear as a
+     * thin white horizontal line on some Android renderers.
+     */
+    override fun setElevation(elevation: Float) {
+        super.setElevation(0f)
+    }
+
+    override fun setTranslationZ(translationZ: Float) {
+        super.setTranslationZ(0f)
     }
 
     override fun onDrawForeground(canvas: Canvas) {
-        // Intentionally omit the platform foreground pass. HorizontalScrollView
-        // can draw scroll indicators/fading effects here even when scrollbars
-        // are disabled; the tag bar must remain visually clean while scrolling.
+        // Deliberately omit the platform foreground pass so scroll indicators
+        // and fading/edge effects cannot paint a line over the tag surface.
     }
 }
