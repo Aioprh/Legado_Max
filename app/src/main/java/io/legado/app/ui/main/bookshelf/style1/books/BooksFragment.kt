@@ -42,6 +42,7 @@ import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.main.MainViewModel
+import io.legado.app.ui.widget.NoScrollbarHorizontalScrollView
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.flowWithLifecycleAndDatabaseChangeFirst
@@ -124,7 +125,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             gravity = Gravity.CENTER_VERTICAL
             setPadding(12.dpToPx(), 7.dpToPx(), 12.dpToPx(), 7.dpToPx())
         }
-        smartTagFilterScroll = HorizontalScrollView(context).apply {
+        smartTagFilterScroll = NoScrollbarHorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
             isVerticalScrollBarEnabled = false
             isHorizontalFadingEdgeEnabled = false
