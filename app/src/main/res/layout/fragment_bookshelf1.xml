@@ -12,10 +12,15 @@
         app:attachToActivity="false"
         app:title="@string/bookshelf" />
 
+    <!--
+        书架筛选标签统一由每个 BooksFragment 的 SmartTagFilterBar 提供。
+        这里保留旧 tag_bar 仅用于兼容现有 ViewBinding/代码，实际不占布局空间，
+        避免左右滑动切换分组时出现第二套“全部/听书”等重复标签。
+    -->
     <io.legado.app.ui.widget.RoundedTagBarView
         android:id="@+id/tag_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
         android:visibility="gone" />
 
     <io.legado.app.ui.widget.BookshelfRefreshLayout
