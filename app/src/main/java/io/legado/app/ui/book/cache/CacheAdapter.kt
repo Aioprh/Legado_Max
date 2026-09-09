@@ -12,6 +12,7 @@ import io.legado.app.base.adapter.DiffRecyclerAdapter
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.entities.Book
 import io.legado.app.databinding.ItemDownloadBinding
+import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.isLocal
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.model.CacheBook
