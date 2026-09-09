@@ -6,6 +6,7 @@ import android.view.MenuItem
 import android.view.SubMenu
 import android.view.View
 import androidx.appcompat.widget.SearchView
+import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -22,6 +23,7 @@ import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.FragmentRssBinding
 import io.legado.app.databinding.ItemRssBinding
 import io.legado.app.help.config.EnhancedPageConfig
+import io.legado.app.help.config.RimcharsUiConfig
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
@@ -84,8 +86,8 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
     private var groupsFlowJob: Job? = null
     private var rssFlowJob: Job? = null
     private val groups = linkedSetOf<String>()
-
     private var groupsMenu: SubMenu? = null
+    private var usingRimcharsStyle = false
 
     private val sort: RssSourceSort
         get() = RssSourceSort.entries[appCtx.getPrefInt(PreferKey.rssSourceSort, 0)]
@@ -95,35 +97,47 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         setSupportToolbar(binding.titleBar.toolbar)
+        usingRimcharsStyle = RimcharsUiConfig.rssEnabled
         initSearchView()
         initRecyclerView()
         initGroupData()
+        applyRimcharsStyle()
         upRssFlowJob()
     }
 
     override fun onCompatCreateOptionsMenu(menu: Menu) {
         menuInflater.inflate(R.menu.main_rss, menu)
         groupsMenu = menu.findItem(R.id.menu_group)?.subMenu
-        menu.findItem(R.id.menu_rss_direct_url)?.isVisible = EnhancedPageConfig.enhancedRssPage
-        menu.findItem(R.id.menu_rss_merge_search)?.isVisible = EnhancedPageConfig.enhancedRssPage
+        menu.findItem(R.id.menu_rss_direct_url)?.isVisible = EnhancedPageConfig.enhancedRssPage && !usingRimcharsStyle
+        menu.findItem(R.id.menu_rss_merge_search)?.isVisible = EnhancedPageConfig.enhancedRssPage && !usingRimcharsStyle
+        menu.findItem(R.id.menu_rimchars_rss)?.isChecked = usingRimcharsStyle
         upGroupsMenu()
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu) {
+        menu.findItem(R.id.menu_rimchars_rss)?.isChecked = usingRimcharsStyle
+        menu.findItem(R.id.menu_rss_direct_url)?.isVisible = EnhancedPageConfig.enhancedRssPage && !usingRimcharsStyle
+        menu.findItem(R.id.menu_rss_merge_search)?.isVisible = EnhancedPageConfig.enhancedRssPage && !usingRimcharsStyle
+        super.onPrepareOptionsMenu(menu)
     }
 
     override fun onCompatOptionsItemSelected(item: MenuItem) {
         super.onCompatOptionsItemSelected(item)
         when (item.itemId) {
+            R.id.menu_rimchars_rss -> {
+                RimcharsUiConfig.rssEnabled = !RimcharsUiConfig.rssEnabled
+                usingRimcharsStyle = RimcharsUiConfig.rssEnabled
+                item.isChecked = usingRimcharsStyle
+                applyRimcharsStyle()
+                upRssFlowJob(searchView.query?.toString())
+                return
+            }
             R.id.menu_read_record -> showDialogFragment<ReadRecordDialog>()
             R.id.menu_rss_config -> startActivity<RssSourceActivity>()
             R.id.menu_rss_star -> startActivity<RssFavoritesActivity>()
-            R.id.menu_rss_direct_url -> if (EnhancedPageConfig.enhancedRssPage) {
-                showDirectUrlDialog()
-            }
-            R.id.menu_rss_merge_search -> if (EnhancedPageConfig.enhancedRssPage) {
-                showMergedCachedSearch()
-            }
-            else -> if (item.groupId == R.id.menu_group_text) {
-                searchView.setQuery("group:${item.title}", true)
-            }
+            R.id.menu_rss_direct_url -> if (EnhancedPageConfig.enhancedRssPage && !usingRimcharsStyle) showDirectUrlDialog()
+            R.id.menu_rss_merge_search -> if (EnhancedPageConfig.enhancedRssPage && !usingRimcharsStyle) showMergedCachedSearch()
+            else -> if (item.groupId == R.id.menu_group_text) searchView.setQuery("group:${item.title}", true)
         }
     }
 
@@ -134,19 +148,13 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
 
     private fun upGroupsMenu() = groupsMenu?.transaction { subMenu ->
         subMenu.removeGroup(R.id.menu_group_text)
-        groups.forEach {
-            subMenu.add(R.id.menu_group_text, Menu.NONE, Menu.NONE, it)
-        }
+        groups.forEach { subMenu.add(R.id.menu_group_text, Menu.NONE, Menu.NONE, it) }
     }
 
     private fun initSearchView() {
         searchView.applyTint(primaryTextColor)
         searchView.isSubmitButtonEnabled = true
-        searchView.queryHint = if (EnhancedPageConfig.enhancedRssPage) {
-            "搜索订阅源 / 内容 / 分组"
-        } else {
-            getString(R.string.rss)
-        }
+        searchView.queryHint = if (EnhancedPageConfig.enhancedRssPage) "搜索订阅源 / 内容 / 分组" else getString(R.string.rss)
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 if (EnhancedPageConfig.enhancedRssPage) {
@@ -158,7 +166,6 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                 }
                 return false
             }
-
             override fun onQueryTextChange(newText: String?): Boolean {
                 upRssFlowJob(newText)
                 return false
@@ -166,64 +173,60 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
         })
     }
 
+    private fun applyRimcharsStyle() {
+        binding.composeRimcharsRss.isVisible = usingRimcharsStyle
+        binding.recyclerView.isVisible = !usingRimcharsStyle
+        binding.tvRssHint.isVisible = !usingRimcharsStyle
+        binding.titleBar.isVisible = !usingRimcharsStyle
+        if (usingRimcharsStyle) {
+            binding.composeRimcharsRss.setContent {
+                RimcharsRssScreen(
+                    sources = emptyList(),
+                    groups = groups.toList(),
+                    onSourceClick = { openRss(it) },
+                    onSearchClick = {
+                        searchView.isIconified = false
+                        searchView.requestFocus()
+                    }
+                )
+            }
+        }
+        activity?.invalidateOptionsMenu()
+    }
+
     private fun showCachedArticleSearch(keyword: String) {
         viewLifecycleOwner.lifecycleScope.launch(IO) {
-            val articles: List<RssArticle> = runCatching {
-                appDb.rssArticleDao.search(keyword)
-            }.getOrDefault(emptyList<RssArticle>())
+            val articles: List<RssArticle> = runCatching { appDb.rssArticleDao.search(keyword) }.getOrDefault(emptyList<RssArticle>())
             launch {
                 if (!isAdded) return@launch
                 if (articles.isEmpty()) {
-                    alert("订阅内容搜索") {
-                        setMessage("没有找到已缓存的订阅内容：$keyword")
-                        okButton()
-                    }
+                    alert("订阅内容搜索") { setMessage("没有找到已缓存的订阅内容：$keyword"); okButton() }
                     return@launch
                 }
-                val items = articles.distinctBy { article -> article.toRecord().record }
-                    .take(50)
-                    .map { article ->
-                        SelectItem(article.title.ifBlank { article.link }, article)
-                    }
+                val items = articles.distinctBy { article -> article.toRecord().record }.take(50).map { article -> SelectItem(article.title.ifBlank { article.link }, article) }
                 requireContext().selector(items) { _, _, article ->
                     val selected = article as? RssArticle
-                    selected?.link?.takeIf { it.startsWith("http", true) }?.let { url ->
-                        context?.openUrl(url)
-                    }
+                    selected?.link?.takeIf { it.startsWith("http", true) }?.let { url -> context?.openUrl(url) }
                 }
             }
         }
     }
 
-    /**
-     * Enhanced mode: merge the cached content of all currently enabled RSS sources
-     * into one search entry. This is deliberately cache-only, so the legacy page
-     * never gains extra network requests when the feature is disabled.
-     */
     private fun showMergedCachedSearch() {
         viewLifecycleOwner.lifecycleScope.launch(IO) {
-            val sources = runCatching {
-                appDb.rssSourceDao.flowEnabled().first()
-            }.getOrDefault(emptyList())
+            val sources = runCatching { appDb.rssSourceDao.flowEnabled().first() }.getOrDefault(emptyList())
             launch {
                 if (!isAdded) return@launch
                 if (sources.isEmpty()) {
-                    alert("多源合并搜索") {
-                        setMessage("当前没有启用的订阅源")
-                        okButton()
-                    }
+                    alert("多源合并搜索") { setMessage("当前没有启用的订阅源"); okButton() }
                     return@launch
                 }
-                val dialogBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = "输入书名、标题或关键词"
-                }
+                val dialogBinding = DialogEditTextBinding.inflate(layoutInflater).apply { editView.hint = "输入书名、标题或关键词" }
                 alert("多源合并搜索（${sources.size} 个源）") {
                     customView { dialogBinding.root }
                     okButton {
                         val keyword = dialogBinding.editView.text?.toString()?.trim().orEmpty()
-                        if (keyword.isNotEmpty()) {
-                            searchMergedArticles(sources.map { it.sourceUrl }, keyword)
-                        }
+                        if (keyword.isNotEmpty()) searchMergedArticles(sources.map { it.sourceUrl }, keyword)
                     }
                     cancelButton()
                 }
@@ -233,37 +236,21 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
 
     private fun searchMergedArticles(origins: List<String>, keyword: String) {
         viewLifecycleOwner.lifecycleScope.launch(IO) {
-            val articles: List<RssArticle> = runCatching {
-                appDb.rssArticleDao.searchByOrigins(origins, keyword)
-            }.getOrDefault(emptyList<RssArticle>())
+            val articles: List<RssArticle> = runCatching { appDb.rssArticleDao.searchByOrigins(origins, keyword) }.getOrDefault(emptyList<RssArticle>())
             launch {
                 if (!isAdded) return@launch
                 if (articles.isEmpty()) {
-                    alert("多源合并搜索") {
-                        setMessage("没有找到已缓存的订阅内容：$keyword")
-                        okButton()
-                    }
+                    alert("多源合并搜索") { setMessage("没有找到已缓存的订阅内容：$keyword"); okButton() }
                     return@launch
                 }
-                val items = articles.distinctBy { article -> article.toRecord().record }
-                    .take(100)
-                    .map { article ->
-                        val source = origins.indexOf(article.origin).let { index ->
-                            if (index >= 0) " · ${sourcesNamePlaceholder(index)}" else ""
-                        }
-                        SelectItem(article.title.ifBlank { article.link } + source, article)
-                    }
+                val items = articles.distinctBy { article -> article.toRecord().record }.take(100).map { article -> SelectItem(article.title.ifBlank { article.link }, article) }
                 requireContext().selector(items) { _, _, article ->
                     val selected = article as? RssArticle
-                    selected?.link?.takeIf { it.startsWith("http", true) }?.let { url ->
-                        context?.openUrl(url)
-                    }
+                    selected?.link?.takeIf { it.startsWith("http", true) }?.let { url -> context?.openUrl(url) }
                 }
             }
         }
     }
-
-    private fun sourcesNamePlaceholder(index: Int): String = "源${index + 1}"
 
     private fun initRecyclerView() {
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
@@ -273,9 +260,7 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
             ItemRssBinding.inflate(layoutInflater, it, false).apply {
                 tvName.setText(R.string.rule_subscription)
                 ivIcon.setImageResource(R.drawable.image_legado)
-                root.setOnClickListener {
-                    startActivity<RuleSubActivity>()
-                }
+                root.setOnClickListener { startActivity<RuleSubActivity>() }
             }
         }
     }
@@ -290,17 +275,13 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
     private fun initGroupData() {
         groupsFlowJob?.cancel()
         groupsFlowJob = viewLifecycleOwner.lifecycleScope.launch {
-            appDb.rssSourceDao.flowEnabledGroups().catch {
-                AppLog.put("订阅界面获取分组数据失败\n${it.localizedMessage}", it)
-            }.flowWithLifecycleAndDatabaseChange(
-                viewLifecycleOwner.lifecycle,
-                Lifecycle.State.RESUMED,
-                AppDatabase.RSS_SOURCE_TABLE_NAME
-            ).conflate().collect {
-                groups.clear()
-                groups.addAll(it)
-                upGroupsMenu()
-            }
+            appDb.rssSourceDao.flowEnabledGroups().catch { AppLog.put("订阅界面获取分组数据失败\n${it.localizedMessage}", it) }
+                .flowWithLifecycleAndDatabaseChange(viewLifecycleOwner.lifecycle, Lifecycle.State.RESUMED, AppDatabase.RSS_SOURCE_TABLE_NAME)
+                .conflate().collect {
+                    groups.clear()
+                    groups.addAll(it)
+                    upGroupsMenu()
+                }
         }
     }
 
@@ -309,67 +290,44 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
         rssFlowJob = viewLifecycleOwner.lifecycleScope.launch {
             when {
                 searchKey.isNullOrEmpty() -> appDb.rssSourceDao.flowEnabled()
-                searchKey.startsWith("group:") -> {
-                    val key = searchKey.substringAfter("group:")
-                    appDb.rssSourceDao.flowEnabledByGroup(key)
-                }
+                searchKey.startsWith("group:") -> appDb.rssSourceDao.flowEnabledByGroup(searchKey.substringAfter("group:"))
                 else -> appDb.rssSourceDao.flowEnabled(searchKey)
             }.map { data ->
                 when (sort) {
-                    RssSourceSort.Name -> {
-                        if (sortAscending) data.sortedWith { o1, o2 ->
-                            o1.sourceName.cnCompare(o2.sourceName)
-                        } else data.sortedWith { o1, o2 ->
-                            o2.sourceName.cnCompare(o1.sourceName)
-                        }
-                    }
-                    RssSourceSort.Url -> {
-                        if (sortAscending) data.sortedBy { it.sourceUrl }
-                        else data.sortedByDescending { it.sourceUrl }
-                    }
-                    RssSourceSort.Update -> {
-                        if (sortAscending) data.sortedBy { it.lastUpdateTime }
-                        else data.sortedByDescending { it.lastUpdateTime }
-                    }
-                    RssSourceSort.Enable -> {
-                        if (sortAscending) data.sortedWith { o1, o2 ->
-                            var sortNum = -o1.enabled.compareTo(o2.enabled)
-                            if (sortNum == 0) sortNum = o1.sourceName.cnCompare(o2.sourceName)
-                            sortNum
-                        } else data.sortedWith { o1, o2 ->
-                            var sortNum = o1.enabled.compareTo(o2.enabled)
-                            if (sortNum == 0) sortNum = o1.sourceName.cnCompare(o2.sourceName)
-                            sortNum
-                        }
-                    }
+                    RssSourceSort.Name -> if (sortAscending) data.sortedWith { o1, o2 -> o1.sourceName.cnCompare(o2.sourceName) } else data.sortedWith { o1, o2 -> o2.sourceName.cnCompare(o1.sourceName) }
+                    RssSourceSort.Url -> if (sortAscending) data.sortedBy { it.sourceUrl } else data.sortedByDescending { it.sourceUrl }
+                    RssSourceSort.Update -> if (sortAscending) data.sortedBy { it.lastUpdateTime } else data.sortedByDescending { it.lastUpdateTime }
+                    RssSourceSort.Enable -> if (sortAscending) data.sortedWith { o1, o2 -> var sortNum = -o1.enabled.compareTo(o2.enabled); if (sortNum == 0) sortNum = o1.sourceName.cnCompare(o2.sourceName); sortNum } else data.sortedWith { o1, o2 -> var sortNum = o1.enabled.compareTo(o2.enabled); if (sortNum == 0) sortNum = o1.sourceName.cnCompare(o2.sourceName); sortNum }
                     else -> data
                 }
-            }.flowWithLifecycleAndDatabaseChange(
-                viewLifecycleOwner.lifecycle,
-                Lifecycle.State.RESUMED,
-                AppDatabase.RSS_SOURCE_TABLE_NAME
-            ).catch {
-                AppLog.put("订阅界面更新数据出错", it)
-            }.flowOn(IO).collect {
-                adapter.setItems(it)
-                binding.recyclerView.post {
-                    binding.recyclerView.refreshSystemScrollBar()
+            }.flowWithLifecycleAndDatabaseChange(viewLifecycleOwner.lifecycle, Lifecycle.State.RESUMED, AppDatabase.RSS_SOURCE_TABLE_NAME)
+                .catch { AppLog.put("订阅界面更新数据出错", it) }.flowOn(IO).collect { data ->
+                    adapter.setItems(data)
+                    binding.recyclerView.post { binding.recyclerView.refreshSystemScrollBar() }
+                    if (usingRimcharsStyle) {
+                        binding.composeRimcharsRss.setContent {
+                            RimcharsRssScreen(
+                                sources = data,
+                                groups = groups.toList(),
+                                onSourceClick = { openRss(it) },
+                                onSearchClick = {
+                                    searchView.isIconified = false
+                                    searchView.requestFocus()
+                                }
+                            )
+                        }
+                    }
                 }
-            }
         }
     }
 
     private fun showDirectUrlDialog() {
-        val dialogBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-            editView.hint = "https://example.com/feed.xml"
-        }
+        val dialogBinding = DialogEditTextBinding.inflate(layoutInflater).apply { editView.hint = "https://example.com/feed.xml" }
         alert("直接 URL 订阅") {
             customView { dialogBinding.root }
             okButton {
                 val url = dialogBinding.editView.text?.toString()?.trim().orEmpty()
-                if (url.startsWith("http://", true) || url.startsWith("https://", true)) {
-                    openRss(RssSource(sourceUrl = url, sourceName = url, singleUrl = true))
-                }
+                if (url.startsWith("http://", true) || url.startsWith("https://", true)) openRss(RssSource(sourceUrl = url, sourceName = url, singleUrl = true))
             }
             cancelButton()
         }
@@ -378,63 +336,18 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
     override fun openRss(rssSource: RssSource) {
         if (rssSource.singleUrl) {
             viewModel.getSingleUrl(rssSource) { url ->
-                if (url.startsWith("http", true)) {
-                    ReadRssActivity.start(
-                        requireContext(),
-                        true,
-                        rssSource.sourceUrl,
-                        rssSource.sourceName,
-                        url
-                    )
-                } else {
-                    context?.openUrl(url)
-                }
+                if (url.startsWith("http", true)) ReadRssActivity.start(requireContext(), true, rssSource.sourceUrl, rssSource.sourceName, url) else context?.openUrl(url)
             }
         } else {
-            viewModel.launchRssWithHtml(rssSource, {
-                startActivity<RssSortActivity> {
-                    putExtra("sourceUrl", rssSource.sourceUrl)
-                }
-            }) { html ->
-                ReadRssActivity.start(
-                    requireContext(),
-                    true,
-                    rssSource.sourceUrl,
-                    rssSource.sourceName,
-                    startHtml = html
-                )
+            viewModel.launchRssWithHtml(rssSource, { startActivity<RssSortActivity> { putExtra("sourceUrl", rssSource.sourceUrl) } }) { html ->
+                ReadRssActivity.start(requireContext(), true, rssSource.sourceUrl, rssSource.sourceName, startHtml = html)
             }
         }
     }
 
-    override fun toTop(rssSource: RssSource) {
-        viewModel.topSource(rssSource)
-    }
-
-    override fun login(rssSource: RssSource) {
-        startActivity<SourceLoginActivity> {
-            putExtra("type", "rssSource")
-            putExtra("key", rssSource.sourceUrl)
-        }
-    }
-
-    override fun edit(rssSource: RssSource) {
-        startActivity<RssSourceEditActivity> {
-            putExtra("sourceUrl", rssSource.sourceUrl)
-        }
-    }
-
-    override fun del(rssSource: RssSource) {
-        alert(R.string.draw) {
-            setMessage(getString(R.string.sure_del) + "\n" + rssSource.sourceName)
-            noButton()
-            yesButton {
-                viewModel.del(rssSource)
-            }
-        }
-    }
-
-    override fun disable(rssSource: RssSource) {
-        viewModel.disable(rssSource)
-    }
+    override fun toTop(rssSource: RssSource) { viewModel.topSource(rssSource) }
+    override fun login(rssSource: RssSource) { startActivity<SourceLoginActivity> { putExtra("type", "rssSource"); putExtra("key", rssSource.sourceUrl) } }
+    override fun edit(rssSource: RssSource) { startActivity<RssSourceEditActivity> { putExtra("sourceUrl", rssSource.sourceUrl) } }
+    override fun del(rssSource: RssSource) { alert(R.string.draw) { setMessage(getString(R.string.sure_del) + "\n" + rssSource.sourceName); noButton(); yesButton { viewModel.del(rssSource) } } }
+    override fun disable(rssSource: RssSource) { viewModel.disable(rssSource) }
 }
