@@ -7,6 +7,7 @@ import android.view.SubMenu
 import android.view.View
 import androidx.appcompat.widget.SearchView
 import androidx.core.view.isGone
+import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -24,6 +25,7 @@ import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.FragmentExploreBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.EnhancedPageConfig
+import io.legado.app.help.config.RimcharsUiConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
@@ -80,13 +82,16 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     private var sourceMenu: SubMenu? = null
     private var sort = BookSourceSort.Default
     private var sortAscending = true
+    private var usingRimcharsStyle = false
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         setSupportToolbar(binding.titleBar.toolbar)
+        usingRimcharsStyle = RimcharsUiConfig.discoveryEnabled
         initSearchView()
         initRecyclerView()
         initGroupData()
         initSourceData()
+        applyRimcharsStyle()
         upExploreData()
     }
 
@@ -95,8 +100,10 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         menuInflater.inflate(R.menu.main_explore, menu)
         groupsMenu = menu.findItem(R.id.menu_group)?.subMenu
         sourceMenu = menu.findItem(R.id.menu_explore_source)?.subMenu
-        menu.findItem(R.id.menu_explore_direct_url)?.isVisible = EnhancedPageConfig.enhancedExplorePage
-        menu.findItem(R.id.menu_explore_source)?.isVisible = EnhancedPageConfig.enhancedExplorePage
+        menu.findItem(R.id.menu_explore_direct_url)?.isVisible = EnhancedPageConfig.enhancedExplorePage && !usingRimcharsStyle
+        menu.findItem(R.id.menu_explore_source)?.isVisible = EnhancedPageConfig.enhancedExplorePage && !usingRimcharsStyle
+        menu.findItem(R.id.menu_rimchars_discovery)?.isChecked = usingRimcharsStyle
+        menu.findItem(R.id.menu_rimchars_discovery)?.isVisible = true
         val sortSubMenu = menu.findItem(R.id.action_sort).subMenu
         sortSubMenu?.findItem(R.id.menu_sort_desc)?.isChecked = !sortAscending
         sortSubMenu?.setGroupCheckable(R.id.menu_group_sort, true, true)
@@ -108,8 +115,9 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         val sortSubMenu = menu.findItem(R.id.action_sort).subMenu!!
         sortSubMenu.findItem(R.id.menu_sort_desc).isChecked = !sortAscending
         sortSubMenu.setGroupCheckable(R.id.menu_group_sort, true, true)
-        menu.findItem(R.id.menu_explore_source)?.isVisible = EnhancedPageConfig.enhancedExplorePage
-        menu.findItem(R.id.menu_explore_direct_url)?.isVisible = EnhancedPageConfig.enhancedExplorePage
+        menu.findItem(R.id.menu_explore_source)?.isVisible = EnhancedPageConfig.enhancedExplorePage && !usingRimcharsStyle
+        menu.findItem(R.id.menu_explore_direct_url)?.isVisible = EnhancedPageConfig.enhancedExplorePage && !usingRimcharsStyle
+        menu.findItem(R.id.menu_rimchars_discovery)?.isChecked = usingRimcharsStyle
         super.onPrepareOptionsMenu(menu)
     }
 
@@ -216,16 +224,53 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
                 }
             }.flowWithLifecycleAndDatabaseChange(viewLifecycleOwner.lifecycle, Lifecycle.State.RESUMED, AppDatabase.BOOK_SOURCE_TABLE_NAME)
                 .catch { AppLog.put("发现界面更新数据出错", it) }
-                .conflate().flowOn(IO).collect {
-                    binding.tvEmptyMsg.isGone = it.isNotEmpty() || searchView.query.isNotEmpty()
-                    adapter.setItems(it, diffItemCallBack)
+                .conflate().flowOn(IO).collect { data ->
+                    binding.tvEmptyMsg.isGone = data.isNotEmpty() || searchView.query.isNotEmpty()
+                    adapter.setItems(data, diffItemCallBack)
                     binding.rvFind.post { binding.rvFind.refreshSystemScrollBar() }
+                    if (usingRimcharsStyle) {
+                        binding.composeRimcharsDiscovery.setContent {
+                            RimcharsDiscoveryScreen(
+                                sources = data,
+                                groups = groups.toList(),
+                                onSourceClick = { source ->
+                                    val bookSource = source.getBookSource()
+                                    openExplore(source.bookSourceUrl, source.bookSourceName, bookSource?.exploreUrl)
+                                },
+                                onSearchClick = {
+                                    searchView.isIconified = false
+                                    searchView.requestFocus()
+                                }
+                            )
+                        }
+                    }
                     delay(500)
                 }
         }
     }
 
-    override fun onResume() { super.onResume(); adapter.upResumed(true); adapter.onResume() }
+    private fun applyRimcharsStyle() {
+        binding.composeRimcharsDiscovery.isVisible = usingRimcharsStyle
+        binding.rvFind.isVisible = !usingRimcharsStyle
+        binding.tvExploreHint.isVisible = !usingRimcharsStyle
+        binding.titleBar.isVisible = !usingRimcharsStyle
+        if (usingRimcharsStyle) {
+            binding.composeRimcharsDiscovery.setContent {
+                RimcharsDiscoveryScreen(
+                    sources = emptyList(),
+                    groups = groups.toList(),
+                    onSourceClick = {},
+                    onSearchClick = {
+                        searchView.isIconified = false
+                        searchView.requestFocus()
+                    }
+                )
+            }
+        }
+        activity?.invalidateOptionsMenu()
+    }
+
+    override fun onResume() { super.onResume(); adapter.upResumed(true); adapter.onResume(); if (usingRimcharsStyle != RimcharsUiConfig.discoveryEnabled) { usingRimcharsStyle = RimcharsUiConfig.discoveryEnabled; applyRimcharsStyle(); upExploreData(searchView.query?.toString()) } }
     override fun onPause() { adapter.upResumed(false); searchView.clearFocus(); adapter.onPause(); super.onPause() }
     override fun onDestroyView() { adapter.onDestroy(); super.onDestroyView() }
 
@@ -239,7 +284,15 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     override fun onCompatOptionsItemSelected(item: MenuItem) {
         super.onCompatOptionsItemSelected(item)
         when (item.itemId) {
-            R.id.menu_explore_direct_url -> if (EnhancedPageConfig.enhancedExplorePage) showDirectUrlDialog()
+            R.id.menu_rimchars_discovery -> {
+                RimcharsUiConfig.discoveryEnabled = !RimcharsUiConfig.discoveryEnabled
+                usingRimcharsStyle = RimcharsUiConfig.discoveryEnabled
+                item.isChecked = usingRimcharsStyle
+                applyRimcharsStyle()
+                upExploreData(searchView.query?.toString())
+                return
+            }
+            R.id.menu_explore_direct_url -> if (EnhancedPageConfig.enhancedExplorePage && !usingRimcharsStyle) showDirectUrlDialog()
             R.id.menu_sort_desc -> { sortAscending = !sortAscending; item.isChecked = !sortAscending; upExploreData(searchView.query?.toString()) }
             R.id.menu_sort_manual -> { item.isChecked = true; sort = BookSourceSort.Default; upExploreData(searchView.query?.toString()) }
             R.id.menu_sort_name -> { item.isChecked = true; sort = BookSourceSort.Name; upExploreData(searchView.query?.toString()) }
@@ -249,7 +302,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         }
         if (item.groupId == R.id.menu_group_text) {
             searchView.setQuery("group:${item.title}", true)
-        } else if (item.groupId == R.id.menu_explore_source_text && EnhancedPageConfig.enhancedExplorePage) {
+        } else if (item.groupId == R.id.menu_explore_source_text && EnhancedPageConfig.enhancedExplorePage && !usingRimcharsStyle) {
             selectedExploreSource = if (item.order <= 0) null else exploreSources.keys.elementAtOrNull(item.order - 1)
             upSourceMenu()
             upExploreData(searchView.query?.toString())
