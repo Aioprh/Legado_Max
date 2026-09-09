@@ -17,8 +17,10 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.AppDatabase
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.RssSource
+import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.FragmentRssBinding
 import io.legado.app.databinding.ItemRssBinding
+import io.legado.app.help.config.EnhancedPageConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
@@ -42,7 +44,6 @@ import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.transaction
 import io.legado.app.utils.viewbindingdelegate.viewBinding
-import splitties.init.appCtx
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
@@ -50,6 +51,7 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import splitties.init.appCtx
 import io.legado.app.ui.login.SourceLoginActivity
 import io.legado.app.ui.main.MainActivity
 
@@ -80,15 +82,9 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
     private val groups = linkedSetOf<String>()
     private var groupsMenu: SubMenu? = null
 
-    /**
-     * 订阅源排序方式，从 SharedPreferences 读取，与订阅源管理页面同步
-     */
     private val sort: RssSourceSort
         get() = RssSourceSort.entries[appCtx.getPrefInt(PreferKey.rssSourceSort, 0)]
 
-    /**
-     * 排序方向，从 SharedPreferences 读取
-     */
     private val sortAscending: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.rssSourceSortAscending, true)
 
@@ -103,6 +99,7 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
     override fun onCompatCreateOptionsMenu(menu: Menu) {
         menuInflater.inflate(R.menu.main_rss, menu)
         groupsMenu = menu.findItem(R.id.menu_group)?.subMenu
+        menu.findItem(R.id.menu_rss_direct_url)?.isVisible = EnhancedPageConfig.enhancedRssPage
         upGroupsMenu()
     }
 
@@ -112,6 +109,9 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
             R.id.menu_read_record -> showDialogFragment<ReadRecordDialog>()
             R.id.menu_rss_config -> startActivity<RssSourceActivity>()
             R.id.menu_rss_star -> startActivity<RssFavoritesActivity>()
+            R.id.menu_rss_direct_url -> if (EnhancedPageConfig.enhancedRssPage) {
+                showDirectUrlDialog()
+            }
             else -> if (item.groupId == R.id.menu_group_text) {
                 searchView.setQuery("group:${item.title}", true)
             }
@@ -133,11 +133,13 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
     private fun initSearchView() {
         searchView.applyTint(primaryTextColor)
         searchView.isSubmitButtonEnabled = true
-        searchView.queryHint = getString(R.string.rss)
+        searchView.queryHint = if (EnhancedPageConfig.enhancedRssPage) {
+            "搜索订阅源 / 内容 / 分组"
+        } else {
+            getString(R.string.rss)
+        }
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                return false
-            }
+            override fun onQueryTextSubmit(query: String?): Boolean = false
 
             override fun onQueryTextChange(newText: String?): Boolean {
                 upRssFlowJob(newText)
@@ -194,10 +196,8 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                     val key = searchKey.substringAfter("group:")
                     appDb.rssSourceDao.flowEnabledByGroup(key)
                 }
-
                 else -> appDb.rssSourceDao.flowEnabled(searchKey)
             }.map { data ->
-                // 应用排序逻辑，与订阅源管理页面保持一致
                 when (sort) {
                     RssSourceSort.Name -> {
                         if (sortAscending) data.sortedWith { o1, o2 ->
@@ -225,7 +225,7 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                             sortNum
                         }
                     }
-                    else -> data // 手动排序时，数据库已按 customOrder 排序
+                    else -> data
                 }
             }.flowWithLifecycleAndDatabaseChange(
                 viewLifecycleOwner.lifecycle,
@@ -239,6 +239,22 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                     binding.recyclerView.refreshSystemScrollBar()
                 }
             }
+        }
+    }
+
+    private fun showDirectUrlDialog() {
+        val dialogBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
+            editView.hint = "https://example.com/feed.xml"
+        }
+        alert("直接 URL 订阅") {
+            customView { dialogBinding.root }
+            okButton {
+                val url = dialogBinding.editView.text?.toString()?.trim().orEmpty()
+                if (url.startsWith("http://", true) || url.startsWith("https://", true)) {
+                    openRss(RssSource(sourceUrl = url, sourceName = url, singleUrl = true))
+                }
+            }
+            cancelButton()
         }
     }
 
