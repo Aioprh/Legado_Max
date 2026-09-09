@@ -2,8 +2,6 @@ name: Fix bookshelf tag white line
 
 on:
   push:
-    paths:
-      - '.github/workflows/fix-tag-white-line.yml'
   workflow_dispatch:
 
 permissions:
@@ -32,10 +30,11 @@ jobs:
             overScrollMode = View.OVER_SCROLL_NEVER
             isFillViewport = false
             clipToPadding = true'''
-          if old not in s:
-              raise SystemExit('target block not found')
-          s = s.replace(old, new, 1)
-          p.write_text(s)
+          if old in s:
+              s = s.replace(old, new, 1)
+              p.write_text(s)
+          else:
+              print('target already patched or not found')
           PY
       - name: Commit and remove temporary workflow
         run: |
@@ -43,5 +42,6 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/src/main/java/io/legado/app/ui/main/bookshelf/style1/books/BooksFragment.kt
           git rm .github/workflows/fix-tag-white-line.yml
+          git diff --cached --quiet && exit 0
           git commit -m 'Fix bookshelf tag bar white line'
           git push
