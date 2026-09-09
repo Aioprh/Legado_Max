@@ -181,8 +181,8 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         val all = subMenu.add(R.id.menu_explore_source_text, Menu.NONE, 0, "全部发现源")
         all.isCheckable = true
         all.isChecked = selectedExploreSource == null
-        exploreSources.forEach { (url, name) ->
-            val item = subMenu.add(R.id.menu_explore_source_text, Menu.NONE, Menu.NONE, name)
+        exploreSources.entries.forEachIndexed { index, (url, name) ->
+            val item = subMenu.add(R.id.menu_explore_source_text, Menu.NONE, index + 1, name)
             item.isCheckable = true
             item.isChecked = selectedExploreSource == url
         }
@@ -250,9 +250,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         if (item.groupId == R.id.menu_group_text) {
             searchView.setQuery("group:${item.title}", true)
         } else if (item.groupId == R.id.menu_explore_source_text && EnhancedPageConfig.enhancedExplorePage) {
-            val selectedIndex = item.order
-            if (selectedIndex <= 0) selectedExploreSource = null
-            else selectedExploreSource = exploreSources.keys.elementAtOrNull(selectedIndex - 1)
+            selectedExploreSource = if (item.order <= 0) null else exploreSources.keys.elementAtOrNull(item.order - 1)
             upSourceMenu()
             upExploreData(searchView.query?.toString())
         }
