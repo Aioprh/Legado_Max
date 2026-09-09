@@ -24,33 +24,25 @@ jobs:
           from pathlib import Path
           p = Path('app/src/main/java/io/legado/app/ui/main/bookshelf/style1/books/BooksFragment.kt')
           s = p.read_text(encoding='utf-8')
-          old = '''        smartTagFilterScroll = HorizontalScrollView(context).apply {
-            isHorizontalScrollBarEnabled = false
-            isFillViewport = false
-            clipToPadding = false
-            elevation = 6.dpToPx().toFloat()'''
-          new = '''        smartTagFilterScroll = HorizontalScrollView(context).apply {
-            isHorizontalScrollBarEnabled = false
-            isFillViewport = false
-            // Keep the horizontally scrolling chips strictly inside the rounded capsule.
-            clipToPadding = true
-            clipChildren = true
-            clipToOutline = true
-            outlineProvider = object : android.view.ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: android.graphics.Outline) {
-                    outline.setRoundRect(
-                        0,
-                        0,
-                        view.width,
-                        view.height,
-                        22.dpToPx().toFloat()
-                    )
-                }
-            }
-            elevation = 6.dpToPx().toFloat()'''
+          indent = ' ' * 12
+          old = indent + 'clipToPadding = false'
+          replacement = indent + '''clipToPadding = true
+          ''' + indent + '''clipChildren = true
+          ''' + indent + '''clipToOutline = true
+          ''' + indent + '''outlineProvider = object : android.view.ViewOutlineProvider() {
+          ''' + indent + '''    override fun getOutline(view: View, outline: android.graphics.Outline) {
+          ''' + indent + '''        outline.setRoundRect(
+          ''' + indent + '''            0,
+          ''' + indent + '''            0,
+          ''' + indent + '''            view.width,
+          ''' + indent + '''            view.height,
+          ''' + indent + '''            22.dpToPx().toFloat()
+          ''' + indent + '''        )
+          ''' + indent + '''    }
+          ''' + indent + '''}'''
           if old not in s:
               raise SystemExit('target block not found')
-          s = s.replace(old, new, 1)
+          s = s.replace(old, replacement, 1)
           p.write_text(s, encoding='utf-8')
 
       - name: Remove temporary workflow and commit
