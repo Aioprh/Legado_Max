@@ -8,6 +8,7 @@
     <item android:id="@+id/menu_change_source" android:icon="@drawable/ic_exchange" android:title="@string/change_origin" app:showAsAction="always" />
     <item android:id="@+id/menu_login" android:title="@string/login" app:showAsAction="never" />
     <item android:id="@+id/menu_download_audio" android:title="@string/download_audio" app:showAsAction="never" />
+    <item android:id="@+id/menu_batch_download_audio" android:title="@string/audio_batch_download" app:showAsAction="never" />
     <item android:id="@+id/menu_downloaded_audio" android:title="@string/downloaded_audio" app:showAsAction="never" />
     <item android:id="@+id/menu_copy_audio_url" android:title="@string/copy_play_url" app:showAsAction="never" />
     <item android:id="@+id/menu_edit_source" android:title="@string/edit_book_source" app:showAsAction="never" />
