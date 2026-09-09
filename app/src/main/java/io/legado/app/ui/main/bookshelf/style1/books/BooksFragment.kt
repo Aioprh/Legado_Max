@@ -101,7 +101,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             position = it.getInt("position", 0)
             groupId = it.getLong("groupId", -1)
             bookSort = it.getInt("bookSort", 0)
-            // 刷新由书架顶层下拉刷新统一触发，这里禁用内层刷新避免手势冲突
             binding.refreshLayout.isEnabled = false
         }
         initRecyclerView()
@@ -109,12 +108,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         upRecyclerData()
     }
 
-    /**
-     * 触发本分组的目录刷新，由书架顶层下拉刷新调用。
-     */
     fun performRefresh() {
-        // 手动下拉刷新是显式"强制刷新"操作，不受分组的"只更新已读"被动过滤影响，
-        // 否则开启了"只更新已读"后，正在阅读/未读完的书都会被过滤掉。
         activityViewModel.upToc(booksAdapter.getItems().map { it.toMinimalBook() }, false)
     }
 
@@ -202,7 +196,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             return
         }
 
-        // 过滤栏必须使用与管理页相同的完整规则集合，并包含自定义智能标签。
         val counts = linkedMapOf<String, Int>()
         items.forEach { item ->
             SmartTag.names(item.toMinimalBook(), context, Int.MAX_VALUE).forEach { tag ->
@@ -234,7 +227,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         }
 
         scroll.visibility = View.VISIBLE
-        // 让列表为标签栏预留真实高度，避免第一张书籍卡片被覆盖。
         scroll.doOnLayout {
             binding.rvBookshelf.updatePadding(top = it.height + 6.dpToPx())
         }
@@ -246,7 +238,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         binding.rvBookshelf.setHasFixedSize(true)
         binding.rvBookshelf.setEdgeEffectColor(primaryColor)
         upFastScrollerBar()
-        // 内层下拉刷新已禁用，刷新统一由书架顶层触发
         if (bookLayout >= 2) {
             binding.rvBookshelf.layoutManager = GridLayoutManager(context, bookLayout)
             binding.rvBookshelf.setRecycledViewPool(activityViewModel.booksGridRecycledViewPool)
@@ -313,13 +304,12 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     }
 
     fun setEnableRefresh(enable: Boolean) {
-        // 内层下拉刷新已禁用，刷新由书架顶层统一触发
         binding.refreshLayout.isEnabled = false
     }
 
     fun filterBooksByTag(tag: String?) {
         if (currentTag == tag) {
-            updateSmartTagFilterBar(booksAdapter.getItems())
+            upRecyclerData()
             return
         }
         currentTag = tag
@@ -339,7 +329,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
                         smartMatch || BookTagHelper.has(item.customTag, tag)
                     }
                 } ?: list
-                when (bookSort) {
+                val sorted = when (bookSort) {
                     1 -> filtered.sortedByDescending { it.latestChapterTime }
                     2 -> filtered.sortedWith { o1, o2 -> o1.name.cnCompare(o2.name) }
                     3 -> filtered.sortedBy { it.order }
@@ -347,6 +337,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
                     5 -> filtered.sortedWith { o1, o2 -> o1.author.cnCompare(o2.author) }
                     else -> filtered
                 }
+                list to sorted
             }.flowWithLifecycleAndDatabaseChangeFirst(
                 viewLifecycleOwner.lifecycle,
                 Lifecycle.State.STARTED,
@@ -354,12 +345,13 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             ).catch { AppLog.put("书架更新出错", it) }
                 .conflate()
                 .flowOn(Dispatchers.Default)
-                .collect { list ->
+                .collect { (allItems, list) ->
                     itemCount = list.size
                     binding.tvEmptyMsg.isGone = itemCount > 0
-                    // 内层下拉刷新已禁用，刷新由书架顶层统一触发
                     booksAdapter.setItems(list)
-                    updateSmartTagFilterBar(list)
+                    // 标签栏始终根据当前分组的完整书籍集合计算，不使用已经过滤后的列表。
+                    // 这样点击一个标签后，其他标签不会因为当前结果集变小而消失。
+                    updateSmartTagFilterBar(allItems)
                 }
         }
     }
