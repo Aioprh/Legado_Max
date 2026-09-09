@@ -16,12 +16,15 @@ import io.legado.app.constant.AppLog
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.AppDatabase
 import io.legado.app.data.appDb
+import io.legado.app.data.entities.RssArticle
 import io.legado.app.data.entities.RssSource
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.FragmentRssBinding
 import io.legado.app.databinding.ItemRssBinding
 import io.legado.app.help.config.EnhancedPageConfig
+import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.main.MainFragmentInterface
@@ -80,6 +83,7 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
     private var groupsFlowJob: Job? = null
     private var rssFlowJob: Job? = null
     private val groups = linkedSetOf<String>()
+
     private var groupsMenu: SubMenu? = null
 
     private val sort: RssSourceSort
@@ -139,13 +143,50 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
             getString(R.string.rss)
         }
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean = false
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                if (EnhancedPageConfig.enhancedRssPage) {
+                    val keyword = query?.trim().orEmpty()
+                    if (keyword.isNotEmpty() && !keyword.startsWith("group:")) {
+                        showCachedArticleSearch(keyword)
+                        return true
+                    }
+                }
+                return false
+            }
 
             override fun onQueryTextChange(newText: String?): Boolean {
                 upRssFlowJob(newText)
                 return false
             }
         })
+    }
+
+    private fun showCachedArticleSearch(keyword: String) {
+        viewLifecycleOwner.lifecycleScope.launch(IO) {
+            val articles = runCatching {
+                appDb.rssArticleDao.search(keyword)
+            }.getOrDefault(emptyList())
+            launch {
+                if (!isAdded) return@launch
+                if (articles.isEmpty()) {
+                    alert("订阅内容搜索") {
+                        setMessage("没有找到已缓存的订阅内容：$keyword")
+                        okButton()
+                    }
+                    return@launch
+                }
+                val items = articles.distinctBy { it.link }
+                    .take(50)
+                    .map { article ->
+                        SelectItem(article.title.ifBlank { article.link }, article)
+                    }
+                selector(items) { _, _, article ->
+                    article?.link?.takeIf { it.startsWith("http", true) }?.let { url ->
+                        context?.openUrl(url)
+                    }
+                }
+            }
+        }
     }
 
     private fun initRecyclerView() {
