@@ -180,7 +180,7 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                     }
                     return@launch
                 }
-                val items = articles.distinctBy(RssArticle::link)
+                val items = articles.distinctBy { article: RssArticle -> article.link }
                     .take(50)
                     .map { article ->
                         SelectItem(article.title.ifBlank { article.link }, article)
@@ -244,7 +244,7 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
                     }
                     return@launch
                 }
-                val items = articles.distinctBy(RssArticle::link)
+                val items = articles.distinctBy { article: RssArticle -> article.link }
                     .take(100)
                     .map { article ->
                         val source = origins.indexOf(article.origin).let { index ->
