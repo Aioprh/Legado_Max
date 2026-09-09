@@ -46,6 +46,25 @@ class GlassTabBarView @JvmOverloads constructor(
             override fun onTabReselected(tab: Tab) { centerTab(tab.position, true) }
         })
         post { styleTabs() }
+        post { updateTabMode() }
+    }
+
+    /**
+     * 根据所有 tab 的总宽度自适应切换模式：
+     * - 能在胶囊内完整放下 → MODE_FIXED，tab 均匀填满，避免右侧留空白
+     * - 放不下 → MODE_SCROLLABLE，允许左右滑动
+     */
+    private fun updateTabMode() {
+        if (tabCount == 0 || width == 0) return
+        val totalWidth = (0 until tabCount).sumOf { getTabAt(it)?.view?.width ?: 0 }
+        val targetMode = if (totalWidth <= width) MODE_FIXED else MODE_SCROLLABLE
+        if (tabMode != targetMode) {
+            tabMode = targetMode
+            // 切换模式后需要重新设置指示器样式与 tab 样式
+            post {
+                styleTabs()
+            }
+        }
     }
 
     fun setOnTabClickListener(listener: (Int) -> Unit) {
