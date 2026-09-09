@@ -22,6 +22,10 @@ object AudioDownloadManager {
     private val jobs = ConcurrentHashMap<String, Job>()
     private val root: File by lazy { File(appCtx.getExternalFilesDir("Music"), "LegadoAudio").apply { mkdirs() } }
 
+    data class DownloadedAudio(val file: File, val title: String) {
+        val size: Long get() = file.length()
+    }
+
     fun download(context: Context, url: String, title: String, onResult: (Boolean, File?) -> Unit = { _, _ -> }) {
         val urls = parseUrls(url)
         if (urls.isEmpty()) { onResult(false, null); return }
@@ -40,6 +44,7 @@ object AudioDownloadManager {
                             files.forEach { file -> append("#EXTINF:-1,\n"); append(file.absolutePath); append('\n') }
                         })
                     }
+                    dir
                 }
                 launch(Dispatchers.Main) { onResult(true, target) }
             } catch (_: Exception) {
@@ -49,10 +54,20 @@ object AudioDownloadManager {
         jobs[key] = job
     }
 
+    fun listDownloaded(): List<DownloadedAudio> = root.walkTopDown()
+        .filter { it.isFile && it.name != "playlist.m3u8" }
+        .map { file -> DownloadedAudio(file, file.nameWithoutExtension) }
+        .sortedByDescending { it.file.lastModified() }
+        .toList()
+
     fun isDownloaded(url: String): Boolean {
         val key = sha1(url)
         return root.walkTopDown().any { it.isFile && it.name.contains(key) }
     }
+
+    fun delete(file: File): Boolean = runCatching {
+        if (file.isDirectory) file.deleteRecursively() else file.delete()
+    }.getOrDefault(false)
 
     /** Adaptive URL preloading: faster networks get more chapters, while mobile/slow links stay conservative. */
     fun smartCount(context: Context, speed: Float): Int {
