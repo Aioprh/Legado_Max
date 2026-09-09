@@ -109,12 +109,16 @@ object AudioDownloadManager {
                         onMainProgress(onProgress, position + 1, chapters.size, chapter.title, true)
                         continue
                     }
-                    val content = try {
-                        WebBook.getContent(scope, source, book, chapter).await()
+                    val value = try {
+                        WebBook.getContentAwait(
+                            source,
+                            book,
+                            chapter,
+                            needSave = false
+                        ).trim()
                     } catch (_: Exception) {
-                        null
+                        ""
                     }
-                    val value = content?.trim().orEmpty()
                     if (value.isBlank()) {
                         onMainProgress(onProgress, position + 1, chapters.size, chapter.title, false)
                         continue
