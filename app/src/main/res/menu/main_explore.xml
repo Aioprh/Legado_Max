@@ -18,4 +18,5 @@
         <menu><group android:id="@+id/menu_explore_source_text" android:checkableBehavior="single" /></menu>
     </item>
     <item android:id="@+id/menu_explore_direct_url" android:title="直接 URL 发现" android:icon="@drawable/ic_add" app:showAsAction="never" />
+    <item android:id="@+id/menu_rimchars_discovery" android:title="Rimchars 风格发现页" android:checkable="true" android:showAsAction="never" />
 </menu>
