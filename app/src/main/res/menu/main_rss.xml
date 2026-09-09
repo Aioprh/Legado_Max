@@ -36,6 +36,12 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_rimchars_rss"
+        android:title="Rimchars 风格订阅页"
+        android:checkable="true"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_rss_config"
         android:title="@string/setting"
         android:icon="@drawable/ic_settings"
