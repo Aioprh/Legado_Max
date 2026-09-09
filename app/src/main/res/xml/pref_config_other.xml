@@ -55,6 +55,20 @@
             android:title="@string/show_rss"
             app:iconSpaceReserved="false" />
 
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="false"
+            android:key="enhancedExplorePage"
+            android:title="增强发现页"
+            android:summary="开启后使用增强版发现页；关闭时保持 Max 原版发现页"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="false"
+            android:key="enhancedRssPage"
+            android:title="增强订阅页"
+            android:summary="开启后使用增强版订阅页；关闭时保持 Max 原版订阅页"
+            app:iconSpaceReserved="false" />
+
         <io.legado.app.lib.prefs.Preference
             android:key="navItemOrder"
             android:summary="@string/nav_item_sort_summary"
@@ -65,7 +79,6 @@
 
     </io.legado.app.lib.prefs.PreferenceCategory>
 
-    <!-- 增强功能：包含目录不完全加载、调试模式等高级功能 -->
     <io.legado.app.lib.prefs.PreferenceCategory
         android:title="@string/enhanced_features"
         app:allowDividerAbove="false"
@@ -73,7 +86,6 @@
         app:iconSpaceReserved="false"
         app:layout="@layout/view_preference_category">
 
-        <!-- 目录不完全加载：允许在目录未完全加载时进入内容 -->
         <io.legado.app.lib.prefs.SwitchPreference
             android:defaultValue="false"
             android:key="tocPartialLoad"
@@ -81,7 +93,6 @@
             android:title="@string/pt_toc_partial_load"
             app:iconSpaceReserved="false" />
 
-        <!-- 调试模式：开启后"我的"页面显示调试工具入口 -->
         <io.legado.app.lib.prefs.Preference
             android:key="tocPartialLoadInterval"
             android:title="@string/pt_toc_partial_load_interval"
@@ -94,7 +105,6 @@
             android:title="@string/debug_mode"
             app:iconSpaceReserved="false" />
 
-        <!-- 调试日志悬浮球：开启后在应用内任何页面显示调试日志悬浮球 -->
         <io.legado.app.lib.prefs.SwitchPreference
             android:defaultValue="false"
             android:key="debugLogFloatingBall"
@@ -102,7 +112,6 @@
             android:title="@string/debug_log_floating_ball"
             app:iconSpaceReserved="false" />
 
-        <!-- 详细更新日志：开启后在调试日志中显示详细的书籍更新流程 -->
         <io.legado.app.lib.prefs.SwitchPreference
             android:defaultValue="false"
             android:key="verboseUpdateLog"
@@ -110,7 +119,6 @@
             android:title="@string/verbose_update_log"
             app:iconSpaceReserved="false" />
 
-        <!-- 崩溃时复制日志：默认开启，崩溃后自动将日志复制到剪贴板 -->
         <io.legado.app.lib.prefs.SwitchPreference
             android:defaultValue="true"
             android:key="copyCrashLog"
@@ -118,7 +126,6 @@
             android:title="@string/copy_crash_log_title"
             app:iconSpaceReserved="false" />
 
-        <!-- MD链接用内置浏览器打开：默认关闭 -->
         <io.legado.app.lib.prefs.SwitchPreference
             android:defaultValue="false"
             android:key="mdLinkInnerBrowser"
@@ -126,7 +133,6 @@
             android:title="@string/md_link_inner_browser"
             app:iconSpaceReserved="false" />
 
-        <!-- 屏蔽规则管理 -->
         <io.legado.app.lib.prefs.Preference
             android:key="blockRuleManage"
             android:summary="@string/block_rule_manage_summary"
@@ -344,6 +350,5 @@
             app:iconSpaceReserved="false" />
 
     </io.legado.app.lib.prefs.PreferenceCategory>
-
 
 </androidx.preference.PreferenceScreen>
