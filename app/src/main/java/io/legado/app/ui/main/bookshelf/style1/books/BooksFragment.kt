@@ -126,6 +126,10 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         }
         smartTagFilterScroll = HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
+            isVerticalScrollBarEnabled = false
+            isHorizontalFadingEdgeEnabled = false
+            setFadingEdgeLength(0)
+            overScrollMode = View.OVER_SCROLL_NEVER
             isFillViewport = false
             clipToPadding = true
             clipChildren = true
