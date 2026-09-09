@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="download_audio">下载当前音频</string>
+    <string name="audio_batch_download">批量下载</string>
+    <string name="audio_batch_10">下载后续 10 章</string>
+    <string name="audio_batch_50">下载后续 50 章</string>
+    <string name="audio_batch_all">下载全部后续章节</string>
+    <string name="audio_batch_started">开始批量下载，共 %1$d 章</string>
+    <string name="audio_batch_finished">批量下载任务完成</string>
+    <string name="audio_batch_no_chapters">没有可下载的后续章节</string>
     <string name="downloaded_audio">已下载</string>
     <string name="downloaded_audio_count">已下载音频（%1$d）</string>
     <string name="downloaded_audio_empty">暂无已下载的音频</string>
