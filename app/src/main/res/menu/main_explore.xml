@@ -14,10 +14,8 @@
         </menu>
     </item>
     <item android:id="@+id/menu_group" android:title="@string/group" android:icon="@drawable/ic_groups" app:showAsAction="always"><menu /></item>
-    <item android:id="@+id/menu_explore_source" android:title="统一源选择" android:icon="@drawable/ic_search" app:showAsAction="never">
-        <menu>
-            <group android:id="@+id/menu_explore_source_text" android:checkableBehavior="single" />
-        </menu>
+    <item android:id="@+id/menu_explore_source" android:title="统一源选择" android:icon="@drawable/ic_groups" app:showAsAction="never">
+        <menu><group android:id="@+id/menu_explore_source_text" android:checkableBehavior="single" /></menu>
     </item>
     <item android:id="@+id/menu_explore_direct_url" android:title="直接 URL 发现" android:icon="@drawable/ic_add" app:showAsAction="never" />
 </menu>
