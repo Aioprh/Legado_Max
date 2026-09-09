@@ -5,13 +5,13 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import io.legado.app.R
 import io.legado.app.base.adapter.DiffRecyclerAdapter
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.data.entities.Book
 import io.legado.app.databinding.ItemDownloadBinding
-import androidx.core.content.ContextCompat
 import io.legado.app.help.book.isLocal
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.model.CacheBook
@@ -30,10 +30,8 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
             }
 
             override fun areContentsTheSame(oldItem: Book, newItem: Book): Boolean {
-                return oldItem.name == newItem.name
-                        && oldItem.author == newItem.author
+                return oldItem.name == newItem.name && oldItem.author == newItem.author
             }
-
         }
 
     override fun getViewBinding(parent: ViewGroup): ItemDownloadBinding {
@@ -47,7 +45,6 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
         payloads: MutableList<Any>
     ) {
         binding.run {
-            // 基于实际背景色明暗计算文字颜色，确保所有主题下文字清晰可读
             val isLightBg = ColorUtils.isColorLight(context.backgroundColor)
             if (payloads.isEmpty()) {
                 ivCover.load(item, false)
@@ -61,26 +58,18 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
                     if (isLightBg) ContextCompat.getColor(context, R.color.md_light_secondary)
                     else ContextCompat.getColor(context, R.color.md_dark_secondary)
                 )
-                if (item.isLocal) {
-                    tvDownload.setText(R.string.local_book)
-                } else {
-                    val cs = callBack.cacheChapters[item.bookUrl]
-                    if (cs == null) {
-                        tvDownload.setText(R.string.loading)
-                    } else {
-                        val sizeText = formatCacheSize(callBack.cacheSizes[item.bookUrl] ?: 0L)
-                        tvDownload.text =
-                            "${context.getString(R.string.download_count, cs.size, item.totalChapterNum)} · $sizeText"
-                    }
-                }
+            }
+
+            if (item.isLocal) {
+                tvDownload.setText(R.string.local_book)
             } else {
-                if (item.isLocal) {
-                    tvDownload.setText(R.string.local_book)
+                val cs = callBack.cacheChapters[item.bookUrl]
+                if (cs == null) {
+                    tvDownload.setText(R.string.loading)
                 } else {
-                    val cacheSize = callBack.cacheChapters[item.bookUrl]?.size ?: 0
                     val sizeText = formatCacheSize(callBack.cacheSizes[item.bookUrl] ?: 0L)
                     tvDownload.text =
-                        "${context.getString(R.string.download_count, cacheSize, item.totalChapterNum)} · $sizeText"
+                        "${context.getString(R.string.download_count, cs.size, item.totalChapterNum)} · $sizeText"
                 }
             }
             tvDownload.setTextColor(
@@ -92,13 +81,16 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
         }
     }
 
-    private fun formatCacheSize(size: Long): String {
-        return if (size > 0) ConvertUtils.formatFileSize(size) else "0"
-    }
+    private fun formatCacheSize(size: Long): String =
+        if (size > 0) ConvertUtils.formatFileSize(size) else "0"
 
     override fun registerListener(holder: ItemViewHolder, binding: ItemDownloadBinding) {
         binding.run {
             ivDownload.setOnClickListener {
+                if (getItem(holder.layoutPosition)?.isAudio == true) {
+                    callBack.toggleDownload(holder.layoutPosition)
+                    return@setOnClickListener
+                }
                 getItem(holder.layoutPosition)?.let { book ->
                     CacheBook.cacheBookMap[book.bookUrl]?.let {
                         if (!it.isStop()) {
@@ -111,29 +103,34 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
                     }
                 }
             }
-            tvExport.setOnClickListener {
-                callBack.export(holder.layoutPosition)
-            }
-            ivClearCache.setOnClickListener {
-                callBack.clearCache(holder.layoutPosition)
-            }
+            tvExport.setOnClickListener { callBack.export(holder.layoutPosition) }
+            ivClearCache.setOnClickListener { callBack.clearCache(holder.layoutPosition) }
         }
     }
 
     private fun upDownloadIv(iv: ImageView, book: Book) {
         if (book.isLocal) {
             iv.gone()
-        } else {
-            iv.visible()
-            CacheBook.cacheBookMap[book.bookUrl]?.let {
-                if (!it.isStop()) {
-                    iv.setImageResource(R.drawable.ic_stop_black_24dp)
-                } else {
-                    iv.setImageResource(R.drawable.ic_play_24dp)
-                }
-            } ?: let {
+            return
+        }
+        iv.visible()
+        if (book.isAudio) {
+            iv.setImageResource(
+                if (callBack.isAudioDownloading(book.bookUrl))
+                    R.drawable.ic_stop_black_24dp
+                else
+                    R.drawable.ic_play_24dp
+            )
+            return
+        }
+        CacheBook.cacheBookMap[book.bookUrl]?.let {
+            if (!it.isStop()) {
+                iv.setImageResource(R.drawable.ic_stop_black_24dp)
+            } else {
                 iv.setImageResource(R.drawable.ic_play_24dp)
             }
+        } ?: let {
+            iv.setImageResource(R.drawable.ic_play_24dp)
         }
     }
 
@@ -163,5 +160,7 @@ class CacheAdapter(context: Context, private val callBack: CallBack) :
         fun clearCache(position: Int)
         fun exportProgress(bookUrl: String): Int?
         fun exportMsg(bookUrl: String): String?
+        fun toggleDownload(position: Int)
+        fun isAudioDownloading(bookUrl: String): Boolean
     }
 }
