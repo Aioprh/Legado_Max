@@ -3,7 +3,6 @@ package io.legado.app.help.audio
 import android.content.Context
 import android.net.Uri
 import io.legado.app.help.http.okHttpClient
-import io.legado.app.utils.GSON
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -11,6 +10,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.Request
 import org.json.JSONArray
+import splitties.init.appCtx
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
@@ -20,10 +20,7 @@ import java.util.concurrent.ConcurrentHashMap
 object AudioDownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val jobs = ConcurrentHashMap<String, Job>()
-
-    private val root: File by lazy {
-        File(appContext().getExternalFilesDir("Music"), "LegadoAudio").apply { mkdirs() }
-    }
+    private val root: File by lazy { File(appCtx.getExternalFilesDir("Music"), "LegadoAudio").apply { mkdirs() } }
 
     fun download(context: Context, url: String, title: String, onResult: (Boolean, File?) -> Unit = { _, _ -> }) {
         val urls = parseUrls(url)
@@ -57,6 +54,7 @@ object AudioDownloadManager {
         return root.walkTopDown().any { it.isFile && it.name.contains(key) }
     }
 
+    /** Adaptive URL preloading: faster networks get more chapters, while mobile/slow links stay conservative. */
     fun smartCount(context: Context, speed: Float): Int {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val network = cm.activeNetwork
@@ -93,5 +91,4 @@ object AudioDownloadManager {
 
     private fun safeName(value: String, key: String): String = value.replace(Regex("[\\/:*?\"<>|]"), "_").trim().take(80).ifBlank { "audio_$key" } + "_$key"
     private fun sha1(value: String): String = MessageDigest.getInstance("SHA-1").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }.take(12)
-    private fun appContext(): Context = io.legado.app.App.context
 }
