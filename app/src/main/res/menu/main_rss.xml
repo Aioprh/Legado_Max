@@ -30,6 +30,12 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_rss_merge_search"
+        android:title="多源合并搜索"
+        android:icon="@drawable/ic_search"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_rss_config"
         android:title="@string/setting"
         android:icon="@drawable/ic_settings"
