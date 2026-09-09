@@ -51,6 +51,7 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -104,6 +105,7 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
         menuInflater.inflate(R.menu.main_rss, menu)
         groupsMenu = menu.findItem(R.id.menu_group)?.subMenu
         menu.findItem(R.id.menu_rss_direct_url)?.isVisible = EnhancedPageConfig.enhancedRssPage
+        menu.findItem(R.id.menu_rss_merge_search)?.isVisible = EnhancedPageConfig.enhancedRssPage
         upGroupsMenu()
     }
 
@@ -115,6 +117,9 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
             R.id.menu_rss_star -> startActivity<RssFavoritesActivity>()
             R.id.menu_rss_direct_url -> if (EnhancedPageConfig.enhancedRssPage) {
                 showDirectUrlDialog()
+            }
+            R.id.menu_rss_merge_search -> if (EnhancedPageConfig.enhancedRssPage) {
+                showMergedCachedSearch()
             }
             else -> if (item.groupId == R.id.menu_group_text) {
                 searchView.setQuery("group:${item.title}", true)
@@ -188,6 +193,75 @@ class RssFragment() : VMBaseFragment<RssViewModel>(R.layout.fragment_rss), MainF
             }
         }
     }
+
+    /**
+     * Enhanced mode: merge the cached content of all currently enabled RSS sources
+     * into one search entry. This is deliberately cache-only, so the legacy page
+     * never gains extra network requests when the feature is disabled.
+     */
+    private fun showMergedCachedSearch() {
+        viewLifecycleOwner.lifecycleScope.launch(IO) {
+            val sources = runCatching {
+                appDb.rssSourceDao.flowEnabled().first()
+            }.getOrDefault(emptyList())
+            launch {
+                if (!isAdded) return@launch
+                if (sources.isEmpty()) {
+                    alert("多源合并搜索") {
+                        setMessage("当前没有启用的订阅源")
+                        okButton()
+                    }
+                    return@launch
+                }
+                val dialogBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
+                    editView.hint = "输入书名、标题或关键词"
+                }
+                alert("多源合并搜索（${sources.size} 个源）") {
+                    customView { dialogBinding.root }
+                    okButton {
+                        val keyword = dialogBinding.editView.text?.toString()?.trim().orEmpty()
+                        if (keyword.isNotEmpty()) {
+                            searchMergedArticles(sources.map { it.sourceUrl }, keyword)
+                        }
+                    }
+                    cancelButton()
+                }
+            }
+        }
+    }
+
+    private fun searchMergedArticles(origins: List<String>, keyword: String) {
+        viewLifecycleOwner.lifecycleScope.launch(IO) {
+            val articles = runCatching {
+                appDb.rssArticleDao.searchByOrigins(origins, keyword)
+            }.getOrDefault(emptyList())
+            launch {
+                if (!isAdded) return@launch
+                if (articles.isEmpty()) {
+                    alert("多源合并搜索") {
+                        setMessage("没有找到已缓存的订阅内容：$keyword")
+                        okButton()
+                    }
+                    return@launch
+                }
+                val items = articles.distinctBy { it.link }
+                    .take(100)
+                    .map { article ->
+                        val source = origins.indexOf(article.origin).let { index ->
+                            if (index >= 0) " · ${sourcesNamePlaceholder(index)}" else ""
+                        }
+                        SelectItem(article.title.ifBlank { article.link } + source, article)
+                    }
+                selector(items) { _, _, article ->
+                    article?.link?.takeIf { it.startsWith("http", true) }?.let { url ->
+                        context?.openUrl(url)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun sourcesNamePlaceholder(index: Int): String = "源${index + 1}"
 
     private fun initRecyclerView() {
         updateMainBottomPadding((activity as? MainActivity)?.mainContentBottomPadding() ?: 0)
