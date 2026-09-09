@@ -1,6 +1,5 @@
 package io.legado.app.ui.main.explore
 
-import io.legado.app.constant.PreferKey
 import io.legado.app.utils.GSON
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.putPrefString
