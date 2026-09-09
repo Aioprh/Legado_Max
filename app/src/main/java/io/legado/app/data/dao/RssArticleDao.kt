@@ -35,6 +35,15 @@ interface RssArticleDao {
     )
     fun search(keyword: String, limit: Int = 50): List<RssArticle>
 
+    @Query(
+        """select * from rssArticles
+        where origin in (:origins)
+          and (title like '%' || :keyword || '%' or description like '%' || :keyword || '%')
+        order by `order` desc
+        limit :limit"""
+    )
+    fun searchByOrigins(origins: List<String>, keyword: String, limit: Int = 100): List<RssArticle>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(vararg rssArticle: RssArticle)
 
