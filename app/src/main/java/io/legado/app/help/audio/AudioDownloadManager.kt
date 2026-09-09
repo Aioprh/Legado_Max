@@ -2,7 +2,11 @@ package io.legado.app.help.audio
 
 import android.content.Context
 import android.net.Uri
+import io.legado.app.data.entities.Book
+import io.legado.app.data.entities.BookChapter
+import io.legado.app.data.entities.BookSource
 import io.legado.app.help.http.okHttpClient
+import io.legado.app.model.webBook.WebBook
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -16,7 +20,7 @@ import java.io.IOException
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
-/** Lightweight audio downloader. Files are kept outside the ExoPlayer transient cache. */
+/** Persistent audio downloader, separate from ExoPlayer's transient cache. */
 object AudioDownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val jobs = ConcurrentHashMap<String, Job>()
@@ -54,20 +58,54 @@ object AudioDownloadManager {
         jobs[key] = job
     }
 
+    /** Sequentially resolves and downloads chapters, avoiding a burst of source requests. */
+    fun downloadChapters(
+        context: Context,
+        book: Book,
+        source: BookSource,
+        chapters: List<BookChapter>,
+        onProgress: (current: Int, total: Int, title: String, success: Boolean) -> Unit = { _, _, _, _ -> },
+        onFinished: () -> Unit = {}
+    ) {
+        if (chapters.isEmpty()) { onFinished(); return }
+        fun next(position: Int) {
+            if (position >= chapters.size) { onFinished(); return }
+            val chapter = chapters[position]
+            WebBook.getContent(scope, source, book, chapter)
+                .onSuccess { content ->
+                    val value = content.trim()
+                    if (value.isBlank()) {
+                        onProgress(position + 1, chapters.size, chapter.title, false)
+                        next(position + 1)
+                    } else {
+                        download(context, value, "${book.name}_${chapter.title}") { ok, _ ->
+                            onProgress(position + 1, chapters.size, chapter.title, ok)
+                            next(position + 1)
+                        }
+                    }
+                }
+                .onError {
+                    onProgress(position + 1, chapters.size, chapter.title, false)
+                    next(position + 1)
+                }
+        }
+        next(0)
+    }
+
     fun listDownloaded(): List<DownloadedAudio> = root.walkTopDown()
         .filter { it.isFile && it.name != "playlist.m3u8" }
         .map { file -> DownloadedAudio(file, file.nameWithoutExtension) }
         .sortedByDescending { it.file.lastModified() }
         .toList()
 
+    fun delete(file: File): Boolean = runCatching {
+        if (file.isDirectory) file.deleteRecursively() else file.delete()
+    }.getOrDefault(false)
+
     fun isDownloaded(url: String): Boolean {
         val key = sha1(url)
         return root.walkTopDown().any { it.isFile && it.name.contains(key) }
     }
-
-    fun delete(file: File): Boolean = runCatching {
-        if (file.isDirectory) file.deleteRecursively() else file.delete()
-    }.getOrDefault(false)
 
     /** Adaptive URL preloading: faster networks get more chapters, while mobile/slow links stay conservative. */
     fun smartCount(context: Context, speed: Float): Int {
