@@ -4,13 +4,17 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
+import android.view.View
 import com.google.android.material.tabs.TabLayout
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.utils.dpToPx
 
 /**
  * 书架顶部液态玻璃 TabLayout。
- * 保留 TabLayout/ViewPager 原生联动，同时把选中指示器改成悬浮玻璃胶囊。
+ *
+ * 书架当前采用页面左右滑动切换分组，标签筛选栏负责展示当前页面的筛选项。
+ * 为避免 ViewPager 横向滑动过程中顶部出现第二套分组标签，这个控件默认不参与显示。
+ * 保留完整 TabLayout 实现，便于已有调用代码安全运行，也避免影响选项卡状态同步。
  */
 class GlassTabBarView @JvmOverloads constructor(
     context: Context,
@@ -47,6 +51,10 @@ class GlassTabBarView @JvmOverloads constructor(
         })
         post { styleTabs() }
         post { updateTabMode() }
+
+        // 书架分组通过 ViewPager 左右滑动切换；顶部只保留当前书架的标签筛选栏。
+        // 隐藏这个分组 Tab，避免切换页面时出现“全部/听书”等第二套标签。
+        visibility = View.GONE
     }
 
     /**
@@ -60,7 +68,6 @@ class GlassTabBarView @JvmOverloads constructor(
         val targetMode = if (totalWidth <= width) MODE_FIXED else MODE_SCROLLABLE
         if (tabMode != targetMode) {
             tabMode = targetMode
-            // 切换模式后需要重新设置指示器样式与 tab 样式
             post {
                 styleTabs()
             }
@@ -80,10 +87,10 @@ class GlassTabBarView @JvmOverloads constructor(
         names.forEachIndexed { index, name ->
             val tab = newTab().setText(name)
             addTab(tab)
-            // TabLayout 自带点击选中，这里只补充长按回调
             tab.view?.setOnLongClickListener { onTabLongClick?.invoke(index) ?: false }
         }
         post { styleTabs() }
+        if (tabCount == 0) return
         val idx = selectedIndex.coerceIn(0, tabCount - 1)
         submitSelecting = true
         getTabAt(idx)?.select()
