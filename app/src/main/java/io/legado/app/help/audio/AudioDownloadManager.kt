@@ -130,11 +130,7 @@ object AudioDownloadManager {
                             val dir = bookDir(book)
                             dir.mkdirs()
                             if (urls.size == 1) {
-                                downloadOne(
-                                    urls[0],
-                                    chapterFileName(chapter, urls[0]),
-                                    dir
-                                )
+                                downloadOne(urls[0], chapterFileName(chapter, urls[0]), dir)
                             } else {
                                 val chapterDir = File(dir, safeName(chapter.title, sha1(chapter.url)))
                                     .apply { mkdirs() }
@@ -193,7 +189,16 @@ object AudioDownloadManager {
         val files = dir.walkTopDown()
             .filter { it.isFile && it.name != "playlist.m3u8" }
             .toList()
-        return CacheStats(files.size, files.sumOf { it.length() })
+        val count = dir.listFiles()?.sumOf { entry ->
+            when {
+                entry.isFile && entry.name != "playlist.m3u8" -> 1
+                entry.isDirectory && entry.walkTopDown().any {
+                    it.isFile && it.name != "playlist.m3u8"
+                } -> 1
+                else -> 0
+            }
+        } ?: 0
+        return CacheStats(count, files.sumOf { it.length() })
     }
 
     fun clearBook(book: Book): Boolean = runCatching {
@@ -259,9 +264,15 @@ object AudioDownloadManager {
         val dir = bookDir(book)
         if (!dir.exists()) return false
         val chapterKey = sha1(chapter.url)
-        return dir.walkTopDown().any {
-            it.isFile && it.name != "playlist.m3u8" && it.name.contains(chapterKey)
-        }
+        return dir.listFiles()?.any { entry ->
+            when {
+                entry.isFile -> entry.name != "playlist.m3u8" && entry.name.contains(chapterKey)
+                entry.isDirectory -> entry.name.contains(chapterKey) && entry.walkTopDown().any {
+                    it.isFile && it.name != "playlist.m3u8"
+                }
+                else -> false
+            }
+        } == true
     }
 
     private fun isActiveJob(bookUrl: String): Boolean =
