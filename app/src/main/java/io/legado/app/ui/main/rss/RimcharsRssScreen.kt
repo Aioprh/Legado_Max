@@ -17,11 +17,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,11 +43,8 @@ fun RimcharsRssScreen(
 ) {
     var selectedGroup by remember { mutableStateOf<String?>(null) }
     val filtered = remember(sources, selectedGroup) {
-        selectedGroup?.let { group ->
-            sources.filter { it.sourceGroup?.contains(group, true) == true }
-        } ?: sources
+        selectedGroup?.let { group -> sources.filter { it.sourceGroup?.contains(group, true) == true } } ?: sources
     }
-
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -62,11 +56,8 @@ fun RimcharsRssScreen(
                 shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f))
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(46.dp).padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(Modifier.fillMaxWidth().height(46.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("⌕", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(9.dp))
                     Text("搜索订阅源 / 分组 / URL", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -74,20 +65,13 @@ fun RimcharsRssScreen(
         }
         if (groups.isNotEmpty()) {
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     RimcharsRssChip("全部", selectedGroup == null) { selectedGroup = null }
-                    groups.forEach { group ->
-                        RimcharsRssChip(group, selectedGroup == group) { selectedGroup = group }
-                    }
+                    groups.forEach { group -> RimcharsRssChip(group, selectedGroup == group) { selectedGroup = group } }
                 }
             }
         }
-        item {
-            Text("订阅源", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 4.dp, bottom = 2.dp))
-        }
+        item { Text("订阅源", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)) }
         items(filtered, key = { it.sourceUrl }) { source ->
             Card(
                 modifier = Modifier.fillMaxWidth().clickable { onSourceClick(source) },
@@ -116,11 +100,7 @@ fun RimcharsRssScreen(
 private fun RimcharsRssChip(text: String, selected: Boolean, onClick: () -> Unit) {
     Text(
         text = text,
-        modifier = Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+        modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
         color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.labelLarge
     )
