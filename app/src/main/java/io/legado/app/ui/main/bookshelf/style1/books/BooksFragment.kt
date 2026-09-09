@@ -151,7 +151,6 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 22.dpToPx().toFloat()
                 setColor(glassSurface)
-                setStroke(1.dpToPx(), glassStroke)
             }
             addView(
                 smartTagChipGroup,
