@@ -33,6 +33,14 @@
     </item>
 
     <item
+        android:id="@+id/menu_explore_source"
+        android:title="统一源选择"
+        android:icon="@drawable/ic_source"
+        app:showAsAction="never">
+        <menu />
+    </item>
+
+    <item
         android:id="@+id/menu_explore_direct_url"
         android:title="直接 URL 发现"
         android:icon="@drawable/ic_add"
