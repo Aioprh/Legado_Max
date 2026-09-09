@@ -127,7 +127,20 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         smartTagFilterScroll = HorizontalScrollView(context).apply {
             isHorizontalScrollBarEnabled = false
             isFillViewport = false
-            clipToPadding = false
+            clipToPadding = true
+            clipChildren = true
+            clipToOutline = true
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(
+                        0,
+                        0,
+                        view.width,
+                        view.height,
+                        22.dpToPx().toFloat()
+                    )
+                }
+            }
             elevation = 6.dpToPx().toFloat()
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
