@@ -20,8 +20,10 @@ import io.legado.app.constant.AppLog
 import io.legado.app.data.AppDatabase
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSourcePart
+import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.FragmentExploreBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.help.config.EnhancedPageConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
@@ -72,17 +74,11 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     private val searchView: SearchView by lazy {
         binding.titleBar.findViewById(R.id.search_view)
     }
-    // 列表项差异比较回调
     private val diffItemCallBack = ExploreDiffItemCallBack()
-    // 书源分组集合
     private val groups = linkedSetOf<String>()
-    // 发现数据流任务
     private var exploreFlowJob: Job? = null
-    // 分组菜单
     private var groupsMenu: SubMenu? = null
-    // 排序方式
     private var sort = BookSourceSort.Default
-    // 是否升序排序
     private var sortAscending = true
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
@@ -93,24 +89,17 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         upExploreData()
     }
 
-    /**
-     * 创建选项菜单
-     * 初始化菜单布局，设置排序菜单项状态，并更新分组菜单
-     */
     override fun onCompatCreateOptionsMenu(menu: Menu) {
         super.onCompatCreateOptionsMenu(menu)
         menuInflater.inflate(R.menu.main_explore, menu)
         groupsMenu = menu.findItem(R.id.menu_group)?.subMenu
+        menu.findItem(R.id.menu_explore_direct_url)?.isVisible = EnhancedPageConfig.enhancedExplorePage
         val sortSubMenu = menu.findItem(R.id.action_sort).subMenu
         sortSubMenu?.findItem(R.id.menu_sort_desc)?.isChecked = !sortAscending
         sortSubMenu?.setGroupCheckable(R.id.menu_group_sort, true, true)
         upGroupsMenu()
     }
 
-    /**
-     * 准备选项菜单
-     * 更新排序菜单项的选中状态
-     */
     override fun onPrepareOptionsMenu(menu: Menu) {
         val sortSubMenu = menu.findItem(R.id.action_sort).subMenu!!
         sortSubMenu.findItem(R.id.menu_sort_desc).isChecked = !sortAscending
@@ -121,11 +110,13 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     private fun initSearchView() {
         searchView.applyTint(primaryTextColor)
         searchView.isSubmitButtonEnabled = true
-        searchView.queryHint = getString(R.string.screen_find)
+        searchView.queryHint = if (EnhancedPageConfig.enhancedExplorePage) {
+            "搜索书源 / 分组 / URL"
+        } else {
+            getString(R.string.screen_find)
+        }
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                return false
-            }
+            override fun onQueryTextSubmit(query: String?): Boolean = false
 
             override fun onQueryTextChange(newText: String?): Boolean {
                 upExploreData(newText)
@@ -142,12 +133,9 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         (binding.rvFind.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
         binding.rvFind.setItemViewCacheSize(8)
         adapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
-
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 super.onItemRangeInserted(positionStart, itemCount)
-                if (positionStart == 0) {
-                    binding.rvFind.scrollToPosition(0)
-                }
+                if (positionStart == 0) binding.rvFind.scrollToPosition(0)
             }
         })
     }
@@ -182,49 +170,26 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         exploreFlowJob?.cancel()
         exploreFlowJob = viewLifecycleOwner.lifecycleScope.launch {
             when {
-                searchKey.isNullOrBlank() -> {
-                    appDb.bookSourceDao.flowExplore()
-                }
-
+                searchKey.isNullOrBlank() -> appDb.bookSourceDao.flowExplore()
                 searchKey.startsWith("group:") -> {
                     val key = searchKey.substringAfter("group:")
                     appDb.bookSourceDao.flowGroupExplore(key)
                 }
-
-                else -> {
-                    appDb.bookSourceDao.flowExplore(searchKey)
-                }
+                else -> appDb.bookSourceDao.flowExplore(searchKey)
             }.map { data ->
-                // 根据排序方式和排序方向对数据进行排序
                 if (sortAscending) {
-                    // 升序排序
                     when (sort) {
-                        // 按书源名称排序
-                        BookSourceSort.Name -> data.sortedWith { o1, o2 ->
-                            o1.bookSourceName.cnCompare(o2.bookSourceName)
-                        }
-
-                        // 按书源URL排序
+                        BookSourceSort.Name -> data.sortedWith { o1, o2 -> o1.bookSourceName.cnCompare(o2.bookSourceName) }
                         BookSourceSort.Url -> data.sortedBy { it.bookSourceUrl }
-                        // 按更新时间排序（最新的在前）
                         BookSourceSort.Update -> data.sortedByDescending { it.lastUpdateTime }
-                        // 按响应时间排序
                         BookSourceSort.Respond -> data.sortedBy { it.respondTime }
                         else -> data
                     }
                 } else {
-                    // 降序排序
                     when (sort) {
-                        // 按书源名称排序
-                        BookSourceSort.Name -> data.sortedWith { o1, o2 ->
-                            o2.bookSourceName.cnCompare(o1.bookSourceName)
-                        }
-
-                        // 按书源URL排序
+                        BookSourceSort.Name -> data.sortedWith { o1, o2 -> o2.bookSourceName.cnCompare(o1.bookSourceName) }
                         BookSourceSort.Url -> data.sortedByDescending { it.bookSourceUrl }
-                        // 按更新时间排序（最旧的在前）
                         BookSourceSort.Update -> data.sortedBy { it.lastUpdateTime }
-                        // 按响应时间排序
                         BookSourceSort.Respond -> data.sortedByDescending { it.respondTime }
                         else -> data.reversed()
                     }
@@ -237,12 +202,8 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
                 AppLog.put("发现界面更新数据出错", it)
             }.conflate().flowOn(IO).collect {
                 binding.tvEmptyMsg.isGone = it.isNotEmpty() || searchView.query.isNotEmpty()
-                // 不能用 adapter 当前列表和新列表直接判等；BookSourcePart.equals 只比较 URL，
-                // 改名称这类“同一源内容变化”会被误判成相同，导致发现页不刷新。
                 adapter.setItems(it, diffItemCallBack)
-                binding.rvFind.post {
-                    binding.rvFind.refreshSystemScrollBar()
-                }
+                binding.rvFind.post { binding.rvFind.refreshSystemScrollBar() }
                 delay(500)
             }
         }
@@ -279,36 +240,34 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     override fun onCompatOptionsItemSelected(item: MenuItem) {
         super.onCompatOptionsItemSelected(item)
         when (item.itemId) {
+            R.id.menu_explore_direct_url -> if (EnhancedPageConfig.enhancedExplorePage) {
+                showDirectUrlDialog()
+            }
             R.id.menu_sort_desc -> {
                 sortAscending = !sortAscending
                 item.isChecked = !sortAscending
                 upExploreData(searchView.query?.toString())
             }
-
             R.id.menu_sort_manual -> {
                 item.isChecked = true
                 sort = BookSourceSort.Default
                 upExploreData(searchView.query?.toString())
             }
-
             R.id.menu_sort_name -> {
                 item.isChecked = true
                 sort = BookSourceSort.Name
                 upExploreData(searchView.query?.toString())
             }
-
             R.id.menu_sort_url -> {
                 item.isChecked = true
                 sort = BookSourceSort.Url
                 upExploreData(searchView.query?.toString())
             }
-
             R.id.menu_sort_time -> {
                 item.isChecked = true
                 sort = BookSourceSort.Update
                 upExploreData(searchView.query?.toString())
             }
-
             R.id.menu_sort_respondTime -> {
                 item.isChecked = true
                 sort = BookSourceSort.Respond
@@ -317,6 +276,34 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         }
         if (item.groupId == R.id.menu_group_text) {
             searchView.setQuery("group:${item.title}", true)
+        }
+    }
+
+    private fun showDirectUrlDialog() {
+        val dialogBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
+            editView.hint = "书源URL::发现URL"
+        }
+        alert("直接 URL 发现") {
+            setMessage("格式：已安装书源URL::发现页URL")
+            customView { dialogBinding.root }
+            okButton {
+                val value = dialogBinding.editView.text?.toString()?.trim().orEmpty()
+                val separator = value.indexOf("::")
+                if (separator > 0 && separator < value.lastIndex) {
+                    val sourceUrl = value.substring(0, separator).trim()
+                    val exploreUrl = value.substring(separator + 2).trim()
+                    if ((sourceUrl.startsWith("http://", true) || sourceUrl.startsWith("https://", true)) &&
+                        (exploreUrl.startsWith("http://", true) || exploreUrl.startsWith("https://", true))
+                    ) {
+                        startActivity<ExploreShowActivity> {
+                            putExtra("exploreName", "URL 发现")
+                            putExtra("sourceUrl", sourceUrl)
+                            putExtra("exploreUrl", exploreUrl)
+                        }
+                    }
+                }
+            }
+            cancelButton()
         }
     }
 
@@ -348,9 +335,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         alert(R.string.draw) {
             setMessage(getString(R.string.sure_del) + "\n" + source.bookSourceName)
             noButton()
-            yesButton {
-                viewModel.deleteSource(source)
-            }
+            yesButton { viewModel.deleteSource(source) }
         }
     }
 
@@ -358,16 +343,10 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         SearchActivity.start(requireContext(), bookSource)
     }
 
-    /**
-     * 显示查询对话框
-     */
     override fun showKindQueryDialog(source: BookSourcePart) {
         showDialogFragment(ExploreKindQueryDialog(source.bookSourceUrl, source.bookSourceName))
     }
-    
-    /**
-     * 压缩目录
-     */
+
     fun compressExplore() {
         if (!adapter.compressExplore()) {
             if (AppConfig.isEInkMode) {
