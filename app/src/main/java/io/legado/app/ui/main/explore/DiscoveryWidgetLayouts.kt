@@ -98,7 +98,7 @@ private fun DiscoveryHorizontalCard(
     onLongClick: (SearchBook) -> Unit
 ) {
     Card(
-        Modifier.width(150.dp).combinedClickable(
+        modifier = Modifier.width(150.dp).combinedClickable(
             onClick = { onClick(book) },
             onLongClick = { onLongClick(book) }
         )
@@ -115,7 +115,6 @@ private fun DiscoveryHorizontalCard(
     }
 }
 
-/** 上游现代发现页的双列瀑布流：两列独立布局，卡片高度互不强制对齐。 */
 @Composable
 fun DiscoveryWaterfallBooks(
     books: List<SearchBook>,
@@ -143,7 +142,7 @@ private fun DiscoveryWaterfallCard(
     onLongClick: (SearchBook) -> Unit
 ) {
     Card(
-        Modifier.fillMaxWidth().combinedClickable(
+        modifier = Modifier.fillMaxWidth().combinedClickable(
             onClick = { onClick(book) },
             onLongClick = { onLongClick(book) }
         )
@@ -163,7 +162,7 @@ private fun DiscoveryWaterfallCard(
 
 @Composable
 fun DiscoveryRankedBookRow(rank: Int, book: SearchBook, onClick: (SearchBook) -> Unit, modifier: Modifier = Modifier) {
-    Card(modifier.fillMaxWidth(), onClick = { onClick(book) }) {
+    Card(onClick = { onClick(book) }, modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(rank.toString(), Modifier.width(24.dp), style = MaterialTheme.typography.titleMedium)
             Column(Modifier.weight(1f)) {
