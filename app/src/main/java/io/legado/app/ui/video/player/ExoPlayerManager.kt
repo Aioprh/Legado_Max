@@ -70,7 +70,11 @@ class ExoPlayerManager : BasePlayerManager() {
                 //通过自己的内部缓存机制
                 mediaPlayer!!.setCache(model.isCache())
                 mediaPlayer!!.setCacheDir(model.cachePath)
-                mediaPlayer!!.setOverrideExtension(model.getOverrideExtension())
+                // 优先使用调用方显式指定的类型；未指定时由统一解析器从 URL 推断。
+                // 这样 API 型 m3u8/mpd 地址也能正确进入 Media3 的 HLS/DASH MediaSource。
+                val overrideExtension = model.getOverrideExtension()
+                    ?: VideoMediaResolver.resolve(model.getUrl())?.overrideExtension
+                mediaPlayer!!.setOverrideExtension(overrideExtension)
                 mediaPlayer!!.setDataSource(
                     context,
                     model.getUrl().toUri(),
