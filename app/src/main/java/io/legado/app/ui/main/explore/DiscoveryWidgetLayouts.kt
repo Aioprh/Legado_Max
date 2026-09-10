@@ -116,7 +116,7 @@ private fun DiscoveryHorizontalCard(
 }
 
 @Composable
-fun DiscoveryWaterfallBooksLayout(
+fun DiscoveryModernWaterfallBooks(
     books: List<SearchBook>,
     onClick: (SearchBook) -> Unit,
     modifier: Modifier = Modifier,
