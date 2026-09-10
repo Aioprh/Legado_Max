@@ -63,9 +63,6 @@ import io.legado.app.data.entities.SearchBook
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.theme.LegadoTheme
 
-/**
- * 发现界面
- */
 class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_explore),
     MainFragmentInterface,
     ExploreAdapter.CallBack {
@@ -77,56 +74,39 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     }
 
     override val position: Int? get() = arguments?.getInt("position")
-
     override val viewModel by viewModels<ExploreViewModel>()
     private val binding by viewBinding(FragmentExploreBinding::bind)
     private val adapter by lazy { ExploreAdapter(requireContext(), this) }
     private val linearLayoutManager by lazy { LinearLayoutManager(context) }
-    private val searchView: SearchView by lazy {
-        binding.titleBar.findViewById(R.id.search_view)
-    }
-    // 列表项差异比较回调
+    private val searchView: SearchView by lazy { binding.titleBar.findViewById(R.id.search_view) }
     private val diffItemCallBack = ExploreDiffItemCallBack()
-    // 书源分组集合
     private val groups = linkedSetOf<String>()
-    // 发现数据流任务
     private var exploreFlowJob: Job? = null
-    // 分组菜单
     private var groupsMenu: SubMenu? = null
-    // 排序方式
     private var sort = BookSourceSort.Default
-    // 是否升序排序
     private var sortAscending = true
-    // 发现套件(复刻自 Rimchars/legado)：由 AppConfig.enableDiscoverySuite 开关控制
     private val suiteHomeViewModel by viewModels<DiscoverySuiteHomeViewModel>()
     private val suiteManageViewModel by viewModels<DiscoverySuiteManageViewModel>()
     private var suiteComposeView: ComposeView? = null
+    private var modernComposeView: ComposeView? = null
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         setSupportToolbar(binding.titleBar.toolbar)
-        if (AppConfig.enableDiscoverySuite) {
-            showDiscoverySuite()
-            return
+        when {
+            AppConfig.enableDiscoverySuite -> showDiscoverySuite()
+            AppConfig.enableModernDiscovery -> showModernDiscovery()
+            else -> {
+                initSearchView()
+                initRecyclerView()
+                initGroupData()
+                upExploreData()
+            }
         }
-        initSearchView()
-        initRecyclerView()
-        initGroupData()
-        upExploreData()
     }
 
-    /**
-     * 开启「发现套件」开关后使用复刻自 Rimchars/legado 的发现套件界面，
-     * 覆盖原有 View 版发现列表（套件自带搜索栏/管理入口）。
-     */
-    private fun showDiscoverySuite() {
-        binding.titleBar.isGone = true
-        binding.tvExploreHint.isGone = true
-        binding.rvFind.isGone = true
-        if (suiteComposeView != null) return
-        val contentView = binding.root
+    private fun addFullScreenComposeView(): ComposeView {
         val composeView = ComposeView(requireContext())
-        suiteComposeView = composeView
-        contentView.addView(
+        binding.root.addView(
             composeView,
             ConstraintLayout.LayoutParams(
                 ConstraintLayout.LayoutParams.MATCH_PARENT,
@@ -138,38 +118,71 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
                 endToEnd = ConstraintSet.PARENT_ID
             }
         )
-        composeView.setContent {
-            LegadoTheme {
-                val suiteState by suiteHomeViewModel.uiState.collectAsState()
-                var showManage by rememberSaveable { mutableStateOf(false) }
-                LaunchedEffect(Unit) { suiteHomeViewModel.refreshConfig() }
-                if (showManage) {
-                    DiscoverySuiteManageScreen(
-                        viewModel = suiteManageViewModel,
-                        onBackClick = {
-                            showManage = false
-                            suiteHomeViewModel.reloadFromStore()
+        return composeView
+    }
+
+    private fun showModernDiscovery() {
+        binding.titleBar.isGone = true
+        binding.tvExploreHint.isGone = true
+        binding.rvFind.isGone = true
+        binding.tvEmptyMsg.isGone = true
+        if (modernComposeView != null) return
+        modernComposeView = addFullScreenComposeView().also { composeView ->
+            composeView.setContent {
+                LegadoTheme {
+                    ModernDiscoveryScreen(
+                        lifecycle = viewLifecycleOwner.lifecycle,
+                        onSearch = { SearchActivity.start(requireContext(), null) },
+                        onExploreSource = { source ->
+                            source.getBookSource()?.exploreUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                                openExplore(source.bookSourceUrl, source.bookSourceName, url)
+                            } ?: context?.let { it.toastOnUi("该书源没有发现规则") }
                         }
                     )
-                } else {
-                    DiscoverySuiteHomeScreen(
-                        uiState = suiteState,
-                        onSearchClick = { SearchActivity.start(requireContext(), null) },
-                        onSuiteClick = {
-                            suiteManageViewModel.reload()
-                            showManage = true
-                        },
-                        onSuiteSelect = { suiteHomeViewModel.selectSuite(it) },
-                        onBookClick = { openSearchBook(it) },
-                        onTagClick = { target ->
-                            target.tagUrl.takeIf { it.isNotBlank() }?.let {
-                                openExplore(target.sourceUrl, target.title, it)
+                }
+            }
+        }
+    }
+
+    private fun showDiscoverySuite() {
+        binding.titleBar.isGone = true
+        binding.tvExploreHint.isGone = true
+        binding.rvFind.isGone = true
+        if (suiteComposeView != null) return
+        suiteComposeView = addFullScreenComposeView().also { composeView ->
+            composeView.setContent {
+                LegadoTheme {
+                    val suiteState by suiteHomeViewModel.uiState.collectAsState()
+                    var showManage by rememberSaveable { mutableStateOf(false) }
+                    LaunchedEffect(Unit) { suiteHomeViewModel.refreshConfig() }
+                    if (showManage) {
+                        DiscoverySuiteManageScreen(
+                            viewModel = suiteManageViewModel,
+                            onBackClick = {
+                                showManage = false
+                                suiteHomeViewModel.reloadFromStore()
                             }
-                        },
-                        onRefreshWidget = { suiteHomeViewModel.refreshWidget(it) },
-                        onHorizontalLoadMore = { suiteHomeViewModel.loadMoreHorizontal(it) },
-                        onRankedLoadMore = { suiteHomeViewModel.loadMoreRanked(it) }
-                    )
+                        )
+                    } else {
+                        DiscoverySuiteHomeScreen(
+                            uiState = suiteState,
+                            onSearchClick = { SearchActivity.start(requireContext(), null) },
+                            onSuiteClick = {
+                                suiteManageViewModel.reload()
+                                showManage = true
+                            },
+                            onSuiteSelect = { suiteHomeViewModel.selectSuite(it) },
+                            onBookClick = { openSearchBook(it) },
+                            onTagClick = { target ->
+                                target.tagUrl.takeIf { it.isNotBlank() }?.let {
+                                    openExplore(target.sourceUrl, target.title, it)
+                                }
+                            },
+                            onRefreshWidget = { suiteHomeViewModel.refreshWidget(it) },
+                            onHorizontalLoadMore = { suiteHomeViewModel.loadMoreHorizontal(it) },
+                            onRankedLoadMore = { suiteHomeViewModel.loadMoreRanked(it) }
+                        )
+                    }
                 }
             }
         }
@@ -184,12 +197,9 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         }
     }
 
-    /**
-     * 创建选项菜单
-     * 初始化菜单布局，设置排序菜单项状态，并更新分组菜单
-     */
     override fun onCompatCreateOptionsMenu(menu: Menu) {
         super.onCompatCreateOptionsMenu(menu)
+        if (AppConfig.enableModernDiscovery || AppConfig.enableDiscoverySuite) return
         menuInflater.inflate(R.menu.main_explore, menu)
         groupsMenu = menu.findItem(R.id.menu_group)?.subMenu
         val sortSubMenu = menu.findItem(R.id.action_sort).subMenu
@@ -198,11 +208,8 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         upGroupsMenu()
     }
 
-    /**
-     * 准备选项菜单
-     * 更新排序菜单项的选中状态
-     */
     override fun onPrepareOptionsMenu(menu: Menu) {
+        if (AppConfig.enableModernDiscovery || AppConfig.enableDiscoverySuite) return
         val sortSubMenu = menu.findItem(R.id.action_sort).subMenu!!
         sortSubMenu.findItem(R.id.menu_sort_desc).isChecked = !sortAscending
         sortSubMenu.setGroupCheckable(R.id.menu_group_sort, true, true)
@@ -214,10 +221,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         searchView.isSubmitButtonEnabled = true
         searchView.queryHint = getString(R.string.screen_find)
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                return false
-            }
-
+            override fun onQueryTextSubmit(query: String?) = false
             override fun onQueryTextChange(newText: String?): Boolean {
                 upExploreData(newText)
                 return false
@@ -233,12 +237,8 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         (binding.rvFind.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations = false
         binding.rvFind.setItemViewCacheSize(8)
         adapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
-
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-                super.onItemRangeInserted(positionStart, itemCount)
-                if (positionStart == 0) {
-                    binding.rvFind.scrollToPosition(0)
-                }
+                if (positionStart == 0) binding.rvFind.scrollToPosition(0)
             }
         })
     }
@@ -253,14 +253,8 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     private fun initGroupData() {
         viewLifecycleOwner.lifecycleScope.launch {
             appDb.bookSourceDao.flowExploreGroups()
-                .flowWithLifecycleAndDatabaseChange(
-                    viewLifecycleOwner.lifecycle,
-                    Lifecycle.State.RESUMED,
-                    AppDatabase.BOOK_SOURCE_TABLE_NAME
-                )
-                .conflate()
-                .distinctUntilChanged()
-                .collect {
+                .flowWithLifecycleAndDatabaseChange(viewLifecycleOwner.lifecycle, Lifecycle.State.RESUMED, AppDatabase.BOOK_SOURCE_TABLE_NAME)
+                .conflate().distinctUntilChanged().collect {
                     groups.clear()
                     groups.addAll(it)
                     upGroupsMenu()
@@ -273,86 +267,58 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         exploreFlowJob?.cancel()
         exploreFlowJob = viewLifecycleOwner.lifecycleScope.launch {
             when {
-                searchKey.isNullOrBlank() -> {
-                    appDb.bookSourceDao.flowExplore()
-                }
-
-                searchKey.startsWith("group:") -> {
-                    val key = searchKey.substringAfter("group:")
-                    appDb.bookSourceDao.flowGroupExplore(key)
-                }
-
-                else -> {
-                    appDb.bookSourceDao.flowExplore(searchKey)
-                }
+                searchKey.isNullOrBlank() -> appDb.bookSourceDao.flowExplore()
+                searchKey.startsWith("group:") -> appDb.bookSourceDao.flowGroupExplore(searchKey.substringAfter("group:"))
+                else -> appDb.bookSourceDao.flowExplore(searchKey)
             }.map { data ->
-                // 根据排序方式和排序方向对数据进行排序
                 if (sortAscending) {
-                    // 升序排序
                     when (sort) {
-                        // 按书源名称排序
-                        BookSourceSort.Name -> data.sortedWith { o1, o2 ->
-                            o1.bookSourceName.cnCompare(o2.bookSourceName)
-                        }
-
-                        // 按书源URL排序
+                        BookSourceSort.Name -> data.sortedWith { a, b -> a.bookSourceName.cnCompare(b.bookSourceName) }
                         BookSourceSort.Url -> data.sortedBy { it.bookSourceUrl }
-                        // 按更新时间排序（最新的在前）
                         BookSourceSort.Update -> data.sortedByDescending { it.lastUpdateTime }
-                        // 按响应时间排序
                         BookSourceSort.Respond -> data.sortedBy { it.respondTime }
                         else -> data
                     }
                 } else {
-                    // 降序排序
                     when (sort) {
-                        // 按书源名称排序
-                        BookSourceSort.Name -> data.sortedWith { o1, o2 ->
-                            o2.bookSourceName.cnCompare(o1.bookSourceName)
-                        }
-
-                        // 按书源URL排序
+                        BookSourceSort.Name -> data.sortedWith { a, b -> b.bookSourceName.cnCompare(a.bookSourceName) }
                         BookSourceSort.Url -> data.sortedByDescending { it.bookSourceUrl }
-                        // 按更新时间排序（最旧的在前）
                         BookSourceSort.Update -> data.sortedBy { it.lastUpdateTime }
-                        // 按响应时间排序
                         BookSourceSort.Respond -> data.sortedByDescending { it.respondTime }
                         else -> data.reversed()
                     }
                 }
-            }.flowWithLifecycleAndDatabaseChange(
-                viewLifecycleOwner.lifecycle,
-                Lifecycle.State.RESUMED,
-                AppDatabase.BOOK_SOURCE_TABLE_NAME
-            ).catch {
-                AppLog.put("发现界面更新数据出错", it)
-            }.conflate().flowOn(IO).collect {
-                binding.tvEmptyMsg.isGone = it.isNotEmpty() || searchView.query.isNotEmpty()
-                // 不能用 adapter 当前列表和新列表直接判等；BookSourcePart.equals 只比较 URL，
-                // 改名称这类“同一源内容变化”会被误判成相同，导致发现页不刷新。
-                adapter.setItems(it, diffItemCallBack)
-                binding.rvFind.post {
-                    binding.rvFind.refreshSystemScrollBar()
+            }.flowWithLifecycleAndDatabaseChange(viewLifecycleOwner.lifecycle, Lifecycle.State.RESUMED, AppDatabase.BOOK_SOURCE_TABLE_NAME)
+                .catch { AppLog.put("发现界面更新数据出错", it) }
+                .conflate().flowOn(IO).collect {
+                    binding.tvEmptyMsg.isGone = it.isNotEmpty() || searchView.query.isNotEmpty()
+                    adapter.setItems(it, diffItemCallBack)
+                    binding.rvFind.post { binding.rvFind.refreshSystemScrollBar() }
+                    delay(500)
                 }
-                delay(500)
-            }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        adapter.upResumed(true)
-        adapter.onResume()
+        if (!AppConfig.enableModernDiscovery && !AppConfig.enableDiscoverySuite) {
+            adapter.upResumed(true)
+            adapter.onResume()
+        }
     }
 
     override fun onPause() {
-        adapter.upResumed(false)
-        searchView.clearFocus()
-        adapter.onPause()
+        if (!AppConfig.enableModernDiscovery && !AppConfig.enableDiscoverySuite) {
+            adapter.upResumed(false)
+            searchView.clearFocus()
+            adapter.onPause()
+        }
         super.onPause()
     }
 
     override fun onDestroyView() {
+        modernComposeView?.let { (it.parent as? ViewGroup)?.removeView(it) }
+        modernComposeView = null
         suiteComposeView?.let { (it.parent as? ViewGroup)?.removeView(it) }
         suiteComposeView = null
         adapter.onDestroy()
@@ -361,56 +327,27 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
 
     private fun upGroupsMenu() = groupsMenu?.transaction { subMenu ->
         subMenu.removeGroup(R.id.menu_group_text)
-        groups.forEach {
-            subMenu.add(R.id.menu_group_text, Menu.NONE, Menu.NONE, it)
-        }
+        groups.forEach { subMenu.add(R.id.menu_group_text, Menu.NONE, Menu.NONE, it) }
     }
 
-    override val scope: CoroutineScope
-        get() = viewLifecycleOwner.lifecycleScope
+    override val scope: CoroutineScope get() = viewLifecycleOwner.lifecycleScope
 
     override fun onCompatOptionsItemSelected(item: MenuItem) {
         super.onCompatOptionsItemSelected(item)
+        if (AppConfig.enableModernDiscovery || AppConfig.enableDiscoverySuite) return
         when (item.itemId) {
             R.id.menu_sort_desc -> {
                 sortAscending = !sortAscending
                 item.isChecked = !sortAscending
                 upExploreData(searchView.query?.toString())
             }
-
-            R.id.menu_sort_manual -> {
-                item.isChecked = true
-                sort = BookSourceSort.Default
-                upExploreData(searchView.query?.toString())
-            }
-
-            R.id.menu_sort_name -> {
-                item.isChecked = true
-                sort = BookSourceSort.Name
-                upExploreData(searchView.query?.toString())
-            }
-
-            R.id.menu_sort_url -> {
-                item.isChecked = true
-                sort = BookSourceSort.Url
-                upExploreData(searchView.query?.toString())
-            }
-
-            R.id.menu_sort_time -> {
-                item.isChecked = true
-                sort = BookSourceSort.Update
-                upExploreData(searchView.query?.toString())
-            }
-
-            R.id.menu_sort_respondTime -> {
-                item.isChecked = true
-                sort = BookSourceSort.Respond
-                upExploreData(searchView.query?.toString())
-            }
+            R.id.menu_sort_manual -> { item.isChecked = true; sort = BookSourceSort.Default; upExploreData(searchView.query?.toString()) }
+            R.id.menu_sort_name -> { item.isChecked = true; sort = BookSourceSort.Name; upExploreData(searchView.query?.toString()) }
+            R.id.menu_sort_url -> { item.isChecked = true; sort = BookSourceSort.Url; upExploreData(searchView.query?.toString()) }
+            R.id.menu_sort_time -> { item.isChecked = true; sort = BookSourceSort.Update; upExploreData(searchView.query?.toString()) }
+            R.id.menu_sort_respondTime -> { item.isChecked = true; sort = BookSourceSort.Respond; upExploreData(searchView.query?.toString()) }
         }
-        if (item.groupId == R.id.menu_group_text) {
-            searchView.setQuery("group:${item.title}", true)
-        }
+        if (item.groupId == R.id.menu_group_text) searchView.setQuery("group:${item.title}", true)
     }
 
     override fun scrollTo(pos: Int) {
@@ -428,47 +365,29 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     }
 
     override fun editSource(sourceUrl: String) {
-        startActivity<BookSourceEditActivity> {
-            putExtra("sourceUrl", sourceUrl)
-        }
+        startActivity<BookSourceEditActivity> { putExtra("sourceUrl", sourceUrl) }
     }
 
-    override fun toTop(source: BookSourcePart) {
-        viewModel.topSource(source)
-    }
+    override fun toTop(source: BookSourcePart) { viewModel.topSource(source) }
 
     override fun deleteSource(source: BookSourcePart) {
         alert(R.string.draw) {
             setMessage(getString(R.string.sure_del) + "\n" + source.bookSourceName)
             noButton()
-            yesButton {
-                viewModel.deleteSource(source)
-            }
+            yesButton { viewModel.deleteSource(source) }
         }
     }
 
-    override fun searchBook(bookSource: BookSourcePart) {
-        SearchActivity.start(requireContext(), bookSource)
-    }
+    override fun searchBook(bookSource: BookSourcePart) { SearchActivity.start(requireContext(), bookSource) }
 
-    /**
-     * 显示查询对话框
-     */
     override fun showKindQueryDialog(source: BookSourcePart) {
         showDialogFragment(ExploreKindQueryDialog(source.bookSourceUrl, source.bookSourceName))
     }
-    
-    /**
-     * 压缩目录
-     */
+
     fun compressExplore() {
         if (!adapter.compressExplore()) {
-            if (AppConfig.isEInkMode) {
-                binding.rvFind.scrollToPosition(0)
-            } else {
-                binding.rvFind.smoothScrollToPosition(0)
-            }
+            if (AppConfig.isEInkMode) binding.rvFind.scrollToPosition(0)
+            else binding.rvFind.smoothScrollToPosition(0)
         }
     }
-
 }
