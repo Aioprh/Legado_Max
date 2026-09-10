@@ -119,8 +119,8 @@ private fun DiscoveryHorizontalCard(
 fun DiscoveryModernWaterfallBooks(
     books: List<SearchBook>,
     onClick: (SearchBook) -> Unit,
-    modifier: Modifier = Modifier,
-    onLongClick: (SearchBook) -> Unit = onClick
+    onLongClick: (SearchBook) -> Unit = onClick,
+    modifier: Modifier = Modifier
 ) {
     val left = books.filterIndexed { index, _ -> index % 2 == 0 }
     val right = books.filterIndexed { index, _ -> index % 2 != 0 }
