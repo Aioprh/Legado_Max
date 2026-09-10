@@ -2,8 +2,6 @@ package io.legado.app.ui.main.explore
 
 import android.content.Intent
 import android.widget.ImageView
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -29,7 +26,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -254,91 +250,6 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
     selectedBook?.let { book ->
         val state = BookshelfMatcher.getState(book.name, book.author, book.bookUrl)
         BookBottomSheetCompat(book, state, onDismiss = { selectedBook = null }, onOpen = { open(book) })
-    }
-}
-
-@Composable
-fun DiscoveryTagBar(tags: List<DiscoverTagItem>, selected: Int, onSelected: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        tags.forEachIndexed { index, tag -> FilterChip(index == selected, { onSelected(index) }, label = { Text(tag.text) }) }
-    }
-}
-
-@Composable
-fun DiscoveryRankButtons(labels: List<String>, selected: Int, onSelected: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        labels.forEachIndexed { index, label -> FilterChip(index == selected, { onSelected(index) }, label = { Text(label) }) }
-    }
-}
-
-@Composable
-fun DiscoveryHorizontalBooks(
-    books: List<SearchBook>, onClick: (SearchBook) -> Unit, modifier: Modifier = Modifier,
-    onLoadMore: () -> Unit = {}, loading: Boolean = false,
-    listState: androidx.compose.foundation.lazy.LazyListState = rememberLazyListState(),
-    onLongClick: (SearchBook) -> Unit = onClick
-) {
-    val shouldLoadMore by remember(books.size, loading, listState) {
-        derivedStateOf {
-            books.isNotEmpty() && !loading &&
-                (listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1) >= books.lastIndex - 3
-        }
-    }
-    LaunchedEffect(shouldLoadMore) { if (shouldLoadMore) onLoadMore() }
-    LazyRow(state = listState, modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(books, key = { "${it.origin}|${it.bookUrl}" }) { book ->
-            DiscoveryHorizontalCard(book, onClick, onLongClick)
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun DiscoveryHorizontalCard(book: SearchBook, onClick: (SearchBook) -> Unit, onLongClick: (SearchBook) -> Unit) {
-    Card(Modifier.width(150.dp).combinedClickable(onClick = { onClick(book) }, onLongClick = { onLongClick(book) })) {
-        Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            AndroidView(Modifier.fillMaxWidth().height(190.dp), factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } }, update = { CoverLoader.load(it, book, AppConfig.loadCoverOnlyWifi) })
-            Text(book.name.ifBlank { "未命名" }, maxLines = 2, style = MaterialTheme.typography.titleSmall)
-            if (book.author.isNotBlank()) Text(book.author, maxLines = 1, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun DiscoveryWaterfallBooks(books: List<SearchBook>, onClick: (SearchBook) -> Unit, modifier: Modifier = Modifier, onLongClick: (SearchBook) -> Unit = onClick) {
-    val left = books.filterIndexed { index, _ -> index % 2 == 0 }
-    val right = books.filterIndexed { index, _ -> index % 2 != 0 }
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) { left.forEach { DiscoveryWaterfallCard(it, onClick, onLongClick) } }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) { right.forEach { DiscoveryWaterfallCard(it, onClick, onLongClick) } }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun DiscoveryWaterfallCard(book: SearchBook, onClick: (SearchBook) -> Unit, onLongClick: (SearchBook) -> Unit) {
-    Card(Modifier.fillMaxWidth().combinedClickable(onClick = { onClick(book) }, onLongClick = { onLongClick(book) })) {
-        Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            AndroidView(Modifier.fillMaxWidth().height(190.dp), factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } }, update = { CoverLoader.load(it, book, AppConfig.loadCoverOnlyWifi) })
-            Text(book.name.ifBlank { "未命名" }, maxLines = 2, style = MaterialTheme.typography.titleSmall)
-            if (book.author.isNotBlank()) Text(book.author, maxLines = 1, style = MaterialTheme.typography.bodySmall)
-            book.kind?.takeIf { it.isNotBlank() }?.let { Text(it, maxLines = 1, style = MaterialTheme.typography.labelSmall) }
-        }
-    }
-}
-
-@Composable
-fun DiscoveryRankedBookRow(rank: Int, book: SearchBook, onClick: (SearchBook) -> Unit, modifier: Modifier = Modifier) {
-    Card(modifier.fillMaxWidth(), onClick = { onClick(book) }) {
-        Row(Modifier.padding(horizontal = 8.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(rank.toString(), Modifier.width(24.dp), style = MaterialTheme.typography.titleMedium)
-            Column(Modifier.weight(1f)) {
-                Text(book.name.ifBlank { "未命名" }, maxLines = 2, style = MaterialTheme.typography.titleSmall)
-                val meta = listOf(book.author, book.kind.orEmpty()).filter { it.isNotBlank() }.joinToString(" · ")
-                if (meta.isNotBlank()) Text(meta, maxLines = 1, style = MaterialTheme.typography.bodySmall)
-            }
-        }
     }
 }
 
