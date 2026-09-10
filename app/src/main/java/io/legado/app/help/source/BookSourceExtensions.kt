@@ -21,33 +21,23 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * 采用md5作为key可以在分类修改后自动重新计算,不需要手动刷新
- */
-
 private val mutexMap by lazy { hashMapOf<String, Mutex>() }
 private val exploreKindsMap by lazy { ConcurrentHashMap<String, List<ExploreKind>>() }
 private val aCache by lazy { ACache.get("explore") }
 
-private fun BookSource.getExploreKindsKey(): String {
-    return MD5Utils.md5Encode(bookSourceUrl + exploreUrl)
-}
+private fun BookSource.getExploreKindsKey(): String = MD5Utils.md5Encode(bookSourceUrl + exploreUrl)
+private fun BookSourcePart.getExploreKindsKey(): String = getBookSource()!!.getExploreKindsKey()
 
-private fun BookSourcePart.getExploreKindsKey(): String {
-    return getBookSource()!!.getExploreKindsKey()
-}
+suspend fun BookSourcePart.exploreKinds(): List<ExploreKind> = getBookSource()!!.exploreKinds()
 
-suspend fun BookSourcePart.exploreKinds(): List<ExploreKind> {
-    return getBookSource()!!.exploreKinds()
-}
+/** Compatibility helper for callers that already hold a BookSource. */
+suspend fun exploreKinds(source: BookSource): List<ExploreKind> = source.exploreKinds()
 
 suspend fun BookSource.exploreKinds(): List<ExploreKind> {
     val exploreKindsKey = getExploreKindsKey()
     exploreKindsMap[exploreKindsKey]?.let { return it }
     val exploreUrl = exploreUrl
-    if (exploreUrl.isNullOrBlank()) {
-        return emptyList()
-    }
+    if (exploreUrl.isNullOrBlank()) return emptyList()
     val mutex = mutexMap[bookSourceUrl] ?: Mutex().apply { mutexMap[bookSourceUrl] = this }
     mutex.withLock {
         exploreKindsMap[exploreKindsKey]?.let { return it }
@@ -57,50 +47,27 @@ suspend fun BookSource.exploreKinds(): List<ExploreKind> {
                 val ruleStr = when {
                     exploreUrl.startsWith("@js:", true) -> {
                         aCache.getAsString(exploreKindsKey)?.takeIf { it.isNotBlank() } ?: run {
-                            val exploreInfoMap = exploreInfoMapList[bookSourceUrl] ?: InfoMap(bookSourceUrl).also {
-                                exploreInfoMapList.put(bookSourceUrl, it)
-                            }
+                            val exploreInfoMap = exploreInfoMapList[bookSourceUrl] ?: InfoMap(bookSourceUrl).also { exploreInfoMapList.put(bookSourceUrl, it) }
                             runScriptWithContext {
-                                evalJS(exploreUrl.substring(4)) {
-                                    put("infoMap", exploreInfoMap)
-                                }.toString().trim()
-                            }.also {
-                                aCache.put(exploreKindsKey, it)
-                            }
+                                evalJS(exploreUrl.substring(4)) { put("infoMap", exploreInfoMap) }.toString().trim()
+                            }.also { aCache.put(exploreKindsKey, it) }
                         }
                     }
                     exploreUrl.startsWith("<js>", true) -> {
                         aCache.getAsString(exploreKindsKey)?.takeIf { it.isNotBlank() } ?: run {
-                            val exploreInfoMap = exploreInfoMapList[bookSourceUrl] ?: InfoMap(bookSourceUrl).also {
-                                exploreInfoMapList.put(bookSourceUrl, it)
-                            }
+                            val exploreInfoMap = exploreInfoMapList[bookSourceUrl] ?: InfoMap(bookSourceUrl).also { exploreInfoMapList.put(bookSourceUrl, it) }
                             runScriptWithContext {
-                                evalJS(exploreUrl.substring(4, exploreUrl.lastIndexOf("<"))) {
-                                    put("infoMap", exploreInfoMap)
-                                }.toString().trim()
-                            }.also {
-                                aCache.put(exploreKindsKey, it)
-                            }
+                                evalJS(exploreUrl.substring(4, exploreUrl.lastIndexOf("<"))) { put("infoMap", exploreInfoMap) }.toString().trim()
+                            }.also { aCache.put(exploreKindsKey, it) }
                         }
                     }
                     else -> exploreUrl
                 }
                 val trimRule = ruleStr.trim()
                 if (trimRule.startsWith("<usehtml>") || trimRule.startsWith("<useweb>")) {
-                    kinds.add(
-                        ExploreKind(
-                            title = trimRule,
-                            type = ExploreKind.Type.html,
-                            style = FlexChildStyle(
-                                layout_flexBasisPercent = 1F,
-                                layout_wrapBefore = true
-                            )
-                        )
-                    )
+                    kinds.add(ExploreKind(title = trimRule, type = ExploreKind.Type.html, style = FlexChildStyle(layout_flexBasisPercent = 1F, layout_wrapBefore = true)))
                 } else if (ruleStr.isJsonArray()) {
-                    GSON.fromJsonArray<ExploreKind>(ruleStr).getOrThrow().let {
-                        kinds.addAll(it)
-                    }
+                    GSON.fromJsonArray<ExploreKind>(ruleStr).getOrThrow().let { kinds.addAll(it) }
                 } else {
                     ruleStr.split("(&&|\n)+".toRegex()).forEach { kindStr ->
                         val kindCfg = kindStr.split("::")
@@ -117,35 +84,27 @@ suspend fun BookSource.exploreKinds(): List<ExploreKind> {
     }
 }
 
-suspend fun BookSourcePart.clearExploreKindsCache() {
-    withContext(Dispatchers.IO) {
-        val exploreKindsKey = getExploreKindsKey()
-        aCache.remove(exploreKindsKey)
-        exploreKindsMap.remove(exploreKindsKey)
-    }
+suspend fun BookSourcePart.clearExploreKindsCache() = withContext(Dispatchers.IO) {
+    val exploreKindsKey = getExploreKindsKey()
+    aCache.remove(exploreKindsKey)
+    exploreKindsMap.remove(exploreKindsKey)
 }
 
-suspend fun BookSource.clearExploreKindsCache() {
-    withContext(Dispatchers.IO) {
-        val exploreKindsKey = getExploreKindsKey()
-        aCache.remove(exploreKindsKey)
-        exploreKindsMap.remove(exploreKindsKey)
-    }
+suspend fun BookSource.clearExploreKindsCache() = withContext(Dispatchers.IO) {
+    val exploreKindsKey = getExploreKindsKey()
+    aCache.remove(exploreKindsKey)
+    exploreKindsMap.remove(exploreKindsKey)
 }
 
 fun BookSource.exploreKindsJson(): String {
     val exploreKindsKey = getExploreKindsKey()
-    return aCache.getAsString(exploreKindsKey)?.takeIf { it.isJsonArray() }
-        ?: exploreUrl.takeIf { it.isJsonArray() }
-        ?: ""
+    return aCache.getAsString(exploreKindsKey)?.takeIf { it.isJsonArray() } ?: exploreUrl.takeIf { it.isJsonArray() } ?: ""
 }
 
-fun BookSource.getBookType(): Int {
-    return when (bookSourceType) {
-        BookSourceType.file -> BookType.text or BookType.webFile
-        BookSourceType.image -> BookType.image
-        BookSourceType.audio -> BookType.audio
-        BookSourceType.video -> BookType.video
-        else -> BookType.text
-    }
+fun BookSource.getBookType(): Int = when (bookSourceType) {
+    BookSourceType.file -> BookType.text or BookType.webFile
+    BookSourceType.image -> BookType.image
+    BookSourceType.audio -> BookType.audio
+    BookSourceType.video -> BookType.video
+    else -> BookType.text
 }
