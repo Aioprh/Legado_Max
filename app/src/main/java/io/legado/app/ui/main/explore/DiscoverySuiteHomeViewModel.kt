@@ -178,7 +178,6 @@ class DiscoverySuiteHomeViewModel(application: Application) : BaseViewModel(appl
             loadingWidgetIds = _uiState.value.loadingWidgetIds + widget.id
         )
         loadJobs[widget.id] = viewModelScope.launch {
-            loadJobs[widget.id] = this
             val (books, ranked) = try {
                 withContext(Dispatchers.IO) { load() }
             } catch (e: CancellationException) {
@@ -188,7 +187,7 @@ class DiscoverySuiteHomeViewModel(application: Application) : BaseViewModel(appl
                 emptyList<SearchBook>() to emptyMap()
             }
             setWidgetBooks(widget, books, ranked)
-            if (loadJobs[widget.id] === this) loadJobs.remove(widget.id)
+            loadJobs.remove(widget.id)
         }
     }
 
