@@ -109,40 +109,32 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
     val context = LocalContext.current
     var page by remember(widget.id) { mutableStateOf(1) }
     var selectedTarget by remember(widget.id, widget.targets) { mutableStateOf(0) }
-    var results by remember(widget.id, widget.targets, selectedTarget) {
-        mutableStateOf<List<DiscoveryDataRepository.TargetResult>>(emptyList())
-    }
+    var results by remember(widget.id, widget.targets, selectedTarget) { mutableStateOf<List<DiscoveryDataRepository.TargetResult>>(emptyList()) }
     var loading by remember(widget.id, widget.targets, selectedTarget) { mutableStateOf(true) }
     var hasMore by remember(widget.id, widget.targets, selectedTarget) { mutableStateOf(true) }
     var errorText by remember(widget.id, widget.targets, selectedTarget) { mutableStateOf<String?>(null) }
     var randomSeed by remember(widget.id) { mutableStateOf(0) }
     var selectedBook by remember(widget.id) { mutableStateOf<SearchBook?>(null) }
     val horizontalState = rememberLazyListState()
-
     val targets = remember(widget.targets) {
-        widget.targets.filter { it.sourceUrl.isNotBlank() && it.tagUrl.isNotBlank() }
-            .distinctBy { "${it.sourceUrl}|${it.tagUrl}" }
+        widget.targets.filter { it.sourceUrl.isNotBlank() && it.tagUrl.isNotBlank() }.distinctBy { "${it.sourceUrl}|${it.tagUrl}" }
     }
     val safeTarget = selectedTarget.coerceIn(0, (targets.size - 1).coerceAtLeast(0))
     val targetWidget = remember(widget, safeTarget, targets) {
-        if (widget.type == DiscoverySuiteWidgetType.TagBar.value ||
-            widget.type == DiscoverySuiteWidgetType.RankButtons.value
-        ) widget.copy(targets = targets.getOrNull(safeTarget)?.let { listOf(it) }.orEmpty())
+        if (widget.type == DiscoverySuiteWidgetType.TagBar.value || widget.type == DiscoverySuiteWidgetType.RankButtons.value)
+            widget.copy(targets = targets.getOrNull(safeTarget)?.let { listOf(it) }.orEmpty())
         else widget.copy(targets = targets)
     }
-
     fun resetPaging() {
         page = 1
         results = emptyList()
         hasMore = true
         errorText = null
     }
-
     fun selectTarget(index: Int) {
         selectedTarget = index.coerceIn(0, (targets.size - 1).coerceAtLeast(0))
         resetPaging()
     }
-
     fun open(book: SearchBook) {
         context.startActivity(Intent(context, BookInfoActivity::class.java).apply {
             putExtra("name", book.name)
@@ -151,7 +143,6 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
             putExtra("origin", book.origin)
         })
     }
-
     LaunchedEffect(widget.id, widget.targets, selectedTarget, page, randomSeed) {
         if (targetWidget.targets.isEmpty()) {
             loading = false
@@ -160,86 +151,51 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
             return@LaunchedEffect
         }
         loading = true
-        val previousBookCount = results.flatMap { it.books }
-            .distinctBy { "${it.origin}|${it.bookUrl}" }.size
-        val next = DiscoveryDataRepository.loadWidget(
-            targetWidget,
-            page,
-            forceRefresh = randomSeed > 0 && page == 1
-        )
+        val previousBookCount = results.flatMap { it.books }.distinctBy { "${it.origin}|${it.bookUrl}" }.size
+        val next = DiscoveryDataRepository.loadWidget(targetWidget, page, forceRefresh = randomSeed > 0 && page == 1)
         val merged = if (page == 1 || randomSeed > 0) next else results + next
         results = merged
         errorText = next.firstOrNull { it.error != null }?.error
-        val currentBookCount = merged.flatMap { it.books }
-            .distinctBy { "${it.origin}|${it.bookUrl}" }.size
+        val currentBookCount = merged.flatMap { it.books }.distinctBy { "${it.origin}|${it.bookUrl}" }.size
         val returnedFullPage = next.any { it.books.size >= MAX_DISCOVERY_BOOKS }
         hasMore = currentBookCount > previousBookCount && returnedFullPage && page < MAX_DISCOVERY_AUTO_PAGES
         loading = false
     }
-
-    val pagedHorizontal = widget.layout() == DiscoveryWidgetLayout.Horizontal &&
-        widget.type != DiscoverySuiteWidgetType.RandomBooks.value
+    val pagedHorizontal = widget.layout() == DiscoveryWidgetLayout.Horizontal && widget.type != DiscoverySuiteWidgetType.RandomBooks.value
     val visibleLimit = if (pagedHorizontal) {
-        (widget.displayLimit.coerceIn(1, MAX_DISCOVERY_BOOKS) * page)
-            .coerceAtMost(MAX_DISCOVERY_BOOKS)
+        (widget.displayLimit.coerceIn(1, MAX_DISCOVERY_BOOKS) * page).coerceAtMost(MAX_DISCOVERY_BOOKS)
     } else widget.displayLimit.coerceIn(1, MAX_DISCOVERY_BOOKS)
     val books = remember(results, visibleLimit, randomSeed, widget.type) {
-        val all = results.flatMap { it.books }
-            .distinctBy { "${it.origin}|${it.bookUrl}" }
-        if (widget.type == DiscoverySuiteWidgetType.RandomBooks.value) {
-            all.shuffled(kotlin.random.Random(randomSeed.toLong() + widget.id.hashCode()))
-                .take(widget.displayLimit.coerceIn(1, MAX_DISCOVERY_BOOKS))
-        } else all.take(visibleLimit)
+        val all = results.flatMap { it.books }.distinctBy { "${it.origin}|${it.bookUrl}" }
+        if (widget.type == DiscoverySuiteWidgetType.RandomBooks.value)
+            all.shuffled(kotlin.random.Random(randomSeed.toLong() + widget.id.hashCode())).take(widget.displayLimit.coerceIn(1, MAX_DISCOVERY_BOOKS))
+        else all.take(visibleLimit)
     }
     val canAutoLoadMore = pagedHorizontal && hasMore && page < MAX_DISCOVERY_AUTO_PAGES
-
-    Card(Modifier.fillMaxWidth()) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(widget.title, style = MaterialTheme.typography.titleMedium)
                 Row {
-                    if (widget.type == DiscoverySuiteWidgetType.RandomBooks.value) {
-                        TextButton({ randomSeed++; resetPaging() }) { Text("换一批") }
-                    }
-                    if (loading) Text("加载中…", style = MaterialTheme.typography.bodySmall)
-                    else Text("${books.size} 本", style = MaterialTheme.typography.bodySmall)
+                    if (widget.type == DiscoverySuiteWidgetType.RandomBooks.value) TextButton({ randomSeed++; resetPaging() }) { Text("换一批") }
+                    if (loading) Text("加载中…", style = MaterialTheme.typography.bodySmall) else Text("${books.size} 本", style = MaterialTheme.typography.bodySmall)
                 }
             }
             if (widget.type == DiscoverySuiteWidgetType.TagBar.value && targets.isNotEmpty()) {
-                DiscoveryTagBar(
-                    targets.map { DiscoverTagItem(ExploreKind(title = it.title), it.title.ifBlank { "分类" }, DiscoverTagItem.Role.UrlTag) },
-                    safeTarget, ::selectTarget
-                )
+                DiscoveryTagBar(targets.map { DiscoverTagItem(ExploreKind(title = it.title), it.title.ifBlank { "分类" }, DiscoverTagItem.Role.UrlTag) }, safeTarget, ::selectTarget)
             }
             if (widget.type == DiscoverySuiteWidgetType.RankButtons.value && targets.isNotEmpty()) {
-                DiscoveryRankButtons(
-                    targets.mapIndexed { index, target -> target.title.ifBlank { "榜单 ${index + 1}" } },
-                    safeTarget, ::selectTarget
-                )
+                DiscoveryRankButtons(targets.mapIndexed { index, target -> target.title.ifBlank { "榜单 ${index + 1}" } }, safeTarget, ::selectTarget)
             }
             errorText?.let { Text("部分目标加载失败：$it", style = MaterialTheme.typography.bodySmall) }
             if (books.isEmpty() && !loading) Text("暂无发现内容")
             else when (widget.layout()) {
-                DiscoveryWidgetLayout.Horizontal -> DiscoveryHorizontalBooks(
-                    books = books,
-                    onClick = { selectedBook = it },
-                    onLongClick = { selectedBook = it },
-                    listState = horizontalState,
-                    loading = loading,
-                    onLoadMore = { if (canAutoLoadMore && !loading) page++ }
-                )
+                DiscoveryWidgetLayout.Horizontal -> DiscoveryHorizontalBooks(books = books, onClick = { selectedBook = it }, onLongClick = { selectedBook = it }, listState = horizontalState, loading = loading, onLoadMore = { if (canAutoLoadMore && !loading) page++ })
                 DiscoveryWidgetLayout.Waterfall -> DiscoveryWaterfallBooks(books, { selectedBook = it }, onLongClick = { selectedBook = it })
-                DiscoveryWidgetLayout.RankedList -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    books.forEachIndexed { index, book -> DiscoveryRankedBookRow(index + 1, book) { selectedBook = it } }
-                }
-                DiscoveryWidgetLayout.List -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    books.forEach { book -> DiscoveryBookRow(book, null) { selectedBook = book } }
-                }
+                DiscoveryWidgetLayout.RankedList -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.forEachIndexed { index, book -> DiscoveryRankedBookRow(index + 1, book) { selectedBook = it } } }
+                DiscoveryWidgetLayout.List -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.forEach { book -> DiscoveryBookRow(book, null) { selectedBook = book } } }
             }
-            if (!loading && books.isNotEmpty() && !pagedHorizontal &&
-                widget.type != DiscoverySuiteWidgetType.RandomBooks.value &&
-                widget.type != DiscoverySuiteWidgetType.TagBar.value &&
-                widget.type != DiscoverySuiteWidgetType.RankButtons.value) {
+            if (!loading && books.isNotEmpty() && !pagedHorizontal && widget.type != DiscoverySuiteWidgetType.RandomBooks.value && widget.type != DiscoverySuiteWidgetType.TagBar.value && widget.type != DiscoverySuiteWidgetType.RankButtons.value) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     if (page > 1) TextButton({ page-- }) { Text("上一页") }
                     TextButton({ page++; hasMore = true }) { Text("加载下一页") }
@@ -255,7 +211,7 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
 
 @Composable
 private fun DiscoveryBookRow(book: SearchBook, rank: String?, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth(), onClick = onClick) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             AndroidView(Modifier.width(56.dp).height(76.dp), factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } }, update = { CoverLoader.load(it, book, AppConfig.loadCoverOnlyWifi, overrideWidth = 168, overrideHeight = 228) })
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -310,7 +266,6 @@ private fun DiscoverySuiteManager(suites: List<DiscoverySuite>, sources: List<Bo
     var sourceUrl by remember { mutableStateOf("") }
     var tagUrl by remember { mutableStateOf("") }
     var kinds by remember { mutableStateOf<List<ExploreKind>>(emptyList()) }
-
     fun save(next: DiscoverySuiteConfig) { config = next; DiscoverySuiteStore.save(next); if (editingId.isNotBlank()) onSelected(editingId) }
     val current = config.suites.firstOrNull { it.id == editingId }
     Surface(Modifier.fillMaxSize()) {
