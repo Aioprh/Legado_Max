@@ -190,8 +190,8 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
             errorText?.let { Text("部分目标加载失败：$it", style = MaterialTheme.typography.bodySmall) }
             if (books.isEmpty() && !loading) Text("暂无发现内容")
             else when (widget.layout()) {
-                DiscoveryWidgetLayout.Horizontal -> DiscoveryHorizontalBooks(books = books, onClick = { selectedBook = it }, onLongClick = { selectedBook = it }, listState = horizontalState, loading = loading, onLoadMore = { if (canAutoLoadMore && !loading) page++ })
-                DiscoveryWidgetLayout.Waterfall -> DiscoveryWaterfallBooksLayout(books = books, onClick = { selectedBook = it }, onLongClick = { selectedBook = it })
+                DiscoveryWidgetLayout.Horizontal -> DiscoveryHorizontalBooks(books = books, onClick = { book -> selectedBook = book }, onLongClick = { book -> selectedBook = book }, listState = horizontalState, loading = loading, onLoadMore = { if (canAutoLoadMore && !loading) page++ })
+                DiscoveryWidgetLayout.Waterfall -> DiscoveryWaterfallBooksLayout(books = books, onClick = { book -> selectedBook = book }, onLongClick = { book -> selectedBook = book })
                 DiscoveryWidgetLayout.RankedList -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.forEachIndexed { index, book -> DiscoveryRankedBookRow(index + 1, book) { selectedBook = it } } }
                 DiscoveryWidgetLayout.List -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.forEach { book -> DiscoveryBookRow(book, null) { selectedBook = book } } }
             }
