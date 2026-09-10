@@ -48,7 +48,11 @@ class ChoiceSpeedDialog(private val mContext: Context) : Dialog(
         val view: View = inflater.inflate(R.layout.switch_speed_video_dialog, null)
         listView = view.findViewById(R.id.switch_dialog_list)
         setContentView(view)
-        adapter = SwitchVideoAdapter(mContext, data) { item -> item.toString() + "X" }
+        adapter = SwitchVideoAdapter(
+            context = mContext,
+            dataList = data,
+            titleProvider = { item -> item.toString() + "X" }
+        )
         listView!!.setAdapter(adapter)
         listView!!.onItemClickListener = this@ChoiceSpeedDialog.OnItemClickListener()
         val dialogWindow = window
