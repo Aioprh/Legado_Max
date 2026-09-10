@@ -1,6 +1,7 @@
 package io.legado.app.ui.main.explore
 
 import android.app.Application
+import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
 import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
@@ -103,7 +104,7 @@ class DiscoverySuiteHomeViewModel(application: Application) : BaseViewModel(appl
     }
 
     fun loadMoreRanked(widget: DiscoverySuiteWidget, target: DiscoverySuiteWidgetTarget) {
-        val ranked = _uiState.value.rankedWidgetBooks[widget.id].toMutableMap()
+        val ranked = _uiState.value.rankedWidgetBooks[widget.id].orEmpty().toMutableMap()
         val current = ranked[target.deckKey()].orEmpty()
         if (current.isEmpty()) return
         launchWidgetLoad(widget, force = false) {
@@ -150,7 +151,7 @@ class DiscoverySuiteHomeViewModel(application: Application) : BaseViewModel(appl
         }
     }
 
-    private fun loadAllBooksForWidget(
+    private suspend fun loadAllBooksForWidget(
         widget: DiscoverySuiteWidget
     ): Pair<List<SearchBook>, Map<String, List<SearchBook>>> {
         if (!widget.needsFetch()) return emptyList<SearchBook>() to emptyMap()
