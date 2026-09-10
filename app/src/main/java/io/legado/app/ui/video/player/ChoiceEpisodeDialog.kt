@@ -11,7 +11,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.ListView
 import android.widget.TextView
 import io.legado.app.R
@@ -26,9 +25,8 @@ class ChoiceEpisodeDialog(private val mContext: Context) : Dialog(
     mContext, R.style.dialog_style
 ) {
     private var listView: ListView? = null
-    private var adapter: ArrayAdapter<BookChapter>? = null
+    private var adapter: SwitchVideoAdapter<BookChapter>? = null
     private var onItemClickListener: OnListItemClickListener? = null
-    private var data: List<BookChapter>? = null
 
     interface OnListItemClickListener {
         fun onItemClick(position: Int)
@@ -37,13 +35,13 @@ class ChoiceEpisodeDialog(private val mContext: Context) : Dialog(
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window?.apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-            attributes = attributes.apply {
-                dimAmount = 0.58f
-            }
-            addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        window?.let { dialogWindow ->
+            dialogWindow.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            dialogWindow.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+            val lp = dialogWindow.attributes
+            lp.dimAmount = 0.58f
+            dialogWindow.attributes = lp
+            dialogWindow.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         }
         setCanceledOnTouchOutside(true)
     }
@@ -60,7 +58,6 @@ class ChoiceEpisodeDialog(private val mContext: Context) : Dialog(
         initialSelection: Int = -1
     ) {
         this.onItemClickListener = onItemClickListener
-        this.data = data
 
         val view = LayoutInflater.from(mContext)
             .inflate(R.layout.switch_episode_video_dialog, null)
@@ -93,14 +90,14 @@ class ChoiceEpisodeDialog(private val mContext: Context) : Dialog(
             dismiss()
         }
 
-        window?.apply {
+        window?.let { dialogWindow ->
             val metrics = mContext.resources.displayMetrics
-            attributes = attributes.apply {
-                width = (metrics.widthPixels * 0.68f).toInt().coerceAtLeast(280)
-                height = WindowManager.LayoutParams.MATCH_PARENT
-                gravity = Gravity.END
-                dimAmount = 0.58f
-            }
+            val lp = dialogWindow.attributes
+            lp.width = (metrics.widthPixels * 0.68f).toInt().coerceAtLeast(280)
+            lp.height = WindowManager.LayoutParams.MATCH_PARENT
+            lp.gravity = Gravity.END
+            lp.dimAmount = 0.58f
+            dialogWindow.attributes = lp
         }
     }
 
