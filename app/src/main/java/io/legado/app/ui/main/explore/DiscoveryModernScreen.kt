@@ -191,7 +191,7 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
             if (books.isEmpty() && !loading) Text("暂无发现内容")
             else when (widget.layout()) {
                 DiscoveryWidgetLayout.Horizontal -> DiscoveryHorizontalBooks(books = books, onClick = { selectedBook = it }, onLongClick = { selectedBook = it }, listState = horizontalState, loading = loading, onLoadMore = { if (canAutoLoadMore && !loading) page++ })
-                DiscoveryWidgetLayout.Waterfall -> DiscoveryWaterfallBooks(books, { selectedBook = it }, onLongClick = { selectedBook = it })
+                DiscoveryWidgetLayout.Waterfall -> DiscoveryWaterfallBooks(books = books, onClick = { selectedBook = it }, onLongClick = { selectedBook = it })
                 DiscoveryWidgetLayout.RankedList -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.forEachIndexed { index, book -> DiscoveryRankedBookRow(index + 1, book) { selectedBook = it } } }
                 DiscoveryWidgetLayout.List -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.forEach { book -> DiscoveryBookRow(book, null) { selectedBook = book } } }
             }
@@ -213,7 +213,11 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
 private fun DiscoveryBookRow(book: SearchBook, rank: String?, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            AndroidView(Modifier.width(56.dp).height(76.dp), factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } }, update = { CoverLoader.load(it, book, AppConfig.loadCoverOnlyWifi, overrideWidth = 168, overrideHeight = 228) })
+            AndroidView(
+                factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } },
+                modifier = Modifier.width(56.dp).height(76.dp),
+                update = { view -> CoverLoader.load(view, book, AppConfig.loadCoverOnlyWifi, overrideWidth = 168, overrideHeight = 228) }
+            )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text((rank?.plus("  ") ?: "") + book.name.ifBlank { "未命名" }, style = MaterialTheme.typography.titleSmall, maxLines = 2)
