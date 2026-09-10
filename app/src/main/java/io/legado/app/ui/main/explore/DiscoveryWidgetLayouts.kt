@@ -105,8 +105,8 @@ private fun DiscoveryHorizontalCard(
     ) {
         Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             AndroidView(
-                modifier = Modifier.fillMaxWidth(),
                 factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } },
+                modifier = Modifier.fillMaxWidth(),
                 update = { view -> CoverLoader.load(view, book, AppConfig.loadCoverOnlyWifi) }
             )
             Text(book.name.ifBlank { "未命名" }, maxLines = 2, style = MaterialTheme.typography.titleSmall)
@@ -149,8 +149,8 @@ private fun DiscoveryWaterfallCard(
     ) {
         Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             AndroidView(
-                modifier = Modifier.fillMaxWidth(),
                 factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } },
+                modifier = Modifier.fillMaxWidth(),
                 update = { view -> CoverLoader.load(view, book, AppConfig.loadCoverOnlyWifi) }
             )
             Text(book.name.ifBlank { "未命名" }, maxLines = 2, style = MaterialTheme.typography.titleSmall)
