@@ -1205,5 +1205,27 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         set(value) {
             appCtx.putPrefBoolean(PreferKey.forceSoftwareParagraphBubble, value)
         }
+
+    /**
+     * 发现页「发现套件(Discovery Suite)」开关
+     * 默认关闭(false)：发现页仍使用原有实现；
+     * 开启后：发现页切换到复刻自 Rimchars/legado 的发现套件。
+     */
+    var enableDiscoverySuite: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.enableDiscoverySuite, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.enableDiscoverySuite, value)
+        }
+
+    /**
+     * 新版订阅界面开关
+     * 默认关闭(false)：订阅/书源管理仍使用原有实现；
+     * 开启后：切换到复刻自 Rimchars/legado 的新版订阅/书源管理界面。
+     */
+    var enableModernRss: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.enableModernRss, false)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.enableModernRss, value)
+        }
 }
 

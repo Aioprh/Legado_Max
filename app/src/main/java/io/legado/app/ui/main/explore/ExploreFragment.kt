@@ -5,7 +5,10 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.SubMenu
 import android.view.View
+import android.view.ViewGroup
 import androidx.appcompat.widget.SearchView
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.isGone
 import androidx.core.view.updatePadding
 import androidx.fragment.app.viewModels
@@ -49,6 +52,16 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import io.legado.app.data.entities.SearchBook
+import io.legado.app.ui.book.info.BookInfoActivity
+import io.legado.app.ui.theme.LegadoTheme
 
 /**
  * 发现界面
@@ -84,13 +97,91 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     private var sort = BookSourceSort.Default
     // 是否升序排序
     private var sortAscending = true
+    // 发现套件(复刻自 Rimchars/legado)：由 AppConfig.enableDiscoverySuite 开关控制
+    private val suiteHomeViewModel by viewModels<DiscoverySuiteHomeViewModel>()
+    private val suiteManageViewModel by viewModels<DiscoverySuiteManageViewModel>()
+    private var suiteComposeView: ComposeView? = null
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         setSupportToolbar(binding.titleBar.toolbar)
+        if (AppConfig.enableDiscoverySuite) {
+            showDiscoverySuite()
+            return
+        }
         initSearchView()
         initRecyclerView()
         initGroupData()
         upExploreData()
+    }
+
+    /**
+     * 开启「发现套件」开关后使用复刻自 Rimchars/legado 的发现套件界面，
+     * 覆盖原有 View 版发现列表（套件自带搜索栏/管理入口）。
+     */
+    private fun showDiscoverySuite() {
+        binding.titleBar.isGone = true
+        binding.tvExploreHint.isGone = true
+        binding.rvFind.isGone = true
+        if (suiteComposeView != null) return
+        val contentView = binding.root
+        val composeView = ComposeView(requireContext())
+        suiteComposeView = composeView
+        contentView.addView(
+            composeView,
+            ConstraintLayout.LayoutParams(
+                ConstraintLayout.LayoutParams.MATCH_PARENT,
+                ConstraintLayout.LayoutParams.MATCH_PARENT
+            ).apply {
+                topToTop = ConstraintSet.PARENT_ID
+                bottomToBottom = ConstraintSet.PARENT_ID
+                startToStart = ConstraintSet.PARENT_ID
+                endToEnd = ConstraintSet.PARENT_ID
+            }
+        )
+        composeView.setContent {
+            LegadoTheme {
+                val suiteState by suiteHomeViewModel.uiState.collectAsState()
+                var showManage by rememberSaveable { mutableStateOf(false) }
+                LaunchedEffect(Unit) { suiteHomeViewModel.refreshConfig() }
+                if (showManage) {
+                    DiscoverySuiteManageScreen(
+                        viewModel = suiteManageViewModel,
+                        onBackClick = {
+                            showManage = false
+                            suiteHomeViewModel.reloadFromStore()
+                        }
+                    )
+                } else {
+                    DiscoverySuiteHomeScreen(
+                        uiState = suiteState,
+                        onSearchClick = { SearchActivity.start(requireContext(), null) },
+                        onSuiteClick = {
+                            suiteManageViewModel.reload()
+                            showManage = true
+                        },
+                        onSuiteSelect = { suiteHomeViewModel.selectSuite(it) },
+                        onBookClick = { openSearchBook(it) },
+                        onTagClick = { target ->
+                            target.tagUrl.takeIf { it.isNotBlank() }?.let {
+                                openExplore(target.sourceUrl, target.title, it)
+                            }
+                        },
+                        onRefreshWidget = { suiteHomeViewModel.refreshWidget(it) },
+                        onHorizontalLoadMore = { suiteHomeViewModel.loadMoreHorizontal(it) },
+                        onRankedLoadMore = { suiteHomeViewModel.loadMoreRanked(it) }
+                    )
+                }
+            }
+        }
+    }
+
+    private fun openSearchBook(book: SearchBook) {
+        startActivity<BookInfoActivity> {
+            putExtra("name", book.name)
+            putExtra("author", book.author)
+            putExtra("bookUrl", book.bookUrl)
+            putExtra("origin", book.origin)
+        }
     }
 
     /**
@@ -262,6 +353,8 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     }
 
     override fun onDestroyView() {
+        suiteComposeView?.let { (it.parent as? ViewGroup)?.removeView(it) }
+        suiteComposeView = null
         adapter.onDestroy()
         super.onDestroyView()
     }

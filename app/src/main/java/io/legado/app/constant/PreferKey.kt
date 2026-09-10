@@ -330,6 +330,17 @@ object PreferKey {
     /** 底部导航栏排序，逗号分隔的页面key，第一项为默认主页 */
     const val navItemOrder = "navItemOrder"
 
+    /** 发现页「发现套件(Discory Suite)」开关，默认关闭；开启后使用复刻自 Rimchars/legado 的发现套件 */
+    const val enableDiscoverySuite = "enableDiscoverySuite"
+    /** 发现套件当前选中的套装ID */
+    const val selectedDiscoverySuiteId = "selectedDiscoverySuiteId"
+    /** 发现套件配置(JSON) */
+    const val discoverySuiteConfig = "discoverySuiteConfig"
+    /** 新版订阅界面开关，默认关闭；开启后使用复刻自 Rimchars/legado 的新版订阅/书源管理界面 */
+    const val enableModernRss = "enableModernRss"
+    /** 新版订阅界面最后选择的订阅源URL */
+    const val modernRssSourceUrl = "modernRssSourceUrl"
+
     /** 导入应用主题时各组件的创建开关（日夜间独立） */
     const val appThemeImportDayTheme = "appThemeImportDayTheme"
     const val appThemeImportNightTheme = "appThemeImportNightTheme"
