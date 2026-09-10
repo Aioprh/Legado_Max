@@ -30,9 +30,6 @@ private fun BookSourcePart.getExploreKindsKey(): String = getBookSource()!!.getE
 
 suspend fun BookSourcePart.exploreKinds(): List<ExploreKind> = getBookSource()!!.exploreKinds()
 
-/** Compatibility helper for callers that already hold a BookSource. */
-suspend fun exploreKinds(source: BookSource): List<ExploreKind> = source.exploreKinds()
-
 suspend fun BookSource.exploreKinds(): List<ExploreKind> {
     val exploreKindsKey = getExploreKindsKey()
     exploreKindsMap[exploreKindsKey]?.let { return it }
