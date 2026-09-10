@@ -12,8 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
@@ -47,6 +45,8 @@ import io.legado.app.help.source.exploreKinds
 import io.legado.app.ui.book.info.BookInfoActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
+private const val MAX_DISCOVERY_AUTO_PAGES = 5
 
 @Composable
 fun DiscoveryModernScreen(
@@ -97,7 +97,7 @@ fun DiscoveryModernScreen(
                 OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("搜索书源") })
             }
             if (filtered.isEmpty()) item { Text("暂无可用发现源", Modifier.padding(24.dp)) }
-            else items(filtered, key = { it.bookSourceUrl }) { source -> DiscoverySourceCard(source, onOpen) }
+            else androidx.compose.foundation.lazy.items(filtered, key = { it.bookSourceUrl }) { source -> DiscoverySourceCard(source, onOpen) }
         }
     }
 }
@@ -114,6 +114,7 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
     var errorText by remember(widget.id, widget.targets, selectedTarget) { mutableStateOf<String?>(null) }
     var randomSeed by remember(widget.id) { mutableStateOf(0) }
     var selectedBook by remember(widget.id) { mutableStateOf<SearchBook?>(null) }
+    val horizontalState = rememberLazyListState()
 
     val targets = remember(widget.targets) {
         widget.targets.filter { it.sourceUrl.isNotBlank() && it.tagUrl.isNotBlank() }
@@ -143,6 +144,10 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
         })
     }
 
+    fun preview(book: SearchBook) {
+        selectedBook = book
+    }
+
     LaunchedEffect(widget.id, widget.targets, selectedTarget, page, randomSeed) {
         if (targetWidget.targets.isEmpty()) {
             loading = false
@@ -168,6 +173,10 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
                 .take(widget.displayLimit.coerceIn(1, 60))
         } else all.take(widget.displayLimit.coerceIn(1, 60))
     }
+
+    val pagedHorizontal = widget.layout() == DiscoveryWidgetLayout.Horizontal &&
+        widget.type != DiscoverySuiteWidgetType.RandomBooks.value
+    val canAutoLoadMore = pagedHorizontal && page < MAX_DISCOVERY_AUTO_PAGES
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -202,10 +211,17 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
                 Text("暂无发现内容")
             } else when (widget.layout()) {
                 DiscoveryWidgetLayout.Horizontal -> {
-                    DiscoveryHorizontalBooks(books, onClick = { selectedBook = it })
+                    DiscoveryHorizontalBooks(
+                        books = books,
+                        onClick = { selectedBook = it },
+                        onLongClick = ::preview,
+                        listState = horizontalState,
+                        loading = loading,
+                        onLoadMore = { if (canAutoLoadMore && !loading) page++ }
+                    )
                 }
                 DiscoveryWidgetLayout.Waterfall -> {
-                    DiscoveryWaterfallBooks(books, onClick = { selectedBook = it })
+                    DiscoveryWaterfallBooks(books, onClick = { selectedBook = it }, onLongClick = ::preview)
                 }
                 DiscoveryWidgetLayout.RankedList -> {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -221,7 +237,7 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
                 }
             }
 
-            if (!loading && books.isNotEmpty() && widget.type != DiscoverySuiteWidgetType.RandomBooks.value && widget.type != DiscoverySuiteWidgetType.TagBar.value && widget.type != DiscoverySuiteWidgetType.RankButtons.value) {
+            if (!loading && books.isNotEmpty() && !pagedHorizontal && widget.type != DiscoverySuiteWidgetType.RandomBooks.value && widget.type != DiscoverySuiteWidgetType.TagBar.value && widget.type != DiscoverySuiteWidgetType.RankButtons.value) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     if (page > 1) TextButton({ page-- }) { Text("上一页") }
                     TextButton({ page++ }) { Text("加载下一页") }
