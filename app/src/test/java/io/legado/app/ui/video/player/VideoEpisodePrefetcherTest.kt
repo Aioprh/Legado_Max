@@ -1,19 +1,17 @@
 package io.legado.app.ui.video.player
 
-import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class VideoEpisodePrefetcherTest {
     @Test
-    fun consumeOnlyReturnsMatchingIndexAndClearsCache() = runTest {
+    fun consumeOnlyReturnsMatchingIndexAndClearsCache() = runBlocking {
         val prefetcher = VideoEpisodePrefetcher<String>()
         prefetcher.prefetch(this, 2) { "episode-3" }
-        delay(1)
+        delay(10)
 
         assertEquals("episode-3", prefetcher.consume(2))
         assertNull(prefetcher.consume(2))
@@ -21,17 +19,14 @@ class VideoEpisodePrefetcherTest {
     }
 
     @Test
-    fun invalidateCancelsPendingResult() = runTest {
+    fun invalidateCancelsPendingResult() = runBlocking {
         val prefetcher = VideoEpisodePrefetcher<String>()
-        val gate = async {
-            prefetcher.prefetch(this@runTest, 1) {
-                delay(100)
-                "stale"
-            }
+        prefetcher.prefetch(this, 1) {
+            delay(100)
+            "stale"
         }
-        gate.await()
         prefetcher.invalidate()
-        delay(101)
+        delay(120)
         assertNull(prefetcher.consume(1))
     }
 }
