@@ -11,10 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -34,12 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.entities.rule.ExploreKind
 import io.legado.app.domain.model.BookShelfState
-import io.legado.app.help.book.BookshelfMatcher
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.CoverLoader
 import io.legado.app.help.source.exploreKinds
@@ -98,7 +93,7 @@ fun DiscoveryModernScreen(
             }
             if (suites.isNotEmpty()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     suites.forEach { suite ->
@@ -178,8 +173,6 @@ private fun DiscoverySuiteWidgetContent(
             sources.flatMap { source ->
                 val bookSource = source.getBookSource() ?: return@flatMap emptyList()
                 bookSource.exploreKinds().map { kind -> source to kind }
-            }.filter { (source, _) ->
-                widget.sourceIds.isEmpty() || source.bookSourceUrl in widget.sourceIds
             }.filter { (_, kind) -> !kind.url.isNullOrBlank() }.take(20)
         }
     }
@@ -191,6 +184,7 @@ private fun DiscoverySuiteWidgetContent(
     var errorText by remember(widget.id) { mutableStateOf<String?>(null) }
     var books by remember(widget.id) { mutableStateOf<List<SearchBook>>(emptyList()) }
     val horizontalState = rememberLazyListState()
+    val context = LocalContext.current
     val safeTarget = if (targets.isEmpty()) 0 else selectedTarget.coerceIn(0, targets.lastIndex)
     val target = targets.getOrNull(safeTarget)
 
@@ -227,7 +221,6 @@ private fun DiscoverySuiteWidgetContent(
 
     LaunchedEffect(selectedBook) {
         selectedBook?.let { book ->
-            val context = LocalContext.current
             context.startActivity(Intent(context, BookInfoActivity::class.java).apply {
                 putExtra("bookUrl", book.bookUrl)
                 putExtra("origin", book.origin)
@@ -240,28 +233,55 @@ private fun DiscoverySuiteWidgetContent(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(widget.title.ifBlank { "发现" }, style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (widget.type == DiscoverySuiteWidgetType.RandomBooks.value) TextButton({ randomSeed++; page = 1 }) { Text("换一批") }
+                if (widget.type == DiscoverySuiteWidgetType.RandomBooks.value) TextButton(onClick = { randomSeed++; page = 1 }) { Text("换一批") }
                 if (loading) Text("加载中…", style = MaterialTheme.typography.bodySmall) else Text("${books.size} 本", style = MaterialTheme.typography.bodySmall)
             }
         }
         if (widget.type == DiscoverySuiteWidgetType.TagBar.value && targets.isNotEmpty()) {
-            DiscoveryTagBar(targets.map { DiscoverTagItem(ExploreKind(title = it.second.title), it.second.title.ifBlank { "分类" }, DiscoverTagItem.Role.UrlTag) }, safeTarget, { index -> selectedTarget = index; page = 1 })
+            DiscoveryTagBar(
+                tags = targets.map { DiscoverTagItem(ExploreKind(title = it.second.title), it.second.title.ifBlank { "分类" }, DiscoverTagItem.Role.UrlTag) },
+                selected = safeTarget,
+                onSelected = { index -> selectedTarget = index; page = 1 }
+            )
         }
         if (widget.type == DiscoverySuiteWidgetType.RankButtons.value && targets.isNotEmpty()) {
-            DiscoveryRankButtons(targets.mapIndexed { index, targetItem -> targetItem.second.title.ifBlank { "榜单 ${index + 1}" } }, safeTarget, { index -> selectedTarget = index; page = 1 })
+            DiscoveryRankButtons(
+                labels = targets.mapIndexed { index, targetItem -> targetItem.second.title.ifBlank { "榜单 ${index + 1}" } },
+                selected = safeTarget,
+                onSelected = { index -> selectedTarget = index; page = 1 }
+            )
         }
         errorText?.let { Text("部分目标加载失败：$it", style = MaterialTheme.typography.bodySmall) }
         if (books.isEmpty() && !loading) Text("暂无发现内容")
         else when (widget.layout()) {
-            DiscoveryWidgetLayout.Horizontal -> DiscoveryHorizontalBooks(books = books, onClick = { book -> selectedBook = book }, onLongClick = { book -> selectedBook = book }, listState = horizontalState, loading = loading, onLoadMore = { if (page < MAX_DISCOVERY_AUTO_PAGES && !loading) page++ })
-            DiscoveryWidgetLayout.Waterfall -> DiscoveryModernWaterfallBooks(books = books, onClick = { book -> selectedBook = book }, onLongClick = { book -> selectedBook = book })
-            DiscoveryWidgetLayout.RankedList -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.forEachIndexed { index, book -> DiscoveryRankedBookRow(index + 1, book) { selectedBook = it } } }
-            DiscoveryWidgetLayout.List -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.forEach { book -> DiscoveryBookRow(book, null) { selectedBook = book } } }
+            DiscoveryWidgetLayout.Horizontal -> DiscoveryHorizontalBooks(
+                books = books,
+                onClick = { book -> selectedBook = book },
+                onLongClick = { book -> selectedBook = book },
+                listState = horizontalState,
+                loading = loading,
+                onLoadMore = { if (page < MAX_DISCOVERY_AUTO_PAGES && !loading) page++ }
+            )
+            DiscoveryWidgetLayout.Waterfall -> DiscoveryModernWaterfallBooks(
+                books = books,
+                onClick = { book -> selectedBook = book },
+                onLongClick = { book -> selectedBook = book }
+            )
+            DiscoveryWidgetLayout.RankedList -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                books.forEachIndexed { index, book ->
+                    DiscoveryRankedBookRow(index + 1, book, onClick = { selectedBook = it })
+                }
+            }
+            DiscoveryWidgetLayout.List -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                books.forEach { book ->
+                    DiscoveryBookRow(book = book, shelfState = null, onClick = { selectedBook = book })
+                }
+            }
         }
         if (!loading && books.isNotEmpty() && widget.layout() != DiscoveryWidgetLayout.Horizontal && widget.type != DiscoverySuiteWidgetType.RandomBooks.value && widget.type != DiscoverySuiteWidgetType.TagBar.value && widget.type != DiscoverySuiteWidgetType.RankButtons.value) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                if (page > 1) TextButton({ page-- }) { Text("上一页") }
-                TextButton({ page++ }) { Text("加载下一页") }
+                if (page > 1) TextButton(onClick = { page-- }) { Text("上一页") }
+                TextButton(onClick = { page++ }) { Text("加载下一页") }
             }
         }
     }
