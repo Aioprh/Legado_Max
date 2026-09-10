@@ -31,19 +31,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import io.legado.app.AppConfig
 import io.legado.app.data.appDb
-import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.SearchBook
+import io.legado.app.data.entities.rule.BookSource
 import io.legado.app.data.entities.rule.ExploreKind
-import io.legado.app.domain.model.BookShelfState
-import io.legado.app.help.book.BookshelfMatcher
-import io.legado.app.help.config.AppConfig
-import io.legado.app.help.glide.CoverLoader
-import io.legado.app.help.source.exploreKinds
+import io.legado.app.data.entities.rule.exploreKinds
+import io.legado.app.model.webBook.WebBook
 import io.legado.app.ui.book.info.BookInfoActivity
+import io.legado.app.ui.book.search.SearchActivity
+import io.legado.app.ui.widget.components.BookBottomSheet
+import io.legado.app.ui.widget.components.CoverLoader
+import io.legado.app.utils.BookshelfMatcher
+import io.legado.app.utils.getPrefBoolean
+import io.legado.app.utils.putPrefBoolean
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -52,160 +55,163 @@ private const val MAX_DISCOVERY_BOOKS = 60
 
 @Composable
 fun DiscoveryModernScreen(
-    sources: List<BookSourcePart>,
-    suites: List<DiscoverySuite>,
-    selectedSuiteId: String,
-    onSuiteSelected: (String) -> Unit,
-    onOpen: (BookSourcePart, ExploreKind) -> Unit,
-    onRefresh: () -> Unit
+    sources: List<BookSource>,
+    modifier: Modifier = Modifier,
+    onOpenSource: (BookSource) -> Unit = {}
 ) {
+    val config = remember { DiscoverySuiteStore.load() }
+    var selectedSuiteId by remember { mutableStateOf(DiscoverySuiteStore.selectedSuiteId()) }
     var query by remember { mutableStateOf("") }
-    var manage by remember { mutableStateOf(false) }
-    val selectedSuite = suites.firstOrNull { it.id == selectedSuiteId }
-    val filtered = remember(sources, query) {
-        if (query.isBlank()) sources else sources.filter {
-            it.bookSourceName.contains(query, true) || it.bookSourceUrl.contains(query, true)
-        }
-    }
-    if (manage) {
-        DiscoverySuiteManager(suites, sources, selectedSuiteId, onSuiteSelected) { manage = false }
-        return
-    }
-    Surface(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Column(Modifier.weight(1f)) {
-                        Text("发现", style = MaterialTheme.typography.headlineSmall)
-                        Text("聚合书源发现、分类与榜单", style = MaterialTheme.typography.bodySmall)
-                    }
-                    Row {
-                        TextButton({ manage = true }) { Text("管理") }
-                        TextButton(onRefresh) { Text("刷新") }
+    var refreshToken by remember { mutableStateOf(0) }
+    val suites = remember(config, refreshToken) { config.suites.sortedBy { it.order } }
+    val selected = suites.firstOrNull { it.id == selectedSuiteId } ?: suites.firstOrNull()
+
+    Surface(modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    label = { Text("发现") },
+                    placeholder = { Text("搜索书籍") }
+                )
+                TextButton(onClick = { refreshToken++ }) { Text("刷新") }
+            }
+            if (suites.isNotEmpty()) {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    suites.forEach { suite ->
+                        FilterChip(
+                            selected = suite.id == selected?.id,
+                            onClick = {
+                                selectedSuiteId = suite.id
+                                DiscoverySuiteStore.setSelectedSuiteId(suite.id)
+                            },
+                            label = { Text(suite.displayName) }
+                        )
                     }
                 }
             }
-            if (suites.isNotEmpty()) item {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    suites.sortedBy { it.order }.forEach { suite ->
-                        FilterChip(suite.id == selectedSuiteId, { onSuiteSelected(suite.id) }, label = { Text(suite.displayName) })
+            if (selected == null) {
+                DiscoverySuiteManager(sources, onChanged = { refreshToken++ })
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    selected.widgets.sortedBy { it.order }.forEach { widget ->
+                        item(key = widget.id) {
+                            DiscoveryWidgetCard(
+                                widget = widget,
+                                query = query,
+                                refreshToken = refreshToken,
+                                onOpen = { book ->
+                                    appDb.bookDao.findBook(book.name, book.author)?.let { appDb.bookDao.update(it.copy() as Any) }
+                                    val intent = Intent(this@DiscoveryModernScreen.javaClass.classLoader?.let { null }, BookInfoActivity::class.java)
+                                },
+                                onSearch = { book -> SearchActivity.start(it) }
+                            )
+                        }
                     }
+                    item { DiscoverySuiteManager(sources, onChanged = { refreshToken++ }) }
                 }
             }
-            selectedSuite?.widgets?.sortedBy { it.order }?.forEach { widget ->
-                item(key = widget.id) { DiscoveryWidgetCard(widget) }
-            }
-            item {
-                OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("搜索书源") })
-            }
-            if (filtered.isEmpty()) item { Text("暂无可用发现源", Modifier.padding(24.dp)) }
-            else items(filtered, key = { it.bookSourceUrl }) { source -> DiscoverySourceCard(source, onOpen) }
         }
     }
 }
 
 @Composable
-private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
-    val context = LocalContext.current
-    var page by remember(widget.id) { mutableStateOf(1) }
-    var selectedTarget by remember(widget.id, widget.targets) { mutableStateOf(0) }
-    var results by remember(widget.id, widget.targets, selectedTarget) { mutableStateOf<List<DiscoveryDataRepository.TargetResult>>(emptyList()) }
-    var loading by remember(widget.id, widget.targets, selectedTarget) { mutableStateOf(true) }
-    var hasMore by remember(widget.id, widget.targets, selectedTarget) { mutableStateOf(true) }
-    var errorText by remember(widget.id, widget.targets, selectedTarget) { mutableStateOf<String?>(null) }
-    var randomSeed by remember(widget.id) { mutableStateOf(0) }
-    var selectedBook by remember(widget.id) { mutableStateOf<SearchBook?>(null) }
+private fun DiscoveryWidgetCard(
+    widget: DiscoverySuiteWidget,
+    query: String,
+    refreshToken: Int,
+    onOpen: (SearchBook) -> Unit,
+    onSearch: (SearchBook) -> Unit
+) {
+    var selectedTargetIndex by remember(widget.id) { mutableStateOf(0) }
+    var page by remember(widget.id, refreshToken) { mutableStateOf(1) }
+    var hasMore by remember(widget.id, refreshToken) { mutableStateOf(true) }
+    var loading by remember(widget.id, refreshToken) { mutableStateOf(false) }
+    var errorText by remember(widget.id, refreshToken) { mutableStateOf<String?>(null) }
+    var books by remember(widget.id, refreshToken) { mutableStateOf<List<SearchBook>>(emptyList()) }
+    var randomSeed by remember(widget.id, refreshToken) { mutableStateOf(0) }
     val horizontalState = rememberLazyListState()
-    val targets = remember(widget.targets) {
-        widget.targets.filter { it.sourceUrl.isNotBlank() && it.tagUrl.isNotBlank() }.distinctBy { "${it.sourceUrl}|${it.tagUrl}" }
-    }
-    val safeTarget = selectedTarget.coerceIn(0, (targets.size - 1).coerceAtLeast(0))
-    val targetWidget = remember(widget, safeTarget, targets) {
-        if (widget.type == DiscoverySuiteWidgetType.TagBar.value || widget.type == DiscoverySuiteWidgetType.RankButtons.value)
-            widget.copy(targets = targets.getOrNull(safeTarget)?.let { listOf(it) }.orEmpty())
-        else widget.copy(targets = targets)
-    }
-    fun resetPaging() {
-        page = 1
-        results = emptyList()
-        hasMore = true
-        errorText = null
-    }
-    fun selectTarget(index: Int) {
-        selectedTarget = index.coerceIn(0, (targets.size - 1).coerceAtLeast(0))
-        resetPaging()
-    }
-    fun open(book: SearchBook) {
-        context.startActivity(Intent(context, BookInfoActivity::class.java).apply {
-            putExtra("name", book.name)
-            putExtra("author", book.author)
-            putExtra("bookUrl", book.bookUrl)
-            putExtra("origin", book.origin)
-        })
-    }
-    LaunchedEffect(widget.id, widget.targets, selectedTarget, page, randomSeed) {
-        if (targetWidget.targets.isEmpty()) {
-            loading = false
-            results = emptyList()
-            hasMore = false
+    val targets = widget.targets
+    val safeTarget = selectedTargetIndex.coerceIn(0, (targets.size - 1).coerceAtLeast(0))
+    val pagedHorizontal = widget.layout() == DiscoveryWidgetLayout.Horizontal
+    val visibleLimit = if (pagedHorizontal) (widget.displayLimit * page).coerceAtMost(MAX_DISCOVERY_BOOKS) else widget.displayLimit.coerceAtMost(MAX_DISCOVERY_BOOKS)
+    val selectedTarget = targets.getOrNull(safeTarget)
+
+    LaunchedEffect(widget.id, selectedTarget?.sourceUrl, selectedTarget?.tagUrl, page, randomSeed, query, refreshToken) {
+        if (selectedTarget == null || selectedTarget.sourceUrl.isBlank() || selectedTarget.tagUrl.isBlank()) {
+            books = emptyList()
             return@LaunchedEffect
         }
         loading = true
-        val previousBookCount = results.flatMap { it.books }.distinctBy { "${it.origin}|${it.bookUrl}" }.size
-        val next = DiscoveryDataRepository.loadWidget(targetWidget, page, forceRefresh = randomSeed > 0 && page == 1)
-        val merged = if (page == 1 || randomSeed > 0) next else results + next
-        results = merged
-        errorText = next.firstOrNull { it.error != null }?.error
-        val currentBookCount = merged.flatMap { it.books }.distinctBy { "${it.origin}|${it.bookUrl}" }.size
-        val returnedFullPage = next.any { it.books.size >= MAX_DISCOVERY_BOOKS }
-        hasMore = currentBookCount > previousBookCount && returnedFullPage && page < MAX_DISCOVERY_AUTO_PAGES
+        errorText = null
+        val result = DiscoveryDataRepository.loadTarget(
+            selectedTarget.sourceUrl,
+            selectedTarget.tagUrl,
+            selectedTarget.title,
+            page = page,
+            forceRefresh = randomSeed > 0 || refreshToken > 0
+        )
+        if (page == 1) books = result.books
+        else books = (books + result.books).distinctBy { "${it.origin}|${it.bookUrl}" }.take(MAX_DISCOVERY_BOOKS)
+        hasMore = result.books.size >= 60 && page < MAX_DISCOVERY_AUTO_PAGES
+        errorText = result.error
         loading = false
     }
-    val pagedHorizontal = widget.layout() == DiscoveryWidgetLayout.Horizontal && widget.type != DiscoverySuiteWidgetType.RandomBooks.value
-    val visibleLimit = if (pagedHorizontal) {
-        (widget.displayLimit.coerceIn(1, MAX_DISCOVERY_BOOKS) * page).coerceAtMost(MAX_DISCOVERY_BOOKS)
-    } else widget.displayLimit.coerceIn(1, MAX_DISCOVERY_BOOKS)
-    val books = remember(results, visibleLimit, randomSeed, widget.type) {
-        val all = results.flatMap { it.books }.distinctBy { "${it.origin}|${it.bookUrl}" }
-        if (widget.type == DiscoverySuiteWidgetType.RandomBooks.value)
-            all.shuffled(kotlin.random.Random(randomSeed.toLong() + widget.id.hashCode())).take(widget.displayLimit.coerceIn(1, MAX_DISCOVERY_BOOKS))
-        else all.take(visibleLimit)
-    }
-    val canAutoLoadMore = pagedHorizontal && hasMore && page < MAX_DISCOVERY_AUTO_PAGES
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(widget.title, style = MaterialTheme.typography.titleMedium)
                 Row {
-                    if (widget.type == DiscoverySuiteWidgetType.RandomBooks.value) TextButton({ randomSeed++; resetPaging() }) { Text("换一批") }
+                    if (widget.type == DiscoverySuiteWidgetType.RandomBooks.value) TextButton({ randomSeed++; page = 1 }) { Text("换一批") }
                     if (loading) Text("加载中…", style = MaterialTheme.typography.bodySmall) else Text("${books.size} 本", style = MaterialTheme.typography.bodySmall)
                 }
             }
             if (widget.type == DiscoverySuiteWidgetType.TagBar.value && targets.isNotEmpty()) {
-                DiscoveryTagBar(targets.map { DiscoverTagItem(ExploreKind(title = it.title), it.title.ifBlank { "分类" }, DiscoverTagItem.Role.UrlTag) }, safeTarget, ::selectTarget)
+                DiscoveryTagBar(targets.map { DiscoverTagItem(ExploreKind(title = it.title), it.title.ifBlank { "分类" }, DiscoverTagItem.Role.UrlTag) }, safeTarget, { index -> selectedTargetIndex = index; page = 1 })
             }
             if (widget.type == DiscoverySuiteWidgetType.RankButtons.value && targets.isNotEmpty()) {
-                DiscoveryRankButtons(targets.mapIndexed { index, target -> target.title.ifBlank { "榜单 ${index + 1}" } }, safeTarget, ::selectTarget)
+                DiscoveryRankButtons(targets.mapIndexed { index, target -> target.title.ifBlank { "榜单 ${index + 1}" } }, safeTarget, { index -> selectedTargetIndex = index; page = 1 })
             }
             errorText?.let { Text("部分目标加载失败：$it", style = MaterialTheme.typography.bodySmall) }
             if (books.isEmpty() && !loading) Text("暂无发现内容")
             else when (widget.layout()) {
-                DiscoveryWidgetLayout.Horizontal -> DiscoveryHorizontalBooks(books = books, onClick = { selectedBook = it }, onLongClick = { selectedBook = it }, listState = horizontalState, loading = loading, onLoadMore = { if (canAutoLoadMore && !loading) page++ })
-                DiscoveryWidgetLayout.Waterfall -> DiscoveryWaterfallBooks(books = books, onClick = { selectedBook = it }, onLongClick = { selectedBook = it })
-                DiscoveryWidgetLayout.RankedList -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.forEachIndexed { index, book -> DiscoveryRankedBookRow(index + 1, book) { selectedBook = it } } }
-                DiscoveryWidgetLayout.List -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.forEach { book -> DiscoveryBookRow(book, null) { selectedBook = book } } }
+                DiscoveryWidgetLayout.Horizontal -> DiscoveryHorizontalBooks(
+                    books = books.take(visibleLimit),
+                    onClick = { book -> onOpen(book) },
+                    onLongClick = { book -> onOpen(book) },
+                    listState = horizontalState,
+                    loading = loading,
+                    onLoadMore = { if (hasMore && !loading) page++ }
+                )
+                DiscoveryWidgetLayout.Waterfall -> DiscoveryWaterfallBooks(
+                    books = books.take(visibleLimit),
+                    onClick = { book -> onOpen(book) },
+                    modifier = Modifier.fillMaxWidth(),
+                    onLongClick = { book -> onOpen(book) }
+                )
+                DiscoveryWidgetLayout.RankedList -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.take(visibleLimit).forEachIndexed { index, book -> DiscoveryRankedBookRow(index + 1, book) { selected -> onOpen(selected) } } }
+                DiscoveryWidgetLayout.List -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { books.take(visibleLimit).forEach { book -> DiscoveryBookRow(book, null) { onOpen(book) } } }
             }
             if (!loading && books.isNotEmpty() && !pagedHorizontal && widget.type != DiscoverySuiteWidgetType.RandomBooks.value && widget.type != DiscoverySuiteWidgetType.TagBar.value && widget.type != DiscoverySuiteWidgetType.RankButtons.value) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     if (page > 1) TextButton({ page-- }) { Text("上一页") }
-                    TextButton({ page++; hasMore = true }) { Text("加载下一页") }
+                    if (hasMore) TextButton({ page++; hasMore = true }) { Text("加载下一页") }
                 }
             }
         }
-    }
-    selectedBook?.let { book ->
-        val state = BookshelfMatcher.getState(book.name, book.author, book.bookUrl)
-        BookBottomSheetCompat(book, state, onDismiss = { selectedBook = null }, onOpen = { open(book) })
     }
 }
 
@@ -213,121 +219,57 @@ private fun DiscoveryWidgetCard(widget: DiscoverySuiteWidget) {
 private fun DiscoveryBookRow(book: SearchBook, rank: String?, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            AndroidView(
-                factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } },
-                modifier = Modifier.width(56.dp).height(76.dp),
-                update = { view -> CoverLoader.load(view, book, AppConfig.loadCoverOnlyWifi, overrideWidth = 168, overrideHeight = 228) }
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text((rank?.plus("  ") ?: "") + book.name.ifBlank { "未命名" }, style = MaterialTheme.typography.titleSmall, maxLines = 2)
-                    Text(shelfLabel(book), style = MaterialTheme.typography.labelSmall)
+            AndroidView(factory = { context -> ImageView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP } }, modifier = Modifier.width(56.dp).height(80.dp), update = { CoverLoader.load(it, book, AppConfig.loadCoverOnlyWifi) })
+            Column(Modifier.weight(1f)) {
+                Text(book.name.ifBlank { "未命名" }, maxLines = 2, style = MaterialTheme.typography.titleSmall)
+                if (book.author.isNotBlank()) Text(book.author, maxLines = 1, style = MaterialTheme.typography.bodySmall)
+                rank?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookBottomSheetCompat(book: SearchBook, state: BookshelfMatcher.State, onDismiss: () -> Unit, onOpen: () -> Unit) {
+    BookBottomSheet(show = true, book = book, shelfState = state, onDismiss = onDismiss, onAddToShelf = { appDb.bookDao.insert(it.toBook()) }, onShowInfo = onOpen)
+}
+
+@Composable
+private fun DiscoverySuiteManager(sources: List<BookSource>, onChanged: () -> Unit) {
+    var config by remember { mutableStateOf(DiscoverySuiteStore.load()) }
+    var showCreate by remember { mutableStateOf(false) }
+    var suiteName by remember { mutableStateOf("") }
+    Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("发现套件", style = MaterialTheme.typography.titleMedium)
+            Button(onClick = { showCreate = true }) { Text("新增套件") }
+        }
+        config.suites.sortedBy { it.order }.forEach { suite ->
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(suite.displayName)
+                    suite.widgets.sortedBy { it.order }.forEach { widget -> Text("• ${widget.title}") }
                 }
-                Text(listOf(book.author, book.kind.orEmpty(), book.latestChapterTitle.orEmpty()).filter { it.isNotBlank() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall, maxLines = 2)
-                Text(book.originName.ifBlank { book.origin }, style = MaterialTheme.typography.labelSmall, maxLines = 1)
             }
         }
     }
-}
-
-private fun shelfLabel(book: SearchBook): String = when (BookshelfMatcher.getState(book.name, book.author, book.bookUrl)) {
-    BookShelfState.IN_SHELF -> "✓ 已在书架"
-    BookShelfState.SAME_NAME_AUTHOR -> "! 同名书籍"
-    BookShelfState.NOT_IN_SHELF -> ""
-}
-
-@Composable
-private fun BookBottomSheetCompat(book: SearchBook, state: BookShelfState, onDismiss: () -> Unit, onOpen: () -> Unit) {
-    io.legado.app.ui.widget.components.BookBottomSheet(show = true, book = book, shelfState = state, onDismiss = onDismiss, onAddToShelf = { appDb.bookDao.insert(it.toBook()) }, onShowInfo = { onOpen() })
-}
-
-@Composable
-private fun DiscoverySourceCard(source: BookSourcePart, onOpen: (BookSourcePart, ExploreKind) -> Unit) {
-    var kinds by remember(source.bookSourceUrl) { mutableStateOf<List<ExploreKind>>(emptyList()) }
-    LaunchedEffect(source.bookSourceUrl) {
-        kinds = withContext(Dispatchers.IO) { appDb.bookSourceDao.getBookSource(source.bookSourceUrl)?.let { exploreKinds(it) }.orEmpty().filter { !it.url.isNullOrBlank() } }
-    }
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(source.bookSourceName, style = MaterialTheme.typography.titleMedium)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                kinds.take(16).forEach { kind -> FilterChip(false, { onOpen(source, kind) }, label = { Text(kind.title) }) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DiscoverySuiteManager(suites: List<DiscoverySuite>, sources: List<BookSourcePart>, selectedSuiteId: String, onSelected: (String) -> Unit, onBack: () -> Unit) {
-    var config by remember(suites) { mutableStateOf(DiscoverySuiteConfig(suites)) }
-    var editingId by remember { mutableStateOf(selectedSuiteId.ifBlank { suites.firstOrNull()?.id.orEmpty() }) }
-    var name by remember { mutableStateOf("") }
-    var alias by remember { mutableStateOf("") }
-    var creating by remember { mutableStateOf(false) }
-    var suiteDialog by remember { mutableStateOf(false) }
-    var widgetDialog by remember { mutableStateOf(false) }
-    var targetWidgetId by remember { mutableStateOf<String?>(null) }
-    var sourceUrl by remember { mutableStateOf("") }
-    var tagUrl by remember { mutableStateOf("") }
-    var kinds by remember { mutableStateOf<List<ExploreKind>>(emptyList()) }
-    fun save(next: DiscoverySuiteConfig) { config = next; DiscoverySuiteStore.save(next); if (editingId.isNotBlank()) onSelected(editingId) }
-    val current = config.suites.firstOrNull { it.id == editingId }
-    Surface(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("发现套件", style = MaterialTheme.typography.headlineSmall); TextButton(onBack) { Text("返回") } } }
-            item { Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                config.suites.sortedBy { it.order }.forEach { suite -> FilterChip(suite.id == editingId, { editingId = suite.id; onSelected(suite.id) }, label = { Text(suite.displayName) }) }
-                FilterChip(false, { creating = true; name = ""; alias = ""; suiteDialog = true }, label = { Text("＋ 新建") })
-            } }
-            current?.let { suite ->
-                item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(suite.displayName, style = MaterialTheme.typography.titleMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Button({ widgetDialog = true }) { Text("添加组件") }
-                        TextButton({ creating = false; name = suite.name; alias = suite.alias; suiteDialog = true }) { Text("编辑") }
-                        TextButton({ val rest = config.suites.filterNot { it.id == suite.id }; editingId = rest.firstOrNull()?.id.orEmpty(); save(DiscoverySuiteConfig(rest)) }) { Text("删除") }
-                    }
-                } } }
-                items(suite.widgets.sortedBy { it.order }, key = { it.id }) { widget -> Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(widget.title, style = MaterialTheme.typography.titleMedium)
-                    Text("${widget.type} · ${widget.targets.size} 个目标 · ${widget.displayLimit} 本")
-                    Row {
-                        TextButton({ targetWidgetId = widget.id; sourceUrl = ""; tagUrl = "" }) { Text("添加目标") }
-                        TextButton({ save(DiscoverySuiteConfig(config.suites.map { s -> if (s.id == suite.id) s.copy(widgets = s.widgets.filterNot { it.id == widget.id }) else s })) }) { Text("删除") }
-                    }
-                } } }
-            } ?: item { Text("暂无套件，请新建。", Modifier.padding(20.dp)) }
-        }
-    }
-    if (suiteDialog) AlertDialog(onDismissRequest = { suiteDialog = false }, title = { Text(if (creating) "新建发现套件" else "编辑发现套件") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(name, { name = it }, singleLine = true, label = { Text("名称") })
-        OutlinedTextField(alias, { alias = it }, singleLine = true, label = { Text("显示别名") })
-    } }, confirmButton = { TextButton({
-        if (creating) { val s = DiscoverySuiteStore.newSuite(name).copy(alias = alias); editingId = s.id; save(DiscoverySuiteConfig(config.suites + s)) }
-        else current?.let { c -> save(DiscoverySuiteConfig(config.suites.map { s -> if (s.id == c.id) s.copy(name = name, alias = alias) else s })) }
-        suiteDialog = false
-    }) { Text("保存") } }, dismissButton = { TextButton({ suiteDialog = false }) { Text("取消") } })
-    if (widgetDialog && current != null) {
-        var title by remember { mutableStateOf("") }
-        var type by remember { mutableStateOf(DiscoverySuiteWidgetType.RandomBooks.value) }
-        AlertDialog(onDismissRequest = { widgetDialog = false }, title = { Text("添加发现组件") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(title, { title = it }, singleLine = true, label = { Text("标题") })
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { DiscoverySuiteWidgetType.entries.forEach { t -> FilterChip(type == t.value, { type = t.value }, label = { Text(t.value) }) } }
-        } }, confirmButton = { TextButton({ val w = DiscoverySuiteStore.newWidget(title, type); save(DiscoverySuiteConfig(config.suites.map { s -> if (s.id == current.id) s.copy(widgets = s.widgets + w) else s })); widgetDialog = false }) { Text("添加") } }, dismissButton = { TextButton({ widgetDialog = false }) { Text("取消") } })
-    }
-    targetWidgetId?.let { id ->
-        val widget = current?.widgets?.firstOrNull { it.id == id }
-        if (widget != null) {
-            LaunchedEffect(sourceUrl) { kinds = if (sourceUrl.isBlank()) emptyList() else withContext(Dispatchers.IO) { appDb.bookSourceDao.getBookSource(sourceUrl)?.let { exploreKinds(it) }.orEmpty().filter { !it.url.isNullOrBlank() } } }
-            AlertDialog(onDismissRequest = { targetWidgetId = null }, title = { Text("添加发现目标") }, text = { Column(Modifier.horizontalScroll(rememberScrollState())) {
-                if (sourceUrl.isBlank()) sources.forEach { s -> TextButton({ sourceUrl = s.bookSourceUrl }) { Text(s.bookSourceName) } }
-                else kinds.forEach { k -> TextButton({ tagUrl = k.url.orEmpty() }) { Text(k.title) } }
-            } }, confirmButton = { TextButton(enabled = sourceUrl.isNotBlank() && tagUrl.isNotBlank(), onClick = {
-                val title = kinds.firstOrNull { it.url == tagUrl }?.title.orEmpty()
-                val target = DiscoverySuiteWidgetTarget(sourceUrl, tagUrl, title)
-                save(DiscoverySuiteConfig(config.suites.map { s -> if (s.id == current.id) s.copy(widgets = s.widgets.map { w -> if (w.id == id) w.copy(targets = (w.targets + target).distinctBy { "${it.sourceUrl}|${it.tagUrl}" }) else w }) else s }))
-                targetWidgetId = null
-            }) { Text("添加") } }, dismissButton = { TextButton({ targetWidgetId = null }) { Text("取消") } })
-        }
+    if (showCreate) {
+        AlertDialog(
+            onDismissRequest = { showCreate = false },
+            title = { Text("新建发现套件") },
+            text = { OutlinedTextField(suiteName, { suiteName = it }, label = { Text("名称") }) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val suite = DiscoverySuiteStore.newSuite(suiteName)
+                    val next = config.copy(suites = config.suites + suite)
+                    DiscoverySuiteStore.save(next)
+                    config = next
+                    suiteName = ""
+                    showCreate = false
+                    onChanged()
+                }) { Text("保存") }
+            },
+            dismissButton = { TextButton(onClick = { showCreate = false }) { Text("取消") } }
+        )
     }
 }
