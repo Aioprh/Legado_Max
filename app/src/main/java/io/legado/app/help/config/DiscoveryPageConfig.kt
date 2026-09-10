@@ -4,36 +4,43 @@ import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.putPrefBoolean
 import splitties.init.appCtx
 
-/**
- * 发现页模式配置。
- *
- * 这里保留旧的 DiscoverySuite 开关作为兼容层；Modern Discovery 完整移植后
- * 再统一切换到 discoveryPageMode 三态配置。
- */
 object DiscoveryPageMode {
     const val CLASSIC = 0
     const val MODERN = 1
     const val SUITE = 2
 }
 
-/** 兼容现有 Max 发现套件实现。 */
 var AppConfig.enableDiscoverySuite: Boolean
     get() = appCtx.getPrefBoolean("enableDiscoverySuite", false)
     set(value) = appCtx.putPrefBoolean("enableDiscoverySuite", value)
 
-/** 新版发现页模式，默认保持原版发现。 */
+/** 新版发现独立开关：默认关闭，不影响首页。 */
+var AppConfig.enableModernDiscovery: Boolean
+    get() = appCtx.getPrefBoolean("enableModernDiscovery", false)
+    set(value) = appCtx.putPrefBoolean("enableModernDiscovery", value)
+
 var AppConfig.discoveryPageMode: Int
     get() = when {
         AppConfig.enableDiscoverySuite -> DiscoveryPageMode.SUITE
-        else -> appCtx.getSharedPreferences("legado", 0)
-            .getInt("discoveryPageMode", DiscoveryPageMode.CLASSIC)
+        AppConfig.enableModernDiscovery -> DiscoveryPageMode.MODERN
+        else -> DiscoveryPageMode.CLASSIC
     }
     set(value) {
-        appCtx.getSharedPreferences("legado", 0)
-            .edit()
-            .putInt("discoveryPageMode", value)
-            .apply()
+        when (value) {
+            DiscoveryPageMode.MODERN -> {
+                AppConfig.enableModernDiscovery = true
+                AppConfig.enableDiscoverySuite = false
+            }
+            DiscoveryPageMode.SUITE -> {
+                AppConfig.enableDiscoverySuite = true
+                AppConfig.enableModernDiscovery = false
+            }
+            else -> {
+                AppConfig.enableModernDiscovery = false
+                AppConfig.enableDiscoverySuite = false
+            }
+        }
     }
 
 val AppConfig.usingModernDiscovery: Boolean
-    get() = discoveryPageMode == DiscoveryPageMode.MODERN
+    get() = enableModernDiscovery
