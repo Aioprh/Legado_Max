@@ -34,3 +34,10 @@ fun DiscoverySuiteHomeScreen(
         modifier = modifier
     )
 }
+
+/** 兼容旧版发现页只传 widget 的排行加载回调。 */
+fun DiscoverySuiteHomeViewModel.loadMoreRanked(widget: DiscoverySuiteWidget) {
+    widget.validRandomTargets().firstOrNull()?.let { target ->
+        loadMoreRanked(widget, target)
+    }
+}
