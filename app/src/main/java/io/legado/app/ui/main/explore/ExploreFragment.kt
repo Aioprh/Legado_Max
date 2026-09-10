@@ -40,6 +40,7 @@ import io.legado.app.ui.theme.LegadoTheme
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.flowWithLifecycleAndDatabaseChange
+import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
@@ -63,6 +64,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
+import splitties.init.appCtx
 
 class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_explore), MainFragmentInterface, ExploreAdapter.CallBack {
     constructor(position: Int) : this() { arguments = Bundle().apply { putInt("position", position) } }
@@ -83,10 +85,14 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
     private var suiteComposeView: ComposeView? = null
     private var modernComposeView: ComposeView? = null
 
+    private val enableModernDiscovery: Boolean
+        get() = appCtx.getPrefBoolean("enableModernDiscovery", false)
+            || AppConfig.enableDiscoverySuite
+
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         setSupportToolbar(binding.titleBar.toolbar)
         when {
-            AppConfig.enableModernDiscovery -> showModernDiscovery()
+            enableModernDiscovery -> showModernDiscovery()
             AppConfig.enableDiscoverySuite -> showDiscoverySuite()
             else -> { initSearchView(); initRecyclerView(); initGroupData(); upExploreData() }
         }
@@ -170,7 +176,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
 
     override fun onCompatCreateOptionsMenu(menu: Menu) {
         super.onCompatCreateOptionsMenu(menu)
-        if (AppConfig.enableModernDiscovery || AppConfig.enableDiscoverySuite) return
+        if (enableModernDiscovery || AppConfig.enableDiscoverySuite) return
         menuInflater.inflate(R.menu.main_explore, menu)
         groupsMenu = menu.findItem(R.id.menu_group)?.subMenu
         val sortSubMenu = menu.findItem(R.id.action_sort).subMenu
@@ -179,7 +185,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
         upGroupsMenu()
     }
     override fun onPrepareOptionsMenu(menu: Menu) {
-        if (AppConfig.enableModernDiscovery || AppConfig.enableDiscoverySuite) return
+        if (enableModernDiscovery || AppConfig.enableDiscoverySuite) return
         val sortSubMenu = menu.findItem(R.id.action_sort).subMenu!!
         sortSubMenu.findItem(R.id.menu_sort_desc).isChecked = !sortAscending
         sortSubMenu.setGroupCheckable(R.id.menu_group_sort, true, true)
@@ -262,13 +268,13 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
 
     override fun onResume() {
         super.onResume()
-        if (!AppConfig.enableModernDiscovery && !AppConfig.enableDiscoverySuite) {
+        if (!enableModernDiscovery && !AppConfig.enableDiscoverySuite) {
             adapter.upResumed(true); adapter.onResume()
         }
     }
 
     override fun onPause() {
-        if (!AppConfig.enableModernDiscovery && !AppConfig.enableDiscoverySuite) {
+        if (!enableModernDiscovery && !AppConfig.enableDiscoverySuite) {
             adapter.upResumed(false); searchView.clearFocus(); adapter.onPause()
         }
         super.onPause()
@@ -292,7 +298,7 @@ class ExploreFragment() : VMBaseFragment<ExploreViewModel>(R.layout.fragment_exp
 
     override fun onCompatOptionsItemSelected(item: MenuItem) {
         super.onCompatOptionsItemSelected(item)
-        if (AppConfig.enableModernDiscovery || AppConfig.enableDiscoverySuite) return
+        if (enableModernDiscovery || AppConfig.enableDiscoverySuite) return
         when (item.itemId) {
             R.id.menu_sort_desc -> { sortAscending = !sortAscending; item.isChecked = !sortAscending; upExploreData(searchView.query?.toString()) }
             R.id.menu_sort_manual -> { item.isChecked = true; sort = BookSourceSort.Default; upExploreData(searchView.query?.toString()) }
