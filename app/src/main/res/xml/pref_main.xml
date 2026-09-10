@@ -39,7 +39,18 @@
         android:title="@string/debug_tools"
         app:iconSpaceReserved="false" />
 
-    
+    <!--
+        新发现页开关：只控制“发现”页面，不影响首页。
+        默认关闭，关闭时 ExploreFragment 保持原有发现页；
+        开启后才进入 DiscoverySuite 新发现页。
+    -->
+    <io.legado.app.lib.prefs.SwitchPreference
+        android:defaultValue="false"
+        android:key="enableDiscoverySuite"
+        android:summary="开启后使用新版发现页，关闭后使用原版发现页"
+        android:title="新发现"
+        app:allowDividerBelow="false"
+        app:iconSpaceReserved="false" />
 
     <io.legado.app.lib.prefs.NameListPreference
         android:defaultValue="0"
