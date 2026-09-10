@@ -10,31 +10,24 @@ object DiscoveryPageMode {
     const val SUITE = 2
 }
 
+/** 保留旧配置键，兼容已有安装数据。 */
 var AppConfig.enableDiscoverySuite: Boolean
     get() = appCtx.getPrefBoolean("enableDiscoverySuite", false)
     set(value) = appCtx.putPrefBoolean("enableDiscoverySuite", value)
 
-/** 新版发现独立开关：默认关闭，不影响首页。 */
+/** 新版发现独立配置；旧版“新发现”开关也映射到这里，避免升级后失效。 */
 var AppConfig.enableModernDiscovery: Boolean
-    get() = appCtx.getPrefBoolean("enableModernDiscovery", false)
+    get() = appCtx.getPrefBoolean("enableModernDiscovery", false) || AppConfig.enableDiscoverySuite
     set(value) = appCtx.putPrefBoolean("enableModernDiscovery", value)
 
 var AppConfig.discoveryPageMode: Int
     get() = when {
-        AppConfig.enableDiscoverySuite -> DiscoveryPageMode.SUITE
         AppConfig.enableModernDiscovery -> DiscoveryPageMode.MODERN
         else -> DiscoveryPageMode.CLASSIC
     }
     set(value) {
         when (value) {
-            DiscoveryPageMode.MODERN -> {
-                AppConfig.enableModernDiscovery = true
-                AppConfig.enableDiscoverySuite = false
-            }
-            DiscoveryPageMode.SUITE -> {
-                AppConfig.enableDiscoverySuite = true
-                AppConfig.enableModernDiscovery = false
-            }
+            DiscoveryPageMode.MODERN -> AppConfig.enableModernDiscovery = true
             else -> {
                 AppConfig.enableModernDiscovery = false
                 AppConfig.enableDiscoverySuite = false
