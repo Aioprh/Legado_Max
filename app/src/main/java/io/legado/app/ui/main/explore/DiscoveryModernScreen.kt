@@ -170,12 +170,18 @@ private fun DiscoverySuiteWidgetContent(
     sources: List<BookSourcePart>,
     onOpen: (BookSourcePart, ExploreKind) -> Unit
 ) {
-    val targets = remember(widget.id, sources) {
-        sources.flatMap { source ->
-            exploreKinds(source).map { kind -> source to kind }
-        }.filter { (source, _) ->
-            widget.sourceIds.isEmpty() || source.bookSourceUrl in widget.sourceIds
-        }.filter { (_, kind) -> !kind.url.isNullOrBlank() }.take(20)
+    var targets by remember(widget.id, sources) {
+        mutableStateOf(emptyList<Pair<BookSourcePart, ExploreKind>>())
+    }
+    LaunchedEffect(widget.id, sources) {
+        targets = withContext(Dispatchers.IO) {
+            sources.flatMap { source ->
+                val bookSource = source.getBookSource() ?: return@flatMap emptyList()
+                bookSource.exploreKinds().map { kind -> source to kind }
+            }.filter { (source, _) ->
+                widget.sourceIds.isEmpty() || source.bookSourceUrl in widget.sourceIds
+            }.filter { (_, kind) -> !kind.url.isNullOrBlank() }.take(20)
+        }
     }
     var selectedTarget by remember(widget.id) { mutableStateOf(0) }
     var selectedBook by remember { mutableStateOf<SearchBook?>(null) }
