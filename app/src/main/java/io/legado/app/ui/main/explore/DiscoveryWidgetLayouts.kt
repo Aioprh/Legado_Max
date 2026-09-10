@@ -134,6 +134,21 @@ fun DiscoveryModernWaterfallBooks(
     }
 }
 
+@Composable
+fun DiscoveryWaterfallBooksLayout(
+    books: List<SearchBook>,
+    onClick: (SearchBook) -> Unit,
+    onLongClick: (SearchBook) -> Unit = onClick,
+    modifier: Modifier = Modifier
+) {
+    DiscoveryModernWaterfallBooks(
+        books = books,
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier
+    )
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DiscoveryWaterfallCard(
