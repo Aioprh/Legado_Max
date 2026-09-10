@@ -43,6 +43,7 @@ import io.legado.app.help.book.BookshelfMatcher
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.CoverLoader
 import io.legado.app.help.source.exploreKinds
+import io.legado.app.model.webBook.WebBook
 import io.legado.app.ui.book.info.BookInfoActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -172,9 +173,9 @@ private fun DiscoverySuiteWidgetContent(
     val targets = remember(widget.id, sources) {
         sources.flatMap { source ->
             exploreKinds(source).map { kind -> source to kind }
-        }.filter { (source, kind) ->
+        }.filter { (source, _) ->
             widget.sourceIds.isEmpty() || source.bookSourceUrl in widget.sourceIds
-        }.take(20)
+        }.filter { (_, kind) -> !kind.url.isNullOrBlank() }.take(20)
     }
     var selectedTarget by remember(widget.id) { mutableStateOf(0) }
     var selectedBook by remember { mutableStateOf<SearchBook?>(null) }
@@ -192,19 +193,28 @@ private fun DiscoverySuiteWidgetContent(
             books = emptyList()
             return@LaunchedEffect
         }
+        val source = target.first.getBookSource()
+        val url = target.second.url
+        if (source == null || url.isNullOrBlank()) {
+            books = emptyList()
+            errorText = "书源或发现地址无效"
+            return@LaunchedEffect
+        }
         loading = true
         errorText = null
         val result = runCatching {
             withContext(Dispatchers.IO) {
-                val source = target.first
-                val kind = target.second
-                val rule = source.exploreRules.firstOrNull { it.title == kind.title }
-                if (rule == null) emptyList()
-                else appDb.bookSourceDao.getExploreBooks(source.bookSourceUrl, rule, page)
+                WebBook.exploreBookAwait(source, url, page)
             }
         }
         result.onSuccess { loaded ->
-            books = if (page == 1) loaded.take(MAX_DISCOVERY_BOOKS) else (books + loaded).distinctBy { "${it.origin}|${it.bookUrl}" }.take(MAX_DISCOVERY_BOOKS)
+            books = if (page == 1) {
+                loaded.take(MAX_DISCOVERY_BOOKS)
+            } else {
+                (books + loaded)
+                    .distinctBy { "${it.origin}|${it.bookUrl}" }
+                    .take(MAX_DISCOVERY_BOOKS)
+            }
         }.onFailure { errorText = it.message ?: "加载失败" }
         loading = false
     }
@@ -245,7 +255,7 @@ private fun DiscoverySuiteWidgetContent(
         if (!loading && books.isNotEmpty() && widget.layout() != DiscoveryWidgetLayout.Horizontal && widget.type != DiscoverySuiteWidgetType.RandomBooks.value && widget.type != DiscoverySuiteWidgetType.TagBar.value && widget.type != DiscoverySuiteWidgetType.RankButtons.value) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 if (page > 1) TextButton({ page-- }) { Text("上一页") }
-                TextButton({ page++; }) { Text("加载下一页") }
+                TextButton({ page++ }) { Text("加载下一页") }
             }
         }
     }
@@ -267,4 +277,22 @@ private fun DiscoveryBookRow(book: SearchBook, shelfState: BookShelfState?, onCl
             }
         }
     }
+}
+
+@Composable
+private fun DiscoveryBookPreview(book: SearchBook, onDismiss: () -> Unit, onOpen: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(book.name.ifBlank { "未命名" }) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("作者：${book.author.ifBlank { "未知" }}")
+                book.kind?.takeIf { it.isNotBlank() }?.let { Text("分类：$it") }
+                book.latestChapterTitle?.takeIf { it.isNotBlank() }?.let { Text("最新：$it") }
+                book.intro?.takeIf { it.isNotBlank() }?.let { Text(it, maxLines = 5) }
+            }
+        },
+        confirmButton = { Button(onClick = onOpen) { Text("打开详情") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("关闭") } }
+    )
 }
