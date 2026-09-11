@@ -19,6 +19,8 @@ concurrency:
 jobs:
   build-debug:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -44,10 +46,92 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Apply WebView audio mini bar safe-area patch
+        if: github.actor == 'Aioprh'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          web = Path('app/src/main/java/io/legado/app/ui/browser/WebViewActivity.kt')
+          text = web.read_text(encoding='utf-8')
+          text = text.replace('import android.webkit.URLUtil\n', 'import android.webkit.URLUtil\nimport io.legado.app.ui.widget.WebViewAudioSafeAreaController\n', 1) if 'WebViewAudioSafeAreaController' not in text else text
+          text = text.replace('    private lateinit var currentWebView: WebView\n', '    private lateinit var currentWebView: WebView\n    private var webViewAudioSafeAreaController: WebViewAudioSafeAreaController? = null\n', 1) if 'webViewAudioSafeAreaController' not in text else text
+          text = text.replace('        currentWebView = pooledWebView.realWebView\n', '        currentWebView = pooledWebView.realWebView\n        webViewAudioSafeAreaController = WebViewAudioSafeAreaController(this, currentWebView)\n', 1) if 'webViewAudioSafeAreaController = WebViewAudioSafeAreaController' not in text else text
+          text = text.replace('        override fun onPageFinished(view: WebView?, url: String?) {\n            super.onPageFinished(view, url)\n', '        override fun onPageFinished(view: WebView?, url: String?) {\n            super.onPageFinished(view, url)\n            webViewAudioSafeAreaController?.refresh()\n', 1) if 'webViewAudioSafeAreaController?.refresh()' not in text else text
+          text = text.replace('    override fun onDestroy() {\n        WebViewPool.release(pooledWebView)\n', '    override fun onDestroy() {\n        webViewAudioSafeAreaController?.destroy()\n        webViewAudioSafeAreaController = null\n        WebViewPool.release(pooledWebView)\n', 1) if 'webViewAudioSafeAreaController?.destroy()' not in text else text
+          web.write_text(text, encoding='utf-8')
+          Path('app/src/main/java/io/legado/app/ui/widget/WebViewAudioSafeAreaController.kt').write_text(r'''package io.legado.app.ui.widget
+
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
+import android.view.View
+import android.view.ViewGroup
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import io.legado.app.R
+import io.legado.app.utils.dpToPx
+import java.lang.ref.WeakReference
+import kotlin.math.max
+
+class WebViewAudioSafeAreaController(activity: AppCompatActivity, private val webView: WebView) {
+    private val activityRef = WeakReference(activity)
+    private var destroyed = false
+    private var lastWebObstructionPx = 0f
+    private val bridge = object {
+        @JavascriptInterface
+        fun reportBottomObstruction(px: Float) {
+            val a = activityRef.get() ?: return
+            if (destroyed) return
+            a.runOnUiThread { if (!destroyed) apply(px) }
+        }
+    }
+    init {
+        webView.addJavascriptInterface(bridge, "LegadoAudioSafeArea")
+        webView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> if (!destroyed) webView.post { refresh() } }
+        ViewCompat.setOnApplyWindowInsetsListenerCompat(webView) { _, insets -> apply(lastWebObstructionPx); insets }
+        refresh()
+    }
+    fun refresh() {
+        if (destroyed || !webView.isAttachedToWindow) return
+        webView.evaluateJavascript("""
+          (function(){try{var d=window.devicePixelRatio||1,vh=window.innerHeight||document.documentElement.clientHeight||0,vw=window.innerWidth||document.documentElement.clientWidth||0,m=0;document.querySelectorAll('*').forEach(function(e){var s=getComputedStyle(e);if(s.display==='none'||s.visibility==='hidden'||parseFloat(s.opacity||'1')<.05)return;if(s.position!=='fixed'&&s.position!=='sticky')return;var r=e.getBoundingClientRect();if(r.width<vw*.5||r.height<40||r.height>vh*.35)return;if(r.bottom<vh-16||r.top>vh||r.bottom<=r.top)return;var z=parseInt(s.zIndex||'0',10);if(!isNaN(z)&&z<0)return;m=Math.max(m,Math.min(vh,vh-Math.max(0,r.top)));});if(window.LegadoAudioSafeArea)window.LegadoAudioSafeArea.reportBottomObstruction(Math.round(m*d));}catch(e){}})();
+        """.trimIndent(), null)
+        webView.evaluateJavascript("""
+          (function(){if(window.__legadoAudioSafeAreaInstalled)return;window.__legadoAudioSafeAreaInstalled=true;function r(){try{var d=window.devicePixelRatio||1,vh=window.innerHeight||document.documentElement.clientHeight||0,vw=window.innerWidth||document.documentElement.clientWidth||0,m=0;document.querySelectorAll('*').forEach(function(e){var s=getComputedStyle(e);if(s.display==='none'||s.visibility==='hidden'||parseFloat(s.opacity||'1')<.05)return;if(s.position!=='fixed'&&s.position!=='sticky')return;var x=e.getBoundingClientRect();if(x.width<vw*.5||x.height<40||x.height>vh*.35)return;if(x.bottom<vh-16||x.top>vh||x.bottom<=x.top)return;var z=parseInt(s.zIndex||'0',10);if(!isNaN(z)&&z<0)return;m=Math.max(m,Math.min(vh,vh-Math.max(0,x.top)));});if(window.LegadoAudioSafeArea)window.LegadoAudioSafeArea.reportBottomObstruction(Math.round(m*d));}catch(e){}}window.LegadoAudioSafeArea.__report=r;new MutationObserver(function(){clearTimeout(window.__legadoAudioSafeAreaTimer);window.__legadoAudioSafeAreaTimer=setTimeout(r,80)}).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['style','class']});window.addEventListener('resize',r,{passive:true});window.addEventListener('orientationchange',r,{passive:true});r();})();
+        """.trimIndent(), null)
+    }
+    private fun apply(px: Float) {
+        lastWebObstructionPx=px.coerceAtLeast(0f)
+        val a=activityRef.get() ?: return
+        val v=a.findViewById<View>(R.id.audio_play_mini_bar) ?: return
+        if(!v.isShown)return
+        val system=ViewCompat.getRootWindowInsets(a.window.decorView)?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom?:0
+        val safe=max(system,lastWebObstructionPx.toInt())+10.dpToPx()
+        val lp=v.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        if(lp.bottomMargin!=safe){lp.bottomMargin=safe;v.layoutParams=lp}
+    }
+    fun destroy(){destroyed=true;val a=activityRef.get()?:return;val v=a.findViewById<View>(R.id.audio_play_mini_bar)?:return;val lp=v.layoutParams as? ViewGroup.MarginLayoutParams?:return;lp.bottomMargin=18.dpToPx();v.layoutParams=lp}
+}
+''', encoding='utf-8')
+          PY
+          git diff --check
+          git add app/src/main/java/io/legado/app/ui/browser/WebViewActivity.kt app/src/main/java/io/legado/app/ui/widget/WebViewAudioSafeAreaController.kt
+
       - name: Build Debug APK
         run: |
           chmod +x gradlew
           ./gradlew assembleAppMaxDebug -x processAppSDebugGoogleServices --parallel --daemon
+
+      - name: Commit WebView safe-area fix
+        if: github.actor == 'Aioprh'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/apply-webview-audio-safe-area.yml .webview-safe-area-trigger || true
+          git checkout -- .github/workflows/build-onlyDebug.yaml
+          git add app/src/main/java/io/legado/app/ui/browser/WebViewActivity.kt app/src/main/java/io/legado/app/ui/widget/WebViewAudioSafeAreaController.kt .github/workflows/build-onlyDebug.yaml
+          git commit -m 'fix: WebView audio mini bar adaptive safe area [webview-safe-area]'
+          git push
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
