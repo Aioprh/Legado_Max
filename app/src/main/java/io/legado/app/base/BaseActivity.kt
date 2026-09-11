@@ -15,7 +15,9 @@ import android.widget.FrameLayout
 import androidx.activity.addCallback
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.ViewModel
 import androidx.viewbinding.ViewBinding
+import com.google.android.material.textfield.TextInputLayout
 import io.legado.app.R
 import io.legado.app.constant.AppConst
 import io.legado.app.constant.EventBus
@@ -131,6 +133,7 @@ abstract class BaseActivity<VB : ViewBinding>(
     }
 
     override fun onDestroy() {
+        audioPlayMiniBarController?.destroy()
         audioPlayMiniBarController?.hide()
         super.onDestroy()
         DebugFloatingBallManager.onActivityDestroyed(this)
