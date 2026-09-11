@@ -19,37 +19,22 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/**
- * 恢复文件选择器的 UI 状态。
- */
 data class RestoreFileSelectorUiState(
     val files: List<BackupInfoHelper.BackupFileInfo> = emptyList(),
     val validationResults: Map<String, ValidationResult> = emptyMap(),
     val isRestoring: Boolean = false,
     val restoreProgress: String = "",
+    val restoreCurrent: Int = 0,
+    val restoreTotal: Int = 0,
     val restoreError: String? = null,
     val restoreComplete: Boolean = false
 )
 
-/**
- * 一次性事件，如 toast / dismiss。
- */
 sealed class RestoreFileSelectorEvent {
     data class Toast(val message: String) : RestoreFileSelectorEvent()
     data object Dismiss : RestoreFileSelectorEvent()
 }
 
-/**
- * 恢复文件选择器 ViewModel。
- *
- * 负责：
- * - 从已解压的备份目录扫描文件列表
- * - 触发文件格式验证
- * - 管理用户选择状态
- * - 执行选择性恢复
- *
- * 不持有 Context 引用（除 Application），验证和恢复操作通过 IO 线程执行。
- */
 class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(application) {
 
     private val _uiState = MutableStateFlow(RestoreFileSelectorUiState())
@@ -61,32 +46,22 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
     private var validationJob: Job? = null
     private var restoreJob: Job? = null
 
-    /**
-     * 扫描备份目录，加载文件列表。
-     */
     fun loadFiles(backupPath: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val files = BackupInfoHelper.scanRestoreDirectory(backupPath)
-
             if (files.isEmpty()) {
                 _events.emit(RestoreFileSelectorEvent.Toast("备份文件为空"))
                 _events.emit(RestoreFileSelectorEvent.Dismiss)
                 return@launch
             }
-
             _uiState.update { it.copy(files = files) }
         }
     }
 
-    /**
-     * 触发文件格式验证。
-     */
     fun validateFiles(backupPath: String) {
         validationJob?.cancel()
         val files = _uiState.value.files
         if (files.isEmpty()) return
-
-        // 标记所有文件为"验证中"
         _uiState.update { state ->
             state.copy(
                 validationResults = files.associate {
@@ -97,7 +72,6 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
                 }
             )
         }
-
         validationJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 BackupFileValidator.validateFiles(
@@ -105,12 +79,10 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
                     files.map { it.fileName }
                 ) { fileName, result ->
                     _uiState.update { state ->
-                        state.copy(
-                            validationResults = state.validationResults + (fileName to result)
-                        )
+                        state.copy(validationResults = state.validationResults + (fileName to result))
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 // 验证失败不阻塞，已在 validationResults 中体现
             }
         }
@@ -118,23 +90,43 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
 
     /**
      * 执行选择性恢复。
+     * 进度由 Restore 的实际项目回调驱动，避免 Compose 重组造成重复计数。
      */
     fun restoreSelected(backupPath: String, selectedFiles: List<String>) {
         restoreJob?.cancel()
-        _uiState.update { it.copy(isRestoring = true, restoreProgress = "", restoreError = null) }
+        val total = selectedFiles.size
+        _uiState.update {
+            it.copy(
+                isRestoring = true,
+                restoreProgress = "",
+                restoreCurrent = 0,
+                restoreTotal = total,
+                restoreError = null,
+                restoreComplete = false
+            )
+        }
 
         restoreJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                Restore.restoreSelected(
-                    context,
-                    backupPath,
-                    selectedFiles
-                ) { itemName ->
+                var current = 0
+                Restore.restoreSelected(context, backupPath, selectedFiles) { itemName ->
+                    current = (current + 1).coerceAtMost(total)
                     _uiState.update {
-                        it.copy(restoreProgress = itemName)
+                        it.copy(
+                            restoreProgress = itemName,
+                            restoreCurrent = current,
+                            restoreTotal = total
+                        )
                     }
                 }
-                _uiState.update { it.copy(isRestoring = false, restoreComplete = true) }
+                _uiState.update {
+                    it.copy(
+                        isRestoring = false,
+                        restoreCurrent = total,
+                        restoreTotal = total,
+                        restoreComplete = true
+                    )
+                }
                 _events.emit(RestoreFileSelectorEvent.Dismiss)
             } catch (e: Exception) {
                 _uiState.update {
