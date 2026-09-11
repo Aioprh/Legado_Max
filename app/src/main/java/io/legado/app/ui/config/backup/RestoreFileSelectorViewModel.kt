@@ -3,7 +3,7 @@ package io.legado.app.ui.config.backup
 import android.app.Application
 import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
-import io.legado.app.help.config.BackupConfig
+import io.legado.app.help.storage.BackupConfig
 import io.legado.app.help.storage.BackupFileValidator
 import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.help.storage.Restore
@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.io.File
 
 data class RestoreFileSelectorUiState(
     val files: List<BackupInfoHelper.BackupFileInfo> = emptyList(),
@@ -91,45 +90,51 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
     }
 
     /**
-     * 计算选择性恢复真正会产生的进度节点。
-     * readRecord、book_cache 等内部是一个恢复阶段，而不是按所选文件逐项增加。
+     * Restore.restoreSelected 的进度节点并不等于所选文件数量：
+     * 阅读记录、书籍缓存会合并成一个恢复阶段，主题背景和最终配置也会额外执行。
      */
-    private fun getProgressTotal(backupPath: String, selectedFiles: List<String>): Int {
+    private fun getProgressTotal(selectedFiles: List<String>): Int {
         val selected = selectedFiles.toSet()
-        val progressFiles = setOf(
-            "bookshelf.json", "bookmark.json", "bookGroup.json", "bookSource.json",
-            "rssSources.json", "rssStar.json", "sourceSub.json", "webSearchEngines.json",
-            "homepage.json", "replaceRule.json", "highlightRule.json", "searchHistory.json",
-            "txtTocRule.json", "httpTTS.json", "dictRule.json", "keyboardAssists.json",
-            "servers.json", "directLinkRule.json", "theme.json", "coverRule.json",
-            "videoConfig.xml", "runtimeSourceCache.json"
-        )
-        var total = selected.count { it in progressFiles }
+        var total = selected.size
 
-        if (selected.any { it == "readRecord.json" || it == "readRecordDetail.json" || it == "readRecordSession.json" }) {
+        // Restore 中阅读记录的三个文件共用一个 progress 节点。
+        val readRecordCount = selected.count {
+            it == "readRecord.json" ||
+                it == "readRecordDetail.json" ||
+                it == "readRecordSession.json"
+        }
+        if (readRecordCount > 1) total -= readRecordCount - 1
+
+        // Restore 中四个书籍缓存文件共用一个 progress 节点。
+        val bookCacheCount = selected.count {
+            it == "book_cache" ||
+                it == "bookCacheIndex.json" ||
+                it == "bookCacheBooks.json" ||
+                it == "bookChapterCache.json"
+        }
+        if (bookCacheCount > 1) total -= bookCacheCount - 1
+
+        // backgroundImages 本身不是独立恢复入口，由阅读配置恢复流程统一处理。
+        if ("backgroundImages" in selected) total--
+
+        // RestoreSelected 始终执行主题背景刷新和最终配置应用。
+        total += 2
+        if (BackupConfig.ignoreReadConfig ||
+            !selected.any { it == "readConfig.json" || it == "readShareConfig.json" }) {
+            // 未进入阅读配置恢复时，不会执行 backgroundImages 节点。
+        } else {
             total++
         }
-        if (selected.any { it == "book_cache" || it == "bookCacheIndex.json" || it == "bookCacheBooks.json" || it == "bookChapterCache.json" }) {
-            total++
-        }
-        if (!BackupConfig.ignoreReadConfig && selected.any { it == "readConfig.json" || it == "readShareConfig.json" }) {
-            if (File(backupPath, "backgroundImages").exists()) total++
-            if (selected.contains("readConfig.json")) total++
-            if (selected.contains("readShareConfig.json")) total++
-        }
-        // 选择性恢复流程始终会刷新主题背景和最终阅读配置。
-        if (File(backupPath, "themeBackgroundImages").exists()) total++
-        total++ // applyRestoreConfig
         return total.coerceAtLeast(1)
     }
 
     /**
      * 执行选择性恢复。
-     * 进度由 Restore 的实际项目回调驱动，按真实恢复阶段统计，避免把关联文件重复计数。
+     * 进度由 Restore 的实际项目回调驱动，并与普通恢复统一显示百分比、当前/总数和项目名。
      */
     fun restoreSelected(backupPath: String, selectedFiles: List<String>) {
         restoreJob?.cancel()
-        val total = getProgressTotal(backupPath, selectedFiles)
+        val total = getProgressTotal(selectedFiles)
         _uiState.update {
             it.copy(
                 isRestoring = true,
