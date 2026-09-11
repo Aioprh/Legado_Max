@@ -1,25 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    android:layout_width="280dp"
     android:layout_height="wrap_content"
     android:background="@color/background"
     android:gravity="center"
     android:padding="20dp"
-    android:orientation="horizontal">
+    android:orientation="vertical">
 
     <io.legado.app.lib.theme.view.ThemeProgressBar
         android:id="@+id/pb"
-        android:layout_width="30dp"
-        android:layout_height="30dp"
-        android:indeterminateBehavior="repeat"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:max="100"
+        android:progress="0"
         android:indeterminateOnly="true" />
 
     <TextView
         android:id="@+id/tv_msg"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="6dp"
+        android:layout_marginTop="12dp"
+        android:padding="2dp"
         android:gravity="center"
         android:text="@string/loading"
         android:textColor="@color/primaryText" />
+
+    <TextView
+        android:id="@+id/tv_progress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:text=""
+        android:textColor="@color/secondaryText" />
 </LinearLayout>
