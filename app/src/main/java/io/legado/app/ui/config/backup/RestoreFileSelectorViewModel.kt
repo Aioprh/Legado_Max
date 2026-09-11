@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class RestoreFileSelectorUiState(
@@ -101,7 +100,6 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
         val selected = selectedFiles.toSet()
         var total = selected.size
 
-        // 阅读记录的三个文件共用一个 progress 节点。
         val readRecordCount = selected.count {
             it == "readRecord.json" ||
                 it == "readRecordDetail.json" ||
@@ -109,7 +107,6 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
         }
         if (readRecordCount > 1) total -= readRecordCount - 1
 
-        // 四个书籍缓存文件共用一个 progress 节点。
         val bookCacheCount = selected.count {
             it == "book_cache" ||
                 it == "bookCacheIndex.json" ||
@@ -118,21 +115,17 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
         }
         if (bookCacheCount > 1) total -= bookCacheCount - 1
 
-        // backgroundImages 不是独立恢复入口。
         if ("backgroundImages" in selected) total--
 
-        // 忽略阅读配置时，选中的两个阅读配置不会真正恢复。
         val readConfigCount = selected.count {
             it == "readConfig.json" || it == "readShareConfig.json"
         }
         if (BackupConfig.ignoreReadConfig) {
             total -= readConfigCount
         } else if (readConfigCount > 0) {
-            // 阅读配置恢复会额外处理一次背景图片。
             total++
         }
 
-        // RestoreSelected 始终执行主题背景刷新和最终配置应用。
         total += 2
         return total.coerceAtLeast(1)
     }
