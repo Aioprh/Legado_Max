@@ -1,6 +1,5 @@
 name: Apply WebView audio mini bar safe area fix
 on:
-  workflow_dispatch:
   push:
     branches: [main]
 permissions:
@@ -206,6 +205,6 @@ class WebViewAudioSafeAreaController(
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app/src/main/java/io/legado/app/ui/browser/WebViewActivity.kt app/src/main/java/io/legado/app/ui/widget/WebViewAudioSafeAreaController.kt
-          git rm -f .github/workflows/apply-webview-audio-safe-area.yml
+          git rm -f .github/workflows/apply-webview-audio-safe-area.yml .webview-safe-area-trigger
           git commit -m 'fix: WebView audio mini bar adaptive safe area [webview-safe-area]'
           git push
