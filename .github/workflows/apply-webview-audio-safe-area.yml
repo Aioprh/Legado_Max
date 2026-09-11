@@ -7,7 +7,7 @@ permissions:
   contents: write
 jobs:
   patch:
-    if: github.actor == 'Aioprh' && !contains(github.event.head_commit.message, '[webview-safe-area]')
+    if: ${{ github.actor == 'Aioprh' && !contains(github.event.head_commit.message, '[webview-safe-area]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -198,7 +198,8 @@ class WebViewAudioSafeAreaController(
         run: |
           grep -q 'WebViewAudioSafeAreaController' app/src/main/java/io/legado/app/ui/browser/WebViewActivity.kt
           test -f app/src/main/java/io/legado/app/ui/widget/WebViewAudioSafeAreaController.kt
-          ./gradlew :app:compileMaxDebugKotlin --no-daemon
+          chmod +x gradlew
+          ./gradlew compileAppMaxDebugKotlin --no-daemon
 
       - name: Commit patched sources
         run: |
