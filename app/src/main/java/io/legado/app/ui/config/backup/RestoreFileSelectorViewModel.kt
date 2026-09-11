@@ -3,6 +3,7 @@ package io.legado.app.ui.config.backup
 import android.app.Application
 import androidx.lifecycle.viewModelScope
 import io.legado.app.base.BaseViewModel
+import io.legado.app.help.config.BackupConfig
 import io.legado.app.help.storage.BackupFileValidator
 import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.help.storage.Restore
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 
 data class RestoreFileSelectorUiState(
     val files: List<BackupInfoHelper.BackupFileInfo> = emptyList(),
@@ -89,12 +91,45 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
     }
 
     /**
+     * 计算选择性恢复真正会产生的进度节点。
+     * readRecord、book_cache 等内部是一个恢复阶段，而不是按所选文件逐项增加。
+     */
+    private fun getProgressTotal(backupPath: String, selectedFiles: List<String>): Int {
+        val selected = selectedFiles.toSet()
+        val progressFiles = setOf(
+            "bookshelf.json", "bookmark.json", "bookGroup.json", "bookSource.json",
+            "rssSources.json", "rssStar.json", "sourceSub.json", "webSearchEngines.json",
+            "homepage.json", "replaceRule.json", "highlightRule.json", "searchHistory.json",
+            "txtTocRule.json", "httpTTS.json", "dictRule.json", "keyboardAssists.json",
+            "servers.json", "directLinkRule.json", "theme.json", "coverRule.json",
+            "videoConfig.xml", "runtimeSourceCache.json"
+        )
+        var total = selected.count { it in progressFiles }
+
+        if (selected.any { it == "readRecord.json" || it == "readRecordDetail.json" || it == "readRecordSession.json" }) {
+            total++
+        }
+        if (selected.any { it == "book_cache" || it == "bookCacheIndex.json" || it == "bookCacheBooks.json" || it == "bookChapterCache.json" }) {
+            total++
+        }
+        if (!BackupConfig.ignoreReadConfig && selected.any { it == "readConfig.json" || it == "readShareConfig.json" }) {
+            if (File(backupPath, "backgroundImages").exists()) total++
+            if (selected.contains("readConfig.json")) total++
+            if (selected.contains("readShareConfig.json")) total++
+        }
+        // 选择性恢复流程始终会刷新主题背景和最终阅读配置。
+        if (File(backupPath, "themeBackgroundImages").exists()) total++
+        total++ // applyRestoreConfig
+        return total.coerceAtLeast(1)
+    }
+
+    /**
      * 执行选择性恢复。
-     * 进度由 Restore 的实际项目回调驱动，避免 Compose 重组造成重复计数。
+     * 进度由 Restore 的实际项目回调驱动，按真实恢复阶段统计，避免把关联文件重复计数。
      */
     fun restoreSelected(backupPath: String, selectedFiles: List<String>) {
         restoreJob?.cancel()
-        val total = selectedFiles.size
+        val total = getProgressTotal(backupPath, selectedFiles)
         _uiState.update {
             it.copy(
                 isRestoring = true,
