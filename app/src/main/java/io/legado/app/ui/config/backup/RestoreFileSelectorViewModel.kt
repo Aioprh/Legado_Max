@@ -91,13 +91,14 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
 
     /**
      * Restore.restoreSelected 的进度节点并不等于所选文件数量：
-     * 阅读记录、书籍缓存会合并成一个恢复阶段，主题背景和最终配置也会额外执行。
+     * 阅读记录、书籍缓存会合并成一个恢复阶段，阅读配置还受忽略开关影响，
+     * 同时恢复流程还会额外执行主题背景刷新和最终配置应用。
      */
     private fun getProgressTotal(selectedFiles: List<String>): Int {
         val selected = selectedFiles.toSet()
         var total = selected.size
 
-        // Restore 中阅读记录的三个文件共用一个 progress 节点。
+        // 阅读记录的三个文件共用一个 progress 节点。
         val readRecordCount = selected.count {
             it == "readRecord.json" ||
                 it == "readRecordDetail.json" ||
@@ -105,7 +106,7 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
         }
         if (readRecordCount > 1) total -= readRecordCount - 1
 
-        // Restore 中四个书籍缓存文件共用一个 progress 节点。
+        // 四个书籍缓存文件共用一个 progress 节点。
         val bookCacheCount = selected.count {
             it == "book_cache" ||
                 it == "bookCacheIndex.json" ||
@@ -114,17 +115,22 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
         }
         if (bookCacheCount > 1) total -= bookCacheCount - 1
 
-        // backgroundImages 本身不是独立恢复入口，由阅读配置恢复流程统一处理。
+        // backgroundImages 不是独立恢复入口。
         if ("backgroundImages" in selected) total--
+
+        // 忽略阅读配置时，选中的两个阅读配置不会真正恢复。
+        val readConfigCount = selected.count {
+            it == "readConfig.json" || it == "readShareConfig.json"
+        }
+        if (BackupConfig.ignoreReadConfig) {
+            total -= readConfigCount
+        } else if (readConfigCount > 0) {
+            // 阅读配置恢复会额外处理一次背景图片。
+            total++
+        }
 
         // RestoreSelected 始终执行主题背景刷新和最终配置应用。
         total += 2
-        if (BackupConfig.ignoreReadConfig ||
-            !selected.any { it == "readConfig.json" || it == "readShareConfig.json" }) {
-            // 未进入阅读配置恢复时，不会执行 backgroundImages 节点。
-        } else {
-            total++
-        }
         return total.coerceAtLeast(1)
     }
 
