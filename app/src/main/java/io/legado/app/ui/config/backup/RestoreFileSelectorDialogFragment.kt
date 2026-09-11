@@ -25,15 +25,6 @@ import io.legado.app.help.storage.ValidationResult
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
 
-/**
- * 恢复文件选择器 DialogFragment。
- *
- * 使用 Compose 渲染文件列表 + 验证状态，所有业务逻辑委托给 [RestoreFileSelectorViewModel]。
- * 生命周期由系统管理，配置变更时自动重建。
- *
- * 需要在 arguments 中传入：
- * - "backupPath": String — 已解压的备份目录路径
- */
 class RestoreFileSelectorDialogFragment : BaseComposeDialogFragment() {
 
     private val viewModel by viewModels<RestoreFileSelectorViewModel>()
@@ -53,7 +44,6 @@ class RestoreFileSelectorDialogFragment : BaseComposeDialogFragment() {
         val uiState by viewModel.uiState.collectAsState()
         var showErrorDialog by remember { mutableStateOf<ValidationResult?>(null) }
 
-        // 收集一次性事件
         LaunchedEffect(Unit) {
             viewModel.events.collect { event ->
                 when (event) {
@@ -63,15 +53,13 @@ class RestoreFileSelectorDialogFragment : BaseComposeDialogFragment() {
             }
         }
 
-        // 文件列表为空时不显示
-        if (uiState.files.isEmpty() && !uiState.isRestoring) {
-            return
-        }
+        if (uiState.files.isEmpty() && !uiState.isRestoring) return
 
-        // 恢复进行中，显示进度对话框
         if (uiState.isRestoring) {
             RestoreProgressDialog(
                 progress = uiState.restoreProgress,
+                current = uiState.restoreCurrent,
+                total = uiState.restoreTotal,
                 onCancel = { dismiss() }
             )
             return
@@ -105,44 +93,52 @@ class RestoreFileSelectorDialogFragment : BaseComposeDialogFragment() {
 
         fun newInstance(backupPath: String): RestoreFileSelectorDialogFragment {
             return RestoreFileSelectorDialogFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_BACKUP_PATH, backupPath)
-                }
+                arguments = Bundle().apply { putString(ARG_BACKUP_PATH, backupPath) }
             }
         }
     }
 }
 
 /**
- * 恢复进度提示，简单的等待对话框。
+ * 与普通恢复统一的进度界面：
+ * 百分比 + 当前/总数 + 当前恢复项目。
  */
 @Composable
 private fun RestoreProgressDialog(
     progress: String,
+    current: Int,
+    total: Int,
     onCancel: () -> Unit
 ) {
+    val safeTotal = total.coerceAtLeast(1)
+    val safeCurrent = current.coerceIn(0, safeTotal)
+    val percent = safeCurrent * 100 / safeTotal
+
     Dialog(
         onDismissRequest = {},
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
     ) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
+            modifier = Modifier.fillMaxWidth().wrapContentHeight(),
             shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                CircularProgressIndicator()
-                Spacer(modifier = Modifier.height(16.dp))
+                LinearProgressIndicator(
+                    progress = { safeCurrent.toFloat() / safeTotal.toFloat() },
+                    modifier = Modifier.fillMaxWidth().height(6.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = if (progress.isNotEmpty()) progress
-                    else stringResource(R.string.fvd_restoring),
+                    text = "$percent%  ·  $safeCurrent/$safeTotal",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = if (progress.isNotEmpty()) progress else stringResource(R.string.fvd_restoring),
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(12.dp))
