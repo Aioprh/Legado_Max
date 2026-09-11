@@ -28,13 +28,6 @@ import io.legado.app.help.storage.ValidationResult
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
 
-/**
- * 恢复选择器的待显示请求。
- *
- * ZIP 解压可能在 Fragment 已经进入后台后完成，此时直接 show DialogFragment
- * 会遇到 FragmentManager state 已保存、页面已切换等情况。这里暂存请求，等原
- * Activity 再次 resumed 后再补显示，避免出现“恢复卡死但实际上已经解压完成”。
- */
 private object RestoreSelectorPendingRequest {
     private const val TAG = "restoreFileSelector"
 
@@ -56,9 +49,7 @@ private object RestoreSelectorPendingRequest {
         }
     }
 
-    private fun currentActivityClass(): String? {
-        return currentActivity?.javaClass?.name
-    }
+    private fun currentActivityClass(): String? = currentActivity?.javaClass?.name
 
     private var currentActivity: Activity? = null
 
@@ -140,7 +131,10 @@ class RestoreFileSelectorDialogFragment : BaseComposeDialogFragment() {
                 progress = uiState.restoreProgress,
                 current = uiState.restoreCurrent,
                 total = uiState.restoreTotal,
-                onCancel = { dismiss() }
+                onCancel = {
+                    viewModel.cancelRestore()
+                    dismiss()
+                }
             )
             return
         }
@@ -171,10 +165,6 @@ class RestoreFileSelectorDialogFragment : BaseComposeDialogFragment() {
     companion object {
         private const val ARG_BACKUP_PATH = "backupPath"
 
-        /**
-         * 普通入口：先登记待显示请求，再交给现有 showDialogFragment 流程。
-         * 如果当前 FragmentManager 不适合立即显示，生命周期回调会自动补显示。
-         */
         fun newInstance(backupPath: String): RestoreFileSelectorDialogFragment {
             RestoreSelectorPendingRequest.enqueue(backupPath)
             return newInstanceInternal(backupPath)
@@ -188,10 +178,6 @@ class RestoreFileSelectorDialogFragment : BaseComposeDialogFragment() {
     }
 }
 
-/**
- * 与普通恢复统一的进度界面：
- * 百分比 + 当前/总数 + 当前恢复项目。
- */
 @Composable
 private fun RestoreProgressDialog(
     progress: String,
@@ -204,8 +190,8 @@ private fun RestoreProgressDialog(
     val percent = safeCurrent * 100 / safeTotal
 
     Dialog(
-        onDismissRequest = {},
-        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+        onDismissRequest = onCancel,
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
     ) {
         Card(
             modifier = Modifier.fillMaxWidth().wrapContentHeight(),
