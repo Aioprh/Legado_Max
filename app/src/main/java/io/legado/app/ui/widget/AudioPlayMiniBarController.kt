@@ -10,6 +10,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
 import android.widget.ListView
 import android.widget.ScrollView
 import androidx.appcompat.app.AppCompatActivity
@@ -37,6 +39,8 @@ import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.WeakHashMap
+import kotlin.math.max
 
 class AudioPlayMiniBarController(
     private val activity: AppCompatActivity,
@@ -52,15 +56,33 @@ class AudioPlayMiniBarController(
     private var imeVisible = false
     private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
     private var contentContainer: ViewGroup? = null
-    private var originalRecyclerPaddingBottom = java.util.WeakHashMap<RecyclerView, Int>()
-    private var originalComposePaddingBottom = java.util.WeakHashMap<ComposeView, Int>()
-    private var originalScrollPaddingBottom = java.util.WeakHashMap<View, Int>()
+    private var originalRecyclerPaddingBottom = WeakHashMap<RecyclerView, Int>()
+    private var originalComposePaddingBottom = WeakHashMap<ComposeView, Int>()
+    private var originalScrollPaddingBottom = WeakHashMap<View, Int>()
+    private var webView: WebView? = null
+    private var webViewBottomObstructionPx = 0
+    private var webViewLayoutListener: View.OnLayoutChangeListener? = null
+    private var parentLayoutListener: View.OnLayoutChangeListener? = null
+    private var destroyed = false
+
+    private val webViewBridge = object {
+        @JavascriptInterface
+        fun reportBottomObstruction(px: Float) {
+            if (destroyed) return
+            activity.runOnUiThread {
+                if (destroyed) return@runOnUiThread
+                webViewBottomObstructionPx = px.takeIf { it.isFinite() }?.toInt()?.coerceAtLeast(0) ?: 0
+                updateBottomMargin()
+            }
+        }
+    }
 
     init {
         parent.addView(binding.root)
         bindContentSafeArea()
         bindBottomNavigationAnchor()
         bindImeVisibility()
+        bindParentLayout()
         updateBottomMargin()
         bindEvents()
     }
@@ -72,6 +94,7 @@ class AudioPlayMiniBarController(
                 hideInternal()
                 return
             }
+            updateWebViewSafeArea()
             updateBottomMargin()
             val book = AudioPlay.book
             val chapter = AudioPlay.durChapter
@@ -113,6 +136,21 @@ class AudioPlayMiniBarController(
     }
 
     fun hide() = hideInternal()
+
+    fun destroy() {
+        destroyed = true
+        webView?.let { view ->
+            runCatching { view.removeJavascriptInterface("LegadoAudioSafeArea") }
+            webViewLayoutListener?.let { listener -> view.removeOnLayoutChangeListener(listener) }
+        }
+        webView = null
+        parentLayoutListener?.let { parent.removeOnLayoutChangeListener(it) }
+        globalLayoutListener?.let { parent.viewTreeObserver.removeOnGlobalLayoutListener(it) }
+        bottomAnchor?.let { view ->
+            bottomAnchorLayoutListener?.let { listener -> view.removeOnLayoutChangeListener(listener) }
+        }
+        parent.removeView(binding.root)
+    }
 
     private fun bindEvents() {
         binding.run {
@@ -163,6 +201,28 @@ class AudioPlayMiniBarController(
 
     private fun bindContentSafeArea() {
         contentContainer = activity.findViewById<ViewGroup>(R.id.content_container)
+    }
+
+    private fun bindParentLayout() {
+        parentLayoutListener = object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View,
+                left: Int,
+                top: Int,
+                right: Int,
+                bottom: Int,
+                oldLeft: Int,
+                oldTop: Int,
+                oldRight: Int,
+                oldBottom: Int
+            ) {
+                if (!destroyed) {
+                    updateWebViewSafeArea()
+                    updateBottomMargin()
+                }
+            }
+        }
+        parent.addOnLayoutChangeListener(parentLayoutListener)
     }
 
     /**
@@ -259,6 +319,8 @@ class AudioPlayMiniBarController(
                 imeVisible = visible
                 if (visible) hideInternal() else refresh()
             } else if (binding.audioPlayMiniBar.isShown) {
+                updateWebViewSafeArea()
+                updateBottomMargin()
                 updateContentSafeArea()
             }
         }
@@ -270,9 +332,114 @@ class AudioPlayMiniBarController(
             ?.isVisible(WindowInsetsCompat.Type.ime()) == true
     }
 
+    private fun findWebView(view: View): WebView? {
+        if (view is WebView) return view
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                findWebView(view.getChildAt(index))?.let { return it }
+            }
+        }
+        return null
+    }
+
+    /**
+     * WebView 页面自身可能存在 position:fixed/sticky 的底部导航。
+     * 这里直接从网页 DOM 获取真实遮挡高度，并与 Android 系统安全区、原生底栏一起取最大值。
+     */
+    private fun updateWebViewSafeArea() {
+        val found = findWebView(parent)
+        if (found == null) {
+            if (webViewBottomObstructionPx != 0) {
+                webViewBottomObstructionPx = 0
+                updateBottomMargin()
+            }
+            webView = null
+            return
+        }
+
+        if (webView !== found) {
+            webView?.let { old ->
+                runCatching { old.removeJavascriptInterface("LegadoAudioSafeArea") }
+                webViewLayoutListener?.let { listener -> old.removeOnLayoutChangeListener(listener) }
+            }
+            webView = found
+            found.addJavascriptInterface(webViewBridge, "LegadoAudioSafeArea")
+            webViewLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                if (!destroyed) updateWebViewSafeArea()
+            }
+            found.addOnLayoutChangeListener(webViewLayoutListener)
+        }
+
+        if (!found.isAttachedToWindow) return
+        found.evaluateJavascript(
+            """
+            (function(){
+              try {
+                var d=window.devicePixelRatio||1;
+                var vh=window.innerHeight||document.documentElement.clientHeight||0;
+                var vw=window.innerWidth||document.documentElement.clientWidth||0;
+                var m=0;
+                document.querySelectorAll('*').forEach(function(e){
+                  var s=getComputedStyle(e);
+                  if(s.display==='none'||s.visibility==='hidden'||parseFloat(s.opacity||'1')<0.05)return;
+                  if(s.position!=='fixed'&&s.position!=='sticky')return;
+                  var r=e.getBoundingClientRect();
+                  if(r.width<vw*0.5||r.height<40||r.height>vh*0.35)return;
+                  if(r.bottom<vh-16||r.top>vh||r.bottom<=r.top)return;
+                  var z=parseInt(s.zIndex||'0',10);
+                  if(!isNaN(z)&&z<0)return;
+                  m=Math.max(m,Math.min(vh,vh-Math.max(0,r.top)));
+                });
+                if(window.LegadoAudioSafeArea)window.LegadoAudioSafeArea.reportBottomObstruction(Math.round(m*d));
+              }catch(e){}
+            })();
+            """.trimIndent(),
+            null
+        )
+
+        found.evaluateJavascript(
+            """
+            (function(){
+              if(window.__legadoAudioSafeAreaInstalled)return;
+              window.__legadoAudioSafeAreaInstalled=true;
+              function report(){
+                try{
+                  var d=window.devicePixelRatio||1;
+                  var vh=window.innerHeight||document.documentElement.clientHeight||0;
+                  var vw=window.innerWidth||document.documentElement.clientWidth||0;
+                  var m=0;
+                  document.querySelectorAll('*').forEach(function(e){
+                    var s=getComputedStyle(e);
+                    if(s.display==='none'||s.visibility==='hidden'||parseFloat(s.opacity||'1')<0.05)return;
+                    if(s.position!=='fixed'&&s.position!=='sticky')return;
+                    var r=e.getBoundingClientRect();
+                    if(r.width<vw*0.5||r.height<40||r.height>vh*0.35)return;
+                    if(r.bottom<vh-16||r.top>vh||r.bottom<=r.top)return;
+                    var z=parseInt(s.zIndex||'0',10);
+                    if(!isNaN(z)&&z<0)return;
+                    m=Math.max(m,Math.min(vh,vh-Math.max(0,r.top)));
+                  });
+                  if(window.LegadoAudioSafeArea)window.LegadoAudioSafeArea.reportBottomObstruction(Math.round(m*d));
+                }catch(e){}
+              }
+              window.LegadoAudioSafeAreaReport=report;
+              new MutationObserver(function(){
+                clearTimeout(window.__legadoAudioSafeAreaTimer);
+                window.__legadoAudioSafeAreaTimer=setTimeout(report,80);
+              }).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['style','class']});
+              window.addEventListener('resize',report,{passive:true});
+              window.addEventListener('orientationchange',report,{passive:true});
+              report();
+            })();
+            """.trimIndent(),
+            null
+        )
+    }
+
     private fun updateBottomMargin() {
+        if (destroyed) return
         val navigation = bottomAnchor?.takeIf { it.isShown && it.height > 0 }
-        val margin = when {
+        val baseMargin = when {
             navigation != null -> {
                 val parentLocation = IntArray(2)
                 val navigationLocation = IntArray(2)
@@ -284,6 +451,15 @@ class AudioPlayMiniBarController(
             activity.javaClass.simpleName == "TocActivity" -> 62.dpToPx()
             else -> 18.dpToPx()
         }
+        val systemBottom = ViewCompat.getRootWindowInsets(activity.window.decorView)
+            ?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
+        val systemSafeMargin = systemBottom + 8.dpToPx()
+        val webSafeMargin = if (webViewBottomObstructionPx > 0) {
+            webViewBottomObstructionPx + 10.dpToPx()
+        } else {
+            0
+        }
+        val margin = max(baseMargin, max(systemSafeMargin, webSafeMargin))
         binding.root.updateLayoutParams<android.widget.FrameLayout.LayoutParams> { bottomMargin = margin }
         binding.root.post { updateContentSafeArea() }
     }
