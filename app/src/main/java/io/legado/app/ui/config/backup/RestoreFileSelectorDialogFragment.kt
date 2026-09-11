@@ -56,7 +56,11 @@ private object RestoreSelectorPendingRequest {
     private fun registerCallbacks() {
         if (callbacksRegistered) return
         callbacksRegistered = true
-        appCtx.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+        val application = appCtx.applicationContext as? Application ?: run {
+            callbacksRegistered = false
+            return
+        }
+        application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
             override fun onActivityStarted(activity: Activity) = Unit
             override fun onActivityPaused(activity: Activity) = Unit
