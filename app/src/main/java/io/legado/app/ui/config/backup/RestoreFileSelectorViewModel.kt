@@ -9,8 +9,10 @@ import io.legado.app.help.storage.BackupInfoHelper
 import io.legado.app.help.storage.Restore
 import io.legado.app.help.storage.ValidationResult
 import io.legado.app.help.storage.ValidationState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 data class RestoreFileSelectorUiState(
@@ -165,6 +168,7 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
                         )
                     }
                 }
+                currentCoroutineContext().ensureActive()
                 _uiState.update {
                     it.copy(
                         isRestoring = false,
@@ -174,6 +178,13 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
                     )
                 }
                 _events.emit(RestoreFileSelectorEvent.Dismiss)
+            } catch (e: CancellationException) {
+                _uiState.update {
+                    it.copy(
+                        isRestoring = false,
+                        restoreError = null
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -182,6 +193,21 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * 真正取消后台恢复任务。Mutex 使用 withLock，因此取消后会自动释放锁，
+     * 不会留下“界面已经关闭但后台仍占用恢复锁”的状态。
+     */
+    fun cancelRestore() {
+        restoreJob?.cancel()
+        restoreJob = null
+        _uiState.update {
+            it.copy(
+                isRestoring = false,
+                restoreError = null
+            )
         }
     }
 
