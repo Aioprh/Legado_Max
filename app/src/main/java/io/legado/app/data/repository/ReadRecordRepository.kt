@@ -39,6 +39,15 @@ class ReadRecordRepository(
         val bookAuthor: String
     )
 
+    private data class ImportedAggregate(
+        var recordReadTime: Long = 0L,
+        var detailReadTime: Long = 0L,
+        var sessionReadTime: Long = 0L,
+        var lastRead: Long = 0L
+    )
+
+    private var streamingImportAggregates: HashMap<Pair<String, String>, ImportedAggregate>? = null
+
     private fun getCurrentDeviceId(): String = currentDeviceIdProvider()
 
     private fun normalizeBookName(bookName: String): String = bookName.trim()
@@ -756,34 +765,122 @@ class ReadRecordRepository(
         details: List<ReadRecordDetail> = emptyList(),
         sessions: List<ReadRecordSession> = emptyList()
     ) {
+        beginStreamingImport()
+        try {
+            importRecordBatch(records)
+            importDetailBatch(details)
+            importSessionBatch(sessions)
+            finishStreamingImport()
+        } catch (e: Throwable) {
+            abortStreamingImport()
+            throw e
+        }
+    }
+
+    /**
+     * 开始流式导入。只保留按书聚合所需的极小状态，不把整个历史记录复制到内存。
+     */
+    fun beginStreamingImport() {
+        streamingImportAggregates = HashMap()
+    }
+
+    suspend fun importRecordBatch(records: List<ReadRecord>) {
+        if (records.isEmpty()) return
         val currentDeviceId = getCurrentDeviceId()
-
-        // 批量插入所有记录（归一化 deviceId 到当前设备）
-        val normalizedRecords = records
-            .map { normalizeRecord(it).copy(deviceId = currentDeviceId) }
-            .filter { isValidRecord(it) }
-        if (normalizedRecords.isNotEmpty()) {
-            dao.insertAll(normalizedRecords)
+        val normalized = ArrayList<ReadRecord>(records.size)
+        val aggregates = streamingImportAggregates
+            ?: error("streaming import has not been started")
+        records.forEach { record ->
+            val item = normalizeRecord(record).copy(deviceId = currentDeviceId)
+            if (!isValidRecord(item)) return@forEach
+            normalized.add(item)
+            val key = item.bookName to item.bookAuthor
+            val aggregate = aggregates.getOrPut(key) { ImportedAggregate() }
+            aggregate.recordReadTime = max(aggregate.recordReadTime, item.readTime)
+            aggregate.lastRead = max(aggregate.lastRead, item.lastRead)
         }
+        if (normalized.isNotEmpty()) dao.insertAll(normalized)
+    }
 
-        // 批量插入所有详情记录
-        val normalizedDetails = details
-            .map { normalizeDetail(it).copy(deviceId = currentDeviceId) }
-            .filter { isValidDetail(it) }
-        if (normalizedDetails.isNotEmpty()) {
-            dao.insertAllDetails(normalizedDetails)
+    suspend fun importDetailBatch(details: List<ReadRecordDetail>) {
+        if (details.isEmpty()) return
+        val currentDeviceId = getCurrentDeviceId()
+        val normalized = ArrayList<ReadRecordDetail>(details.size)
+        val aggregates = streamingImportAggregates
+            ?: error("streaming import has not been started")
+        details.forEach { detail ->
+            val item = normalizeDetail(detail).copy(deviceId = currentDeviceId)
+            if (!isValidDetail(item)) return@forEach
+            normalized.add(item)
+            val key = item.bookName to item.bookAuthor
+            val aggregate = aggregates.getOrPut(key) { ImportedAggregate() }
+            aggregate.detailReadTime += item.readTime.coerceAtLeast(0L)
+            aggregate.lastRead = max(aggregate.lastRead, item.lastReadTime)
         }
+        if (normalized.isNotEmpty()) dao.insertAllDetails(normalized)
+    }
 
-        // 批量插入所有会话记录
-        val normalizedSessions = sessions
-            .map { normalizeSession(it).copy(id = 0, deviceId = currentDeviceId) }
-            .filter { isValidSession(it) }
-        if (normalizedSessions.isNotEmpty()) {
-            dao.insertAllSessions(normalizedSessions)
+    suspend fun importSessionBatch(sessions: List<ReadRecordSession>) {
+        if (sessions.isEmpty()) return
+        val currentDeviceId = getCurrentDeviceId()
+        val normalized = ArrayList<ReadRecordSession>(sessions.size)
+        val aggregates = streamingImportAggregates
+            ?: error("streaming import has not been started")
+        sessions.forEach { session ->
+            val item = normalizeSession(session).copy(id = 0, deviceId = currentDeviceId)
+            if (!isValidSession(item)) return@forEach
+            normalized.add(item)
+            val key = item.bookName to item.bookAuthor
+            val aggregate = aggregates.getOrPut(key) { ImportedAggregate() }
+            aggregate.sessionReadTime += (item.endTime - item.startTime).coerceAtLeast(0L)
+            aggregate.lastRead = max(aggregate.lastRead, item.endTime)
         }
+        if (normalized.isNotEmpty()) dao.insertAllSessions(normalized)
+    }
 
-        // 使用内存计算重建聚合记录，避免 N+1 查询
-        rebuildImportedBookTotalsFast()
+    suspend fun finishStreamingImport() {
+        val aggregates = streamingImportAggregates ?: return
+        try {
+            val currentDeviceId = getCurrentDeviceId()
+            val existing = dao.all.associateBy { it.bookName to it.bookAuthor }
+            val updates = ArrayList<ReadRecord>(aggregates.size)
+            aggregates.forEach { (key, aggregate) ->
+                val old = existing[key]
+                val importedReadTime = max(aggregate.recordReadTime, max(aggregate.detailReadTime, aggregate.sessionReadTime))
+                val readTime = max(old?.readTime ?: 0L, importedReadTime)
+                val lastRead = max(old?.lastRead ?: 0L, aggregate.lastRead)
+                if (old == null) {
+                    updates.add(
+                        ReadRecord(
+                            deviceId = currentDeviceId,
+                            bookName = key.first,
+                            bookAuthor = key.second,
+                            readTime = readTime,
+                            lastRead = lastRead
+                        )
+                    )
+                } else if (old.readTime != readTime || old.lastRead != lastRead) {
+                    updates.add(old.copy(readTime = readTime, lastRead = lastRead))
+                }
+            }
+            if (updates.isNotEmpty()) {
+                updates.chunked(200).forEach { dao.insertAll(it) }
+            }
+        } finally {
+            streamingImportAggregates = null
+        }
+    }
+
+    fun abortStreamingImport() {
+        streamingImportAggregates = null
+    }
+
+    suspend fun repairRecordsAfterStreamingImport(
+        getAuthorByBookName: suspend (String) -> String?
+    ) {
+        cleanupBlankBookNameData()
+        fixEmptyAuthors(getAuthorByBookName)
+        normalizeDuplicateDeviceRecords()
     }
 
     private suspend fun importSingleDetailRecords(details: List<ReadRecordDetail>) {
