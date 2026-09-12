@@ -36,6 +36,7 @@ import io.legado.app.ui.widget.image.CoverImageView
 import io.legado.app.utils.*
 import io.legado.app.utils.compress.ZipUtils
 import androidx.room.withTransaction
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -90,6 +91,7 @@ object Restore {
             LocalConfig.lastBackup = System.currentTimeMillis()
             LocalConfig.lastRestore = System.currentTimeMillis()
         }.onFailure {
+            if (it is CancellationException) throw it
             appCtx.toastOnUi("恢复备份出错\n${it.localizedMessage}")
             AppLog.put("恢复备份出错\n${it.localizedMessage}", it)
         }
@@ -112,6 +114,7 @@ object Restore {
                 LocalConfig.lastBackup = System.currentTimeMillis()
                 LocalConfig.lastRestore = System.currentTimeMillis()
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 appCtx.toastOnUi("恢复备份出错\n${e.localizedMessage}")
                 AppLog.put("选择性恢复备份出错\n${e.localizedMessage}", e)
             }
@@ -128,51 +131,52 @@ object Restore {
 
         progress("bookshelf.json")
         appDb.bookDao.deleteAll()
-        fileToListT<Book>(path, "bookshelf.json")?.let {
-            it.forEach { it.upType() }
-            it.filter { it.isLocal }.forEach { it.coverUrl = LocalBook.getCoverPath(it) }
-            val ignoreLocal = BackupConfig.ignoreLocalBook
-            appDb.bookDao.insert(*it.filterNot { ignoreLocal && it.isLocal }.toTypedArray())
+        val ignoreLocal = BackupConfig.ignoreLocalBook
+        restoreListBatched<Book>(path, "bookshelf.json") { batch ->
+            batch.forEach { it.upType() }
+            batch.filter { it.isLocal }.forEach { it.coverUrl = LocalBook.getCoverPath(it) }
+            val filtered = batch.filterNot { ignoreLocal && it.isLocal }
+            if (filtered.isNotEmpty()) appDb.bookDao.insert(*filtered.toTypedArray())
         }
 
         progress("bookmark.json")
         appDb.bookmarkDao.deleteAll()
-        fileToListT<Bookmark>(path, "bookmark.json")?.let {
-            appDb.bookmarkDao.insert(*it.toTypedArray())
+        restoreListBatched<Bookmark>(path, "bookmark.json") { batch ->
+            if (batch.isNotEmpty()) appDb.bookmarkDao.insert(*batch.toTypedArray())
         }
 
         progress("bookGroup.json")
         appDb.bookGroupDao.deleteAll()
-        fileToListT<BookGroup>(path, "bookGroup.json")?.let {
-            appDb.bookGroupDao.insert(*it.toTypedArray())
+        restoreListBatched<BookGroup>(path, "bookGroup.json") { batch ->
+            if (batch.isNotEmpty()) appDb.bookGroupDao.insert(*batch.toTypedArray())
         }
 
         progress("bookSource.json")
         appDb.bookSourceDao.deleteAll()
-        fileToListT<BookSource>(path, "bookSource.json")?.let {
-            appDb.bookSourceDao.insert(*it.toTypedArray())
-        } ?: run {
-            File(path, "bookSource.json").takeIf { it.exists() }?.readText()?.let {
-                ImportOldData.importOldSource(it)
+        if (!restoreListBatched<BookSource>(path, "bookSource.json") { batch ->
+            if (batch.isNotEmpty()) appDb.bookSourceDao.insert(*batch.toTypedArray())
+        }) {
+            File(path, "bookSource.json").takeIf { it.exists() }?.inputStream()?.reader()?.use {
+                ImportOldData.importOldSource(it.readText())
             }
         }
 
         progress("rssSources.json")
         appDb.rssSourceDao.deleteAll()
-        fileToListT<RssSource>(path, "rssSources.json")?.let {
-            appDb.rssSourceDao.insert(*it.toTypedArray())
+        restoreListBatched<RssSource>(path, "rssSources.json") { batch ->
+            if (batch.isNotEmpty()) appDb.rssSourceDao.insert(*batch.toTypedArray())
         }
 
         progress("rssStar.json")
         appDb.rssStarDao.deleteAll()
-        fileToListT<RssStar>(path, "rssStar.json")?.let {
-            appDb.rssStarDao.insert(*it.toTypedArray())
+        restoreListBatched<RssStar>(path, "rssStar.json") { batch ->
+            if (batch.isNotEmpty()) appDb.rssStarDao.insert(*batch.toTypedArray())
         }
 
         progress("sourceSub.json")
         appDb.ruleSubDao.deleteAll()
-        fileToListT<RuleSub>(path, "sourceSub.json")?.let {
-            appDb.ruleSubDao.insert(*it.toTypedArray())
+        restoreListBatched<RuleSub>(path, "sourceSub.json") { batch ->
+            if (batch.isNotEmpty()) appDb.ruleSubDao.insert(*batch.toTypedArray())
         }
 
         progress("webSearchEngines.json")
@@ -202,8 +206,8 @@ object Restore {
 
         progress("replaceRule.json")
         appDb.replaceRuleDao.deleteAll()
-        fileToListT<ReplaceRule>(path, "replaceRule.json")?.let {
-            appDb.replaceRuleDao.insert(*it.toTypedArray())
+        restoreListBatched<ReplaceRule>(path, "replaceRule.json") { batch ->
+            if (batch.isNotEmpty()) appDb.replaceRuleDao.insert(*batch.toTypedArray())
         }
 
         progress(HighlightRuleStore.backupFileName)
@@ -215,56 +219,40 @@ object Restore {
 
         progress("searchHistory.json")
         appDb.searchKeywordDao.deleteAll()
-        fileToListT<SearchKeyword>(path, "searchHistory.json")?.let {
-            appDb.searchKeywordDao.insert(*it.toTypedArray())
+        restoreListBatched<SearchKeyword>(path, "searchHistory.json") { batch ->
+            if (batch.isNotEmpty()) appDb.searchKeywordDao.insert(*batch.toTypedArray())
         }
 
         progress("txtTocRule.json")
         appDb.txtTocRuleDao.deleteAll()
-        fileToListT<TxtTocRule>(path, "txtTocRule.json")?.let {
-            appDb.txtTocRuleDao.insert(*it.toTypedArray())
+        restoreListBatched<TxtTocRule>(path, "txtTocRule.json") { batch ->
+            if (batch.isNotEmpty()) appDb.txtTocRuleDao.insert(*batch.toTypedArray())
         }
 
         progress("httpTTS.json")
         appDb.httpTTSDao.deleteAll()
-        fileToListT<HttpTTS>(path, "httpTTS.json")?.let {
-            appDb.httpTTSDao.insert(*it.toTypedArray())
+        restoreListBatched<HttpTTS>(path, "httpTTS.json") { batch ->
+            if (batch.isNotEmpty()) appDb.httpTTSDao.insert(*batch.toTypedArray())
         }
 
         progress("dictRule.json")
         appDb.dictRuleDao.deleteAll()
-        fileToListT<DictRule>(path, "dictRule.json")?.let {
-            appDb.dictRuleDao.insert(*it.toTypedArray())
+        restoreListBatched<DictRule>(path, "dictRule.json") { batch ->
+            if (batch.isNotEmpty()) appDb.dictRuleDao.insert(*batch.toTypedArray())
         }
 
         progress("keyboardAssists.json")
         appDb.keyboardAssistsDao.deleteAll()
-        fileToListT<KeyboardAssist>(path, "keyboardAssists.json")?.let {
-            appDb.keyboardAssistsDao.insert(*it.toTypedArray())
+        restoreListBatched<KeyboardAssist>(path, "keyboardAssists.json") { batch ->
+            if (batch.isNotEmpty()) appDb.keyboardAssistsDao.insert(*batch.toTypedArray())
         }
 
         progress(CoverGalleryRepository.backupDirName)
         restoreCoverGallery(path)
 
         progress("readRecord.json")
-        val records = fileToListT<ReadRecord>(path, "readRecord.json").orEmpty()
-        val details = fileToListT<ReadRecordDetail>(path, "readRecordDetail.json").orEmpty()
-        val sessions = fileToListT<ReadRecordSession>(path, "readRecordSession.json").orEmpty()
-        if (records.isNotEmpty() || details.isNotEmpty() || sessions.isNotEmpty()) {
-            val bookAuthorMap = appDb.bookDao.all
-                .filter { it.author.isNotBlank() }
-                .associate { it.name to it.author.trim() }
-            appDb.withTransaction {
-                appDb.readRecordDao.clear()
-                appDb.readRecordDao.clearDetails()
-                appDb.readRecordDao.clearSessions()
-                ReadRecordRepository(appDb.readRecordDao).apply {
-                    importRecords(records, details, sessions)
-                    repairRecords { bookAuthorMap[it] }
-                }
-            }
-            appCtx.putPrefInt(PreferKey.readRecordRepairVersion, ReadRecordRepository.CURRENT_REPAIR_VERSION)
-        }
+        restoreReadRecordsStreaming(path)
+
 
         progress("servers.json")
         appDb.serverDao.deleteAll()
@@ -408,38 +396,39 @@ object Restore {
         if ("bookshelf.json" in selectedSet) {
             progress("bookshelf.json")
             appDb.bookDao.deleteAll()
-            fileToListT<Book>(path, "bookshelf.json")?.let {
-                it.forEach { it.upType() }
-                it.filter { it.isLocal }.forEach { it.coverUrl = LocalBook.getCoverPath(it) }
-                val ignoreLocal = BackupConfig.ignoreLocalBook
-                appDb.bookDao.insert(*it.filterNot { ignoreLocal && it.isLocal }.toTypedArray())
+            val ignoreLocal = BackupConfig.ignoreLocalBook
+            restoreListBatched<Book>(path, "bookshelf.json") { batch ->
+                batch.forEach { it.upType() }
+                batch.filter { it.isLocal }.forEach { it.coverUrl = LocalBook.getCoverPath(it) }
+                val filtered = batch.filterNot { ignoreLocal && it.isLocal }
+                if (filtered.isNotEmpty()) appDb.bookDao.insert(*filtered.toTypedArray())
             }
         }
 
         if ("bookmark.json" in selectedSet) {
             progress("bookmark.json")
             appDb.bookmarkDao.deleteAll()
-            fileToListT<Bookmark>(path, "bookmark.json")?.let {
-                appDb.bookmarkDao.insert(*it.toTypedArray())
+            restoreListBatched<Bookmark>(path, "bookmark.json") { batch ->
+                if (batch.isNotEmpty()) appDb.bookmarkDao.insert(*batch.toTypedArray())
             }
         }
 
         if ("bookGroup.json" in selectedSet) {
             progress("bookGroup.json")
             appDb.bookGroupDao.deleteAll()
-            fileToListT<BookGroup>(path, "bookGroup.json")?.let {
-                appDb.bookGroupDao.insert(*it.toTypedArray())
+            restoreListBatched<BookGroup>(path, "bookGroup.json") { batch ->
+                if (batch.isNotEmpty()) appDb.bookGroupDao.insert(*batch.toTypedArray())
             }
         }
 
         if ("bookSource.json" in selectedSet) {
             progress("bookSource.json")
             appDb.bookSourceDao.deleteAll()
-            fileToListT<BookSource>(path, "bookSource.json")?.let {
-                appDb.bookSourceDao.insert(*it.toTypedArray())
-            } ?: run {
-                File(path, "bookSource.json").takeIf { it.exists() }?.readText()?.let {
-                    ImportOldData.importOldSource(it)
+            if (!restoreListBatched<BookSource>(path, "bookSource.json") { batch ->
+                if (batch.isNotEmpty()) appDb.bookSourceDao.insert(*batch.toTypedArray())
+            }) {
+                File(path, "bookSource.json").takeIf { it.exists() }?.inputStream()?.reader()?.use {
+                    ImportOldData.importOldSource(it.readText())
                 }
             }
         }
@@ -447,24 +436,24 @@ object Restore {
         if ("rssSources.json" in selectedSet) {
             progress("rssSources.json")
             appDb.rssSourceDao.deleteAll()
-            fileToListT<RssSource>(path, "rssSources.json")?.let {
-                appDb.rssSourceDao.insert(*it.toTypedArray())
+            restoreListBatched<RssSource>(path, "rssSources.json") { batch ->
+                if (batch.isNotEmpty()) appDb.rssSourceDao.insert(*batch.toTypedArray())
             }
         }
 
         if ("rssStar.json" in selectedSet) {
             progress("rssStar.json")
             appDb.rssStarDao.deleteAll()
-            fileToListT<RssStar>(path, "rssStar.json")?.let {
-                appDb.rssStarDao.insert(*it.toTypedArray())
+            restoreListBatched<RssStar>(path, "rssStar.json") { batch ->
+                if (batch.isNotEmpty()) appDb.rssStarDao.insert(*batch.toTypedArray())
             }
         }
 
         if ("sourceSub.json" in selectedSet) {
             progress("sourceSub.json")
             appDb.ruleSubDao.deleteAll()
-            fileToListT<RuleSub>(path, "sourceSub.json")?.let {
-                appDb.ruleSubDao.insert(*it.toTypedArray())
+            restoreListBatched<RuleSub>(path, "sourceSub.json") { batch ->
+                if (batch.isNotEmpty()) appDb.ruleSubDao.insert(*batch.toTypedArray())
             }
         }
 
@@ -500,8 +489,8 @@ object Restore {
         if ("replaceRule.json" in selectedSet) {
             progress("replaceRule.json")
             appDb.replaceRuleDao.deleteAll()
-            fileToListT<ReplaceRule>(path, "replaceRule.json")?.let {
-                appDb.replaceRuleDao.insert(*it.toTypedArray())
+            restoreListBatched<ReplaceRule>(path, "replaceRule.json") { batch ->
+                if (batch.isNotEmpty()) appDb.replaceRuleDao.insert(*batch.toTypedArray())
             }
         }
 
@@ -517,40 +506,40 @@ object Restore {
         if ("searchHistory.json" in selectedSet) {
             progress("searchHistory.json")
             appDb.searchKeywordDao.deleteAll()
-            fileToListT<SearchKeyword>(path, "searchHistory.json")?.let {
-                appDb.searchKeywordDao.insert(*it.toTypedArray())
+            restoreListBatched<SearchKeyword>(path, "searchHistory.json") { batch ->
+                if (batch.isNotEmpty()) appDb.searchKeywordDao.insert(*batch.toTypedArray())
             }
         }
 
         if ("txtTocRule.json" in selectedSet) {
             progress("txtTocRule.json")
             appDb.txtTocRuleDao.deleteAll()
-            fileToListT<TxtTocRule>(path, "txtTocRule.json")?.let {
-                appDb.txtTocRuleDao.insert(*it.toTypedArray())
+            restoreListBatched<TxtTocRule>(path, "txtTocRule.json") { batch ->
+                if (batch.isNotEmpty()) appDb.txtTocRuleDao.insert(*batch.toTypedArray())
             }
         }
 
         if ("httpTTS.json" in selectedSet) {
             progress("httpTTS.json")
             appDb.httpTTSDao.deleteAll()
-            fileToListT<HttpTTS>(path, "httpTTS.json")?.let {
-                appDb.httpTTSDao.insert(*it.toTypedArray())
+            restoreListBatched<HttpTTS>(path, "httpTTS.json") { batch ->
+                if (batch.isNotEmpty()) appDb.httpTTSDao.insert(*batch.toTypedArray())
             }
         }
 
         if ("dictRule.json" in selectedSet) {
             progress("dictRule.json")
             appDb.dictRuleDao.deleteAll()
-            fileToListT<DictRule>(path, "dictRule.json")?.let {
-                appDb.dictRuleDao.insert(*it.toTypedArray())
+            restoreListBatched<DictRule>(path, "dictRule.json") { batch ->
+                if (batch.isNotEmpty()) appDb.dictRuleDao.insert(*batch.toTypedArray())
             }
         }
 
         if ("keyboardAssists.json" in selectedSet) {
             progress("keyboardAssists.json")
             appDb.keyboardAssistsDao.deleteAll()
-            fileToListT<KeyboardAssist>(path, "keyboardAssists.json")?.let {
-                appDb.keyboardAssistsDao.insert(*it.toTypedArray())
+            restoreListBatched<KeyboardAssist>(path, "keyboardAssists.json") { batch ->
+                if (batch.isNotEmpty()) appDb.keyboardAssistsDao.insert(*batch.toTypedArray())
             }
         }
 
@@ -561,24 +550,12 @@ object Restore {
 
         if ("readRecord.json" in selectedSet || "readRecordDetail.json" in selectedSet || "readRecordSession.json" in selectedSet) {
             progress("readRecord.json")
-            val records = if ("readRecord.json" in selectedSet) fileToListT<ReadRecord>(path, "readRecord.json").orEmpty() else emptyList()
-            val details = if ("readRecordDetail.json" in selectedSet) fileToListT<ReadRecordDetail>(path, "readRecordDetail.json").orEmpty() else emptyList()
-            val sessions = if ("readRecordSession.json" in selectedSet) fileToListT<ReadRecordSession>(path, "readRecordSession.json").orEmpty() else emptyList()
-            if (records.isNotEmpty() || details.isNotEmpty() || sessions.isNotEmpty()) {
-                val bookAuthorMap = appDb.bookDao.all
-                    .filter { it.author.isNotBlank() }
-                    .associate { it.name to it.author.trim() }
-                appDb.withTransaction {
-                    appDb.readRecordDao.clear()
-                    appDb.readRecordDao.clearDetails()
-                    appDb.readRecordDao.clearSessions()
-                    ReadRecordRepository(appDb.readRecordDao).apply {
-                        importRecords(records, details, sessions)
-                        repairRecords { bookAuthorMap[it] }
-                    }
-                }
-                appCtx.putPrefInt(PreferKey.readRecordRepairVersion, ReadRecordRepository.CURRENT_REPAIR_VERSION)
-            }
+            restoreReadRecordsStreaming(
+                path = path,
+                restoreRecords = "readRecord.json" in selectedSet,
+                restoreDetails = "readRecordDetail.json" in selectedSet,
+                restoreSessions = "readRecordSession.json" in selectedSet
+            )
         }
 
         if ("servers.json" in selectedSet) {
@@ -672,16 +649,15 @@ object Restore {
                     apply()
                 }
             }
-            if (allowHighlight) HighlightRuleStore.clearCache()
         }
+        if (HighlightRuleStore.backupFileName in selectedSet) HighlightRuleStore.clearCache()
 
-        progress("themeBackgroundImages")
-        restoreThemeBackgrounds(
-            backupPath = path,
-            clearExisting = "config.xml" in selectedSet || ThemeConfig.configFileName in selectedSet
-        )
-        fixThemeBackgroundPaths()
-        fixThemeConfigBackgroundPaths()
+        if ("themeBackgroundImages" in selectedSet) {
+            progress("themeBackgroundImages")
+            restoreThemeBackgrounds(path, clearExisting = true)
+            fixThemeBackgroundPaths()
+            fixThemeConfigBackgroundPaths()
+        }
 
         if ("videoConfig.xml" in selectedSet) {
             progress("videoConfig.xml")
@@ -707,10 +683,7 @@ object Restore {
             restoreRuntimeSourceCaches(path)
         }
 
-        if (bookCacheFolderName in selectedSet ||
-            bookCacheIndexFileName in selectedSet ||
-            bookCacheBooksFileName in selectedSet ||
-            "bookChapterCache.json" in selectedSet) {
+        if (bookCacheFolderName in selectedSet) {
             progress(bookCacheFolderName)
             restoreBookCache(path)
         }
@@ -735,22 +708,109 @@ object Restore {
 
     // ======================== 辅助方法 ========================
 
-    private inline fun <reified T> fileToListT(path: String, fileName: String): List<T>? {
+    /**
+     * 以固定批次读取大型 JSON 数组，避免一次性把整个备份文件转换成 List。
+     * DAO 插入仍然按批次执行，因此恢复过程的峰值内存与备份文件总大小基本无关。
+     */
+    private inline fun <reified T> restoreListBatched(
+        path: String,
+        fileName: String,
+        batchSize: Int = 50,
+        crossinline action: (List<T>) -> Unit
+    ): Boolean {
         val file = File(path, fileName)
-        return if (file.exists()) {
-            FileInputStream(file).use {
-                GSON.fromJsonArray<T>(it).getOrThrow()
+        if (!file.isFile) return false
+        return runCatching {
+            FileInputStream(file).use { input ->
+                GSON.forEachJsonArrayBatch<T>(input, batchSize) { batch ->
+                    action(batch)
+                }.getOrThrow()
             }
-        } else null
+            true
+        }.onFailure {
+            LogUtils.d(TAG, "批量恢复 $fileName 失败: ${it.message}")
+            AppLog.put("$fileName\n批量恢复失败\n${it.localizedMessage}", it)
+        }.getOrDefault(false)
+    }
+
+    private fun safeCopyFile(source: File, target: File): Boolean {
+        return runCatching {
+            if (!source.isFile) return false
+            target.parentFile?.mkdirs()
+            source.copyTo(target, overwrite = true)
+            true
+        }.onFailure {
+            LogUtils.d(TAG, "复制文件失败: ${source.absolutePath} -> ${target.absolutePath}: ${it.message}")
+        }.getOrDefault(false)
+    }
+
+    private fun safeCopyRecursively(source: File, target: File): Boolean {
+        return runCatching {
+            if (!source.exists()) return false
+            source.copyRecursively(target, overwrite = true)
+            true
+        }.onFailure {
+            LogUtils.d(TAG, "复制目录失败: ${source.absolutePath} -> ${target.absolutePath}: ${it.message}")
+        }.getOrDefault(false)
+    }
+
+    private suspend fun restoreReadRecordsStreaming(
+        path: String,
+        restoreRecords: Boolean = true,
+        restoreDetails: Boolean = true,
+        restoreSessions: Boolean = true
+    ) {
+        val repository = ReadRecordRepository(appDb.readRecordDao)
+        val authorMap = appDb.bookDao.all
+            .asSequence()
+            .filter { it.author.isNotBlank() }
+            .associate { it.name to it.author.trim() }
+
+        appDb.readRecordDao.clear()
+        appDb.readRecordDao.clearDetails()
+        appDb.readRecordDao.clearSessions()
+        repository.beginStreamingImport()
+        try {
+            if (restoreRecords) {
+                File(path, "readRecord.json").takeIf { it.isFile }?.inputStream()?.use { input ->
+                    GSON.forEachJsonArrayBatchSuspend<ReadRecord>(input, 200) { batch ->
+                        repository.importRecordBatch(batch)
+                    }.getOrThrow()
+                }
+            }
+            if (restoreDetails) {
+                File(path, "readRecordDetail.json").takeIf { it.isFile }?.inputStream()?.use { input ->
+                    GSON.forEachJsonArrayBatchSuspend<ReadRecordDetail>(input, 200) { batch ->
+                        repository.importDetailBatch(batch)
+                    }.getOrThrow()
+                }
+            }
+            if (restoreSessions) {
+                File(path, "readRecordSession.json").takeIf { it.isFile }?.inputStream()?.use { input ->
+                    GSON.forEachJsonArrayBatchSuspend<ReadRecordSession>(input, 200) { batch ->
+                        repository.importSessionBatch(batch)
+                    }.getOrThrow()
+                }
+            }
+            repository.finishStreamingImport()
+            repository.repairRecordsAfterStreamingImport { authorMap[it] }
+            appCtx.putPrefInt(
+                PreferKey.readRecordRepairVersion,
+                ReadRecordRepository.CURRENT_REPAIR_VERSION
+            )
+        } catch (e: Throwable) {
+            repository.abortStreamingImport()
+            throw e
+        }
     }
 
     private fun restoreRuntimeSourceCaches(path: String) {
         val file = File(path, runtimeSourceCacheFileName)
         if (!file.exists()) return
-        fileToListT<Cache>(path, runtimeSourceCacheFileName)?.let {
-            appDb.cacheDao.deleteAllRuntimeSourceCaches()
-            AppCacheManager.clearSourceVariables()
-            if (it.isNotEmpty()) appDb.cacheDao.insert(*it.toTypedArray())
+        appDb.cacheDao.deleteAllRuntimeSourceCaches()
+        AppCacheManager.clearSourceVariables()
+        restoreListBatched<Cache>(path, runtimeSourceCacheFileName) { batch ->
+            if (batch.isNotEmpty()) appDb.cacheDao.insert(*batch.toTypedArray())
         }
     }
 
@@ -758,7 +818,6 @@ object Restore {
         val galleryDir = File(path, CoverGalleryRepository.backupDirName)
         if (!galleryDir.exists() || !galleryDir.isDirectory) return
         val oldGroupIds = appDb.coverGalleryDao.allGroups.map { it.id }
-
         appDb.coverGalleryDao.deleteAllImages()
         appDb.coverGalleryDao.deleteAllGroups()
         appDb.cacheDao.deleteRuntimeSourceCachesByPrefix(CoverGalleryRepository.randomSeedKeyPrefix)
@@ -778,12 +837,12 @@ object Restore {
                 val images = groupDir.listFiles()
                     ?.filter { it.isFile && it.isCoverGalleryImageFile() }
                     ?.sortedBy { it.name }
-                    ?.mapIndexed { imageIndex, imageFile ->
+                    ?.mapIndexedNotNull { imageIndex, imageFile ->
                         val targetFile = File(
                             targetDir,
                             uniqueCoverGalleryImageName(imageFile.name, usedImageNames)
                         )
-                        imageFile.copyTo(targetFile, overwrite = true)
+                        if (!safeCopyFile(imageFile, targetFile)) return@mapIndexedNotNull null
                         CoverGalleryImage(groupId = groupId, path = targetFile.absolutePath, order = imageIndex)
                     }
                     .orEmpty()
@@ -796,7 +855,7 @@ object Restore {
         postEvent(EventBus.BOOKSHELF_REFRESH, "")
     }
 
-    private fun File.isCoverGalleryImageFile() = extension.lowercase() in setOf("jpg","jpeg","png","webp","gif","bmp","heic","heif")
+    private fun File.isCoverGalleryImageFile() = extension.lowercase() in setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif")
 
     private fun uniqueCoverGalleryImageName(fileName: String, used: MutableSet<String>): String {
         val base = fileName.substringBeforeLast('.')
@@ -854,7 +913,7 @@ object Restore {
         bgNames.forEach { bgName ->
             val backupFile = File(path, "bg${File.separator}$bgName").takeIf { it.exists() && it.isFile }
                 ?: File(path, bgName).takeIf { it.exists() && it.isFile }
-            backupFile?.copyTo(File(bgDir, bgName), overwrite = true)
+            backupFile?.let { safeCopyFile(it, File(bgDir, bgName)) }
         }
     }
 
@@ -931,7 +990,7 @@ object Restore {
             ?: File(backupPath, bgName).takeIf { it.exists() && it.isFile }
         if (backupFile != null) {
             val targetDir = appCtx.externalFiles.getFile(prefKey).apply { if (!exists()) mkdirs() }
-            backupFile.copyTo(File(targetDir, bgName), overwrite = true)
+            safeCopyFile(backupFile, File(targetDir, bgName))
         }
     }
 
@@ -981,13 +1040,9 @@ object Restore {
             return
         }
 
-        // 1. 从 bookCacheBooks.json 恢复缺失书籍
         restoreBookCacheBooks(path)
-
-        // 2. 恢复章节目录
         restoreBookChapterCache(path)
 
-        // 3. 流式解析索引，恢复缓存文件
         val indexFile = File(path, bookCacheIndexFileName)
         if (!indexFile.exists()) {
             LogUtils.d(TAG, "书籍缓存索引文件不存在: ${indexFile.absolutePath}")
@@ -1043,19 +1098,18 @@ object Restore {
                 }
 
                 val targetFile = File(targetBookDir, targetChapter.getFileName())
-                sourceFile.copyTo(targetFile, overwrite = true)
-                copiedNames.add(sourceFile.name)
-                chapterRestoredCount++
+                if (safeCopyFile(sourceFile, targetFile)) {
+                    copiedNames.add(sourceFile.name)
+                    chapterRestoredCount++
+                }
             }
 
-            // 复制未被索引引用的 .nb 文件
             sourceCacheDir.listFiles()
                 ?.filter { it.isFile && it.name.endsWith(".nb") && it.name !in copiedNames }
-                ?.forEach { it.copyTo(File(targetBookDir, it.name), overwrite = true) }
+                ?.forEach { safeCopyFile(it, File(targetBookDir, it.name)) }
 
-            // 复制图片文件夹
             File(sourceCacheDir, "images").takeIf { it.exists() }?.let {
-                it.copyRecursively(File(targetBookDir, "images"), overwrite = true)
+                safeCopyRecursively(it, File(targetBookDir, "images"))
             }
 
             restoredCount++
@@ -1073,20 +1127,28 @@ object Restore {
         }
         try {
             ensureDefaultBookGroups()
-            val books = fileToListT<Book>(path, bookCacheBooksFileName)
-                .orEmpty()
-                .mapNotNull { it.sanitizeForCacheRestore() }
-            if (books.isEmpty()) return
-
             val localBooks = appDb.bookDao.all
-            val missing = books.filter { book ->
-                localBooks.none { it.bookUrl == book.bookUrl || it.name == book.name }
-            }.map { it.copy(group = 0, type = it.type and BookType.notShelf.inv()) }
-
-            if (missing.isNotEmpty()) {
-                appDb.bookDao.insert(*missing.toTypedArray())
-                LogUtils.d(TAG, "从 bookCacheBooks.json 恢复书籍: ${missing.size}")
-                AppLog.put("从书籍缓存恢复 ${missing.size} 本书到书架")
+            val existingUrls = localBooks.mapTo(hashSetOf()) { it.bookUrl }
+            val existingNames = localBooks.mapTo(hashSetOf()) { it.name }
+            var restoredCount = 0
+            restoreListBatched<Book>(path, bookCacheBooksFileName) { batch ->
+                val missing = batch.mapNotNull { it.sanitizeForCacheRestore() }
+                    .filter { book ->
+                        book.bookUrl !in existingUrls && book.name !in existingNames
+                    }
+                    .map { it.copy(group = 0, type = it.type and BookType.notShelf.inv()) }
+                if (missing.isNotEmpty()) {
+                    appDb.bookDao.insert(*missing.toTypedArray())
+                    missing.forEach {
+                        existingUrls.add(it.bookUrl)
+                        existingNames.add(it.name)
+                    }
+                    restoredCount += missing.size
+                }
+            }
+            if (restoredCount > 0) {
+                LogUtils.d(TAG, "从 bookCacheBooks.json 恢复书籍: $restoredCount")
+                AppLog.put("从书籍缓存恢复 $restoredCount 本书到书架")
                 postEvent(EventBus.BOOKSHELF_REFRESH, "")
             }
         } catch (e: Exception) {
@@ -1102,27 +1164,30 @@ object Restore {
             return
         }
 
-        val chapters = fileToListT<BookChapter>(path, "bookChapterCache.json")
-        if (chapters.isNullOrEmpty()) {
-            LogUtils.d(TAG, "章节目录为空")
-            return
-        }
-
-        val byBook = chapters.groupBy { it.bookUrl }
+        val restoredBooks = hashSetOf<String>()
+        val skippedBooks = hashSetOf<String>()
+        val clearedBooks = hashSetOf<String>()
         var restoredBookCount = 0
         var restoredChapterCount = 0
 
-        byBook.forEach { (bookUrl, chapterList) ->
-            val book = appDb.bookDao.getBook(bookUrl)
-            if (book != null) {
-                appDb.bookChapterDao.delByBook(book.bookUrl)
-                val updated = chapterList.map { it.copy(bookUrl = book.bookUrl) }
-                appDb.bookChapterDao.insert(*updated.toTypedArray())
-                restoredBookCount++
-                restoredChapterCount += updated.size
-                LogUtils.d(TAG, "恢复章节目录: ${book.name}, ${updated.size} 章")
-            } else {
-                LogUtils.d(TAG, "未找到匹配书籍（bookUrl=$bookUrl），跳过章节目录恢复")
+        restoreListBatched<BookChapter>(path, "bookChapterCache.json") { batch ->
+            val byBook = batch.groupBy { it.bookUrl }
+            byBook.forEach { (bookUrl, chapterList) ->
+                val book = appDb.bookDao.getBook(bookUrl)
+                if (book != null) {
+                    if (clearedBooks.add(book.bookUrl)) {
+                        appDb.bookChapterDao.delByBook(book.bookUrl)
+                    }
+                    val updated = chapterList.map { it.copy(bookUrl = book.bookUrl) }
+                    if (updated.isNotEmpty()) {
+                        appDb.bookChapterDao.insert(*updated.toTypedArray())
+                        restoredChapterCount += updated.size
+                    }
+                    if (restoredBooks.add(book.bookUrl)) restoredBookCount++
+                    LogUtils.d(TAG, "恢复章节目录: ${book.name}, ${updated.size} 章")
+                } else if (skippedBooks.add(bookUrl)) {
+                    LogUtils.d(TAG, "未找到匹配书籍（bookUrl=$bookUrl），跳过章节目录恢复")
+                }
             }
         }
 
@@ -1184,6 +1249,7 @@ object Restore {
                                             "title" -> title = reader.nextString()
                                             "titleMD5" -> titleMD5 = reader.nextString()
                                             "fileName" -> fileName = reader.nextString()
+                                            else -> reader.skipValue()
                                         }
                                     }
                                     reader.endObject()
@@ -1193,6 +1259,7 @@ object Restore {
                                 }
                                 reader.endArray()
                             }
+                            else -> reader.skipValue()
                         }
                     }
                     reader.endObject()
@@ -1207,36 +1274,5 @@ object Restore {
             AppLog.put("$bookCacheIndexFileName\n流式解析出错\n${it.localizedMessage}", it)
             LogUtils.d(TAG, "流式解析索引文件失败: ${it.message}")
         }
-    }
-
-    // ======================== 内部数据类 ========================
-
-    private data class BookCacheIndexData(
-        val bookUrl: String,
-        val bookName: String,
-        val author: String,
-        val folderName: String,
-        val chapters: List<ChapterCacheInfoData>
-    )
-
-    private data class ChapterCacheInfoData(
-        val index: Int,
-        val title: String,
-        val titleMD5: String,
-        val fileName: String
-    )
-
-    // ======================== 扩展函数 ========================
-
-    private fun Book.sanitizeForCacheRestore(): Book? {
-        @Suppress("USELESS_CAST")
-        bookUrl = (bookUrl as String?) ?: ""
-        @Suppress("USELESS_CAST")
-        name = (name as String?) ?: ""
-        @Suppress("USELESS_CAST")
-        author = (author as String?) ?: ""
-        @Suppress("USELESS_CAST")
-        originName = (originName as String?) ?: name
-        return if (bookUrl.isNotBlank() || name.isNotBlank()) this else null
     }
 }
