@@ -170,7 +170,9 @@ class RestoreFileSelectorDialogFragment : BaseComposeDialogFragment() {
         private const val ARG_BACKUP_PATH = "backupPath"
 
         fun newInstance(backupPath: String): RestoreFileSelectorDialogFragment {
-            RestoreSelectorPendingRequest.enqueue(backupPath)
+            // The caller immediately displays the returned DialogFragment.
+            // Do not enqueue and tryShow here, otherwise two selector dialogs
+            // are created: one by tryShow() and one by showDialogFragment().
             return newInstanceInternal(backupPath)
         }
 
