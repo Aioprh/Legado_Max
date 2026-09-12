@@ -28,7 +28,7 @@ import io.legado.app.help.storage.ValidationResult
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
 
-private object RestoreSelectorRestoreGuard {
+internal object RestoreSelectorRestoreGuard {
     private val activePaths = mutableSetOf<String>()
 
     @Synchronized
