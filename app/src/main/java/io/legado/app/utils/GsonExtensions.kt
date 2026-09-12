@@ -95,7 +95,7 @@ inline fun <reified T> Gson.fromJsonArray(inputStream: InputStream?): Result<Lis
     return kotlin.runCatching {
         if (inputStream == null) throw JsonSyntaxException("解析流为空")
         InputStreamReader(inputStream, Charsets.UTF_8).use { reader ->
-            fromJsonArray(reader).getOrThrow()
+            fromJsonArray<T>(reader).getOrThrow()
         }
     }
 }
