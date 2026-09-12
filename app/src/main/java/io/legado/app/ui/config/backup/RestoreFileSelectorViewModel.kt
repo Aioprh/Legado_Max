@@ -149,6 +149,7 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
             )
         }
 
+        RestoreSelectorRestoreGuard.begin(backupPath)
         restoreJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 var current = 0
@@ -171,8 +172,10 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
                         restoreComplete = true
                     )
                 }
+                RestoreSelectorRestoreGuard.end(backupPath)
                 _events.emit(RestoreFileSelectorEvent.Dismiss)
             } catch (e: CancellationException) {
+                RestoreSelectorRestoreGuard.end(backupPath)
                 _uiState.update {
                     it.copy(
                         isRestoring = false,
@@ -180,6 +183,7 @@ class RestoreFileSelectorViewModel(application: Application) : BaseViewModel(app
                     )
                 }
             } catch (e: Exception) {
+                RestoreSelectorRestoreGuard.end(backupPath)
                 _uiState.update {
                     it.copy(
                         isRestoring = false,
