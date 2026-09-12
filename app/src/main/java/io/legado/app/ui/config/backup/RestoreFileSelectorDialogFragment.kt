@@ -28,6 +28,23 @@ import io.legado.app.help.storage.ValidationResult
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
 
+private object RestoreSelectorRestoreGuard {
+    private val activePaths = mutableSetOf<String>()
+
+    @Synchronized
+    fun begin(path: String) {
+        activePaths += path
+    }
+
+    @Synchronized
+    fun end(path: String) {
+        activePaths -= path
+    }
+
+    @Synchronized
+    fun isActive(path: String): Boolean = path in activePaths
+}
+
 private object RestoreSelectorPendingRequest {
     private const val TAG = "restoreFileSelector"
 
@@ -107,6 +124,14 @@ class RestoreFileSelectorDialogFragment : BaseComposeDialogFragment() {
         val backupPath = arguments?.getString(ARG_BACKUP_PATH)
         if (backupPath.isNullOrEmpty()) {
             dismiss()
+            return
+        }
+        if (RestoreSelectorRestoreGuard.isActive(backupPath)) {
+            // ThemeConfig.applyDayNight() can recreate the Activity during restore.
+            // DialogFragment normally restores itself after configuration changes,
+            // but this selector belongs to the restore operation that is already
+            // running. Do not resurrect it while the original restore is finishing.
+            dismissAllowingStateLoss()
             return
         }
         RestoreSelectorPendingRequest.consumed(backupPath)
