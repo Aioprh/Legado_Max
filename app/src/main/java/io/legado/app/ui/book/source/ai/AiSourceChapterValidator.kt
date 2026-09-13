@@ -9,7 +9,9 @@ object AiSourceChapterValidator {
         val index: Int,
         val title: String,
         val url: String,
-        val contentLength: Int
+        val contentLength: Int,
+        /** 正文归一化后的指纹，可选；用于识别“不同章节实际返回同一正文”。 */
+        val contentFingerprint: String = ""
     )
 
     data class Result(
@@ -46,7 +48,7 @@ object AiSourceChapterValidator {
                     "chapterUrl 必须从真实章节对象生成有效 URL。",
                     chapterIndex = sample.index
                 )
-            } else if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            } else if (!isHttpUrl(url)) {
                 issues += AiSourceValidationIssue(
                     AiSourceValidationIssue.Code.INVALID_CHAPTER_URL,
                     AiSourceValidationIssue.Stage.TOC,
@@ -78,9 +80,13 @@ object AiSourceChapterValidator {
                 )
             }
         }
+
         val nonEmpty = samples.filter { it.contentLength > 0 }
         if (nonEmpty.size >= 3) {
-            val distinctTitles = nonEmpty.map { it.title.trim() }.filter { it.isNotBlank() }.distinct().size
+            val distinctTitles = nonEmpty.map { it.title.trim() }
+                .filter { it.isNotBlank() }
+                .distinct()
+                .size
             if (distinctTitles <= 1) {
                 issues += AiSourceValidationIssue(
                     AiSourceValidationIssue.Code.CONTENT_NOT_DISTINCT,
@@ -89,7 +95,18 @@ object AiSourceChapterValidator {
                     "检查 chapterUrl 是否真正随章节 ID 变化，并避免把固定正文 URL 当成所有章节地址。"
                 )
             }
+            val fingerprints = nonEmpty.map { it.contentFingerprint.trim() }
+                .filter { it.isNotBlank() }
+            if (fingerprints.size >= 3 && fingerprints.distinct().size == 1) {
+                issues += AiSourceValidationIssue(
+                    AiSourceValidationIssue.Code.CONTENT_NOT_DISTINCT,
+                    AiSourceValidationIssue.Stage.CONTENT,
+                    "首/中/末章节正文指纹完全相同，疑似所有章节实际读取了同一正文。",
+                    "检查 chapterUrl 中的章节 ID 是否来自当前章节对象；不要固定使用第一章 ID、目录 URL 或缓存结果。"
+                )
+            }
         }
+
         return Result(
             passed = issues.isEmpty(),
             message = if (issues.isEmpty()) {
@@ -101,10 +118,15 @@ object AiSourceChapterValidator {
         )
     }
 
+    /** 供 ViewModel 选取真实章节时使用：首章 + 中间章 + 末章。 */
     fun sampleIndexes(size: Int): List<Int> = when {
         size <= 0 -> emptyList()
         size == 1 -> listOf(0)
         size == 2 -> listOf(0, 1)
         else -> listOf(0, size / 2, size - 1).distinct()
     }
+
+    private fun isHttpUrl(value: String): Boolean =
+        value.startsWith("http://", ignoreCase = true) ||
+            value.startsWith("https://", ignoreCase = true)
 }
