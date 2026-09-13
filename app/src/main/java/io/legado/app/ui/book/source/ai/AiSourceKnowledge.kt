@@ -5,7 +5,7 @@ package io.legado.app.ui.book.source.ai
  *
  * 这是对 legadoSkill 中最值得常驻客户端的“规则知识层”的轻量移植：
  * 不把整套 Markdown 知识库塞进 APK，而是保留会直接影响生成正确率的高价值规则，
- * 供静态预检、修复提示和后续 AI Prompt 增强共同使用。
+ * 供静态预检、修复提示和 AI Prompt 增强共同使用。
  */
 object AiSourceKnowledge {
 
@@ -17,68 +17,38 @@ object AiSourceKnowledge {
     )
 
     val hints: List<Hint> = listOf(
-        Hint(
-            "json-list",
-            "JSON 接口列表规则",
-            "JSON/接口响应的 bookList、chapterList 等列表字段应直接使用 JSONPath，不要对整个响应使用 @js:JSON.parse(this)。",
-            "把 @js:JSON.parse(this) 改成真实 JSONPath，例如 $.data.list、$.Data.CardList[*].Body[*].ItemData。"
-        ),
-        Hint(
-            "no-book-id",
-            "Legado 变量边界",
-            "本版规则 JS 中不存在 bookId/chapterId 变量；ID 应从当前 JSON 元素、book.bookUrl 或 chapter.url 中取得。",
-            "删除 {{bookId}}/{{chapterId}} 及裸 bookId/chapterId，改为 JSONPath 取 ID，或从 book.bookUrl/chapter.url 用安全正则提取。"
-        ),
-        Hint(
-            "safe-match",
-            "match 空值安全",
-            "JavaScript String.match() 可能返回 null，不能直接访问 [1] 等下标。",
-            "使用 (url.match(/.../)||[])[1]||''，避免 TypeError。"
-        ),
-        Hint(
-            "absolute-url",
-            "URL 完整性",
-            "搜索、详情、目录、正文最终解析出的 URL 必须是合法 http/https URL，不能出现空 host、空参数或裸相对地址。",
-            "优先让 bookUrl/chapterUrl 返回完整 URL；相对地址需要由站点实际规则补全，不要凭空拼接域名。"
-        ),
-        Hint(
-            "toc-pagination",
-            "目录分页",
-            "目录只有第一页会导致书源表现为“只加载最新一章/少量章节”，nextTocUrl 与分页规则必须依据真实接口验证。",
-            "检查 nextTocUrl、分页参数和章节去重；至少验证首章、中间章、末章的 URL 都不同且可访问。"
-        ),
-        Hint(
-            "content-chain",
-            "正文链路",
-            "目录能解析不代表正文能解析；chapterUrl 必须真正指向正文接口/页面，不能把目录 URL 当正文 URL。",
-            "从真实章节对象中取正文 ID/URL，并对实际 chapter.url 执行正文解析验证。"
-        ),
-        Hint(
-            "selector-stability",
-            "选择器稳定性",
-            "禁止依赖脆弱的 :contains()、:first-child、:last-child 等高风险写法；优先使用稳定 class/id、属性和 JSONPath。",
-            "改用稳定属性选择器或 Legado 原生选择器语法，并以真实 HTML/JSON 结构为依据。"
-        ),
-        Hint(
-            "regex-pair",
-            "正则配对",
-            "## 正则必须成对出现，且内部正则必须可编译。",
-            "检查 ## 数量为偶数，并确保中间正则可以被 Kotlin Regex 编译。"
-        ),
-        Hint(
-            "review-safe",
-            "段评规则安全",
-            "段评气泡只能在真实探测到接口或用户明确开启段评探测时生成，不得虚构接口。",
-            "没有真实段评接口证据时保持空规则；有接口时先验证统计接口再生成气泡。"
-        )
+        Hint("json-list", "JSON 接口列表规则", "JSON/接口响应的 bookList、chapterList 等列表字段应直接使用 JSONPath，不要对整个响应使用 @js:JSON.parse(this)。", "把 @js:JSON.parse(this) 改成真实 JSONPath，例如 $.data.list、$.Data.CardList[*].Body[*].ItemData。"),
+        Hint("no-book-id", "Legado 变量边界", "本版规则 JS 中不存在 bookId/chapterId 变量；ID 应从当前 JSON 元素、book.bookUrl 或 chapter.url 中取得。", "删除 {{bookId}}/{{chapterId}} 及裸 bookId/chapterId，改为 JSONPath 取 ID，或从 book.bookUrl/chapter.url 用安全正则提取。"),
+        Hint("safe-match", "match 空值安全", "JavaScript String.match() 可能返回 null，不能直接访问 [1] 等下标。", "使用 (url.match(/.../)||[])[1]||''，避免 TypeError。"),
+        Hint("absolute-url", "URL 完整性", "搜索、详情、目录、正文最终解析出的 URL 必须是合法 http/https URL，不能出现空 host、空参数或裸相对地址。", "优先让 bookUrl/chapterUrl 返回完整 URL；相对地址需要由站点实际规则补全，不要凭空拼接域名。"),
+        Hint("toc-pagination", "目录分页", "目录只有第一页会导致书源表现为“只加载最新一章/少量章节”，nextTocUrl 与分页规则必须依据真实接口验证。", "检查 nextTocUrl、分页参数和章节去重；至少验证首章、中间章、末章的 URL 都不同且可访问。"),
+        Hint("content-chain", "正文链路", "目录能解析不代表正文能解析；chapterUrl 必须真正指向正文接口/页面，不能把目录 URL 当正文 URL。", "从真实章节对象中取正文 ID/URL，并对实际 chapter.url 执行正文解析验证。"),
+        Hint("selector-stability", "选择器稳定性", "禁止依赖脆弱的 :contains()、:first-child、:last-child 等高风险写法；优先使用稳定 class/id、属性和 JSONPath。", "改用稳定属性选择器或 Legado 原生选择器语法，并以真实 HTML/JSON 结构为依据。"),
+        Hint("regex-pair", "正则配对", "## 正则必须成对出现，且内部正则必须可编译。", "检查 ## 数量为偶数，并确保中间正则可以被 Kotlin Regex 编译。"),
+        Hint("review-safe", "段评规则安全", "段评气泡只能在真实探测到接口或用户明确开启段评探测时生成，不得虚构接口。", "没有真实段评接口证据时保持空规则；有接口时先验证统计接口再生成气泡。")
     )
 
-    /** 返回静态规则摘要，供 AI/校验层使用。 */
-    fun compactRules(): String = hints.joinToString("\n") {
-        "- [${it.id}] ${it.rule}"
+    fun compactRules(): String = hints.joinToString("\n") { "- [${it.id}] ${it.rule}" }
+
+    /**
+     * 生成阶段专用的知识上下文。
+     * 该方法刻意保持短小，避免把完整知识库塞入每次 LLM 请求；
+     * 生成器可以将其追加到 system/user prompt 的规则约束区。
+     */
+    fun generationPromptContext(): String = buildString {
+        appendLine("【本地 Legado 书源知识库（生成前必须遵守）】")
+        appendLine(compactRules())
+        appendLine()
+        appendLine("【强制生成流程】")
+        appendLine("1. 先确认搜索响应真实结构，再写 ruleSearch；JSON 响应使用 JSONPath，HTML 响应使用 CSS/JSoup。")
+        appendLine("2. 再验证搜索结果中的 bookUrl，详情页必须能够独立打开；不要依赖不存在的 bookId/chapterId 全局变量。")
+        appendLine("3. 再从详情页取得真实 tocUrl；目录规则必须依据真实目录响应生成。")
+        appendLine("4. 目录生成后至少抽取首章、中间章、末章三个样本，确认 chapterUrl 不重复且都是完整 HTTP(S) URL。")
+        appendLine("5. 对抽样章节逐个请求正文，再生成 ruleContent；禁止用目录 URL 代替正文 URL。")
+        appendLine("6. 任一步失败时，优先依据真实响应修复规则，不要通过猜测增加参数、域名或接口。")
+        appendLine("7. 最终输出只能是完整书源 JSON 数组，不要 Markdown、解释文字或伪造接口。")
     }
 
-    /** 根据书源文本快速筛选最相关的修复提示。 */
     fun relevantRepairHints(sourceText: String, max: Int = 5): List<Hint> {
         val text = sourceText.lowercase()
         val scored = hints.map { hint ->
@@ -95,9 +65,7 @@ object AiSourceKnowledge {
                 "review-safe" -> if (text.contains("showparagraphcomments") || text.contains("dp:")) score += 4
             }
             hint to score
-        }.filter { it.second > 0 }
-            .sortedByDescending { it.second }
-            .take(max)
+        }.filter { it.second > 0 }.sortedByDescending { it.second }.take(max)
         return scored.map { it.first }
     }
 }
