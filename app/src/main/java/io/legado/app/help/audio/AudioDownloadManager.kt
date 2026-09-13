@@ -129,3 +129,38 @@ object AudioDownloadManager {
     /** Adaptive URL preloading: faster networks get more chapters, while mobile/slow links stay conservative. */
     fun smartCount(context: Context, speed: Float): Int {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val network = cm.activeNetwork
+        val caps = cm.getNetworkCapabilities(network)
+        val wifi = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true
+        val cellular = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) == true
+        return when {
+            wifi && speed <= 1.5f -> 4
+            wifi -> 3
+            cellular && speed <= 1.25f -> 2
+            cellular -> 1
+            else -> 1
+        }
+    }
+
+    private fun downloadOne(url: String, baseName: String, dir: File = root): File {
+        val uri = Uri.parse(url)
+        val ext = uri.lastPathSegment?.substringAfterLast('.', "mp3")?.takeIf { it.length in 2..5 } ?: "mp3"
+        val file = File(dir, "$baseName.$ext")
+        if (file.exists() && file.length() > 0) return file
+        val request = Request.Builder().url(url).get().build()
+        okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            val body = response.body ?: throw IOException("empty audio body")
+            file.outputStream().use { output -> body.byteStream().use { input -> input.copyTo(output, 64 * 1024) } }
+        }
+        return file
+    }
+
+    private fun parseUrls(value: String): List<String> = runCatching {
+        val array = JSONArray(value)
+        List(array.length()) { array.optString(it) }.filter { it.startsWith("http://") || it.startsWith("https://") }
+    }.getOrElse { listOf(value).filter { it.startsWith("http://") || it.startsWith("https://") } }
+
+    private fun safeName(value: String, key: String): String = value.replace(Regex("[\\/:*?\"<>|]"), "_").trim().take(80).ifBlank { "audio_$key" } + "_$key"
+    private fun sha1(value: String): String = MessageDigest.getInstance("SHA-1").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }.take(12)
+}
