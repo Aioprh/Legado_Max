@@ -2,12 +2,9 @@ package io.legado.app.ui.book.source.ai
 
 /**
  * 多章节验证的纯规则层。
- *
  * 不直接依赖 WebBook，方便生成器把真实章节解析结果喂进来，也方便单元测试。
- * 实际网络请求仍由 AiSourceGenerateViewModel 使用 App 的 WebBook 执行。
  */
 object AiSourceChapterValidator {
-
     data class ChapterSample(
         val index: Int,
         val title: String,
@@ -21,10 +18,7 @@ object AiSourceChapterValidator {
         val issues: List<AiSourceValidationIssue>
     )
 
-    /**
-     * 至少检查首/中/末三个样本；章节不足三个时检查全部。
-     * URL 必须完整且互不重复，正文必须非空；不同章节的正文也不能全部完全相同。
-     */
+    /** 首/中/末交叉验证；少于三个章节时全部验证。 */
     fun validate(samples: List<ChapterSample>): Result {
         if (samples.isEmpty()) {
             return Result(
@@ -32,7 +26,7 @@ object AiSourceChapterValidator {
                 "没有可验证的章节样本",
                 listOf(
                     AiSourceValidationIssue(
-                        AiSourceValidationIssue.Code.TOC_FAILED,
+                        AiSourceValidationIssue.Code.TOC_TOO_FEW,
                         AiSourceValidationIssue.Stage.TOC,
                         "目录没有产生可验证章节",
                         "检查 chapterList/chapterName/chapterUrl。"
@@ -40,7 +34,6 @@ object AiSourceChapterValidator {
                 )
             )
         }
-
         val issues = mutableListOf<AiSourceValidationIssue>()
         val seen = HashMap<String, Int>()
         samples.forEach { sample ->
@@ -76,7 +69,7 @@ object AiSourceChapterValidator {
             }
             if (sample.contentLength <= 0) {
                 issues += AiSourceValidationIssue(
-                    AiSourceValidationIssue.Code.MULTI_CHAPTER_CONTENT_FAILED,
+                    AiSourceValidationIssue.Code.CONTENT_FAILED,
                     AiSourceValidationIssue.Stage.CONTENT,
                     "第 ${sample.index + 1} 章正文为空：${sample.title}",
                     "对该章节真实 URL 重新抓取响应，并依据响应重写 ruleContent.content。",
@@ -85,23 +78,20 @@ object AiSourceChapterValidator {
                 )
             }
         }
-
         val nonEmpty = samples.filter { it.contentLength > 0 }
-        if (nonEmpty.size >= 2) {
+        if (nonEmpty.size >= 3) {
             val distinctTitles = nonEmpty.map { it.title.trim() }.filter { it.isNotBlank() }.distinct().size
-            if (distinctTitles <= 1 && nonEmpty.size >= 3) {
+            if (distinctTitles <= 1) {
                 issues += AiSourceValidationIssue(
                     AiSourceValidationIssue.Code.CONTENT_NOT_DISTINCT,
                     AiSourceValidationIssue.Stage.CONTENT,
                     "首/中/末章节标题没有体现差异，可能始终解析到同一章节。",
-                    "检查 chapterUrl 是否真正随章节 ID 变化，并避免把目录第一页/固定正文 URL 当成所有章节地址。"
+                    "检查 chapterUrl 是否真正随章节 ID 变化，并避免把固定正文 URL 当成所有章节地址。"
                 )
             }
         }
-
-        val blocking = issues.any { it.severity == AiSourceValidationIssue.Severity.BLOCKING }
         return Result(
-            passed = issues.isEmpty() && !blocking,
+            passed = issues.isEmpty(),
             message = if (issues.isEmpty()) {
                 "多章节验证通过：${samples.size} 个章节样本的 URL、正文均有效且无重复。"
             } else {
