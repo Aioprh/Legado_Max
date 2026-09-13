@@ -10,6 +10,10 @@ import io.legado.app.utils.remove
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * AI 生成书源功能的「历史记录」持久化（磁盘级）。
@@ -18,6 +22,9 @@ import java.util.Locale
  * 已生成的书源 JSON 等内容丢失。每次关键操作（抓取/生成/修复成功）后写入一条快照，
  * 进入界面时可恢复最近一次，也可查看历史列表选择恢复某一条。
  * 数据存于 SharedPreferences（JSON 数组），应用重启后仍保留。
+ *
+ * 生成/修复结果非空时，同时在后台运行真实的首/中/末章节验证。
+ * 这样即使生成流程已经返回成功，也不会把“只能读第一章”的书源误认为真正可用。
  */
 object AiSourceHistory {
 
@@ -27,6 +34,7 @@ object AiSourceHistory {
 
     private val gson = Gson()
     private val timeFormat = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
+    private val runtimeValidationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     data class Record(
         val time: Long = System.currentTimeMillis(),
@@ -70,6 +78,7 @@ object AiSourceHistory {
         list.add(0, record)
         while (list.size > MAX) list.removeAt(list.size - 1)
         save(list)
+        scheduleRuntimeValidation(record)
     }
 
     /** 最近一条，无则 null */
@@ -93,5 +102,40 @@ object AiSourceHistory {
             arr.add(obj)
         }
         LocalConfig.putString(KEY, gson.toJson(arr))
+    }
+
+    /**
+     * 生成/修复结果落盘后再跑一次真实运行时验证。
+     * 不阻塞 UI，也不改变历史记录本身；验证结果统一进入 AI 日志。
+     */
+    private fun scheduleRuntimeValidation(record: Record) {
+        if (record.keyword.isBlank() || record.result.isBlank()) return
+        runtimeValidationScope.launch {
+            val result = runCatching {
+                AiSourceRuntimeMultiChapter.verify(record.result, record.keyword)
+            }.getOrElse { e ->
+                AiSourceLog.log(
+                    "ERROR",
+                    "多章节验证",
+                    "运行时验证异常：${e.message ?: e.javaClass.simpleName}"
+                )
+                return@launch
+            }
+            if (result.passed) {
+                AiSourceLog.log("SUCCESS", "多章节验证", result.summary)
+            } else {
+                AiSourceLog.log(
+                    "ERROR",
+                    "多章节验证",
+                    buildString {
+                        appendLine(result.summary)
+                        if (result.repairPrompt.isNotBlank()) {
+                            appendLine("自动修复提示：")
+                            appendLine(result.repairPrompt)
+                        }
+                    }.trim()
+                )
+            }
+        }
     }
 }
