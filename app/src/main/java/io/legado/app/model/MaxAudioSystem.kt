@@ -68,8 +68,18 @@ object MaxAudioSystem {
         ensureRestored()
         if(AudioPlay.book==null)return false
         if(AudioPlay.consumeChapterTimerOnEnd())return true
+        // 单曲循环：无论是否最后一章都重播当前章
+        if(AudioPlay.playMode==AudioPlay.PlayMode.SINGLE_LOOP){AudioPlay.next();return true}
+        // 非最后一章：交给 AudioPlay.next() 按播放模式处理（含随机、列表循环）
         if(AudioPlay.durChapterIndex+1<AudioPlay.simulatedChapterSize){AudioPlay.next();return true}
-        val next=synchronized(queue){when{queue.isEmpty()->-1;AudioPlay.playMode==AudioPlay.PlayMode.RANDOM->queue.indices.filter{it!=queueIndex}.randomOrNull()?:-1;queueIndex+1<queue.size->queueIndex+1;AudioPlay.playMode==AudioPlay.PlayMode.LIST_LOOP->0;else->-1}}
+        // 最后一章：随机模式优先随机队列中其他书；队列只有当前书时随机本书内章节
+        if(AudioPlay.playMode==AudioPlay.PlayMode.RANDOM){
+            val other=synchronized(queue){queue.indices.filter{it!=queueIndex}}
+            if(other.isNotEmpty())return playQueueIndex(other.random())
+            if(AudioPlay.simulatedChapterSize>1){AudioPlay.next();return true}
+            persist();return false
+        }
+        val next=synchronized(queue){when{queue.isEmpty()->-1;queueIndex+1<queue.size->queueIndex+1;AudioPlay.playMode==AudioPlay.PlayMode.LIST_LOOP->0;else->-1}}
         return if(next>=0)playQueueIndex(next)else{persist();false}
     }
 

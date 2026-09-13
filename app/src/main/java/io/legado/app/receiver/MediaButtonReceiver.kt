@@ -9,6 +9,7 @@ import io.legado.app.data.appDb
 import io.legado.app.help.LifecycleHelp
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.AudioPlay
+import io.legado.app.model.MaxAudioSystem
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
 import io.legado.app.service.AudioPlayService
@@ -48,7 +49,9 @@ class MediaButtonReceiver : BroadcastReceiver() {
                     LogUtils.d(TAG, "Receive mediaButton event, keycode:$keycode")
                     when (keycode) {
                         KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
-                            if (context.getPrefBoolean("mediaButtonPerNext", false)) {
+                            if (AudioPlayService.isRun) {
+                                MaxAudioSystem.previous()
+                            } else if (context.getPrefBoolean("mediaButtonPerNext", false)) {
                                 ReadBook.moveToPrevChapter(true)
                             } else {
                                 ReadAloud.prevParagraph(context)
@@ -56,7 +59,9 @@ class MediaButtonReceiver : BroadcastReceiver() {
                         }
 
                         KeyEvent.KEYCODE_MEDIA_NEXT -> {
-                            if (context.getPrefBoolean("mediaButtonPerNext", false)) {
+                            if (AudioPlayService.isRun) {
+                                MaxAudioSystem.next()
+                            } else if (context.getPrefBoolean("mediaButtonPerNext", false)) {
                                 ReadBook.moveToNextChapter(true)
                             } else {
                                 ReadAloud.nextParagraph(context)

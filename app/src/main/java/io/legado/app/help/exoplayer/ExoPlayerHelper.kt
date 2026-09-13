@@ -69,22 +69,20 @@ object ExoPlayerHelper {
 
 
     private val resolvingDataSource: ResolvingDataSource.Factory by lazy {
-        ResolvingDataSource.Factory(cacheDataSourceFactory) {
-            var res = it
-
-            if (it.uri.toString().contains(SPLIT_TAG)) {
-                val urls = it.uri.toString().split(SPLIT_TAG)
+        ResolvingDataSource.Factory(cacheDataSourceFactory) { dataSpec ->
+            if (dataSpec.uri.toString().contains(SPLIT_TAG)) {
+                val urls = dataSpec.uri.toString().split(SPLIT_TAG)
                 val url = urls[0]
-                res = res.withUri(Uri.parse(url))
-                try {
-                    val headers: Map<String, String> = GSON.fromJson(urls[1], mapType)
-                    okhttpDataFactory.setDefaultRequestProperties(headers)
+                val headers: Map<String, String> = try {
+                    GSON.fromJson(urls[1], mapType)
                 } catch (_: Exception) {
+                    emptyMap()
                 }
+                // 在 DataSpec 上设置独立请求头，避免并发解析多个 URL 时全局 header 串台
+                dataSpec.withUri(Uri.parse(url)).withHeaders(headers)
+            } else {
+                dataSpec
             }
-
-            res
-
         }
     }
 

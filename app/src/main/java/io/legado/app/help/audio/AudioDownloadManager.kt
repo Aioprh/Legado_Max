@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
 object AudioDownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val jobs = ConcurrentHashMap<String, Job>()
+    private val batchJobs = ConcurrentHashMap<String, Job>()
     private val root: File by lazy { File(appCtx.getExternalFilesDir("Music"), "LegadoAudio").apply { mkdirs() } }
 
     data class DownloadedAudio(val file: File, val title: String) {
@@ -34,7 +35,7 @@ object AudioDownloadManager {
         val urls = parseUrls(url)
         if (urls.isEmpty()) { onResult(false, null); return }
         val key = sha1(url)
-        if (jobs.containsKey(key)) return
+        if (jobs.containsKey(key)) { onResult(false, null); return }
         val job = scope.launch {
             try {
                 val target = if (urls.size == 1) {
@@ -68,28 +69,45 @@ object AudioDownloadManager {
         onFinished: () -> Unit = {}
     ) {
         if (chapters.isEmpty()) { onFinished(); return }
-        fun next(position: Int) {
-            if (position >= chapters.size) { onFinished(); return }
-            val chapter = chapters[position]
-            WebBook.getContent(scope, source, book, chapter)
-                .onSuccess { content ->
-                    val value = content.trim()
-                    if (value.isBlank()) {
-                        onProgress(position + 1, chapters.size, chapter.title, false)
-                        next(position + 1)
-                    } else {
-                        download(context, value, "${book.name}_${chapter.title}") { ok, _ ->
-                            onProgress(position + 1, chapters.size, chapter.title, ok)
+        val key = "chapters:${book.bookUrl}"
+        // 取消上一次未完成的批量任务，避免重复排队
+        batchJobs.remove(key)?.cancel()
+        val job = scope.launch {
+            fun next(position: Int) {
+                if (!isActive) { onFinished(); return }
+                if (position >= chapters.size) { onFinished(); return }
+                val chapter = chapters[position]
+                WebBook.getContent(this, source, book, chapter)
+                    .onSuccess { content ->
+                        val value = content.trim()
+                        if (value.isBlank()) {
+                            onProgress(position + 1, chapters.size, chapter.title, false)
                             next(position + 1)
+                        } else {
+                            download(context, value, "${book.name}_${chapter.title}") { ok, _ ->
+                                onProgress(position + 1, chapters.size, chapter.title, ok)
+                                next(position + 1)
+                            }
                         }
                     }
-                }
-                .onError {
-                    onProgress(position + 1, chapters.size, chapter.title, false)
-                    next(position + 1)
-                }
+                    .onError {
+                        onProgress(position + 1, chapters.size, chapter.title, false)
+                        next(position + 1)
+                    }
+            }
+            next(0)
         }
-        next(0)
+        batchJobs[key] = job
+    }
+
+    /** 取消指定书籍的批量下载任务 */
+    fun cancelDownloading(bookUrl: String) {
+        batchJobs.remove("chapters:$bookUrl")?.cancel()
+    }
+
+    /** 取消所有批量下载任务 */
+    fun cancelAllDownloading() {
+        batchJobs.keys.toList().forEach { batchJobs.remove(it)?.cancel() }
     }
 
     fun listDownloaded(): List<DownloadedAudio> = root.walkTopDown()

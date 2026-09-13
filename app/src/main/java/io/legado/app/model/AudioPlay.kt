@@ -22,7 +22,6 @@ import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.book.update
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
-import io.legado.app.help.globalExecutor
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.service.AudioPlayService
 import io.legado.app.model.SourceCallBack
@@ -80,12 +79,24 @@ object AudioPlay : CoroutineScope by MainScope() {
     var readStartTime: Long = System.currentTimeMillis()
     private var lastProgressSaveTime = 0L
     private var forcePlayFromStart = false
-    val executor = globalExecutor
 
     fun changePlayMode() { playMode=playMode.next(); book?.setPlayMode(playMode.ordinal); postEvent(EventBus.PLAY_MODE_CHANGED, playMode) }
     fun upData(book: Book) { AudioPlay.book=book; chapterSize=appDb.bookChapterDao.getChapterCount(book.bookUrl); simulatedChapterSize=if(book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize; if(durChapterIndex!=book.durChapterIndex){ stopPlay(); durChapterIndex=book.durChapterIndex; durChapterPos=book.durChapterPos; durPlayUrl=""; durLyric=null; durAudioSize=0 } else if(status != Status.PLAY){ durChapterPos=book.durChapterPos }; upDurChapter(); MaxAudioSystem.syncCurrentBook(book) }
     fun resetData(book: Book) { stop(); AudioPlay.book=book; chapterTimerCount=0; postEvent(EventBus.AUDIO_CHAPTER_TIMER,0); readRecord.bookName=book.name; readRecord.bookAuthor=book.author; readRecord.deviceId=AppConst.androidId; readRecord.lastRead=System.currentTimeMillis(); sessionStartTime=System.currentTimeMillis(); readStartTime=System.currentTimeMillis(); lastProgressSaveTime=0L; chapterSize=appDb.bookChapterDao.getChapterCount(book.bookUrl); simulatedChapterSize=if(book.readSimulating()) book.simulatedTotalChapterNum() else chapterSize; bookSource=book.getBookSource(); durChapterIndex=book.durChapterIndex; durChapterPos=book.durChapterPos; forcePlayFromStart=false; PlayMode.entries.getOrNull(book.getPlayMode())?.let{playMode=it; postEvent(EventBus.PLAY_MODE_CHANGED,it)}; val speed=book.getPlaySpeed(); AudioPlayService.playSpeed=speed; postEvent(EventBus.AUDIO_SPEED,speed); durPlayUrl=""; durLyric=null; durAudioSize=0; synchronized(preloadedUrls){preloadedUrls.clear()}; upDurChapter(); SourceCallBack.callBackBook(SourceCallBack.START_READ,bookSource,book,durChapter); postEvent(EventBus.AUDIO_BUFFER_PROGRESS,0); MaxAudioSystem.syncCurrentBook(book); preloadNextChapters(2) }
-    fun upReadTime(){if(!AppConfig.enableReadRecord)return; executor.execute{val now=System.currentTimeMillis();readRecord.readTime+=now-readStartTime;readStartTime=now;readRecord.lastRead=now;readRecord.durChapterTitle=book?.durChapterTitle.orEmpty();kotlinx.coroutines.runBlocking{appDb.readRecordDao.insert(readRecord)};sessionStartTime=now}}
+    fun upReadTime() {
+        if (!AppConfig.enableReadRecord) return
+        Coroutine.async {
+            synchronized(readRecord) {
+                val now = System.currentTimeMillis()
+                readRecord.readTime += now - readStartTime
+                readStartTime = now
+                readRecord.lastRead = now
+                readRecord.durChapterTitle = book?.durChapterTitle.orEmpty()
+                sessionStartTime = now
+            }
+            appDb.readRecordDao.insert(readRecord)
+        }
+    }
     fun markReadStart(){if(!AppConfig.enableReadRecord)return;val now=System.currentTimeMillis();sessionStartTime=now;readStartTime=now;readRecord.lastRead=now}
     private fun addLoading(index:Int):Boolean=synchronized(this){if(loadingChapters.contains(index))false else{loadingChapters.add(index);true}}
     private fun removeLoading(index:Int){synchronized(this){loadingChapters.remove(index)}}
@@ -119,7 +130,14 @@ object AudioPlay : CoroutineScope by MainScope() {
     fun upLoading(loading:Boolean){callback?.upLoading(loading)}
     private fun isPlayToEnd():Boolean=durChapterIndex+1==simulatedChapterSize&&durChapterPos==durAudioSize
     fun register(context:Context){activityContext=context;callback=context as CallBack}
-    fun unregister(context:Context){if(activityContext===context){activityContext=null;callback=null};coroutineContext.cancelChildren()}
+    fun unregister(context: Context, cancelLoading: Boolean = true) {
+        if (activityContext === context) {
+            activityContext = null
+            callback = null
+        }
+        // 配置变更（旋转）时不取消加载任务，避免丢失正在解析的播放 URL
+        if (cancelLoading) coroutineContext.cancelChildren()
+    }
     fun registerService(context:Context){serviceContext=context}
     fun unregisterService(){serviceContext=null}
     interface CallBack{fun upLoading(loading:Boolean);fun upLyric(lyric:String?);fun upLyricP(position:Int)}
