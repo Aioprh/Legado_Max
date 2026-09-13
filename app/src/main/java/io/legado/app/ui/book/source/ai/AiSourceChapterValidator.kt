@@ -42,7 +42,7 @@ object AiSourceChapterValidator {
             val url = sample.url.trim()
             if (url.isBlank()) {
                 issues += AiSourceValidationIssue(
-                    AiSourceValidationIssue.Code.EMPTY_CHAPTER_URL,
+                    AiSourceValidationIssue.Code.INVALID_CHAPTER_URL,
                     AiSourceValidationIssue.Stage.TOC,
                     "第 ${sample.index + 1} 章 URL 为空：${sample.title}",
                     "chapterUrl 必须从真实章节对象生成有效 URL。",
@@ -71,7 +71,7 @@ object AiSourceChapterValidator {
             }
             if (sample.contentLength <= 0) {
                 issues += AiSourceValidationIssue(
-                    AiSourceValidationIssue.Code.CONTENT_FAILED,
+                    AiSourceValidationIssue.Code.EMPTY_CONTENT,
                     AiSourceValidationIssue.Stage.CONTENT,
                     "第 ${sample.index + 1} 章正文为空：${sample.title}",
                     "对该章节真实 URL 重新抓取响应，并依据响应重写 ruleContent.content。",
@@ -89,7 +89,7 @@ object AiSourceChapterValidator {
                 .size
             if (distinctTitles <= 1) {
                 issues += AiSourceValidationIssue(
-                    AiSourceValidationIssue.Code.CONTENT_NOT_DISTINCT,
+                    AiSourceValidationIssue.Code.SAME_CONTENT,
                     AiSourceValidationIssue.Stage.CONTENT,
                     "首/中/末章节标题没有体现差异，可能始终解析到同一章节。",
                     "检查 chapterUrl 是否真正随章节 ID 变化，并避免把固定正文 URL 当成所有章节地址。"
@@ -99,7 +99,7 @@ object AiSourceChapterValidator {
                 .filter { it.isNotBlank() }
             if (fingerprints.size >= 3 && fingerprints.distinct().size == 1) {
                 issues += AiSourceValidationIssue(
-                    AiSourceValidationIssue.Code.CONTENT_NOT_DISTINCT,
+                    AiSourceValidationIssue.Code.SAME_CONTENT,
                     AiSourceValidationIssue.Stage.CONTENT,
                     "首/中/末章节正文指纹完全相同，疑似所有章节实际读取了同一正文。",
                     "检查 chapterUrl 中的章节 ID 是否来自当前章节对象；不要固定使用第一章 ID、目录 URL 或缓存结果。"
