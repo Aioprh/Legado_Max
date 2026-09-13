@@ -557,11 +557,8 @@ private fun SourceTabLayout(
                     .height(44.dp)
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 shape = tabBarShape,
-                color = if (isNight) {
-                    Color(0x661B1B1D)
-                } else {
-                    Color.White.copy(alpha = 0.72f)
-                },
+                // 大胶囊只保留轮廓，不铺额外背景色。
+                color = Color.Transparent,
                 border = BorderStroke(
                     width = 1.dp,
                     color = if (isNight) {
@@ -570,7 +567,7 @@ private fun SourceTabLayout(
                         Color.White.copy(alpha = 0.60f)
                     }
                 ),
-                shadowElevation = 3.dp
+                shadowElevation = 0.dp
             ) {
                 Row(
                     modifier = Modifier
