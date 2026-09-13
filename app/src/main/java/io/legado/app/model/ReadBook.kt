@@ -732,7 +732,7 @@ object ReadBook : CoroutineScope by MainScope() {
                         val paragraphs = content.split("\n").filter { it.isNotBlank() }
                         textChapter.appendContent(paragraphs)
                         AppLog.putReaderDebug("懒加载回调: 已追加到 TextChapter")
-                        kotlinx.coroutines.GlobalScope.launch(Main) {
+                        ReadBook.launch(Main) {
                             callBack?.upContent(0, false)
                         }
                     }
@@ -788,7 +788,7 @@ object ReadBook : CoroutineScope by MainScope() {
                         val paragraphs = content.split("\n").filter { it.isNotBlank() }
                         textChapter.appendContent(paragraphs)
                                 AppLog.putReaderDebug("懒加载回调: 已追加到 TextChapter")
-                                kotlinx.coroutines.GlobalScope.launch(Main) {
+                                ReadBook.launch(Main) {
                                     callBack?.upContent(0, false)
                                 }
                             }

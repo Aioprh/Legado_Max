@@ -104,9 +104,11 @@ object CronetLoader : CronetEngine.Builder.LibraryLoader(), Cronet.LoaderInterfa
                     assetManager.open("cronet.json")
                 )
             )
-            var line: String?
-            while (bf.readLine().also { line = it } != null) {
-                stringBuilder.append(line)
+            bf.use { reader ->
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    stringBuilder.append(line)
+                }
             }
             JSONObject(stringBuilder.toString()).optString(getCpuAbi(context), "")
         } catch (e: java.lang.Exception) {
