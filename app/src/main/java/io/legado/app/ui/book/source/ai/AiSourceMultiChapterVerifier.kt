@@ -18,7 +18,7 @@ object AiSourceMultiChapterVerifier {
 
     /**
      * 对目录章节执行首/中/末真实解析。
-     * loader 返回 null 表示该章节无法完成正文解析，会由调用方决定是否记录额外错误。
+     * loader 返回 null 时必须形成结构化错误，避免出现 passed=false 但 repairPrompt 为空的情况。
      */
     suspend fun verify(
         chapterCount: Int,
@@ -37,12 +37,24 @@ object AiSourceMultiChapterVerifier {
             return VerificationResult(false, emptyList(), issues, AiSourceValidation.toRepairPrompt(issues))
         }
 
-        val samples = buildList {
-            indexes.forEach { index ->
-                loader(index)?.let(::add)
+        val samples = mutableListOf<AiSourceValidation.ChapterSample>()
+        val issues = mutableListOf<AiSourceValidationIssue>()
+        indexes.forEach { index ->
+            val sample = runCatching { loader(index) }.getOrNull()
+            if (sample != null) {
+                samples += sample
+            } else {
+                issues += AiSourceValidationIssue(
+                    code = AiSourceValidationIssue.Code.CONTENT_FAILED,
+                    stage = AiSourceValidationIssue.Stage.CONTENT,
+                    message = "第 ${index + 1} 个抽样章节无法完成正文解析",
+                    repairHint = "检查该章节的 chapterUrl 是否随章节 ID 正确变化，并检查 ruleContent.content 是否适配真实正文响应。",
+                    chapterIndex = index
+                )
             }
         }
-        val issues = AiSourceValidation.validateChapterSamples(samples)
+        issues += AiSourceValidation.validateChapterSamples(samples)
+
         return VerificationResult(
             passed = issues.isEmpty() && samples.size == indexes.size,
             samples = samples,
