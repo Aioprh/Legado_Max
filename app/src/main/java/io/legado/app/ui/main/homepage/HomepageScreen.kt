@@ -488,7 +488,7 @@ fun HomepageScreen(
  * 分源Tab 布局
  *
  * 使用管理状态中的集列表作为Tab来源，确保Tab顺序与集排序同步更新。
- * 通过 Tab 切换展示不同集的模块，适用于书源较多、希望分源浏览的场景。
+ * Tab视觉与书架智能标签统一为透明液态玻璃胶囊样式，同时保留横向滑动与Pager联动。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -503,8 +503,6 @@ private fun SourceTabLayout(
     onRefresh: (String?) -> Unit,
     onBookLongClick: (SearchBook) -> Unit,
 ) {
-    // 使用管理状态中的集列表作为Tab来源，确保顺序与排序同步
-    // 只显示已选中且有模块的集
     val selectedSets = remember(sets) {
         sets.filter { it.isSelected && it.moduleCount > 0 }
     }
@@ -512,17 +510,14 @@ private fun SourceTabLayout(
     var selectedTabIndex by remember { mutableStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
 
-    // 同步 pagerState.settledPage 和 selectedTabIndex
     LaunchedEffect(pagerState.settledPage) {
         selectedTabIndex = pagerState.settledPage
     }
 
-    // 更新 ViewModel 中的当前Tab索引和集列表（用于预加载控制）
     LaunchedEffect(pagerState.settledPage, selectedSets) {
         viewModel.updateCurrentTab(pagerState.settledPage, selectedSets)
     }
 
-    // 确保 selectedTabIndex 不越界
     LaunchedEffect(selectedSets.size) {
         if (selectedTabIndex >= selectedSets.size) {
             selectedTabIndex = 0
@@ -533,8 +528,8 @@ private fun SourceTabLayout(
     val safeTabIndex = if (selectedSets.isEmpty()) 0 else selectedTabIndex.coerceIn(0, selectedSets.lastIndex)
 
     val layoutDirection = androidx.compose.ui.platform.LocalLayoutDirection.current
-    // 跟踪当前页面的滚动状态，用于悬浮回到顶部按钮
     val currentPageListState = remember { mutableStateOf<LazyListState?>(null) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -547,85 +542,125 @@ private fun SourceTabLayout(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             if (selectedSets.isEmpty()) return@Column
-            // 可滚动的 Tab 栏（自定义实现，高度36dp，底部下划线指示器）
+
+            // 分源 Tab：复用书架智能标签的透明玻璃胶囊视觉语言。
             val tabScrollState = rememberScrollState()
+            val isNight = (androidx.compose.ui.platform.LocalConfiguration.current.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
             val accent = pageAccentColor()
-            val secondaryColor = pageSecondaryTextColor()
-            Row(
+            val tabBarShape = RoundedCornerShape(20.dp)
+
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(tabScrollState)
-                    .height(36.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .height(44.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                shape = tabBarShape,
+                color = if (isNight) {
+                    Color(0x661B1B1D)
+                } else {
+                    Color.White.copy(alpha = 0.72f)
+                },
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (isNight) {
+                        Color.White.copy(alpha = 0.20f)
+                    } else {
+                        Color.White.copy(alpha = 0.60f)
+                    }
+                ),
+                shadowElevation = 3.dp
             ) {
-                selectedSets.forEachIndexed { index, set ->
-                    val isSelected = safeTabIndex == index
-                    Box(
-                        modifier = Modifier
-                            .height(36.dp)
-                            .clickable {
-                                selectedTabIndex = index
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(index)
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = set.sourceName,
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (isSelected) accent else secondaryColor
-                        )
-                        // 底部下划线指示器
-                        Box(
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(tabScrollState)
+                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    selectedSets.forEachIndexed { index, set ->
+                        val isSelected = safeTabIndex == index
+                        Surface(
                             modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .height(2.dp)
-                                .background(if (isSelected) accent else Color.Transparent)
-                        )
+                                .height(36.dp)
+                                .clickable {
+                                    selectedTabIndex = index
+                                    coroutineScope.launch {
+                                        pagerState.animateScrollToPage(index)
+                                    }
+                                },
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (isSelected) {
+                                accent.copy(alpha = 0.82f)
+                            } else if (isNight) {
+                                Color.White.copy(alpha = 0.08f)
+                            } else {
+                                Color.White.copy(alpha = 0.44f)
+                            },
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = if (isSelected) {
+                                    Color.White.copy(alpha = 0.60f)
+                                } else if (isNight) {
+                                    Color.White.copy(alpha = 0.20f)
+                                } else {
+                                    Color.White.copy(alpha = 0.55f)
+                                }
+                            ),
+                            contentColor = if (isSelected) {
+                                Color.White
+                            } else {
+                                pageSecondaryTextColor()
+                            }
+                        ) {
+                            Text(
+                                text = set.sourceName,
+                                modifier = Modifier
+                                    .padding(horizontal = 14.dp)
+                                    .align(Alignment.CenterVertically),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            )
+                        }
                     }
                 }
             }
-            // 使用 HorizontalPager 实现左右滑动切换书源集
+
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
                 key = { index -> selectedSets.getOrNull(index)?.sourceUrl ?: index }
             ) { pageIndex ->
-                // 当前选中 Tab 对应的集
                 val currentSet = selectedSets.getOrNull(pageIndex)
-                // 根据集过滤模块：自定义集使用 customSetId 匹配，书源集使用 sourceUrl 匹配
                 val currentModules = remember(modules, currentSet) {
                     val filtered = modules.filter { module ->
                         if (currentSet?.isCustomSet == true) {
                             val setId = HomepageViewModel.customSetIdFromUrl(currentSet.sourceUrl)
                             module.customSetId == setId
                         } else {
-                            // 书源集：集 URL 格式为 src_<书源URL>，模块的 customSetId 也是 src_<书源URL>
                             module.customSetId == currentSet?.sourceUrl
                         }
                     }
-                    // 无限类型模块排在底部
                     filtered.sortedBy { module ->
                         if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
                     }
                 }
                 val currentSetName = currentSet?.sourceName
-                // 使用 rememberSaveable 保存每个页面的滚动位置
-                val listStateKey = "homepage_tab_${currentSet?.sourceUrl ?: pageIndex}"
                 val listState = rememberSaveable(saver = LazyListState.Saver) {
                     LazyListState()
                 }
-                // 更新当前页面的滚动状态引用，用于悬浮回到顶部按钮
                 if (pagerState.settledPage == pageIndex) {
                     currentPageListState.value = listState
                 }
-                // 直接从 ViewModel 观察刷新状态，确保每页独立接收状态变更
-                val pageIsRefreshing by viewModel.uiState.map { it.isRefreshing }.collectAsStateWithLifecycle(false)
+                val pageIsRefreshing by viewModel.uiState
+                    .map { it.isRefreshing }
+                    .collectAsStateWithLifecycle(false)
+
                 PullToRefreshBox(
                     isRefreshing = pageIsRefreshing,
                     onRefresh = { onRefresh(currentSetName) },
@@ -635,7 +670,9 @@ private fun SourceTabLayout(
                         state = listState,
                         contentPadding = PaddingValues(
                             top = 8.dp,
-                            bottom = 8.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                            bottom = 8.dp + with(androidx.compose.ui.platform.LocalDensity.current) {
+                                bottomPaddingPx.toDp()
+                            }
                         ),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -656,7 +693,7 @@ private fun SourceTabLayout(
                 }
             }
         }
-        // 悬浮回到顶部按钮
+
         currentPageListState.value?.let { state ->
             ScrollToTopFab(
                 listState = state,
@@ -664,13 +701,14 @@ private fun SourceTabLayout(
                     .align(Alignment.BottomEnd)
                     .padding(
                         end = 16.dp,
-                        bottom = 16.dp + with(androidx.compose.ui.platform.LocalDensity.current) { bottomPaddingPx.toDp() }
+                        bottom = 16.dp + with(androidx.compose.ui.platform.LocalDensity.current) {
+                            bottomPaddingPx.toDp()
+                        }
                     )
             )
         }
     }
 }
-
 @Composable
 private fun HomepageModuleItem(
     module: HomepageModuleUi,
