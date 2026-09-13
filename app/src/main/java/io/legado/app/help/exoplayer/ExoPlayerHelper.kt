@@ -79,7 +79,10 @@ object ExoPlayerHelper {
                     emptyMap()
                 }
                 // 在 DataSpec 上设置独立请求头，避免并发解析多个 URL 时全局 header 串台
-                dataSpec.withUri(Uri.parse(url)).withHeaders(headers)
+                dataSpec.buildUpon()
+                    .setUri(Uri.parse(url))
+                    .setHttpRequestHeaders(headers)
+                    .build()
             } else {
                 dataSpec
             }
