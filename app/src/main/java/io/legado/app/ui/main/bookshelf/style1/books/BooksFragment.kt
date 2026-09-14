@@ -90,6 +90,10 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     private var currentTag: String? = null
     private var smartTagFilterScroll: HorizontalScrollView? = null
     private var smartTagChipGroup: LinearLayout? = null
+    // 全局智能标签集合：基于全部书架书籍计算，切换分组时标签集合保持稳定，仅数字跟随当前分组
+    private var globalSmartTags: List<String> = emptyList()
+    private var globalTagsJob: Job? = null
+    private var lastAllItems: List<io.legado.app.data.dao.BookShelfDisplay> = emptyList()
 
     private fun createBooksAdapter(): BaseBooksAdapter<*> = when (AppConfig.bookLayout) {
         0 -> BooksAdapterList(requireContext(), this, this, viewLifecycleOwner.lifecycle)
@@ -106,6 +110,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         }
         initRecyclerView()
         initSmartTagFilterBar()
+        initGlobalSmartTags()
         upRecyclerData()
     }
 
@@ -175,6 +180,38 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         smartTagFilterScroll?.visibility = View.GONE
     }
 
+    /**
+     * 订阅全部书架书籍，计算全局智能标签集合（标签名字全局一致）。
+     * 切换分组页面时标签集合保持不变，标签后的数字由 updateSmartTagFilterBar 按当前分组统计。
+     */
+    private fun initGlobalSmartTags() {
+        globalTagsJob?.cancel()
+        globalTagsJob = viewLifecycleOwner.lifecycleScope.launch {
+            appDb.bookDao.flowAll()
+                .flowWithLifecycleAndDatabaseChangeFirst(
+                    viewLifecycleOwner.lifecycle,
+                    Lifecycle.State.STARTED,
+                    AppDatabase.BOOK_TABLE_NAME
+                ).catch { AppLog.put("全局标签计算出错", it) }
+                .flowOn(Dispatchers.Default)
+                .collect { allBooks ->
+                    val ctx = context ?: return@collect
+                    val counts = linkedMapOf<String, Int>()
+                    allBooks.forEach { book ->
+                        SmartTag.names(book, ctx, Int.MAX_VALUE).forEach { tag ->
+                            if (SmartTagConfig.isRuleVisible(ctx, tag)) {
+                                counts[tag] = (counts[tag] ?: 0) + 1
+                            }
+                        }
+                    }
+                    globalSmartTags = counts.entries.sortedWith(
+                        compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }
+                    ).take(12).map { it.key }
+                    if (isAdded) updateSmartTagFilterBar(lastAllItems)
+                }
+        }
+    }
+
     private fun createSmartTagChip(text: String, checked: Boolean, onClick: () -> Unit): TextView =
         TextView(smartTagChipGroup?.context ?: requireContext()).apply {
             val context = this.context
@@ -204,6 +241,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         }
 
     private fun updateSmartTagFilterBar(items: List<io.legado.app.data.dao.BookShelfDisplay>) {
+        lastAllItems = items
         val scroll = smartTagFilterScroll ?: return
         val chipGroup = smartTagChipGroup ?: return
         val context = context ?: return
@@ -212,32 +250,30 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             binding.rvBookshelf.updatePadding(top = 0)
             return
         }
-
-        val counts = linkedMapOf<String, Int>()
-        items.forEach { item ->
-            SmartTag.names(item.toMinimalBook(), context, Int.MAX_VALUE).forEach { tag ->
-                if (SmartTagConfig.isRuleVisible(context, tag)) counts[tag] = (counts[tag] ?: 0) + 1
-            }
-        }
-        val tags = counts.entries.sortedWith(
-            compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key }
-        ).take(12)
-
-        chipGroup.removeAllViews()
+        val tags = globalSmartTags
         if (tags.isEmpty()) {
             scroll.visibility = View.GONE
             binding.rvBookshelf.updatePadding(top = 0)
             return
         }
 
+        // 标签集合全局一致，数字按当前分组的完整书籍集合统计
+        val counts = linkedMapOf<String, Int>()
+        items.forEach { item ->
+            SmartTag.names(item.toMinimalBook(), context, Int.MAX_VALUE).forEach { tag ->
+                if (SmartTagConfig.isRuleVisible(context, tag)) counts[tag] = (counts[tag] ?: 0) + 1
+            }
+        }
+
+        chipGroup.removeAllViews()
         chipGroup.addView(createSmartTagChip("全部  ${items.size}", currentTag == null) {
             filterBooksByTag(null)
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
             marginEnd = 6.dpToPx()
         })
-        tags.forEach { entry ->
-            chipGroup.addView(createSmartTagChip("${entry.key}  ${entry.value}", currentTag == entry.key) {
-                filterBooksByTag(entry.key)
+        tags.forEach { tag ->
+            chipGroup.addView(createSmartTagChip("$tag  ${counts[tag] ?: 0}", currentTag == tag) {
+                filterBooksByTag(tag)
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 marginEnd = 6.dpToPx()
             })
@@ -396,6 +432,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     fun getBooksCount(): Int = booksAdapter.itemCount
 
     override fun onDestroyView() {
+        globalTagsJob?.cancel()
         smartTagFilterScroll = null
         smartTagChipGroup = null
         super.onDestroyView()
@@ -430,7 +467,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
             booksAdapter.notifyDataSetChanged()
             startLastUpdateTimeJob()
             upFastScrollerBar()
-            updateSmartTagFilterBar(booksAdapter.getItems())
+            updateSmartTagFilterBar(lastAllItems)
         }
     }
 }
