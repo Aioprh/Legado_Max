@@ -112,11 +112,20 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             override fun onPageSelected(position: Int) {
                 currentPosition = position
                 AppConfig.saveTabPosition = position
-                tvGroupName?.text = bookGroups.getOrNull(position)?.groupName ?: ""
+                val currentGroup = bookGroups.getOrNull(position)
+                tvGroupName?.text = currentGroup?.groupName ?: ""
                 glassTabBar?.getTabAt(position)?.select()
                 upTagBar()
-                // 切换分组后，将共享选中的标签同步到新页面并刷新标签栏（数字跟随当前分组）
-                fragmentMap[groupId]?.applySharedTag(sharedTag)
+                // 标签栏选中态跟随分组名：分组名与全局智能标签匹配（如"本地""网络书"）则自动选中对应标签，否则回到"全部"
+                val fragment = fragmentMap[groupId]
+                val checkFragment = fragment ?: fragmentMap.values.firstOrNull()
+                val groupName = currentGroup?.groupName
+                if (groupName != null && checkFragment?.hasTag(groupName) == true) {
+                    sharedTag = groupName
+                } else {
+                    sharedTag = null
+                }
+                fragment?.applySharedTag(sharedTag)
             }
 
             override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) = Unit

@@ -385,6 +385,11 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
         upRecyclerData()
     }
 
+    /**
+     * 当前全局智能标签集合中是否存在指定标签，用于父 Fragment 按分组名自动匹配选中。
+     */
+    fun hasTag(tag: String): Boolean = globalSmartTags.contains(tag)
+
     private fun upRecyclerData() {
         booksFlowJob?.cancel()
         val context = requireContext()
