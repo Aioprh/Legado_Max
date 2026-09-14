@@ -615,13 +615,19 @@ private fun SourceTabLayout(
                                 pageSecondaryTextColor()
                             }
                         ) {
-                            Text(
-                                text = set.sourceName,
+                            Box(
                                 modifier = Modifier
-                                    .padding(horizontal = 14.dp)
-                                    .align(Alignment.CenterVertically),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                    .fillMaxHeight()
+                                    .padding(horizontal = 14.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = set.sourceName,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
                                 style = MaterialTheme.typography.labelLarge.copy(
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                 )
