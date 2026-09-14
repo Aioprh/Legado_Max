@@ -42,6 +42,7 @@ import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.main.MainActivity
 import io.legado.app.ui.main.MainViewModel
+import io.legado.app.ui.main.bookshelf.style1.BookshelfFragment1
 import io.legado.app.ui.widget.NoScrollbarHorizontalScrollView
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.dpToPx
@@ -361,8 +362,23 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books), BaseBooksAdapter.
     }
 
     fun filterBooksByTag(tag: String?) {
+        // 通知父 Fragment 记录跨分组共享的选中标签，使切换分组后选中态保持跟随
+        (parentFragment as? BookshelfFragment1)?.onTagSelected(tag)
         if (currentTag == tag) {
             upRecyclerData()
+            return
+        }
+        currentTag = tag
+        upRecyclerData()
+    }
+
+    /**
+     * 切换分组页面时由父 Fragment 调用：同步共享选中标签。
+     * 标签集合全局一致，这里同步选中态并刷新当前分组的数字。
+     */
+    fun applySharedTag(tag: String?) {
+        if (currentTag == tag) {
+            updateSmartTagFilterBar(lastAllItems)
             return
         }
         currentTag = tag

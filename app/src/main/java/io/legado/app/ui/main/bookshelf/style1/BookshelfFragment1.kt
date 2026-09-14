@@ -78,6 +78,8 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
     private var tagBar: RoundedTagBarView? = null
     private val tagItems = mutableListOf<RoundedTagBarView.Item>()
     private val selectedTagByGroup = hashMapOf<Long, String>()
+    // 跨分组共享的选中标签：在任一分组点击标签后，切换分组时保持选中并跟随新分组的数字
+    private var sharedTag: String? = null
     private var tagsJob: Job? = null
     override val groupId: Long get() = selectedGroup?.groupId ?: 0
 
@@ -113,6 +115,8 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
                 tvGroupName?.text = bookGroups.getOrNull(position)?.groupName ?: ""
                 glassTabBar?.getTabAt(position)?.select()
                 upTagBar()
+                // 切换分组后，将共享选中的标签同步到新页面并刷新标签栏（数字跟随当前分组）
+                fragmentMap[groupId]?.applySharedTag(sharedTag)
             }
 
             override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) = Unit
@@ -193,6 +197,14 @@ class BookshelfFragment1() : BaseBookshelfFragment(R.layout.fragment_bookshelf1)
             }
             true
         }
+    }
+
+    /**
+     * 子页面（BooksFragment）点击标签时回调，记录为跨分组共享的选中标签，
+     * 使切换分组后标签栏选中态保持跟随。
+     */
+    fun onTagSelected(tag: String?) {
+        sharedTag = tag
     }
 
     private fun upTagBar() {
