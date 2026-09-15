@@ -292,50 +292,6 @@ object LocalParagraphComment {
         return null
     }
 
-    /** 从远程章节正文提取“非空段落”列表，供跨书源文本对齐定位：
-     *  正文为 JSON（如 玖玖 fanqie 返回 $.content）时先取文本字段，否则按原始正文处理；
-     *  含 <p> 时按 <p> 分段，否则按换行分段（与 parseFanqieCounts 的取段逻辑一致）。
-     *  段评摘要的 para_index/ParagraphId 即以“非空段落号”为基准，二者需保持一致。 */
-    private fun parseRemoteParagraphs(body: String): List<String> {
-        val trimmed = body.trimStart()
-        val content = if (trimmed.startsWith("{")) {
-            runCatching { jsonPath.parse(body).read<String>("$.data.content") }.getOrNull()
-                ?: runCatching { jsonPath.parse(body).read<String>("$.content") }.getOrNull()
-        } else {
-            null
-        } ?: body
-        val text = content.replace("\r\n", "\n").replace("\r", "\n")
-        val raw = if (text.contains("<p>", ignoreCase = true)) {
-            text.replaceFirst("<p>", "", ignoreCase = true)
-                .split(Regex("<p>", RegexOption.IGNORE_CASE))
-        } else {
-            text.split("\n")
-        }
-        return raw.map { it.trim() }.filter { it.isNotEmpty() }
-    }
-
-    /** 从远程章节正文提取“非空段落”列表，供跨书源文本对齐定位：
-     *  正文为 JSON（如 玖玖 fanqie 返回 $.content）时先取文本字段，否则按原始正文处理；
-     *  含 <p> 时按 <p> 分段，否则按换行分段（与 parseFanqieCounts 的取段逻辑一致）。
-     *  段评摘要的 para_index/ParagraphId 即以“非空段落号”为基准，二者需保持一致。 */
-    private fun parseRemoteParagraphs(body: String): List<String> {
-        val trimmed = body.trimStart()
-        val content = if (trimmed.startsWith("{")) {
-            runCatching { jsonPath.parse(body).read<String>("$.data.content") }.getOrNull()
-                ?: runCatching { jsonPath.parse(body).read<String>("$.content") }.getOrNull()
-        } else {
-            null
-        } ?: body
-        val text = content.replace("\r\n", "\n").replace("\r", "\n")
-        val raw = if (text.contains("<p>", ignoreCase = true)) {
-            text.replaceFirst("<p>", "", ignoreCase = true)
-                .split(Regex("<p>", RegexOption.IGNORE_CASE))
-        } else {
-            text.split("\n")
-        }
-        return raw.map { it.trim() }.filter { it.isNotEmpty() }
-    }
-
     /**
      * 解析番茄段评摘要：review_list 里的 paragraphId 是"原始行号"（含空行，1基），
      * 而本地段评注入按"非空段落号"计数（与书源 jsLib 的 fqGetComments 一致）。
@@ -422,7 +378,10 @@ object LocalParagraphComment {
         }
     }
 
-    /** 按非空段落序号定位注入（起点等段落结构与远程基本一致的情况） */
+    /** 按文本段落号定位注入。段落号规则与书源 jsLib 的 getComments 完全对齐：
+     *  去 \r、</p>→\n 归一化后按行分段；只把"非空且非图片"的行计入段落号
+     *  （起点正文图片不计入文字段落，否则插图后的气泡会整体错位），
+     *  段落号即该行在"文字行序列"中的下标 +1。 */
     private fun injectByPosition(
         content: String,
         source: BookSource,
@@ -432,26 +391,26 @@ object LocalParagraphComment {
         chapterUrl: String,
         counts: Map<Int, Int>
     ): String {
-        val lines = content.replace("\r\n", "\n").split("\n")
-        var pid = 0
-        val out = ArrayList<String>(lines.size)
-        for (line in lines) {
-            if (line.trim().isEmpty()) {
-                out.add(line)
-                continue
+        val normalized = content.replace("\r", "")
+            .replace(Regex("<p\\b[^>]*>", RegexOption.IGNORE_CASE), "")
+            .replace("</p>", "\n", ignoreCase = true)
+        val lines = normalized.split("\n")
+        val textLineIndexes = ArrayList<Int>(lines.size)
+        val isImgLine = Regex("""^<\s*img\s""", RegexOption.IGNORE_CASE)
+        lines.forEachIndexed { i, line ->
+            val t = line.trim()
+            if (t.isNotEmpty() && isImgLine.find(t) == null && !t.contains("data:image/")) {
+                textLineIndexes.add(i)
             }
-            pid++
-            val count = counts[pid] ?: 0
-            if (count > 0) {
-                val pclick = adapter.buildPclick(source, bookId, chapterId, pid, chapterUrl)
-                if (pclick.isNotBlank()) {
-                    val option = bubbleOption(pclick, count)
-                    out.add("$line<img src=\"dp:$count,$option\">")
-                } else {
-                    out.add(line)
-                }
-            } else {
-                out.add(line)
+        }
+        val out = lines.toMutableList()
+        counts.forEach { (pid, count) ->
+            if (pid <= 0 || count <= 0) return@forEach
+            val idx = textLineIndexes.getOrNull(pid - 1) ?: return@forEach
+            val pclick = adapter.buildPclick(source, bookId, chapterId, pid, chapterUrl)
+            if (pclick.isNotBlank()) {
+                val option = bubbleOption(pclick, count)
+                out[idx] = "${out[idx]}<img src=\"dp:$count,$option\">"
             }
         }
         return out.joinToString("\n")
@@ -623,15 +582,6 @@ object LocalParagraphComment {
             pid: Int,
             chapterUrl: String? = null
         ): String
-
-        /**
-         * 拉取远程章节正文的“非空段落”列表，供跨书源文本对齐定位。
-         * 摘要已自带 remoteParagraphs（如番茄 review_list）的可不实现，缺省返回空。
-         */
-        suspend fun fetchRemoteParagraphs(
-            source: BookSource,
-            chapterUrl: String?
-        ): List<String> = emptyList()
     }
 
     // ---------- 通用/默认适配器（起点系镜像站 comments.php） ----------
@@ -882,14 +832,6 @@ object LocalParagraphComment {
             )
         }
 
-        override suspend fun fetchRemoteParagraphs(
-            source: BookSource,
-            chapterUrl: String?
-        ): List<String> {
-            if (chapterUrl.isNullOrBlank() || chapterUrl.startsWith("data:")) return emptyList()
-            return fetchBody(source, chapterUrl)?.let { parseRemoteParagraphs(it) }.orEmpty()
-        }
-
         override fun buildPclick(
             source: BookSource,
             bookId: String,
@@ -1027,15 +969,6 @@ object LocalParagraphComment {
                 }
             }
             return SummaryResult(counts)
-        }
-
-        /** 拉取玖玖正文后端章节内容，转成非空段落用于跨书源文本对齐，修正起点段评错位 */
-        override suspend fun fetchRemoteParagraphs(
-            source: BookSource,
-            chapterUrl: String?
-        ): List<String> {
-            if (chapterUrl.isNullOrBlank() || chapterUrl.startsWith("data:")) return emptyList()
-            return fetchBody(source, chapterUrl)?.let { parseRemoteParagraphs(it) }.orEmpty()
         }
 
         override fun buildPclick(
