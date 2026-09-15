@@ -917,6 +917,29 @@ object LocalParagraphComment {
         private fun trailingNumber(u: String): String? =
             Regex("""/(\d+)(?=[/?]|$)""").find(u)?.groupValues?.get(1)
 
+        /** 番茄官方 App 的固定 User-Agent 令牌（玖玖段评后端沿用此校验） */
+        private const val FANQIE_APP_TOKEN =
+            "C4980F050A2F47E894720A684C9AB0BD9BE1CAB1A0CD09C25DBCB09A9034C0AC"
+
+        private const val MOBILE_UA =
+            "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+
+        /** 进程内固定 device，同一会话保持相同，便于后端识别 */
+        @Volatile
+        private var fixedDevice: String? = null
+
+        private fun mirrorHeaders(): Map<String, String> = mapOf(
+            "User-Agent" to MOBILE_UA,
+            "X-User-Agent" to FANQIE_APP_TOKEN,
+            "X-device" to (fixedDevice ?: randomDevice().also { fixedDevice = it })
+        )
+
+        private fun randomDevice(): String {
+            val chars = "0123456789abcdef"
+            val random = Random()
+            return buildString { repeat(32) { append(chars[random.nextInt(chars.length)]) } }
+        }
+
         override suspend fun fetchSummaryCounts(
             source: BookSource,
             bookId: String,
@@ -925,7 +948,13 @@ object LocalParagraphComment {
         ): SummaryResult {
             val url = commentsRoot(source) + COMMENTS_ROOT +
                 sources(chapterUrl) + "/$bookId/$chapterId"
-            val body = fetchBody(source, url) ?: return SummaryResult()
+            // 玖玖段评后端与番茄官方接口一致，强制要求 X-device / X-User-Agent 请求头
+            // （缺失或空时返回 403，导致气泡不显示）。headerMapF 会整体替换书源请求头，
+            // 因此必须同时带上 User-Agent，避免请求头不完整再次被拒。
+            val body = fetchBody(source, url, mirrorHeaders()) ?: run {
+                AppLog.put("本地书段评: 玖玖段评摘要请求失败（可能缺少/请求头不合规）: $url")
+                return SummaryResult()
+            }
             val counts = HashMap<Int, Int>()
             runCatching {
                 val list = jsonPath.parse(body).read<List<Any?>>("$.data.distributions")
@@ -1022,10 +1051,25 @@ object LocalParagraphComment {
             pid: Int,
             chapterUrl: String?
         ): String {
-            // comments.html 用 0基 para_index，pid 为项目 1基段落号 → 传 pid-1
-            val url = "${root(source)}/comments.html?book_id=$bookId&item_id=$chapterId" +
-                "&para_index=${pid - 1}"
-            return "java.openUrl('$url');"
+            // 点击气泡打开原生段评弹窗（此前用 java.openUrl 跳 comments.html，需外跳浏览器）。
+            // 段评列表/回复走 comment.php 结构化接口；para_index 用 0基（项目为1基段落号 → pid-1，
+            // 与 fetchSummaryCounts 的 counts 接口一致）。
+            val api = "${root(source)}/comment.php"
+            return buildPclickScript(
+                listPath = "$.data.comments",
+                totalPath = "$.data.total_count",
+                commentsUrl = "$api?action=comment&book_id=$bookId&item_id=$chapterId" +
+                    "&para_index=${pid - 1}&page=[page]&page_size=[pageSize]",
+                repliesUrl = "$api?action=reply&book_id=$bookId&item_id=$chapterId" +
+                    "&para_index=${pid - 1}&comment_id=[reviewId]&page=1&page_size=[pageSize]",
+                replyListPath = "$.data.comments",
+                audioUrl = "",
+                pageSize = 20,
+                // 番茄段评接口不按时间/回复数排序，仅保留实时模式
+                sortEnabled = false,
+                // 评论字段走弹窗 DEFAULT_* 兜底解析（含 comment_id/content/create_time 等小写命名）
+                fields = ParagraphCommentConfig.FieldConfig()
+            )
         }
     }
 }
