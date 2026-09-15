@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
+    <!-- ========== 经典模式顶部 Toolbar（半屏模式 gone） ========== -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/tool_bar"
         android:layout_width="match_parent"
@@ -32,6 +33,111 @@
 
     </androidx.appcompat.widget.Toolbar>
 
+    <!-- ========== 半屏模式顶部区（经典模式 gone） ========== -->
+    <LinearLayout
+        android:id="@+id/half_screen_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- 拖拽指示条 -->
+        <View
+            android:layout_width="40dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/bg_paragraph_drag_handle" />
+
+        <!-- Tab 行 + 排序齿轮 -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp">
+
+            <LinearLayout
+                android:id="@+id/tab_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start|center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tab_all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    tools:text="全部 209" />
+
+                <TextView
+                    android:id="@+id/tab_image"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:textColor="@color/secondaryText"
+                    android:textSize="14sp"
+                    tools:text="配图 3" />
+
+                <TextView
+                    android:id="@+id/tab_audio"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:textColor="@color/secondaryText"
+                    android:textSize="14sp"
+                    tools:text="配音 25" />
+
+            </LinearLayout>
+
+            <!-- 排序齿轮 -->
+            <ImageButton
+                android:id="@+id/tv_sort_half"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|center_vertical"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/paragraph_comment_sort"
+                android:padding="6dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_settings"
+                app:tint="@color/primaryText" />
+
+        </FrameLayout>
+
+        <!-- Tab 下划线指示器 -->
+        <View
+            android:id="@+id/tab_indicator"
+            android:layout_width="28dp"
+            android:layout_height="2dp"
+            android:background="@color/colorAccent" />
+
+        <!-- 统计条："N条段评，已加载M条" -->
+        <TextView
+            android:id="@+id/tv_stats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/secondaryText"
+            android:textSize="12sp"
+            tools:text="209条段评，已加载21条" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:layout_marginTop="6dp"
+            android:background="@color/divider" />
+
+    </LinearLayout>
+
+    <!-- ========== 共享：列表 + loading + 空态 ========== -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"

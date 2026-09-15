@@ -9,11 +9,13 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.viewbinding.ViewBinding
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.constant.AppConst
 import io.legado.app.databinding.ItemParagraphCommentBinding
+import io.legado.app.databinding.ItemParagraphCommentHalfBinding
 import io.legado.app.databinding.ItemParagraphReplyBinding
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.utils.dpToPx
@@ -24,9 +26,18 @@ import java.util.Date
 /**
  * 段评列表适配器：展示头像 / 昵称 / 等级 / 地区 / 时间 / 内容 / 赞踩 / 楼层，
  * 并支持展开/收起某条评论的回复列表。
+ *
+ * 支持两种 view type：
+ * - TYPE_CLASSIC (0)：经典卡片式（全屏）
+ * - TYPE_HALF (1)：半屏紧凑 tab 式（底部弹出，起点/番茄风格）
  */
 class ParagraphCommentAdapter(context: Context) :
-    RecyclerAdapter<ParagraphCommentItem, ItemParagraphCommentBinding>(context) {
+    RecyclerAdapter<ParagraphCommentItem, ViewBinding>(context) {
+
+    companion object {
+        private const val TYPE_CLASSIC = 0
+        private const val TYPE_HALF = 1
+    }
 
     interface ReplyListener {
         fun onToggleReplies(item: ParagraphCommentItem)
@@ -46,23 +57,35 @@ class ParagraphCommentAdapter(context: Context) :
     var audioListener: AudioListener? = null
     var imageListener: ImageListener? = null
 
+    /** 是否使用半屏紧凑样式 */
+    var isHalfScreen: Boolean = false
+
     /** 列表每次真正更新（含 DiffUtil 异步重排完成）后回调，供弹窗在末尾处自动继续加载下一页 */
     var onListChanged: (() -> Unit)? = null
 
-    override fun getViewBinding(parent: ViewGroup): ItemParagraphCommentBinding {
-        return ItemParagraphCommentBinding.inflate(inflater, parent, false)
+    override fun getViewBinding(parent: ViewGroup): ViewBinding {
+        // 基类默认调用；实际类型由 getItemViewType 决定
+        return if (isHalfScreen) {
+            ItemParagraphCommentHalfBinding.inflate(inflater, parent, false)
+        } else {
+            ItemParagraphCommentBinding.inflate(inflater, parent, false)
+        }
+    }
+
+    /** 动态切换 view type：经典或半屏 */
+    override fun getItemViewType(item: ParagraphCommentItem, position: Int): Int {
+        return if (isHalfScreen) TYPE_HALF else TYPE_CLASSIC
     }
 
     override fun onCurrentListChanged() {
-        // 同步调用，弹窗内部会再 post 一次，保证发生在本次数据提交完成、hasMore/页码更新之后
         onListChanged?.invoke()
     }
 
-    override fun convert(
-        holder: ItemViewHolder,
+    // ===================== 经典模式绑定 =====================
+
+    private fun bindClassic(
         binding: ItemParagraphCommentBinding,
         item: ParagraphCommentItem,
-        payloads: MutableList<Any>
     ) {
         binding.apply {
             ImageLoader.load(context, item.avatar)
@@ -75,22 +98,15 @@ class ParagraphCommentAdapter(context: Context) :
                 context.getString(R.string.paragraph_comment_anonymous)
             }
 
-            // 神评论角标（起点 EssenceType==2 / IsEssence==true）
-            if (item.isGod) {
-                tvGod.visible()
-            } else {
-                tvGod.gone()
-            }
+            if (item.isGod) tvGod.visible() else tvGod.gone()
 
-            if (item.level.isBlank()) {
-                tvLevel.gone()
-            } else {
+            if (item.level.isBlank()) tvLevel.gone()
+            else {
                 tvLevel.text = item.level
                 tvLevel.visible()
             }
-            if (item.ip.isBlank()) {
-                tvIp.gone()
-            } else {
+            if (item.ip.isBlank()) tvIp.gone()
+            else {
                 tvIp.text = item.ip
                 tvIp.visible()
             }
@@ -103,141 +119,226 @@ class ParagraphCommentAdapter(context: Context) :
                 tvFloor.gone()
             }
 
-            // 内容为空但有图/语音时显示占位提示
             val text = formatContent(context, item.content)
             tvContent.text = if (item.content.isBlank()) {
                 if (item.images.isNotEmpty() || item.audio.isNotBlank()) {
                     context.getString(R.string.paragraph_comment_image)
-                } else {
-                    ""
-                }
-            } else {
-                text
-            }
+                } else ""
+            } else text
+
             bindImages(binding.llImages, binding.ivImg1, binding.ivImg2, binding.ivImg3, item.images)
             bindAudio(binding.tvAudio, item)
 
             if (item.agree > 0) {
                 tvAgree.text = context.getString(R.string.paragraph_comment_like, item.agree)
                 tvAgree.visible()
-            } else {
-                tvAgree.gone()
-            }
+            } else tvAgree.gone()
             if (item.oppose > 0) {
                 tvDislike.text = context.getString(R.string.paragraph_comment_dislike, item.oppose)
                 tvDislike.visible()
-            } else {
-                tvDislike.gone()
-            }
+            } else tvDislike.gone()
 
-            setupReplyButton(binding, item)
-            bindReplies(binding, item)
+            setupReplyButton(item) {
+                binding.tvReplyBtn.text = it
+                binding.tvReplyBtn.visible()
+            }
+            bindRepliesClassic(binding, item)
         }
     }
 
-    /** 回复按钮状态：未加载->展开 N 条回复；加载中->加载中…；已加载->收起/无回复隐藏 */
-    private fun setupReplyButton(binding: ItemParagraphCommentBinding, item: ParagraphCommentItem) {
-        val btn = binding.tvReplyBtn
-        when {
-            item.repliesLoading -> {
-                btn.text = context.getString(R.string.paragraph_comment_loading)
-                btn.visible()
-                btn.isEnabled = false
+    // ===================== 半屏模式绑定 =====================
+
+    private fun bindHalfScreen(
+        binding: ItemParagraphCommentHalfBinding,
+        item: ParagraphCommentItem,
+    ) {
+        binding.apply {
+            ImageLoader.load(context, item.avatar)
+                .placeholder(R.drawable.image_cover_default)
+                .error(R.drawable.image_cover_default)
+                .circleCrop()
+                .into(ivAvatar)
+
+            tvNickname.text = item.nickname.ifBlank {
+                context.getString(R.string.paragraph_comment_anonymous)
             }
 
+            // 神评论：右侧圆形印章
+            if (item.isGod) tvGodSeal.visible() else tvGodSeal.gone()
+
+            if (item.level.isBlank()) tvLevel.gone()
+            else {
+                tvLevel.text = item.level
+                tvLevel.visible()
+            }
+
+            // 时间 · 楼层 · 地区
+            tvTime.text = formatTime(item.time)
+            val floorText = if (item.floor > 0) context.getString(
+                R.string.paragraph_comment_floor, item.floor
+            ) else ""
+            tvFloor.text = floorText
+            tvFloor.visibility = if (floorText.isBlank()) View.GONE else View.VISIBLE
+            if (item.ip.isBlank()) tvIp.gone()
+            else {
+                tvIp.text = item.ip
+                tvIp.visible()
+            }
+
+            // 内容
+            val text = formatContent(context, item.content)
+            tvContent.text = if (item.content.isBlank()) {
+                if (item.images.isNotEmpty() || item.audio.isNotBlank()) {
+                    context.getString(R.string.paragraph_comment_image)
+                } else ""
+            } else text
+
+            bindImages(binding.llImages, binding.ivImg1, binding.ivImg2, binding.ivImg3, item.images)
+            bindAudio(binding.tvAudio, item)
+
+            // 右侧点赞数（半屏模式把赞集中在右下角，不显示踩）
+            if (item.agree > 0) {
+                tvAgree.text = context.getString(R.string.paragraph_comment_like, item.agree)
+                tvAgree.visible()
+            } else tvAgree.gone()
+
+            // 回复按钮
+            setupReplyButton(item) {
+                binding.tvReplyBtn.text = it
+                binding.tvReplyBtn.visible()
+            }
+            bindRepliesHalf(binding, item)
+        }
+    }
+
+    // ===================== convert / registerListener =====================
+
+    override fun convert(
+        holder: ItemViewHolder,
+        binding: ViewBinding,
+        item: ParagraphCommentItem,
+        payloads: MutableList<Any>
+    ) {
+        when (binding) {
+            is ItemParagraphCommentBinding -> bindClassic(binding, item)
+            is ItemParagraphCommentHalfBinding -> bindHalfScreen(binding, item)
+        }
+    }
+
+    override fun registerListener(holder: ItemViewHolder, binding: ViewBinding) {
+        when (binding) {
+            is ItemParagraphCommentBinding -> {
+                binding.tvReplyBtn.setOnClickListener {
+                    getItem(holder.layoutPosition)?.let { replyListener?.onToggleReplies(it) }
+                }
+            }
+            is ItemParagraphCommentHalfBinding -> {
+                binding.tvReplyBtn.setOnClickListener {
+                    getItem(holder.layoutPosition)?.let { replyListener?.onToggleReplies(it) }
+                }
+            }
+        }
+    }
+
+    // ===================== 回复按钮状态 =====================
+
+    private fun setupReplyButton(
+        item: ParagraphCommentItem,
+        apply: (String) -> Unit
+    ) {
+        when {
+            item.repliesLoading -> apply(context.getString(R.string.paragraph_comment_loading))
             item.repliesLoaded -> {
                 if (item.replies.isEmpty()) {
-                    btn.gone()
+                    // 保持 gone
                 } else {
-                    btn.text = context.getString(R.string.paragraph_comment_collapse_replies)
-                    btn.visible()
-                    btn.isEnabled = true
+                    apply(context.getString(R.string.paragraph_comment_collapse_replies))
                 }
             }
-
             else -> {
-                // 无评论 ID（如番茄主楼无 Id 字段）时只能展开评论自带的内嵌回复，
-                // 按钮条数以实际内嵌条数为准，避免"展开 N 条"却只显示预览里的几条
                 val showCount = if (item.id.isBlank()) item.replies.size else item.replyCount
-                if (showCount <= 0) {
-                    btn.gone()
-                } else {
-                    btn.text = context.getString(
-                        R.string.paragraph_comment_expand_replies,
-                        showCount
-                    )
-                    btn.visible()
-                    btn.isEnabled = true
+                if (showCount > 0) {
+                    apply(context.getString(R.string.paragraph_comment_expand_replies, showCount))
                 }
             }
         }
     }
 
-    /** 展开/收起回复列表 */
-    private fun bindReplies(binding: ItemParagraphCommentBinding, item: ParagraphCommentItem) {
+    // ===================== 展开/收起回复列表 =====================
+
+    private fun bindRepliesClassic(
+        binding: ItemParagraphCommentBinding,
+        item: ParagraphCommentItem
+    ) {
         val container = binding.replyContainer
         container.removeAllViews()
         if (item.repliesLoaded) {
             container.visible()
             item.replies.forEach { reply ->
-                val replyBinding = ItemParagraphReplyBinding.inflate(inflater, container, false)
-                replyBinding.apply {
-                    ImageLoader.load(context, reply.avatar)
-                        .placeholder(R.drawable.image_cover_default)
-                        .error(R.drawable.image_cover_default)
-                        .circleCrop()
-                        .into(ivAvatar)
-                    tvNickname.text = reply.nickname.ifBlank {
-                        context.getString(R.string.paragraph_comment_anonymous)
-                    }
-                    if (reply.replyTo.isBlank()) {
-                        tvReplyTo.gone()
-                    } else {
-                        tvReplyTo.text = context.getString(
-                            R.string.paragraph_comment_reply_to,
-                            reply.replyTo
-                        )
-                        tvReplyTo.visible()
-                    }
-                    val text = formatContent(context, reply.content)
-                    tvContent.text = if (reply.content.isBlank()) {
-                        if (reply.images.isNotEmpty() || reply.audio.isNotBlank()) {
-                            context.getString(R.string.paragraph_comment_image)
-                        } else {
-                            ""
-                        }
-                    } else {
-                        text
-                    }
-                    bindImages(replyBinding.llImages, replyBinding.ivImg1, replyBinding.ivImg2, replyBinding.ivImg3, reply.images)
-                    bindAudio(replyBinding.tvAudio, reply.audio)
-                    tvTime.text = formatTime(reply.time)
-                    if (reply.agree > 0) {
-                        tvAgree.text = context.getString(
-                            R.string.paragraph_comment_like,
-                            reply.agree
-                        )
-                        tvAgree.visible()
-                    } else {
-                        tvAgree.gone()
-                    }
-                }
-                container.addView(replyBinding.root)
+                container.addView(inflateReply(reply, container))
             }
         } else {
             container.gone()
         }
     }
 
-    override fun registerListener(holder: ItemViewHolder, binding: ItemParagraphCommentBinding) {
-        binding.tvReplyBtn.setOnClickListener {
-            getItem(holder.layoutPosition)?.let { item ->
-                replyListener?.onToggleReplies(item)
+    private fun bindRepliesHalf(
+        binding: ItemParagraphCommentHalfBinding,
+        item: ParagraphCommentItem
+    ) {
+        val container = binding.replyContainer
+        container.removeAllViews()
+        if (item.repliesLoaded) {
+            container.visible()
+            item.replies.forEach { reply ->
+                container.addView(inflateReply(reply, container))
             }
+        } else {
+            container.gone()
         }
     }
 
-    /** 绑定评论/回复图片：单行最多 3 张，超过则只显示前 3 张；点击图片打开大图 */
+    private fun inflateReply(
+        reply: ParagraphReplyItem,
+        container: ViewGroup
+    ): View {
+        val replyBinding = ItemParagraphReplyBinding.inflate(inflater, container, false)
+        replyBinding.apply {
+            ImageLoader.load(context, reply.avatar)
+                .placeholder(R.drawable.image_cover_default)
+                .error(R.drawable.image_cover_default)
+                .circleCrop()
+                .into(ivAvatar)
+            tvNickname.text = reply.nickname.ifBlank {
+                context.getString(R.string.paragraph_comment_anonymous)
+            }
+            if (reply.replyTo.isBlank()) tvReplyTo.gone()
+            else {
+                tvReplyTo.text = context.getString(
+                    R.string.paragraph_comment_reply_to, reply.replyTo
+                )
+                tvReplyTo.visible()
+            }
+            val text = formatContent(context, reply.content)
+            tvContent.text = if (reply.content.isBlank()) {
+                if (reply.images.isNotEmpty() || reply.audio.isNotBlank()) {
+                    context.getString(R.string.paragraph_comment_image)
+                } else ""
+            } else text
+            bindImages(llImages, ivImg1, ivImg2, ivImg3, reply.images)
+            bindAudio(tvAudio, reply.audio)
+            tvTime.text = formatTime(reply.time)
+            if (reply.agree > 0) {
+                tvAgree.text = context.getString(R.string.paragraph_comment_like, reply.agree)
+                tvAgree.visible()
+            } else tvAgree.gone()
+        }
+        return replyBinding.root
+    }
+
+    // ===================== 图片 / 语音绑定 =====================
+
+    /** 绑定评论/回复图片：单行最多 3 张；点击图片打开大图 */
     private fun bindImages(
         container: View,
         img1: ImageView,
@@ -291,6 +392,8 @@ class ParagraphCommentAdapter(context: Context) :
         }
     }
 
+    // ===================== 表情渲染 / 时间格式化 =====================
+
     companion object {
         /** 起点段评表情码映射（与镜像站前端 qd.html 的 commentEmojiMap 一致） */
         private val COMMENT_EMOJI_MAP: Map<Int, String> = mapOf(
@@ -316,41 +419,30 @@ class ParagraphCommentAdapter(context: Context) :
         /** 番茄/中文段评占位符 → Unicode 表情。番茄评论的表情是 `[名称]` 占位符，
          *  站点前端由后端 emojiEndpoint 映射为图片，原生端用 Unicode emoji 兜底展示。 */
         private val FQ_EMOJI_MAP: Map<String, String> = mapOf(
-            // 笑 / 开心
             "[笑哭]" to "😂", "[大笑]" to "😄", "[笑]" to "😄", "[哈哈]" to "😃", "[嘻嘻]" to "😁", "[憨笑]" to "😊",
             "[微笑]" to "🙂", "[呲牙]" to "😁", "[开心]" to "😄", "[高兴]" to "😀", "[得意]" to "😏",
             "[坏笑]" to "😏", "[奸笑]" to "😏", "[偷笑]" to "😏", "[阴险]" to "😏", "[滑稽]" to "🤪",
             "[调皮]" to "😜", "[吐舌]" to "😛", "[哇]" to "😮", "[期待]" to "🥰",
-            // 喜欢 / 害羞
             "[色]" to "😍", "[花痴]" to "😍", "[可爱]" to "🥰", "[害羞]" to "😳", "[脸红]" to "😳",
             "[眨眼]" to "😉", "[飞吻]" to "😘", "[亲亲]" to "😗", "[送心]" to "😘",
-            // 哭 / 难过
             "[大哭]" to "😭", "[流泪]" to "😢", "[哭]" to "😭", "[哭泣]" to "😢", "[委屈]" to "🥺", "[可怜]" to "🥺",
             "[难过]" to "😔", "[失望]" to "😞", "[伤心]" to "😢", "[不开心]" to "😞",
-            // 生气
             "[生气]" to "😡", "[发怒]" to "😡", "[愤怒]" to "😡", "[抓狂]" to "🤬", "[怄火]" to "😤",
             "[哼]" to "😤", "[不服]" to "😤",
-            // 惊讶 / 恐惧
             "[惊讶]" to "😲", "[惊呆]" to "😲", "[震惊]" to "😱", "[惊恐]" to "😱", "[吓]" to "😱",
             "[恐惧]" to "😨", "[吃惊]" to "😮",
-            // 无语 / 鄙视 / 思考
             "[无语]" to "😒", "[白眼]" to "🙄", "[翻白眼]" to "🙄", "[鄙视]" to "😒", "[嫌弃]" to "🙄",
             "[傲慢]" to "😏", "[抠鼻]" to "🤨", "[疑惑]" to "🤔", "[疑问]" to "🤔", "[思考]" to "🤔", "[嘘]" to "🤫",
-            // 尴尬 / 汗
             "[尴尬]" to "😅", "[汗]" to "😓", "[流汗]" to "😓", "[擦汗]" to "😅", "[冷汗]" to "😰", "[天啊]" to "😱",
-            // 困 / 累 / 晕
             "[困]" to "😴", "[睡觉]" to "😴", "[哈欠]" to "🥱", "[发呆]" to "😶", "[晕]" to "😵",
-            // 手势 / 动作
             "[强]" to "👍", "[赞]" to "👍", "[good]" to "👍", "[弱]" to "👎", "[加油]" to "💪", "[奋斗]" to "💪",
             "[抱拳]" to "🙏", "[握手]" to "🤝", "[胜利]" to "✌️", "[耶]" to "✌️", "[拳头]" to "👊", "[鼓掌]" to "👏",
             "[拜拜]" to "👋", "[打call]" to "🙌", "[OK]" to "👌", "[666]" to "6️⃣", "[比心]" to "🫶",
             "[收到]" to "👍", "[好的]" to "👍", "[狗头]" to "🐶", "[吃瓜]" to "🍉",
-            // 物品 / 符号
             "[爱心]" to "❤️", "[心]" to "❤️", "[心碎]" to "💔", "[玫瑰]" to "🌹", "[鲜花]" to "🌸",
             "[礼物]" to "🎁", "[蛋糕]" to "🎂", "[啤酒]" to "🍺", "[咖啡]" to "☕", "[西瓜]" to "🍉",
             "[月亮]" to "🌙", "[太阳]" to "☀️", "[星星]" to "⭐", "[便便]" to "💩", "[骷髅]" to "💀",
             "[炸弹]" to "💣", "[闪电]" to "⚡", "[烟花]" to "🎆", "[爆竹]" to "🧨", "[干杯]" to "🍻",
-            // 补充（陆续反馈补充）
             "[什么]" to "🤔", "[尬笑]" to "😅", "[撇嘴]" to "😒", "[做鬼脸]" to "😜", "[酷]" to "😎",
             "[快哭了]" to "😭", "[舔屏]" to "😋", "[怒]" to "😡", "[捂脸]" to "🤦", "[吐]" to "🤮",
             "[敬礼]" to "🫡", "[石化]" to "🗿", "[KISS]" to "😘", "[懂了]" to "👌", "[探究]" to "🔍",
@@ -359,9 +451,7 @@ class ParagraphCommentAdapter(context: Context) :
             "[求关注]" to "🙏", "[我也强推]" to "💪", "[雀食神作]" to "🌟", "[已种草]" to "🌱", "[书架加一]" to "📚"
         )
 
-        /** 番茄官方 53 个段评表情：占位符 -> 本地 drawable 资源。
-         *  资源图片来自番茄小说 App 内置的官方段评表情（emoji_config 序号 1~53），
-         *  原图为 120x120 webp，存放于 drawable-nodpi/fq_emoji_*.webp。 */
+        /** 番茄官方 53 个段评表情：占位符 -> 本地 drawable 资源。 */
         private val FQ_EMOJI_IMAGE_MAP: Map<String, Int> = mapOf(
             "[微笑]" to R.drawable.fq_emoji_1, "[偷笑]" to R.drawable.fq_emoji_2, "[笑]" to R.drawable.fq_emoji_3,
             "[什么]" to R.drawable.fq_emoji_4, "[害羞]" to R.drawable.fq_emoji_5, "[爱慕]" to R.drawable.fq_emoji_6,
@@ -383,7 +473,7 @@ class ParagraphCommentAdapter(context: Context) :
             "[已种草]" to R.drawable.fq_emoji_52, "[书架加一]" to R.drawable.fq_emoji_53
         )
 
-        /** 内联表情图片的显示尺寸（dp），约等于文字高度 */
+        /** 内联表情图片的显示尺寸（dp） */
         private const val FQ_EMOJI_SIZE_DP = 18
 
         /**
@@ -402,7 +492,6 @@ class ParagraphCommentAdapter(context: Context) :
                 val token = m.value
                 val fnCode = FN_EMOJI_REGEX.matchEntire(token)
                 if (fnCode != null) {
-                    // 起点 `[fn=N]` / `*[fn=N]`：Unicode emoji 兜底
                     val code = fnCode.groupValues[1].toIntOrNull()
                     sb.append(code?.let { COMMENT_EMOJI_MAP[it] } ?: token)
                 } else {
@@ -421,7 +510,6 @@ class ParagraphCommentAdapter(context: Context) :
                             sb.append(token)
                         }
                     } else {
-                        // 非官方表情占位符：Unicode 兜底，兜底也没有则保留原文
                         sb.append(FQ_EMOJI_MAP[token] ?: token)
                     }
                 }

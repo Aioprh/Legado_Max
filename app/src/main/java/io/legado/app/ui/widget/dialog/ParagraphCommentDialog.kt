@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.constant.AppLog
+import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
@@ -29,14 +30,16 @@ import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.gone
 import io.legado.app.utils.jsonPath
 import io.legado.app.utils.setLayout
+import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.stackTraceStr
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * 段评弹窗：原生列表展示段评（头像/昵称/等级/地区/时间/内容/赞踩/楼层），
@@ -68,6 +71,12 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     // 排序模式：实时=接口原始顺序；最新=神评论置顶+按时间由新到旧；回复最多=按回复数降序
     private enum class SortMode { REALTIME, NEWEST, HOT }
     private var sortMode = SortMode.REALTIME
+    // 半屏样式下的 tab 过滤
+    private enum class TabMode { ALL, IMAGE, AUDIO }
+    private var currentTab = TabMode.ALL
+    private val isHalfScreen by lazy {
+        requireContext().getPrefBoolean(PreferKey.paragraphCommentHalfScreen, false)
+    }
     // 排序模式分页追加时临时抑制 onCurrentListChanged 触发的自动加载，
     // 防止 DiffUtil 重排后可见项被推到列表末尾造成链式加载
     private var suppressAutoLoad = false
@@ -93,6 +102,8 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
         // 弹窗显示期间启用 DiffUtil 增量更新，分页/排序重排时保持滚动位置；
         // 否则 setItems(list, callback) 会退化为 notifyDataSetChanged 全量刷新导致列表跳回顶部
         adapter.upResumed(true)
+        // 通知 Adapter 当前样式模式，以便返回正确的 view type
+        adapter.isHalfScreen = isHalfScreen
     }
 
     override fun onStop() {
@@ -117,15 +128,31 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             setColor(ThemeStore.backgroundColor())
         }
         binding.run {
-            toolBar.setBackgroundColor(primaryColor)
-            toolBar.title = getString(R.string.paragraph_comment_title)
-            toolBar.setNavigationOnClickListener { dismiss() }
-            // 排序切换：齿轮图标弹出菜单选择 实时评论 / 最新评论 / 回复最多
-            tvSort.setOnClickListener { view -> showSortMenu(view) }
+            // ============ 样式切换 ============
+            if (isHalfScreen) {
+                // 半屏模式：隐藏 Toolbar，显示 tab 头部
+                toolBar.gone()
+                halfScreenHeader.visible()
+                // 半屏模式下 Toolbar 不显示，也不需要 primaryColor 背景
+            } else {
+                // 经典模式
+                toolBar.setBackgroundColor(primaryColor)
+                toolBar.title = getString(R.string.paragraph_comment_title)
+                toolBar.setNavigationOnClickListener { dismiss() }
+                halfScreenHeader.gone()
+            }
+
+            // ============ 排序齿轮 ============
+            // 经典模式 Toolbar 上的齿轮
+            tvSort.setOnClickListener { v -> showSortMenu(v) }
+            // 半屏模式 tab 头部右侧的齿轮
+            tvSortHalf.setOnClickListener { v -> showSortMenu(v) }
+
+            // ============ tab 绑定（半屏模式） ============
+            setupTabs()
+
             recyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = adapter
-            // 滚动 + 每次列表更新（含异步 DiffUtil 重排完成）都检查是否已到末尾，自动续接下一页。
-            // 排序模式下分页数据会重排到可视区上方，滚动事件可能不触发，必须靠列表更新回调兜底
             recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
                     maybeLoadMore()
@@ -135,8 +162,6 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             // 加载失败点击重试 / 加载更多点击翻页
             llFooter.setOnClickListener {
                 if (loading) return@setOnClickListener
-                // 仅在有更多（点击继续加载）或加载失败（点击重试）时可点；
-                // 真正的"没有更多了"点击不再触发加载
                 if (hasMore || footerState == FooterState.FAILED) {
                     loadPage(page + 1)
                 }
@@ -172,11 +197,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                     ?: ParagraphCommentConfig()
             }
         }
-        // 番茄段评接口不按时间/回复数排序，仅保留实时模式，隐藏排序按钮；
-        // 起点段评保留全部排序（默认最新）
+        // 番茄段评接口不按时间/回复数排序，仅保留实时模式，隐藏排序按钮
         if (!config.sortEnabled) {
             sortMode = SortMode.REALTIME
             binding.tvSort.gone()
+            binding.tvSortHalf.gone()
         }
         if (config.commentsUrl.isNullOrBlank()) {
             AppLog.put("段评弹窗 commentsUrl 为空，无法加载", NoStackTraceException("commentsUrl 为空"))
@@ -184,6 +209,83 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
             return
         }
         loadPage(1)
+    }
+
+    // ============ 半屏模式 tab 切换 ============
+
+    private fun setupTabs() {
+        if (!isHalfScreen) return
+        val onClick = { mode: TabMode ->
+            if (currentTab == mode) return@let
+            currentTab = mode
+            refreshTabFilter()
+            updateTabIndicator()
+        }
+        binding.tabAll.setOnClickListener { onClick(TabMode.ALL) }
+        binding.tabImage.setOnClickListener { onClick(TabMode.IMAGE) }
+        binding.tabAudio.setOnClickListener { onClick(TabMode.AUDIO) }
+    }
+
+    /** 根据 tab 模式过滤已加载评论列表并刷新 adapter */
+    private fun refreshTabFilter() {
+        val filtered = when (currentTab) {
+            TabMode.ALL -> sortedItems(rawItems)
+            TabMode.IMAGE -> sortedItems(rawItems.filter { it.images.isNotEmpty() })
+            TabMode.AUDIO -> sortedItems(rawItems.filter { it.audio.isNotBlank() })
+        }
+        adapter.setItems(filtered, commentDiff)
+    }
+
+    /** 按当前 sortMode 排序；实时模式保持接口原始顺序 */
+    private fun sortedItems(list: List<ParagraphCommentItem>): List<ParagraphCommentItem> {
+        return if (sortMode == SortMode.REALTIME) list
+        else list.sortedWith(sortComparator())
+    }
+
+    /** 更新 tab 文案和统计条；每次分页完成后调用 */
+    private fun updateTabTexts() {
+        if (!isHalfScreen) return
+        val allCount = rawItems.size
+        val imgCount = rawItems.count { it.images.isNotEmpty() }
+        val audioCount = rawItems.count { it.audio.isNotBlank() }
+        binding.tabAll.text = getString(R.string.paragraph_comment_tab_all, allCount)
+        binding.tabImage.text = getString(R.string.paragraph_comment_tab_image, imgCount)
+        binding.tabAudio.text = getString(R.string.paragraph_comment_tab_audio, audioCount)
+        // 统计条："N条段评，已加载M条"
+        val totalCount = if (total >= 0) total.toInt() else rawItems.size
+        binding.tvStats.text = getString(
+            R.string.paragraph_comment_loaded,
+            totalCount, rawItems.size
+        )
+    }
+
+    /** 更新 tab 下划线指示器位置和 tab 文字样式 */
+    private fun updateTabIndicator() {
+        if (!isHalfScreen) return
+        binding.root.post {
+            binding.run {
+                val (tabTextView, offset) = when (currentTab) {
+                    TabMode.ALL -> tabAll to 0
+                    TabMode.IMAGE -> tabImage to tabAll.width
+                    TabMode.AUDIO -> tabAudio to tabAll.width + tabImage.width
+                }
+                // 选中 tab：加粗主色；未选中：灰色正常
+                listOf(tabAll, tabImage, tabAudio).forEach { tv ->
+                    val selected = tv === tabTextView
+                    tv.setTextColor(
+                        if (selected) resources.getColor(android.R.color.primary_text_default, null)
+                        else resources.getColor(R.color.secondaryText, null)
+                    )
+                    tv.textSize = if (selected) 15f else 14f
+                    tv.setTypeface(tv.typeface, if (selected) android.graphics.Typeface.BOLD else 0)
+                }
+                // 下划线居中对齐选中 tab
+                val indicatorWidth = 28.dpToPx()
+                val tabCenterOffset = offset + tabTextView.width / 2f
+                val newX = tabCenterOffset - indicatorWidth / 2f
+                tabIndicator.x = newX.coerceAtLeast(0f)
+            }
+        }
     }
 
     // ---------- 段评列表 ----------
@@ -220,13 +322,22 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 if (nextPage == 1) {
                     rawItems.clear()
                     rawItems.addAll(items)
-                    adapter.setItems(
-                        if (sortMode != SortMode.REALTIME) rawItems.sortedWith(sortComparator())
-                        else rawItems
-                    )
+                    if (isHalfScreen) {
+                        // 半屏模式：用 refreshTabFilter 统一应用排序 + tab 过滤
+                        refreshTabFilter()
+                    } else {
+                        adapter.setItems(
+                            if (sortMode != SortMode.REALTIME) rawItems.sortedWith(sortComparator())
+                            else rawItems
+                        )
+                    }
                 } else {
                     rawItems.addAll(items)
-                    appendPageItems(items)
+                    if (isHalfScreen) {
+                        refreshTabFilter()
+                    } else {
+                        appendPageItems(items)
+                    }
                 }
                 if (newTotal >= 0) total = newTotal
                 updateTitle()
@@ -238,6 +349,9 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 hasMore = hasNextFlag ?: (items.isNotEmpty() &&
                     items.size >= config.pageSize &&
                     (total < 0 || rawItems.size < total))
+                // 更新 tab 计数 + 统计条 + 首次加载的 tab 指示器
+                updateTabTexts()
+                if (nextPage == 1) updateTabIndicator()
                 if (adapter.isEmpty()) {
                     showMsg(getString(R.string.paragraph_comment_empty))
                     updateFooter(FooterState.NONE)
@@ -321,7 +435,10 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
 
     /** 切换排序模式后整表重排（以接口原始顺序 rawItems 为基准） */
     private fun applySort() {
-        if (sortMode == SortMode.REALTIME) {
+        if (isHalfScreen) {
+            // 半屏模式：统一走 refreshTabFilter（排序 + tab 过滤）
+            refreshTabFilter()
+        } else if (sortMode == SortMode.REALTIME) {
             adapter.setItems(rawItems)
         } else {
             adapter.setItems(rawItems.sortedWith(sortComparator()))

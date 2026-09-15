@@ -2475,6 +2475,12 @@ Night: %5$s / %6$s / %7$s / %8$s</string>
     <string name="paragraph_comment_sort_realtime">实时评论</string>
     <string name="paragraph_comment_sort_hot">回复最多</string>
     <string name="paragraph_comment_total">段评 (%1$d)</string>
+    <string name="paragraph_comment_half_screen">段评半屏样式</string>
+    <string name="paragraph_comment_half_screen_summary">使用更紧凑的底部半屏评论面板（起点/番茄风格）</string>
+    <string name="paragraph_comment_tab_all">全部 %1$d</string>
+    <string name="paragraph_comment_tab_image">配图 %1$d</string>
+    <string name="paragraph_comment_tab_audio">配音 %1$d</string>
+    <string name="paragraph_comment_loaded">%1$d条段评，已加载%2$d条</string>
     <!-- Bookshelf tag bar (merged from upstream) -->
     <string name="bookshelf_tag_add_group">Add to \"%1$s\"</string>
     <string name="bookshelf_tag_add_title">Add tags</string>

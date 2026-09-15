@@ -29,6 +29,8 @@ object PreferKey {
     // 本地书段评：为本地书籍接入其他书源的段评
     const val localParagraphComment = "localParagraphComment"
     const val localParagraphSource = "localParagraphSource"
+    // 段评弹窗样式：false=经典卡片式，true=半屏紧凑 tab 式
+    const val paragraphCommentHalfScreen = "paragraphCommentHalfScreen"
     const val remoteServerId = "remoteServerId"
     const val hideStatusBar = "hideStatusBar"
     const val clickActionTL = "clickActionTopLeft"

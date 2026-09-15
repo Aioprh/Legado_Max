@@ -250,6 +250,14 @@
         app:iconSpaceReserved="false"
         app:isBottomBackground="true" />
 
+    <io.legado.app.lib.prefs.SwitchPreference
+        android:defaultValue="false"
+        android:key="paragraphCommentHalfScreen"
+        android:summary="@string/paragraph_comment_half_screen_summary"
+        android:title="@string/paragraph_comment_half_screen"
+        app:iconSpaceReserved="false"
+        app:isBottomBackground="true" />
+
     <io.legado.app.lib.prefs.Preference
         android:key="localParagraphSource"
         android:title="@string/local_paragraph_source"
