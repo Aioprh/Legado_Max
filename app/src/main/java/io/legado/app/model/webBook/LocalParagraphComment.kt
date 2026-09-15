@@ -824,7 +824,7 @@ object LocalParagraphComment {
                 source,
                 "$API?action=paragraph_summary&book_id=$bookId&chapter_id=$chapterId"
             ) ?: return SummaryResult()
-            return SummaryResult(
+            val counts = SummaryResult(
                 parseCounts(
                     body, "$.data.summary",
                     // 与本源 jsLib qdGetParagraphSummary（qd_jslib.js 738 行）的 pid/count 键名保持一致，
@@ -833,6 +833,57 @@ object LocalParagraphComment {
                     countKeys = listOf("CommentCount", "commentCount", "TextCount", "textCount", "Count", "count")
                 )
             )
+            // 文本对齐：拉取远程章节正文，带出"非空且非图片"段落供跨书源精准定位。
+            // 正文经共享接口 qd.aadcn.cn（书源 ruleContent 的 requestApiUrl('/novel/chap',...)）获取，
+            // 需带 source.getVariable() 存放的共享 token 作为 Bearer 头。
+            return counts.copy(
+                remoteParagraphs = fetchRemoteParagraphs(source, bookId, chapterId)
+            )
+        }
+
+        /**
+         * 拉取远程章节正文并解析为"非空且非图片"段落。
+         * 分段/计数规则与本源 jsLib getComments（qd_jslib.js 700 行）完全一致：
+         * 去 \r；若含 <p> 则去掉 <p...> 并把 </p> 换为 \n；按 \n 分行；
+         * 只保留"非空且不以 < img 开头且不含 data:image/ 的正文行"作为文字段落。
+         * 取不到正文（token 缺失/请求失败/解析失败）时返回空表，调用方自动退回按段落序号定位。
+         */
+        private suspend fun fetchRemoteParagraphs(
+            source: BookSource,
+            bookId: String,
+            chapterId: String
+        ): List<String> {
+            val token = source.getVariable()
+            val header = if (token.isNotBlank()) {
+                mapOf("authorization" to "Bearer $token")
+            } else {
+                emptyMap()
+            }
+            val contentBody = fetchBody(
+                source,
+                "https://qd.aadcn.cn/novel/chap?novelId=$bookId&chapId=$chapterId",
+                if (header.isEmpty()) null else header
+            ) ?: return emptyList()
+            val content = runCatching {
+                jsonPath.parse(contentBody).read<String>("$.data.content")
+            }.getOrNull() ?: return emptyList()
+
+            var normalized = content.replace("\r", "")
+            if (Regex("""<p\b""", RegexOption.IGNORE_CASE).containsMatchIn(normalized)) {
+                normalized = Regex("""<p\b[^>]*>""", RegexOption.IGNORE_CASE)
+                    .replace(normalized, "")
+                    .replace("</p>", "\n", ignoreCase = true)
+            }
+            val lines = normalized.split("\n")
+            val imgStart = Regex("""^<\s*img\s""", RegexOption.IGNORE_CASE)
+            return lines.mapNotNull { line ->
+                val t = line.trim()
+                if (t.isNotEmpty() && imgStart.find(t) == null && !t.contains("data:image/")) {
+                    line
+                } else {
+                    null
+                }
+            }
         }
 
         override fun buildPclick(
