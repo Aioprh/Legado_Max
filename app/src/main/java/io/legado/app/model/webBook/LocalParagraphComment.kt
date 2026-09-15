@@ -11,6 +11,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.CookieStore
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.ui.widget.dialog.ParagraphCommentConfig
+import com.jayway.jsonpath.ReadContext
 import io.legado.app.utils.jsonPath
 import kotlinx.coroutines.currentCoroutineContext
 import java.net.URLEncoder
@@ -826,8 +827,10 @@ object LocalParagraphComment {
             return SummaryResult(
                 parseCounts(
                     body, "$.data.summary",
-                    pidKeys = listOf("ParagraphId", "paragraphId"),
-                    countKeys = listOf("CommentCount", "commentCount", "TextCount", "textCount")
+                    // 与本源 jsLib qdGetParagraphSummary（qd_jslib.js 738 行）的 pid/count 键名保持一致，
+                    // 服务端不同实例可能只返回其中某一段评键名，缺了会导致对应段落数解析不到（气泡不显示）。
+                    pidKeys = listOf("ParagraphId", "paragraphId", "paragraph_id", "ParaId", "paraId"),
+                    countKeys = listOf("CommentCount", "commentCount", "TextCount", "textCount", "Count", "count")
                 )
             )
         }
@@ -920,29 +923,6 @@ object LocalParagraphComment {
         private fun trailingNumber(u: String): String? =
             Regex("""/(\d+)(?=[/?]|$)""").find(u)?.groupValues?.get(1)
 
-        /** 番茄官方 App 的固定 User-Agent 令牌（玖玖段评后端沿用此校验） */
-        private const val FANQIE_APP_TOKEN =
-            "C4980F050A2F47E894720A684C9AB0BD9BE1CAB1A0CD09C25DBCB09A9034C0AC"
-
-        private const val MOBILE_UA =
-            "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-
-        /** 进程内固定 device，同一会话保持相同，便于后端识别 */
-        @Volatile
-        private var fixedDevice: String? = null
-
-        private fun mirrorHeaders(): Map<String, String> = mapOf(
-            "User-Agent" to MOBILE_UA,
-            "X-User-Agent" to FANQIE_APP_TOKEN,
-            "X-device" to (fixedDevice ?: randomDevice().also { fixedDevice = it })
-        )
-
-        private fun randomDevice(): String {
-            val chars = "0123456789abcdef"
-            val random = Random()
-            return buildString { repeat(32) { append(chars[random.nextInt(chars.length)]) } }
-        }
-
         override suspend fun fetchSummaryCounts(
             source: BookSource,
             bookId: String,
@@ -951,11 +931,12 @@ object LocalParagraphComment {
         ): SummaryResult {
             val url = commentsRoot(source) + COMMENTS_ROOT +
                 sources(chapterUrl) + "/$bookId/$chapterId"
-            // 玖玖段评后端与番茄官方接口一致，强制要求 X-device / X-User-Agent 请求头
-            // （缺失或空时返回 403，导致气泡不显示）。headerMapF 会整体替换书源请求头，
-            // 因此必须同时带上 User-Agent，避免请求头不完整再次被拒。
-            val body = fetchBody(source, url, mirrorHeaders()) ?: run {
-                AppLog.put("本地书段评: 玖玖段评摘要请求失败（可能缺少/请求头不合规）: $url")
+            // 玖玖段评后端与番茄官方接口一致，强制要求 X-device / X-User-Agent / version / sessionid /
+            // Cookie 请求头，缺失即返回 403。这些头来自书源的动态 js header（androidId / webview UA /
+            // 登录 cookie）。因此这里**不能**传 headerMapF——传了会整体覆盖并丢弃书源自身的 js header，
+            // 反而导致 403、气泡不显示。让 AnalyzeUrl 自动使用书源 header 即可。
+            val body = fetchBody(source, url) ?: run {
+                AppLog.put("本地书段评: 玖玖段评摘要请求失败: $url")
                 return SummaryResult()
             }
             val counts = HashMap<Int, Int>()
@@ -990,8 +971,10 @@ object LocalParagraphComment {
 
     /**
      * 番茄四合一（番茄封装源，如 http://114.66.17.2:7894/）：段评走站点根 wrapper。
-     * 摘要接口 comment.php?action=counts 返回 $.data.idea_data（key->{idea_count,hot_tag}，
-     * key 为"正文段序号"，0基）；点击气泡打开 comments.html 网页。
+     * 摘要接口 comment.php?action=counts 返回段级计数，段号 0基，结构在不同后端有差异：
+     * $.data.idea_data 可能是 key->{idea_count,hot_tag} 的 Map，也可能是按下标即段号的数组；
+     * 部分后端改为 $.data.paragraph_list（含显式 para_index）。这里多形态兜底解析。
+     * 点击气泡打开 comments.html 网页。
      * 与书源 jsLib 的 fqWrapper* 系列函数为同一套接口。
      */
     private object FanqieWrapperAdapter : ParagraphAdapter {
@@ -1032,21 +1015,59 @@ object LocalParagraphComment {
             val counts = HashMap<Int, Int>()
             runCatching {
                 val rc = jsonPath.parse(body)
-                val idea = rc.read<Map<*, *>>("$.data.idea_data") ?: return@runCatching
-                idea.forEach { (k, v) ->
-                    if (k == null) return@forEach
-                    val key = k.toString()
-                    // 正文段 key 为纯数字（0基）；20000+ 为图片段，注入其它书时无法对应正文段落，跳过
-                    val idx = key.toIntOrNull() ?: return@forEach
-                    if (idx < 0 || idx >= 20000) return@forEach
-                    val m = v as? Map<*, *> ?: return@forEach
-                    val count = m["idea_count"]?.toString()?.toIntOrNull()
-                        ?: m["count"]?.toString()?.toIntOrNull()
-                        ?: return@forEach
-                    if (count > 0) counts[idx + 1] = count
-                }
+                // 不同 wrapper 后端返回的段级计数结构有差异，这里做多形态兜底：
+                //  a) $.data.idea_data 可能是 key->{idea_count,...} 的 Map（key 为 0基正文段序号）；
+                //  b) 也可能是按数组下标即段号的数组；
+                //  c) $.data.paragraph_list 是含显式 para_index(0基)+idea_count 的数组。
+                // 段号统一 0基→1基；20000+ 为图片段，注入其它书无法对应正文段落，跳过。
+                ingestFanqieSegment(rc, "$.data.idea_data", counts)
+                ingestFanqieParagraphList(rc, "$.data.paragraph_list", counts)
             }
             return SummaryResult(counts)
+        }
+
+        /** 解析 idea_data：兼容 Map<idxStr,{idea_count}> 与 List<{idea_count}> 两种形态 */
+        private fun ingestFanqieSegment(
+            rc: ReadContext,
+            path: String,
+            counts: MutableMap<Int, Int>
+        ) {
+            val node = runCatching { rc.read<Any?>(path) }.getOrNull() ?: return
+            fun countOf(m: Map<*, *>): Int? =
+                m["idea_count"]?.toString()?.toIntOrNull()
+                    ?: m["count"]?.toString()?.toIntOrNull()
+            fun add(idx: Int, c: Int) {
+                if (idx < 0 || idx >= 20000 || c <= 0) return
+                counts[idx + 1] = c
+            }
+            when (node) {
+                is Map<*, *> -> node.forEach { (k, v) ->
+                    val idx = k?.toString()?.toIntOrNull() ?: return@forEach
+                    val c = (v as? Map<*, *>)?.let { countOf(it) } ?: return@forEach
+                    add(idx, c)
+                }
+                is List<*> -> node.forEachIndexed { i, v ->
+                    val c = (v as? Map<*, *>)?.let { countOf(it) } ?: return@forEachIndexed
+                    add(i, c)
+                }
+            }
+        }
+
+        /** 解析 paragraph_list：List<{para_index, idea_count}> */
+        private fun ingestFanqieParagraphList(
+            rc: ReadContext,
+            path: String,
+            counts: MutableMap<Int, Int>
+        ) {
+            val list = runCatching { rc.read<List<Any?>>(path) }.getOrNull() ?: return
+            list.filterIsInstance<Map<*, *>>().forEach { d ->
+                val idx = d["para_index"]?.toString()?.toIntOrNull() ?: return@forEach
+                if (idx < 0 || idx >= 20000) return@forEach
+                val c = d["idea_count"]?.toString()?.toIntOrNull()
+                    ?: d["count"]?.toString()?.toIntOrNull()
+                    ?: return@forEach
+                if (c > 0) counts[idx + 1] = c
+            }
         }
 
         override fun buildPclick(
