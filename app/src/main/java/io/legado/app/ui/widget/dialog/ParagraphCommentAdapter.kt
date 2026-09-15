@@ -34,11 +34,6 @@ import java.util.Date
 class ParagraphCommentAdapter(context: Context) :
     RecyclerAdapter<ParagraphCommentItem, ViewBinding>(context) {
 
-    companion object {
-        private const val TYPE_CLASSIC = 0
-        private const val TYPE_HALF = 1
-    }
-
     interface ReplyListener {
         fun onToggleReplies(item: ParagraphCommentItem)
     }
@@ -395,6 +390,9 @@ class ParagraphCommentAdapter(context: Context) :
     // ===================== 表情渲染 / 时间格式化 =====================
 
     companion object {
+        private const val TYPE_CLASSIC = 0
+        private const val TYPE_HALF = 1
+
         /** 起点段评表情码映射（与镜像站前端 qd.html 的 commentEmojiMap 一致） */
         private val COMMENT_EMOJI_MAP: Map<Int, String> = mapOf(
             1 to "👏", 2 to "🌹", 3 to "🤝", 4 to "😁", 5 to "😄", 6 to "🥺", 7 to "🙂", 8 to "😏",

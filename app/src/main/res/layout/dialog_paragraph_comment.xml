@@ -116,7 +116,7 @@
             android:id="@+id/tab_indicator"
             android:layout_width="28dp"
             android:layout_height="2dp"
-            android:background="@color/colorAccent" />
+            android:background="@color/accent" />
 
         <!-- 统计条："N条段评，已加载M条" -->
         <TextView
