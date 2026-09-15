@@ -980,7 +980,9 @@ object LocalParagraphComment {
         ): String {
             val url = commentsRoot(source) + COMMENTS_ROOT +
                 "index.php/ui/" + sources(chapterUrl) + "/$bookId/$chapterId/${pid - 1}"
-            return "java.openUrl('$url');"
+            // 与本源 jsLib 的 ShowComments 一致：用 java.startBrowser 在应用内嵌浏览器打开段评网页
+            //（此前用 java.openUrl 会弹外跳浏览器确认页）。
+            return "java.startBrowser('$url','段评');"
         }
     }
 
