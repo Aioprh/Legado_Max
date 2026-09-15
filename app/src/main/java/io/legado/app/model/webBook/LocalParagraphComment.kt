@@ -1054,25 +1054,14 @@ object LocalParagraphComment {
             pid: Int,
             chapterUrl: String?
         ): String {
-            // 点击气泡打开原生段评弹窗（此前用 java.openUrl 跳 comments.html，需外跳浏览器）。
-            // 段评列表/回复走 comment.php 结构化接口；para_index 用 0基（项目为1基段落号 → pid-1，
-            // 与 fetchSummaryCounts 的 counts 接口一致）。
-            val api = "${root(source)}/comment.php"
-            return buildPclickScript(
-                listPath = "$.data.comments",
-                totalPath = "$.data.total_count",
-                commentsUrl = "$api?action=comment&book_id=$bookId&item_id=$chapterId" +
-                    "&para_index=${pid - 1}&page=[page]&page_size=[pageSize]",
-                repliesUrl = "$api?action=reply&book_id=$bookId&item_id=$chapterId" +
-                    "&para_index=${pid - 1}&comment_id=[reviewId]&page=1&page_size=[pageSize]",
-                replyListPath = "$.data.comments",
-                audioUrl = "",
-                pageSize = 20,
-                // 番茄段评接口不按时间/回复数排序，仅保留实时模式
-                sortEnabled = false,
-                // 评论字段走弹窗 DEFAULT_* 兜底解析（含 comment_id/content/create_time 等小写命名）
-                fields = ParagraphCommentConfig.FieldConfig()
-            )
+            // 番茄四合一的本源只提供 comments.html 网页形式的段评列表，没有结构化 JSON 接口，
+            // 因此走原生列表弹窗（java.showParagraphComments）无法显示内容。
+            // 这里用 java.startBrowser 在应用内嵌浏览器打开 comments.html，与本源 jsLib
+            // 的 fqWrapperMakeBubble/showCmt 行为一致（keep_in_app 内嵌打开，非外跳浏览器）。
+            // para_index 用 0基（项目为1基段落号 → pid-1，与 fetchSummaryCounts 的 counts 接口一致）。
+            val url = "${root(source)}/comments.html?book_id=$bookId&item_id=$chapterId" +
+                "&para_index=${pid - 1}"
+            return "java.startBrowser('$url','段评');"
         }
     }
 }
