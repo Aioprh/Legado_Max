@@ -49,6 +49,7 @@ object LocalParagraphComment {
         ShenmoAdapter,
         QidianFullAdapter,
         JiuJiuAdapter,
+        FanqieWrapperAdapter,
         GenericAdapter
     )
 
@@ -866,16 +867,37 @@ object LocalParagraphComment {
     }
 
     /**
-     * 玖玖小说（番茄镜像，sunianxincue.love 系）：段评是"网页方案"。
+     * 玖玖小说（番茄镜像，sunianxin.cmcure.com/serene.sunianxincue.love 系）：段评是"网页方案"。
      * 摘要走 distUrl（/api/fanqie/comments/{sources}/{book_id}/{item_id}，返回 distributions 列表），
      * 点击气泡用内嵌浏览器打开玖玖的段评网页（index.php/ui/...，含图片与发评论）。
      * para_index 为"非空正文段落号"（0基），与项目"1基非空段落号"相差 1。
+     *
+     * 注意玖玖新架构把"正文后端"（api[0]，当前 sunianxin.cmcure.com）与"段评后端"
+     * （api[1]，serene.sunianxincue.love）拆成两个域；bookSourceUrl 指向正文后端，
+     * 段评接口只能访问 api[1]，不能再用 bookSourceUrl 派生。
      */
     private object JiuJiuAdapter : ParagraphAdapter {
         private const val COMMENTS_ROOT = "/api/fanqie/comments/"
 
-        override fun match(source: BookSource): Boolean =
-            source.bookSourceUrl.contains("sunianxincue.love", ignoreCase = true)
+        /** 玖玖段评后端（书源 jsLib 的 api[1]）。旧版书源整站只有一个域时以 bookSourceUrl 回退。 */
+        private const val KNOWN_COMMENTS_API = "https://serene.sunianxincue.love"
+
+        override fun match(source: BookSource): Boolean {
+            // 去掉书源 URL 的 ## 站点后缀，host 才是真实请求域
+            val host = source.bookSourceUrl.substringBefore("##").trim()
+            return host.contains("sunianxincue.love", ignoreCase = true) ||
+                host.contains("sunianxin.cmcure.com", ignoreCase = true)
+        }
+
+        /** 段评后端：书源自身就在 sunianxincue.love 上时直接用它；否则用已知的 api[1] */
+        private fun commentsRoot(source: BookSource): String {
+            val host = source.bookSourceUrl.substringBefore("##").trim()
+            return if (host.contains("sunianxincue.love", ignoreCase = true)) {
+                host.trimEnd('/')
+            } else {
+                KNOWN_COMMENTS_API
+            }
+        }
 
         /** book_id：玖玖详情/章节 URL 末尾数字 */
         override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
@@ -901,7 +923,7 @@ object LocalParagraphComment {
             chapterId: String,
             chapterUrl: String?
         ): SummaryResult {
-            val url = source.bookSourceUrl.trimEnd('/') + COMMENTS_ROOT +
+            val url = commentsRoot(source) + COMMENTS_ROOT +
                 sources(chapterUrl) + "/$bookId/$chapterId"
             val body = fetchBody(source, url) ?: return SummaryResult()
             val counts = HashMap<Int, Int>()
@@ -924,8 +946,85 @@ object LocalParagraphComment {
             pid: Int,
             chapterUrl: String?
         ): String {
-            val url = source.bookSourceUrl.trimEnd('/') + COMMENTS_ROOT +
+            val url = commentsRoot(source) + COMMENTS_ROOT +
                 "index.php/ui/" + sources(chapterUrl) + "/$bookId/$chapterId/${pid - 1}"
+            return "java.openUrl('$url');"
+        }
+    }
+
+    // ---------- 番茄四合一（114.66.17.2:7894 站点根 wrapper） ----------
+
+    /**
+     * 番茄四合一（番茄封装源，如 http://114.66.17.2:7894/）：段评走站点根 wrapper。
+     * 摘要接口 comment.php?action=counts 返回 $.data.idea_data（key->{idea_count,hot_tag}，
+     * key 为"正文段序号"，0基）；点击气泡打开 comments.html 网页。
+     * 与书源 jsLib 的 fqWrapper* 系列函数为同一套接口。
+     */
+    private object FanqieWrapperAdapter : ParagraphAdapter {
+
+        override fun match(source: BookSource): Boolean =
+            source.bookSourceUrl.contains("114.66.17.2", ignoreCase = true)
+
+        private fun root(source: BookSource): String =
+            source.bookSourceUrl.trimEnd('/')
+
+        override fun extractBookId(bookUrl: String, chapterUrl: String): String? =
+            pickId(bookUrl, "bookid")
+                ?: pickId(bookUrl, "book_id")
+                ?: Regex("""/detail\?bookid=(\d+)""").find(bookUrl)?.groupValues?.get(1)
+
+        override fun extractChapterId(chapterUrl: String): String? {
+            if (chapterUrl.startsWith("data:;base64,")) {
+                val b64 = chapterUrl.substringAfter(";base64,").substringBefore(",")
+                val decoded = runCatching {
+                    String(Base64.decode(b64, Base64.DEFAULT), Charsets.UTF_8)
+                }.getOrNull()
+                // 只接受纯数字 item_id（跳过其它 data URL 片段）
+                if (!decoded.isNullOrEmpty() && decoded.all { it.isDigit() }) return decoded
+                return null
+            }
+            return Regex("""item_id=(\d+)""", RegexOption.IGNORE_CASE)
+                .find(chapterUrl)?.groupValues?.get(1)
+        }
+
+        override suspend fun fetchSummaryCounts(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            chapterUrl: String?
+        ): SummaryResult {
+            val url = "${root(source)}/comment.php?action=counts&book_id=$bookId&item_id=$chapterId"
+            val body = fetchBody(source, url) ?: return SummaryResult()
+            val counts = HashMap<Int, Int>()
+            runCatching {
+                val rc = jsonPath.parse(body)
+                val idea = rc.read<Map<*, *>>("$.data.idea_data") ?: return@runCatching
+                idea.forEach { (k, v) ->
+                    if (k == null) return@forEach
+                    val key = k.toString()
+                    // 正文段 key 为纯数字（0基）；20000+ 为图片段，注入其它书时无法对应正文段落，跳过
+                    val idx = key.toIntOrNull() ?: return@forEach
+                    if (idx < 0 || idx >= 20000) return@forEach
+                    val m = v as? Map<*, *> ?: return@forEach
+                    val count = m["idea_count"]?.toString()?.toIntOrNull()
+                        ?: m["count"]?.toString()?.toIntOrNull()
+                        ?: return@forEach
+                    if (count > 0) counts[idx + 1] = count
+                }
+            }
+            return SummaryResult(counts)
+        }
+
+        override fun buildPclick(
+            source: BookSource,
+            bookId: String,
+            chapterId: String,
+            pid: Int,
+            chapterUrl: String?
+        ): String {
+            // comments.html 用 0基 para_index，pid 为项目 1基段落号 → 传 pid-1
+            val url = "${root(source)}/comments.html?book_id=$bookId&item_id=$chapterId" +
+                "&para_index=${pid - 1}"
             return "java.openUrl('$url');"
         }
     }
