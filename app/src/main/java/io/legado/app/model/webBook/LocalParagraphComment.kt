@@ -45,6 +45,9 @@ object LocalParagraphComment {
     /** 远程章节 URL -> 段评摘要（空摘要=该章无段评）。避免重复阅读同一章节时反复请求 */
     private val summaryCache = HashMap<String, SummaryResult>()
 
+    /** 远程章节 URL -> 远程正文非空段落（用于跨书源文本对齐修正错位）。避免反复拉取正文 */
+    private val paragraphCache = HashMap<String, List<String>>()
+
     private val adapters: List<ParagraphAdapter> = listOf(
         ShenmoAdapter,
         QidianFullAdapter,
@@ -103,8 +106,20 @@ object LocalParagraphComment {
             AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}]暂无段评")
             return content
         }
+        // 部分段评后端（起点系，如同人小说网/玖玖起点）摘要只带“非空段落号→评论数”，
+        // 本地与远端换行/分段不一致时按序号定位会整体错位。这里补充远端正文段落，
+        // 走文本对齐注入：把段评挂在真正对应的本地段落后方，修正“该有没有、不该有却有”。
+        val aligned = if (summary.remoteParagraphs.isNotEmpty()) {
+            summary
+        } else {
+            val remoteParas = synchronized(paragraphCache) { paragraphCache[remoteChapterUrl] }
+                ?: adapter.fetchRemoteParagraphs(source, remoteChapterUrl).also {
+                    synchronized(paragraphCache) { paragraphCache[remoteChapterUrl] = it }
+                }
+            if (remoteParas.isNotEmpty()) summary.copy(remoteParagraphs = remoteParas) else summary
+        }
         val injected = injectBubbles(
-            content, source, adapter, bookId, chapterId, remoteChapterUrl, summary
+            content, source, adapter, bookId, chapterId, remoteChapterUrl, aligned
         )
         if (injected != content) {
             AppLog.putReaderDebug("本地书段评: 章节[${chapter.title}] 已注入 ${summary.counts.size} 个段评气泡")
@@ -290,6 +305,28 @@ object LocalParagraphComment {
             }
         }
         return null
+    }
+
+    /** 从远程章节正文提取“非空段落”列表，供跨书源文本对齐定位：
+     *  正文为 JSON（如 玖玖 fanqie 返回 $.content）时先取文本字段，否则按原始正文处理；
+     *  含 <p> 时按 <p> 分段，否则按换行分段（与 parseFanqieCounts 的取段逻辑一致）。
+     *  段评摘要的 para_index/ParagraphId 即以“非空段落号”为基准，二者需保持一致。 */
+    private fun parseRemoteParagraphs(body: String): List<String> {
+        val trimmed = body.trimStart()
+        val content = if (trimmed.startsWith("{")) {
+            runCatching { jsonPath.parse(body).read<String>("$.data.content") }.getOrNull()
+                ?: runCatching { jsonPath.parse(body).read<String>("$.content") }.getOrNull()
+        } else {
+            null
+        } ?: body
+        val text = content.replace("\r\n", "\n").replace("\r", "\n")
+        val raw = if (text.contains("<p>", ignoreCase = true)) {
+            text.replaceFirst("<p>", "", ignoreCase = true)
+                .split(Regex("<p>", RegexOption.IGNORE_CASE))
+        } else {
+            text.split("\n")
+        }
+        return raw.map { it.trim() }.filter { it.isNotEmpty() }
     }
 
     /**
@@ -579,6 +616,15 @@ object LocalParagraphComment {
             pid: Int,
             chapterUrl: String? = null
         ): String
+
+        /**
+         * 拉取远程章节正文的“非空段落”列表，供跨书源文本对齐定位。
+         * 摘要已自带 remoteParagraphs（如番茄 review_list）的可不实现，缺省返回空。
+         */
+        suspend fun fetchRemoteParagraphs(
+            source: BookSource,
+            chapterUrl: String?
+        ): List<String> = emptyList()
     }
 
     // ---------- 通用/默认适配器（起点系镜像站 comments.php） ----------
@@ -829,6 +875,14 @@ object LocalParagraphComment {
             )
         }
 
+        override suspend fun fetchRemoteParagraphs(
+            source: BookSource,
+            chapterUrl: String?
+        ): List<String> {
+            if (chapterUrl.isNullOrBlank() || chapterUrl.startsWith("data:")) return emptyList()
+            return fetchBody(source, chapterUrl)?.let { parseRemoteParagraphs(it) }.orEmpty()
+        }
+
         override fun buildPclick(
             source: BookSource,
             bookId: String,
@@ -966,6 +1020,15 @@ object LocalParagraphComment {
                 }
             }
             return SummaryResult(counts)
+        }
+
+        /** 拉取玖玖正文后端章节内容，转成非空段落用于跨书源文本对齐，修正起点段评错位 */
+        override suspend fun fetchRemoteParagraphs(
+            source: BookSource,
+            chapterUrl: String?
+        ): List<String> {
+            if (chapterUrl.isNullOrBlank() || chapterUrl.startsWith("data:")) return emptyList()
+            return fetchBody(source, chapterUrl)?.let { parseRemoteParagraphs(it) }.orEmpty()
         }
 
         override fun buildPclick(
