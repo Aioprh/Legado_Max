@@ -216,10 +216,11 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
     private fun setupTabs() {
         if (!isHalfScreen) return
         val onClick = { mode: TabMode ->
-            if (currentTab == mode) return@let
-            currentTab = mode
-            refreshTabFilter()
-            updateTabIndicator()
+            if (currentTab != mode) {
+                currentTab = mode
+                refreshTabFilter()
+                updateTabIndicator()
+            }
         }
         binding.tabAll.setOnClickListener { onClick(TabMode.ALL) }
         binding.tabImage.setOnClickListener { onClick(TabMode.IMAGE) }
@@ -273,7 +274,7 @@ class ParagraphCommentDialog() : BaseDialogFragment(R.layout.dialog_paragraph_co
                 listOf(tabAll, tabImage, tabAudio).forEach { tv ->
                     val selected = tv === tabTextView
                     tv.setTextColor(
-                        if (selected) resources.getColor(android.R.color.primary_text_default, null)
+                        if (selected) resources.getColor(R.color.primaryText, null)
                         else resources.getColor(R.color.secondaryText, null)
                     )
                     tv.textSize = if (selected) 15f else 14f
