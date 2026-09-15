@@ -961,9 +961,9 @@ object LocalParagraphComment {
         ): String {
             val url = commentsRoot(source) + COMMENTS_ROOT +
                 "index.php/ui/" + sources(chapterUrl) + "/$bookId/$chapterId/${pid - 1}"
-            // 与本源 jsLib 的 ShowComments 一致：用 java.startBrowser 在应用内嵌浏览器打开段评网页
-            //（此前用 java.openUrl 会弹外跳浏览器确认页）。
-            return "java.startBrowser('$url','段评');"
+            // 本源 jsLib ShowComments 用 startBrowserDp（半屏）；App 侧没有该方法，
+            // 用 java.showBrowser 打开底部半屏 WebView 弹窗等价替代（不整屏跳浏览器打断阅读）。
+            return "java.showBrowser('$url');"
         }
     }
 
@@ -1079,12 +1079,13 @@ object LocalParagraphComment {
         ): String {
             // 番茄四合一的本源只提供 comments.html 网页形式的段评列表，没有结构化 JSON 接口，
             // 因此走原生列表弹窗（java.showParagraphComments）无法显示内容。
-            // 这里用 java.startBrowser 在应用内嵌浏览器打开 comments.html，与本源 jsLib
-            // 的 fqWrapperMakeBubble/showCmt 行为一致（keep_in_app 内嵌打开，非外跳浏览器）。
+            // 本源 jsLib 的 fqWrapperMakeBubble/showCmt 用 java.startBrowser 内嵌打开；
+            // 这里改用 java.showBrowser 打开底部半屏 WebView 弹窗，点击气泡直接半屏显示段评，
+            // 不再整屏跳浏览器打断阅读。
             // para_index 用 0基（项目为1基段落号 → pid-1，与 fetchSummaryCounts 的 counts 接口一致）。
             val url = "${root(source)}/comments.html?book_id=$bookId&item_id=$chapterId" +
                 "&para_index=${pid - 1}"
-            return "java.startBrowser('$url','段评');"
+            return "java.showBrowser('$url');"
         }
     }
 }
