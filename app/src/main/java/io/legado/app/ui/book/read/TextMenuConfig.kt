@@ -28,7 +28,7 @@ import io.legado.app.utils.removePref
 object TextMenuConfig {
     
     private const val TAG = "TextMenuConfig"
-    const val DEFAULT_VISIBLE_COUNT = 7
+    const val DEFAULT_VISIBLE_COUNT = 6
     const val MIN_VISIBLE_COUNT = 3
     const val MAX_VISIBLE_COUNT = 10
     
@@ -76,7 +76,7 @@ object TextMenuConfig {
         val remaining = ALL_MENU_ITEMS.filter { it.id !in order }
         return ordered + remaining
     }
-
+    
     /**
      * 获取菜单项排序（ID列表）
      */
@@ -85,7 +85,7 @@ object TextMenuConfig {
         if (json.isNullOrEmpty()) return emptyList()
         return GSON.fromJsonArray<Int>(json).getOrNull() ?: emptyList()
     }
-
+    
     /**
      * 设置菜单项排序
      * @param order 菜单项ID列表，按显示顺序排列
