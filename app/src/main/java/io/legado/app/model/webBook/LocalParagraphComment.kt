@@ -187,11 +187,12 @@ object LocalParagraphComment {
             }
         }
         if (map == null) return null
-        // 依次尝试：精确标题 -> 去空白标题 -> 全角/半角归一化标题 -> 按章节序号兜底
+        // 章节匹配只允许“标题确认过”的映射。
+        // 以前最后按 chapter.index 兜底，会在本地源插入/缺失番外、公告、卷标题时把整章段评
+        // 错挂到相邻章节；宁可不显示，也不能把别章段评显示到当前章。
         return map[chapter.title]
             ?: map[chapter.title.trim()]
-            ?: map[normalizeTitle(chapter.title)]
-            ?: map.entries.elementAtOrNull(chapter.index)?.value
+            ?: map.entries.firstOrNull { normalizeTitle(it.key) == normalizeTitle(chapter.title) }?.value
     }
 
     private suspend fun fetchChapterMap(source: BookSource, remoteBook: Book): Map<String, String>? {
@@ -455,27 +456,96 @@ object LocalParagraphComment {
         return out.joinToString("\n")
     }
 
-    /** 文本对齐：把本地非空段落映射到远程非空段落序号（-1=本地多出/未匹配）。按顺序约束匹配。 */
+    /**
+     * 文本对齐：允许“一对一 / 一对多 / 多对一”的跨书源分段差异。
+     *
+     * 书源清洗正文时很常见：一个源把两段合成一段，另一个源又把一句拆成两段。
+     * 旧实现只做 local[i] -> remote[j] 的 contains 匹配，这会在第一个拆分点之后
+     * 整体漂移。这里以连续文本为锚点，并保持远程段落顺序；每个本地段最终只绑定一个
+     * “主远程段”，如果远程一段覆盖多个本地段，则评论挂到该组最后一个本地段。
+     */
     private fun alignLocalToRemote(local: List<String>, remote: List<String>): IntArray {
-        // 预归一化：避免每轮匹配都重复做正则替换（O(n*m) 场景下是主要性能开销）
-        val normLocal = local.map { normalizePara(it) }
-        val normRemote = remote.map { normalizePara(it) }
+        val nl = local.map(::normalizePara)
+        val nr = remote.map(::normalizePara)
         val result = IntArray(local.size) { -1 }
-        var j = 0
-        normLocal.indices.forEach { i ->
-            val nl = normLocal[i]
-            if (nl.isEmpty()) return@forEach
-            var found = -1
-            for (k in j until normRemote.size) {
-                val nr = normRemote[k]
-                if (nr.isNotEmpty() && (nr == nl || nr.contains(nl) || nl.contains(nr))) {
-                    found = k
+        var li = 0
+        var ri = 0
+
+        while (li < nl.size && ri < nr.size) {
+            if (nl[li].isEmpty()) { li++; continue }
+            if (nr[ri].isEmpty()) { ri++; continue }
+
+            // 1) 最强的一对一匹配。
+            if (nl[li] == nr[ri]) {
+                result[li] = ri
+                li++; ri++
+                continue
+            }
+
+            // 2) 本地一段 = 远程连续多段。
+            var remoteJoined = nr[ri]
+            var rEnd = ri
+            var foundLocalInRemote = false
+            while (rEnd + 1 < nr.size && remoteJoined.length < nl[li].length * 2 + 80) {
+                if (remoteJoined == nl[li] || remoteJoined.contains(nl[li])) {
+                    foundLocalInRemote = true
+                    break
+                }
+                rEnd++
+                remoteJoined += nr[rEnd]
+                if (remoteJoined == nl[li] || remoteJoined.contains(nl[li])) {
+                    foundLocalInRemote = true
                     break
                 }
             }
-            if (found >= 0) {
-                result[i] = found
-                j = found + 1
+            if (foundLocalInRemote) {
+                result[li] = rEnd
+                li++
+                ri = rEnd + 1
+                continue
+            }
+
+            // 3) 远程一段 = 本地连续多段。
+            var localJoined = nl[li]
+            var lEnd = li
+            var foundRemoteInLocal = false
+            while (lEnd + 1 < nl.size && localJoined.length < nr[ri].length * 2 + 80) {
+                if (localJoined == nr[ri] || localJoined.contains(nr[ri])) {
+                    foundRemoteInLocal = true
+                    break
+                }
+                lEnd++
+                localJoined += nl[lEnd]
+                if (localJoined == nr[ri] || localJoined.contains(nr[ri])) {
+                    foundRemoteInLocal = true
+                    break
+                }
+            }
+            if (foundRemoteInLocal) {
+                // 一个远程段覆盖多个本地段：把气泡放到最后一个本地段，避免同一个
+                // 段评在拆分后的多个段尾重复显示。
+                result[lEnd] = ri
+                li = lEnd + 1
+                ri++
+                continue
+            }
+
+            // 4) 短段不允许 contains() 单独命中，避免“嗯/好/行”等对白造成错配。
+            // 对足够长的文本允许在一个很小的前瞻窗口中找精确/包含匹配。
+            var matched = false
+            val maxLookAhead = minOf(nr.size, ri + 6)
+            for (k in ri + 1 until maxLookAhead) {
+                if (nl[li].length >= 12 && (nr[k] == nl[li] || nr[k].contains(nl[li]) || nl[li].contains(nr[k]))) {
+                    result[li] = k
+                    li++
+                    ri = k + 1
+                    matched = true
+                    break
+                }
+            }
+            if (!matched) {
+                // 当前本地段无法可靠匹配，跳过它但不消费远程段，允许后面的锚点重新对齐。
+                li++
             }
         }
         return result
@@ -485,9 +555,15 @@ object LocalParagraphComment {
     private val HTML_TAG_REGEX = Regex("<[^>]*>")
     private val WHITESPACE_REGEX = Regex("\\s+")
 
-    /** 段落文本归一化：去 HTML 标签、空白，用于跨书源比对 */
+    /** 段落文本归一化：去 HTML 标签、空白及常见不可见字符，用于跨书源比对。 */
     private fun normalizePara(s: String): String {
-        return HTML_TAG_REGEX.replace(s, "").replace(WHITESPACE_REGEX, "").trim()
+        return HTML_TAG_REGEX.replace(s, "")
+            .replace(WHITESPACE_REGEX, "")
+            .replace("\u200B", "")
+            .replace("\u200C", "")
+            .replace("\u200D", "")
+            .replace("\uFEFF", "")
+            .trim()
     }
 
     /**
@@ -819,13 +895,73 @@ object LocalParagraphComment {
                 source,
                 "$API?action=paragraph_summary&book_id=$bookId&chapter_id=$chapterId"
             ) ?: return SummaryResult()
-            return SummaryResult(
-                parseCounts(
-                    body, "$.data.summary",
-                    pidKeys = listOf("ParagraphId", "paragraphId"),
-                    countKeys = listOf("CommentCount", "commentCount", "TextCount", "textCount")
-                )
+
+            val counts = parseCounts(
+                body, "$.data.summary",
+                pidKeys = listOf("ParagraphId", "paragraphId"),
+                countKeys = listOf("CommentCount", "commentCount", "TextCount", "textCount")
             )
+            if (counts.isEmpty()) return SummaryResult()
+
+            // 关键修复：同人小说网的 paragraph_summary 只有“段号 -> 数量”，
+            // 不能直接拿本地正文的第 N 个非空行去硬对应。该书源实际正文来自 qd.aadcn.cn，
+            // 这里同时拉取远程章节正文，交给跨书源文本对齐器处理。
+            val remoteContent = fetchRemoteChapterContent(source, bookId, chapterId)
+            val remoteParagraphs = splitRemoteParagraphs(remoteContent)
+            return SummaryResult(
+                counts = counts,
+                apiPids = counts.keys.associateWith { it },
+                remoteParagraphs = remoteParagraphs
+            )
+        }
+
+        /**
+         * 获取“起点限免（同人小说网）”实际使用的 qd.aadcn.cn 章节正文。
+         * 书源 qd_jslib.js 的 requestApiUrl('/novel/chap') 也是走这个接口。
+         */
+        private suspend fun fetchRemoteChapterContent(
+            source: BookSource,
+            bookId: String,
+            chapterId: String
+        ): String? {
+            val token = source.getVariable().trim()
+            val headers = if (token.isNotEmpty()) {
+                mapOf("Authorization" to "Bearer $token")
+            } else {
+                null
+            }
+            val body = fetchBody(
+                source,
+                "https://qd.aadcn.cn/novel/chap?novelId=$bookId&chapId=$chapterId",
+                headers
+            ) ?: return null
+
+            return runCatching {
+                val rc = jsonPath.parse(body)
+                sequenceOf(
+                    "$.data.content",
+                    "$.data.Content",
+                    "$.content",
+                    "$.Content"
+                ).mapNotNull { path ->
+                    runCatching { rc.read<String>(path) }.getOrNull()
+                }.firstOrNull { it.isNotBlank() }
+            }.getOrNull()
+        }
+
+        /** 统一远程正文的 HTML/换行分段；与实际书源 getComments 的文本分段保持一致。 */
+        private fun splitRemoteParagraphs(content: String?): List<String> {
+            if (content.isNullOrBlank()) return emptyList()
+            val normalized = content.replace("\r\n", "\n").replace("\r", "\n")
+            val raw = if (Regex("<p\\b", RegexOption.IGNORE_CASE).containsMatchIn(normalized)) {
+                normalized
+                    .replace(Regex("<p\\b[^>]*>", RegexOption.IGNORE_CASE), "\n")
+                    .replace(Regex("</p>", RegexOption.IGNORE_CASE), "\n")
+                    .split("\n")
+            } else {
+                normalized.split("\n")
+            }
+            return raw.map { it.trim() }.filter { it.isNotEmpty() }
         }
 
         override fun buildPclick(
