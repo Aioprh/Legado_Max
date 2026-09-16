@@ -62,6 +62,12 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
     private val menuMarginDp = 8
     private val menuGapDp = 6
 
+    private var lastAnchorView: View? = null
+    private var lastWindowHeight = 0
+    private var lastStartX = 0
+    private var lastStartTopY = 0
+    private var lastStartBottomY = 0
+
     init {
         @SuppressLint("InflateParams")
         contentView = binding.root
@@ -94,10 +100,11 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
                 adapter.setItems(visibleMenuItems)
                 binding.recyclerView.visible()
             }
-            // 菜单高度可能在展开/收起后变化，重新计算位置。
             if (isShowing) {
                 binding.root.post {
-                    repositionMenu(binding.root, lastWindowHeight, lastStartX, lastStartTopY, lastStartBottomY)
+                    lastAnchorView?.let { anchor ->
+                        repositionMenu(anchor, lastWindowHeight, lastStartX, lastStartTopY, lastStartBottomY)
+                    }
                 }
             }
         }
@@ -112,11 +119,6 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
             binding.ivMenuMore.isVisible = moreMenuItems.isNotEmpty()
         }
     }
-
-    private var lastWindowHeight = 0
-    private var lastStartX = 0
-    private var lastStartTopY = 0
-    private var lastStartBottomY = 0
 
     private fun dp(value: Int): Int {
         return (value * context.resources.displayMetrics.density + 0.5f).toInt()
@@ -225,8 +227,6 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
             showAtLocation(view, Gravity.TOP or Gravity.START, x, y)
         }
 
-        // RecyclerView/Flexbox 首次布局完成后再校准一次，解决字体缩放、系统字体和更多菜单展开
-        // 导致的实际高度变化。
         root.post {
             if (!isShowing) return@post
             val actualWidth = root.width.coerceAtLeast(1)
@@ -261,6 +261,7 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
         endBottomY: Int
     ) {
         upMenu()
+        lastAnchorView = view
         lastWindowHeight = windowHeight
         lastStartX = startX
         lastStartTopY = startTopY
