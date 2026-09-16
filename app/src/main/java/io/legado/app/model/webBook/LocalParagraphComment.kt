@@ -47,10 +47,11 @@ object LocalParagraphComment {
             AppLog.put("本地书段评: 无法从书源[${source.bookSourceName}]的URL提取书籍/章节ID")
             return content
         }
-        val cached = synchronized(summaryCache) { summaryCache[remoteChapterUrl] }
+        val cacheKey = "$bookId|$chapterId|$remoteChapterUrl"
+        val cached = synchronized(summaryCache) { summaryCache[cacheKey] }
         val summary = if (cached != null && cached.counts.isNotEmpty()) cached else
             adapter.fetchSummaryCounts(source, bookId, chapterId, remoteChapterUrl).also {
-                if (it.counts.isNotEmpty()) synchronized(summaryCache) { summaryCache[remoteChapterUrl] = it }
+                if (it.counts.isNotEmpty()) synchronized(summaryCache) { summaryCache[cacheKey] = it }
             }
         if (summary.counts.isEmpty()) return content
         return injectBubbles(content, source, adapter, bookId, chapterId, remoteChapterUrl, summary)
@@ -59,16 +60,34 @@ object LocalParagraphComment {
     private suspend fun getRemoteBook(book: Book, source: BookSource): Book? {
         val key = "${book.bookUrl}|${source.bookSourceUrl}"
         synchronized(remoteBookCache) { if (remoteBookCache.containsKey(key)) return remoteBookCache[key] }
-        val remote = WebBook.preciseSearchAwait(source, book.name, book.author).getOrNull()
+
+        val precise = WebBook.preciseSearchAwait(source, book.name, book.author).getOrNull()
+        val remote = precise?.takeIf { isRemoteBookMatch(it.toBook(), book.name, book.author) }
             ?: fuzzySearchRemoteBook(source, book.name, book.author)
+
         if (remote == null) {
-            AppLog.put("本地书段评: 书源[${source.bookSourceName}]未搜索到《${book.name}》(${book.author})")
+            AppLog.put("本地书段评: 书源[${source.bookSourceName}]未严格匹配到《${book.name}》(${book.author})")
             synchronized(remoteBookCache) { remoteBookCache[key] = null }
             return null
         }
         val full = runCatching { WebBook.getBookInfoAwait(source, remote) }.getOrDefault(remote)
+        if (!isRemoteBookMatch(full.toBook(), book.name, book.author)) {
+            AppLog.put("本地书段评: 书源[${source.bookSourceName}]详情页校验失败《${book.name}》(${book.author})")
+            synchronized(remoteBookCache) { remoteBookCache[key] = null }
+            return null
+        }
         synchronized(remoteBookCache) { remoteBookCache[key] = full }
         return full
+    }
+
+    private fun isRemoteBookMatch(remote: Book, name: String, author: String): Boolean {
+        val expectedName = normalizeTitle(name)
+        val actualName = normalizeTitle(remote.name)
+        if (expectedName.isEmpty() || actualName != expectedName) return false
+        val expectedAuthor = normalizeTitle(author)
+        if (expectedAuthor.isEmpty()) return true
+        val actualAuthor = normalizeTitle(remote.author)
+        return actualAuthor == expectedAuthor
     }
 
     private suspend fun fuzzySearchRemoteBook(source: BookSource, name: String, author: String): Book? {
@@ -76,12 +95,11 @@ object LocalParagraphComment {
         if (list.isEmpty()) return null
         val n = normalizeTitle(name)
         val a = normalizeTitle(author)
-        list.firstOrNull { normalizeTitle(it.name) == n }?.toBook()?.let { return it }
-        if (a.isNotEmpty()) list.firstOrNull { normalizeTitle(it.author) == a }?.toBook()?.let { return it }
-        return list.firstOrNull {
-            val bn = normalizeTitle(it.name)
-            bn.isNotEmpty() && (bn.contains(n) || n.contains(bn))
-        }?.toBook() ?: list.first().toBook()
+        return list.asSequence()
+            .map { it.toBook() }
+            .firstOrNull { remote ->
+                normalizeTitle(remote.name) == n && (a.isEmpty() || normalizeTitle(remote.author) == a)
+            }
     }
 
     private suspend fun getRemoteChapterUrl(book: Book, chapter: BookChapter, source: BookSource, remoteBook: Book): String? {
