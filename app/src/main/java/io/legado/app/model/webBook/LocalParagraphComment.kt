@@ -272,12 +272,12 @@ object LocalParagraphComment {
         fun match(source: BookSource): Boolean
         fun extractBookId(bookUrl: String, chapterUrl: String): String?
         fun extractChapterId(chapterUrl: String): String?
-        suspend fun fetchSummaryCounts(source: BookSource, bookId: String, chapterId: String, chapterUrl: String? = null): SummaryResult
-        fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int, chapterUrl: String? = null): String
+        suspend fun fetchSummaryCounts(source: BookSource, bookId: String, chapterId: String, chapterUrl: String?): SummaryResult
+        fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int, chapterUrl: String?): String
     }
 
     private object GenericAdapter : ParagraphAdapter {
-        private val ENDPOINT = Regex("""https?://[^'"\s]*?(?:comments?|reviews?)\.[a-z]+""", RegexOption.IGNORE_CASE)
+        private val ENDPOINT = Regex("""https?://[^'\"\\s]*?(?:comments?|reviews?)\\.[a-z]+""", RegexOption.IGNORE_CASE)
         override fun match(source: BookSource) = true
         override fun extractBookId(bookUrl: String, chapterUrl: String) = pickId(bookUrl, "book_id") ?: pickId(chapterUrl, "book_id")
         override fun extractChapterId(chapterUrl: String) = pickId(chapterUrl, "chapter_id")
@@ -301,7 +301,7 @@ object LocalParagraphComment {
         override fun extractBookId(bookUrl: String, chapterUrl: String) = if (fanqie(chapterUrl)) pickId(chapterUrl, "book_id") ?: pickId(bookUrl, "bookId") else pickId(bookUrl, "bookId") ?: pickId(chapterUrl, "bookId")
         override fun extractChapterId(chapterUrl: String) = if (fanqie(chapterUrl)) pickId(chapterUrl, "item_id") else pickId(chapterUrl, "chapterId") ?: pickId(chapterUrl, "chapter_id")
         override suspend fun fetchSummaryCounts(source: BookSource, bookId: String, chapterId: String, chapterUrl: String?): SummaryResult {
-            if (fanqie(chapterUrl)) return parseFanqieCounts(fetchBody(source, chapterUrl) ?: return SummaryResult())
+            if (fanqie(chapterUrl)) return parseFanqieCounts(fetchBody(source, chapterUrl ?: return SummaryResult()) ?: return SummaryResult())
             val token = runCatching { CookieStore.getKey("https://m.qidian.com", "_csrfToken") }.getOrDefault("")
             val body = fetchBody(source, "$QD?bookId=$bookId&chapterId=$chapterId&_csrfToken=$token", mapOf("User-Agent" to "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36", "Cookie" to "qd_client_id=$token; _csrfToken=$token")) ?: return SummaryResult()
             return SummaryResult(parseCounts(body, "$.data.list", listOf("paragraphId", "ParagraphId"), listOf("textCount", "TextCount", "commentCount", "CommentCount")))
@@ -379,56 +379,55 @@ object LocalParagraphComment {
         override fun match(source: BookSource) = source.bookSourceUrl.contains("sunianxincue.love", true) || source.bookSourceUrl.contains("sunianxin.cmcure.com", true) || source.bookSourceName.contains("玖玖小说", true)
         override fun extractBookId(bookUrl: String, chapterUrl: String) = trailingNumber(bookUrl) ?: pickId(bookUrl, "book_id") ?: pickId(chapterUrl, "book_id")
         override fun extractChapterId(chapterUrl: String) = pickId(chapterUrl, "item_id") ?: trailingNumber(chapterUrl)
-        private fun sources(chapterUrl: String?) = chapterUrl?.let { Regex("""/api/content/([a-z]+)/""", RegexOption.IGNORE_CASE).find(it)?.groupValues?.get(1) } ?: "fanqie"
-        private fun trailingNumber(url: String) = Regex("""/(\d+)(?=[/?]|$)""").find(url)?.groupValues?.get(1)
+        private fun sources(chapterUrl: String): String? = Regex("/api/content/([a-z0-9_]+)", RegexOption.IGNORE_CASE).find(chapterUrl)?.groupValues?.get(1)
         override suspend fun fetchSummaryCounts(source: BookSource, bookId: String, chapterId: String, chapterUrl: String?): SummaryResult {
-            val body = fetchBody(source, "$COMMENTS_ROOT${sources(chapterUrl)}/$bookId/$chapterId") ?: return SummaryResult()
+            val src = sources(chapterUrl ?: return SummaryResult()) ?: return SummaryResult()
+            val body = fetchBody(source, "$COMMENTS_ROOT$src/$bookId/$chapterId") ?: return SummaryResult()
             val counts = HashMap<Int, Int>()
             runCatching {
-                jsonPath.parse(body).read<List<Any?>>("$.data.distributions").filterIsInstance<Map<*, *>>().forEach { d ->
-                    val idx = d["para_index"]?.toString()?.toIntOrNull() ?: return@forEach
-                    val c = d["count"]?.toString()?.toIntOrNull() ?: return@forEach
-                    if (idx >= 0 && c > 0) counts[idx + 1] = (counts[idx + 1] ?: 0) + c
+                val list = jsonPath.parse(body).read<List<Map<String, Any?>>>("$.data.distributions")
+                list.forEach { m ->
+                    val idx = (m["para_index"] ?: m["paraIndex"])?.toString()?.toIntOrNull() ?: return@forEach
+                    val count = (m["count"] ?: m["comment_count"] ?: m["commentCount"])?.toString()?.toIntOrNull() ?: 0
+                    if (idx >= 0 && count > 0) counts[idx + 1] = count
                 }
             }
             return SummaryResult(counts)
         }
-        override fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int, chapterUrl: String?): String =
-            webHalfScreenScript("${COMMENTS_ROOT}index.php/ui/${sources(chapterUrl)}/$bookId/$chapterId/${pid - 1}", "段评")
-    }
-
-    private fun splitRemoteParagraphs(content: String?): List<String> {
-        if (content.isNullOrBlank()) return emptyList()
-        val n = content.replace("\r\n", "\n").replace("\r", "\n")
-        val raw = if (Regex("<p\\b", RegexOption.IGNORE_CASE).containsMatchIn(n))
-            n.replace(Regex("<p\\b[^>]*>", RegexOption.IGNORE_CASE), "\n").replace(Regex("</p>", RegexOption.IGNORE_CASE), "\n").split("\n")
-        else n.split("\n")
-        return raw.map { it.trim() }.filter { it.isNotEmpty() }
-    }
-
-    private fun parseFanqieCounts(body: String): SummaryResult = runCatching {
-        val rc = jsonPath.parse(body)
-        val content = sequenceOf("$.content", "$.data.content").mapNotNull { runCatching { rc.read<String>(it) }.getOrNull() }.firstOrNull()
-        val list = sequenceOf("$.review_list", "$.data.review_list").mapNotNull { runCatching { rc.read<List<Any?>>(it) }.getOrNull() }.firstOrNull() ?: return@runCatching SummaryResult()
-        val normalized = content?.replace("\r\n", "\n")?.replace("\r", "\n")
-        val raw = if (normalized?.contains("<p>", true) == true) normalized.replaceFirst("<p>", "", true).split(Regex("<p>", RegexOption.IGNORE_CASE)) else normalized?.split("\n") ?: emptyList()
-        val lineToPara = HashMap<Int, Int>(); var p = 0
-        raw.forEachIndexed { i, line -> if (line.trim().isNotEmpty()) { p++; lineToPara[i + 1] = p } }
-        val remote = raw.map(String::trim).filter(String::isNotEmpty)
-        val counts = HashMap<Int, Int>(); val pids = HashMap<Int, Int>()
-        list.filterIsInstance<Map<*, *>>().forEach { m ->
-            val rawLine = firstIntValue(m, listOf("paragraphId", "ParagraphId")) ?: return@forEach
-            val para = lineToPara[rawLine] ?: rawLine
-            val count = firstIntValue(m, listOf("textCount", "TextCount", "commentCount", "CommentCount")) ?: 0
-            val apiPid = firstIntValue(m, listOf("paraIndex", "ParaIndex")) ?: rawLine
-            if (para > 0 && count > 0) { counts[para] = count; pids[para] = apiPid }
+        override fun buildPclick(source: BookSource, bookId: String, chapterId: String, pid: Int, chapterUrl: String?): String {
+            val src = sources(chapterUrl ?: return "") ?: return ""
+            return webHalfScreenScript("${COMMENTS_ROOT}index.php/ui/$src/$bookId/$chapterId/${pid - 1}", "段评")
         }
-        SummaryResult(counts, pids, remote)
-    }.getOrDefault(SummaryResult())
+    }
+
+    private fun trailingNumber(url: String): String? = Regex("(?:/|=)(\\d+)(?:$|[?#])").find(url)?.groupValues?.get(1)
+
+    private fun parseFanqieCounts(body: String): SummaryResult {
+        val counts = HashMap<Int, Int>()
+        runCatching {
+            val root = jsonPath.parse(body)
+            val candidates = listOf("$.data.idea_data", "$.data.ideaData", "$.idea_data", "$.data")
+            for (path in candidates) {
+                val map = runCatching { root.read<Map<String, Any?>>(path) }.getOrNull() ?: continue
+                map.forEach { (k, v) ->
+                    val idx = k.toIntOrNull() ?: return@forEach
+                    val c = (v as? Map<*, *>)?.entries?.firstOrNull { it.key.toString().equals("idea_count", true) || it.key.toString().equals("count", true) }?.value?.toString()?.toIntOrNull() ?: v.toString().toIntOrNull() ?: 0
+                    if (idx >= 0 && c > 0) counts[idx + 1] = c
+                }
+                if (counts.isNotEmpty()) break
+            }
+        }
+        return SummaryResult(counts)
+    }
+
+    private fun splitRemoteParagraphs(text: String?): List<String> {
+        if (text.isNullOrBlank()) return emptyList()
+        return text.replace("\\r\\n", "\\n").split("\\n").map { it.trim() }.filter { it.isNotEmpty() }
+    }
 
     private fun webHalfScreenScript(url: String, title: String): String {
-        val safeUrl = url.replace("\\", "\\\\").replace("'", "\\'")
-        val safeTitle = title.replace("\\", "\\\\").replace("'", "\\'")
+        val safeUrl = url.replace("\\\\", "\\\\\\\\").replace("'", "\\\\'")
+        val safeTitle = title.replace("\\\\", "\\\\\\\\").replace("'", "\\\\'")
         return "try{java.showBrowser('$safeUrl',null,'window.java=java;',JSON.stringify({expandedCornersRadius:20,dismissOnTouchOutside:true,isDraggable:true,shouldDimBackground:true,backgroundDimAmount:0.5,hardwareAccelerated:true,isNestedScrollingEnabled:true,isGestureInsetBottomIgnored:true,setFitToContents:false,heightPercentage:0.75,isHideable:true}))}catch(e){java.startBrowser('$safeUrl','$safeTitle')}"
     }
 }
