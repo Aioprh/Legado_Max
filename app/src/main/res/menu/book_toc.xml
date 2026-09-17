@@ -32,6 +32,11 @@
         android:visible="true">
 
         <item
+            android:id="@+id/menu_refresh_toc"
+            android:title="@string/refresh"
+            app:showAsAction="never" />
+
+        <item
             android:id="@+id/menu_reverse_toc"
             android:title="@string/reverse_toc"
             app:showAsAction="never" />
