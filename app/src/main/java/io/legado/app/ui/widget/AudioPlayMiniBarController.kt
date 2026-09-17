@@ -52,6 +52,7 @@ class AudioPlayMiniBarController(
     private var lastBookUrl: String? = null
     private var initialized = false
     private var bottomAnchor: View? = null
+    private var bottomAnchors: List<View> = emptyList()
     private var bottomAnchorLayoutListener: View.OnLayoutChangeListener? = null
     private var imeVisible = false
     private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
@@ -225,13 +226,6 @@ class AudioPlayMiniBarController(
         parent.addOnLayoutChangeListener(parentLayoutListener)
     }
 
-    /**
-     * 迷你播放栏保持真正的悬浮层，不改变页面布局高度。
-     * 只给滚动容器（RecyclerView/ComposeView/ScrollView 等）增加“播放栏本身”所占的
-     * 额外滚动空间，底部导航已有的安全区不重复计算，避免出现多余大空白。
-     * 主界面以 content_container 为根，其他页面一律从内容根视图递归，
-     * 保证各页面底部的按钮/选项都能滚动到播放悬浮栏上方。
-     */
     private fun updateContentSafeArea() {
         val container = contentContainer ?: parent
         val miniBar = binding.audioPlayMiniBar
@@ -246,7 +240,7 @@ class AudioPlayMiniBarController(
         miniBar.getLocationOnScreen(miniLocation)
         val miniTop = miniLocation[1] - containerLocation[1]
 
-        val navigation = bottomAnchor?.takeIf { it.isShown && it.height > 0 }
+        val navigation = resolveBottomAnchor()
         val contentBottom = if (navigation != null) {
             val navigationLocation = IntArray(2)
             navigation.getLocationOnScreen(navigationLocation)
@@ -342,10 +336,6 @@ class AudioPlayMiniBarController(
         return null
     }
 
-    /**
-     * WebView 页面自身可能存在 position:fixed/sticky 的底部导航。
-     * 这里直接从网页 DOM 获取真实遮挡高度，并与 Android 系统安全区、原生底栏一起取最大值。
-     */
     private fun updateWebViewSafeArea() {
         val found = findWebView(parent)
         if (found == null) {
@@ -436,9 +426,20 @@ class AudioPlayMiniBarController(
         )
     }
 
+    private fun resolveBottomAnchor(): View? {
+        val visible = bottomAnchors.filter { it.isShown && it.height > 0 }
+        if (visible.isEmpty()) return null
+        return visible.maxByOrNull { view ->
+            val location = IntArray(2)
+            view.getLocationOnScreen(location)
+            location[1] + view.height
+        }
+    }
+
     private fun updateBottomMargin() {
         if (destroyed) return
-        val navigation = bottomAnchor?.takeIf { it.isShown && it.height > 0 }
+        val navigation = resolveBottomAnchor()
+        bottomAnchor = navigation
         val baseMargin = when {
             navigation != null -> {
                 val parentLocation = IntArray(2)
@@ -464,21 +465,18 @@ class AudioPlayMiniBarController(
         binding.root.post { updateContentSafeArea() }
     }
 
-    /**
-     * 底部锚点：优先主界面底部导航，其次带 SelectActionBar 的管理页底部操作栏。
-     * 悬浮栏会浮在锚点上方，避免覆盖底部选项。
-     */
     private fun bindBottomNavigationAnchor() {
-        val navigation = activity.findViewById<View>(R.id.bottom_navigation_glass)
-            ?: activity.findViewById<View>(R.id.select_action_bar)
-            ?: return
-        bottomAnchor = navigation
-        bottomAnchorLayoutListener = object : View.OnLayoutChangeListener {
-            override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
-                updateBottomMargin()
-            }
+        bottomAnchors = listOfNotNull(
+            activity.findViewById<View>(R.id.select_action_bar),
+            activity.findViewById<View>(R.id.bottom_navigation_glass)
+        )
+        if (bottomAnchors.isEmpty()) return
+
+        bottomAnchor = resolveBottomAnchor()
+        bottomAnchorLayoutListener = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateBottomMargin()
         }
-        navigation.addOnLayoutChangeListener(bottomAnchorLayoutListener)
+        bottomAnchors.forEach { it.addOnLayoutChangeListener(bottomAnchorLayoutListener) }
         parent.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
             override fun onLayoutChange(v: View, left: Int, top: Int, right: Int, bottom: Int, oldLeft: Int, oldTop: Int, oldRight: Int, oldBottom: Int) {
                 updateBottomMargin()
