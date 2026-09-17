@@ -27,6 +27,7 @@ import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.gone
 import io.legado.app.utils.showDialogFragment
+import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import io.legado.app.utils.visible
 
@@ -145,6 +146,21 @@ class TocActivity : VMBaseActivity<ActivityChapterListBinding, TocViewModel>(),
                     item.isChecked = !item.isChecked
                     book.setSplitLongChapter(item.isChecked)
                     upBookAndToc(book)
+                }
+            }
+
+            R.id.menu_refresh_toc -> {
+                item.isEnabled = false
+                waitDialog.show()
+                viewModel.refreshChapterList { error ->
+                    waitDialog.dismiss()
+                    item.isEnabled = true
+                    if (error == null) {
+                        viewModel.chapterListCallBack?.upChapterList(searchView?.query?.toString())
+                        toastOnUi("目录刷新成功")
+                    } else {
+                        toastOnUi("目录刷新失败：${error.localizedMessage ?: error.javaClass.simpleName}")
+                    }
                 }
             }
 
