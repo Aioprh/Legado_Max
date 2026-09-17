@@ -11,8 +11,10 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.book.BookHelp
+import io.legado.app.help.book.isLocalTxt
 import io.legado.app.model.ReadBook
 import io.legado.app.model.localBook.LocalBook
+import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.GSON
 import io.legado.app.utils.createFileIfNotExist
@@ -46,6 +48,57 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
             LocalBook.getChapterList(book).let {
                 appDb.bookChapterDao.delByBook(book.bookUrl)
                 appDb.bookChapterDao.insert(*it.toTypedArray())
+                appDb.bookDao.update(book)
+                ReadBook.onChapterListUpdated(book)
+                bookData.postValue(book)
+            }
+        }.onSuccess {
+            complete.invoke(null)
+        }.onError {
+            complete.invoke(it)
+        }
+    }
+
+    /**
+     * 手动刷新在线书籍目录。
+     *
+     * 与普通的目录显示不同，这里会强制重新请求书源目录，并执行
+     * ruleToc.preUpdateJs，从而支持书源通过 java.refreshTocUrl()/
+     * java.reGetBook() 重新获取最新目录地址。只有新目录完整解析成功后
+     * 才替换数据库中的旧目录，避免网络失败导致原目录丢失。
+     *
+     * 本地 TXT 等本地书籍仍走 LocalBook 的目录解析逻辑。
+     */
+    fun refreshChapterList(complete: (Throwable?) -> Unit) {
+        execute {
+            val book = bookData.value ?: throw NoStackTraceException(
+                context.getString(R.string.no_book)
+            )
+
+            if (book.isLocalTxt) {
+                LocalBook.getChapterList(book).let { chapters ->
+                    appDb.bookChapterDao.delByBook(book.bookUrl)
+                    appDb.bookChapterDao.insert(*chapters.toTypedArray())
+                    appDb.bookDao.update(book)
+                    ReadBook.onChapterListUpdated(book)
+                    bookData.postValue(book)
+                }
+            } else {
+                val source = appDb.bookSourceDao.getBookSource(book.origin)
+                    ?: throw NoStackTraceException("找不到书源：${book.origin}")
+
+                // runPerJs=true：刷新时执行书源的 preUpdateJs，兼容需要动态
+                // 重新获取 tocUrl / 重新获取书籍详情的书源。
+                val chapters = WebBook.getChapterListAwait(
+                    bookSource = source,
+                    book = book,
+                    runPerJs = true
+                ).getOrThrow()
+
+                // WebBook/BookChapterList 已完成章节缓存迁移；新目录完整成功后
+                // 再替换旧目录，避免刷新失败把现有目录清空。
+                appDb.bookChapterDao.delByBook(book.bookUrl)
+                appDb.bookChapterDao.insert(*chapters.toTypedArray())
                 appDb.bookDao.update(book)
                 ReadBook.onChapterListUpdated(book)
                 bookData.postValue(book)
