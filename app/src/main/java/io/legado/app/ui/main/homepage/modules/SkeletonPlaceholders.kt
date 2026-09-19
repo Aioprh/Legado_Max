@@ -248,7 +248,7 @@ fun HomepageModuleSkeleton(
                 }
             }
         }
-        HomepageModuleType.ButtonGroup -> {}
+        HomepageModuleType.ButtonGroup, HomepageModuleType.SmartFilter -> {}
         HomepageModuleType.Unknown -> {}
     }
 }
