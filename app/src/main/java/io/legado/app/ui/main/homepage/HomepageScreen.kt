@@ -1052,6 +1052,10 @@ private fun HomepageModuleItem(
                     )
                 }
 
+                is ModuleLoadState.DiscoverSources -> {
+                    // 旧版发现聚合状态保留兼容，但首页不再单独渲染。
+                }
+
                 is ModuleLoadState.RankingTabs -> {
                     RankingTabsModule(
                         tabs = state.tabs,
