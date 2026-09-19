@@ -248,42 +248,6 @@ fun HomepageModuleSkeleton(
                 }
             }
         }
-        HomepageModuleType.DiscoverHub -> {
-            Column(
-                modifier = modifier,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                repeat(2) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        repeat(2) {
-                            GlassCard(modifier = Modifier.weight(1f), cornerRadius = 14.dp) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    SkeletonBox(
-                                        modifier = Modifier.fillMaxWidth(0.7f).height(14.dp),
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    SkeletonBox(
-                                        modifier = Modifier.fillMaxWidth(0.4f).height(10.dp),
-                                    )
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        repeat(3) {
-                                            SkeletonBox(
-                                                modifier = Modifier.width(44.dp).height(22.dp),
-                                                cornerRadius = 8.dp,
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
         HomepageModuleType.SearchBar -> {
             SkeletonBox(
                 modifier = modifier.fillMaxWidth().height(44.dp),
