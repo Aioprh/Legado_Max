@@ -14,10 +14,10 @@ import org.junit.Test
 class UpdateTest {
 
     private val lastReleaseUrl =
-        "https://github.com"
+        "https://gitee.com/api/v5/repos/lyc486/legado/releases/latest"
 
     private val lastBetaReleaseUrl =
-        "https://github.com"
+        "https://gitee.com/api/v5/repos/lyc486/legado/releases/tags/beta"
 
     @Test
     fun updateApp_beta() {
