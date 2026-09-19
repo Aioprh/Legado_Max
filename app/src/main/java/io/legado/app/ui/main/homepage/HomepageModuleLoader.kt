@@ -49,6 +49,13 @@ import java.util.concurrent.ConcurrentHashMap
  * 该引擎不感知 UI 布局模式 / 预加载 Tab 过滤 / 书架状态等展示层逻辑，
  * 这些仍留在 [HomepageViewModel] 的响应式 Flow 编排中。
  */
+private suspend inline fun <T> runSuspendCatching(crossinline block: suspend () -> T): Result<T> =
+    try {
+        Result.success(block())
+    } catch (e: Throwable) {
+        Result.failure(e)
+    }
+
 class HomepageModuleLoader(
     private val scope: CoroutineScope,
     private val gateway: HomepageModulesGateway,
@@ -165,7 +172,7 @@ class HomepageModuleLoader(
         }
         if (moduleCategory == HomepageModuleCategory.SmartFilter) {
             loadJobs[module.id] = scope.launch {
-                runCatching {
+                runSuspendCatching {
                     val source = withContext(Dispatchers.IO) {
                         appDb.bookSourceDao.getBookSource(module.sourceUrl)
                     } ?: throw Exception("Source not found")
@@ -237,7 +244,7 @@ class HomepageModuleLoader(
             return
         }
         loadJobs[module.id] = scope.launch {
-            kotlin.runCatching {
+            runSuspendCatching {
                 // 检查是否为订阅源模块
                 val rssSource = appDb.rssSourceDao.getByKey(module.sourceUrl)
                 if (rssSource != null) {
@@ -303,7 +310,7 @@ class HomepageModuleLoader(
         }
 
         loadJobs[module.id] = scope.launch {
-            runCatching {
+            runSuspendCatching {
                 val sourceStates = ConcurrentHashMap<String, AggregateSourceState>()
                 val groups = coroutineScope {
                     config.queries.map { query ->
@@ -376,7 +383,7 @@ class HomepageModuleLoader(
         val nextPage = currentState.page + 1
         _contentStates.update { it + (globalId to currentState.copy(isLoadingMore = true)) }
         scope.launch {
-            kotlin.runCatching {
+            runSuspendCatching {
                 val module = gateway.getById(globalId) ?: throw Exception("Module not found")
                 val aggregate = HomepageAggregation.parse(module.args)
                 if (aggregate.queries.size >= 2) {
@@ -541,7 +548,7 @@ class HomepageModuleLoader(
         // 取消之前的加载任务
         loadJobs[jobKey]?.cancel()
         loadJobs[jobKey] = scope.launch {
-            kotlin.runCatching {
+            runSuspendCatching {
                 val books = if (rssSource != null) {
                     val (articles, _) = withContext(Dispatchers.IO) {
                         Rss.getArticlesAwait(title.ifBlank { rssSource.sourceName }, url, rssSource, page = page)
