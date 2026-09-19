@@ -961,6 +961,8 @@ private fun HomepageModuleItem(
 
                         HomepageModuleType.ButtonGroup -> {}
                         HomepageModuleType.SmartFilter -> {}
+                        HomepageModuleType.DiscoverHub -> {}
+                        HomepageModuleType.SearchBar -> {}
                         HomepageModuleType.Unknown -> {}
                     }
                 }
