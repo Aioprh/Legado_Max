@@ -183,6 +183,8 @@ fun HomepageModuleManageSheet(
         onDismissRequest = handleDismiss,
         title = title,
         skipPartiallyExpanded = true,
+        // 管理页内部使用 LazyColumn，自身负责滚动；禁止外层滚动避免到底后与 BottomSheet 争抢手势导致上下抖动。
+        scrollable = false,
         startAction = if (canGoBack) {
             {
                 IconButton(onClick = { handleBack() }) {
