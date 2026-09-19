@@ -8,27 +8,27 @@
     <View
         android:id="@+id/preference_divider_above"
         android:layout_width="match_parent"
-        android:layout_height="10dp" />
+        android:layout_height="12dp" />
 
     <TextView
         android:id="@+id/preference_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="16dp"
+        android:paddingStart="18dp"
         android:paddingTop="8dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="7dp"
-        android:textColor="@color/accent"
+        android:paddingEnd="18dp"
+        android:paddingBottom="8dp"
+        android:textColor="@color/glass_section_title"
         android:textSize="13sp"
         android:textStyle="bold"
-        android:letterSpacing="0.03"
+        android:letterSpacing="0.04"
         android:textAllCaps="false"
         tools:ignore="RtlSymmetry" />
 
     <View
         android:id="@+id/preference_divider_below"
         android:layout_width="match_parent"
-        android:layout_height="4dp"
+        android:layout_height="5dp"
         android:visibility="gone" />
 
 </LinearLayout>
