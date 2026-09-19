@@ -4,6 +4,8 @@
     android:id="@+id/toolbar"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/bg_title_bar_glass"
+    android:elevation="0dp"
     android:theme="@style/AppTheme.AppBarOverlay.Dark"
     app:titleTextAppearance="@style/ToolbarTitle"
     app:popupTheme="@style/AppTheme.PopupOverlay" />
