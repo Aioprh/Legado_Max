@@ -30,6 +30,24 @@ data class HomepageBookItemUi(
 )
 
 /**
+ * 发现聚合（DiscoverHub）中单个书源的 UI 数据
+ *
+ * @property sourceUrl 书源 URL
+ * @property name 书源名称
+ * @property group 书源分组（作为描述展示，showDesc=1 时显示）
+ * @property updateTime 书源最后更新时间（showTime=1 时显示）
+ * @property kinds 该书源的可导航发现分类
+ */
+@Stable
+data class DiscoverSourceUi(
+    val sourceUrl: String,
+    val name: String,
+    val group: String? = null,
+    val updateTime: Long = 0,
+    val kinds: List<ExploreKind> = emptyList(),
+)
+
+/**
  * 首页整体 UI 状态
  *
  * @property modules 模块列表
@@ -131,6 +149,14 @@ sealed interface ModuleLoadState {
      */
     @Stable
     data class Error(val message: String) : ModuleLoadState
+
+    /**
+     * 发现聚合状态（DiscoverHub）
+     *
+     * @property sources 所有启用发现的书源聚合总览
+     */
+    @Stable
+    data class DiscoverSources(val sources: List<DiscoverSourceUi>) : ModuleLoadState
 }
 
 /**

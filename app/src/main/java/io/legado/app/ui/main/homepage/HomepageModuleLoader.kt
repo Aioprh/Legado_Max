@@ -25,6 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -107,6 +108,14 @@ class HomepageModuleLoader(
         loadJobs[module.id]?.cancel()
         val moduleType = HomepageModuleType.fromKey(module.type)
         val moduleCategory = HomepageModuleSpec.category(moduleType)
+        // 独立组件（SearchBar）：无内容加载。置为空 Loaded 状态，
+        // 避免保持 Loading 导致自动加载反复触发与刷新完成检测一直挂起。
+        if (moduleCategory == HomepageModuleCategory.Standalone) {
+            _contentStates.update {
+                it + (module.id to ModuleLoadState.Loaded(emptyList()))
+            }
+            return
+        }
         if (moduleCategory == HomepageModuleCategory.SmartFilter) {
             loadJobs[module.id] = scope.launch {
                 runCatching {
@@ -150,6 +159,29 @@ class HomepageModuleLoader(
                     }
                 }.onSuccess { kinds ->
                     _contentStates.update { it + (module.id to ModuleLoadState.Buttons(kinds)) }
+                }.onFailure { e ->
+                    _contentStates.update { it + (module.id to ModuleLoadState.Error(e.stackTraceStr)) }
+                }
+            }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
+            return
+        }
+        // 发现聚合（DiscoverHub）：聚合所有启用发现的书源及其可导航分类
+        if (moduleCategory == HomepageModuleCategory.SourceDiscovery) {
+            loadJobs[module.id] = scope.launch {
+                kotlin.runCatching {
+                    withContext(Dispatchers.IO) {
+                        appDb.bookSourceDao.flowExplore().first().map { source ->
+                            DiscoverSourceUi(
+                                sourceUrl = source.bookSourceUrl,
+                                name = source.bookSourceName,
+                                group = source.bookSourceGroup,
+                                updateTime = source.lastUpdateTime,
+                                kinds = source.exploreKinds()
+                            )
+                        }
+                    }
+                }.onSuccess { sources ->
+                    _contentStates.update { it + (module.id to ModuleLoadState.DiscoverSources(sources)) }
                 }.onFailure { e ->
                     _contentStates.update { it + (module.id to ModuleLoadState.Error(e.stackTraceStr)) }
                 }
