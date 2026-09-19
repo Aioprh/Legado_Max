@@ -26,6 +26,7 @@ import io.legado.app.ui.widget.components.card.GlassCard
 @Composable
 fun SmartFilterModule(
     kinds: List<ExploreKind>,
+    sourceUrl: String,
     onSelect: (ExploreKind, String) -> Unit,
     onUrlClick: (String, String, String) -> Unit,
     modifier: Modifier = Modifier,
@@ -129,7 +130,7 @@ fun SmartFilterModule(
                     val url = kind.url?.takeIf { it.isNotBlank() }
                     if (url != null) {
                         GlassCard(
-                            onClick = { onUrlClick("", url, kind.title) },
+                            onClick = { onUrlClick(sourceUrl, url, kind.title) },
                             modifier = Modifier.fillMaxWidth(),
                             cornerRadius = 12.dp
                         ) {
