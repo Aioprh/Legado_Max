@@ -20,6 +20,8 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.stackTraceStr
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,6 +60,12 @@ class HomepageModuleLoader(
 
     /** 各加载任务的 Job 表，key 为模块 ID 或 "模块ID_tab_序号" */
     private val loadJobs = ConcurrentHashMap<String, Job>()
+    private val contentCache = ConcurrentHashMap<String, CachedModuleState>()
+
+    private data class CachedModuleState(
+        val state: ModuleLoadState,
+        val cachedAt: Long,
+    )
 
     private val _contentStates = MutableStateFlow<Map<String, ModuleLoadState>>(emptyMap())
     val contentStates: StateFlow<Map<String, ModuleLoadState>> = _contentStates.asStateFlow()
@@ -79,11 +87,13 @@ class HomepageModuleLoader(
     /** 清空所有模块内容状态（整页刷新时置空，交由自动加载重新拉取） */
     fun clearAllContent() {
         _contentStates.value = emptyMap()
+        contentCache.clear()
     }
 
     /** 清空单个模块的内容状态 */
     fun clearContent(id: String) {
         _contentStates.update { it - id }
+        contentCache.keys.removeIf { it.startsWith(id + "::") }
     }
 
     /** 清空一批模块的内容状态（按源集删除 / 关闭时使用） */
@@ -105,6 +115,24 @@ class HomepageModuleLoader(
      */
     fun loadModule(module: ModuleItem) {
         loadJobs[module.id]?.cancel()
+
+        // 聚合模块：args 为 {"sources":[{"sourceUrl":"...","url":"..."}],"limit":30}
+        val aggregate = HomepageAggregation.parse(module.args)
+        if (aggregate.queries.size >= 2) {
+            loadAggregatedModule(module, aggregate)
+            return
+        }
+
+        val cacheKey = moduleCacheKey(module)
+        val cacheTtl = HomepageAggregation.cacheTtlMillis(module.layoutConfig)
+        if (cacheTtl > 0L) {
+            val cached = contentCache[cacheKey]
+            if (cached != null && System.currentTimeMillis() - cached.cachedAt < cacheTtl) {
+                _contentStates.update { it + (module.id to cached.state) }
+                return
+            }
+        }
+
         val moduleType = HomepageModuleType.fromKey(module.type)
         val moduleCategory = HomepageModuleSpec.category(moduleType)
         // 独立组件（SearchBar）：无内容加载。置为空 Loaded 状态，
@@ -217,8 +245,7 @@ class HomepageModuleLoader(
                     result.books to result.hasMore
                 }
             }.onSuccess { (books, hasMore) ->
-                _contentStates.update {
-                    it + (module.id to ModuleLoadState.Loaded(
+                val loadedState = ModuleLoadState.Loaded(
                         books = books.map { book ->
                             HomepageBookItemUi(
                                 book = book,
@@ -230,8 +257,65 @@ class HomepageModuleLoader(
                         hasMore = hasMore,
                         page = 1,
                         isLoadingMore = false
-                    ))
-                }
+                    )
+                contentCache[moduleCacheKey(module)] = CachedModuleState(loadedState, System.currentTimeMillis())
+                _contentStates.update { it + (module.id to loadedState) }
+            }.onFailure { e ->
+                _contentStates.update { it + (module.id to ModuleLoadState.Error(e.stackTraceStr)) }
+            }
+        }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
+    }
+
+    private fun moduleCacheKey(module: ModuleItem): String =
+        module.id + "::" + module.url.orEmpty() + "::" + module.args.orEmpty() + "::" + module.type
+
+    private fun loadAggregatedModule(module: ModuleItem, config: HomepageAggregateConfig) {
+        val cacheKey = moduleCacheKey(module)
+        val cacheTtl = HomepageAggregation.cacheTtlMillis(module.layoutConfig)
+        if (cacheTtl > 0L) {
+            val cached = contentCache[cacheKey]
+            if (cached != null && System.currentTimeMillis() - cached.cachedAt < cacheTtl) {
+                _contentStates.update { it + (module.id to cached.state) }
+                return
+            }
+        }
+
+        loadJobs[module.id] = scope.launch {
+            runCatching {
+                coroutineScope {
+                    config.queries.map { query ->
+                        async(Dispatchers.IO) {
+                            val rssSource = appDb.rssSourceDao.getByKey(query.sourceUrl)
+                            if (rssSource != null) {
+                                val sortUrl = query.url ?: rssSource.sourceUrl
+                                val sortName = query.title?.ifBlank { null } ?: rssSource.sourceName
+                                val (articles, _) = Rss.getArticlesAwait(sortName, sortUrl, rssSource, page = 1)
+                                rssArticlesToSearchBooks(rssSource, articles)
+                            } else {
+                                exploreBooksUseCase.execute(
+                                    sourceUrl = query.sourceUrl,
+                                    moduleUrl = query.url,
+                                    args = query.args,
+                                    page = 1
+                                ).books
+                            }
+                        }
+                    }.map { it.await() }
+                }.let { HomepageAggregation.merge(it, config.limit) }
+            }.onSuccess { books ->
+                val state = ModuleLoadState.Loaded(
+                    books = books.map { book ->
+                        HomepageBookItemUi(
+                            book = book,
+                            shelfState = BookshelfMatcher.getState(book.name, book.author, book.bookUrl)
+                        )
+                    },
+                    hasMore = true,
+                    page = 1,
+                    isLoadingMore = false
+                )
+                contentCache[cacheKey] = CachedModuleState(state, System.currentTimeMillis())
+                _contentStates.update { it + (module.id to state) }
             }.onFailure { e ->
                 _contentStates.update { it + (module.id to ModuleLoadState.Error(e.stackTraceStr)) }
             }
@@ -247,19 +331,40 @@ class HomepageModuleLoader(
         scope.launch {
             kotlin.runCatching {
                 val module = gateway.getById(globalId) ?: throw Exception("Module not found")
-                val isRanking = HomepageModuleSpec.isRankingTabs(HomepageModuleType.fromKey(module.type))
-                val effectiveUrl = if (isRanking) {
-                    parseRankingCategories(module.args)?.firstOrNull()?.second?.ifBlank { null }
-                        ?: module.url
+                val aggregate = HomepageAggregation.parse(module.args)
+                if (aggregate.queries.size >= 2) {
+                    coroutineScope {
+                        aggregate.queries.map { query ->
+                            async(Dispatchers.IO) {
+                                val rssSource = appDb.rssSourceDao.getByKey(query.sourceUrl)
+                                if (rssSource != null) {
+                                    val sortUrl = query.url ?: rssSource.sourceUrl
+                                    val sortName = query.title?.ifBlank { null } ?: rssSource.sourceName
+                                    val (articles, _) = Rss.getArticlesAwait(sortName, sortUrl, rssSource, page = nextPage)
+                                    rssArticlesToSearchBooks(rssSource, articles)
+                                } else {
+                                    exploreBooksUseCase.execute(
+                                        sourceUrl = query.sourceUrl,
+                                        moduleUrl = query.url,
+                                        args = query.args,
+                                        page = nextPage
+                                    ).books
+                                }
+                            }
+                        }.map { it.await() }
+                    }.let { HomepageAggregation.merge(it, aggregate.limit) }
                 } else {
-                    module.url
+                    val isRanking = HomepageModuleSpec.isRankingTabs(HomepageModuleType.fromKey(module.type))
+                    val effectiveUrl = if (isRanking) {
+                        parseRankingCategories(module.args)?.firstOrNull()?.second?.ifBlank { null } ?: module.url
+                    } else module.url
+                    exploreBooksUseCase.execute(
+                        sourceUrl = module.sourceUrl,
+                        moduleUrl = effectiveUrl,
+                        args = module.args,
+                        page = nextPage
+                    ).books
                 }
-                exploreBooksUseCase.execute(
-                    sourceUrl = module.sourceUrl,
-                    moduleUrl = effectiveUrl,
-                    args = module.args,
-                    page = nextPage
-                )
             }.onSuccess { result ->
                 _contentStates.update { states ->
                     val lastState = states[globalId] as? ModuleLoadState.Loaded ?: return@update states
