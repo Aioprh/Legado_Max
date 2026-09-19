@@ -202,7 +202,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
             // 跳过已隐藏的集
             if (setUrl in hidden) return@flatMap emptyList()
             val mods = grouped[customSetUrl(setId)] ?: emptyList()
-            mods.map { module ->
+            mods.mapNotNull { module ->
                 val source = sourcesCache[module.sourceUrl]
                 val sourceName = source?.bookSourceName ?: module.sourceUrl
                 val setName = module.customSetId?.let { setNames[it] } ?: sourceName
