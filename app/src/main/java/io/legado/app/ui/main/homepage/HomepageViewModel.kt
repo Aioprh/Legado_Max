@@ -525,6 +525,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                 toUpsert.add(
                     existing.copy(
                         type = def.type, title = def.title, args = def.args, url = def.url,
+                        layoutConfig = def.layoutConfig,
                         sourceJsonHash = newHash, syncedAt = System.currentTimeMillis()
                     )
                 )
@@ -538,6 +539,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                         title = def.title,
                         args = def.args,
                         url = def.url,
+                        layoutConfig = def.layoutConfig,
                         isEnabled = true,
                         customSetId = "src_${source.bookSourceUrl}",
                         sortOrder = i,
@@ -549,6 +551,28 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }
         if (toUpsert.isNotEmpty()) gateway.upsertAll(toUpsert)
         if (parsedIds.isNotEmpty()) gateway.deleteStale(source.bookSourceUrl, parsedIds.toList())
+    }
+
+    // 订阅源文章 → SearchBook：去除 HTML 标签得到纯文本简介，复用现有书籍 UI
+    private fun rssArticlesToSearchBooks(
+        rssSource: RssSource,
+        articles: List<RssArticle>
+    ): List<SearchBook> {
+        return articles.map { article ->
+            val introText = article.description?.let {
+                Html.fromHtml(it, Html.FROM_HTML_MODE_LEGACY).toString().trim()
+            }
+            SearchBook(
+                bookUrl = article.link,
+                origin = rssSource.sourceUrl,
+                originName = rssSource.sourceName,
+                name = article.title,
+                coverUrl = article.image,
+                intro = introText,
+                author = rssSource.sourceName,
+                latestChapterTitle = article.pubDate
+            )
+        }
     }
 
     private fun loadModule(module: ModuleItem) {
@@ -636,27 +660,12 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                         Rss.getArticlesAwait(sortName, sortUrl, rssSource, page = 1)
                     }
                     // 转换为 SearchBook 以复用现有 UI
-                    val books = articles.map { article ->
-                        // 描述规则：去除 HTML 标签得到纯文本
-                        val introText = article.description?.let {
-                            Html.fromHtml(it, Html.FROM_HTML_MODE_LEGACY).toString().trim()
-                        }
-                        SearchBook(
-                            bookUrl = article.link,
-                            origin = rssSource.sourceUrl,
-                            originName = rssSource.sourceName,
-                            name = article.title,
-                            coverUrl = article.image,
-                            intro = introText,
-                            author = rssSource.sourceName,
-                            latestChapterTitle = article.pubDate,
-                        )
-                    }
+                    val books = rssArticlesToSearchBooks(rssSource, articles)
                     books to false
                 } else {
                     // 书源加载（原有逻辑）
                     val effectiveUrl = if (isRanking) {
-                        parseRankingCategories(module.args)?.firstOrNull()?.second?.ifBlank { null }
+                        rankingCategoryPairs?.firstOrNull()?.second?.ifBlank { null }
                             ?: module.url
                     } else {
                         module.url
@@ -816,18 +825,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
                     val (articles, _) = withContext(Dispatchers.IO) {
                         Rss.getArticlesAwait(title.ifBlank { rssSource.sourceName }, url, rssSource, page = page)
                     }
-                    articles.map { article ->
-                        SearchBook(
-                            bookUrl = article.link,
-                            origin = rssSource.sourceUrl,
-                            originName = rssSource.sourceName,
-                            name = article.title,
-                            coverUrl = article.image,
-                            intro = article.description?.let { Html.fromHtml(it, Html.FROM_HTML_MODE_LEGACY).toString().trim() },
-                            author = rssSource.sourceName,
-                            latestChapterTitle = article.pubDate,
-                        )
-                    }
+                    rssArticlesToSearchBooks(rssSource, articles)
                 } else {
                     val result = exploreBooksUseCase.execute(
                         sourceUrl = sourceUrl,
