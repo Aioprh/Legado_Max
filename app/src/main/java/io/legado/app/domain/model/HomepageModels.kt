@@ -93,41 +93,8 @@ enum class HomepageModuleCategory {
 }
 
 /**
- * 首页模块规格注册表 —— 集中登记各模块类型的加载/分页/语意元数据。
- * 新增模块类型时：补一个 [HomepageModuleType] 枚举项 + 一个渲染器，
- * 并在本注册表登记其 [HomepageModuleCategory] 与分页能力即可。
+ * 首页模块规格由 HomepageModuleRegistry 统一管理。
  */
-object HomepageModuleSpec {
-    fun category(type: HomepageModuleType): HomepageModuleCategory = when (type) {
-        HomepageModuleType.SmartFilter -> HomepageModuleCategory.SmartFilter
-        HomepageModuleType.ButtonGroup -> HomepageModuleCategory.ButtonGroup
-        HomepageModuleType.SearchBar -> HomepageModuleCategory.Standalone
-        HomepageModuleType.Ranking,
-        HomepageModuleType.GridRanking -> HomepageModuleCategory.RankingTabs
-        HomepageModuleType.Banner,
-        HomepageModuleType.Card,
-        HomepageModuleType.Grid,
-        HomepageModuleType.InfiniteGrid,
-        HomepageModuleType.Waterfall,
-        HomepageModuleType.Unknown -> HomepageModuleCategory.BookList
-    }
-
-    /** 该类型是否支持"加载更多"（分页/无限流） */
-    fun canLoadMore(type: HomepageModuleType): Boolean = when (type) {
-        HomepageModuleType.InfiniteGrid,
-        HomepageModuleType.Waterfall,
-        HomepageModuleType.Ranking,
-        HomepageModuleType.GridRanking -> true
-        else -> false
-    }
-
-    fun isRankingTabs(type: HomepageModuleType): Boolean =
-        category(type) == HomepageModuleCategory.RankingTabs
-
-    fun isBookList(type: HomepageModuleType): Boolean =
-        category(type) == HomepageModuleCategory.BookList
-}
-
 /**
  * 首页模块布局配置注册表 —— 集中登记每种类型可配置的布局选项及其默认值。
  *
