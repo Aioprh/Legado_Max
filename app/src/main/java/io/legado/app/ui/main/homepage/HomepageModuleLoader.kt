@@ -302,35 +302,58 @@ class HomepageModuleLoader(
 
         loadJobs[module.id] = scope.launch {
             runCatching {
-                coroutineScope {
+                val sourceStates = ConcurrentHashMap<String, AggregateSourceState>()
+                val groups = coroutineScope {
                     config.queries.map { query ->
                         async(Dispatchers.IO) {
-                            val rssSource = appDb.rssSourceDao.getByKey(query.sourceUrl)
-                            if (rssSource != null) {
-                                val sortUrl = query.url ?: rssSource.sourceUrl
-                                val sortName = query.title?.ifBlank { null } ?: rssSource.sourceName
-                                val (articles, _) = Rss.getArticlesAwait(sortName, sortUrl, rssSource, page = 1)
-                                rssArticlesToSearchBooks(rssSource, articles)
-                            } else {
-                                exploreBooksUseCase.execute(
-                                    sourceUrl = query.sourceUrl,
-                                    moduleUrl = query.url,
-                                    args = query.args,
-                                    page = 1
-                                ).books
+                            val key = aggregateSourceKey(query)
+                            val state = AggregateSourceState()
+                            try {
+                                val rssSource = appDb.rssSourceDao.getByKey(query.sourceUrl)
+                                val books: List<SearchBook>
+                                val hasMore: Boolean
+                                if (rssSource != null) {
+                                    val sortUrl = query.url ?: rssSource.sourceUrl
+                                    val sortName = query.title?.ifBlank { null } ?: rssSource.sourceName
+                                    val result = Rss.getArticlesAwait(sortName, sortUrl, rssSource, page = 1)
+                                    books = rssArticlesToSearchBooks(rssSource, result.first)
+                                    hasMore = result.second
+                                } else {
+                                    val result = exploreBooksUseCase.execute(
+                                        sourceUrl = query.sourceUrl,
+                                        moduleUrl = query.url,
+                                        args = query.args,
+                                        page = 1
+                                    )
+                                    books = result.books
+                                    hasMore = result.hasMore
+                                }
+                                state.hasMore = hasMore
+                                state.lastSuccessAt = System.currentTimeMillis()
+                                sourceStates[key] = state
+                                books
+                            } catch (e: Exception) {
+                                state.hasMore = false
+                                state.consecutiveFailures = 1
+                                state.lastError = e.stackTraceStr
+                                sourceStates[key] = state
+                                emptyList()
                             }
                         }
                     }.map { it.await() }
-                }.let { HomepageAggregation.merge(it, config.limit) }
-            }.onSuccess { books ->
+                }
+                aggregateStates[cacheKey] = sourceStates.toMutableMap()
+                val merged = HomepageAggregation.merge(groups, config.limit)
+                HomepagePageResult(merged, sourceStates.values.any { it.hasMore })
+            }.onSuccess { result ->
                 val state = ModuleLoadState.Loaded(
-                    books = books.map { book ->
+                    books = result.books.map { book ->
                         HomepageBookItemUi(
                             book = book,
                             shelfState = BookshelfMatcher.getState(book.name, book.author, book.bookUrl)
                         )
                     },
-                    hasMore = true,
+                    hasMore = result.hasMore,
                     page = 1,
                     isLoadingMore = false
                 )
@@ -342,6 +365,8 @@ class HomepageModuleLoader(
         }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
     }
 
+    private fun aggregateSourceKey(query: HomepageSourceQuery): String =
+        query.sourceUrl + "::" + query.url.orEmpty() + "::" + query.title.orEmpty()
     /** 无限流模块加载更多（分页追加，去重） */
     fun loadMoreModule(globalId: String) {
         val currentState = _contentStates.value[globalId] as? ModuleLoadState.Loaded ?: return
