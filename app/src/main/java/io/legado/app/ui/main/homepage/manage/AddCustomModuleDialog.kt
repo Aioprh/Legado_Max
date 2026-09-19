@@ -83,6 +83,8 @@ fun AddCustomModuleDialog(
     var type by remember { mutableStateOf(HomepageModuleType.Grid.key) }
     var args by remember { mutableStateOf("") }
     var layoutConfig by remember { mutableStateOf("") }
+    var cacheSeconds by remember { mutableStateOf("") }
+    var showIfJson by remember { mutableStateOf("") }
     // 模块类型下拉菜单的展开状态
     var typeMenuExpanded by remember { mutableStateOf(false) }
 
@@ -112,6 +114,12 @@ fun AddCustomModuleDialog(
             type = prefill?.type?.ifBlank { HomepageModuleType.Grid.key } ?: HomepageModuleType.Grid.key
             args = prefill?.args ?: ""
             layoutConfig = prefill?.layoutConfig ?: ""
+            val map = runCatching {
+                @Suppress("UNCHECKED_CAST")
+                (GSON.fromJson(prefill?.layoutConfig, Map::class.java) ?: emptyMap<String, Any?>()) as Map<String, Any?>
+            }.getOrDefault(emptyMap())
+            cacheSeconds = map["cacheSeconds"]?.toString().orEmpty()
+            showIfJson = GSON.toJson(map["showIf"] ?: emptyMap<String, Any?>()).takeIf { it != "{}" }.orEmpty()
         }
     }
 
@@ -198,6 +206,25 @@ fun AddCustomModuleDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                Text("缓存策略", style = MaterialTheme.typography.labelLarge)
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                    value = cacheSeconds,
+                    onValueChange = { cacheSeconds = it.filter(Char::isDigit) },
+                    label = { Text("缓存秒数（0=不缓存）") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = showIfJson,
+                    onValueChange = { showIfJson = it },
+                    label = { Text("显示条件 JSON（可选）") },
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 // 布局配置：优先提供可视化数值项，类型无可配项时回落为原始 JSON 输入
                 if (layoutOptions.isEmpty()) {
                     OutlinedTextField(
@@ -231,9 +258,24 @@ fun AddCustomModuleDialog(
             // 确认按钮：构造模块定义对象并回调
             TextButton(
                 onClick = {
-                    val effectiveLayoutConfig = if (layoutOptions.isEmpty()) {
-                        layoutConfig.ifBlank { null }
+                    val layoutMap = runCatching {
+                        @Suppress("UNCHECKED_CAST")
+                        (GSON.fromJson(layoutConfig, Map::class.java) ?: emptyMap<String, Any?>()) as Map<String, Any?>
+                    }.getOrDefault(emptyMap()).toMutableMap()
+                    layoutOptions.forEach { opt ->
+                        layoutMap[opt.key] = configValues[opt.key]?.toIntOrNull() ?: opt.default
+                    }
+                    cacheSeconds.toIntOrNull()?.let { layoutMap["cacheSeconds"] = it.coerceIn(0, 86400) }
+                    if (showIfJson.isNotBlank()) {
+                        runCatching {
+                            @Suppress("UNCHECKED_CAST")
+                            layoutMap["showIf"] = (GSON.fromJson(showIfJson, Map::class.java)
+                                ?: emptyMap<String, Any?>()) as Map<String, Any?>
+                        }
                     } else {
+                        layoutMap.remove("showIf")
+                    }
+                    val effectiveLayoutConfig = if (layoutMap.isEmpty()) null else GSON.toJson(layoutMap) else {
                         // 由可视化配置项序列化为 JSON，例如 {"columns":"4","maxRows":"2"}
                         layoutOptions.joinToString(prefix = "{", postfix = "}") { opt ->
                             "\"${opt.key}\":${configValues[opt.key]?.toIntOrNull() ?: opt.default}"
