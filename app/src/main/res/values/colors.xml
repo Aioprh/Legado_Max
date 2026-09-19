@@ -104,21 +104,4 @@
     <!-- 目录专用：当前章节使用中性浅灰，不使用粉色主题强调 -->
     <color name="toc_current_bg">#FFECECEC</color>
     <color name="toc_current_border">#FFD2D2D2</color>
-
-    <!-- Liquid Glass design tokens: shared by preference cards and future glass surfaces -->
-    <color name="glass_card_shadow">#180B1724</color>
-    <color name="glass_card_start">#BDFBFCFE</color>
-    <color name="glass_card_center">#8AF5F7FA</color>
-    <color name="glass_card_end">#66E8EDF2</color>
-    <color name="glass_card_highlight">#38FFFFFF</color>
-    <color name="glass_card_bottom_tint">#180F2538</color>
-    <color name="glass_card_stroke">#42FFFFFF</color>
-    <color name="glass_card_stroke_strong">#66FFFFFF</color>
-    <color name="glass_card_pressed_start">#D4FFFFFF</color>
-    <color name="glass_card_pressed_center">#A8EEF1F5</color>
-    <color name="glass_card_pressed_end">#82DCE3EA</color>
-    <color name="glass_card_focus_start">#C8FFFFFF</color>
-    <color name="glass_card_focus_center">#98F3F5F8</color>
-    <color name="glass_card_focus_end">#72E1E7ED</color>
-    <color name="glass_section_title">#8A52677A</color>
-
+</resources>
