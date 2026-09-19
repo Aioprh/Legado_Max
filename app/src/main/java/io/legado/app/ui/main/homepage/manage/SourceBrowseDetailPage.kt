@@ -158,7 +158,6 @@ fun SourceBrowseDetailPage(
             )
         }
     }
-}
     if (showSmartDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -222,6 +221,8 @@ fun SourceBrowseDetailPage(
         )
     }
 
+
+}
 /**
  * Tab 0: 已加入的模块
  *
