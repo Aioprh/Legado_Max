@@ -99,6 +99,7 @@ class HomepageModuleLoader(
     /** 清空一批模块的内容状态（按源集删除 / 关闭时使用） */
     fun clearContent(ids: Collection<String>) {
         _contentStates.update { states -> states.filterKeys { it !in ids } }
+        ids.forEach { id -> contentCache.keys.removeIf { it.startsWith(id + "::") } }
     }
 
     /** 将模块置为 Loading，等待自动加载重新拉取（失败重试） */
@@ -378,12 +379,14 @@ class HomepageModuleLoader(
                         )
                     }
                     val finalHasMore = if (deduped.isEmpty()) false else result.hasMore
-                    states + (globalId to ModuleLoadState.Loaded(
+                    val updatedState = ModuleLoadState.Loaded(
                         books = lastState.books + deduped,
                         hasMore = finalHasMore,
                         isLoadingMore = false,
                         page = nextPage
-                    ))
+                    )
+                    contentCache[moduleCacheKey(module)] = CachedModuleState(updatedState, System.currentTimeMillis())
+                    states + (globalId to updatedState)
                 }
             }.onFailure { e ->
                 _contentStates.update { states ->
