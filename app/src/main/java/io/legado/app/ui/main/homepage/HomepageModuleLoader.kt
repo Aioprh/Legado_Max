@@ -61,6 +61,15 @@ class HomepageModuleLoader(
     /** 各加载任务的 Job 表，key 为模块 ID 或 "模块ID_tab_序号" */
     private val loadJobs = ConcurrentHashMap<String, Job>()
     private val contentCache = ConcurrentHashMap<String, CachedModuleState>()
+    private val aggregateStates = ConcurrentHashMap<String, MutableMap<String, AggregateSourceState>>()
+
+    private data class AggregateSourceState(
+        var page: Int = 1,
+        var hasMore: Boolean = true,
+        var consecutiveFailures: Int = 0,
+        var lastError: String? = null,
+        var lastSuccessAt: Long = 0L,
+    )
 
     private data class CachedModuleState(
         val state: ModuleLoadState,
@@ -93,18 +102,23 @@ class HomepageModuleLoader(
     fun clearAllContent() {
         _contentStates.value = emptyMap()
         contentCache.clear()
+        aggregateStates.clear()
     }
 
     /** 清空单个模块的内容状态 */
     fun clearContent(id: String) {
         _contentStates.update { it - id }
         contentCache.keys.removeIf { it.startsWith(id + "::") }
+        aggregateStates.keys.removeIf { it.startsWith(id + "::") }
     }
 
     /** 清空一批模块的内容状态（按源集删除 / 关闭时使用） */
     fun clearContent(ids: Collection<String>) {
         _contentStates.update { states -> states.filterKeys { it !in ids } }
-        ids.forEach { id -> contentCache.keys.removeIf { it.startsWith(id + "::") } }
+        ids.forEach { id ->
+            contentCache.keys.removeIf { it.startsWith(id + "::") }
+            aggregateStates.keys.removeIf { it.startsWith(id + "::") }
+        }
     }
 
     /** 将模块置为 Loading，等待自动加载重新拉取（失败重试） */
