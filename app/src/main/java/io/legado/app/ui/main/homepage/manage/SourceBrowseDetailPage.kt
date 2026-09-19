@@ -644,7 +644,5 @@ private fun ModuleItem(
             )
         }
     }
-        }
-    }
 
 }
