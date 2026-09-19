@@ -165,8 +165,8 @@ class HomepageModuleLoader(
             }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
             return
         }
-        // 发现聚合（DiscoverHub）：聚合所有启用发现的书源及其可导航分类
-        if (moduleCategory == HomepageModuleCategory.SourceDiscovery) {
+        // 发现聚合（DiscoverHub）：聚合所有启用发现的书源及其可导航分类。
+            // 单书源分类解析失败不拖垮整块，回退为空分类继续展示其余书源。
             loadJobs[module.id] = scope.launch {
                 kotlin.runCatching {
                     withContext(Dispatchers.IO) {
@@ -176,7 +176,8 @@ class HomepageModuleLoader(
                                 name = source.bookSourceName,
                                 group = source.bookSourceGroup,
                                 updateTime = source.lastUpdateTime,
-                                kinds = source.exploreKinds()
+                                kinds = kotlin.runCatching { source.exploreKinds() }
+                                    .getOrDefault(emptyList())
                             )
                         }
                     }
@@ -187,7 +188,6 @@ class HomepageModuleLoader(
                 }
             }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
             return
-        }
         // 排行榜多分类模式：args 包含多个 {t:标题, u:URL} 对象
         val isRanking = HomepageModuleSpec.isRankingTabs(moduleType)
         val rankingCategoryPairs = if (isRanking) parseRankingCategories(module.args) else null
