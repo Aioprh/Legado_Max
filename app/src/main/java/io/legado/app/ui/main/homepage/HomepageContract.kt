@@ -108,6 +108,10 @@ sealed interface ModuleLoadState {
     @Stable
     data class Buttons(val kinds: List<ExploreKind>) : ModuleLoadState
 
+    /** 支持 select/toggle/url/button 等多级发现控件的智能筛选模块 */
+    @Stable
+    data class SmartFilters(val kinds: List<ExploreKind>) : ModuleLoadState
+
     /**
      * 排行榜多 Tab 状态（支持 Ranking / GridRanking 多分类）
      *
