@@ -25,7 +25,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -159,31 +158,6 @@ class HomepageModuleLoader(
                     }
                 }.onSuccess { kinds ->
                     _contentStates.update { it + (module.id to ModuleLoadState.Buttons(kinds)) }
-                }.onFailure { e ->
-                    _contentStates.update { it + (module.id to ModuleLoadState.Error(e.stackTraceStr)) }
-                }
-            }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
-            return
-        }
-        // 发现聚合（DiscoverHub）：聚合所有启用发现的书源及其可导航分类。
-        if (moduleCategory == HomepageModuleCategory.SourceDiscovery) {
-            // 单书源分类解析失败不拖垮整块，回退为空分类继续展示其余书源。
-            loadJobs[module.id] = scope.launch {
-                kotlin.runCatching {
-                    withContext(Dispatchers.IO) {
-                        appDb.bookSourceDao.flowExplore().first().map { source ->
-                            DiscoverSourceUi(
-                                sourceUrl = source.bookSourceUrl,
-                                name = source.bookSourceName,
-                                group = source.bookSourceGroup,
-                                updateTime = source.lastUpdateTime,
-                                kinds = kotlin.runCatching { source.exploreKinds() }
-                                    .getOrDefault(emptyList())
-                            )
-                        }
-                    }
-                }.onSuccess { sources ->
-                    _contentStates.update { it + (module.id to ModuleLoadState.DiscoverSources(sources)) }
                 }.onFailure { e ->
                     _contentStates.update { it + (module.id to ModuleLoadState.Error(e.stackTraceStr)) }
                 }
