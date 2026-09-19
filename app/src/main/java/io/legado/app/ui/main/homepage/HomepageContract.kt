@@ -261,6 +261,8 @@ data class HomepageManageActions(
     val onAddCustomModule: (String, String?, ModuleDef) -> Unit,
     val onAddButtonGroupFromKinds: (String, String?, String, List<String>) -> Unit,
     val onGetExploreKinds: suspend (String) -> List<ExploreKind>,
+    /** 根据书源自动分析 homepageModules / 发现分类并生成首页模块方案 */
+    val onSmartConfigureSource: suspend (String, String?) -> List<ModuleDef>,
     val onGetRssKinds: suspend (String) -> List<Pair<String, String>>,
     val onAddRssCustomModule: (String, String?, ModuleDef) -> Unit,
     val onAddRssButtonGroupFromKinds: (String, String?, String, List<String>) -> Unit,
