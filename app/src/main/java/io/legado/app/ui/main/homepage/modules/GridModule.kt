@@ -55,8 +55,8 @@ fun GridModule(
         if (maxRows != null) rows = rows.take(maxRows)
         Column(
             modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
         for (row in rows) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -144,6 +144,7 @@ fun GridModule(
                 }
                 repeat(resolvedColumns - row.size) { Spacer(Modifier.weight(1f)) }
             }
+        }
         }
     }
 }
