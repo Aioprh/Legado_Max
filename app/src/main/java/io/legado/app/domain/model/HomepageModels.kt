@@ -67,6 +67,7 @@ enum class HomepageModuleType(val key: String, @StringRes val titleRes: Int) {
     Card("card", R.string.module_type_card),
     InfiniteGrid("infiniteGrid", R.string.module_type_infinite_grid),
     ButtonGroup("buttonGroup", R.string.module_type_button_group),
+    SmartFilter("smartFilter", R.string.module_type_button_group),
     Waterfall("waterfall", R.string.module_type_waterfall),
     Unknown("", R.string.unknown_type);
 
