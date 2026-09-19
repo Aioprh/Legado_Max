@@ -326,7 +326,7 @@ class HomepageModuleLoader(
                                     val sortName = query.title?.ifBlank { null } ?: rssSource.sourceName
                                     val result = Rss.getArticlesAwait(sortName, sortUrl, rssSource, page = 1)
                                     books = rssArticlesToSearchBooks(rssSource, result.first)
-                                    hasMore = result.second
+                                    hasMore = !result.second.isNullOrBlank()
                                 } else {
                                     val result = exploreBooksUseCase.execute(
                                         sourceUrl = query.sourceUrl,
