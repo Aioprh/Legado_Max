@@ -93,7 +93,6 @@ import io.legado.app.ui.main.homepage.manage.HomepageModuleManageSheet
 import io.legado.app.ui.main.homepage.modules.BannerModule
 import io.legado.app.ui.main.homepage.modules.ButtonGroupModule
 import io.legado.app.ui.main.homepage.modules.CardModule
-import io.legado.app.ui.main.homepage.modules.DiscoverHubModule
 import io.legado.app.ui.main.homepage.modules.GridModule
 import io.legado.app.ui.main.homepage.modules.GridRankingModule
 import io.legado.app.ui.main.homepage.modules.HomepageModuleSkeleton
@@ -961,7 +960,6 @@ private fun HomepageModuleItem(
 
                         HomepageModuleType.ButtonGroup -> {}
                         HomepageModuleType.SmartFilter -> {}
-                        HomepageModuleType.DiscoverHub -> {}
                         HomepageModuleType.SearchBar -> {}
                         HomepageModuleType.Unknown -> {}
                     }
@@ -1011,21 +1009,6 @@ private fun HomepageModuleItem(
                     )
                 }
 
-                is ModuleLoadState.DiscoverSources -> {
-                    // 发现聚合：列数/描述/时间开关从布局配置注册表读取
-                    val discoverColumns = module.config.layoutInt(module.type, "columns", 2)
-                    val showDesc = module.config.layoutInt(module.type, "showDesc", 1) == 1
-                    val showTime = module.config.layoutInt(module.type, "showTime", 0) == 1
-                    DiscoverHubModule(
-                        sources = state.sources,
-                        columns = discoverColumns,
-                        showDesc = showDesc,
-                        showTime = showTime,
-                        onKindClick = { sourceUrl, url, kindTitle ->
-                            viewModel.onKindUrlClick(sourceUrl, url, kindTitle)
-                        }
-                    )
-                }
             }
         }
     }
