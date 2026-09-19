@@ -383,10 +383,8 @@ fun HomepageScreen(
                 },
             )
         } else {
-            // 混合列表 模式：所有模块在一个列表中展示，无限类型模块排在底部
-            val sortedModules = uiState.modules.sortedBy { module ->
-                if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
-            }
+            // 混合列表模式：严格使用模块管理后的排序，不再按模块类型强制重排。
+            // 这样首页管理器中的拖拽顺序就是最终展示顺序。
             // 使用 rememberLazyListState 保存滚动位置，避免 Fragment 重建时丢失
             val listState = rememberLazyListState()
             Box(
@@ -407,7 +405,11 @@ fun HomepageScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(sortedModules, key = { it.globalId }) { module ->
+                        items(
+                            items = uiState.modules,
+                            key = { it.globalId },
+                            contentType = { it.type.key }
+                        ) { module ->
                             HomepageModuleItem(
                                 module = module,
                                 viewModel = viewModel,
@@ -663,9 +665,7 @@ private fun SourceTabLayout(
                             module.customSetId == currentSet?.sourceUrl
                         }
                     }
-                    filtered.sortedBy { module ->
-                        if (HomepageViewModel.isInfinite(module.type.key, null)) 1 else 0
-                    }
+                    filtered
                 }
                 val currentSetName = currentSet?.sourceName
                 val listState = rememberSaveable(saver = LazyListState.Saver) {
@@ -693,7 +693,11 @@ private fun SourceTabLayout(
                         ),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(currentModules, key = { it.globalId }) { module ->
+                        items(
+                            items = currentModules,
+                            key = { it.globalId },
+                            contentType = { it.type.key }
+                        ) { module ->
                             HomepageModuleItem(
                                 module = module,
                                 viewModel = viewModel,
@@ -771,7 +775,23 @@ private fun HomepageModuleItem(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-        }
+            if (module.type != HomepageModuleType.ButtonGroup &&
+                module.type != HomepageModuleType.SearchBar) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = stringResource(R.string.homepage_more),
+                    tint = pageSecondaryTextColor(),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable {
+                            onModuleHeaderClick(
+                                module.title,
+                                module.sourceUrl,
+                                rankingCurrentExploreUrl ?: module.exploreUrl
+                            )
+                        }
+                )
+            }
 
         // Module content
         Box(
