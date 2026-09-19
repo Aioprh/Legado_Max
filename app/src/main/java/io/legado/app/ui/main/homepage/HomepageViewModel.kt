@@ -25,6 +25,10 @@ import io.legado.app.help.book.BookshelfMatcher
 import io.legado.app.data.entities.rule.ExploreKind
 import io.legado.app.help.source.exploreKinds
 import io.legado.app.help.source.sortUrls
+import io.legado.app.help.source.clearExploreKindsCache
+import io.legado.app.ui.main.explore.ExploreAdapter
+import com.script.rhino.runScriptWithContext
+import io.legado.app.utils.InfoMap
 import io.legado.app.model.CacheBook
 import io.legado.app.model.rss.Rss
 import io.legado.app.utils.GSON
@@ -549,6 +553,25 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
     private fun loadModule(module: ModuleItem) {
         loadJobs[module.id]?.cancel()
+        if (module.type == HomepageModuleType.SmartFilter.key) {
+            loadJobs[module.id] = viewModelScope.launch {
+                runCatching {
+                    val source = withContext(Dispatchers.IO) {
+                        appDb.bookSourceDao.getBookSource(module.sourceUrl)
+                    } ?: throw Exception("Source not found")
+                    withContext(Dispatchers.IO) { source.exploreKinds() }
+                }.onSuccess { kinds ->
+                    _moduleContentStates.update {
+                        it + (module.id to ModuleLoadState.SmartFilters(kinds))
+                    }
+                }.onFailure { error ->
+                    _moduleContentStates.update {
+                        it + (module.id to ModuleLoadState.Error(error.stackTraceStr))
+                    }
+                }
+            }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
+            return
+        }
         if (module.type == HomepageModuleType.ButtonGroup.key) {
             loadJobs[module.id] = viewModelScope.launch {
                 kotlin.runCatching {
@@ -1125,87 +1148,126 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
     suspend fun smartConfigureSource(sourceUrl: String, setId: String?): List<ModuleDef> {
         val source = _bookSourcesCache.value[sourceUrl] ?: return emptyList()
         val targetSetId = setId ?: "src_$sourceUrl"
-
-        // 1. 书源已有首页模块：优先复用作者提供的完整定义。
-        val declared = source.homepageModules?.takeIf { it.isNotBlank() }?.let {
-            runCatching { parseModuleDefs(sourceUrl, it) }.getOrDefault(emptyList())
-        }.orEmpty()
-
         val existingIds = allModulesCache.value
             .filter { it.customSetId == targetSetId && it.sourceUrl == sourceUrl }
             .map { it.moduleKey }
             .toSet()
 
-        if (declared.isNotEmpty()) {
-            return declared.filter { it.key !in existingIds }
-        }
+        val declared = source.homepageModules?.takeIf { it.isNotBlank() }?.let {
+            runCatching { parseModuleDefs(sourceUrl, it) }.getOrDefault(emptyList())
+        }.orEmpty()
+        if (declared.isNotEmpty()) return declared.filter { it.key !in existingIds }
 
-        // 2. 没有 homepageModules 时，从发现分类自动生成。
         val kinds = runCatching {
             withContext(Dispatchers.IO) {
                 appDb.bookSourceDao.getBookSource(sourceUrl)?.exploreKinds() ?: emptyList()
             }
         }.getOrDefault(emptyList())
-
         if (kinds.isEmpty()) return emptyList()
 
-        val result = mutableListOf<ModuleDef>()
-        val rankingKinds = kinds.filter { kind ->
-            val name = kind.title
-            name.contains("榜") || name.contains("排行") || name.contains("排行榜")
+        val interactive = kinds.filter {
+            it.type == ExploreKind.Type.select ||
+                it.type == ExploreKind.Type.toggle ||
+                it.type == ExploreKind.Type.text ||
+                (it.type == ExploreKind.Type.button && !it.action.isNullOrBlank())
         }
-        val otherKinds = kinds.filterNot { rankingKinds.contains(it) }
-
-        if (rankingKinds.size >= 2) {
-            val args = GSON.toJson(
-                rankingKinds.map { mapOf("t" to it.title, "u" to (it.url ?: "")) }
+        val result = mutableListOf<ModuleDef>()
+        if (interactive.isNotEmpty()) {
+            result += ModuleDef(
+                key = "smart_filter",
+                type = HomepageModuleType.SmartFilter.key,
+                title = "智能筛选",
+                args = GSON.toJson(interactive.map { kind ->
+                    mapOf(
+                        "title" to kind.title,
+                        "type" to kind.type,
+                        "action" to (kind.action ?: ""),
+                        "default" to (kind.default ?: ""),
+                        "chars" to (kind.chars ?: emptyArray<String?>()).filterNotNull(),
+                        "url" to (kind.url ?: ""),
+                        "viewName" to (kind.viewName ?: "")
+                    )
+                }),
+                sourceUrl = sourceUrl
             )
+        }
+
+        val rankingKinds = kinds.filter {
+            it.type == ExploreKind.Type.url &&
+                (it.title.contains("榜") || it.title.contains("排行") || it.title.contains("排行榜"))
+        }
+        if (rankingKinds.size >= 2) {
             result += ModuleDef(
                 key = "smart_ranking",
                 type = HomepageModuleType.Ranking.key,
                 title = "热门榜单",
-                args = args,
+                args = GSON.toJson(rankingKinds.map { mapOf("t" to it.title, "u" to (it.url ?: "")) }),
                 url = rankingKinds.firstOrNull()?.url ?: "",
                 sourceUrl = sourceUrl
             )
         }
 
-        // 常见大类（玄幻/都市/历史等）数量较多时合并成一个轻量按钮组，
-        // 避免首页一次性堆出十几个相似模块。
         val genreNames = setOf(
             "玄幻", "奇幻", "武侠", "仙侠", "都市", "现实", "历史", "军事",
             "游戏", "体育", "科幻", "悬疑", "灵异", "二次元", "短篇", "古代言情",
             "现代言情", "青春", "幻想", "职场", "轻小说"
         )
-        val genreKinds = otherKinds.filter { it.title.trim() in genreNames }
-        val normalKinds = otherKinds.filterNot { genreKinds.contains(it) }
-
+        val genreKinds = kinds.filter { it.type == ExploreKind.Type.url && it.title.trim() in genreNames }
         if (genreKinds.size >= 3) {
             result += ModuleDef(
                 key = "smart_genres",
                 type = HomepageModuleType.ButtonGroup.key,
                 title = "热门分类",
-                args = GSON.toJson(
-                    genreKinds.map { mapOf("t" to it.title, "u" to (it.url ?: "")) }
-                ),
-                url = genreKinds.firstOrNull()?.url ?: "",
+                args = GSON.toJson(genreKinds.map { mapOf("t" to it.title, "u" to (it.url ?: "")) }),
                 sourceUrl = sourceUrl
             )
         }
 
-        normalKinds.forEachIndexed { index, kind ->
-            val safeKey = kind.title.trim().ifBlank { "分类" + index }
-                .replace(Regex("[^\\p{L}\\p{N}_-]"), "_")
-            result += ModuleDef(
-                key = "smart_$index_$safeKey",
-                type = HomepageModuleType.Grid.key,
-                title = kind.title,
-                url = kind.url ?: "",
-                sourceUrl = sourceUrl
-            )
-        }
-
+        val used = interactive.toSet() + rankingKinds.toSet() + genreKinds.toSet()
+        kinds.filter { it !in used && it.type == ExploreKind.Type.url }
+            .forEachIndexed { index, kind ->
+                val safeKey = kind.title.trim().ifBlank { "分类" + index }
+                    .replace(Regex("[^\\p{L}\\p{N}_-]"), "_")
+                result += ModuleDef(
+                    key = "smart_$index_$safeKey",
+                    type = HomepageModuleType.Grid.key,
+                    title = kind.title,
+                    url = kind.url ?: "",
+                    sourceUrl = sourceUrl
+                )
+            }
         return result.filter { it.key !in existingIds }
+    }
+
+    fun onSmartFilterChanged(globalId: String, kind: ExploreKind, value: String) {
+        viewModelScope.launch {
+            val module = gateway.getById(globalId) ?: return@launch
+            val source = withContext(Dispatchers.IO) {
+                appDb.bookSourceDao.getBookSource(module.sourceUrl)
+            } ?: return@launch
+            val infoMap = ExploreAdapter.exploreInfoMapList[module.sourceUrl]
+                ?: InfoMap(module.sourceUrl).also {
+                    ExploreAdapter.exploreInfoMapList.put(module.sourceUrl, it)
+                }
+            infoMap[kind.title] = value
+
+            runCatching {
+                val action = kind.action?.takeIf { it.isNotBlank() } ?: return@runCatching
+                withContext(Dispatchers.IO) {
+                    runScriptWithContext {
+                        source.evalJS(action) {
+                            put("infoMap", infoMap)
+                        }
+                    }
+                }
+            }.onFailure { error ->
+                _effects.tryEmit(HomepageEffect.ShowSnackbar("筛选动作执行失败: " + error.message))
+            }
+
+            runCatching { source.clearExploreKindsCache() }
+            loadModule(module)
+            notifyConfigChanged()
+        }
     }
 
     fun syncSourceModules(sourceUrl: String) {
