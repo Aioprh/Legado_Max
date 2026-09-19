@@ -745,13 +745,17 @@ private fun HomepageModuleItem(
         val rankingCurrentExploreUrl = rankingTabState
             ?.tabs?.getOrNull(rankingTabState.selectedIndex)?.exploreUrl
 
-        // 模块标题
-        Row(
+        // 统一首页模块头：液态玻璃胶囊 + 明确的模块操作区。
+        // 标题和箭头使用同一点击区域，避免文字可点、箭头又是独立点击目标造成误触。
+        val canOpenExplore = module.type != HomepageModuleType.ButtonGroup &&
+            module.type != HomepageModuleType.SearchBar
+        val headerShape = RoundedCornerShape(14.dp)
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 2.dp)
+                .padding(horizontal = 12.dp, vertical = 1.dp)
                 .then(
-                    if (module.type != HomepageModuleType.ButtonGroup) {
+                    if (canOpenExplore) {
                         Modifier.clickable {
                             onModuleHeaderClick(
                                 module.title,
@@ -759,39 +763,53 @@ private fun HomepageModuleItem(
                                 rankingCurrentExploreUrl ?: module.exploreUrl
                             )
                         }
-                    } else {
-                        Modifier
-                    }
+                    } else Modifier
                 ),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            shape = headerShape,
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.42f),
+            border = BorderStroke(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.10f)
+            ),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp
         ) {
-            Text(
-                text = module.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            if (module.type != HomepageModuleType.ButtonGroup &&
-                module.type != HomepageModuleType.SearchBar) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = stringResource(R.string.homepage_more),
-                    tint = pageSecondaryTextColor(),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 14.dp, end = 6.dp, top = 7.dp, bottom = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
                     modifier = Modifier
-                        .size(20.dp)
-                        .clickable {
-                            onModuleHeaderClick(
-                                module.title,
-                                module.sourceUrl,
-                                rankingCurrentExploreUrl ?: module.exploreUrl
-                            )
-                        }
+                        .width(3.dp)
+                        .height(18.dp)
+                        .background(
+                            color = pageAccentColor(),
+                            shape = RoundedCornerShape(3.dp)
+                        )
                 )
+                Text(
+                    text = module.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 9.dp)
+                )
+                if (canOpenExplore) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = stringResource(R.string.homepage_more),
+                        tint = pageSecondaryTextColor(),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
+        }
 
         // Module content
         Box(
