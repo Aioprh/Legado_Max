@@ -425,20 +425,6 @@ class HomepageModuleLoader(
                     HomepagePageResult(
                         books = HomepageAggregation.merge(pageGroups, aggregate.limit),
                         hasMore = sourceStates.values.any { it.hasMore }
-                    )                } else {
-                                    exploreBooksUseCase.execute(
-                                        sourceUrl = query.sourceUrl,
-                                        moduleUrl = query.url,
-                                        args = query.args,
-                                        page = nextPage
-                                    ).books
-                                }
-                            }
-                        }.map { it.await() }
-                    }
-                    HomepagePageResult(
-                        books = HomepageAggregation.merge(books, aggregate.limit),
-                        hasMore = true
                     )
                 } else {
                     val isRanking = HomepageModuleSpec.isRankingTabs(HomepageModuleType.fromKey(module.type))
