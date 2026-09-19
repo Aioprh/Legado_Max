@@ -28,6 +28,7 @@ fun AppModalBottomSheet(
     title: String,
     modifier: Modifier = Modifier,
     skipPartiallyExpanded: Boolean = true,
+    scrollable: Boolean = true,
     startAction: (@Composable () -> Unit)? = null,
     endAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
@@ -49,7 +50,7 @@ fun AppModalBottomSheet(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 16.dp)
-                    .verticalScroll(scrollState)
+                    .then(if (scrollable) Modifier.verticalScroll(scrollState) else Modifier)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
