@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -47,11 +49,13 @@ import io.legado.app.ui.widget.components.explore.ExploreKindSelectSheet
 import io.legado.app.data.entities.rule.ExploreKind
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -102,8 +106,28 @@ fun SourceBrowseDetailPage(
 ) {
     // 当前选中的 Tab 索引，默认显示"已加入"Tab
     var selectedTab by remember { mutableStateOf(0) }
+    var showSmartDialog by remember { mutableStateOf(false) }
+    var smartLoading by remember { mutableStateOf(false) }
+    var smartDefs by remember { mutableStateOf<List<ModuleDef>>(emptyList()) }
+    val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(
+            onClick = {
+                smartLoading = true
+                showSmartDialog = true
+                scope.launch {
+                    smartDefs = actions.onSmartConfigureSource(sourceUrl, targetSetId)
+                    smartLoading = false
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            enabled = !smartLoading
+        ) {
+            Text(if (smartLoading) "正在智能探索…" else "✨ 智能配置首页模块")
+        }
         // 顶部 Tab 栏，提供两个分类入口
         TabRow(selectedTabIndex = selectedTab) {
             Tab(
@@ -556,5 +580,70 @@ private fun ModuleItem(
                 onCheckedChange = onToggle
             )
         }
+    }
+        }
+    }
+
+    if (showSmartDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!smartLoading) {
+                    showSmartDialog = false
+                    smartDefs = emptyList()
+                }
+            },
+            title = { Text("✨ 智能首页配置") },
+            text = {
+                if (smartLoading) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.size(12.dp))
+                        Text("正在读取书源并探索分类…")
+                    }
+                } else if (smartDefs.isEmpty()) {
+                    Text("没有发现可自动配置的首页模块。\n\n该书源可能没有 homepageModules，也没有可用的发现分类。")
+                } else {
+                    Column {
+                        Text(
+                            text = "已识别 ${smartDefs.size} 个模块",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        Spacer(modifier = Modifier.height(8.dp)),
+                        smartDefs.forEach { def ->
+                            Text(
+                                text = "• ${def.title.ifBlank { "未命名模块" }}  ·  ${HomepageModuleType.fromKey(def.type).let { stringResource(it.titleRes) }}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(vertical = 3.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !smartLoading && smartDefs.isNotEmpty(),
+                    onClick = {
+                        smartDefs.forEach { def ->
+                            actions.onAddCustomModule(sourceUrl, targetSetId, def)
+                        }
+                        showSmartDialog = false
+                        smartDefs = emptyList()
+                    }
+                ) { Text("一键应用") }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !smartLoading,
+                    onClick = {
+                        showSmartDialog = false
+                        smartDefs = emptyList()
+                    }
+                ) { Text("取消") }
+            }
+        )
     }
 }
