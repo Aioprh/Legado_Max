@@ -88,6 +88,7 @@ import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.domain.model.ModuleDef
+import io.legado.app.domain.model.layoutInt
 import io.legado.app.ui.main.homepage.manage.HomepageModuleManageSheet
 import io.legado.app.ui.main.homepage.modules.BannerModule
 import io.legado.app.ui.main.homepage.modules.ButtonGroupModule
@@ -830,6 +831,10 @@ private fun HomepageModuleItem(
                             LaunchedEffect(state.books.size) {
                                 if (revealedCount > state.books.size) revealedCount = state.books.size
                             }
+                            // 布局参数从 registry 读取，未配置时回退到类型默认值（Grid 3 列 / 2 行，InfiniteGrid 3 列）
+                            val gridColumns = module.config.layoutInt(module.type, "columns", 3).coerceIn(2, 8)
+                            val gridMaxRows = if (module.type == HomepageModuleType.InfiniteGrid) null
+                            else module.config.layoutInt(module.type, "maxRows", 2).coerceIn(1, 4)
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 val displayBooks = if (module.type == HomepageModuleType.InfiniteGrid) {
                                     state.books.take(revealedCount)
@@ -838,7 +843,8 @@ private fun HomepageModuleItem(
                                     books = displayBooks,
                                     onClick = { book, _ -> onBookClick(book) },
                                     onLongClick = { book, _ -> onBookLongClick(book) },
-                                    maxRows = if (module.type == HomepageModuleType.InfiniteGrid) null else 2
+                                    columns = gridColumns,
+                                    maxRows = gridMaxRows
                                 )
                                 // 无限网格：先揭示本地窗口，再触发网络加载更多
                                 if (module.type == HomepageModuleType.InfiniteGrid) {
@@ -897,34 +903,26 @@ private fun HomepageModuleItem(
                             }
                             Column(modifier = Modifier.fillMaxWidth()) {
                                 val displayBooks = state.books.take(revealedCount)
-                                val leftColumn = displayBooks.filterIndexed { index, _ -> index % 2 == 0 }
-                                val rightColumn = displayBooks.filterIndexed { index, _ -> index % 2 == 1 }
+                                // 列数从 registry 读取，未配置时默认 2 列
+                                val waterfallColumns = module.config.layoutInt(module.type, "columns", 2).coerceIn(1, 6)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        leftColumn.forEach { item ->
-                                            WaterfallItem(
-                                                book = item,
-                                                onClick = { onBookClick(item.book) },
-                                                onLongClick = { onBookLongClick(item.book) }
-                                            )
-                                        }
-                                    }
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        rightColumn.forEach { item ->
-                                            WaterfallItem(
-                                                book = item,
-                                                onClick = { onBookClick(item.book) },
-                                                onLongClick = { onBookLongClick(item.book) }
-                                            )
+                                    // 按列均分展示：第 i 本书放入第 (i % columns) 列
+                                    (0 until waterfallColumns).forEach { col ->
+                                        val colBooks = displayBooks.filterIndexed { index, _ -> index % waterfallColumns == col }
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            colBooks.forEach { item ->
+                                                WaterfallItem(
+                                                    book = item,
+                                                    onClick = { onBookClick(item.book) },
+                                                    onLongClick = { onBookLongClick(item.book) }
+                                                )
+                                            }
                                         }
                                     }
                                 }

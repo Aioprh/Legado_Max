@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -34,17 +35,21 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.legado.app.R
+import io.legado.app.domain.model.HomepageLayoutOptions
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.ui.main.homepage.HomepageViewModel
+import io.legado.app.utils.GSON
 
 /**
  * 模块添加/编辑对话框
@@ -80,6 +85,24 @@ fun AddCustomModuleDialog(
     var layoutConfig by remember { mutableStateOf("") }
     // 模块类型下拉菜单的展开状态
     var typeMenuExpanded by remember { mutableStateOf(false) }
+
+    // 布局配置可视面板：按当前类型的注册表选项生成；类型无可配项时回落为原始 JSON 输入
+    val layoutOptions = HomepageLayoutOptions.optionsOf(HomepageModuleType.fromKey(type))
+    val prefillLayoutMap = remember(prefill) {
+        runCatching {
+            @Suppress("UNCHECKED_CAST")
+            (GSON.fromJson(prefill?.layoutConfig, Map::class.java)
+                ?: emptyMap<String, Any?>()) as Map<String, Any?>
+        }.getOrDefault(emptyMap())
+    }
+    val configValues = remember(HomepageModuleType.fromKey(type), prefill) {
+        mutableStateMapOf<String, String>().apply {
+            HomepageLayoutOptions.optionsOf(HomepageModuleType.fromKey(type)).forEach { opt ->
+                val parsed = prefillLayoutMap[opt.key]?.toString()
+                this[opt.key] = parsed?.takeIf { it.isNotBlank() } ?: opt.default.toString()
+            }
+        }
+    }
 
     // 当对话框显示或预填数据变化时，重置表单
     LaunchedEffect(show, prefill) {
@@ -175,27 +198,54 @@ fun AddCustomModuleDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                // 布局配置输入框
-                OutlinedTextField(
-                    value = layoutConfig,
-                    onValueChange = { layoutConfig = it },
-                    label = { Text(stringResource(R.string.homepage_layout_config)) },
-                    maxLines = 3,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // 布局配置：优先提供可视化数值项，类型无可配项时回落为原始 JSON 输入
+                if (layoutOptions.isEmpty()) {
+                    OutlinedTextField(
+                        value = layoutConfig,
+                        onValueChange = { layoutConfig = it },
+                        label = { Text(stringResource(R.string.homepage_layout_config)) },
+                        maxLines = 3,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.homepage_layout_config),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    layoutOptions.forEach { opt ->
+                        OutlinedTextField(
+                            value = configValues[opt.key] ?: opt.default.toString(),
+                            onValueChange = { configValues[opt.key] = it.filter(Char::isDigit) },
+                            label = { Text(stringResource(opt.labelRes)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
             }
         },
         confirmButton = {
             // 确认按钮：构造模块定义对象并回调
             TextButton(
                 onClick = {
+                    val effectiveLayoutConfig = if (layoutOptions.isEmpty()) {
+                        layoutConfig.ifBlank { null }
+                    } else {
+                        // 由可视化配置项序列化为 JSON，例如 {"columns":"4","maxRows":"2"}
+                        layoutOptions.joinToString(prefix = "{", postfix = "}") { opt ->
+                            "\"${opt.key}\":${configValues[opt.key]?.toIntOrNull() ?: opt.default}"
+                        }
+                    }
                     onConfirm(
                         ModuleDef(
                             key = prefill?.key ?: "",
                             type = type,
                             title = title,
                             args = args.ifBlank { null },
-                            layoutConfig = layoutConfig.ifBlank { null },
+                            layoutConfig = effectiveLayoutConfig,
                             url = url.ifBlank { null },
                             sourceUrl = prefill?.sourceUrl ?: ""
                         )

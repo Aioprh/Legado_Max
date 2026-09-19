@@ -2167,6 +2167,11 @@
     <string name="module_type_waterfall">Waterfall</string>
     <string name="module_type_infinite_grid">Infinite Grid</string>
     <string name="module_type_button_group">Button Group</string>
+    <string name="module_type_smart_filter">Smart Filter</string>
+
+    <!-- Module Layout Config Strings -->
+    <string name="homepage_config_columns">Columns</string>
+    <string name="homepage_config_rows">Rows</string>
 
     <!-- 视频播放器跳过片头片尾 -->
     <string name="skip_intro_outro_enabled">Skip intro/outro</string>
