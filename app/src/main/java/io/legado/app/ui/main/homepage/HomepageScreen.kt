@@ -87,6 +87,7 @@ import io.legado.app.data.entities.RssStar
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.domain.model.HomepageModuleType
+import io.legado.app.domain.model.HomepageModuleRegistry
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.domain.model.layoutInt
 import io.legado.app.ui.main.homepage.manage.HomepageModuleManageSheet
@@ -749,8 +750,9 @@ private fun HomepageModuleItem(
 
         // 统一首页模块头：液态玻璃胶囊 + 明确的模块操作区。
         // 标题和箭头使用同一点击区域，避免文字可点、箭头又是独立点击目标造成误触。
-        val canOpenExplore = module.type != HomepageModuleType.ButtonGroup &&
-            module.type != HomepageModuleType.SearchBar
+        val moduleDescriptor = HomepageModuleRegistry.descriptor(module.type)
+        val canOpenExplore = moduleDescriptor.category != io.legado.app.domain.model.HomepageModuleCategory.ButtonGroup &&
+            !moduleDescriptor.standalone
         val headerShape = RoundedCornerShape(14.dp)
         Surface(
             modifier = Modifier
@@ -893,7 +895,7 @@ private fun HomepageModuleItem(
                                 if (revealedCount > state.books.size) revealedCount = state.books.size
                             }
                             // 布局参数从 registry 读取；未配置列数时由 GridModule 根据可用宽度自适应
-                            val gridColumns = module.config.layoutInt(module.type, "columns", 0)
+                            val gridColumns = module.config["layout_columns"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
                             val gridMaxRows = if (module.type == HomepageModuleType.InfiniteGrid) null
                             else module.config.layoutInt(module.type, "maxRows", 2).coerceIn(1, 4)
                             Column(modifier = Modifier.fillMaxWidth()) {
@@ -967,7 +969,7 @@ private fun HomepageModuleItem(
                             ) {
                                 val displayBooks = state.books.take(revealedCount)
                                 // 未配置列数时根据可用宽度自适应，避免手机/平板固定两列或过密。
-                                val configuredColumns = module.config.layoutInt(module.type, "columns", 0)
+                                val configuredColumns = module.config["layout_columns"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
                                 val waterfallColumns = if (configuredColumns > 0) {
                                     configuredColumns.coerceIn(1, 6)
                                 } else {
