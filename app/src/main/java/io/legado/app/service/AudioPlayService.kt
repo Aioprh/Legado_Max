@@ -22,6 +22,7 @@ import androidx.media.AudioFocusRequestCompat
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import io.legado.app.R
 import io.legado.app.base.BaseService
@@ -87,6 +88,7 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
     private var upNotificationJob: Coroutine<*>? = null
     private var upPlayProgressJob: Job? = null
     private var lastMediaSessionUpdate = 0L
+    private var sourceRefreshRetried = false
     private var cover: Bitmap = BitmapFactory.decodeResource(appCtx.resources,R.drawable.icon_read_book)
 
     override fun onCreate(){super.onCreate();isRun=true;bufferedPosition=0;exoPlayer.addListener(this);AudioPlay.registerService(this);initMediaSession();initBroadcastReceiver();upMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED);doDs();execute{ImageLoader.loadBitmap(this@AudioPlayService,AudioPlay.book?.let{BookCover.getDisplayCover(it)}).submit().get()}.onSuccess{if(it.width>16&&it.height>16){cover=it;upMediaMetadata();upAudioPlayNotification()}}}
@@ -97,9 +99,43 @@ class AudioPlayService : BaseService(), AudioManager.OnAudioFocusChangeListener,
     @SuppressLint("WakelockTimeout") private fun resume(){if(useWakeLock){wakeLock.acquire();wifiLock?.acquire()};try{AudioPlay.markReadStart();pause=false;if(url.isEmpty()){AudioPlay.loadOrUpPlayUrl();return};if(exoPlayer.playbackState==Player.STATE_IDLE){position=AudioPlay.durChapterPos;play();return};if(!exoPlayer.isPlaying)exoPlayer.play();upPlayProgress();AudioPlay.status=Status.PLAY;postEvent(EventBus.AUDIO_STATE,Status.PLAY);upAudioPlayNotification()}catch(e:Exception){e.printOnDebug();MaxAudioSystem.setError(e.localizedMessage);stopSelf()}}
     private fun adjustProgress(position:Int){this.position=position.coerceAtLeast(0);AudioPlay.durChapterPos=this.position;exoPlayer.seekTo(this.position.toLong())}
     @SuppressLint("ObsoleteSdkInt") private fun upSpeed(speed:Float){runCatching{if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.M){playSpeed=speed.coerceIn(0.25f,4f);exoPlayer.setPlaybackSpeed(playSpeed);postEvent(EventBus.AUDIO_SPEED,playSpeed)}}}
-    override fun onPlaybackStateChanged(playbackState:Int){super.onPlaybackStateChanged(playbackState);when(playbackState){Player.STATE_BUFFERING->AudioPlay.upLoading(true);Player.STATE_READY->{AudioPlay.upLoading(false);if(exoPlayer.playWhenReady){AudioPlay.status=Status.PLAY;postEvent(EventBus.AUDIO_STATE,Status.PLAY)}else{AudioPlay.status=Status.PAUSE;postEvent(EventBus.AUDIO_STATE,Status.PAUSE)};postEvent(EventBus.AUDIO_SIZE,exoPlayer.duration.toInt());upMediaMetadata();upPlayProgress();AudioPlay.saveDurChapter(exoPlayer.duration)};Player.STATE_ENDED->{upPlayProgressJob?.cancel();AudioPlay.playPositionChanged(exoPlayer.duration.toInt());if(!MaxAudioSystem.onPlaybackEnded()){AudioPlay.status=Status.STOP;postEvent(EventBus.AUDIO_STATE,Status.STOP)}}};upAudioPlayNotification()}
+    override fun onPlaybackStateChanged(playbackState:Int){super.onPlaybackStateChanged(playbackState);when(playbackState){Player.STATE_BUFFERING->AudioPlay.upLoading(true);Player.STATE_READY->{sourceRefreshRetried=false;AudioPlay.upLoading(false);if(exoPlayer.playWhenReady){AudioPlay.status=Status.PLAY;postEvent(EventBus.AUDIO_STATE,Status.PLAY)}else{AudioPlay.status=Status.PAUSE;postEvent(EventBus.AUDIO_STATE,Status.PAUSE)};postEvent(EventBus.AUDIO_SIZE,exoPlayer.duration.toInt());upMediaMetadata();upPlayProgress();AudioPlay.saveDurChapter(exoPlayer.duration)};Player.STATE_ENDED->{upPlayProgressJob?.cancel();AudioPlay.playPositionChanged(exoPlayer.duration.toInt());if(!MaxAudioSystem.onPlaybackEnded()){AudioPlay.status=Status.STOP;postEvent(EventBus.AUDIO_STATE,Status.STOP)}}};upAudioPlayNotification()}
     private fun upMediaMetadata(){mediaSessionCompat.setMetadata(MediaMetadataCompat.Builder().putBitmap(MediaMetadataCompat.METADATA_KEY_ART,cover).putText(MediaMetadataCompat.METADATA_KEY_TITLE,AudioPlay.durChapter?.title?:"null").putText(MediaMetadataCompat.METADATA_KEY_ARTIST,AudioPlay.book?.name?:"null").putText(MediaMetadataCompat.METADATA_KEY_ALBUM,AudioPlay.book?.author?:"null").putLong(MediaMetadataCompat.METADATA_KEY_DURATION,exoPlayer.duration).build())}
-    override fun onPlayerError(error:PlaybackException){val msg=error.localizedMessage?:error.errorCodeName;AudioPlay.upLoading(false);AudioPlay.status=Status.STOP;postEvent(EventBus.AUDIO_STATE,Status.STOP);MaxAudioSystem.setError(msg);AppLog.put("播放出错\n$msg",error,true);toastOnUi(msg);upAudioPlayNotification()}
+    override fun onPlayerError(error:PlaybackException){
+        val msg = error.localizedMessage ?: error.errorCodeName
+        if(isExpiredAudioError(error) && !sourceRefreshRetried && AudioPlay.book != null){
+            sourceRefreshRetried = true
+            AppLog.put("音频地址失效，自动重新获取播放地址: $msg")
+            AudioPlay.upLoading(true)
+            AudioPlay.status = Status.STOP
+            postEvent(EventBus.AUDIO_STATE,Status.STOP)
+            exoPlayer.stop()
+            AudioPlay.durPlayUrl = ""
+            lifecycleScope.launch(Main){
+                delay(150)
+                AudioPlay.loadOrUpPlayUrl()
+            }
+            return
+        }
+        AudioPlay.upLoading(false)
+        AudioPlay.status=Status.STOP
+        postEvent(EventBus.AUDIO_STATE,Status.STOP)
+        MaxAudioSystem.setError(msg)
+        AppLog.put("播放出错\n$msg",error,true)
+        toastOnUi(msg)
+        upAudioPlayNotification()
+    }
+
+    private fun isExpiredAudioError(error: PlaybackException): Boolean {
+        var cause: Throwable? = error
+        while(cause != null){
+            if(cause is HttpDataSource.InvalidResponseCodeException && cause.responseCode == 410) return true
+            if(cause.message?.contains("410") == true) return true
+            cause = cause.cause
+        }
+        return false
+    }
+
     private fun upPlayProgress(){upPlayProgressJob?.cancel();upPlayProgressJob=lifecycleScope.launch(Main){while(isActive&&isRun){position=exoPlayer.currentPosition.toInt();bufferedPosition=exoPlayer.bufferedPosition.toInt().coerceAtLeast(position);AudioPlay.playPositionChanged(position);postEvent(EventBus.AUDIO_BUFFER_PROGRESS,bufferedPosition);postEvent(EventBus.AUDIO_PROGRESS,position);postEvent(EventBus.AUDIO_SIZE,exoPlayer.duration.toInt());if(System.currentTimeMillis()-lastMediaSessionUpdate>1000){lastMediaSessionUpdate=System.currentTimeMillis();upMediaSessionPlaybackState(if(pause)PlaybackStateCompat.STATE_PAUSED else PlaybackStateCompat.STATE_PLAYING)};AudioPlay.callback?.upLyricP(position);delay(250)}}}
 
     private fun setTimer(minute:Int){timeMinute=minute.coerceIn(0,180);postEvent(EventBus.AUDIO_DS,timeMinute);doDs()}
