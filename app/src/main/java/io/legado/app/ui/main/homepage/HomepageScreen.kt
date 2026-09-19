@@ -93,11 +93,13 @@ import io.legado.app.ui.main.homepage.manage.HomepageModuleManageSheet
 import io.legado.app.ui.main.homepage.modules.BannerModule
 import io.legado.app.ui.main.homepage.modules.ButtonGroupModule
 import io.legado.app.ui.main.homepage.modules.CardModule
+import io.legado.app.ui.main.homepage.modules.DiscoverHubModule
 import io.legado.app.ui.main.homepage.modules.GridModule
 import io.legado.app.ui.main.homepage.modules.GridRankingModule
 import io.legado.app.ui.main.homepage.modules.HomepageModuleSkeleton
 import io.legado.app.ui.rss.read.ReadRssActivity
 import io.legado.app.ui.main.homepage.modules.RankingModule
+import io.legado.app.ui.main.homepage.modules.SearchBarModule
 import io.legado.app.ui.main.homepage.modules.SmartFilterModule
 import io.legado.app.ui.main.homepage.modules.WaterfallItem
 import io.legado.app.ui.theme.pageAccentColor
@@ -776,7 +778,15 @@ private fun HomepageModuleItem(
         Box(
             modifier = Modifier.padding(horizontal = 16.dp)
         ) {
-            when (val state = module.state) {
+            val context = LocalContext.current
+            // 独立组件（SearchBar）常驻渲染，不依赖加载状态
+            if (module.type == HomepageModuleType.SearchBar) {
+                SearchBarModule(
+                    onSearch = { query ->
+                        SearchActivity.start(context, query)
+                    }
+                )
+            } else when (val state = module.state) {
                 is ModuleLoadState.Loading -> {
                     HomepageModuleSkeleton(type = module.type)
                 }
@@ -951,6 +961,8 @@ private fun HomepageModuleItem(
 
                         HomepageModuleType.ButtonGroup -> {}
                         HomepageModuleType.SmartFilter -> {}
+                        HomepageModuleType.DiscoverHub -> {}
+                        HomepageModuleType.SearchBar -> {}
                         HomepageModuleType.Unknown -> {}
                     }
                 }
@@ -995,6 +1007,22 @@ private fun HomepageModuleItem(
                         },
                         onLoadMore = { tabIndex ->
                             viewModel.loadMoreRankingTab(module.globalId, tabIndex)
+                        }
+                    )
+                }
+
+                is ModuleLoadState.DiscoverSources -> {
+                    // 发现聚合：列数/描述/时间开关从布局配置注册表读取
+                    val discoverColumns = module.config.layoutInt(module.type, "columns", 2)
+                    val showDesc = module.config.layoutInt(module.type, "showDesc", 1) == 1
+                    val showTime = module.config.layoutInt(module.type, "showTime", 0) == 1
+                    DiscoverHubModule(
+                        sources = state.sources,
+                        columns = discoverColumns,
+                        showDesc = showDesc,
+                        showTime = showTime,
+                        onKindClick = { sourceUrl, url, kindTitle ->
+                            viewModel.onKindUrlClick(sourceUrl, url, kindTitle)
                         }
                     )
                 }

@@ -2168,10 +2168,19 @@
     <string name="module_type_infinite_grid">Infinite Grid</string>
     <string name="module_type_button_group">Button Group</string>
     <string name="module_type_smart_filter">Smart Filter</string>
+    <string name="module_type_discover_hub">Discover Hub</string>
+    <string name="module_type_search_bar">Search Bar</string>
 
     <!-- Module Layout Config Strings -->
     <string name="homepage_config_columns">Columns</string>
     <string name="homepage_config_rows">Rows</string>
+    <string name="homepage_config_show_desc">Show Description</string>
+    <string name="homepage_config_show_time">Show Update Time</string>
+
+    <!-- Homepage Standalone Modules -->
+    <string name="homepage_search_hint">Search books…</string>
+    <string name="homepage_discover_empty">No enabled discover sources</string>
+    <string name="homepage_discover_no_kinds">No browsable categories</string>
 
     <!-- 视频播放器跳过片头片尾 -->
     <string name="skip_intro_outro_enabled">Skip intro/outro</string>
