@@ -275,12 +275,7 @@ fun AddCustomModuleDialog(
                     } else {
                         layoutMap.remove("showIf")
                     }
-                    val effectiveLayoutConfig = if (layoutMap.isEmpty()) null else GSON.toJson(layoutMap) else {
-                        // 由可视化配置项序列化为 JSON，例如 {"columns":"4","maxRows":"2"}
-                        layoutOptions.joinToString(prefix = "{", postfix = "}") { opt ->
-                            "\"${opt.key}\":${configValues[opt.key]?.toIntOrNull() ?: opt.default}"
-                        }
-                    }
+                    val effectiveLayoutConfig = if (layoutMap.isEmpty()) null else GSON.toJson(layoutMap)
                     onConfirm(
                         ModuleDef(
                             key = prefill?.key ?: "",
