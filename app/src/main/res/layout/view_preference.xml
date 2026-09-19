@@ -7,7 +7,7 @@
     android:layout_marginEnd="10dp"
     android:layout_marginTop="5dp"
     android:layout_marginBottom="5dp"
-    android:background="@drawable/bg_preference_item_glass"
+    android:background="@drawable/bg_preference_item"
     android:elevation="1dp"
     android:paddingStart="14dp"
     android:paddingTop="12dp"
