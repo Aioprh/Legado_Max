@@ -67,6 +67,11 @@ class HomepageModuleLoader(
         val cachedAt: Long,
     )
 
+    private data class HomepagePageResult(
+        val books: List<SearchBook>,
+        val hasMore: Boolean,
+    )
+
     private val _contentStates = MutableStateFlow<Map<String, ModuleLoadState>>(emptyMap())
     val contentStates: StateFlow<Map<String, ModuleLoadState>> = _contentStates.asStateFlow()
 
@@ -334,7 +339,7 @@ class HomepageModuleLoader(
                 val module = gateway.getById(globalId) ?: throw Exception("Module not found")
                 val aggregate = HomepageAggregation.parse(module.args)
                 if (aggregate.queries.size >= 2) {
-                    coroutineScope {
+                    val books = coroutineScope {
                         aggregate.queries.map { query ->
                             async(Dispatchers.IO) {
                                 val rssSource = appDb.rssSourceDao.getByKey(query.sourceUrl)
@@ -353,25 +358,30 @@ class HomepageModuleLoader(
                                 }
                             }
                         }.map { it.await() }
-                    }.let { HomepageAggregation.merge(it, aggregate.limit) }
+                    }
+                    HomepagePageResult(
+                        books = HomepageAggregation.merge(books, aggregate.limit),
+                        hasMore = true
+                    )
                 } else {
                     val isRanking = HomepageModuleSpec.isRankingTabs(HomepageModuleType.fromKey(module.type))
                     val effectiveUrl = if (isRanking) {
                         parseRankingCategories(module.args)?.firstOrNull()?.second?.ifBlank { null } ?: module.url
                     } else module.url
-                    exploreBooksUseCase.execute(
+                    val result = exploreBooksUseCase.execute(
                         sourceUrl = module.sourceUrl,
                         moduleUrl = effectiveUrl,
                         args = module.args,
                         page = nextPage
-                    ).books
+                    )
+                    HomepagePageResult(result.books, result.hasMore)
                 }
             }.onSuccess { result ->
                 _contentStates.update { states ->
+                    val module = gateway.getById(globalId) ?: return@update states
                     val lastState = states[globalId] as? ModuleLoadState.Loaded ?: return@update states
                     val existingUrls = lastState.books.map { it.book.bookUrl }.toSet()
-                    val resultBooks = if (aggregate.queries.size >= 2) result else result.books
-                    val deduped = resultBooks.filter { it.bookUrl !in existingUrls }.map { book ->
+                    val deduped = result.books.filter { it.bookUrl !in existingUrls }.map { book ->
                         HomepageBookItemUi(
                             book = book,
                             shelfState = BookshelfMatcher.getState(
@@ -379,7 +389,7 @@ class HomepageModuleLoader(
                             )
                         )
                     }
-                    val finalHasMore = if (aggregate.queries.size >= 2) deduped.isNotEmpty() else if (deduped.isEmpty()) false else result.hasMore
+                    val finalHasMore = if (deduped.isEmpty()) false else result.hasMore
                     val updatedState = ModuleLoadState.Loaded(
                         books = lastState.books + deduped,
                         hasMore = finalHasMore,
