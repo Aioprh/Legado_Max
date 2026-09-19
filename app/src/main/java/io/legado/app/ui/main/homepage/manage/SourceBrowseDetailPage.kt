@@ -159,6 +159,68 @@ fun SourceBrowseDetailPage(
         }
     }
 }
+    if (showSmartDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!smartLoading) {
+                    showSmartDialog = false
+                    smartDefs = emptyList()
+                }
+            },
+            title = { Text("✨ 智能首页配置") },
+            text = {
+                if (smartLoading) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.size(12.dp))
+                        Text("正在读取书源并探索分类…")
+                    }
+                } else if (smartDefs.isEmpty()) {
+                    Text("没有发现可自动配置的首页模块。\n\n该书源可能没有 homepageModules，也没有可用的发现分类。")
+                } else {
+                    Column {
+                        Text(
+                            text = "已识别 ${smartDefs.size} 个模块",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Medium
+                        ),
+                        Spacer(modifier = Modifier.height(8.dp)),
+                        smartDefs.forEach { def ->
+                            Text(
+                                text = "• ${def.title.ifBlank { "未命名模块" }}  ·  ${HomepageModuleType.fromKey(def.type).let { stringResource(it.titleRes) }}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(vertical = 3.dp)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !smartLoading && smartDefs.isNotEmpty(),
+                    onClick = {
+                        smartDefs.forEach { def ->
+                            actions.onAddCustomModule(sourceUrl, targetSetId, def)
+                        }
+                        showSmartDialog = false
+                        smartDefs = emptyList()
+                    }
+                ) { Text("一键应用") }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !smartLoading,
+                    onClick = {
+                        showSmartDialog = false
+                        smartDefs = emptyList()
+                    }
+                ) { Text("取消") }
+            }
+        )
+    }
 
 /**
  * Tab 0: 已加入的模块
@@ -584,66 +646,4 @@ private fun ModuleItem(
         }
     }
 
-    if (showSmartDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                if (!smartLoading) {
-                    showSmartDialog = false
-                    smartDefs = emptyList()
-                }
-            },
-            title = { Text("✨ 智能首页配置") },
-            text = {
-                if (smartLoading) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        Spacer(modifier = Modifier.size(12.dp))
-                        Text("正在读取书源并探索分类…")
-                    }
-                } else if (smartDefs.isEmpty()) {
-                    Text("没有发现可自动配置的首页模块。\n\n该书源可能没有 homepageModules，也没有可用的发现分类。")
-                } else {
-                    Column {
-                        Text(
-                            text = "已识别 ${smartDefs.size} 个模块",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        Spacer(modifier = Modifier.height(8.dp)),
-                        smartDefs.forEach { def ->
-                            Text(
-                                text = "• ${def.title.ifBlank { "未命名模块" }}  ·  ${HomepageModuleType.fromKey(def.type).let { stringResource(it.titleRes) }}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(vertical = 3.dp)
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !smartLoading && smartDefs.isNotEmpty(),
-                    onClick = {
-                        smartDefs.forEach { def ->
-                            actions.onAddCustomModule(sourceUrl, targetSetId, def)
-                        }
-                        showSmartDialog = false
-                        smartDefs = emptyList()
-                    }
-                ) { Text("一键应用") }
-            },
-            dismissButton = {
-                TextButton(
-                    enabled = !smartLoading,
-                    onClick = {
-                        showSmartDialog = false
-                        smartDefs = emptyList()
-                    }
-                ) { Text("取消") }
-            }
-        )
-    }
 }
