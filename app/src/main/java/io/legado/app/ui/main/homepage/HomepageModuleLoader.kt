@@ -370,7 +370,8 @@ class HomepageModuleLoader(
                 _contentStates.update { states ->
                     val lastState = states[globalId] as? ModuleLoadState.Loaded ?: return@update states
                     val existingUrls = lastState.books.map { it.book.bookUrl }.toSet()
-                    val deduped = result.books.filter { it.bookUrl !in existingUrls }.map { book ->
+                    val resultBooks = if (aggregate.queries.size >= 2) result else result.books
+                    val deduped = resultBooks.filter { it.bookUrl !in existingUrls }.map { book ->
                         HomepageBookItemUi(
                             book = book,
                             shelfState = BookshelfMatcher.getState(
