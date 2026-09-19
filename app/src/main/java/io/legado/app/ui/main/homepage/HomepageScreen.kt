@@ -879,7 +879,7 @@ private fun HomepageModuleItem(
                                 if (revealedCount > state.books.size) revealedCount = state.books.size
                             }
                             // 布局参数从 registry 读取，未配置时回退到类型默认值（Grid 3 列 / 2 行，InfiniteGrid 3 列）
-                            val gridColumns = module.config.layoutInt(module.type, "columns", 3).coerceIn(2, 8)
+                            val gridColumns = module.config.layoutInt(module.type, "columns", 0)
                             val gridMaxRows = if (module.type == HomepageModuleType.InfiniteGrid) null
                             else module.config.layoutInt(module.type, "maxRows", 2).coerceIn(1, 4)
                             Column(modifier = Modifier.fillMaxWidth()) {
@@ -948,10 +948,18 @@ private fun HomepageModuleItem(
                             LaunchedEffect(state.books.size) {
                                 if (revealedCount > state.books.size) revealedCount = state.books.size
                             }
-                            Column(modifier = Modifier.fillMaxWidth()) {
+                            androidx.compose.foundation.layout.BoxWithConstraints(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
                                 val displayBooks = state.books.take(revealedCount)
-                                // 列数从 registry 读取，未配置时默认 2 列
-                                val waterfallColumns = module.config.layoutInt(module.type, "columns", 2).coerceIn(1, 6)
+                                // 未配置列数时根据可用宽度自适应，避免手机/平板固定两列或过密。
+                                val configuredColumns = module.config.layoutInt(module.type, "columns", 0)
+                                val waterfallColumns = if (configuredColumns > 0) {
+                                    configuredColumns.coerceIn(1, 6)
+                                } else {
+                                    (maxWidth / 170.dp).toInt().coerceIn(2, 4)
+                                }
+                                Column(modifier = Modifier.fillMaxWidth()) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -972,6 +980,7 @@ private fun HomepageModuleItem(
                                             }
                                         }
                                     }
+                                }
                                 }
                                 // 本地还有已载入但未揭示的书籍：先揭示本地窗口
                                 val hasLocalReveal = revealedCount < state.books.size
