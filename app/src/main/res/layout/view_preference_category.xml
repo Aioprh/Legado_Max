@@ -18,7 +18,7 @@
         android:paddingTop="8dp"
         android:paddingEnd="18dp"
         android:paddingBottom="8dp"
-        android:textColor="@color/glass_section_title"
+        android:textColor="@color/accent"
         android:textSize="13sp"
         android:textStyle="bold"
         android:letterSpacing="0.04"
