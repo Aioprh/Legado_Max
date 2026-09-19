@@ -739,6 +739,8 @@ private fun HomepageModuleItem(
     onModuleHeaderClick: (title: String?, sourceUrl: String, exploreUrl: String?) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        var isExpanded by rememberSaveable(module.globalId) { mutableStateOf(true) }
+
         // 排行榜多 Tab 模式下，获取当前选中 Tab 的 exploreUrl
         val rankingTabState = module.state as? ModuleLoadState.RankingTabs
         val isRankingTabs = rankingTabState != null
@@ -808,13 +810,25 @@ private fun HomepageModuleItem(
                         modifier = Modifier.size(20.dp)
                     )
                 }
+                IconButton(
+                    onClick = { isExpanded = !isExpanded },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = pageSecondaryTextColor(),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
 
-        // Module content
-        Box(
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
+        if (isExpanded) {
+            // Module content
+            Box(
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
             val context = LocalContext.current
             // 独立组件（SearchBar）常驻渲染，不依赖加载状态
             if (module.type == HomepageModuleType.SearchBar) {
@@ -1056,6 +1070,7 @@ private fun HomepageModuleItem(
                     )
                 }
 
+            }
             }
         }
     }
