@@ -97,6 +97,7 @@ import io.legado.app.ui.main.homepage.modules.GridRankingModule
 import io.legado.app.ui.main.homepage.modules.HomepageModuleSkeleton
 import io.legado.app.ui.rss.read.ReadRssActivity
 import io.legado.app.ui.main.homepage.modules.RankingModule
+import io.legado.app.ui.main.homepage.modules.SmartFilterModule
 import io.legado.app.ui.main.homepage.modules.WaterfallItem
 import io.legado.app.ui.theme.pageAccentColor
 import io.legado.app.ui.theme.pageCardElevatedContainerColor
@@ -898,8 +899,22 @@ private fun HomepageModuleItem(
                         }
 
                         HomepageModuleType.ButtonGroup -> {}
+                        HomepageModuleType.SmartFilter -> {}
                         HomepageModuleType.Unknown -> {}
                     }
+                }
+
+                is ModuleLoadState.SmartFilters -> {
+                    SmartFilterModule(
+                        kinds = state.kinds,
+                        modifier = Modifier.fillMaxWidth(),
+                        onSelect = { kind, value ->
+                            viewModel.onSmartFilterChanged(module.globalId, kind, value)
+                        },
+                        onUrlClick = { sourceUrl, url, title ->
+                            viewModel.onKindUrlClick(sourceUrl, url, title)
+                        }
+                    )
                 }
 
                 is ModuleLoadState.Buttons -> {
