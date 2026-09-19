@@ -1115,6 +1115,99 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
+    /**
+     * 智能分析书源并生成首页模块方案。
+     *
+     * 优先使用书源已经声明的 homepageModules；没有声明时，
+     * 自动执行发现分类解析，并根据分类名称推断 Grid / Ranking / ButtonGroup。
+     * 不直接覆盖已有用户模块，调用方可将返回结果逐项加入目标集。
+     */
+    suspend fun smartConfigureSource(sourceUrl: String, setId: String?): List<ModuleDef> {
+        val source = _bookSourcesCache.value[sourceUrl] ?: return emptyList()
+        val targetSetId = setId ?: "src_$sourceUrl"
+
+        // 1. 书源已有首页模块：优先复用作者提供的完整定义。
+        val declared = source.homepageModules?.takeIf { it.isNotBlank() }?.let {
+            runCatching { parseModuleDefs(sourceUrl, it) }.getOrDefault(emptyList())
+        }.orEmpty()
+
+        val existingIds = allModulesCache.value
+            .filter { it.customSetId == targetSetId && it.sourceUrl == sourceUrl }
+            .map { it.moduleKey }
+            .toSet()
+
+        if (declared.isNotEmpty()) {
+            return declared.filter { it.key !in existingIds }
+        }
+
+        // 2. 没有 homepageModules 时，从发现分类自动生成。
+        val kinds = runCatching {
+            withContext(Dispatchers.IO) {
+                appDb.bookSourceDao.getBookSource(sourceUrl)?.exploreKinds() ?: emptyList()
+            }
+        }.getOrDefault(emptyList())
+
+        if (kinds.isEmpty()) return emptyList()
+
+        val result = mutableListOf<ModuleDef>()
+        val rankingKinds = kinds.filter { kind ->
+            val name = kind.title
+            name.contains("榜") || name.contains("排行") || name.contains("排行榜")
+        }
+        val otherKinds = kinds.filterNot { rankingKinds.contains(it) }
+
+        if (rankingKinds.size >= 2) {
+            val args = GSON.toJson(
+                rankingKinds.map { mapOf("t" to it.title, "u" to (it.url ?: "")) }
+            )
+            result += ModuleDef(
+                key = "smart_ranking",
+                type = HomepageModuleType.Ranking.key,
+                title = "热门榜单",
+                args = args,
+                url = rankingKinds.firstOrNull()?.url ?: "",
+                sourceUrl = sourceUrl
+            )
+        }
+
+        // 常见大类（玄幻/都市/历史等）数量较多时合并成一个轻量按钮组，
+        // 避免首页一次性堆出十几个相似模块。
+        val genreNames = setOf(
+            "玄幻", "奇幻", "武侠", "仙侠", "都市", "现实", "历史", "军事",
+            "游戏", "体育", "科幻", "悬疑", "灵异", "二次元", "短篇", "古代言情",
+            "现代言情", "青春", "幻想", "职场", "轻小说"
+        )
+        val genreKinds = otherKinds.filter { it.title.trim() in genreNames }
+        val normalKinds = otherKinds.filterNot { genreKinds.contains(it) }
+
+        if (genreKinds.size >= 3) {
+            result += ModuleDef(
+                key = "smart_genres",
+                type = HomepageModuleType.ButtonGroup.key,
+                title = "热门分类",
+                args = GSON.toJson(
+                    genreKinds.map { mapOf("t" to it.title, "u" to (it.url ?: "")) }
+                ),
+                url = genreKinds.firstOrNull()?.url ?: "",
+                sourceUrl = sourceUrl
+            )
+        }
+
+        normalKinds.forEachIndexed { index, kind ->
+            val safeKey = kind.title.trim().ifBlank { "分类" + index }
+                .replace(Regex("[^\\p{L}\\p{N}_-]"), "_")
+            result += ModuleDef(
+                key = "smart_$index_$safeKey",
+                type = HomepageModuleType.Grid.key,
+                title = kind.title,
+                url = kind.url ?: "",
+                sourceUrl = sourceUrl
+            )
+        }
+
+        return result.filter { it.key !in existingIds }
+    }
+
     fun syncSourceModules(sourceUrl: String) {
         viewModelScope.launch {
             val source = _bookSourcesCache.value[sourceUrl] ?: return@launch
