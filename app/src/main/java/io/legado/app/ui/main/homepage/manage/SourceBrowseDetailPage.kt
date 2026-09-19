@@ -185,8 +185,8 @@ fun SourceBrowseDetailPage(
                             text = "已识别 ${smartDefs.size} 个模块",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium
-                        ),
-                        Spacer(modifier = Modifier.height(8.dp)),
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
                         smartDefs.forEach { def ->
                             Text(
                                 text = "• ${def.title.ifBlank { "未命名模块" }}  ·  ${HomepageModuleType.fromKey(def.type).let { stringResource(it.titleRes) }}",
