@@ -378,16 +378,54 @@ class HomepageModuleLoader(
                 val module = gateway.getById(globalId) ?: throw Exception("Module not found")
                 val aggregate = HomepageAggregation.parse(module.args)
                 if (aggregate.queries.size >= 2) {
-                    val books = coroutineScope {
+                    val cacheKey = moduleCacheKey(module)
+                    val sourceStates = aggregateStates[cacheKey] ?: mutableMapOf()
+                    val pageGroups = coroutineScope {
                         aggregate.queries.map { query ->
                             async(Dispatchers.IO) {
-                                val rssSource = appDb.rssSourceDao.getByKey(query.sourceUrl)
-                                if (rssSource != null) {
-                                    val sortUrl = query.url ?: rssSource.sourceUrl
-                                    val sortName = query.title?.ifBlank { null } ?: rssSource.sourceName
-                                    val (articles, _) = Rss.getArticlesAwait(sortName, sortUrl, rssSource, page = nextPage)
-                                    rssArticlesToSearchBooks(rssSource, articles)
-                                } else {
+                                val key = aggregateSourceKey(query)
+                                val state = sourceStates.getOrPut(key) { AggregateSourceState(page = nextPage - 1) }
+                                if (!state.hasMore) return@async emptyList<SearchBook>()
+                                try {
+                                    val rssSource = appDb.rssSourceDao.getByKey(query.sourceUrl)
+                                    val books: List<SearchBook>
+                                    val hasMore: Boolean
+                                    val targetPage = state.page + 1
+                                    if (rssSource != null) {
+                                        val sortUrl = query.url ?: rssSource.sourceUrl
+                                        val sortName = query.title?.ifBlank { null } ?: rssSource.sourceName
+                                        val result = Rss.getArticlesAwait(sortName, sortUrl, rssSource, page = targetPage)
+                                        books = rssArticlesToSearchBooks(rssSource, result.first)
+                                        hasMore = result.second
+                                    } else {
+                                        val result = exploreBooksUseCase.execute(
+                                            sourceUrl = query.sourceUrl,
+                                            moduleUrl = query.url,
+                                            args = query.args,
+                                            page = targetPage
+                                        )
+                                        books = result.books
+                                        hasMore = result.hasMore
+                                    }
+                                    state.page = targetPage
+                                    state.hasMore = hasMore
+                                    state.consecutiveFailures = 0
+                                    state.lastError = null
+                                    state.lastSuccessAt = System.currentTimeMillis()
+                                    books
+                                } catch (e: Exception) {
+                                    state.consecutiveFailures++
+                                    state.lastError = e.stackTraceStr
+                                    emptyList()
+                                }
+                            }
+                        }.map { it.await() }
+                    }
+                    aggregateStates[cacheKey] = sourceStates
+                    HomepagePageResult(
+                        books = HomepageAggregation.merge(pageGroups, aggregate.limit),
+                        hasMore = sourceStates.values.any { it.hasMore }
+                    )                } else {
                                     exploreBooksUseCase.execute(
                                         sourceUrl = query.sourceUrl,
                                         moduleUrl = query.url,
