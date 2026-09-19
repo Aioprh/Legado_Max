@@ -878,7 +878,7 @@ private fun HomepageModuleItem(
                             LaunchedEffect(state.books.size) {
                                 if (revealedCount > state.books.size) revealedCount = state.books.size
                             }
-                            // 布局参数从 registry 读取，未配置时回退到类型默认值（Grid 3 列 / 2 行，InfiniteGrid 3 列）
+                            // 布局参数从 registry 读取；未配置列数时由 GridModule 根据可用宽度自适应
                             val gridColumns = module.config.layoutInt(module.type, "columns", 0)
                             val gridMaxRows = if (module.type == HomepageModuleType.InfiniteGrid) null
                             else module.config.layoutInt(module.type, "maxRows", 2).coerceIn(1, 4)
@@ -939,7 +939,7 @@ private fun HomepageModuleItem(
                         )
 
                         HomepageModuleType.Waterfall -> {
-                            // 瀑布流布局 - 使用 Column+Row 实现两列，避免 LazyGrid 嵌套需要固定高度
+                            // 瀑布流布局 - 使用 Column+Row 实现多列，避免 LazyGrid 嵌套需要固定高度
                             // 窗口化揭示渲染：仅渲染「已揭示」的书籍，避免无限流加载过多后一次渲染全部导致卡顿
                             var revealedCount by rememberSaveable(module.globalId) {
                                 mutableStateOf(MODULE_REVEAL_STEP)
