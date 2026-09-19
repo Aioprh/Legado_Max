@@ -452,7 +452,8 @@ class HomepageModuleLoader(
                             )
                         )
                     }
-                    val finalHasMore = if (aggregate.queries.size >= 2) result.hasMore else if (deduped.isEmpty()) false else result.hasMore
+                    val isAggregated = HomepageAggregation.parse(module.args).queries.size >= 2
+                    val finalHasMore = if (isAggregated) result.hasMore else if (deduped.isEmpty()) false else result.hasMore
                     val updatedState = ModuleLoadState.Loaded(
                         books = lastState.books + deduped,
                         hasMore = finalHasMore,
