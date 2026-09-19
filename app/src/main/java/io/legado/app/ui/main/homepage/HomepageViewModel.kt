@@ -15,6 +15,8 @@ import io.legado.app.data.repository.HomepageModulesRepository
 import io.legado.app.domain.gateway.HomepageModulesGateway
 import io.legado.app.domain.model.BookShelfState
 import io.legado.app.domain.model.CustomSetItem
+import io.legado.app.domain.model.HomepageModuleCategory
+import io.legado.app.domain.model.HomepageModuleSpec
 import io.legado.app.domain.model.HomepageModuleType
 import io.legado.app.domain.model.ModuleDef
 import io.legado.app.domain.model.ModuleItem
@@ -577,7 +579,9 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
 
     private fun loadModule(module: ModuleItem) {
         loadJobs[module.id]?.cancel()
-        if (module.type == HomepageModuleType.SmartFilter.key) {
+        val moduleType = HomepageModuleType.fromKey(module.type)
+        val moduleCategory = HomepageModuleSpec.category(moduleType)
+        if (moduleCategory == HomepageModuleCategory.SmartFilter) {
             loadJobs[module.id] = viewModelScope.launch {
                 runCatching {
                     val source = withContext(Dispatchers.IO) {
@@ -596,7 +600,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
             }.also { it.invokeOnCompletion { loadJobs.remove(module.id) } }
             return
         }
-        if (module.type == HomepageModuleType.ButtonGroup.key) {
+        if (moduleCategory == HomepageModuleCategory.ButtonGroup) {
             loadJobs[module.id] = viewModelScope.launch {
                 kotlin.runCatching {
                     // 从 args 提取分类标题（兼容新旧两种格式）
@@ -627,7 +631,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
             return
         }
         // 排行榜多分类模式：args 包含多个 {t:标题, u:URL} 对象
-        val isRanking = module.type == HomepageModuleType.Ranking.key || module.type == HomepageModuleType.GridRanking.key
+        val isRanking = HomepageModuleSpec.isRankingTabs(moduleType)
         val rankingCategoryPairs = if (isRanking) parseRankingCategories(module.args) else null
 
         if (rankingCategoryPairs != null && rankingCategoryPairs.size >= 2) {
@@ -708,8 +712,7 @@ class HomepageViewModel(application: Application) : BaseViewModel(application) {
         viewModelScope.launch {
             kotlin.runCatching {
                 val module = gateway.getById(globalId) ?: throw Exception("Module not found")
-                val isRanking = module.type == HomepageModuleType.Ranking.key ||
-                        module.type == HomepageModuleType.GridRanking.key
+                val isRanking = HomepageModuleSpec.isRankingTabs(HomepageModuleType.fromKey(module.type))
                 val effectiveUrl = if (isRanking) {
                     parseRankingCategories(module.args)?.firstOrNull()?.second?.ifBlank { null }
                         ?: module.url
